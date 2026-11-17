@@ -52,9 +52,8 @@ describe("shell container processor claims", () => {
     const hold = createForegroundBashHoldController((ids) => { if (ids.includes("toolu_held")) held.resolve(); });
     const options = shellOptions("session-a", async () => makeMockOwnedProcess({ token, exited: exit.promise }));
     const context = { ...options.context, toolUseId: "toolu_held" };
-    const execution = mode === "foreground"
-      ? runtime.client.runForeground({ ...options, context, timeoutSec: 60, rawOutput: false, postExitDrainGraceMs: 10 })
-      : runtime.client.runBackground({ ...options, context: { ...context, foregroundBashHold: hold }, foreground: mode !== "background", totalYieldMs: mode === "auto-yield" ? 1 : 30, rawOutput: false });
+    const totalYieldMs = { foreground: 60_000, "auto-yield": 1, detach: 30, background: 30 }[mode];
+    const execution = runtime.client.run({ ...options, context, ...(mode === "background" ? { foreground: false as const } : { foreground: true as const, foregroundBashHold: hold }), totalYieldMs, rawOutput: false, postExitDrainGraceMs: 10 });
     try {
       await claimed(claims, token);
       if (mode === "detach") {
@@ -83,7 +82,7 @@ describe("shell container processor claims", () => {
       const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
       const owner = createBackgroundExecutionOwner(tasks, undefined, processorExempt === undefined ? {} : { processorExempt });
       const exit = Promise.withResolvers<OwnedExit>();
-      await owner.shell.runBackground({ ...shellOptions("session-a", async () => makeMockOwnedProcess({ token, exited: exit.promise })), foreground: false, rawOutput: false });
+      await owner.shell.run({ ...shellOptions("session-a", async () => makeMockOwnedProcess({ token, exited: exit.promise })), foreground: false, rawOutput: false });
       const claim = sharedProcessorClaims().claims().find((candidate) => candidate.token === token);
       exit.resolve(EXITED);
       await owner.close();
@@ -99,7 +98,7 @@ describe("shell container processor claims", () => {
     const runtime = createShellRuntime(tasks, { processorClaims: claims });
     const exit = Promise.withResolvers<OwnedExit>();
     const options = shellOptions("session-a", async () => makeMockOwnedProcess({ token: "owned:capped", exited: exit.promise }));
-    const execution = runtime.client.runBackground({ ...options, context: { ...options.context, toolUseId: "toolu_capped" }, foreground: true, totalYieldMs: 20, rawOutput: false });
+    const execution = runtime.client.run({ ...options, context: { ...options.context, toolUseId: "toolu_capped" }, foreground: true, foregroundBashHold: createForegroundBashHoldController(() => {}), totalYieldMs: 20, rawOutput: false });
     try {
       await claimed(claims, "owned:capped");
       claims.applyHolds([{ token: "owned:capped", ahead: 3 }]);
@@ -112,7 +111,7 @@ describe("shell container processor claims", () => {
     }
   });
 
-  it.each(["foreground", "managed"] as const)("does not count held time against a %s command's explicit timeout", async (mode) => {
+  it.each(["foreground", "background"] as const)("does not count held time against a %s command's explicit timeout", async (mode) => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
     const claims = await freshProcessorClaims();
     const runtime = createShellRuntime(tasks, { processorClaims: claims });
@@ -129,8 +128,8 @@ describe("shell container processor claims", () => {
     });
     const options = shellOptions("session-a", async () => makeMockOwnedProcess({ token, exited: exit.promise, terminate: async () => { terminations++; exit.resolve({ ...EXITED, code: 143 }); return exit.promise; } }));
     const execution = mode === "foreground"
-      ? runtime.client.runForeground({ ...options, timeoutSec: 0.01, rawOutput: false, postExitDrainGraceMs: 0 })
-      : runtime.client.runBackground({ ...options, foreground: false, timeoutSec: 0.01, rawOutput: false });
+      ? runtime.client.run({ ...options, context: { ...options.context, toolUseId: "toolu_timeout" }, foreground: true, foregroundBashHold: createForegroundBashHoldController(() => {}), totalYieldMs: 60_000, timeoutSec: 0.01, rawOutput: false, postExitDrainGraceMs: 0 })
+      : runtime.client.run({ ...options, foreground: false, timeoutSec: 0.01, rawOutput: false });
     try {
       await claimed(claims, token);
       await Bun.sleep(25);
@@ -173,7 +172,7 @@ describe("shell container processor claims", () => {
     const options = shellOptions("session-a", async () => { spawns++; return makeMockOwnedProcess(); });
     const prepared = Promise.withResolvers<void>();
     const proceed = Promise.withResolvers<void>();
-    const execution = runtime.client.runBackground({
+    const execution = runtime.client.run({
       ...options,
       context: { ...options.context, signal: caller.signal },
       operations: makeMockOps({ writeScript: async () => { prepared.resolve(); await proceed.promise; return 0; } }),
@@ -207,7 +206,7 @@ describe("shell container processor claims", () => {
     const options = shellOptions("session-a", async () => { spawns++; return makeMockOwnedProcess(); });
     const dispatch = owner.run(() => bridgeExternalPromise(async () => {
       try {
-        await owner.shell.runBackground({ ...options, foreground: false, rawOutput: false, operations: makeMockOps({ writeScript: async () => { prepared.resolve(); await proceed.promise; return 0; } }) });
+        await owner.shell.run({ ...options, foreground: false, rawOutput: false, operations: makeMockOps({ writeScript: async () => { prepared.resolve(); await proceed.promise; return 0; } }) });
       } catch (error) {
         interrupted = error instanceof DOMException && error.name === "AbortError";
       }

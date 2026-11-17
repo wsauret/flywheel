@@ -29,6 +29,9 @@ import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { fakeAvailability, SAFE_RECHECK_MS } from "./llm/_provider-chain-harness.js"
 import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
+import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 
 const HISTORY: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read a." }, { kind: "assistant", content: [{ type: "text", text: "Done." }] }]
 const NEXT: ConversationMessage = { kind: "user", content: "Read b.", origin: "human" }
@@ -308,12 +311,14 @@ describe("a pre-start's request preparation", () => {
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
       async *streamWithTools() { streams += 1; yield { kind: "done", stopReason: "end_turn" } },
     })
+    // A runner plans bash only with the shell runtime and the foreground hold that run it.
+    const runnerExecution = { background: createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })), foregroundBashHold: createForegroundBashHoldController(() => {}) }
     const plan = (modules: readonly FirstPartyModule[]) => {
       const options = makeOptions({ agentRegistry: new Map(), agentsMd: "", conversation: conversation(HISTORY, appended) })
       return planCapabilitiesOfRun({
         options: {
           captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {}, ...options,
-          runtimeSurfaces: {}, moduleSelection: () => composeFirstPartyModules(modules),
+          runtimeSurfaces: runnerExecution, moduleSelection: () => composeFirstPartyModules(modules),
         },
         definitions: repoDefinitions(),
         captureModelRuntime: async () => ({ generation: client, createLLMClient: client }),

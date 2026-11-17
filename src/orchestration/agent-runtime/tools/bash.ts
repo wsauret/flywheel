@@ -15,10 +15,11 @@ import { hasShellBackgroundJob } from "./bash-parser.js";
 import { bashToolSurface, type BashSurfaceOptions, type FileEditToolName } from "./bash-guidance.js";
 import { resolveToolPath, sessionPathInput } from "./tool-paths.js";
 import { checkNumericRange } from "./numeric-input.js";
-import type { BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
+import type { AdvertisedTool, BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
 import type { RuntimePlatform } from "./bash-script.js";
-import { createBackgroundWorkRegistry } from "../background-work.js";
-import { createShellRuntime, DEFAULT_TOTAL_YIELD_MS } from "./shell-runtime.js";
+import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
+import { DEFAULT_TOTAL_YIELD_MS } from "./shell-runtime.js";
+import type { ShellRuntimeClient } from "./shell-runtime-types.js";
 import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS } from "./shell-execution.js";
 import { createToolEnvironmentFactory, refuseBackgroundCommand, runPersistentCommand } from "./shell-environment.js";
 import { runInPrivateCopy, type MutationExecution } from "./bash-project-mutation.js";
@@ -31,7 +32,6 @@ interface BashInput {
 
 const log = Log.create({ service: "agent-bash" });
 
-const DEFAULT_TIMEOUT_SEC = 120;
 const MAX_TIMEOUT_SEC = 3600;
 
 /** Structured execution evidence carried on current Bash results. */
@@ -139,9 +139,50 @@ function unavailableInput(input: "background" | "persist_after_exit", reason?: s
   return { content: `The ${input} input of bash is unavailable to this agent now${reason === undefined ? "" : `: ${reason}`}. Do not send it again.`, outcome: "error" };
 }
 
-export function createBashDefinition(options?: {
-  operations?: BashOperations;
+/** What the bash tool advertises. Every agent of a chat tree passes the same
+ *  values (ARCH-CONTEXT-018), whether or not it can run the tool. */
+interface BashAdvertisement {
   platform?: RuntimePlatform;
+  /** The file edit tool this request offers, so the shell prompt names it. */
+  fileEditTool?: FileEditToolName;
+  /** Whether the description states the write roots of the shell write
+   *  guard. True by default. */
+  writeGuard?: boolean;
+  /** False in a headless runtime: the schema offers no `mutates` field, so
+   *  dispatch refuses one and every command runs in place. True by default. */
+  mutatingDeclaration?: boolean;
+  /** What the schema and description advertise beyond the fields above;
+   *  `backgroundRefusal` and `persistentProcesses` decide what execution admits. */
+  advertised?: Pick<BashSurfaceOptions, "background" | "persistence" | "has" | "unattendedChat">;
+}
+
+/** The bash tool without its execution, for an agent that has no session
+ *  shell runtime to run it in. */
+export function advertisedBashTool(options: BashAdvertisement = {}): AdvertisedTool {
+  return {
+    name: "bash",
+    action: "shell_exec",
+    ...bashToolSurface({ ...options.advertised, ...(options.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration: options.mutatingDeclaration ?? true, writeGuard: options.writeGuard ?? true, platform: options.platform ?? process.platform }),
+    // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
+    // dispatcher's generic watchdog would either race that mechanism or
+    // fire first on a legitimately long (up to 3600s) foreground command.
+    unboundedDuration: true,
+    // Each call is a fresh isolated owned process with no shared session
+    // state; same-batch commands are self-selected independent by the model,
+    // and residual conflicts fail loudly in the command's own output.
+    isConcurrencySafe: true,
+  };
+}
+
+/** The bash tool. Every command runs as a managed process of `shell`, whose
+ *  registry tracks it; a foreground call holds it through `foregroundBashHold`
+ *  until it settles, the runtime cap passes, or it is detached or replaced. */
+export function createBashDefinition(options: BashAdvertisement & {
+  /** The session's shell runtime: it runs every command and owns the registry that tracks it. */
+  shell: ShellRuntimeClient;
+  /** The session authority that holds a foreground command and moves it to managed work. */
+  foregroundBashHold: ForegroundBashHoldController;
+  operations?: BashOperations;
   tmpDir?: string;
   executionOutputThrottleMs?: number;
   execPath?: string;
@@ -151,49 +192,34 @@ export function createBashDefinition(options?: {
    *  Absent: it may. */
   backgroundRefusal?: string;
   persistentProcesses?: boolean;
-  /** The file edit tool this request offers, so the shell prompt names it. */
-  fileEditTool?: FileEditToolName;
-  backgroundTasks?: ToolContext["backgroundTasks"];
-  foregroundBashHold?: ToolContext["foregroundBashHold"];
-  requireManagedExecution?: boolean;
   /** The login shell PATH source; this process's probe result by default. */
   loginShellPath?: () => string | undefined;
   /** A read-only persona admits recognized writes only in its scratchpad
    * or to device sinks, and refuses `mutates: true`. */
   readOnly?: boolean;
-  /** Whether the description states the write roots of the shell write
-   *  guard. True by default. */
-  writeGuard?: boolean;
   /** Reads the guard when a command is checked: false means that a writing
    *  agent's command is refused for no write target. `writeGuard` by default. */
   enforcedWriteGuard?: () => Promise<boolean>;
-  /** False in a headless runtime: the schema offers no `mutates` field, so
-   *  dispatch refuses one and every command runs in place. True by default. */
-  mutatingDeclaration?: boolean;
-  /** What the schema and description advertise beyond the fields above. Every agent of a chat tree passes the
-   *  same values (ARCH-CONTEXT-018); `backgroundRefusal` and `persistentProcesses` decide what execution admits. */
-  advertised?: Pick<BashSurfaceOptions, "background" | "persistence" | "has" | "unattendedChat">;
 }): RuntimeTool {
-  const ops = options?.operations ?? defaultBashOperations;
-  const platform = options?.platform ?? process.platform;
-  const tempDir = options?.tmpDir ?? tmpdir();
-  const execPath = options?.execPath ?? process.execPath;
-  const executionOutputThrottleMs = options?.executionOutputThrottleMs
+  const { shell, foregroundBashHold } = options;
+  const ops = options.operations ?? defaultBashOperations;
+  const platform = options.platform ?? process.platform;
+  const tempDir = options.tmpDir ?? tmpdir();
+  const execPath = options.execPath ?? process.execPath;
+  const executionOutputThrottleMs = options.executionOutputThrottleMs
     ?? DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS;
-  const postExitDrainGraceMs = options?.postExitDrainGraceMs ?? POST_EXIT_DRAIN_GRACE_MS;
-  const totalYieldMs = options?.totalYieldMs ?? DEFAULT_TOTAL_YIELD_MS;
-  const backgroundRefusal = options?.backgroundRefusal;
+  const postExitDrainGraceMs = options.postExitDrainGraceMs ?? POST_EXIT_DRAIN_GRACE_MS;
+  const totalYieldMs = options.totalYieldMs ?? DEFAULT_TOTAL_YIELD_MS;
+  const backgroundRefusal = options.backgroundRefusal;
   const backgroundCommands = backgroundRefusal === undefined;
-  const persistentProcesses = options?.persistentProcesses ?? false;
-  const requireManagedExecution = options?.requireManagedExecution ?? false;
-  const readOnly = options?.readOnly === true;
-  const writeGuard = options?.writeGuard ?? true;
-  const enforcedWriteGuard = options?.enforcedWriteGuard ?? (async () => writeGuard);
-  const mutatingDeclaration = options?.mutatingDeclaration ?? true;
+  const persistentProcesses = options.persistentProcesses ?? false;
+  const readOnly = options.readOnly === true;
+  const writeGuard = options.writeGuard ?? true;
+  const enforcedWriteGuard = options.enforcedWriteGuard ?? (async () => writeGuard);
 
   const toolEnvironment = createToolEnvironmentFactory({
     operations: ops, platform, execPath,
-    loginShellPath: options?.loginShellPath ?? (() => processLoginShellPath.current()),
+    loginShellPath: options.loginShellPath ?? (() => processLoginShellPath.current()),
   });
 
 
@@ -205,9 +231,6 @@ export function createBashDefinition(options?: {
     if (context.signal?.aborted) {
       return { content: "The bash invocation was aborted before it started. The signal was already triggered; likely the user interrupted the previous turn. Wait for the user's next instruction before retrying.", outcome: "interrupted" };
     }
-
-    const timeout = timeoutSec ?? DEFAULT_TIMEOUT_SEC;
-
 
     // Detachment and persistence admission happen before environment, scratch,
     // script, spool, log, launch, registry, or success-audit effects.
@@ -242,24 +265,15 @@ export function createBashDefinition(options?: {
       log.error("bash was called without a process-ownership context");
       return { content: "bash cannot run here: this runtime has no process-ownership context, so no command can be launched. Report this as an infrastructure failure.", outcome: "error" };
     }
-    if (background && context.backgroundTasks === undefined) {
-      return {
-        content: "Background execution is unavailable because this runtime has no session process registry. Run the command in the foreground without background=true.",
-        outcome: "error",
-      };
-    }
     if (background) {
       const refusal = await refuseBackgroundCommand(context);
       if (refusal) return { content: refusal, outcome: "error" };
     }
 
-    // A context that can take a command out of its tool call holds every
-    // foreground command for its whole run, so Detach and a planned
-    // replacement's move to the background reach it whatever its deadline.
-    // The runtime cap runs only when the deadline leaves room for it.
-    const held = !background
-      && context.backgroundTasks !== undefined
-      && context.foregroundBashHold !== undefined;
+    // Every foreground command is held for its whole run, so Detach and a
+    // planned replacement's move to the background reach it whatever its
+    // deadline. The runtime cap runs only when the deadline leaves room for it.
+    const held = !background;
     const deadlineAllowsYield = timeoutSec === undefined || timeoutSec * 1000 > totalYieldMs;
 
     const env = await toolEnvironment(context);
@@ -274,29 +288,18 @@ export function createBashDefinition(options?: {
       executionOutputThrottleMs,
       rawOutput: raw,
     };
-    const shell = context.shell ?? createShellRuntime(context.backgroundTasks ?? createBackgroundWorkRegistry({
-      kind: "chat",
-      enqueueNotification: () => {},
-    })).client;
-    const launch = (isolated?: MutationExecution): Promise<ToolResult> => background || held
-      ? shell.runBackground({
-          ...execution,
-          ...isolated,
-          foreground: held,
-          persistable: persistentProcesses,
-          postExitDrainGraceMs,
-          ...(held && deadlineAllowsYield ? { totalYieldMs } : {}),
-          ...(timeoutSec !== undefined ? { timeoutSec } : {}),
-        })
-      : shell.runForeground({
-          ...execution,
-          ...isolated,
-          timeoutSec: timeout,
-          postExitDrainGraceMs,
-        });
+    const launch = (isolated?: MutationExecution): Promise<ToolResult> => shell.run({
+      ...execution,
+      ...isolated,
+      ...(held ? { foreground: true as const, foregroundBashHold } : { foreground: false as const }),
+      persistable: persistentProcesses,
+      postExitDrainGraceMs,
+      ...(held && deadlineAllowsYield ? { totalYieldMs } : {}),
+      ...(timeoutSec !== undefined ? { timeoutSec } : {}),
+    });
     const scratchDir = context.scratchDir ?? tempDir;
     const result = mutates
-      ? await runInPrivateCopy({ context, spawnOwned, command, env, platform, execPath, pool: context.shell?.privateCopies, scratchDir, home: join(scratchDir, SCRATCH_MUTATIONS_DIR, randomUUID()), run: launch })
+      ? await runInPrivateCopy({ context, spawnOwned, command, env, platform, execPath, pool: shell.privateCopies, scratchDir, home: join(scratchDir, SCRATCH_MUTATIONS_DIR, randomUUID()), run: launch })
       : await launch();
     // A private copy's reads are of the copy, not the project file.
     if (!mutates) await recordShellFileReads(resolved, parseBashResultDetails(result.details ?? {}).exitCode, context);
@@ -304,21 +307,8 @@ export function createBashDefinition(options?: {
   }
 
   return {
-    name: "bash",
-    action: "shell_exec",
-    ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard, platform }),
-    // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
-    // dispatcher's generic watchdog would either race that mechanism or
-    // fire first on a legitimately long (up to 3600s) foreground command.
-    unboundedDuration: true,
-    // Each call is a fresh isolated owned process with no shared session
-    // state; same-batch commands are self-selected independent by the model,
-    // and residual conflicts fail loudly in the command's own output.
-    isConcurrencySafe: true,
+    ...advertisedBashTool(options),
     async execute(input: BashInput, context: ToolContext) {
-      if (requireManagedExecution && (!options?.backgroundTasks || !options.foregroundBashHold)) {
-        throw new Error("Foreground Bash requires a session-owned background execution registry and hold controller");
-      }
       if (typeof input.command !== "string" || input.command.trim().length === 0) {
         return { content: "bash was called without a 'command' string. Provide the shell command you want to run as the 'command' parameter, e.g. { command: \"bun run test\" }.", outcome: "error" };
       }
@@ -334,19 +324,14 @@ export function createBashDefinition(options?: {
       if (persistent && timeout !== undefined) return { content: "Error: 'persist_after_exit=true' cannot be combined with 'timeout' because the runtime cannot enforce the deadline after it exits", outcome: "error" };
       if (persistent && !persistentProcesses) return unavailableInput("persist_after_exit");
       if (background && backgroundRefusal !== undefined) return unavailableInput("background", backgroundRefusal);
-      const effectiveContext = {
-        ...context,
-        ...(options?.backgroundTasks ? { backgroundTasks: options.backgroundTasks } : {}),
-        ...(options?.foregroundBashHold ? { foregroundBashHold: options.foregroundBashHold } : {}),
-        executionCwd: bashCommandCwd(input, context.executionCwd),
-      };
+      const effectiveContext = { ...context, executionCwd: bashCommandCwd(input, context.executionCwd) };
       return runCommandInner(input.command, background, persistent ? "required" : false, effectiveContext, timeout, input.raw_output === true, mutates, resolvedCommands.get(input));
     },
     async executionPolicy(input, context) {
-      const shell = bashShellCommand(input, context.executionCwd);
-      if (!shell) return undefined;
-      const policy = shellPolicyOptions(context, shell.cwd, platform, readOnly, await enforcedWriteGuard());
-      return (await interceptBashCommand(shell.command, { ...policy, onResolved: resolved => resolvedCommands.set(input, resolved) }))?.message;
+      const shellCommand = bashShellCommand(input, context.executionCwd);
+      if (!shellCommand) return undefined;
+      const policy = shellPolicyOptions(context, shellCommand.cwd, platform, readOnly, await enforcedWriteGuard());
+      return (await interceptBashCommand(shellCommand.command, { ...policy, onResolved: resolved => resolvedCommands.set(input, resolved) }))?.message;
     },
     prepareAdmission: async (input, context) => ({ repair: repairShellInput(input, context) }),
   };

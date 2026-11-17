@@ -15,6 +15,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { MANDATORY_PROTECTED_PATHS } from "../../../../../src/orchestration/modules/experiments/charter.js"
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js"
+import { bashExecution } from "../../agent-runtime/tools/_bash-fixtures.js"
 import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js"
 
 const snapshot = { active: true, initialized: true, workDir: "/repo", protectedPaths: ["tests/**"], sealedPaths: ["secret/**"] } as const
@@ -54,7 +55,7 @@ describe("experiment gate through tool dispatch", () => {
   const tools = new Map<string, RuntimeTool>([
     ["edit", editDefinition],
     ["read", readDefinition],
-    ["bash", createBashDefinition()],
+    ["bash", createBashDefinition(bashExecution())],
   ])
   const gate = composeFirstPartyModules().gates
     .find((declaration): declaration is Extract<typeof declaration, { readonly seam: "toolExecution" }> => declaration.seam === "toolExecution")?.gate
@@ -169,11 +170,13 @@ describe("experiment omissions in the exposure plan", () => {
     guard: async () => guard,
   })
   // The exposure gate comes from the request's module snapshot, exactly as in production.
+  const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
   const plan = (guard: ExperimentGuardSnapshot | undefined) => planToolExposure({
     kernel: testKernelToolDeps({
       userDataRoot: "/scratch",
       capabilities: { available: () => true },
-      backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
+      backgroundTasks: tasks,
+      ...bashExecution(tasks),
     }),
     modules: composeModuleRuntimes([["experiments", runtime(guard)]]),
   })

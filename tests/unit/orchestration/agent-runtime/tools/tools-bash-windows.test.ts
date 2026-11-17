@@ -5,7 +5,7 @@ import { createBashDefinition } from "../../../../../src/orchestration/agent-run
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { backgroundLogPath } from "../../../../helpers/background-log-path.js";
-import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
+import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
 import type { PersistentProcessClient, PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";
 
@@ -16,6 +16,7 @@ describe("bash tool: Windows shell execution", () => {
     const spawn = ownedSpawnProbe();
 
     const def = createBashDefinition({
+      ...bashExecution(),
       platform: "win32",
       tmpDir: os.tmpdir(),
       operations: makeMockOps({
@@ -42,6 +43,7 @@ describe("bash tool: Windows shell execution", () => {
     const writeCalls: string[] = [];
     const spawn = ownedSpawnProbe();
     const def = createBashDefinition({
+      ...bashExecution(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }), createForegroundBashHoldController(() => {})),
       platform: "win32",
       tmpDir: os.tmpdir(),
       operations: makeMockOps({
@@ -56,8 +58,6 @@ describe("bash tool: Windows shell execution", () => {
       executionCwd: os.tmpdir(),
       spawnOwned: spawn.spawnOwned,
       availableTools,
-      backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }),
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
       toolUseId: "toolu_windows_held",
     }));
 
@@ -77,8 +77,10 @@ describe("bash tool: Windows shell execution", () => {
   it("starts background commands through PowerShell", async () => {
     const writeCalls: { path: string; content: string }[] = [];
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 777 }));
-    const ctx = makeContext({ executionCwd: os.tmpdir(), spawnOwned: spawn.spawnOwned, capabilityAccess: capabilityAccessHolding(["background-commands"]), backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }), availableTools });
+    const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
+    const ctx = makeContext({ executionCwd: os.tmpdir(), spawnOwned: spawn.spawnOwned, capabilityAccess: capabilityAccessHolding(["background-commands"]), backgroundTasks: tasks, availableTools });
     const def = createBashDefinition({
+      ...bashExecution(tasks),
       platform: "win32",
       tmpDir: os.tmpdir(),
       operations: makeMockOps({
@@ -118,7 +120,7 @@ describe("bash tool: Windows shell execution", () => {
       release: async () => {},
       close: () => {},
     };
-    const def = createBashDefinition({ platform: "win32", persistentProcesses: true });
+    const def = createBashDefinition({ ...bashExecution(), platform: "win32", persistentProcesses: true });
 
     const result = await def.execute(
       { command: "Start-Sleep 60", background: true, persist_after_exit: true },

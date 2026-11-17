@@ -18,12 +18,13 @@ import type { SkillDefinition } from "../../../../../src/workflows/skill-schema.
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
 import { admitEveryTool, requestAdmission, testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
+import { bashExecution } from "./_bash-fixtures.js";
 import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/short-form.js";
 import type { ToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 
-const bashDefinition = createBashDefinition();
+const bashDefinition = createBashDefinition(bashExecution());
 
 beforeAll(loadBashParser);
 // Compose prepare + execute exactly as the agent loop's dispatcher does.

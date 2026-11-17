@@ -125,6 +125,7 @@ describe("per-request persistent-process policy", () => {
         userDataRoot: tmpdir(),
         capabilities: { available: (capability) => capability === "background-commands" },
         backgroundTasks: tasks,
+        shell: background.shell,
         foregroundBashHold,
         persistentProcesses: true,
         persistentProcessesAdvertised: true,

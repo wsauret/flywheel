@@ -10,10 +10,12 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { makeContext } from "./_fixtures.js";
+import { bashExecution } from "./_bash-fixtures.js";
 import { defaultModuleState } from "../../../../../src/orchestration/config/module-descriptor.js";
 
 const { userDataRoot } = testDirectories(process.cwd());
-const plan = (kernel: Partial<KernelToolDeps>) => planToolExposure({ kernel: testKernelToolDeps({ userDataRoot, ...kernel }), modules: NO_MODULE_RUNTIMES });
+// A runner gives the bash tool a shell runtime over the same registry as its process tool.
+const plan = (kernel: Partial<KernelToolDeps>) => planToolExposure({ kernel: testKernelToolDeps({ userDataRoot, ...bashExecution(kernel.backgroundTasks), ...kernel }), modules: NO_MODULE_RUNTIMES });
 
 beforeAll(loadBashParser);
 
@@ -52,7 +54,6 @@ describe("background management under capability policy", () => {
       spawnOwned: () => { effects.push("spawn"); throw new Error("a refused input must not launch"); },
       admitPersistentProcess: () => { effects.push("admit"); return true; },
       backgroundTasks,
-      foregroundBashHold,
     });
     const foregroundOnly = await plan({ capabilities: capabilities([]), backgroundTasks, foregroundBashHold, persistentProcesses: true });
     const withoutPersistence = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold, persistentProcesses: false });
@@ -96,7 +97,6 @@ describe("background management under capability policy", () => {
           close() {},
         },
         backgroundTasks,
-        foregroundBashHold,
       }),
     );
 
@@ -131,7 +131,6 @@ describe("background management under capability policy", () => {
         close() {},
       },
       backgroundTasks,
-      foregroundBashHold,
     });
     const dispatch = (tools: typeof disabled.tools, input: { [key: string]: unknown }, admitted: boolean) =>
       executePreparedTool(prepareToolCall({ id: "call-bash", name: "bash", input }, tools, admitEveryTool), context(admitted));
@@ -171,7 +170,7 @@ describe("background management under capability policy", () => {
     const planned = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold, persistentProcesses: true });
     const result = await planned.tools.get("bash")!.execute(
       { command: "bun server.ts", background: true, persist_after_exit: true },
-      makeContext({ admitPersistentProcess: () => { throw new Error("policy unavailable"); }, backgroundTasks, foregroundBashHold }),
+      makeContext({ admitPersistentProcess: () => { throw new Error("policy unavailable"); }, backgroundTasks }),
     );
 
     expect(result).toEqual({

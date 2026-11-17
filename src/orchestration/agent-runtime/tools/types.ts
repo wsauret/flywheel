@@ -15,8 +15,6 @@ import type { HandoffRejection } from "../../workflow-host/handoff-tool-schema.j
 
 import type { PersistentProcessClient } from "../../../infra/persistent-process-manager.js";
 import type { BridgedPersistentProcessClient } from "../../../infra/persistent-process-bridge.js";
-import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
-import type { ShellRuntimeClient } from "./shell-runtime-types.js";
 import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js";
@@ -365,10 +363,6 @@ export interface ToolContext {
    *  one, otherwise the run disposal signal. Governs work that outlives the
    *  turn, such as a backgrounded command's log tailer. */
   backgroundSignal?: AbortSignal;
-  /** Host-generation shell runtime. Absent only in deliberately isolated test contexts. */
-  shell?: ShellRuntimeClient;
-  /** Session authority for foreground Bash calls that can transfer to managed background work. */
-  foregroundBashHold?: ForegroundBashHoldController;
   /** The runtimes of this runner's enabled modules, read by execution gates
    *  through their typed handles. Absent, every gate sees no runtime. */
   moduleRuntimes?: ModuleRuntimes;

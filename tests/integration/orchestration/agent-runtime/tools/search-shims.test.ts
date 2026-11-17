@@ -7,6 +7,7 @@ import { createBashDefinition } from "../../../../../src/orchestration/agent-run
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { shellSearchStoppedMessage } from "../../../../../src/orchestration/agent-runtime/tools/search-rules.js";
 import { makeContext } from "../../../../unit/orchestration/agent-runtime/tools/_fixtures.js";
+import { bashExecution } from "../../../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
 
 // The search rules of the agent shell (ARCH-TOOLS-052, PI-AGENT-053), through
 // the real bash tool, its PATH, and the person's own search programs.
@@ -19,7 +20,7 @@ describe.skipIf(process.platform === "win32")("bash tool: search shims", () => {
   let root: string;
   let project: string;
   let scratchDir: string;
-  const bash = createBashDefinition({ loginShellPath: () => undefined });
+  const bash = createBashDefinition({ ...bashExecution(), loginShellPath: () => undefined });
 
   async function run(command: string, timeout?: number): Promise<string> {
     const result = await bash.execute({ command, raw_output: true, ...(timeout ? { timeout } : {}) }, makeContext({ executionCwd: project, scratchDir }));

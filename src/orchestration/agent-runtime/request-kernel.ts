@@ -9,7 +9,7 @@ import { contributedToolIdentities, treeCapabilityCheck } from "./capability-che
 import type { CapabilityAccess } from "./tools/types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { FirstPartyModuleComposition, ModuleId } from "../modules.js";
-import type { BackgroundWorkRegistry } from "./background-work.js";
+import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
 import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
@@ -74,7 +74,7 @@ export interface KernelRunFacts {
   readonly options: Pick<RunnableAgentOptions, "userDataRoot" | "purpose" | "readOnly" | "allowedSubagentTypes" | "capabilityAccess">;
   readonly surfaces: RuntimeToolSurfaces;
   readonly personas: ReadonlyMap<string, AgentDefinition>;
-  readonly backgroundTasks?: BackgroundWorkRegistry;
+  readonly background?: Pick<BackgroundExecutionOwner, "tasks" | "shell">;
   readonly checkpoint?: KernelToolDeps["checkpoint"];
   readonly treeHosted: boolean;
   readonly captureProviderConnection?: KernelToolDeps["captureProviderConnection"];
@@ -149,7 +149,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(surfaces.askUser ? { askUser: surfaces.askUser } : {}),
     ...(surfaces.recall ? { recall: surfaces.recall } : {}),
     ...(surfaces.sessions ? { sessions: surfaces.sessions } : {}),
-    ...(run.backgroundTasks ? { backgroundTasks: run.backgroundTasks } : {}),
+    ...(run.background ? { backgroundTasks: run.background.tasks, shell: run.background.shell } : {}),
     ...(surfaces.foregroundBashHold ? { foregroundBashHold: surfaces.foregroundBashHold } : {}),
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),
     persistentProcesses: request.runtimeConfig.allowPersistentProcesses,

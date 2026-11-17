@@ -281,11 +281,11 @@ function handoverOwner(input: { readonly heard?: boolean; readonly stopping?: bo
     ...base,
     putInFlight: async (sessionId, kind, key, payload) => {
       events.push(`put ${kind}`)
-      await base.putInFlight?.(sessionId, kind, key, payload)
+      await base.putInFlight(sessionId, kind, key, payload)
     },
     swapInFlightBatch: async (sessionId, swaps) => {
       events.push(`retire with ${swaps.slice(1).map((swap) => swap.kind).join(",")}`)
-      return await base.swapInFlightBatch?.(sessionId, swaps) ?? false
+      return await base.swapInFlightBatch(sessionId, swaps)
     },
   }
   const authority = handoverAuthority({ reader: store, writer, stopping: true, ...input })
@@ -305,7 +305,7 @@ function handoverOwner(input: { readonly heard?: boolean; readonly stopping?: bo
 
 /** Launches one background command through the owner's shell runtime. */
 async function launch(fixture: ReturnType<typeof handoverOwner>, owned: OwnedProcess, timeoutSec?: number, privateCopy?: PrivateCopy): Promise<string> {
-  await fixture.owner.shell.runBackground({
+  await fixture.owner.shell.run({
     command: "bun run dev",
     context: {
       executionCwd: fixture.dir,

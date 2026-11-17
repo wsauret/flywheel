@@ -76,7 +76,7 @@ describe("a step's command handover", () => {
     const done = Promise.withResolvers<Awaited<Agent["done"]>>()
     const worker = handoverWorker(dir, (options) => ({
       async send() {
-        await options.runtimeSurfaces?.background?.shell.runBackground({
+        await options.runtimeSurfaces?.background?.shell.run({
           command: "bun run dev",
           context: { executionCwd: dir, userDataRoot: `${dir}/.test-account`, projectRoot: dir, scratchDir: dir, toolUseId: "toolu_step", artifactScopeId: sessionId, retrievalSessionId: sessionId, sessionId },
           spawnOwned: async () => container.owned, env: {}, operations: makeMockOps(), platform: "linux",
@@ -157,7 +157,7 @@ describe("a step's command handover", () => {
       const done = Promise.withResolvers<Awaited<Agent["done"]>>()
       return {
         send() {
-          void options.runtimeSurfaces?.background?.shell.runBackground({
+          void options.runtimeSurfaces?.background?.shell.run({
             command: "bun run dev",
             context: { executionCwd: dir, userDataRoot: `${dir}/.test-account`, projectRoot: dir, scratchDir: dir, toolUseId: "toolu_step", artifactScopeId: sessionId, retrievalSessionId: sessionId, sessionId },
             spawnOwned: async () => container.owned,

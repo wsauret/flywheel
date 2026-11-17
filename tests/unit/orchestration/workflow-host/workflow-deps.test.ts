@@ -14,6 +14,9 @@ import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { asModelClient } from "../agent-runtime/_model-client.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js";
+import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 
 /** Account authorities of the isolated test account home. A case that reads the
  *  global config publishes its own instead. */
@@ -212,6 +215,7 @@ describe("prepareWorkflowDeps", () => {
         ...testDirectories(definitions.projectRoot), model: "test", purpose: { kind: "interactive-chat" }, agentsMd: "", onEvent: () => {},
         conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
         captureModelRuntime: async () => ({ generation: {}, createLLMClient: async () => client }),
+        runtimeSurfaces: { background: createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })), foregroundBashHold: createForegroundBashHoldController(() => {}) },
       })
       agent.send("work")
       await agent.done

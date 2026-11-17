@@ -6,7 +6,7 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
-import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./_bash-fixtures.js";
+import { commandOutputOps, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./_bash-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { processSettled } from "../../../../helpers/process-settled.js";
 
@@ -20,6 +20,23 @@ function owner() {
   }));
 }
 
+/** What a held foreground call adds to a launch: its call id, its hold, the
+ *  runtime cap it may run for, and its deadline. */
+function heldForeground(toolUseId: string) {
+  return {
+    foreground: true as const,
+    foregroundBashHold: createForegroundBashHoldController(() => {}),
+    timeoutSec: 60,
+    totalYieldMs: 60_000,
+    context: {
+      executionCwd: "/scratch",
+      userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      artifactScopeId: "shell-runtime-test", retrievalSessionId: "shell-runtime-test", sessionId: "shell-runtime-test",
+      toolUseId,
+    },
+  };
+}
+
 /** The message of a captured log record. */
 function messageOf(record: DebugLogRecordInput): string | undefined {
   const payload = record.payload;
@@ -31,7 +48,7 @@ describe("shell runtime host generation", () => {
     const background = owner();
     await background.close();
 
-    expect(() => background.shell.runBackground({
+    expect(() => background.shell.run({
       command: "late",
       foreground: false,
       rawOutput: false,
@@ -56,7 +73,6 @@ describe("shell runtime host generation", () => {
     for (const source of [bashSource]) {
       expect(source).not.toContain("spawnOwned(");
       expect(source).not.toContain("owned.terminate(");
-      expect(source).not.toContain("openForegroundSpool");
       expect(source).not.toContain("registry.track(");
     }
     expect(executionSource).toContain("spawnOwned(");
@@ -99,20 +115,15 @@ describe("shell runtime host generation", () => {
       },
     });
     const started = Promise.withResolvers<void>();
-    const execution = runtime.client.runForeground({
+    const execution = runtime.client.run({
+      ...heldForeground("blocked"),
       command: "blocked",
-      context: {
-        executionCwd: "/scratch",
-        userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
-        artifactScopeId: "shell-runtime-test", retrievalSessionId: "shell-runtime-test", sessionId: "shell-runtime-test",
-      },
       spawnOwned: async () => { started.resolve(); return owned; },
       env: {},
       operations: makeMockOps(),
       platform: "linux",
       tempDir: temporaryDirectory("fw-shell-runtime-"),
       executionOutputThrottleMs: 0,
-      timeoutSec: 60,
       rawOutput: false,
       postExitDrainGraceMs: 10,
     });
@@ -132,20 +143,15 @@ describe("shell runtime host generation", () => {
       stderr: streamOf("error: Unexpected export\n    at src/infra/process-container.ts:308:1\n"),
       exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload", ownership: "surrendered" }),
     });
-    const result = await runtime.client.runForeground({
+    const result = await runtime.client.run({
+      ...heldForeground("silent-failure"),
       command: "echo hello",
-      context: {
-        executionCwd: "/scratch",
-        userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
-        artifactScopeId: "shell-runtime-test", retrievalSessionId: "shell-runtime-test", sessionId: "shell-runtime-test",
-      },
       spawnOwned: async () => owned,
       env: {},
       operations: makeMockOps(),
       platform: "linux",
       tempDir: temporaryDirectory("fw-shell-runtime-"),
       executionOutputThrottleMs: 0,
-      timeoutSec: 60,
       rawOutput: false,
       postExitDrainGraceMs: 10,
     });
@@ -159,34 +165,27 @@ describe("shell runtime host generation", () => {
   it("keeps stderr out of the result when the command succeeded or spoke on stdout", async () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
     const runtime = createShellRuntime(tasks);
-    const run = (owned: ReturnType<typeof makeMockOwnedProcess>) => runtime.client.runForeground({
+    const run = (toolUseId: string, output: string, owned: ReturnType<typeof makeMockOwnedProcess>) => runtime.client.run({
+      ...heldForeground(toolUseId),
       command: "echo hello",
-      context: {
-        executionCwd: "/scratch",
-        userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
-        artifactScopeId: "shell-runtime-test", retrievalSessionId: "shell-runtime-test", sessionId: "shell-runtime-test",
-      },
       spawnOwned: async () => owned,
       env: {},
-      operations: makeMockOps(),
+      operations: commandOutputOps(output),
       platform: "linux",
       tempDir: temporaryDirectory("fw-shell-runtime-"),
       executionOutputThrottleMs: 0,
-      timeoutSec: 60,
       rawOutput: false,
       postExitDrainGraceMs: 10,
     });
 
-    const succeeded = await run(makeMockOwnedProcess({
-      stdout: streamOf("hello\n"),
+    const succeeded = await run("succeeded", "hello\n", makeMockOwnedProcess({
       stderr: streamOf("+ echo hello\n"),
       exited: Promise.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" }),
     }));
     expect(succeeded.content).toContain("hello");
     expect(succeeded.content).not.toContain("[stderr]");
 
-    const failedWithOutput = await run(makeMockOwnedProcess({
-      stdout: streamOf("partial work\n"),
+    const failedWithOutput = await run("failed", "partial work\n", makeMockOwnedProcess({
       stderr: streamOf("+ failing-step\n"),
       exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload", ownership: "surrendered" }),
     }));
@@ -195,7 +194,7 @@ describe("shell runtime host generation", () => {
     await runtime.close();
   });
 
-  it.each(["held", "unheld"] as const)("keeps diagnostic-looking payload stderr in the %s command's result and live output", async (path) => {
+  it("keeps diagnostic-looking payload stderr in a held command's result", async () => {
     const records: DebugLogRecordInput[] = [];
     await Log.init({ forward: (record) => { records.push(record); } });
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
@@ -210,34 +209,21 @@ describe("shell runtime host generation", () => {
         stderr: streamOf([line.slice(0, 30), `${line.slice(30)}\nflywheel: payload could not start\n`]),
         exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload", ownership: "surrendered" }),
       });
-      const liveOutput: string[] = [];
-      const options = {
+      const result = await runtime.client.run({
+        ...heldForeground("held"),
         command: "echo hello",
-        context: {
-          executionCwd: "/scratch",
-          userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
-          artifactScopeId: "shell-runtime-test", retrievalSessionId: "shell-runtime-test", sessionId: "shell-runtime-test",
-          onExecutionOutput: (text: string) => { liveOutput.push(text); },
-        },
         spawnOwned: async () => owned,
         env: {},
         operations: makeMockOps(),
-        platform: "linux" as const,
+        platform: "linux",
         tempDir: temporaryDirectory("fw-shell-runtime-"),
         executionOutputThrottleMs: 0,
         rawOutput: false,
         postExitDrainGraceMs: 10,
-      };
-      const result = path === "unheld"
-        ? await runtime.client.runForeground({ ...options, timeoutSec: 60 })
-        : await runtime.client.runBackground({ ...options, context: { ...options.context, toolUseId: "held", foregroundBashHold: createForegroundBashHoldController(() => {}) }, foreground: true, totalYieldMs: 60_000 });
+      });
 
       expect(result.content).toContain(line);
       expect(result.content).toContain("flywheel: payload could not start");
-      if (path === "unheld") {
-        expect(liveOutput.join("")).toContain("flywheel: payload could not start");
-        expect(liveOutput.join("")).toContain(line);
-      }
       expect(records.filter((record) => messageOf(record) === "termination requested")).toEqual([]);
     } finally {
       await runtime.close();
@@ -259,9 +245,10 @@ describe("shell runtime host generation", () => {
     }));
 
     let settledForeground = false;
-    const result = await runtime.client.runBackground({
+    const result = await runtime.client.run({
       command: "blocked",
       foreground: true,
+      foregroundBashHold: createForegroundBashHoldController(() => {}),
       rawOutput: false,
       timeoutSec: 0.005,
       totalYieldMs: 15,
@@ -287,7 +274,7 @@ describe("shell runtime host generation", () => {
   it("removes provisional process state when launch fails", async () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
     const runtime = createShellRuntime(tasks);
-    const launch = runtime.client.runBackground({
+    const launch = runtime.client.run({
       command: "fails",
       foreground: false,
       rawOutput: false,

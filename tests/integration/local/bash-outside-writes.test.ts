@@ -11,6 +11,7 @@ import { admitEveryTool } from "../../helpers/request-tool-surface.js";
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
 
 const directory = temporaryDirectories();
 
@@ -30,7 +31,7 @@ test("the real bash tool refuses an outside delete before any command runs", asy
     sessionId: "outside-write", toolUseId: "outside-delete",
     spawnOwned: generation.spawnOwned,
   });
-  const tool = createBashDefinition({ persistentProcesses: true });
+  const tool = createBashDefinition({ ...bashExecution(), persistentProcesses: true });
   const remove = process.platform === "win32"
     ? `Remove-Item -Recurse -Force ${quotePowerShell(outside)}`
     : `rm -rf '${outside.replaceAll("'", "'\\''")}'`;

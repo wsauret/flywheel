@@ -52,7 +52,6 @@ export function createAgentLoopToolContext(input: AgentLoopToolContextInput): Ag
     signal,
     disposalSignal: options.disposalSignal,
     backgroundSignal: options.background?.signal,
-    shell: options.background?.shell,
     handoff,
     scratchDir: options.scratchDir,
     spawnOwned: options.launcher?.spawnOwned,

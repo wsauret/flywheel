@@ -9,13 +9,14 @@ import { Log } from "../../../src/infra/log.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js"
 import { createBashDefinition } from "../../../src/orchestration/agent-runtime/tools/bash.js"
-
-const bashDefinition = createBashDefinition()
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import type { DispatchedToolContext, ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { capabilityAccessHolding } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js"
 import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js"
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js"
+
+const bashDefinition = createBashDefinition(bashExecution())
 
 /** Bash ownership against the real guardian: every command bash starts is a
  *  container the guardian owns before the payload runs, and the only things
@@ -125,9 +126,9 @@ describe("bash process ownership", () => {
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) })
 
     try {
-      const started = await bashDefinition.execute(
+      const started = await createBashDefinition(bashExecution(registry)).execute(
         { command: targetCommand(pidFile), background: true },
-        toolContext(scratch, generation, { signal: turn.signal, backgroundTasks: registry, toolUseId: "toolu_bg" }),
+        toolContext(scratch, generation, { signal: turn.signal, toolUseId: "toolu_bg" }),
       )
       expect(started.outcome).toBe("ok")
       const pid = await containerPid(scratch, pidFile)
@@ -155,9 +156,9 @@ describe("bash process ownership", () => {
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) })
 
     try {
-      await bashDefinition.execute(
+      await createBashDefinition(bashExecution(registry)).execute(
         { command: targetCommand(pidFile), background: true },
-        toolContext(scratch, generation, { backgroundTasks: registry, toolUseId: "toolu_bg" }),
+        toolContext(scratch, generation, { toolUseId: "toolu_bg" }),
       )
       const pid = await containerPid(scratch, pidFile)
 

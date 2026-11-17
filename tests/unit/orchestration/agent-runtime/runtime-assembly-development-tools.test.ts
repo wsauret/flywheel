@@ -358,7 +358,7 @@ describe("model interaction profile provider boundary", () => {
       model: "gpt-6-luna",
       purpose: { kind: "headless-task", prompt: { kind: "assembled", corePrompt: "You are a helpful AI Agent." } },
       engineeringDoctrine: false,
-      runtimeSurfaces: { background },
+      runtimeSurfaces: { background, foregroundBashHold: createForegroundBashHoldController(() => {}) },
     })
     const surface = await assembled.tools.resolve()
     const runtime = providerRuntime(surface)
@@ -430,7 +430,7 @@ describe("model interaction profile provider boundary", () => {
       model: "gpt-6-luna",
       purpose: { kind: "headless-task", prompt: { kind: "literal", systemPrompt: literalPrompt } },
       engineeringDoctrine: false,
-      runtimeSurfaces: { background },
+      runtimeSurfaces: { background, foregroundBashHold: createForegroundBashHoldController(() => {}) },
     })
     const surface = await assembled.tools.resolve()
     const runtime = providerRuntime(surface)
@@ -453,7 +453,7 @@ describe("read-only runner shell", () => {
   it("gives a runner marked read-only the same shell schema and description as a writer", async () => {
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
     const shellOf = async (model: string, readOnly: boolean) => {
-      const assembled = await assembledRuntime("headless", { model, ...(readOnly ? { readOnly } : {}), runtimeSurfaces: { background } })
+      const assembled = await assembledRuntime("headless", { model, ...(readOnly ? { readOnly } : {}), runtimeSurfaces: { background, foregroundBashHold: createForegroundBashHoldController(() => {}) } })
       const tools = (await assembled.tools.resolve()).tools
       const shell = tools.get("bash")
       if (!shell) throw new Error(`expected a shell tool for ${model}`)
@@ -511,6 +511,7 @@ describe("development tool runtime assembly", () => {
         return [hit]
       },
       call: async () => { throw new Error("unused in this test") },
+      toolsGeneration: () => 0,
     } satisfies McpPorts
     const moduleServices = composeModuleServices([["mcp", { ports }], ["code-mode", codeModeService()]])
 
@@ -576,6 +577,7 @@ describe("runtime tool surface completion", () => {
       servers: () => ["github"],
       tools: () => [{ server: "github", name: "issue_get", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } }],
       call: async () => { throw new Error("unused in this test") },
+      toolsGeneration: () => 0,
     } satisfies McpPorts
     const moduleServices = composeModuleServices([["mcp", { ports }], ["code-mode", codeModeService()]])
     const attributedRequests: string[] = []

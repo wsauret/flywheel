@@ -14,6 +14,7 @@ import { asModelClient } from "./_model-client"
 import { makeOptions } from "./_runner-options"
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
+import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js"
 import { capabilityAccessHolding, testGrant } from "./tools/_fixtures.js"
 import { composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js"
 import { ProviderRuntimeCache } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js"
@@ -398,7 +399,7 @@ describe("ordinary runtime request", () => {
         agentsMd: "PROJECT INSTRUCTIONS",
         memorySnapshot: memory,
         conversation: { kind: "replay", priorMessages: [{ kind: "user", content: task, origin: "system" }] },
-        runtimeSurfaces: { background, recall: async () => ({ hits: [] }) },
+        runtimeSurfaces: { background, foregroundBashHold: createForegroundBashHoldController(() => {}), recall: async () => ({ hits: [] }) },
         capabilityAccess: {
           available: (capability) => capability === "bash" || capability === "background-commands" || capability === "learning",
           admit: async () => ({ ok: false, missing: [], reason: "not used" }),

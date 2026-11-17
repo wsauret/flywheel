@@ -1,5 +1,5 @@
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js";
-import { createBashDefinition } from "../../src/orchestration/agent-runtime/tools/bash.js";
+import { bashExecution } from "../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
 import type { ToolExposurePlan } from "../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { createRequestToolSurface, type PlannedRequest, type RequestToolSurfaceOwner } from "../../src/orchestration/agent-runtime/request-tool-surface.js";
 import type { KernelToolDeps } from "../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
@@ -144,14 +144,14 @@ export class RequestToolMap extends Map<string, RuntimeTool> {
 }
 
 /** Static self-contained tools under one explicit plan-owned test surface:
- *  every registration a bare kernel with handoff capture can build alone, with
- *  the unmanaged bash definition loop tests have always executed. */
+ *  every registration a bare kernel with handoff capture and a session shell
+ *  runtime of its own can build alone. */
 export function testBaseTools(): ReadonlyMap<string, RuntimeTool> & RequestToolSurfaceOwner {
   const tools = new Map<string, RuntimeTool>();
-  const deps = { kernel: testKernelToolDeps({ handoff: {} }), modules: NO_MODULE_RUNTIMES };
+  const deps = { kernel: testKernelToolDeps({ handoff: {}, ...bashExecution() }), modules: NO_MODULE_RUNTIMES };
   for (const [name, registration] of Object.entries(toolRegistrations)) {
     const result = registration.create(deps);
-    if (result.tool) tools.set(name, name === "bash" ? createBashDefinition() : result.tool);
+    if (result.tool) tools.set(name, result.tool);
   }
   return new RequestToolMap(tools);
 }

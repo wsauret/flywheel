@@ -5,8 +5,7 @@ import * as path from "node:path";
 import { AGENT_SESSION_ENV } from "../../../../../src/infra/cli-subprocess.js";
 
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { makeMockOps, ownedSpawnProbe } from "./_bash-fixtures.js";
+import { bashExecution, makeMockOps, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
 import { prepareMutationGitEnvironment } from "../../../../../src/orchestration/agent-runtime/tools/bash-git-wrapper.js";
 import * as nativeAssets from "../../../../../src/infra/native-assets.js";
@@ -120,6 +119,7 @@ describe("bash tool: launch environment", () => {
     withEnv({ ...INHERITED, ...options.env }, async () => {
       const spawn = ownedSpawnProbe();
       const def = createBashDefinition({
+        ...bashExecution(),
         execPath: options.execPath ?? "/usr/local/bin/bun",
         operations: options.operations ?? makeMockOps(),
         ...(options.platform ? { platform: options.platform } : {}),
@@ -131,7 +131,6 @@ describe("bash tool: launch environment", () => {
         spawnOwned: spawn.spawnOwned,
         // One of these commands is backgrounded, which is an optional capability.
         capabilityAccess: capabilityAccessHolding(["background-commands"]),
-        ...(options.background ? { backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }) } : {}),
         ...(options.scratchDir ? { scratchDir: options.scratchDir } : {}),
       });
 

@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url"
-import { bashShellCommand, createBashDefinition } from "../../agent-runtime/tools/bash.js"
+import { advertisedBashTool, bashShellCommand, createBashDefinition } from "../../agent-runtime/tools/bash.js"
 import type { KernelToolDeps } from "../../agent-runtime/tools/kernel-tool-deps.js"
 import type { ToolDeclaration } from "../../agent-runtime/tools/tool-registry.js"
 import type { FirstPartyModule } from "../../modules.js"
@@ -36,22 +36,27 @@ const bash = {
         // This agent's own selection and persona decide only which advertised
         // inputs execution refuses, and execution enforces the current write guard.
         const advertisesBackground = kernel.moduleSnapshot.contributions.some((entry) => entry.domain === "shellOperations" && entry.value.background)
+        const advertisement = {
+          fileEditTool: kernel.fileEditContract ?? "edit",
+          writeGuard: kernel.shellWriteGuard,
+          mutatingDeclaration: kernel.headless !== true,
+          advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities, unattendedChat: kernel.unattendedTree === true },
+        } as const
+        // The modules whose advertised part of this tool, its background input, this agent may not use.
+        const turnedOff = advertisesBackground && !backgroundCommands ? { turnedOff: backgroundOff } : {}
+        const { shell, foregroundBashHold } = kernel
+        if (!shell || !foregroundBashHold) return { ...turnedOff, unusable: { tool: advertisedBashTool(advertisement), reason: "no session shell runtime available" } }
         return {
-          // The modules whose advertised part of this tool, its background input, this agent may not use.
-          ...(advertisesBackground && !backgroundCommands ? { turnedOff: backgroundOff } : {}),
+          ...turnedOff,
           tool: createBashDefinition({
+            ...advertisement,
+            shell,
+            foregroundBashHold,
             totalYieldMs: holdMs(kernel),
             ...(backgroundCommands ? {} : { backgroundRefusal: moduleDisabledReason(backgroundOff) }),
             persistentProcesses: backgroundCommands && kernel.persistentProcesses === true,
-            backgroundTasks: kernel.backgroundTasks,
-            foregroundBashHold: kernel.foregroundBashHold,
-            requireManagedExecution: true,
-            fileEditTool: kernel.fileEditContract ?? "edit",
             readOnly: kernel.readOnly === true,
-            writeGuard: kernel.shellWriteGuard,
             ...(kernel.enforcedShellWriteGuard ? { enforcedWriteGuard: kernel.enforcedShellWriteGuard } : {}),
-            mutatingDeclaration: kernel.headless !== true,
-            advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities, unattendedChat: kernel.unattendedTree === true },
           }),
         }
       },

@@ -5,7 +5,7 @@ import { SCRATCH_MUTATIONS_DIR, SESSIONS_DIR } from "../../../infra/paths.js";
 import { fileFingerprint, sameObservedState, type FileFingerprint } from "../../file-edits/file-state.js";
 import { cloneEntry, mirrorTree, RACY_WINDOW_NS, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
 import { removedDirectories, type RemovedDirectory } from "./bash-private-copy-tree.js";
-import { BACKGROUND_COMMAND_FILE_PREFIX, FOREGROUND_COMMAND_FILE_PREFIX } from "./bash-script.js";
+import { BACKGROUND_COMMAND_FILE_PREFIX } from "./bash-script.js";
 
 /** The home directory that holds the session folder as the command starts. */
 export const BEFORE_IMAGE = "session-before";
@@ -102,7 +102,7 @@ function sessionPlan(directory: string, name: string): MirrorPlan {
 }
 
 function excludedSessionEntry(directory: string, name: string): boolean {
-  return (directory === "" && name === "owner.pid") || (directory === "scratch" && (name === SCRATCH_MUTATIONS_DIR || name.startsWith(BACKGROUND_COMMAND_FILE_PREFIX) || name.startsWith(FOREGROUND_COMMAND_FILE_PREFIX)));
+  return (directory === "" && name === "owner.pid") || (directory === "scratch" && (name === SCRATCH_MUTATIONS_DIR || name.startsWith(BACKGROUND_COMMAND_FILE_PREFIX)));
 }
 
 function sessionFiles(root: string): ReadonlyMap<string, FileFingerprint> {

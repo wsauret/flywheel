@@ -340,7 +340,7 @@ function runToolPlanner(source: RunToolsSource) {
     options,
     surfaces: runtimeSurfaces,
     personas: registry,
-    ...(background ? { backgroundTasks: background.tasks } : {}),
+    ...(background ? { background } : {}),
     ...(checkpoint ? { checkpoint } : {}),
     treeHosted: sharesTreeHost(options.purpose),
     captureProviderConnection: async () => {

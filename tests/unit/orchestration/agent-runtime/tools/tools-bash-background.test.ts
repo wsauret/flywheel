@@ -7,12 +7,10 @@ import * as path from "node:path";
 import { hasShellBackgroundJob, loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
-
-const bashDefinition = createBashDefinition();
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { startModulePolicy, type ModulePolicy } from "../../../../../src/orchestration/config/module-policy.js";
 import type { PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";
-import { dispatchTool, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
+import { bashExecution, dispatchTool, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js";
 
 /** Detached execution is capability-owned, so every case below that backgrounds
@@ -21,7 +19,6 @@ import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js"
 function backgroundContext(overrides?: Parameters<typeof makeContext>[0]): ReturnType<typeof makeContext> {
   return makeContext({
     capabilityAccess: capabilityAccessHolding(["background-commands"]),
-    backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }),
     ...overrides,
   });
 }
@@ -52,17 +49,6 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-it("refuses explicit background execution without a session registry before spawn", async () => {
-  const probe = ownedSpawnProbe();
-  const result = await bashDefinition.execute(
-    { command: "bun server.ts", background: true },
-    makeContext({ capabilityAccess: capabilityAccessHolding(["background-commands"]), spawnOwned: probe.spawnOwned }),
-  );
-  expect(result).toMatchObject({ outcome: "error" });
-  expect(result.content).toContain("no session process registry");
-  expect(probe.launches).toHaveLength(0);
-});
-
 describe("bash tool: real background subprocess", () => {
   // Each case also uses tmpDir as its scratchDir. The tool then writes the
   // background script and log there, and the afterEach removes them.
@@ -87,9 +73,9 @@ describe("bash tool: real background subprocess", () => {
   });
 
   it("registers backgrounded commands and notifies with exit code and log tail on completion", async () => {
-    const ctx = backgroundContext({ executionCwd: tmpDir, scratchDir: tmpDir, backgroundTasks: registry, toolUseId: "toolu_bg1" });
+    const ctx = backgroundContext({ executionCwd: tmpDir, scratchDir: tmpDir, toolUseId: "toolu_bg1" });
 
-    const result = await bashDefinition.execute({ command: "echo bg-done", background: true }, ctx);
+    const result = await createBashDefinition(bashExecution(registry)).execute({ command: "echo bg-done", background: true }, ctx);
 
     expect(result.outcome).toBe("ok");
     expect(result.content).toContain("Running in background");
@@ -123,6 +109,7 @@ describe("bash tool: background process lifecycle", () => {
     const localTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-tools-bg-recorded-tail-"));
     try {
       const def = createBashDefinition({
+        ...bashExecution(registry),
         tmpDir: localTmpDir,
         operations: makeMockOps({
           writeScript: async (_scriptPath, content) => {
@@ -137,7 +124,6 @@ describe("bash tool: background process lifecycle", () => {
         { command: "bun long-task.ts", background: true },
         backgroundContext({
           executionCwd: "/mock",
-          backgroundTasks: registry,
           toolUseId: "toolu_recorded_tail",
           spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
         }),
@@ -169,6 +155,7 @@ describe("bash tool: background process lifecycle", () => {
     const localTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-tools-bg-kill-"));
     try {
       const def = createBashDefinition({
+        ...bashExecution(registry),
         tmpDir: localTmpDir,
         operations: makeMockOps({
           writeScript: async (_scriptPath, content) => {
@@ -179,7 +166,7 @@ describe("bash tool: background process lifecycle", () => {
         }),
       });
       const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 777, exited: exit.promise }));
-      const ctx = backgroundContext({ executionCwd: "/mock", backgroundTasks: registry, toolUseId: "toolu_kill", spawnOwned: spawn.spawnOwned });
+      const ctx = backgroundContext({ executionCwd: "/mock", toolUseId: "toolu_kill", spawnOwned: spawn.spawnOwned });
 
       await def.execute({ command: "bun long-task.ts", background: true }, ctx);
       registry.terminate("toolu_kill");
@@ -224,6 +211,7 @@ describe("bash tool: background live execution output", () => {
     const localTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-tools-bg-tail-"));
     try {
       const def = createBashDefinition({
+        ...bashExecution(registry),
         tmpDir: localTmpDir,
         executionOutputThrottleMs: 5,
         operations: makeMockOps({
@@ -240,7 +228,6 @@ describe("bash tool: background live execution output", () => {
         signal: turn.signal,
         disposalSignal: run.signal,
         backgroundSignal: background.signal,
-        backgroundTasks: registry,
         toolUseId: "toolu_tail",
         onExecutionOutput: (text) => emitted.push(text),
       }));
@@ -293,6 +280,7 @@ describe("bash tool: background artifact paths", () => {
     const operations: string[] = [];
     const writes: string[] = [];
     const def = createBashDefinition({
+      ...bashExecution(),
       execPath: "/usr/local/bin/bun",
       tmpDir: FALLBACK_TMP,
       // A PATH without search programs: only the scratchpad is prepared.
@@ -321,6 +309,7 @@ describe("bash tool: background artifact paths", () => {
     const writes: string[] = [];
     const fallbackTmp = path.resolve("/fallback-tmp");
     const def = createBashDefinition({
+      ...bashExecution(),
       tmpDir: fallbackTmp,
       operations: makeMockOps({
         writeScript: async (file, content) => {
@@ -341,7 +330,7 @@ describe("bash tool: background artifact paths", () => {
 describe("bash tool: background launch reply", () => {
   it("states that the launch keeps the session working and ends with the runtime, names its stop handle, and names persistence only where the agent can use it", async () => {
     const reply = async (persistentProcesses: boolean): Promise<string> => {
-      const result = await createBashDefinition({ operations: makeMockOps(), persistentProcesses }).execute({ command: "bun server.ts", background: true }, backgroundContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned }));
+      const result = await createBashDefinition({ ...bashExecution(), operations: makeMockOps(), persistentProcesses }).execute({ command: "bun server.ts", background: true }, backgroundContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned }));
       if (typeof result.content !== "string") throw new Error("bash answers with text");
       return result.content;
     };
@@ -381,6 +370,7 @@ describe("bash tool: background commands under capability policy", () => {
       const spawn = ownedSpawnProbe();
       const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) });
       const def = createBashDefinition({
+        ...bashExecution(registry),
         tmpDir: dir,
         execPath: "/usr/local/bin/flywheel",
         operations: makeMockOps({
@@ -392,7 +382,6 @@ describe("bash tool: background commands under capability policy", () => {
       const ctx = makeContext({
         executionCwd: dir,
         scratchDir: path.join(dir, "scratch"),
-        backgroundTasks: registry,
         toolUseId: "toolu_denied",
         capabilityAccess: capabilityAccessFor(policy),
         spawnOwned: spawn.spawnOwned,
@@ -422,6 +411,7 @@ describe("bash tool: background commands under capability policy", () => {
       const notifications: string[] = [];
       const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) });
       const def = createBashDefinition({
+        ...bashExecution(registry),
         tmpDir: dir,
         operations: makeMockOps({
           writeScript: async (_file, content) => {
@@ -435,7 +425,6 @@ describe("bash tool: background commands under capability policy", () => {
 
       const started = await def.execute({ command: "bun server.ts", background: true }, makeContext({
         executionCwd: dir,
-        backgroundTasks: registry,
         toolUseId: "toolu_admitted",
         capabilityAccess: capabilityAccessFor(policy),
         spawnOwned: spawn.spawnOwned,
@@ -460,7 +449,7 @@ describe("bash tool: background commands under capability policy", () => {
   it("runs a detached command on an admitted grant after Background Commands was disabled under it", async () => {
     await withPolicy("[]", async (policy, dir) => {
       const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-      const def = createBashDefinition({ tmpDir: dir, operations: makeMockOps() });
+      const def = createBashDefinition({ ...bashExecution(registry), tmpDir: dir, operations: makeMockOps() });
       const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 5150 }));
       // The operation was admitted while the capability was held; the live
       // selection lost it before this call of the same operation.
@@ -468,7 +457,6 @@ describe("bash tool: background commands under capability policy", () => {
 
       const result = await def.execute({ command: "bun server.ts", background: true }, makeContext({
         executionCwd: dir,
-        backgroundTasks: registry,
         toolUseId: "toolu_granted",
         capabilityAccess: capabilityAccessFor(policy, grant),
         spawnOwned: spawn.spawnOwned,
@@ -493,10 +481,9 @@ describe("bash tool: background commands under capability policy", () => {
         return settled;
       },
     }));
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps() });
 
     const result = await def.execute({ command: "bun server.ts", background: true, timeout: 0.02 }, backgroundContext({
-      backgroundTasks: registry,
       toolUseId: "toolu_background_deadline",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -513,10 +500,9 @@ describe("bash tool: background commands under capability policy", () => {
     const notifications: string[] = [];
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) });
     const spawn = ownedSpawnProbe();
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps() });
 
     const result = await def.execute({ command: "bun quick-server.ts", background: true, timeout: 0.02 }, backgroundContext({
-      backgroundTasks: registry,
       toolUseId: "toolu_background_natural_exit",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -556,6 +542,7 @@ describe("bash persistent execution admission", () => {
   ])("rejects invalid persistence input before all effects", async (input, message) => {
     const effects: string[] = [];
     const definition = createBashDefinition({
+      ...bashExecution(),
       operations: makeMockOps({
         ensureDir: () => { effects.push("scratch"); },
         writeScript: async () => { effects.push("script"); return 0; },
@@ -579,7 +566,7 @@ describe("bash persistent execution admission", () => {
 
   it("names persistence in the shell-backgrounding refusal only when persistence is offered", async () => {
     for (const persistentProcesses of [true, false]) {
-      const result = await createBashDefinition({ persistentProcesses }).execute({ command: "python server.py &" }, makeContext());
+      const result = await createBashDefinition({ ...bashExecution(), persistentProcesses }).execute({ command: "python server.py &" }, makeContext());
       expect(result.outcome).toBe("error");
       expect(String(result.content)).toStartWith("Shell-level backgrounding was not executed.");
       expect(String(result.content).includes("persist_after_exit=true")).toBe(persistentProcesses);
@@ -589,6 +576,7 @@ describe("bash persistent execution admission", () => {
   it("re-admits permission before scratch, environment, spool, or launch effects", async () => {
     const effects: string[] = [];
     const definition = createBashDefinition({
+      ...bashExecution(),
       persistentProcesses: true,
       // A PATH without search programs: only the scratchpad is prepared.
       loginShellPath: () => "/scratch/without-search-programs",

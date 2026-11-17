@@ -13,6 +13,7 @@ import type { HandoffToolSchema } from "../../workflow-host/handoff-tool-schema.
 import type { RecallPort } from "../../../protocol/conversation-recall.js"
 import type { BackgroundWorkRegistry } from "../background-work.js";
 import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
+import type { ShellRuntimeClient } from "./shell-runtime-types.js";
 import type { ExternalSkillChildGrant } from "./skill.js";
 import type { CapabilityAccess } from "./types.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
@@ -50,6 +51,8 @@ export interface KernelToolDeps {
   readonly sessions?: SessionMessaging;
   /** Session-scoped authority for targeted background cancellation. */
   readonly backgroundTasks?: BackgroundWorkRegistry;
+  /** The session's shell runtime, which runs every shell tool command as managed work of `backgroundTasks`. */
+  readonly shell?: ShellRuntimeClient;
   /** Session-scoped authority for foreground commands transferred to managed work. */
   readonly foregroundBashHold?: ForegroundBashHoldController;
   /** Captured cap for a foreground Bash call before managed transfer. */

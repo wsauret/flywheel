@@ -7,6 +7,7 @@ import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision 
 import { testDirectories } from "../../../../helpers/directories.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { makeDeps as makeSubagentDeps } from "../subagent/_fixtures.js";
+import { bashExecution } from "./_bash-fixtures.js";
 
 /** The account data root startup publishes. The account-global skill store
  *  every skill surface of a turn resolves against lives under it. */
@@ -18,9 +19,11 @@ export const ALL_CAPABILITIES = { available: () => true };
 
 type RuntimeEntries = readonly (readonly [string, unknown])[];
 /** One planned request: the kernel facts the case states over the neutral
- *  defaults, the module runtimes it wires, and the planner inputs beside them. */
+ *  defaults, the module runtimes it wires, and the planner inputs beside them.
+ *  As a runner's kernel does, it holds a shell runtime for bash over the
+ *  case's registry. */
 export function plan(kernel: Partial<KernelToolDeps> = {}, runtimes: RuntimeEntries = [], rest: Omit<ToolExposureInput, "kernel" | "modules"> = {}) {
-  return planToolExposure({ kernel: testKernelToolDeps({ userDataRoot, ...kernel }), modules: composeModuleRuntimes(runtimes), ...rest });
+  return planToolExposure({ kernel: testKernelToolDeps({ userDataRoot, ...bashExecution(kernel.backgroundTasks), ...kernel }), modules: composeModuleRuntimes(runtimes), ...rest });
 }
 
 export function skillRevision(skills: readonly SkillDefinition[]): SkillRegistryRevision {

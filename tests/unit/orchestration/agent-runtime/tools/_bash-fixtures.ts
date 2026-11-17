@@ -1,10 +1,14 @@
 import { Effect } from "effect";
 import { lstatSync, mkdirSync, rmdirSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import type { OwnedProcess } from "../../../../../src/infra/owned-subprocess.js";
+import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { BashOperations, RuntimeTool, RuntimeToolInput, ToolContext, ToolDispatchContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { backgroundLogPath } from "../../../../helpers/background-log-path.js";
 
 /** A call as the dispatcher runs it: input repair, the tool's execution policy, then its execution. */
 export function dispatchTool(def: RuntimeTool, input: RuntimeToolInput, context: ToolDispatchContext): Promise<ToolResult> {
@@ -159,4 +163,27 @@ export function makeMockOps(overrides?: Partial<BashOperations>): BashOperations
     writeExecutable: async () => {},
     ...overrides,
   };
+}
+
+/** Script operations whose script, once written, has already printed `output`
+ *  to the command's log, as the script's own redirection does when it runs. */
+export function commandOutputOps(output: string | Uint8Array, overrides?: Partial<BashOperations>): BashOperations {
+  return makeMockOps({
+    ...overrides,
+    async writeScript(path, content) {
+      const log = backgroundLogPath(content);
+      if (log) await Bun.write(log, output);
+      return overrides?.writeScript ? overrides.writeScript(path, content) : content.length;
+    },
+  });
+}
+
+/** The session-owned execution that a runner gives its bash tool: a shell
+ *  runtime over `tasks`, which runs every command as managed work, and the
+ *  controller that holds a foreground command. */
+export function bashExecution(
+  tasks: BackgroundWorkRegistry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
+  foregroundBashHold: ForegroundBashHoldController = createForegroundBashHoldController(() => {}),
+) {
+  return { shell: createShellRuntime(tasks).client, foregroundBashHold };
 }

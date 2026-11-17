@@ -21,12 +21,14 @@ import { composeModuleServices } from "../src/infra/module-service.js";
 import { createBackgroundWorkRegistry } from "../src/orchestration/agent-runtime/background-work.js";
 import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capability-checks.js";
 import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/child-slot-registry.js";
+import { createForegroundBashHoldController } from "../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
 import type { RuntimeConfigRequestCapture } from "../src/orchestration/agent-runtime/request-config.js";
 import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request-kernel.js";
 import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
 import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
+import { createShellRuntime } from "../src/orchestration/agent-runtime/tools/shell-runtime.js";
 import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
@@ -96,7 +98,7 @@ const notDispatched = (): never => { throw new Error("Prompt assembly does not d
  *  over stub surfaces; the module runtimes carry only what tool construction and prompt fragments read (the
  *  persona registry and the workflow launch seam), because an assembly never executes a tool. */
 export async function planPromptRequest(assembly: PromptAssembly, input: PlanInput): Promise<PlannedRequest> {
-  // The workflow and process tools both manage one task registry, exactly as a live runner's do.
+  // The workflow, process, and shell tools all manage one task registry, exactly as a live runner's do.
   const backgroundTasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: noop });
   const kernel = requestKernel({
     options: { userDataRoot: assembly.userDataRoot, purpose: input.purpose, ...(input.capabilityAccess ? { capabilityAccess: input.capabilityAccess } : {}) },
@@ -105,9 +107,10 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
       ...(input.askUser ? { askUser: { ask: async () => ({ kind: "cancelled" as const }), answerQuestion: noop, cancelQuestion: noop, suspendAll: () => false } } : {}),
       recall: async () => ({ hits: [] }),
       ...(input.sessions ? { sessions: input.sessions } : {}),
+      foregroundBashHold: createForegroundBashHoldController(noop),
     },
     personas: input.personas,
-    backgroundTasks,
+    background: { tasks: backgroundTasks, shell: createShellRuntime(backgroundTasks).client },
     checkpoint: {
       read: async () => undefined,
       replace: async () => { throw new Error("Prompt assembly does not execute tools."); },

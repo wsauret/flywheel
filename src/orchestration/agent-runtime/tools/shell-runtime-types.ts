@@ -1,6 +1,7 @@
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { NotAppliedFilesSummary } from "../../../infra/not-applied-files.js";
 import type { CommandHandoverHost } from "../command-handover.js";
+import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
 import type { ForegroundView } from "./bash-output-tail.js";
 import type { PrivateCopyPool } from "./bash-private-copy-pool.js";
 import type { RuntimePlatform } from "./bash-script.js";
@@ -9,7 +10,19 @@ import type { BashOperations, ToolContext, ToolResult } from "./types.js";
 
 export type OwnedSpawn = NonNullable<ToolContext["spawnOwned"]>;
 
-interface ShellExecutionOptions {
+/** Whether the tool call holds the command until it settles, the person or
+ *  a planned replacement moves it to the background, the runtime cap passes,
+ *  or the turn aborts. A command that is not held transfers at launch. */
+type ShellCommandHold =
+  | { foreground: false }
+  | {
+      foreground: true;
+      /** The session authority the held command registers with for its whole
+       *  run, a launch that has not started included. */
+      foregroundBashHold: ForegroundBashHoldController;
+    };
+
+export type ManagedShellExecutionOptions = ShellCommandHold & {
   command: string;
   context: ToolContext;
   spawnOwned: OwnedSpawn;
@@ -20,15 +33,6 @@ interface ShellExecutionOptions {
   executionOutputThrottleMs: number;
   /** Present for a command that runs in a private project copy. */
   privateCopy?: PrivateCopy;
-}
-
-export interface ManagedShellExecutionOptions extends ShellExecutionOptions {
-  /** Whether the tool call holds the command until it settles, the person or
-   *  a planned replacement moves it to the background, the runtime cap
-   *  passes, or the turn aborts. A held command registers its hold with the
-   *  context's controller for its whole run, a launch that has not started
-   *  included. A command that is not held transfers at launch. */
-  foreground: boolean;
   /** The runtime cap after which a held command transfers to the session
    *  registry. Absent when the command's own deadline is inside the hold
    *  window: the command then holds until it settles or its deadline ends it. */
@@ -41,19 +45,13 @@ export interface ManagedShellExecutionOptions extends ShellExecutionOptions {
   /** How long settlement waits after the exit for the parent-side stderr to end. */
   postExitDrainGraceMs?: number;
   onForegroundSettled?: (settled: { readonly foreground: ForegroundView; readonly executionOutputTail: string }) => void;
-}
-
-export interface ForegroundShellExecutionOptions extends ShellExecutionOptions {
-  timeoutSec: number;
-  rawOutput: boolean;
-  postExitDrainGraceMs: number;
-}
+};
 
 /** How a command that ran in a private project copy ended. */
 export interface ProjectMutationSettlement {
   /** A person, an agent, or runtime teardown stopped the command, so its changes are discarded. */
   readonly interrupted: boolean;
-  /** Cancels publication: the turn signal for a foreground command, the background-work signal for a managed one. */
+  /** Cancels publication: the background-work signal, because the landing outlives the turn that launched the command. */
   readonly signal: AbortSignal | undefined;
   /** The command's settled output, where a write the mutation guard denied shows; empty when none was captured. */
   readonly output: string;
@@ -89,10 +87,10 @@ export interface PrivateCopy {
 }
 
 export interface ShellRuntimeClient {
-  /** Reads this owner's unfinished foreground calls and managed shell processes, including stopping processes. */
+  /** Reads this owner's unfinished shell calls and managed shell processes, including stopping processes. */
   hasActiveCommands(): boolean;
-  runForeground(options: ForegroundShellExecutionOptions): Promise<ToolResult>;
-  runBackground(options: ManagedShellExecutionOptions): Promise<ToolResult>;
+  /** Runs one command as a managed process of this owner's registry. */
+  run(options: ManagedShellExecutionOptions): Promise<ToolResult>;
   /** The idle private copies this session's mutating commands reuse. */
   readonly privateCopies: PrivateCopyPool;
 }

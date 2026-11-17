@@ -6,8 +6,8 @@ import { adoptHandedOverCommands, handedOverCommandInput, handOverCommands, type
 import type { ToolContext, ToolResult } from "./types.js";
 import { createPrivateCopyPool, type PrivateCopyPool } from "./bash-private-copy-pool.js";
 import { startManagedCommand, type ManagedCommand } from "./managed-command.js";
-import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS, runForegroundShell, runManagedShell } from "./shell-execution.js";
-import type { ForegroundShellExecutionOptions, ManagedShellExecutionOptions, ShellRuntime, ShellRuntimeClient } from "./shell-runtime-types.js";
+import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS, runManagedShell } from "./shell-execution.js";
+import type { ManagedShellExecutionOptions, ShellRuntime, ShellRuntimeClient } from "./shell-runtime-types.js";
 import { sharedProcessorClaims, type ProcessorClaims } from "./processor-claims.js";
 
 /** Default foreground hold before an auto-yield transfers a still-running
@@ -41,14 +41,15 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
   const ownerSignal = mergeAbortSignals(dependencies.signal, abort.signal);
   const claims = dependencies.processorClaims ?? sharedProcessorClaims();
   const exempt = dependencies.processorExempt === true;
-  /** Binds each launch to this host's cancellation, and claims its container
-   *  for processor admission until the container settles or is handed to a
-   *  later owner. Returning a tool result or transferring the command to the
-   *  registry does not end the claim. */
+  /** Binds each launch to this host's registry and cancellation, and claims
+   *  its container for processor admission until the container settles or is
+   *  handed to a later owner. Returning a tool result or transferring the
+   *  command to the registry does not end the claim. */
   const executionOwner = (input: ShellExecutionOwnerInput) => {
-    const context = { ...input.context, backgroundTasks: tasks, signal: mergeAbortSignals(input.context.signal, ownerSignal) };
+    const context = { ...input.context, signal: mergeAbortSignals(input.context.signal, ownerSignal) };
     return {
       context,
+      registry: tasks,
       spawnOwned: async (...launch: Parameters<ShellExecutionOwnerInput["spawnOwned"]>) => {
         context.signal.throwIfAborted();
         const owned = await input.spawnOwned(...launch);
@@ -82,9 +83,9 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
       postExitDrainGraceMs: POST_EXIT_DRAIN_GRACE_MS,
     });
   };
-  const run = (operation: () => Promise<ToolResult>): Promise<ToolResult> => {
+  const launch = (options: ManagedShellExecutionOptions): Promise<ToolResult> => {
     if (closed) throw new Error("shell runtime is closed");
-    const result = operation();
+    const result = runManagedShell({ ...options, ...executionOwner(options) });
     active.add(result);
     void result.then(() => active.delete(result), () => active.delete(result));
     return result;
@@ -92,8 +93,7 @@ export function createShellRuntime(tasks: BackgroundWorkRegistry, dependencies: 
   const client: ShellRuntimeClient = Object.freeze({
     hasActiveCommands: () => active.size > 0 || tasks.processRecords().some((process) =>
       process.kind === "background_command" && (process.status === "running" || process.status === "stopping")),
-    runForeground: (options: ForegroundShellExecutionOptions) => run(() => runForegroundShell({ ...options, ...executionOwner(options) })),
-    runBackground: (options: ManagedShellExecutionOptions) => run(() => runManagedShell({ ...options, ...executionOwner(options) })),
+    run: launch,
     privateCopies,
   });
   return {

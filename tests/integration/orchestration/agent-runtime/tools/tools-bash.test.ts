@@ -3,15 +3,13 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
-
-const bashDefinition = createBashDefinition();
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { makeContext } from "../../../../unit/orchestration/agent-runtime/tools/_fixtures.js";
+import { bashExecution } from "../../../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
 import { createPersistentProcessManager } from "../../../../../src/infra/persistent-process-manager.js";
-import { FIXTURE_EXECUTION_CWD } from "../../../../helpers/directories.js";
+
+const bashDefinition = createBashDefinition(bashExecution());
 
 beforeAll(async () => {
   await loadBashParser();
@@ -61,7 +59,7 @@ describe("bash tool: real subprocess", () => {
   }, 5_000);
 
   it("refuses an ambiguous shell-level background job", async () => {
-    const bash = createBashDefinition({ postExitDrainGraceMs: 150 });
+    const bash = createBashDefinition({ ...bashExecution(), postExitDrainGraceMs: 150 });
     const ctx = makeContext({ executionCwd: tmpDir });
     const result = await bash.execute({ command: "sleep 5 & echo done" }, ctx);
     expect(result.outcome).toBe("error");
@@ -69,7 +67,7 @@ describe("bash tool: real subprocess", () => {
   });
 
   it("refuses shell-level backgrounding before applying an explicit timeout", async () => {
-    const bash = createBashDefinition({ postExitDrainGraceMs: 150 });
+    const bash = createBashDefinition({ ...bashExecution(), postExitDrainGraceMs: 150 });
     const ctx = makeContext({ executionCwd: tmpDir });
     const result = await bash.execute({ command: "sleep 5 & sleep 5", timeout: 0.2 }, ctx);
     expect(result.outcome).toBe("error");
@@ -111,28 +109,6 @@ describe("bash tool: real subprocess", () => {
     const result = await bashDefinition.execute({ command: "echo should not run" }, ctx);
     expect(result.outcome).toBe("interrupted");
     expect(result.content).toContain("aborted before it started");
-  });
-});
-
-describe("bash tool: live execution output", () => {
-  it("streams xtrace progress lines to the live tail without recording them", async () => {
-    if (process.platform === "win32") return;
-    const emitted: string[] = [];
-    const ctx = makeContext({ executionCwd: FIXTURE_EXECUTION_CWD, onExecutionOutput: (text) => emitted.push(text) });
-
-    const result = await bashDefinition.execute({ command: "sleep 0.05\necho traced" }, ctx);
-
-    expect(result.outcome).toBe("ok");
-    // BASH_XTRACEFD needs bash >= 4.1; on older bash the tool degrades to no
-    // trace lines, so the live-tail expectation follows the resolved bash.
-    const version = Bun.spawnSync(["bash", "-c", 'echo "$BASH_VERSION"'], { windowsHide: true }).stdout.toString().trim();
-    const [major = 0, minor = 0] = version.split(".").map(Number);
-    if (major > 4 || (major === 4 && minor >= 1)) {
-      expect(emitted.at(-1)).toContain("+ sleep 0.05");
-    }
-    expect(emitted.at(-1)).toContain("traced");
-    expect(result.content).not.toContain("+ sleep");
-    expect(result.content).toContain("traced");
   });
 });
 
@@ -185,7 +161,7 @@ describe("bash tool: host shell multi-line quoting and persistent launch", () =>
     try {
       const ctx = makeContext({ executionCwd: tmpDir, persistentProcesses, admitPersistentProcess: () => true });
       // Production builds bash with this option when allow_persistent_processes is on.
-      const result = await createBashDefinition({ persistentProcesses: true }).execute({ command: "bun -e 'await Bun.sleep(30_000)'", background: true, persist_after_exit: true }, ctx);
+      const result = await createBashDefinition({ ...bashExecution(), persistentProcesses: true }).execute({ command: "bun -e 'await Bun.sleep(30_000)'", background: true, persist_after_exit: true }, ctx);
       expect(result.outcome).toBe("ok");
       expect(result.content).toContain("Started persistent process");
       expect(result.content).toContain("PID:");
@@ -210,13 +186,7 @@ describe("bash tool: held foreground command (real subprocess)", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 40, retryDelay: 50 });
   });
 
-  const heldContext = (toolUseId: string) => makeContext({
-    executionCwd: tmpDir,
-    scratchDir,
-    toolUseId,
-    backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }),
-    foregroundBashHold: createForegroundBashHoldController(() => {}),
-  });
+  const heldContext = (toolUseId: string) => makeContext({ executionCwd: tmpDir, scratchDir, toolUseId });
 
   it("reports the exit code a native program leaves", async () => {
     const command = process.platform === "win32" ? "cmd /c exit 3" : "sh -c 'exit 3'";

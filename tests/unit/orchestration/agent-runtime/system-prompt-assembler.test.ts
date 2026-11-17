@@ -8,7 +8,7 @@ import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } f
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { createSkillTool } from "../../../../src/orchestration/agent-runtime/tools/skill.js";
-import { createBashDefinition } from "../../../../src/orchestration/agent-runtime/tools/bash.js";
+import { advertisedBashTool } from "../../../../src/orchestration/agent-runtime/tools/bash.js";
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js";
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { testDirectories } from "../../../helpers/directories.js";
@@ -17,7 +17,7 @@ import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { promptCapabilities, promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
-const bashDefinition = createBashDefinition();
+const bashDefinition = advertisedBashTool();
 
 interface UnknownRecord { [key: string]: unknown }
 
@@ -597,10 +597,10 @@ describe("bash background-execution guidance", () => {
   it("leaves out the person's commands and Detach in an unattended chat, and the Windows rule off Windows for every agent", () => {
     const PERSON_TEXT = ["belongs to the person", "tell the person to complete it in the browser", "you select Detach"];
     const WINDOWS = "On Windows, search file contents with the search tool";
-    const unattended = (platform: NodeJS.Platform) => createBashDefinition({ platform, mutatingDeclaration: false, advertised: { unattendedChat: true } }).description;
-    for (const text of PERSON_TEXT) expect(createBashDefinition({ platform: "linux" }).description).toContain(text);
-    expect(createBashDefinition({ platform: "linux" }).description).not.toContain(WINDOWS);
-    expect(createBashDefinition({ platform: "win32" }).description).toContain(WINDOWS);
+    const unattended = (platform: NodeJS.Platform) => advertisedBashTool({ platform, mutatingDeclaration: false, advertised: { unattendedChat: true } }).description;
+    for (const text of PERSON_TEXT) expect(advertisedBashTool({ platform: "linux" }).description).toContain(text);
+    expect(advertisedBashTool({ platform: "linux" }).description).not.toContain(WINDOWS);
+    expect(advertisedBashTool({ platform: "win32" }).description).toContain(WINDOWS);
     for (const text of [...PERSON_TEXT, WINDOWS]) expect(unattended("linux")).not.toContain(text);
     expect(unattended("win32")).toContain(WINDOWS);
     // An unattended agent still learns that the runtime cap moves a long foreground command to managed execution.

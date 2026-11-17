@@ -1,6 +1,7 @@
 /** The bash tool's own behavior over injected operations and a probe for the
- *  owned-process seam: validation, live output, compression, the scratchpad
- *  shim, and the foreground spool. The integration tier runs the real shell. */
+ *  owned-process seam: validation, managed foreground execution, its output
+ *  bounds, the scratchpad shim, and the retained log. The integration tier
+ *  runs the real shell. */
 
 import { afterEach, beforeAll, describe, expect, it, mock, spyOn } from "bun:test";
 import * as fs from "node:fs";
@@ -9,13 +10,15 @@ import * as path from "node:path";
 import { Parser } from "web-tree-sitter";
 
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import * as treeSitter from "../../../../../src/infra/tree-sitter-parser.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import type { RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { dispatchTool as dispatch, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf } from "./_bash-fixtures.js";
+import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { bashExecution, commandOutputOps, dispatchTool as dispatch, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe } from "./_bash-fixtures.js";
 import { makeContext } from "./_fixtures.js";
 import { createPrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 
@@ -37,7 +40,7 @@ describe("bash tool: file reads count as reads", () => {
     fs.writeFileSync(path.join(root, "..", "outside.ts"), lines(3));
     const ledger = new FileReadLedger();
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ exited: Promise.resolve({ code: exitCode, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }) }));
-    await dispatch(createBashDefinition({ operations: makeMockOps() }), { command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
+    await dispatch(createBashDefinition({ ...bashExecution(), operations: makeMockOps() }), { command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
     return { root, ledger };
   }
 
@@ -90,12 +93,12 @@ describe("bash tool: file reads count as reads", () => {
 });
 
 describe("bash tool: mock operations (DI surface)", () => {
-  it("launches through the injected owned-process seam and the injected script operations", async () => {
+  it("returns a foreground command's output and exit code through managed execution, over the injected seams", async () => {
     const writeCalls: { path: string; content: string }[] = [];
     const deleteCalls: string[] = [];
     const spawn = ownedSpawnProbe();
 
-    const def = createBashDefinition({ operations: makeMockOps({
+    const def = createBashDefinition({ ...bashExecution(), operations: commandOutputOps("mock output\n", {
       async writeScript(p, content) {
         writeCalls.push({ path: p, content });
         return content.length;
@@ -110,6 +113,7 @@ describe("bash tool: mock operations (DI surface)", () => {
     expect(result.outcome).toBe("ok");
     expect(result.content).toContain("mock output");
     expect(result.content).toContain("[exit code: 0]");
+    expect(result.details).toMatchObject({ background: false, exitCode: 0 });
     expect(spawn.launches.length).toBe(1);
     expect(spawn.launches[0]!.cwd).toBe("/mock/cwd");
     expect(spawn.launches[0]!.stdin).toBe("ignore");
@@ -123,7 +127,7 @@ describe("bash tool: mock operations (DI surface)", () => {
   });
 
   it("still validates interactive commands with mock operations", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     const ctx = makeContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned });
 
     const result = await dispatch(def, { command: "vim file.txt" }, ctx);
@@ -133,7 +137,7 @@ describe("bash tool: mock operations (DI surface)", () => {
   });
 
   it("runs a file inspection command as written and returns only its output", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: commandOutputOps("mock output\n") });
     const spawn = ownedSpawnProbe();
     const ctx = makeContext({ executionCwd: "/mock", spawnOwned: spawn.spawnOwned, availableTools: new Set(["read", "bash"]), handoff: { onContent() {} } });
     const result = await def.execute({ command: "cat a.txt" }, ctx);
@@ -145,10 +149,9 @@ describe("bash tool: mock operations (DI surface)", () => {
   });
 
   it("reports non-zero exit codes from mock subprocess as data, not tool error", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: commandOutputOps("error: something failed\n") });
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({
       exited: Promise.resolve({ code: 1, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }),
-      stdout: streamOf("error: something failed\n"),
     }));
     const ctx = makeContext({ executionCwd: "/mock", spawnOwned: spawn.spawnOwned });
     const result = await def.execute({ command: "failing-command" }, ctx);
@@ -160,7 +163,7 @@ describe("bash tool: mock operations (DI surface)", () => {
   });
 
   it("validates command parameter type", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     const ctx = makeContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned });
     const result = await def.execute({ command: 42 }, ctx);
 
@@ -169,34 +172,16 @@ describe("bash tool: mock operations (DI surface)", () => {
   });
 });
 
-describe("bash tool: live execution output", () => {
-  const runStdout = (
-    stdout: ReadableStream<Uint8Array>,
-    onExecutionOutput?: (text: string) => void,
-    executionOutputThrottleMs = 0,
-  ) => {
-    const def = createBashDefinition({
-      operations: makeMockOps(),
-      executionOutputThrottleMs,
-    });
-    const spawnOwned = ownedSpawnProbe(() => makeMockOwnedProcess({ stdout })).spawnOwned;
-    const ctx = onExecutionOutput
-      ? makeContext({ executionCwd: "/mock", spawnOwned, onExecutionOutput })
-      : makeContext({ executionCwd: "/mock", spawnOwned });
-    return def.execute({ command: "echo streamed" }, ctx);
+describe("bash tool: execution output bounds", () => {
+  const runOutput = (output: string | Uint8Array, onExecutionOutput?: (text: string) => void) => {
+    const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {}, ...(onExecutionOutput ? { onExecutionOutput: (_toolUseId: string, text: string) => onExecutionOutput(text) } : {}) });
+    const def = createBashDefinition({ ...bashExecution(tasks), operations: commandOutputOps(output), executionOutputThrottleMs: 0 });
+    return def.execute({ command: "echo streamed" }, makeContext({ executionCwd: "/mock", spawnOwned: ownedSpawnProbe().spawnOwned }));
   };
-
-  it("keeps final content equal for single and multi-chunk stdout", async () => {
-    const single = await runStdout(streamOf("alpha\nbeta\n"));
-    const multi = await runStdout(streamOf(["alpha\n", "beta\n"]));
-
-    expect(multi.outcome).toBe(single.outcome);
-    expect(multi.content).toBe(single.content);
-  });
 
   it("captures a sanitized execution tail bounded to 1000 lines", async () => {
     const stdout = Array.from({ length: 1001 }, (_, index) => `line-${index}`).join("\n");
-    const result = await runStdout(streamOf(`\u001b[31m${stdout}\u001b[0m\u0000`));
+    const result = await runOutput(`\u001b[31m${stdout}\u001b[0m\u0000`);
     const tail = result.executionOutputTail ?? "";
 
     expect(tail.split("\n")).toHaveLength(1000);
@@ -207,7 +192,7 @@ describe("bash tool: live execution output", () => {
   });
 
   it("captures at most 256KiB of sanitized execution output", async () => {
-    const result = await runStdout(streamOf("x".repeat(300 * 1024)));
+    const result = await runOutput("x".repeat(300 * 1024));
     const tail = result.executionOutputTail ?? "";
 
     expect(new TextEncoder().encode(tail).byteLength).toBe(256 * 1024);
@@ -216,7 +201,7 @@ describe("bash tool: live execution output", () => {
 
   it("keeps a trailing newline when line-bounding the execution tail", async () => {
     const stdout = Array.from({ length: 1500 }, (_, index) => `line-${index + 1}\n`).join("");
-    const result = await runStdout(streamOf(stdout));
+    const result = await runOutput(stdout);
     const tail = result.executionOutputTail ?? "";
 
     const lines = tail.split("\n");
@@ -232,7 +217,7 @@ describe("bash tool: live execution output", () => {
     // surrogate encodes as 3 bytes, landing exactly on the bound, while the
     // full emoji overshoots. The skip must drop the lone surrogate.
     const content = ["y".repeat(10), "\u{1F600}", "x", "\u{1F600}".repeat(65535)].join("");
-    const result = await runStdout(streamOf(content));
+    const result = await runOutput(content);
     const tail = result.executionOutputTail ?? "";
 
     expect(new TextEncoder().encode(tail).byteLength).toBeLessThanOrEqual(256 * 1024);
@@ -241,77 +226,18 @@ describe("bash tool: live execution output", () => {
   });
 
   it("omits the execution tail entirely for empty output", async () => {
-    const result = await runStdout(streamOf(""));
+    const result = await runOutput("");
 
     expect("executionOutputTail" in result).toBe(false);
   });
 
-  it("decodes split multi-byte UTF-8 sequences", async () => {
-    const bytes = new TextEncoder().encode("a🙂b\n");
-    const result = await runStdout(streamOf([bytes.slice(0, 3), bytes.slice(3)]));
-
-    expect(result.content).toContain("a🙂b");
-    expect(result.content).not.toContain("�");
-  });
-
-  it("emits monotonically growing accumulated output", async () => {
-    const emitted: string[] = [];
-
-    await runStdout(streamOf(["a", "b", "c"]), (text) => emitted.push(text));
-
-    expect(emitted).toEqual(["a", "ab", "abc"]);
-  });
-
   it("does not expose control payloads that begin before the live-tail window", async () => {
     const emitted: string[] = [];
-    const control = `safe\u001bP${"forged".repeat(10_000)}\u001b\\tail`;
 
-    await runStdout(streamOf([control.slice(0, 40_000), control.slice(40_000)]), (text) => emitted.push(text));
+    await runOutput(`safe\u001bP${"forged".repeat(10_000)}\u001b\\tail`, (text) => emitted.push(text));
 
     expect(emitted.at(-1)).toBe("safetail");
     expect(emitted.at(-1)?.length).toBeLessThanOrEqual(50 * 1024);
-  });
-
-  it("throttles chunk emissions and flushes the trailing output", async () => {
-    const emitted: string[] = [];
-
-    // The window must be one no CI scheduling lag can cross between the
-    // synchronous chunk reads; the trailing flush fires at stream end, not on
-    // the timer, so a large window does not slow the test.
-    await runStdout(streamOf(["a", "b", "c"]), (text) => emitted.push(text), 60_000);
-
-    expect(emitted).toEqual(["a", "abc"]);
-  });
-
-  it("does not emit after aborting", async () => {
-    const controller = new AbortController();
-    const emitted: string[] = [];
-    const def = createBashDefinition({
-      operations: makeMockOps(),
-      executionOutputThrottleMs: 0,
-    });
-
-    const result = await def.execute({ command: "echo abort" }, makeContext({
-      executionCwd: "/mock",
-      spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ stdout: streamOf(["before\n", "after\n"]) })).spawnOwned,
-      signal: controller.signal,
-      onExecutionOutput: (text) => {
-        emitted.push(text);
-        controller.abort();
-      },
-    }));
-
-    expect(result.outcome).toBe("interrupted");
-    expect(result.content).not.toContain("before\n");
-    expect(result.content).not.toContain("after\n");
-    expect(emitted).toEqual(["before\n"]);
-  });
-
-  it("runs when the live output callback is omitted", async () => {
-    const result = await runStdout(streamOf(["without ", "callback\n"]));
-
-    expect(result.outcome).toBe("ok");
-    expect(result.content).toContain("without callback");
   });
 });
 
@@ -319,14 +245,17 @@ describe("bash tool: timeout bounds", () => {
   const mockContext = () => makeContext({ executionCwd: "/scratch", spawnOwned: ownedSpawnProbe().spawnOwned });
 
   it("reads millisecond timeouts and caps oversized seconds without dropping the deadline", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
     let timeout: number | undefined;
-    const ctx = makeContext({ shell: {
-      runForeground: async options => { timeout = options.timeoutSec; return { content: "done", outcome: "ok" }; },
-      runBackground: async () => { throw new Error("unexpected background"); },
-      privateCopies: createPrivateCopyPool(),
-      hasActiveCommands: () => false,
-    } });
+    const def = createBashDefinition({
+      operations: makeMockOps(),
+      foregroundBashHold: createForegroundBashHoldController(() => {}),
+      shell: {
+        run: async options => { timeout = options.timeoutSec; return { content: "done", outcome: "ok" }; },
+        privateCopies: createPrivateCopyPool(),
+        hasActiveCommands: () => false,
+      },
+    });
+    const ctx = makeContext();
     for (const [requested, seconds, note] of [
       [5400, 3600, "Note: timeout was capped at 3600 seconds."],
       [120000, 120, "Note: timeout 120000 was read as milliseconds: 120 seconds."],
@@ -343,21 +272,21 @@ describe("bash tool: timeout bounds", () => {
   });
 
   it("allows timeout at or below 3600s", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     const ctx = mockContext();
     const result = await def.execute({ command: "echo hi", timeout: 3600 }, ctx);
     expect(result.outcome).toBe("ok");
   });
 
   it("works without explicit timeout", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     const ctx = mockContext();
     const result = await def.execute({ command: "echo hi" }, ctx);
     expect(result.outcome).toBe("ok");
   });
 
   it("rejects a non-positive timeout (would fire the kill timer immediately)", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     const result = await def.execute({ command: "echo hi", timeout: 0 }, mockContext());
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("timeout must be greater than 0");
@@ -366,7 +295,7 @@ describe("bash tool: timeout bounds", () => {
 
 describe("bash tool: interactive-command detection false-positives", () => {
   const runCommand = (command: string) => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     return dispatch(def, { command }, makeContext({ executionCwd: "/scratch", spawnOwned: ownedSpawnProbe().spawnOwned }));
   };
 
@@ -394,7 +323,7 @@ describe("bash tool: interactive-command detection false-positives", () => {
 describe("bash tool: command policy (via tool)", () => {
   const directory = temporaryDirectories();
   const runCommand = (command: string, availableTools: ReadonlySet<string>) => {
-    const def = createBashDefinition({ operations: makeMockOps() });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     return dispatch(def, { command }, makeContext({ executionCwd: "/scratch", projectRoot: "/scratch", availableTools, spawnOwned: ownedSpawnProbe().spawnOwned }));
   };
 
@@ -421,7 +350,7 @@ describe("bash tool: command policy (via tool)", () => {
   });
 
   it("refuses a read-only agent's project and outside writes before launch, and runs its scratch write", async () => {
-    const def = createBashDefinition({ operations: makeMockOps(), readOnly: true });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps(), readOnly: true });
     const spawn = ownedSpawnProbe();
     const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch", availableTools: new Set(["read", "bash"]), spawnOwned: spawn.spawnOwned });
 
@@ -435,7 +364,7 @@ describe("bash tool: command policy (via tool)", () => {
     expect(mutation.outcome).toBe("error");
     expect(mutation.content).toContain("read-only");
     expect(spawn.launches).toHaveLength(0);
-    const writer = createBashDefinition({ operations: makeMockOps() });
+    const writer = createBashDefinition({ ...bashExecution(), operations: makeMockOps() });
     expect(def.inputSchema).toEqual(writer.inputSchema);
     expect(def.description).toBe(writer.description);
 
@@ -452,7 +381,7 @@ describe("bash tool: command policy (via tool)", () => {
     const run = async (options: { readonly readOnly?: boolean; readonly writeGuard?: boolean }, command: string) => {
       const spawn = ownedSpawnProbe();
       const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch", availableTools: new Set(["read", "bash"]), spawnOwned: spawn.spawnOwned });
-      const result = await dispatch(createBashDefinition({ operations: makeMockOps(), ...options }), { command }, ctx);
+      const result = await dispatch(createBashDefinition({ ...bashExecution(), operations: makeMockOps(), ...options }), { command }, ctx);
       return { outcome: result.outcome, launched: spawn.launches.length > 0 };
     };
 
@@ -469,7 +398,7 @@ describe("bash tool: command policy (via tool)", () => {
     const run = async (mutatingDeclaration: boolean, input: RuntimeToolInput, scratchDir = "/proj/.flywheel/scratch") => {
       const spawn = ownedSpawnProbe();
       const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir, spawnOwned: spawn.spawnOwned });
-      const result = await dispatch(createBashDefinition({ operations: makeMockOps(), mutatingDeclaration }), input, ctx);
+      const result = await dispatch(createBashDefinition({ ...bashExecution(), operations: makeMockOps(), mutatingDeclaration }), input, ctx);
       return { outcome: result.outcome, content: String(result.content), cwds: spawn.launches.map((launch) => launch.cwd) };
     };
     const declared = await run(false, { command: edit, mutates: true });
@@ -531,6 +460,7 @@ describe("bash tool: scratchpad and bun shim", () => {
     const shims: { path: string; content: string }[] = [];
     const spawn = ownedSpawnProbe();
     const def = createBashDefinition({
+      ...bashExecution(),
       execPath,
       ...(platform ? { platform } : {}),
       loginShellPath: () => loginShellPath,
@@ -576,6 +506,7 @@ describe("bash tool: scratchpad and bun shim", () => {
   it("installs the shims exactly once under concurrent first calls", async () => {
     let writes = 0;
     const def = createBashDefinition({
+      ...bashExecution(),
       execPath: "/opt/flywheel/flywheel",
       loginShellPath: () => loginShellPath,
       operations: makeMockOps({
@@ -585,11 +516,11 @@ describe("bash tool: scratchpad and bun shim", () => {
         },
       }),
     });
-    const ctx = makeContext({ executionCwd: "/mock", scratchDir, spawnOwned: ownedSpawnProbe().spawnOwned });
+    const context = (toolUseId: string) => makeContext({ executionCwd: "/mock", scratchDir, spawnOwned: ownedSpawnProbe().spawnOwned, toolUseId });
 
     await Promise.all([
-      def.execute({ command: "echo a" }, ctx),
-      def.execute({ command: "echo b" }, ctx),
+      def.execute({ command: "echo a" }, context("call-a")),
+      def.execute({ command: "echo b" }, context("call-b")),
     ]);
 
     expect(writes).toBe(2);
@@ -622,61 +553,31 @@ describe("bash tool: scratchpad and bun shim", () => {
 });
 
 describe("bash tool: fullContent on compression", () => {
-  const spawnWithStdout = (stdout: ReadableStream<Uint8Array>): NonNullable<ToolContext["spawnOwned"]> =>
-    ownedSpawnProbe(() => makeMockOwnedProcess({ stdout })).spawnOwned;
-
-  it("sets fullContent to raw output when compressor drops lines", async () => {
-    const lines = Array.from({ length: 4_000 }, (_, i) => `line ${i + 1}`).join("\n");
-    const stdout = streamOf([lines.slice(0, 1_000), lines.slice(1_000)]);
-    const def = createBashDefinition({ operations: makeMockOps() });
-    const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: spawnWithStdout(stdout) });
-
-    const result = await def.execute({ command: "ls -la" }, ctx);
-
-    expect(result.outcome).toBe("ok");
-    expect(result.content).toContain("lines omitted");
-    expect(result.fullContent).toBe(lines);
-  });
-
   it("does not set fullContent when output is short enough to skip compression", async () => {
-    const def = createBashDefinition({ operations: makeMockOps() });
-    const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: spawnWithStdout(streamOf("hello\nworld\n")) });
+    const def = createBashDefinition({ ...bashExecution(), operations: commandOutputOps("hello\nworld\n") });
+    const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: ownedSpawnProbe().spawnOwned });
 
     const result = await def.execute({ command: "echo hi" }, ctx);
 
     expect(result.outcome).toBe("ok");
     expect(result.fullContent).toBeUndefined();
   });
-
-  it("raw_output: true bypasses compression entirely", async () => {
-    const lines = Array.from({ length: 4_000 }, (_, i) => `line ${i + 1}`).join("\n");
-    const def = createBashDefinition({ operations: makeMockOps() });
-    const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: spawnWithStdout(streamOf(lines)) });
-
-    const result = await def.execute({ command: "ls -la", raw_output: true }, ctx);
-
-    expect(result.outcome).toBe("ok");
-    expect(result.content).not.toContain("lines omitted");
-    expect(result.content).toContain("line 2000\n");
-    expect(result.fullContent).toBeUndefined();
-  });
 });
 
-describe("bash tool: foreground stdout spool", () => {
-  it("bounds multi-megabyte output, names the retained spool with its measured size and digest, and sanitizes split control strings", async () => {
+describe("bash tool: retained command log", () => {
+  it("bounds multi-megabyte output, names the retained log with its measured size and digest, and sanitizes split control strings", async () => {
     const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-bash-spool-"));
     try {
       const lines = Array.from({ length: 200_000 }, (_, index) => `${index + 1}`).join("\n");
       const payload = `\u001bP${"forged".repeat(1_000)}\u001b\\${lines}\n`;
-      const stdout = streamOf([payload.slice(0, 3_000), payload.slice(3_000, 700_000), payload.slice(700_000)]);
-      const def = createBashDefinition({ operations: makeMockOps({ ensureDir: (dir) => fs.mkdirSync(dir, { recursive: true }) }) });
-      const ctx = makeContext({ scratchDir, executionCwd: "/scratch", spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ stdout })).spawnOwned });
+      const def = createBashDefinition({ ...bashExecution(), operations: commandOutputOps(payload, { ensureDir: (dir) => fs.mkdirSync(dir, { recursive: true }) }) });
+      const ctx = makeContext({ scratchDir, executionCwd: "/scratch", spawnOwned: ownedSpawnProbe().spawnOwned });
 
       const result = await def.execute({ command: "produce output" }, ctx);
       if (typeof result.content !== "string") throw new Error("bash returns text content");
       const retained = result.retainedFullContent;
-      if (!retained) throw new Error("expected the retained spool");
-      const spool = fs.readFileSync(retained.path);
+      if (!retained) throw new Error("expected the retained log");
+      const log = fs.readFileSync(retained.path);
 
       expect(result.content).toStartWith("1\n2\n");
       // The head keeps 6,000 bytes (lines 1-1422), and the tail keeps the last 12,000 and the line that crosses into them.
@@ -684,36 +585,11 @@ describe("bash tool: foreground stdout spool", () => {
       expect(result.content).not.toContain("forged");
       expect(retained.path.startsWith(scratchDir)).toBe(true);
       expect(retained.bytes).toBe(new TextEncoder().encode(payload).byteLength);
-      expect(retained.bytes).toBe(spool.byteLength);
-      expect(retained.sha256).toBe(new Bun.CryptoHasher("sha256").update(spool).digest("hex"));
-      if (process.platform !== "win32") expect(fs.statSync(retained.path).mode & 0o777).toBe(0o600);
+      expect(retained.bytes).toBe(log.byteLength);
+      expect(retained.sha256).toBe(new Bun.CryptoHasher("sha256").update(log).digest("hex"));
       expect(result.fullContent).toBeUndefined();
     } finally {
       fs.rmSync(scratchDir, { recursive: true, force: true });
     }
-  });
-
-  it("removes a small foreground spool after exact output is read", async () => {
-    const scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-bash-spool-"));
-    try {
-      const def = createBashDefinition({ operations: makeMockOps({ ensureDir: (dir) => fs.mkdirSync(dir, { recursive: true }) }) });
-      const ctx = makeContext({ scratchDir, executionCwd: "/scratch", spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ stdout: streamOf("small output\n") })).spawnOwned });
-
-      const result = await def.execute({ command: "produce output", raw_output: true }, ctx);
-
-      expect(result.content).toContain("small output");
-      expect(fs.readdirSync(scratchDir).filter((name) => name.includes("foreground") || name.endsWith(".log"))).toEqual([]);
-    } finally {
-      fs.rmSync(scratchDir, { recursive: true, force: true });
-    }
-  });
-});
-
-describe("bash tool: managed foreground transfer backing", () => {
-  it("requires both registry and controller backing before launching real Bash", async () => {
-    const bash = createBashDefinition({ requireManagedExecution: true });
-    await expect(bash.execute({ command: "echo no" }, makeContext())).rejects.toThrow(
-      "Foreground Bash requires a session-owned background execution registry and hold controller",
-    );
   });
 });

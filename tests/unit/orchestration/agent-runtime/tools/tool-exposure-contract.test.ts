@@ -12,6 +12,7 @@ import { testDirectories } from "../../../../helpers/directories.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { unusedSessionMessaging } from "../../../../helpers/child-session-control.js";
 import type { ToolAction } from "../../../../../src/infra/workflow-types.js";
+import { bashExecution } from "./_bash-fixtures.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 
 function getRegistration(name: string): RegisteredTool {
@@ -38,6 +39,11 @@ const providerNames = (names: readonly string[]): string[] => [...new Set(names.
 const { userDataRoot } = testDirectories(process.cwd());
 const ALL_CAPABILITIES = { available: () => true };
 const backgroundTasks = () => createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
+/** What a runner's kernel holds for its process and bash tools: one registry, and a shell runtime over it. */
+const runnerExecution = () => {
+  const tasks = backgroundTasks();
+  return { backgroundTasks: tasks, ...bashExecution(tasks) };
+};
 const mcpHit = { server: "github", name: "issue_get", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } };
 const mcp = ["mcp", mcpRuntimeOver(mcpPortsOver([mcpHit]))] as const;
 const webSearch = {
@@ -121,7 +127,7 @@ const normalRunnerContracts: readonly RunnerContract[] = [
 async function assertCanonicalContract(contract: RunnerContract): Promise<void> {
   const planned = await plan({
     capabilities: ALL_CAPABILITIES,
-    backgroundTasks: backgroundTasks(),
+    ...runnerExecution(),
     handoff: {},
     sessions,
   }, [["web", () => webSearch], mcp, ["code-mode", codeModeRuntimeOver()]], contract.selected ? { selected: new Set(contract.selected) } : {});
@@ -204,7 +210,7 @@ describe("runtime tool exposure contract", () => {
       expect(result.tool.name).toBe(entry.exposedName ?? name);
       expect(result.tool.action).toBe(entry.action);
     }
-    expect(built.toSorted()).toEqual(["apply_patch", "bash", "edit", "handoff", "list", "papercut_dispose", "papercut_log", "read", "search", "write"]);
+    expect(built.toSorted()).toEqual(["apply_patch", "edit", "handoff", "list", "papercut_dispose", "papercut_log", "read", "search", "write"]);
   });
 
   it("grants self-improvement review execution to exactly the learning surfaces", () => {

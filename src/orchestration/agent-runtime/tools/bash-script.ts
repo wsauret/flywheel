@@ -2,23 +2,9 @@ export type RuntimePlatform = typeof process.platform;
 
 /** Runtime-owned managed command scripts and output spools share this namespace. */
 export const BACKGROUND_COMMAND_FILE_PREFIX = "flywheel-agent-bg-";
-export const FOREGROUND_COMMAND_FILE_PREFIX = "flywheel-foreground-";
 
 export function isWindows(platform: RuntimePlatform): boolean {
   return platform === "win32";
-}
-
-function buildBashScript(command: string, trace: boolean): string {
-  const lines: string[] = [];
-  if (trace) lines.push("exec 9>&2");
-  lines.push("exec 2>&1");
-  // BASH_XTRACEFD needs bash >= 4.1. Older bash (macOS system /bin/bash is
-  // 3.2) ignores it and writes xtrace to fd 2, which the line above merges
-  // into recorded stdout; there trace degrades to off instead of corrupting
-  // the recorded output.
-  if (trace) lines.push('case "$BASH_VERSION" in [1-3].*|4.0*) ;; *) BASH_XTRACEFD=9; set -x;; esac');
-  lines.push(command.trimEnd());
-  return lines.join("\n");
 }
 
 /** Windows PowerShell 5.1 writes `>`, `>>`, `Out-File`, and `Tee-Object`
@@ -46,10 +32,6 @@ function buildPowerShellScript(command: string): string {
   ].join("\n");
 }
 
-export function buildShellScript(command: string, platform: RuntimePlatform, trace: boolean): string {
-  return isWindows(platform) ? buildPowerShellScript(command) : buildBashScript(command, trace);
-}
-
 export function scriptExtension(platform: RuntimePlatform): "ps1" | "sh" {
   return isWindows(platform) ? "ps1" : "sh";
 }
@@ -63,7 +45,7 @@ export function shellInvocation(platform: RuntimePlatform, scriptPath: string): 
 /** Builds the inline shell command used by persistent execution. The platform branch stays in the shell authority so callers cannot accidentally force Bash on Windows. */
 export function shellCommandInvocation(platform: RuntimePlatform, command: string): string[] {
   return isWindows(platform)
-    ? ["powershell.exe", "-NoProfile", "-Command", buildShellScript(command, platform, false)]
+    ? ["powershell.exe", "-NoProfile", "-Command", buildPowerShellScript(command)]
     : ["bash", "-lc", command];
 }
 

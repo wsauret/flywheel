@@ -51,6 +51,7 @@ const tools = (await planToolExposure({
   kernel: {
     userDataRoot: workspace,
     backgroundTasks: background.tasks,
+    shell: background.shell,
     foregroundBashHold,
     foregroundBashHoldSeconds: 10,
     shellWriteGuard: true,
@@ -75,8 +76,6 @@ const context: DispatchedToolContext = {
   retrievalSessionId: "linux-runtime-verification",
   sessionId: "linux-runtime-verification",
   backgroundTasks: background.tasks,
-  foregroundBashHold,
-  shell: background.shell,
   backgroundSignal: background.signal,
   disposalSignal: background.signal,
   capabilityAccess,

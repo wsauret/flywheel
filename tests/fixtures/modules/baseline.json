@@ -29,7 +29,8 @@
         "learningReviewExecutable": false,
         "semanticBundle": null,
         "creation": {
-          "kind": "tool",
+          "kind": "unusable",
+          "reason": "no session shell runtime available",
           "tool": {
             "name": "bash",
             "action": "shell_exec",

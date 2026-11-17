@@ -8,7 +8,7 @@ import { SessionChangeDiffQuerySchema, SessionChangesQuerySchema, SessionChanges
 import { createSessionChangesService } from "../../../../src/orchestration/app-service/session-changes-service.js"
 import { createBashDefinition } from "../../../../src/orchestration/agent-runtime/tools/bash.js"
 import { loadBashParser } from "../../../../src/orchestration/agent-runtime/tools/bash-parser.js"
-import { mutationSpawnProbe, makeMockOps } from "../agent-runtime/tools/_bash-fixtures.js"
+import { bashExecution, mutationSpawnProbe, makeMockOps } from "../agent-runtime/tools/_bash-fixtures.js"
 import { capabilityAccessHolding, makeContext } from "../agent-runtime/tools/_fixtures.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { emitToolExecutionOutputRecorded } from "../../../../src/orchestration/agent-runtime/emit.js"
@@ -350,7 +350,7 @@ test("undo restores a file that a mutating bash command changed", async () => {
   await withService(async (service, fixture) => {
     const path = join(fixture.root, "a")
     writeFileSync(path, "one\ntwo\n")
-    const bash = createBashDefinition({ operations: makeMockOps({ ensureDir: dir => { mkdirSync(dir, { recursive: true }) } }) })
+    const bash = createBashDefinition({ ...bashExecution(), operations: makeMockOps({ ensureDir: dir => { mkdirSync(dir, { recursive: true }) } }) })
     const result = await bash.execute({ command: "reshape", mutates: true }, makeContext({
       projectRoot: fixture.root, executionCwd: fixture.root, scratchDir: join(fixture.root, ".flywheel", "scratch"), toolUseId: "bash-1", sessionId: fixture.sessionId,
       sessionEventWriter: fixture.writer, spawnOwned: mutationSpawnProbe(cwd => writeFileSync(join(cwd, "a"), "one\nTWO\n")).spawnOwned,
@@ -379,7 +379,7 @@ test("a background mutation command's settled record carries its diff to the ori
         for (const fact of mapRuntimeEventToSessionRuntimeFacts(event)) recordings.push(fixture.writer.record(fact))
       }, toolUseId, output, identity, edits),
     })
-    const bash = createBashDefinition({ operations: makeMockOps({
+    const bash = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps({
       ensureDir: dir => { mkdirSync(dir, { recursive: true }) },
       async writeScript(_path, content) {
         const log = backgroundLogPath(content)
@@ -390,7 +390,7 @@ test("a background mutation command's settled record carries its diff to the ori
     await bash.execute({ command: "reshape", mutates: true, background: true }, makeContext({
       projectRoot: fixture.root, executionCwd: fixture.root, scratchDir: join(fixture.root, ".flywheel", "scratch"), toolUseId: "bash-1", sessionId: fixture.sessionId,
       sessionEventWriter: fixture.writer, spawnOwned: mutationSpawnProbe(cwd => writeFileSync(join(cwd, "a"), "one\nTWO\n")).spawnOwned,
-      capabilityAccess: capabilityAccessHolding(["background-commands"]), backgroundTasks: registry,
+      capabilityAccess: capabilityAccessHolding(["background-commands"]),
     }))
     const deadline = Date.now() + 5_000
     while (registry.activeTaskCount() > 0 || recordings.length === 0) {

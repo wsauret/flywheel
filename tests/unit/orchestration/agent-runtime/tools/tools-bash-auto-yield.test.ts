@@ -8,7 +8,7 @@ import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/a
 import { createBashDefinition, parseBashResultDetails } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { createForegroundBashHoldController, type ForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
-import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
+import { bashExecution, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext } from "./_fixtures.js";
 
 beforeAll(loadBashParser);
@@ -20,7 +20,6 @@ function backgroundContext(overrides?: Parameters<typeof makeContext>[0]): Retur
   return makeContext({
     capabilityAccess: capabilityAccessHolding(["background-commands"]),
     scratchDir: temporaryDirectory("flywheel-bash-auto-yield-"),
-    backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} }),
     ...overrides,
   });
 }
@@ -65,6 +64,7 @@ describe("bash automatic yield", () => {
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) });
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 8080, exited: exit.promise }));
     const def = createBashDefinition({
+      ...bashExecution(registry, createForegroundBashHoldController(() => {})),
       operations: makeMockOps({
         writeScript: async (_path, content) => {
           const logPath = backgroundLogPath(content);
@@ -78,8 +78,6 @@ describe("bash automatic yield", () => {
     const result = await def.execute({ command: "bun slow-task.ts" }, backgroundContext({
       executionCwd: "/mock",
       signal: turn.signal,
-      backgroundTasks: registry,
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
       toolUseId: "toolu_yield",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -100,6 +98,7 @@ describe("bash automatic yield", () => {
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 8081, exited: exit.promise }));
     const def = createBashDefinition({
+      ...bashExecution(registry),
       operations: makeMockOps({
         writeScript: async (_path, content) => {
           const logPath = backgroundLogPath(content);
@@ -111,7 +110,6 @@ describe("bash automatic yield", () => {
     });
 
     const result = await def.execute({ command: "python3 server.py", background: true }, backgroundContext({
-      backgroundTasks: registry,
       toolUseId: "toolu_server",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -128,11 +126,9 @@ describe("bash automatic yield", () => {
     const activeIds: (readonly string[])[] = [];
     const foregroundBashHold = createForegroundBashHoldController((ids) => activeIds.push(ids));
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun slow-task.ts" }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_detach",
       spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
     }));
@@ -153,11 +149,9 @@ describe("bash automatic yield", () => {
     const activeIds: (readonly string[])[] = [];
     const foregroundBashHold = createForegroundBashHoldController((ids) => activeIds.push(ids));
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun dev-server.ts" }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_queued",
       spawnOwned: async () => {
         await launched.promise;
@@ -197,11 +191,9 @@ describe("bash automatic yield", () => {
         return { ...hold, cleanup: () => { trackedAtReport.push(registry.activeTaskCount()); hold.cleanup(); } };
       },
     };
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun dev-server.ts" }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_replaced",
       spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
     }));
@@ -233,11 +225,9 @@ describe("bash automatic yield", () => {
         return settled;
       },
     }));
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 50 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 50 });
 
     const execution = def.execute({ command: "bun slow-task.ts", timeout: 0.2 }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_detach_deadline",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -263,11 +253,10 @@ describe("bash automatic yield", () => {
       launched.resolve();
       return makeMockOwnedProcess({ pid: 8082, exited: exit.promise, terminate: async () => exit.promise });
     });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun slow-task.ts" }, backgroundContext({
       signal: turn.signal,
-      backgroundTasks: registry,
       toolUseId: "toolu_pre_transfer_abort",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -276,6 +265,7 @@ describe("bash automatic yield", () => {
     expect(registry.activeTaskCount()).toBe(0);
     expect(notifications).toEqual([]);
 
+    await waitUntil(() => spawn.terminated.length === 1);
     exit.resolve({ code: 143, signal: "SIGTERM", statusOf: "payload", ownership: "surrendered" });
     await expect(execution).resolves.toMatchObject({ outcome: "interrupted" });
     expect(spawn.terminated).toEqual([8082]);
@@ -289,12 +279,10 @@ describe("bash automatic yield", () => {
     const notifications: string[] = [];
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notifications.push(text) });
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ pid: 8083, exited: exit.promise }));
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 1 });
+    const def = createBashDefinition({ ...bashExecution(registry, createForegroundBashHoldController(() => {})), operations: makeMockOps(), totalYieldMs: 1 });
 
     const result = await def.execute({ command: "bun slow-task.ts" }, backgroundContext({
       signal: turn.signal,
-      backgroundTasks: registry,
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
       toolUseId: "toolu_post_transfer_abort",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -308,7 +296,7 @@ describe("bash automatic yield", () => {
     exit.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
   });
 
-  it("settles a natural exit racing abort with one termination request and no transfer", async () => {
+  it("settles a natural exit observed with an abort as the exit, with no termination and no transfer", async () => {
     const exit = deferred<OwnedExit>();
     const launched = deferred<void>();
     const turn = new AbortController();
@@ -317,19 +305,18 @@ describe("bash automatic yield", () => {
       launched.resolve();
       return makeMockOwnedProcess({ pid: 8084, exited: exit.promise, terminate: async () => exit.promise });
     });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun quick-task.ts" }, backgroundContext({
       signal: turn.signal,
-      backgroundTasks: registry,
       spawnOwned: spawn.spawnOwned,
     }));
     await launched.promise;
     turn.abort();
     exit.resolve({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
 
-    await expect(execution).resolves.toMatchObject({ outcome: "interrupted" });
-    expect(spawn.terminated).toEqual([8084]);
+    await expect(execution).resolves.toMatchObject({ outcome: "ok", details: { background: false, exitCode: 0 } });
+    expect(spawn.terminated).toEqual([]);
     expect(registry.activeTaskCount()).toBe(0);
   });
 
@@ -346,11 +333,9 @@ describe("bash automatic yield", () => {
         return settled;
       },
     }));
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 5 });
+    const def = createBashDefinition({ ...bashExecution(registry, createForegroundBashHoldController(() => {})), operations: makeMockOps(), totalYieldMs: 5 });
 
     const result = await def.execute({ command: "bun slow-task.ts", timeout: 0.02 }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
       toolUseId: "toolu_deadline",
       spawnOwned: spawn.spawnOwned,
     }));
@@ -370,11 +355,9 @@ describe("bash automatic yield", () => {
     const activeIds: (readonly string[])[] = [];
     const foregroundBashHold = createForegroundBashHoldController((ids) => activeIds.push(ids));
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "sleep 15; echo step-1", timeout: 30 }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_short_deadline",
       spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
     }));
@@ -393,11 +376,9 @@ describe("bash automatic yield", () => {
     const activeIds: (readonly string[])[] = [];
     const foregroundBashHold = createForegroundBashHoldController((ids) => activeIds.push(ids));
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(registry, foregroundBashHold), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const execution = def.execute({ command: "bun slow-task.ts", timeout: 30 }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold,
       toolUseId: "toolu_short_detach",
       spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
     }));
@@ -421,10 +402,9 @@ describe("bash automatic yield", () => {
         return settled;
       },
     }));
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 25 });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps(), totalYieldMs: 25 });
 
     const result = await def.execute({ command: "bun bounded.ts", timeout: 0.005 }, backgroundContext({
-      backgroundTasks: registry,
       spawnOwned: spawn.spawnOwned,
     }));
 
@@ -438,10 +418,9 @@ describe("bash automatic yield", () => {
     // The mock exits immediately; the deadline and yield threshold only need
     // their ordering (deadline inside the foreground window), and generous
     // values keep a slow CI runner from firing the deadline first.
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 10_000 });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps(), totalYieldMs: 10_000 });
 
     const result = await def.execute({ command: "bun quick.ts", timeout: 2 }, backgroundContext({
-      backgroundTasks: registry,
       handoff: { onContent() {}, readCommandEvidence: async () => [] },
       spawnOwned: ownedSpawnProbe().spawnOwned,
       toolUseId: "toolu_quick",
@@ -456,10 +435,9 @@ describe("bash automatic yield", () => {
   it("omits the command citation when the handoff has no command-evidence reader", async () => {
     // A subagent handoff has no reader, so no check would ever read the id.
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 10_000 });
+    const def = createBashDefinition({ ...bashExecution(registry), operations: makeMockOps(), totalYieldMs: 10_000 });
 
     const result = await def.execute({ command: "bun quick.ts", timeout: 2 }, backgroundContext({
-      backgroundTasks: registry,
       handoff: { onContent() {} },
       spawnOwned: ownedSpawnProbe().spawnOwned,
       toolUseId: "toolu_unread",
@@ -476,6 +454,7 @@ describe("bash automatic yield", () => {
     const output = Array.from({ length: 4_000 }, (_, index) => `line ${index + 1}`).join("\n");
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     const def = createBashDefinition({
+      ...bashExecution(registry, createForegroundBashHoldController(() => {})),
       operations: makeMockOps({
         writeScript: async (_path, content) => {
           const logPath = backgroundLogPath(content);
@@ -489,8 +468,6 @@ describe("bash automatic yield", () => {
     const result = await def.execute(
       { command: "print-lines", ...(rawOutput === undefined ? {} : { raw_output: rawOutput }) },
       backgroundContext({
-        backgroundTasks: registry,
-        foregroundBashHold: createForegroundBashHoldController(() => {}),
         spawnOwned: ownedSpawnProbe().spawnOwned,
         toolUseId: `toolu_raw_${String(rawOutput)}`,
       }),
@@ -518,6 +495,7 @@ describe("bash live output in the foreground hold", () => {
       onExecutionOutputRecorded: (_toolUseId, output) => { recorded.push(output); },
     });
     const def = createBashDefinition({
+      ...bashExecution(registry, createForegroundBashHoldController(() => {})),
       executionOutputThrottleMs: 5,
       totalYieldMs: 10_000,
       operations: makeMockOps({
@@ -529,8 +507,6 @@ describe("bash live output in the foreground hold", () => {
       }),
     });
     const execution = def.execute({ command: "make test" }, backgroundContext({
-      backgroundTasks: registry,
-      foregroundBashHold: createForegroundBashHoldController(() => {}),
       spawnOwned: ownedSpawnProbe(() => makeMockOwnedProcess({ exited: exit.promise })).spawnOwned,
       toolUseId: "toolu_held",
     }));
@@ -555,7 +531,7 @@ describe("bash live output in the foreground hold", () => {
  *  and drain rules as any foreground command. */
 describe("bash held foreground settlement", () => {
   function heldContext(overrides: Parameters<typeof makeContext>[0] & { readonly toolUseId: string }): ReturnType<typeof makeContext> {
-    return backgroundContext({ foregroundBashHold: createForegroundBashHoldController(() => {}), ...overrides });
+    return backgroundContext(overrides);
   }
 
   it("ends a held command at its deadline and reports the timeout", async () => {
@@ -569,7 +545,7 @@ describe("bash held foreground settlement", () => {
         return settled;
       },
     }));
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const result = await def.execute({ command: "sleep 15", timeout: 0.02 }, heldContext({ toolUseId: "toolu_held_deadline", spawnOwned: spawn.spawnOwned }));
 
@@ -590,7 +566,7 @@ describe("bash held foreground settlement", () => {
         }, 20);
       },
     });
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000 });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps(), totalYieldMs: 60_000 });
 
     const result = await def.execute({ command: "failing-launch" }, heldContext({
       toolUseId: "toolu_held_stderr",
@@ -605,7 +581,7 @@ describe("bash held foreground settlement", () => {
   });
 
   it("settles within the post-exit grace when stderr never ends", async () => {
-    const def = createBashDefinition({ operations: makeMockOps(), totalYieldMs: 60_000, postExitDrainGraceMs: 10 });
+    const def = createBashDefinition({ ...bashExecution(), operations: makeMockOps(), totalYieldMs: 60_000, postExitDrainGraceMs: 10 });
 
     const result = await def.execute({ command: "leaves-stderr-open" }, heldContext({
       toolUseId: "toolu_held_open_stderr",
@@ -619,6 +595,7 @@ describe("bash held foreground settlement", () => {
     const scratchDir = temporaryDirectory("bash-held-spool-");
     const deleted: string[] = [];
     const run = (output: string, toolUseId: string) => createBashDefinition({
+      ...bashExecution(),
       totalYieldMs: 60_000,
       operations: makeMockOps({
         writeScript: async (scriptPath, content) => {

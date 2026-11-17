@@ -3,8 +3,11 @@ import type { HandoffToolSchema } from "../../../../../src/orchestration/workflo
 import type { ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testSkill } from "../../../../helpers/skill-fixtures.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { makeContext } from "./_fixtures.js";
-import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime } from "./_planner-fixtures.js";
+import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
 
 /** A definition override service with something to review. A resolution
  *  would fail, which no exposure test performs. */
@@ -87,6 +90,28 @@ describe("tool exposure of a tree-hosted agent", () => {
       expect(chat.tools.has(name), name).toBe(false);
       expect(chat.omitted, name).toContainEqual({ name, reason });
     }
+  });
+
+  it("advertises bash to a tree-hosted agent without a shell runtime with a runner's bytes and refuses its calls", async () => {
+    const advertised = (tool: RuntimeTool | undefined) => tool && JSON.stringify({
+      name: tool.name, description: tool.description, inputSchema: tool.inputSchema, promptGuidelines: tool.promptGuidelines,
+    });
+    // `plan` gives its kernel a shell runtime and a hold, as a runner's kernel has; a side call's kernel has neither.
+    const shellless = (treeHosted: boolean) => planToolExposure({ kernel: testKernelToolDeps({ userDataRoot, treeHosted }), modules: composeModuleRuntimes([]) });
+    const runner = await plan({ treeHosted: true });
+    const hosted = await shellless(true);
+    const chat = await shellless(false);
+    const reason = "no session shell runtime available";
+
+    expect(advertised(hosted.tools.get("bash"))).toBe(advertised(runner.tools.get("bash")));
+    expect(runner.usable.has("bash")).toBe(true);
+    expect(hosted.usable.has("bash")).toBe(false);
+    expect(await hosted.tools.get("bash")?.execute({ command: "true" }, makeContext())).toEqual({
+      content: `The bash tool is unavailable to this agent now: ${reason}. Do not call bash again.`,
+      outcome: "error",
+    });
+    expect(chat.tools.has("bash")).toBe(false);
+    expect(chat.omitted).toContainEqual({ name: "bash", reason });
   });
 
   it("settles a tree-hosted agent's refinements against the tools it can call, not the ones it only advertises", async () => {

@@ -6,7 +6,7 @@ import { createBashDefinition } from "../../../../../src/orchestration/agent-run
 import { applyPatchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
 import { editDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
 import { searchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/search.js";
-import { makeMockOps } from "./_bash-fixtures.js";
+import { bashExecution, makeMockOps } from "./_bash-fixtures.js";
 import { makeContext } from "./_fixtures.js";
 
 function stubTool(name: string): RuntimeTool {
@@ -103,7 +103,7 @@ describe("prepareToolCall name repair", () => {
   });
 
   it("prepareToolCall repairs the arguments real tools refused, and still refuses a key that could change meaning", async () => {
-    const realTools = new Map<string, RuntimeTool>([["bash", createBashDefinition({ operations: makeMockOps() })], ["edit", editDefinition], ["search", searchDefinition]]);
+    const realTools = new Map<string, RuntimeTool>([["bash", createBashDefinition({ ...bashExecution(), operations: makeMockOps() })], ["edit", editDefinition], ["search", searchDefinition]]);
 
     const bash = prepareToolCall({ id: "r1", name: "bash", input: { command: "ls", timeout: null, windowsHide: true } }, realTools, admitEveryTool);
     await preparedToolAdmission(bash, makeContext());

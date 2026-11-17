@@ -130,7 +130,7 @@ test("a headless runtime's child offers Bash without mutates, and the write guar
   expect(interactive.bash.description).toContain(writeRoots);
   await interactive.dispose();
 
-  const headlessChild = await assembleBash({ surfaces: (surfaces) => deriveChildRuntimeSurfaces({ ...surfaces, headless: true }) });
+  const headlessChild = await assembleBash({ surfaces: (surfaces) => deriveChildRuntimeSurfaces({ ...surfaces, headless: true }, surfaces.background ? { background: surfaces.background } : {}) });
   expect(headlessChild.bash.inputSchema.properties).not.toHaveProperty("mutates");
   expect(headlessChild.bash.description).not.toMatch(/mutat/);
   await headlessChild.dispose();

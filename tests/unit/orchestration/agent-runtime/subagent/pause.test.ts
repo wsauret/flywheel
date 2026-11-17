@@ -19,6 +19,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { fakeContainer, handedOverRow, handoverAuthority } from "../_command-handover-fixtures.js";
 import { makeMockOps } from "../tools/_bash-fixtures.js";
 import { createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 const temporary = temporaryDirectories();
 
@@ -43,13 +44,13 @@ function heldDispatch({ commandHandover, holdOnAbort = false, sessionEventStore 
   const notification = createNotificationCapture();
   const track = notification.backgroundTasks.track;
   notification.backgroundTasks.track = (work) => track({ ...work, ...(work.stall ? { stall: { ...work.stall, timeoutMs: 10 } } : {}) });
-  const sessionEventWriter: SessionFactWriter = {
+  const sessionEventWriter: SessionFactWriter = discardingSessionFactWriter({
     record: async (fact) => { facts.push(fact); return null; },
     recordBatch: async () => null,
     recordGuarded: async () => null,
     transaction: async (fn) => { fn(); },
     dispose: () => {},
-  };
+  });
   const output = createOutputSession({ updateEntry: () => {}, executionCwd: "/workspace" });
   output.applyProjectionEvent({ type: "tool-use", toolUseId: "dispatch-call", name: "subagent", input: { persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, timestamp: 1 });
   const deps = makeDeps({
@@ -235,7 +236,7 @@ describe("subagent pause", () => {
     const run = heldDispatch({ commandHandover: handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }) });
     await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
     const background = await run.background;
-    await background.shell.runBackground({
+    await background.shell.run({
       command: "bun run dev",
       context: { executionCwd: dir, userDataRoot: `${dir}/.test-account`, projectRoot: dir, scratchDir: dir, toolUseId: "toolu_child", artifactScopeId: "child", retrievalSessionId: "child", sessionId: "child" },
       spawnOwned: async () => container.owned,
