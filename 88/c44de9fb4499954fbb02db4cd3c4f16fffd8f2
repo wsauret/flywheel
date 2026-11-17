@@ -1,0 +1,20 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 71
+src/tui/output-blocks/call-stretch-block.tsx
+  h_4b47e9e4a8b456 36
+src/tui/output-window/call-stretch-projection.ts
+  h_4b47e9e4a8b456 41,44,47,71-73,80
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 115-116,128,281-282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "88c44de9fb4499954fbb02db4cd3c4f16fffd8f2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
