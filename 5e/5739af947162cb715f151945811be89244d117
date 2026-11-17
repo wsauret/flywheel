@@ -1,0 +1,56 @@
+src/orchestration/modules/learning/memory-store.ts
+  h_4b47e9e4a8b456 673-678,680
+src/orchestration/modules/learning/migrations/memory-written.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/learning/migrations/skill-scope.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/learning/skill-corpus-cleanup-host.ts
+  h_4b47e9e4a8b456 17-18,79-94
+src/orchestration/modules/learning/skill-corpus-cleanup-state.ts
+  h_4b47e9e4a8b456 8,11
+src/orchestration/modules/learning/skill-corpus-cleanup-work.ts
+  h_4b47e9e4a8b456 1-36
+src/orchestration/modules/learning/skill-operation-manifest.ts
+  h_4b47e9e4a8b456 255,312,551
+src/orchestration/modules/learning/skill-store.ts
+  h_4b47e9e4a8b456 35,38,42
+tests/helpers/global-skill-operations.ts
+  h_4b47e9e4a8b456 20,38-42,45-46,244-245
+tests/integration/local/skill-operation-manifest-boundaries.test.ts
+  h_4b47e9e4a8b456 9,12,60-80,90,99-100,106,108-109,113-114,118-119
+tests/unit/cli/skills-cli.test.ts
+  h_4b47e9e4a8b456 6,12-13,440-441
+tests/unit/cli/workflow-verify.test.ts
+  h_4b47e9e4a8b456 11-12,241-242
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 8-9,419-422
+tests/unit/orchestration/migrations/memory-written-migration.test.ts
+  h_4b47e9e4a8b456 11,37
+tests/unit/orchestration/migrations/skill-reach-migration.test.ts
+  h_4b47e9e4a8b456 13,39
+tests/unit/orchestration/modules/learning/global-skill-consent-recovery.test.ts
+  h_4b47e9e4a8b456 107,392
+tests/unit/orchestration/modules/learning/memory-store.test.ts
+  h_4b47e9e4a8b456 16,303,543-550,554,566,575,587,598,608,620,622
+tests/unit/orchestration/modules/learning/skill-corpus-cleanup-host.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/modules/learning/skill-corpus-cleanup-state.test.ts
+  h_4b47e9e4a8b456 13-16,55,59,156,218,257
+tests/unit/orchestration/modules/learning/skill-corpus-cleanup-work.test.ts
+  h_4b47e9e4a8b456 1-84
+tests/unit/orchestration/modules/learning/skill-operation-manifest.test.ts
+  h_4b47e9e4a8b456 16,39-43,46,76,80,82-83,86,93,97,100,181,249-250,258,261,267-268
+tests/unit/orchestration/modules/learning/skill-store.test.ts
+  h_4b47e9e4a8b456 4,7,55-63,70,72-73,91-92,96,103,105,123,128,137,146,151,158,162,176,191,202,204,208,210,213,221,226,232,238,242,245,250,257,259,264,268,286,305,311,318,328,333,340,346,348,359-360,362,364,366,369,386,404-405,417,426,446,463,477,480-481,498-499,557,566,588,599-600,602,613-614,616,623-624,626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5e5739af947162cb715f151945811be89244d117",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
