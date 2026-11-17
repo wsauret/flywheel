@@ -1,0 +1,14 @@
+tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 370-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c7b225a0606f51dc3bbe5e00dd26cd5bd4aa7a60",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
