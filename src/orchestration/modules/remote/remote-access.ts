@@ -53,7 +53,7 @@ const log = Log.create({ service: "remote-access" })
 const RELAY_NOTIFICATION_SOURCE = "remote.relay"
 
 /** Settles when the RPC handler for one accepted device channel ends. */
-export type RemoteChannelAccept = (socket: Socket.Socket, device: PairedDevice) => Promise<void>
+type RemoteChannelAccept = (socket: Socket.Socket, device: PairedDevice) => Promise<void>
 
 export interface RemoteAccessOptions {
   /** Borrowed account authority; the caller retains its lifetime. */

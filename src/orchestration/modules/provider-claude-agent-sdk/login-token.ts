@@ -29,12 +29,12 @@ export interface TokenProbe {
 }
 
 /** The prefix of the macOS keychain service name under which engine 2.1.296 keeps a login's token. */
-export const KEYCHAIN_SERVICE_PREFIX = "Claude Code-credentials-";
+const KEYCHAIN_SERVICE_PREFIX = "Claude Code-credentials-";
 
 /** The macOS keychain service under which the engine keeps the token of the login in `configDir`. Engine 2.1.296
  *  names it `KEYCHAIN_SERVICE_PREFIX` and the first 8 hex digits of the SHA-256 of the folder's path, and names the
  *  OS user as its account (a captured `security` call). */
-export function keychainService(configDir: string): string {
+function keychainService(configDir: string): string {
   return `${KEYCHAIN_SERVICE_PREFIX}${createHash("sha256").update(configDir.normalize("NFC")).digest("hex").slice(0, 8)}`;
 }
 

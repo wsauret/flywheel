@@ -3,14 +3,14 @@ import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/a
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import { createLoginObservations } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { observedLogins } from "../../../helpers/login-observations.js";
 import { chain, fakeAvailability, subscriptionCandidate } from "./llm/_provider-chain-harness.js";
 import { ownHistoryTarget } from "./_model-client.js";
 
-/** A real request walk and account owner with only the provider stream replaced. */
+/** A real request walk and account owner with only the provider stream replaced. Call it inside a test. */
 export function loginWaitingRequest(response?: string) {
-  const observations = createLoginObservations();
   const account = { accountId: "account", configDir: "/scratch/login", identity: "person@example.com" };
+  const observations = observedLogins(account);
   const entered = Promise.withResolvers<void>();
   let calls = 0;
   const client = chain({

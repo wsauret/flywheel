@@ -99,20 +99,6 @@ export function preferredWireModelId(left: string, right: string): string {
   return left <= right ? left : right;
 }
 
-/** Maps canonical model identities to exact provider spellings. */
-export function canonicalWireModelMap(wireModelIds: Iterable<string>): ReadonlyMap<string, string> {
-  // Identity only: this module sits in the protocol package's import closure,
-  // which every browser client bundles, so it records no diagnostics. The
-  // catalog resolution that owns collisions records them.
-  const result = new Map<string, string>();
-  for (const wireModelId of wireModelIds) {
-    const canonical = canonicalModelId(wireModelId);
-    const previous = result.get(canonical);
-    result.set(canonical, previous === undefined ? wireModelId : preferredWireModelId(previous, wireModelId));
-  }
-  return result;
-}
-
 function terminalSnapshot(wireModelId: string): string | undefined {
   const contributorMarker = "-contributor";
   const classified = wireModelId.endsWith(contributorMarker)

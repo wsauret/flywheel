@@ -7,10 +7,10 @@ import type { DeviceCodeLoginPorts } from "../../../infra/llm/access-provider.js
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
 
-async function enableCopilotModel(copilotToken: Redacted.Redacted<string>, modelId: string, baseUrl: string, request: typeof fetch): Promise<boolean> {
+async function enableCopilotModel(copilotToken: Redacted.Redacted<string>, modelId: string, baseUrl: string): Promise<boolean> {
   try {
     // Provider-call adapter: the token is unwrapped only into the header.
-    const response = await request(`${baseUrl}/models/${modelId}/policy`, {
+    const response = await fetch(`${baseUrl}/models/${modelId}/policy`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -41,10 +41,10 @@ const CopilotModelsResponseSchema = Schema.StructWithRest(
 /** Wire model ids the account's /models endpoint reports, or null when the
  *  endpoint is unreachable. Ids stay in Copilot's dotted wire form because
  *  the policy endpoint takes the same form. */
-async function fetchCopilotWireModelIds(tokens: CopilotStoredTokens, baseUrl: string, request: typeof fetch): Promise<string[] | null> {
+async function fetchCopilotWireModelIds(tokens: CopilotStoredTokens, baseUrl: string): Promise<string[] | null> {
   try {
     // Provider-call adapter: the token is unwrapped only into the header.
-    const response = await request(`${baseUrl}/models`, {
+    const response = await fetch(`${baseUrl}/models`, {
       headers: { ...COPILOT_STATIC_HEADERS, Authorization: `Bearer ${Redacted.value(tokens.copilotToken)}` },
       signal: AbortSignal.timeout(10_000),
     });
@@ -60,14 +60,14 @@ async function fetchCopilotWireModelIds(tokens: CopilotStoredTokens, baseUrl: st
   }
 }
 
-export async function enableCopilotModels(tokens: CopilotStoredTokens, request: typeof fetch = fetch): Promise<void> {
+async function enableCopilotModels(tokens: CopilotStoredTokens): Promise<void> {
   const baseUrl = getGitHubCopilotBaseUrl(tokens.copilotToken, tokens.enterpriseDomain);
-  const models = await fetchCopilotWireModelIds(tokens, baseUrl, request);
+  const models = await fetchCopilotWireModelIds(tokens, baseUrl);
   if (models === null || models.length === 0) return;
   const results = await Promise.all(
     models.map(async (model) => ({
       model,
-      ok: await enableCopilotModel(tokens.copilotToken, model, baseUrl, request),
+      ok: await enableCopilotModel(tokens.copilotToken, model, baseUrl),
     })),
   );
   const enabled = results.filter((r) => r.ok).map((r) => r.model);
@@ -125,16 +125,11 @@ const CopilotUserSchema = Schema.StructWithRest(
 );
 
 /** Fetches the GitHub handle once at login. Provider failures are optional enrichment; caller cancellation is not. */
-export async function fetchCopilotIdentity(
-  githubToken: Redacted.Redacted<string>,
-  enterpriseDomain?: string,
-  signal?: AbortSignal,
-  request: typeof fetch = fetch,
-): Promise<string | undefined> {
+async function fetchCopilotIdentity(githubToken: Redacted.Redacted<string>, enterpriseDomain?: string, signal?: AbortSignal): Promise<string | undefined> {
   if (signal?.aborted) throw new Error("Login cancelled");
   const url = getCopilotAuthUrls(enterpriseDomain).identityUrl;
   try {
-    const response = await request(url, {
+    const response = await fetch(url, {
       headers: {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${Redacted.value(githubToken)}`,
@@ -173,7 +168,7 @@ async function startDeviceFlow(domain: string, signal?: AbortSignal): Promise<De
 /** Boundary parser for GitHub's device-code response. RFC 8628 requires
  *  device_code, user_code, verification_uri, and expires_in; `interval` is
  *  optional and defaults to 5 seconds. */
-export function parseDeviceCodeResponse(data: UnknownObject): DeviceCodeResponse {
+function parseDeviceCodeResponse(data: UnknownObject): DeviceCodeResponse {
   const deviceCode = data.device_code;
   const userCode = data.user_code;
   const verificationUri = data.verification_uri;
@@ -277,15 +272,7 @@ async function pollForGitHubAccessToken(
   throw new Error("Device flow timed out");
 }
 
-/** The device-code ports every flow shares, plus the identity fetch a test
- *  injects. The opener is required: it validates the URL before any launch,
- *  and the device code is shown whether or not the browser opens. */
-interface CopilotLoginOptions extends DeviceCodeLoginPorts {
-  /** Injected HTTP boundary for login-time GitHub identity capture. */
-  readonly fetchUser?: typeof fetch;
-}
-
-export async function loginGitHubCopilot(options: CopilotLoginOptions): Promise<CopilotStoredTokens> {
+export async function loginGitHubCopilot(options: DeviceCodeLoginPorts): Promise<CopilotStoredTokens> {
   let enterpriseDomain: string | undefined = options.previous?.enterpriseDomain;
 
   if (options.onPrompt && options.previous === undefined) {
@@ -326,7 +313,7 @@ export async function loginGitHubCopilot(options: CopilotLoginOptions): Promise<
 
   options.onProgress?.("Exchanging for Copilot token...");
   const credentials = await refreshGitHubCopilotToken(githubAccessToken, enterpriseDomain, options.signal);
-  const identity = await fetchCopilotIdentity(githubAccessToken, enterpriseDomain, options.signal, options.fetchUser);
+  const identity = await fetchCopilotIdentity(githubAccessToken, enterpriseDomain, options.signal);
 
   log.info("Copilot login completed");
 

@@ -16,7 +16,7 @@ import { defaultModuleState } from "../../../../src/orchestration/config/module-
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth-status-projection.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
-import { createLoginObservations } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { observedLogins } from "../../../helpers/login-observations.js";
 
 /** Reconnecting an account and adding one are different operations.
  *
@@ -30,8 +30,8 @@ import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js";
 
 describe("auth login instance selection", () => {
   test.each(["renewed", "failed", "cancelled"] as const)("claims one hidden-profile question and settles only after its flow: %s", async (outcome) => {
-    const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
     observations.recordRequest(target, "login-rejected");
     const waiting = observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
     const id = observations.loginQuestions()[0]!.id;
@@ -96,8 +96,8 @@ describe("auth login instance selection", () => {
   });
 
   test.each(["preflight", "before-url"] as const)("a scoped close during %s prevents a late login from starting or opening", async (stage) => {
-    const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
     observations.recordRequest(target, "login-rejected");
     const waiting = observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
     const id = observations.loginQuestions()[0]!.id;
@@ -138,8 +138,8 @@ describe("auth login instance selection", () => {
   });
 
   test.each(["served", "forgotten"] as const)("an episode that ends outside the login (%s) before the URL still gets its sign-in step", async (exit) => {
-    const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
     observations.recordRequest(target, "login-rejected");
     void observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
     const id = observations.loginQuestions()[0]!.id;
@@ -181,8 +181,8 @@ describe("auth login instance selection", () => {
   });
 
   test.each(["missing-account", "unsupported", "missing-profile"] as const)("automatic preflight %s declines without adding an account", async (failure) => {
-    const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
     observations.recordRequest(target, "login-rejected");
     const waiting = observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
     const id = observations.loginQuestions()[0]!.id;
@@ -202,8 +202,8 @@ describe("auth login instance selection", () => {
   });
 
   test("stale close and late rejection cannot cancel a later episode", async () => {
-    const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    const observations = observedLogins(target);
     const flows = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
     let starts = 0;
     const login = createAuthLoginService({

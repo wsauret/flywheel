@@ -12,7 +12,7 @@ import { updateModuleMember } from "../../../../../src/orchestration/config/modu
 import { composeFirstPartyModules, moduleProtocolRows, moduleSelectionFromConfig, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
 import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
-import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { observedLogins } from "../../../../helpers/login-observations.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
@@ -299,9 +299,9 @@ describe("the Agent SDK provider module", () => {
   test("states a refused login, an exited engine, and an engine that cannot start as the problems of the profile's logins, with the plan that the engine named and with no account email in the text, and a served request clears the account's problem", () => {
     const home = temporaryDirectory("claude-sdk-problems-");
     writeLogin(home, JSON.stringify({ oauthAccount: { accountUuid: "uuid-person", emailAddress: "person@example.com" } }));
-    const observations = createLoginObservations();
-    const changes: number[] = [];
     const login = { configDir: loginDir(home), accountId: "uuid-person" };
+    const observations = observedLogins(login);
+    const changes: number[] = [];
     const definition = externalDefinition({ account: () => ({ home, user: "tester" }), observations });
     const authDir = join(home, ".flywheel", "auth", "profiles", "default");
     const unsubscribe = definition.auth.observe(() => { changes.push(changes.length); });
@@ -341,7 +341,8 @@ describe("the Agent SDK provider module", () => {
     writeFileSync(join(folders, "c", ".claude.json"), JSON.stringify({ oauthAccount: person }));
     const unserved = [`Login folder ${join(folders, "b")} holds no Claude login.`, `Login folder ${join(folders, "c")} holds person@example.com, which an earlier login folder serves.`];
     const details = (last: string) => `person@example.com login folder: ${loginDir(home)}. Token store: the credentials file in the login folder. Last request in this process: ${last}.`;
-    const observations = createLoginObservations();
+    const login = { configDir: loginDir(home), accountId: "uuid-person" };
+    const observations = observedLogins(login);
     const asked: (readonly string[])[] = [];
     let answer: Pick<OwnedCommandResult, "exitCode" | "stdout"> = { exitCode: 0, stdout: "2.1.296 (Claude Code)\n" };
     const run: OwnedCommandRunner = async (command) => {
@@ -362,10 +363,10 @@ describe("the Agent SDK provider module", () => {
     ] });
     expect(asked).toEqual([[enginePath(), "--version"]]);
 
-    observations.recordRequest({ configDir: loginDir(home), accountId: "uuid-person" }, "served");
+    observations.recordRequest(login, "served");
     expect((await health.check(host)).lines[2]).toBe(details("served"));
 
-    observations.recordRequest({ configDir: loginDir(home), accountId: "uuid-person" }, "login-rejected");
+    observations.recordRequest(login, "login-rejected");
     answer = { exitCode: 1, stdout: "" };
     expect(await health.check(host)).toEqual({ attention: true, lines: [
       `The Claude engine at ${enginePath()} does not run: its --version call exited with code 1. Reinstall Flywheel, or run bun install in a source checkout.`,
@@ -379,7 +380,9 @@ describe("the Agent SDK provider module", () => {
     // An account record with no token is no login: the engine's next request fails, so the doctor names the remedy.
     rmSync(join(loginDir(home), ".credentials.json"));
     answer = { exitCode: 0, stdout: "2.1.296 (Claude Code)\n" };
-    const linux = createClaudeAgentSdkModule({ account: () => ({ home, user: "tester" }), observations: createLoginObservations(), platform: "linux" });
+    // A process that has observed no request of the login yet.
+    observations.forget(login);
+    const linux = createClaudeAgentSdkModule({ account: () => ({ home, user: "tester" }), observations, platform: "linux" });
     const linuxHealth = linux.contributions.find((contribution) => contribution.domain === "health")?.value;
     if (linuxHealth === undefined || !("check" in linuxHealth)) throw new Error("the module contributes no health check");
     expect(await linuxHealth.check(host)).toEqual({ attention: true, lines: [
@@ -586,7 +589,7 @@ function loginLauncher(home: string, accountUuid: string): LauncherScope {
 function recoveryFixture() {
   const home = temporaryDirectory("claude-recovery-");
   writeLogin(home, JSON.stringify({ oauthAccount: { accountUuid: "uuid-person", emailAddress: "person@example.com" } }));
-  const observations = createLoginObservations();
+  const observations = observedLogins({ configDir: loginDir(home), accountId: "uuid-person" });
   const auth = externalDefinition({ account: () => ({ home, user: "tester" }), observations }).auth;
   const authDir = join(home, ".flywheel", "auth", "profiles", "default");
   const account = auth.accounts(authDir)[0]!;
@@ -617,7 +620,7 @@ function usageFixture(initial: CliUsage | Error = { loggedIn: true, reply: { rat
   };
   let answer: CliUsage | Error = initial;
   const [provider] = createClaudeAgentSdkModule({
-    account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude", observations: createLoginObservations(),
+    account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude", observations: observedLogins({ configDir: loginDir(home), accountId: "uuid-person" }),
     readUsage: async (config) => {
       asked.push(config.configDir);
       const record = opened.get(config.launcher);

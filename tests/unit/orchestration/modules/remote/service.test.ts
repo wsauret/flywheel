@@ -6,18 +6,22 @@ import { composeAccountProjectModuleServices, composeModuleProcessServices } fro
 import { composeAccountModuleProtocolRuntimes } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
 import { remoteModule } from "../../../../../src/orchestration/modules/remote/module.js"
 import { createRemoteService, remoteService } from "../../../../../src/orchestration/modules/remote/service.js"
-import type { createRemoteAccess, RemoteAccess, RemoteChannelAccept } from "../../../../../src/orchestration/modules/remote/remote-access.js"
+import type { createRemoteAccess, RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import { EMPTY_REMOTE_VIEW } from "../../../../../src/protocol/modules/remote.js"
 import type { FrontendEvent } from "../../../../../src/protocol/app-service-types.js"
 import { createLauncherScope } from "../../../../../src/infra/process-supervisor.js"
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js"
 import { kernelPorts } from "../../../../helpers/module-kernel.js"
+import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { Effect, ManagedRuntime } from "effect"
 import { Socket, SocketServer } from "effect/socket"
 import { createModuleTransports, type ModuleTransports } from "../../../../../src/orchestration/app-service/module-transports.js"
+
+/** The handler that receives the accepted device channels of a remote access. */
+type RemoteChannelAccept = Parameters<RemoteAccess["acceptChannels"]>[0]
 
 /** The account's report of the module services it could not start, as the
  *  account hands it to every project. */
@@ -65,11 +69,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
     directories: testDirectories("/scratch/remote-service"), launcher: createLauncherScope({ spawnOwned: () => { throw new Error("No process starts in this service fixture") }, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
     eventStore: asAsyncEventReadSurface(inMemoryEventReader([])),
     projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
-    eventWriter: {
-      append: async () => { throw new Error("not used") },
-      appendBatch: async () => { throw new Error("not used") },
-      pruneSupersededEvents: async () => 0,
-    },
+    eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     onStored: () => () => {},
     accountModuleFaults,
     snapshotPosition: () => 0,

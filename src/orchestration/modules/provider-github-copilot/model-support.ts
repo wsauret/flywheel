@@ -1,5 +1,4 @@
-import { canonicalWireModelMap } from "../../../infra/llm/model-id.js";
-import { offeringTransport, type CatalogJsonValue, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogJsonValue, CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
 import type { ModelPricing, ProviderReasoningEffort } from "../../../infra/llm/models.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 
@@ -8,36 +7,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 // on (`supported_endpoints`): `claude-*` over Anthropic's `/v1/messages`,
 // most OpenAI models over `/responses`, the rest over `/chat/completions`.
 
-export interface CopilotCatalogEntry {
-  readonly id: string;
-  readonly endpoints: readonly string[];
-}
-
-export type CopilotEndpoint = "anthropic-messages" | "openai-responses" | "openai-completions";
-
-/** Selects Copilot's advertised endpoint, then its models.dev transport metadata. */
-export function copilotEndpointForMetadata(metadata: CatalogJsonValue | undefined): CopilotEndpoint | undefined {
-  const supportedEndpoints = isRecord(metadata) && Array.isArray(metadata.supportedEndpoints)
-    && metadata.supportedEndpoints.every((endpoint) => typeof endpoint === "string")
-    ? metadata.supportedEndpoints
-    : undefined;
-  if (supportedEndpoints !== undefined) {
-    const endpoint = ENDPOINT_PREFERENCE.find(([wire]) => supportedEndpoints.includes(wire))?.[1];
-    if (endpoint !== undefined) return endpoint;
-  }
-  const transport = metadata === undefined ? undefined : offeringTransport(metadata);
-  return transport === "anthropic-messages" || transport === "openai-responses" || transport === "openai-completions"
-    ? transport
-    : undefined;
-}
-
-interface CopilotCatalogModel {
-  readonly endpoint: CopilotEndpoint;
-  readonly wireModelId: string;
-}
-
-/** Canonical model id -> the exact wire id and endpoint advertised for it. */
-export type CopilotCatalog = ReadonlyMap<string, CopilotCatalogModel>;
+type CopilotEndpoint = "anthropic-messages" | "openai-responses" | "openai-completions";
 
 /** Wire endpoints in preference order: the native Anthropic protocol first,
  *  the Responses API next, plain chat completions last. Unknown endpoint
@@ -195,44 +165,4 @@ function copilotPricing(billing: CatalogJsonValue | undefined, model: string): M
     },
     provenance: { source: "provider-api", provider: "github-copilot", model },
   };
-}
-
-/** Folds the snapshotted listing into the catalog the selection path reads. */
-export function buildCopilotCatalog(entries: readonly CopilotCatalogEntry[]): CopilotCatalog {
-  const endpointsByWireModel = new Map<string, CopilotEndpoint>();
-  for (const entry of entries) {
-    const endpoint = ENDPOINT_PREFERENCE.find(([wire]) => entry.endpoints.includes(wire))?.[1];
-    if (endpoint === undefined) continue;
-    const previous = endpointsByWireModel.get(entry.id);
-    if (previous === undefined || endpointRank(endpoint) < endpointRank(previous)) endpointsByWireModel.set(entry.id, endpoint);
-  }
-  const catalog = new Map<string, CopilotCatalogModel>();
-  for (const [modelId, wireModelId] of canonicalWireModelMap(endpointsByWireModel.keys())) {
-    const endpoint = endpointsByWireModel.get(wireModelId);
-    if (endpoint !== undefined) catalog.set(modelId, { endpoint, wireModelId });
-  }
-  return catalog;
-}
-
-function endpointRank(endpoint: CopilotEndpoint): number {
-  return ENDPOINT_PREFERENCE.findIndex(([, candidate]) => candidate === endpoint);
-}
-
-/** Why Copilot cannot serve this model, for the selection path that decides
- *  candidate membership. A model admitted here has an endpoint in the catalog,
- *  so the adapter build that follows cannot route it a second way. */
-export function copilotModelUnavailableReason(model: string, catalog: CopilotCatalog | undefined): string | undefined {
-  if (catalog === undefined) {
-    return "Copilot's model listing has not been fetched yet for this account. It refreshes automatically when Copilot is reachable.";
-  }
-  if (catalog.has(model)) return undefined;
-  return `Copilot does not list "${model}" for this account.`;
-}
-
-/** Endpoint for a model selection already admitted. A model past that gate is
- *  in the catalog, so this throws instead of routing a second time. */
-export function copilotEndpointForModel(model: string, catalog: CopilotCatalog | undefined): CopilotEndpoint {
-  const endpoint = catalog?.get(model)?.endpoint;
-  if (endpoint) return endpoint;
-  throw new Error(`Model ${model} is not supported via GitHub Copilot in Flywheel agent runtime. Copilot's model listing does not name a chat endpoint for it.`);
 }

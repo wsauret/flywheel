@@ -8,10 +8,10 @@ import { captureAccountConnection, providerAdapter, type AccessProviderBuild } f
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { installedModules } from "../../../../../src/orchestration/module-catalog.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
+import { observedLogins } from "../../../../helpers/login-observations.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
@@ -38,7 +38,7 @@ describe("client construction login recovery", () => {
     await Bun.write(join(account.configDir, ".claude.json"), JSON.stringify({
       oauthAccount: { accountUuid: account.accountId, emailAddress: account.identity },
     }));
-    const observations = createLoginObservations();
+    const observations = observedLogins(account);
     const claude = createClaudeAgentSdkModule({ account: () => ({ home, user: "tester" }), observations });
     const calls: unknown[][] = [];
     const contribution = claude.contributions[0];

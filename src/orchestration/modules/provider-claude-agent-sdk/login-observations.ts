@@ -78,7 +78,7 @@ function failureOf(outcome: RequestOutcome | undefined): LoginFailure | undefine
   return outcome === "served" ? undefined : outcome;
 }
 
-export function createLoginObservations(): LoginObservations {
+function createLoginObservations(): LoginObservations {
   const outcomes = new Map<string, RequestOutcome>();
   const plans = new Map<string, string>();
   const listeners = new Set<() => void>();

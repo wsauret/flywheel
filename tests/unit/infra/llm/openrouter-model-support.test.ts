@@ -1,14 +1,18 @@
 import { describe, expect, it } from "bun:test";
 import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 import {
-  normalizeOpenRouterModelMetadata,
   openRouterModelPricing,
   openRouterModelOutputCap,
   canonicalizeOpenRouterCatalogRow,
   canonicalizeOpenRouterWireId,
 } from "../../../../src/orchestration/modules/provider-openrouter/model-support.js";
 import { isListableRoute } from "../../../../src/infra/llm/provider-model-info.js";
-import { canonicalizeGoogleVertexWireId } from "../../../../src/orchestration/modules/provider-google-vertex/module.js";
+import { googleVertexModule } from "../../../../src/orchestration/modules/provider-google-vertex/module.js";
+
+const canonicalizeVertexWireId = googleVertexModule.contributions[0].value.definition.dynamicCatalog.canonicalizeWireId;
+
+/** The OpenRouter-owned metadata that the catalog keeps of one listed row. */
+const normalizedMetadata = (fields: { readonly [key: string]: unknown }) => canonicalizeOpenRouterCatalogRow({ id: "vendor/model", ...fields })?.metadata;
 
 describe("OpenRouter catalog resolution", () => {
   it("recognizes slash ids by shape", () => {
@@ -67,17 +71,17 @@ describe("OpenRouter catalog resolution", () => {
   });
 
   it("keeps the Vertex express catalog limited to Gemini models", () => {
-    expect(canonicalizeGoogleVertexWireId("google/gemini-3-8-flash@default")).toEqual({
+    expect(canonicalizeVertexWireId("google/gemini-3-8-flash@default")).toEqual({
       modelId: "gemini-3.8-flash",
       dataUse: "standard",
     });
-    expect(canonicalizeGoogleVertexWireId("anthropic/claude-opus-4-5@20251101")).toBeUndefined();
-    expect(canonicalizeGoogleVertexWireId("zai-org/glm-5-2-maas")).toBeUndefined();
+    expect(canonicalizeVertexWireId("anthropic/claude-opus-4-5@20251101")).toBeUndefined();
+    expect(canonicalizeVertexWireId("zai-org/glm-5-2-maas")).toBeUndefined();
   });
 
 
   it("normalizes only complete finite OpenRouter-owned prices and output caps", () => {
-    const metadata = normalizeOpenRouterModelMetadata({
+    const metadata = normalizedMetadata({
       pricing: { prompt: "0.000001", completion: "0.000002", input_cache_read: "0.0000005" },
       top_provider: { max_completion_tokens: 32_768 },
     });
@@ -91,16 +95,16 @@ describe("OpenRouter catalog resolution", () => {
       inputCacheRead: 0.0000005,
     });
     expect(openRouterModelOutputCap(metadata)).toBe(32_768);
-    expect(normalizeOpenRouterModelMetadata({ pricing: { prompt: "NaN", completion: "1" }, top_provider: { max_completion_tokens: 1 } })).toEqual({
+    expect(normalizedMetadata({ pricing: { prompt: "NaN", completion: "1" }, top_provider: { max_completion_tokens: 1 } })).toEqual({
       top_provider: { max_completion_tokens: 1 },
     });
-    expect(normalizeOpenRouterModelMetadata({ pricing: { prompt: "1", completion: "1" }, top_provider: { max_completion_tokens: 1.5 } })).toEqual({
+    expect(normalizedMetadata({ pricing: { prompt: "1", completion: "1" }, top_provider: { max_completion_tokens: 1.5 } })).toEqual({
       pricing: { prompt: 1, completion: 1 },
     });
-    expect(normalizeOpenRouterModelMetadata({ top_provider: { max_completion_tokens: Number.MAX_SAFE_INTEGER } })).toEqual({
+    expect(normalizedMetadata({ top_provider: { max_completion_tokens: Number.MAX_SAFE_INTEGER } })).toEqual({
       top_provider: { max_completion_tokens: 2_000_000 },
     });
-    expect(normalizeOpenRouterModelMetadata({ top_provider: { max_completion_tokens: 2_000_000 } })).toEqual({
+    expect(normalizedMetadata({ top_provider: { max_completion_tokens: 2_000_000 } })).toEqual({
       top_provider: { max_completion_tokens: 2_000_000 },
     });
   });

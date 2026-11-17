@@ -84,7 +84,7 @@ const POSSIBLE_RETRY = /\b(?:retry|retrying|retried|resend|resending|rejected)\b
  * line that the table does not know but that names a retry, a resend, or a rejection fails closed as
  * `unrecognized`: the tag list is valid for CLI 2.1.293 to 2.1.296 only, and a missed resend would reach the model unseen.
  */
-export function classifyStderrLine(line: string): StderrSignal | undefined {
+function classifyStderrLine(line: string): StderrSignal | undefined {
   const message = /\[WARN\] (.*)$/u.exec(line)?.[1];
   if (message === undefined) return undefined;
   const known = RETRY_LINES.find(({ pattern }) => pattern.test(message));
@@ -93,7 +93,7 @@ export function classifyStderrLine(line: string): StderrSignal | undefined {
 }
 
 /** An HTTP error response that the CLI received, as its error line states it. */
-export interface ApiErrorLine {
+interface ApiErrorLine {
   readonly status: number;
   /** The response body as text. It is content: it goes into the request's failure and never into a record. */
   readonly body: string;
@@ -108,7 +108,7 @@ export interface ApiErrorLine {
  * paths runs, and the message of an Anthropic SDK error is `<status> <body>`. So the line gives every 400 with its
  * body, also a 400 that a recovery path resends without a warn line.
  */
-export function apiErrorLine(line: string): ApiErrorLine | undefined {
+function apiErrorLine(line: string): ApiErrorLine | undefined {
   const reported = /\[ERROR\] API error \(attempt \d+\/\d+\): (\d{3}) (.*)$/u.exec(line);
   if (reported === null) return undefined;
   const [, status = "", message = ""] = reported;
@@ -146,7 +146,7 @@ function bodyRequestId(body: string): string | undefined {
 }
 
 /** A request that a line of the CLI's `--debug-to-stderr` output announces. */
-export interface AnnouncedRequest {
+interface AnnouncedRequest {
   /** Whether the request goes to `/v1/messages`, the model endpoint. */
   readonly model: boolean;
   /** The CLI caller that the line names: a short identifier of the CLI's own code path, `none` for a line without
@@ -160,7 +160,7 @@ export interface AnnouncedRequest {
  * including the requests it decides by itself, so the model lines are the bridge's count of what the CLI sent. The
  * line names no request id, so it attributes no answer (`service-requests.ts` does).
  */
-export function announcedRequest(line: string): AnnouncedRequest | undefined {
+function announcedRequest(line: string): AnnouncedRequest | undefined {
   const announced = /\[DEBUG\] \[API REQUEST\] (\/\S*)(?: (.*))?$/u.exec(line);
   if (announced === null) return undefined;
   const source = /(?:^| )source=(\S+)/u.exec(announced[2] ?? "")?.[1];

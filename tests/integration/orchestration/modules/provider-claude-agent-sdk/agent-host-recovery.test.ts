@@ -7,7 +7,7 @@ import type { LaunchedHost } from "../../../../../src/orchestration/modules/prov
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { processAgentHosts, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { createLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { processLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
@@ -251,7 +251,7 @@ describe("the shared agent host's recovery", () => {
       }, {
         model: "claude-opus-5-5",
         build: { availability: quota.availability, recordModelRefusal: (wireModelId, refusal) => { refusals.push([wireModelId, refusal]); } },
-        seams: { observations: { ...createLoginObservations(), recordRequest: (_login, outcome) => { outcomes.push(outcome); } } },
+        seams: { observations: { ...processLoginObservations, recordRequest: (_login, outcome) => { outcomes.push(outcome); } } },
       });
     }, 120_000);
 
@@ -339,7 +339,7 @@ function accountObservers() {
     options: (model: string) => ({
       model,
       build: { availability: quota.availability, recordModelRefusal: (wireModelId: string, refusal: ModelRefusal) => { refusals.push([wireModelId, refusal]); } },
-      seams: { observations: { ...createLoginObservations(), recordRequest: (_login: LoginKey, outcome: RequestOutcome) => { outcomes.push(outcome); } } },
+      seams: { observations: { ...processLoginObservations, recordRequest: (_login: LoginKey, outcome: RequestOutcome) => { outcomes.push(outcome); } } },
     }),
   };
 }

@@ -31,7 +31,7 @@ function positiveSafeInteger(value: unknown): number | undefined {
 }
 
 /** Normalizes the OpenRouter-owned fields used by admission and transmission. */
-export function normalizeOpenRouterModelMetadata(row: unknown): CatalogJsonValue {
+function normalizeOpenRouterModelMetadata(row: unknown): CatalogJsonValue {
   if (!isRecord(row)) return null;
   let pricing: CatalogJsonValue | undefined;
   if (isRecord(row.pricing)) {

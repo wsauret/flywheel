@@ -46,7 +46,7 @@ interface XaiDeviceCodeResponse {
 /** Parses xAI's device grant, including its prefilled verification URL.
  * Rejects invalid fields or an absent or untrusted complete URL.
  * The optional polling interval defaults to 5 seconds per RFC 8628. */
-export function parseXaiDeviceCodeResponse(data: UnknownObject): XaiDeviceCodeResponse {
+function parseXaiDeviceCodeResponse(data: UnknownObject): XaiDeviceCodeResponse {
   const deviceCode = data.device_code;
   const userCode = data.user_code;
   const verificationUri = data.verification_uri;
@@ -120,8 +120,6 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
 interface XaiPollOptions {
   readonly signal?: AbortSignal;
   readonly onProgress?: (message: string) => void;
-  /** Waits between polls. A test supplies one that does not sleep. */
-  readonly wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 /** Polls the token endpoint until the person approves, the code expires, or
@@ -129,8 +127,7 @@ interface XaiPollOptions {
  *  connection or a server error polls again at the next interval, because the
  *  person can still approve the code. Progress reports a change of state once,
  *  never every poll, because the terminal shows each report as a notice. */
-export async function pollForXaiTokens(device: XaiDeviceCodeResponse, options: XaiPollOptions = {}): Promise<StoredTokens> {
-  const { signal, onProgress, wait = abortableSleep } = options;
+async function pollForXaiTokens(device: XaiDeviceCodeResponse, { signal, onProgress }: XaiPollOptions): Promise<StoredTokens> {
   const deadline = Date.now() + device.expires_in * 1000;
   let intervalMs = Math.max(1000, device.interval * 1000);
   let interrupted = false;
@@ -143,7 +140,7 @@ export async function pollForXaiTokens(device: XaiDeviceCodeResponse, options: X
 
   while (Date.now() < deadline) {
     if (signal?.aborted) throw new Error("Login cancelled");
-    await wait(Math.min(intervalMs, deadline - Date.now()), signal);
+    await abortableSleep(Math.min(intervalMs, deadline - Date.now()), signal);
 
     let answer: Awaited<ReturnType<typeof postForm>>;
     try {

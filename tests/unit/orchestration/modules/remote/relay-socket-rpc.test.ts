@@ -9,9 +9,12 @@ import { runtimeProtocolSocketServer } from "../../../../../src/orchestration/ap
 import { socketProtocolLayer } from "../../../../../src/protocol/client/socket-protocol.js"
 import { sealedSocket, type SealedIdentity } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
 import { asKeyPair, ownedBytes } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
-import type { RemoteAccess, RemoteChannelAccept } from "../../../../../src/orchestration/modules/remote/remote-access.js"
+import type { RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
 import { stringRequestId } from "../../../../../src/protocol/rpc-request-id.js"
+
+/** The handler that receives the accepted device channels of a remote access. */
+type RemoteChannelAccept = Parameters<RemoteAccess["acceptChannels"]>[0]
 
 /** The relay placement of the protocol server is a `SocketServer` whose
  *  accepts come from the remote-access service. These tests hand it in-memory

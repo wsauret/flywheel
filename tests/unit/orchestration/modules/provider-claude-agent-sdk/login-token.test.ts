@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loginKeychainPath } from "../../../../../src/infra/macos-keychain.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
-import { KEYCHAIN_SERVICE_PREFIX, keychainService, loginToken } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
+import { loginToken } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 
@@ -36,13 +36,21 @@ function accountWithKeychain() {
   return { home, user: "tester" };
 }
 
+/** The macOS keychain service under which engine 2.1.296 keeps the token of the login in `configDir`: its prefix and the
+ *  first 8 hex digits of the SHA-256 of the folder's path (a captured `security` call). */
+function engineKeychainService(configDir: string): string {
+  return `Claude Code-credentials-${new Bun.CryptoHasher("sha256").update(configDir).digest("hex").slice(0, 8)}`;
+}
+
 const account = { home: "/scratch/person", user: "tester" };
 const unlocked = () => true;
 
 describe("whether the engine holds a token for a login, found without reading a secret", () => {
-  test("names the keychain item that the engine names for the login folder: the first 8 hex of the path's SHA-256", () => {
+  test("names the keychain item that the engine names for the login folder: the first 8 hex of the path's SHA-256", async () => {
     // Engine 2.1.296 with CLAUDE_CONFIG_DIR=/scratch/login asks `security` for this item (a captured call).
-    expect(keychainService("/scratch/login")).toBe(`${KEYCHAIN_SERVICE_PREFIX}${new Bun.CryptoHasher("sha256").update("/scratch/login").digest("hex").slice(0, 8)}`);
+    const { run, asked } = securityRunner(0);
+    await loginToken("/scratch/login", { platform: "darwin", account: accountWithKeychain(), run, keychainUnlocked: unlocked });
+    expect(asked.map((command) => command[command.indexOf("-s") + 1])).toEqual(["Claude Code-credentials-05a5ade5"]);
   });
 
   test("a credentials file is a token by its existence alone, on every platform, and nothing runs", async () => {
@@ -65,14 +73,14 @@ describe("whether the engine holds a token for a login, found without reading a 
     expect(checked).toEqual([loginKeychainPath(person.home)]);
     // No -g and no -w: the command prints the item's attributes, never its secret, so it needs no access and asks
     // nothing. The keychain argument limits the search to the keychain whose state was checked.
-    expect(found.asked).toEqual([["/usr/bin/security", "find-generic-password", "-a", "tester", "-s", keychainService(configDir), loginKeychainPath(person.home)]]);
+    expect(found.asked).toEqual([["/usr/bin/security", "find-generic-password", "-a", "tester", "-s", engineKeychainService(configDir), loginKeychainPath(person.home)]]);
 
     expect(await loginToken(configDir, { platform: "darwin", account: person, run: securityRunner(44).run, keychainUnlocked: unlocked })).toEqual({ kind: "absent" });
     const profileLogin = join(person.home, ".flywheel", "auth", "profiles", "work", LOGIN_ACCOUNTS_DIRECTORY, "shared");
     mkdirSync(profileLogin, { recursive: true });
     const shared = securityRunner(0);
     expect(await loginToken(profileLogin, { platform: "darwin", account, run: shared.run, keychainUnlocked: unlocked })).toEqual({ kind: "present", store: "keychain" });
-    expect(shared.asked).toEqual([["/usr/bin/security", "find-generic-password", "-a", "tester", "-s", keychainService(profileLogin), loginKeychainPath(person.home)]]);
+    expect(shared.asked).toEqual([["/usr/bin/security", "find-generic-password", "-a", "tester", "-s", engineKeychainService(profileLogin), loginKeychainPath(person.home)]]);
   });
 
   test("on macOS, an account with no login keychain holds no keychain token, and nothing runs", async () => {

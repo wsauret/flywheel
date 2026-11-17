@@ -15,7 +15,7 @@ import type { FirstPartyModule } from "../../modules.js";
  *  model listing an express key can read, so the catalog is every Gemini
  *  chat model models.dev knows for the surface. */
 /** Derives Vertex's shared model identity from its exact express-mode wire. */
-export function canonicalizeGoogleVertexWireId(wireModelId: string): CatalogWireIdentity | undefined {
+function canonicalizeGoogleVertexWireId(wireModelId: string): CatalogWireIdentity | undefined {
   if (isMovingModelAlias(wireModelId)) return undefined;
   const separator = wireModelId.indexOf("/");
   const unqualified = separator < 0 ? wireModelId : wireModelId.slice(separator + 1);

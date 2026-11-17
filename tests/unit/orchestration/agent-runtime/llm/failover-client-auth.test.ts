@@ -4,7 +4,7 @@ import { AuthStoreMutationError } from "../../../../../src/infra/auth/auth-store
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import { AllCandidatesExhaustedError, QuotaExhaustedError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure, ProviderAttemptFailure, ProviderAuthenticationError } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { observedLogins } from "../../../../helpers/login-observations.js";
 import {
   chain,
   requestEvents,
@@ -25,8 +25,8 @@ import {
  *  under its own name instead of silently spending a fallback. */
 describe("provider authentication stops the request", () => {
   test("Stop unregisters an account waiter without resending or answering its question", async () => {
-    const observations = createLoginObservations();
     const account = { accountId: "account", configDir: "/scratch/profile/claude", identity: "person@example.com" };
+    const observations = observedLogins(account);
     observations.recordRequest(account, "login-rejected");
     const refusal = normalizeProviderAttemptFailure(Object.assign(new Error("login refused"), { status: 401 })).failure;
     if (refusal._tag !== "AuthFailure") throw new Error("expected authentication failure");

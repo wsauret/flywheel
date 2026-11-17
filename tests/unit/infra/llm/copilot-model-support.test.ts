@@ -1,47 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import {
-  buildCopilotCatalog,
-  copilotEndpointForModel,
-  copilotEndpointForMetadata,
-  copilotModelUnavailableReason,
-  normalizeCopilotCatalogRow,
-} from "../../../../src/orchestration/modules/provider-github-copilot/model-support.js";
-
-const CATALOG = buildCopilotCatalog([
-  { id: "claude-fable-5", endpoints: ["/v1/messages", "/chat/completions"] },
-  { id: "gpt-6.1-sol", endpoints: ["/responses", "ws:/responses"] },
-  { id: "gemini-3.5-flash", endpoints: ["/chat/completions"] },
-  { id: "text-embedding-3-small", endpoints: ["/embeddings"] },
-]);
-
-describe("buildCopilotCatalog", () => {
-  test("prefers the native Anthropic endpoint over chat completions", () => {
-    expect(CATALOG.get("claude-fable-5")).toEqual({ endpoint: "anthropic-messages", wireModelId: "claude-fable-5" });
-  });
-
-  test("prefers the Responses endpoint and ignores unknown wire variants", () => {
-    expect(CATALOG.get("gpt-6.1-sol")).toEqual({ endpoint: "openai-responses", wireModelId: "gpt-6.1-sol" });
-  });
-
-  test("falls back to chat completions when it is the only chat endpoint", () => {
-    expect(CATALOG.get("gemini-3.5-flash")).toEqual({ endpoint: "openai-completions", wireModelId: "gemini-3.5-flash" });
-  });
-
-  test("omits listed models with no chat-usable endpoint", () => {
-    expect(CATALOG.has("text-embedding-3-small")).toBe(false);
-  });
-
-  test("selects the same wire id and endpoint in either alias order", () => {
-    const aliases = [
-      { id: "gpt-6-1-sol", endpoints: ["/chat/completions"] },
-      { id: "gpt-6.1-sol", endpoints: ["/responses"] },
-    ];
-    expect(buildCopilotCatalog(aliases)).toEqual(buildCopilotCatalog(aliases.toReversed()));
-    expect(buildCopilotCatalog(aliases).get("gpt-6.1-sol")).toEqual({ endpoint: "openai-completions", wireModelId: "gpt-6-1-sol" });
-  });
-});
+import { normalizeCopilotCatalogRow } from "../../../../src/orchestration/modules/provider-github-copilot/model-support.js";
 
 describe("normalizeCopilotCatalogRow", () => {
+  test("keeps only chat endpoints, prefers Responses over chat completions, and omits a model with no chat endpoint", () => {
+    expect(normalizeCopilotCatalogRow({ id: "gpt-6.1-sol", supported_endpoints: ["ws:/responses", "/chat/completions", "/responses"] }))
+      .toMatchObject({ transport: "openai-responses", metadata: { supportedEndpoints: ["/chat/completions", "/responses"] } });
+    expect(normalizeCopilotCatalogRow({ id: "gemini-3.5-flash", supported_endpoints: ["/chat/completions"] })?.transport).toBe("openai-completions");
+    expect(normalizeCopilotCatalogRow({ id: "text-embedding-3-small", supported_endpoints: ["/embeddings"] })).toBeUndefined();
+  });
+
   test("retains exact endpoint and complete current billing evidence", () => {
     const row = normalizeCopilotCatalogRow({
       id: "claude-fable-5",
@@ -111,44 +78,5 @@ describe("normalizeCopilotCatalogRow", () => {
         },
       },
     })?.metadata).toEqual({ supportedEndpoints: ["/responses"] });
-  });
-});
-
-describe("copilotModelUnavailableReason", () => {
-  test("returns undefined for a listed model", () => {
-    expect(copilotModelUnavailableReason("claude-fable-5", CATALOG)).toBeUndefined();
-  });
-
-  test("names the model when the listing does not carry it", () => {
-    expect(copilotModelUnavailableReason("llama-3", CATALOG)).toContain("llama-3");
-  });
-
-  test("reports the missing listing when no catalog was captured", () => {
-    expect(copilotModelUnavailableReason("claude-fable-5", undefined)).toContain("listing");
-  });
-});
-
-describe("copilotEndpointForModel", () => {
-  test("returns the catalog endpoint for an admitted model", () => {
-    expect(copilotEndpointForModel("claude-fable-5", CATALOG)).toBe("anthropic-messages");
-  });
-
-  test("throws for a model the catalog does not name", () => {
-    expect(() => copilotEndpointForModel("o3-mini", CATALOG)).toThrow("not supported via GitHub Copilot");
-  });
-});
-
-describe("copilotEndpointForMetadata", () => {
-  test("prefers Copilot supported endpoints over models.dev transport metadata", () => {
-    expect(copilotEndpointForMetadata({
-      supportedEndpoints: ["/responses"],
-      transport: { npm: "@ai-sdk/anthropic" },
-    })).toBe("openai-responses");
-  });
-
-  test("falls back to models.dev npm transport metadata", () => {
-    expect(copilotEndpointForMetadata({ transport: { npm: "@ai-sdk/anthropic" } })).toBe("anthropic-messages");
-    expect(copilotEndpointForMetadata({ transport: { npm: "@ai-sdk/openai" } })).toBe("openai-responses");
-    expect(copilotEndpointForMetadata({ transport: { npm: "@ai-sdk/openai-compatible" } })).toBe("openai-completions");
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { announcedRequest, apiErrorLine, classifyStderrLine, debugLineReader, signInTrace, type DebugLine } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
+import { debugLineReader, signInTrace, type DebugLine, type StderrSignal } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
 
 const warn = (message: string) => `2026-10-07T12:00:00.000Z [WARN] ${message}`;
 
@@ -60,46 +60,58 @@ describe("the CLI stderr signals", () => {
       ["[betas] an HTTP 400 reads as the backend rejecting context-1m-2025-08-07; resending once without it", "betas", "bad-request"],
       ['[betas] an HTTP 400 says "invalid beta flag", which may be about context-1m-2025-08-07; resending once without it', "betas", "bad-request"],
     ];
-    for (const [message, tag, failure] of lines) expect(classifyStderrLine(warn(message)), tag).toEqual({ tag, failure });
+    for (const [message, tag, failure] of lines) expect(readAll([warn(message)]), tag).toEqual([stderr({ tag, failure })]);
   });
 
   test("fails closed on a warn line that names a retry the table does not know", () => {
-    expect(classifyStderrLine(warn("[new-path] the API rejected the request, resending"))).toEqual({ tag: "unrecognized", failure: "transient" });
-    expect(classifyStderrLine(warn("[cache] Retried the write"))).toEqual({ tag: "unrecognized", failure: "transient" });
+    expect(readAll([warn("[new-path] the API rejected the request, resending")])).toEqual([stderr({ tag: "unrecognized", failure: "transient" })]);
+    expect(readAll([warn("[cache] Retried the write")])).toEqual([stderr({ tag: "unrecognized", failure: "transient" })]);
   });
 
   test("ignores other levels and warn lines that name no retry", () => {
-    expect(classifyStderrLine("2026-10-07T12:00:00.000Z [DEBUG] [dispatch] retrying once")).toBeUndefined();
-    expect(classifyStderrLine("2026-10-07T12:00:00.000Z [ERROR] [server-fallback] 400 attributed, retrying")).toBeUndefined();
-    expect(classifyStderrLine(warn("[config] the settings file has an unknown key"))).toBeUndefined();
-    expect(classifyStderrLine("plain output with retrying in it")).toBeUndefined();
+    expect(readAll([
+      "2026-10-07T12:00:00.000Z [DEBUG] [dispatch] retrying once",
+      "2026-10-07T12:00:00.000Z [ERROR] [server-fallback] 400 attributed, retrying",
+      warn("[config] the settings file has an unknown key"),
+      "plain output with retrying in it",
+    ])).toEqual([]);
   });
 
   test("reads the status, the raw response body, and the body's request id of each HTTP error that the CLI logs", () => {
     const body = '{"type":"error","error":{"type":"invalid_request_error","message":"messages.2.content.0: bad"}}';
     // The CLI writes the status, then the Anthropic SDK error's message, which repeats the status.
-    expect(apiErrorLine(`2026-10-08T12:00:00.000Z [ERROR] API error (attempt 1/1): 400 400 ${body}`)).toEqual({ status: 400, body, requestId: undefined });
+    expect(readAll([`2026-10-08T12:00:00.000Z [ERROR] API error (attempt 1/1): 400 400 ${body}`])).toEqual([apiError({ status: 400, body, requestId: undefined })]);
     // The service names the request id in the body, equal to its `request-id` header (CLI 2.1.306).
     const named = '{"type":"error","error":{"type":"not_found_error","message":"model: claude-opus-5-5"},"request_id":"req_2"}';
-    expect(apiErrorLine(`2026-11-01T21:59:47.152Z [ERROR] API error (attempt 1/1): 404 404 ${named}`)).toEqual({ status: 404, body: named, requestId: "req_2" });
-    expect(apiErrorLine("2026-10-08T12:00:00.000Z [ERROR] API error (attempt 2/3): 529 529 Overloaded")).toEqual({ status: 529, body: "Overloaded", requestId: undefined });
-    expect(apiErrorLine("2026-10-08T12:00:00.000Z [ERROR] API error (attempt 1/1): Connection error.")).toBeUndefined();
-    expect(apiErrorLine(`2026-10-08T12:00:00.000Z [ERROR] Error in API request: 400 ${body}`)).toBeUndefined();
-    expect(apiErrorLine(`2026-10-08T12:00:00.000Z [WARN] API error (attempt 1/1): 400 400 ${body}`)).toBeUndefined();
+    expect(readAll([`2026-11-01T21:59:47.152Z [ERROR] API error (attempt 1/1): 404 404 ${named}`])).toEqual([apiError({ status: 404, body: named, requestId: "req_2" })]);
+    expect(readAll(["2026-10-08T12:00:00.000Z [ERROR] API error (attempt 2/3): 529 529 Overloaded"])).toEqual([apiError({ status: 529, body: "Overloaded", requestId: undefined })]);
+    expect(readAll([
+      "2026-10-08T12:00:00.000Z [ERROR] API error (attempt 1/1): Connection error.",
+      `2026-10-08T12:00:00.000Z [ERROR] Error in API request: 400 ${body}`,
+      `2026-10-08T12:00:00.000Z [WARN] API error (attempt 1/1): 400 400 ${body}`,
+    ])).toEqual([]);
   });
 
   test("reads each debug line that announces a request: whether it goes to the model endpoint, and its caller only by a short kind", () => {
     const line = (rest: string) => `2026-10-07T12:00:00.000Z [DEBUG] [API REQUEST] ${rest}`;
-    expect(announcedRequest(line("/v1/messages source=sdk"))).toEqual({ model: true, source: "sdk" });
-    expect(announcedRequest(line("/v1/messages x-client-request-id=ff4e7f9b-9a42-4c25-bcee-30758680b41c source=sdk"))).toEqual({ model: true, source: "sdk" });
-    expect(announcedRequest(line("/v1/messages source=repl_main_thread:compact"))).toEqual({ model: true, source: "repl_main_thread:compact" });
-    expect(announcedRequest(line("/v1/messages"))).toEqual({ model: true, source: "none" });
-    expect(announcedRequest(line("/v1/messages source=agent:explorer querySource=x"))).toEqual({ model: true, source: "agent:explorer" });
-    expect(announcedRequest(line("/v1/messages source=/a/path/with?text"))).toEqual({ model: true, source: "unknown" });
-    // A request to another endpoint can also fail with an HTTP error line, so it is announced too.
-    expect(announcedRequest(line("/v1/messages/count_tokens source=sdk"))).toEqual({ model: false, source: "sdk" });
-    expect(announcedRequest(warn("[API REQUEST] gzip request body rejected (rollout=api status=400 kind=decode); re-sent uncompressed"))).toBeUndefined();
-    expect(announcedRequest("[API REQUEST] /v1/messages source=sdk")).toBeUndefined();
+    const announced = (model: boolean, source: string): DebugLine => ({ kind: "request-line", request: { model, source } });
+    expect(readAll([
+      line("/v1/messages source=sdk"),
+      line("/v1/messages x-client-request-id=ff4e7f9b-9a42-4c25-bcee-30758680b41c source=sdk"),
+      line("/v1/messages source=repl_main_thread:compact"),
+      line("/v1/messages"),
+      line("/v1/messages source=agent:explorer querySource=x"),
+      line("/v1/messages source=/a/path/with?text"),
+      // A request to another endpoint can also fail with an HTTP error line, so it is announced too.
+      line("/v1/messages/count_tokens source=sdk"),
+    ])).toEqual([
+      announced(true, "sdk"), announced(true, "sdk"), announced(true, "repl_main_thread:compact"), announced(true, "none"),
+      announced(true, "agent:explorer"), announced(true, "unknown"), announced(false, "sdk"),
+    ]);
+    // A warn line about a request announces none; this one names a rejection, so it fails closed as a retry signal.
+    expect(readAll([warn("[API REQUEST] gzip request body rejected (rollout=api status=400 kind=decode); re-sent uncompressed")]))
+      .toEqual([stderr({ tag: "unrecognized", failure: "transient" })]);
+    expect(readAll(["[API REQUEST] /v1/messages source=sdk"])).toEqual([]);
   });
 
   test("reads the log id, the status, and the retry, request-id, and unified-limit headers of each response that the engine's Anthropic client logs at ANTHROPIC_LOG=debug", () => {
@@ -224,6 +236,14 @@ function readAll(lines: readonly string[]): DebugLine[] {
   const reader = debugLineReader((line) => { read.push(line); });
   for (const line of lines) reader(line);
   return read;
+}
+
+function stderr(signal: StderrSignal): DebugLine {
+  return { kind: "stderr", signal };
+}
+
+function apiError(response: Extract<DebugLine, { kind: "api-error" }>["response"]): DebugLine {
+  return { kind: "api-error", response };
 }
 
 function responseOf(line: DebugLine) {
