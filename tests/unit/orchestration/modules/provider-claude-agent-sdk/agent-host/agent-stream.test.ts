@@ -11,6 +11,7 @@ import type { ProviderStreamEvent } from "../../../../../../src/orchestration/ag
 import type { AgentRows, SignedBlock } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
 import { hostedStreamEvents, type HostedAnswer, type StepEvent } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.js";
 import type { HostStepItem } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
+import { controlledClock } from "../../../agent-runtime/llm/_stream-deadline-clock.js";
 
 afterEach(() => { setSystemTime(); });
 
@@ -119,24 +120,32 @@ describe("the adapter's stream deadline while the stream holds a response's late
   /** The reasoning deadline of these tests, far below the time that the response generates after its thinking. */
   const REASONING_DEADLINE_MS = 30;
 
-  /** Serves one response through the shared Anthropic adapter. The step hands on `later` after its thinking chunk, one
-   *  every `gapMs`, and ends with its stop chunk only when `stalls` is false; a stalled step ends when the request is
-   *  aborted, as the bridge's step does. */
+  /** Serves one response through the shared Anthropic adapter on a deadline clock that moves only as the step
+   *  generates. The step hands on `later` after its thinking chunk, one every `gapMs`, and ends with its stop chunk only
+   *  when `stalls` is false; a stalled step sends nothing for the whole deadline and ends when the request is aborted,
+   *  as the bridge's step does. */
   async function served(later: readonly HostStepItem[], stalls: boolean, gapMs = 5): Promise<{ events: ProviderStreamEvent[]; error: unknown }> {
     const { rows, events } = deferredRows([THINKING], true);
+    const time = controlledClock();
     const previous = process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS;
     process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS = String(REASONING_DEADLINE_MS);
     const client = await createAnthropicAdapter(Redacted.make("unused"), MODEL.id, MODEL, {
+      livenessClock: time.clock,
       operations: {
         isBadRequestError: () => false,
         createStream: async (_params, options) => {
           async function* step(): AsyncGenerator<StepEvent> {
             yield { kind: "item", item: { kind: "thinking", index: 0, text: "Let me think." } };
             for (const item of later) {
-              await Bun.sleep(gapMs);
+              await time.advance(gapMs);
               yield { kind: "item", item };
             }
-            if (stalls) await new Promise((_, reject) => { options.signal.addEventListener("abort", () => { reject(new Error("aborted")); }, { once: true }); });
+            if (stalls) {
+              const aborted = new Promise<void>((resolve) => { options.signal.addEventListener("abort", () => { resolve(); }, { once: true }); });
+              await time.advance(REASONING_DEADLINE_MS);
+              await aborted;
+              throw new Error("aborted");
+            }
             yield* events([STOP]);
           }
           const data = hostedStreamEvents(step(), rows, 0, MODEL.id, async () => new Error("unused"), () => {}, () => { options.onProgress?.(); });
