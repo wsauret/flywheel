@@ -373,7 +373,7 @@ test("each applied lead fact costs work that grows with neither the listed chats
         // The journal already holds this forward, so the holds rule skips it, and nothing commits.
         expect(await writer.append(forwarded)).toBe(false)
       })
-      expect(service.journal.state().forwarded(sessionId, sourceEntryIds)).toBe(true)
+      expect(service.journal.state().forwarded(sessionId, { sourceEntryIds })).toBe(true)
       expect(service.journal.state().members.has(sessionId)).toBe(true)
       const requests = counter.take()
       perFact.push({ steps, requests: requests.length, factsRead: factsRead(requests), watches: trace.length - watches })

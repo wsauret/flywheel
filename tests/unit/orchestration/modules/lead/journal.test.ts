@@ -22,6 +22,23 @@ test("an append whose fact the state already holds is skipped", async () => {
   expect(ctx.store.read({ aggregateId: "lead" }).map((fact) => fact.type)).toEqual(["lead.chat.started", "lead.request.forwarded", "lead.result.read"])
 })
 
+test("a forward fact without a passages hash, as builds before the split stored it, is a whole-entry forward; each split of the same entries is its own forward", async () => {
+  const lead = journal()
+  await lead.append({ type: "lead.chat.started", payload: { sessionId: "whole", sourceEntryIds: ["e1"] } })
+  await lead.append({ type: "lead.request.forwarded", payload: { leadSessionId: "l", targetSessionId: "whole", newChat: true, sourceEntryIds: ["e1"] } })
+  expect(await lead.append({ type: "lead.chat.started", payload: { sessionId: "first", sourceEntryIds: ["e1"], passagesHash: "h1" } })).toBe(true)
+  expect(await lead.append({ type: "lead.chat.started", payload: { sessionId: "second", sourceEntryIds: ["e1"], passagesHash: "h2" } })).toBe(true)
+  expect(await lead.append({ type: "lead.request.forwarded", payload: { leadSessionId: "l", targetSessionId: "whole", newChat: false, sourceEntryIds: ["e1"], passagesHash: "h1" } })).toBe(true)
+
+  const replayed = journal()
+  await replayed.reconcile()
+  const state = replayed.state()
+  expect([state.startedBy({ sourceEntryIds: ["e1"] }), state.startedBy({ sourceEntryIds: ["e1"], passagesHash: "h1" }), state.startedBy({ sourceEntryIds: ["e1"], passagesHash: "h2" })]).toEqual(["whole", "first", "second"])
+  expect(state.forwarded("whole", { sourceEntryIds: ["e1"] })).toBe(true)
+  expect(state.forwarded("whole", { sourceEntryIds: ["e1"], passagesHash: "h1" })).toBe(true)
+  expect(state.forwarded("whole", { sourceEntryIds: ["e1"], passagesHash: "h2" })).toBe(false)
+})
+
 test("a chat is a member from its join until its close, joins again after the close, and keeps the briefing of its first join; the first-run seed is recorded once", async () => {
   const lead = journal()
   // A close of a chat that is not in the list changes nothing.

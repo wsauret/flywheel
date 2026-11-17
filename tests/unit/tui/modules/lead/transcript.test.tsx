@@ -156,6 +156,24 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     } finally { answered.dispose() }
   })
 
+  it("gathers the calls of a turn that starts with a call under the open working heading, and closes it once the summary follows (PI-LEAD-011)", async () => {
+    const working = await mountTab(LEAD_ID, [person, progress, { ...route, status: "pending" }], true)
+    try {
+      const frame = await working.frame()
+      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked chats, started 1 chat`)
+      expect(frame).toContain("Chat progress")
+      expect(frame.indexOf("Look into the flaky test")).toBeLessThan(frame.indexOf("Working"))
+    } finally { working.dispose() }
+    const summarized = await mountTab(LEAD_ID, [person, progress, route, checkpoint, answer])
+    try {
+      const frame = await summarized.frame()
+      const heading = `▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked chats, started 1 chat`
+      expect(frame).toContain(heading)
+      expect(frame).not.toContain("Chat progress")
+      expect(frame.indexOf(heading)).toBeLessThan(frame.indexOf("A new chat investigates it"))
+    } finally { summarized.dispose() }
+  })
+
   it("ends a stretch at a chat's report, which stays in view with the lead's reply to it", async () => {
     const report: FrontendOutputBlock = {
       kind: "userMessage", id: "msg:done:lead-report:final", content: "The build passes now.", timestamp: 6000, pending: false, injected: false,

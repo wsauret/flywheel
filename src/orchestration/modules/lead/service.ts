@@ -10,12 +10,13 @@ import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-ser
 import type { SessionOpenHold } from "../../app-service/runtime-supervisor-types.js"
 import { parseSessionMetadataFact } from "../../session/session-metadata-facts.js"
 import { conversationHoldsMessage } from "../../session/empty-chat.js"
+import { locatePassages, passagesHash } from "../../session/conversation/person-entries.js"
 import { loadAgentInputProjection } from "../../session/agent-input-projection.js"
 import { sessionDisplayName } from "../../session/schemas.js"
 import { questionText, readChatDetail, readChatRoster, type ChatProgress } from "./chat-progress.js"
 import type { LeadFact } from "./facts.js"
 import type { LeadFoundChat } from "./find-chat.js"
-import { createLeadJournal, type LeadJournal } from "./journal.js"
+import { createLeadJournal, type LeadForward, type LeadJournal } from "./journal.js"
 import type { RouteInput, RouteOutcome } from "./route-request.js"
 import { createLeadRows, type LeadRowChange, type LeadRows } from "./rows.js"
 
@@ -430,18 +431,18 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
 
   /** The target of a route: the chat that the person's entries already started, or a new chat that this call
    *  records, lists, and watches before anything reaches it, so its first request and its first event find all. */
-  const routeTarget = async (input: RouteInput, sourceEntryIds: NonEmptyIds): Promise<{ readonly sessionId: string; readonly started?: "now" | "earlier" } | { readonly refused: string }> => {
+  const routeTarget = async (input: RouteInput, forward: LeadForward & { readonly sourceEntryIds: NonEmptyIds }): Promise<{ readonly sessionId: string; readonly started?: "now" | "earlier" } | { readonly refused: string }> => {
     const state = journal.state()
     if (input.kind === "existing") {
       if (input.chat === undefined || !await routable(input.chat)) return { refused: `${input.chat ?? "(none named)"} is not a chat of this project that you can route to` }
       return { sessionId: input.chat }
     }
-    const earlier = state.startedBy(sourceEntryIds)
+    const earlier = state.startedBy(forward)
     if (earlier !== undefined && await chatTitle(earlier) !== undefined) return { sessionId: earlier, started: "earlier" }
     const sessionId = await services.executionEnvironment().openChat({})
-    await journal.append({ type: "lead.chat.started", payload: { sessionId, sourceEntryIds } })
+    await journal.append({ type: "lead.chat.started", payload: { sessionId, ...forward } })
     await join(sessionId, briefable(), "started")
-    log.info("lead started a chat", { leadSessionId: input.leadSessionId, sessionId, entries: sourceEntryIds.length })
+    log.info("lead started a chat", { leadSessionId: input.leadSessionId, sessionId, entries: forward.sourceEntryIds.length, split: forward.passagesHash !== undefined })
     return { sessionId, started: "now" }
   }
 
@@ -502,15 +503,22 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       const [first, ...rest] = entries.map((entry) => entry.entryId)
       if (first === undefined || !entries.some((entry) => entry.turnsBack === 0)) return { ok: false, reason: "the newest turn holds no message from the person, and the lead routes only what the person asks for" }
       const sourceEntryIds: NonEmptyIds = [first, ...rest]
+      const { parts } = input
+      if (parts !== undefined) {
+        // The kernel checks the passages again at the forward; this check refuses before a new chat starts.
+        const located = locatePassages(entries.map((entry) => entry.text), parts)
+        if (!located.ok) return located
+      }
+      const forward = { sourceEntryIds, ...(parts === undefined ? {} : { passagesHash: passagesHash(parts) }) }
       await reconcileJournal()
-      const target = await routeTarget(input, sourceEntryIds)
+      const target = await routeTarget(input, forward)
       if ("refused" in target) return { ok: false, reason: target.refused }
-      const forwarded = await environment.forwardPersonEntries({ sourceSessionId: input.leadSessionId, entryIds: sourceEntryIds, targetSessionId: target.sessionId })
+      const forwarded = await environment.forwardPersonEntries({ sourceSessionId: input.leadSessionId, entryIds: sourceEntryIds, targetSessionId: target.sessionId, ...(parts === undefined ? {} : { passages: parts }) })
       if (!forwarded.ok) return forwarded
       const recorded = await journal.append({ type: "lead.request.forwarded", payload: {
-        leadSessionId: input.leadSessionId, targetSessionId: target.sessionId, newChat: target.started === "now", sourceEntryIds,
+        leadSessionId: input.leadSessionId, targetSessionId: target.sessionId, newChat: target.started === "now", ...forward,
       } })
-      if (recorded) log.info("lead forwarded a request", { leadSessionId: input.leadSessionId, sessionId: target.sessionId, entries: sourceEntryIds.length })
+      if (recorded) log.info("lead forwarded a request", { leadSessionId: input.leadSessionId, sessionId: target.sessionId, entries: sourceEntryIds.length, split: parts !== undefined })
       return {
         ok: true, sessionId: target.sessionId, title: await chatTitle(target.sessionId) ?? target.sessionId,
         ...(target.started ? { started: target.started } : {}), entries, recorded,

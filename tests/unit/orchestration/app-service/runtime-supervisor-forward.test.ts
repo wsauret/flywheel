@@ -71,8 +71,8 @@ test("the person's entries of a chat's newest turns are read from its durable en
   try {
     const { sessionId, ids } = await sourceChat(supervisor)
     expect(await supervisor.personEntries(sessionId, 0)).toEqual([
-      { entryId: ids.B, firstLine: "Fix [Image #1] per [File #2 notes.md]", turnsBack: 0 },
-      { entryId: ids.C, firstLine: "C: the login page", turnsBack: 0 },
+      { entryId: ids.B, text: "Fix [Image #1] per [File #2 notes.md]", turnsBack: 0 },
+      { entryId: ids.C, text: "C: the login page", turnsBack: 0 },
     ])
     expect((await supervisor.personEntries(sessionId, 1)).map((ref) => [ref.entryId, ref.turnsBack])).toEqual([[ids.A, 1], [ids.B, 0], [ids.C, 0]])
   } finally {
@@ -124,6 +124,46 @@ test("a forward commits the person's entries in a chat with no client as that pe
     expect(await supervisor.forwardPersonEntries({ sourceSessionId: source.sessionId, entryIds: [source.ids.B, source.ids.C], targetSessionId: target })).toEqual({ ok: true })
     await settled()
     expect((await userEntries(target)).map((entry) => entry.id)).toEqual(copies.map((entry) => entry.id))
+  } finally {
+    startup.resolve()
+    await supervisor.disposeAll()
+  }
+})
+
+test("a split forward commits the person's own text of each passage, in order, as one message with the entries' attachments, once per split", async () => {
+  // The runner starts only at the end, so each forwarded message commits as the target chat's entry.
+  const startup = createDeferred<void>()
+  const supervisor = startSupervisor(async (deps) => { await startup.promise; return mockRunner(deps.sessionId) })
+  try {
+    const source = await sourceChat(supervisor)
+    const target = await supervisor.openSessionRuntime()
+    const entryIds = [source.ids.B, source.ids.C]
+    const split = async (passages: readonly string[]) => supervisor.forwardPersonEntries({ sourceSessionId: source.sessionId, entryIds, targetSessionId: target, passages })
+    // A changed word refuses the whole forward, and so does an empty passage.
+    expect(await split(["C: the login page", "Fix [Image #1] per the notes"])).toEqual({ ok: false, reason: expect.stringContaining("Fix [Image #1] per the notes") })
+    expect(await split([" \n"])).toEqual({ ok: false, reason: "a part is empty" })
+    await settled()
+    expect(await userEntries(target)).toEqual([])
+
+    // A line break that the model copied as spaces still matches, and the copy keeps the person's own text. Another
+    // split of the same entries commits its own message.
+    expect(await split(["C:  the login\tpage", "Fix [Image #1]"])).toEqual({ ok: true })
+    expect(await split(["per [File #2 notes.md]"])).toEqual({ ok: true })
+    await settled()
+    const copies = await userEntries(target)
+    expect(copies.map((copy) => copy.message.origin)).toEqual(["human", "human"])
+    for (const copy of copies) expect(copy.id.startsWith(`person:forward:${source.ids.B},${source.ids.C}:`)).toBe(true)
+    const sourceContent = (await userEntries(source.sessionId)).find((entry) => entry.id === source.ids.B)?.message.content
+    if (!Array.isArray(sourceContent)) throw new Error("expected the source entry's attachments")
+    expect(copies.map((copy) => copy.message.content)).toEqual([
+      [{ type: "text", text: "C: the login page\n\nFix [Image #1]" }, ...sourceContent.slice(1)],
+      [{ type: "text", text: "per [File #2 notes.md]" }, ...sourceContent.slice(1)],
+    ])
+
+    // A repeat commits nothing again.
+    expect(await split(["C: the login page", "Fix [Image #1]"])).toEqual({ ok: true })
+    await settled()
+    expect((await userEntries(target)).map((copy) => copy.id)).toEqual(copies.map((copy) => copy.id))
   } finally {
     startup.resolve()
     await supervisor.disposeAll()

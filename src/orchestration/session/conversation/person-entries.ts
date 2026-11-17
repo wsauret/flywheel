@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import type { ChatAttachment, ChatInput } from "../../../infra/chat-input.js"
 import { attachmentMarker, nextAttachmentOrdinal } from "../../../protocol/client/attachments.js"
 import type { StoredTailEntry } from "../chat-session-run-evidence.js"
@@ -11,7 +12,8 @@ export type PersonEntry = StoredTailEntry & { readonly kind: "message"; readonly
  *  the earlier turns that hold an entry of the person. */
 export interface PersonEntryRef {
   readonly entryId: string
-  readonly firstLine: string
+  /** The entry's text, without its attachments. */
+  readonly text: string
   readonly turnsBack: number
 }
 
@@ -62,7 +64,7 @@ export function personEntrySelection(earlierTurns: number): PersonEntrySelection
           else turn += 1
           turnHasPerson = false
         } else if (isPersonEntry(entry)) {
-          newestFirst.push({ entryId: entry.id, firstLine: firstLine(entry), turnsBack: turn })
+          newestFirst.push({ entryId: entry.id, text: entryText(entry), turnsBack: turn })
           turnHasPerson = true
         }
       }
@@ -72,11 +74,66 @@ export function personEntrySelection(earlierTurns: number): PersonEntrySelection
   }
 }
 
-function firstLine(entry: PersonEntry): string {
+function entryText(entry: PersonEntry): string {
   const { content } = entry.message
-  const first = typeof content === "string" ? undefined : content[0]
-  const text = typeof content === "string" ? content : first?.type === "text" ? first.text : ""
+  if (typeof content === "string") return content
+  const first = content[0]
+  return first?.type === "text" ? first.text : ""
+}
+
+/** The first line of a text with content, for a short mention of a message or passage. */
+export function firstLineOf(text: string): string {
   return text.trim().split("\n", 1)[0] ?? ""
+}
+
+/** Collapses each run of whitespace to one space and trims, and answers for each character of the result the index
+ *  of its source character. */
+function collapseWhitespace(text: string) {
+  let collapsed = ""
+  const sourceIndex: number[] = []
+  let pendingSpace = -1
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index] ?? ""
+    if (/\s/.test(char)) {
+      if (pendingSpace < 0 && collapsed.length > 0) pendingSpace = index
+      continue
+    }
+    if (pendingSpace >= 0) {
+      collapsed += " "
+      sourceIndex.push(pendingSpace)
+      pendingSpace = -1
+    }
+    collapsed += char
+    sourceIndex.push(index)
+  }
+  return { collapsed, sourceIndex }
+}
+
+/** The passages of a split request as the person wrote them (ARCH-SESSIONS-051). Each passage must occur word for
+ *  word in the texts, read as one text in their order; the comparison collapses each run of whitespace to one space,
+ *  so a line break that a model copied as a space still matches. Answers the person's own text of each passage, in
+ *  the order given, or a refusal that names the first passage that is empty or that the texts do not hold. */
+export function locatePassages(texts: readonly string[], passages: readonly string[]): { readonly ok: true; readonly passages: readonly string[] } | { readonly ok: false; readonly reason: string } {
+  const source = texts.join("\n")
+  const { collapsed, sourceIndex } = collapseWhitespace(source)
+  const located: string[] = []
+  for (const passage of passages) {
+    const wanted = collapseWhitespace(passage).collapsed
+    const at = wanted ? collapsed.indexOf(wanted) : -1
+    const start = sourceIndex[at]
+    const last = sourceIndex[at + wanted.length - 1]
+    if (start === undefined || last === undefined) {
+      return { ok: false, reason: wanted ? `the part "${passage}" is not in the person's messages word for word: copy each part exactly from them` : "a part is empty" }
+    }
+    located.push(source.slice(start, last + 1))
+  }
+  return { ok: true, passages: located }
+}
+
+/** A short hash that names one split of a request: the same passages give the same hash, also when a model copies
+ *  their whitespace differently. */
+export function passagesHash(passages: readonly string[]): string {
+  return createHash("sha256").update(JSON.stringify(passages.map((passage) => collapseWhitespace(passage).collapsed))).digest("hex").slice(0, 16)
 }
 
 // A file name can hold a newline: the web client stores `File.name` as it is.

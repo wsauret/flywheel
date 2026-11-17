@@ -8,7 +8,7 @@ While the lead capability is on, each project has one lead chat. A terminal laun
 
 ## PI-LEAD-002: A routed request keeps the person's words
 
-The lead gives a request to a new chat, or to any chat of the project whose work the request continues, also one that left the list, and tells the person which. That chat joins the list. The chat receives the person's message unchanged, with its attachments, as a message from the person. The lead can add a note of its own, which the chat shows as a message from the lead. The lead never rewrites a request.
+The lead gives a request to a new chat, or to any chat of the project whose work the request continues, also one that left the list. That chat joins the list. It receives the person's message unchanged, with its attachments, as a message from the person. The lead can add a note, which the chat shows as from the lead. A message that asks for several separate pieces of work is split: each chat receives only the passages that its work needs, word for word. The lead never rewrites a request.
 
 ## PI-LEAD-003: A chat that the lead started is an ordinary chat without a tab
 
@@ -16,11 +16,11 @@ A chat that the lead started opens no tab and is otherwise an ordinary chat. It 
 
 ## PI-LEAD-004: The lead's screen lists every chat in use
 
-In the terminal, the lead's screen lists every chat of the project that is in use below its input. This includes every chat, whoever started it and on whichever client. It excludes the lead and the subagents and workflow agents of a chat. A chat joins the list when it starts, opens, or receives a message. It leaves only when the person closes it or deletes it. While the lead is on, closing a chat's tab returns the chat to the list. A restart or a project sleep keeps the list.
+In the terminal, the lead's screen lists every chat of the project that is in use below its input. This includes chats from any starter or client. It excludes the lead and the subagents and workflow agents of a chat. A chat joins the list when it starts, opens, or receives a message. It leaves only when the person closes or deletes it. While the lead is on, closing a chat's tab returns the chat to the list. A restart or a project sleep keeps the list. Each row names its chat by its tab title, then its longer title.
 
 ## PI-LEAD-005: The person answers and opens chats from the lead's screen
 
-A listed chat's question enters the lead's transcript as a widget that shows it in the chat's own words with every option. The person answers or skips it there by key or click. Several can wait at once. A widget never takes focus by itself. Once the question is settled anywhere, it shows the answer. Enter or a click on a list row opens the chat over the lead, as in its tab, where tab keys do nothing. Closing returns focus where it was. A shown result is read, and opening a failed or cut chat marks that state seen.
+A listed chat's question enters the lead's transcript as a widget in the chat's own words with every option. The person answers or skips it there by key or click. Several can wait. A widget never takes focus by itself. A question settled anywhere shows its answer. Enter or a click on a list row opens the chat over the lead as in its tab, without tab keys. Escape interrupts a running turn, or else returns to the lead, with focus where it was. A shown result is read, and opening a failed or cut chat marks that state seen.
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
@@ -28,7 +28,7 @@ The lead learns each question and milestone message of a listed chat, and when o
 
 ## PI-LEAD-007: Every chat is one step from the lead
 
-In a chat's conversation over the lead, the person reads it, types in it, changes its model, answers its question, and moves to the next or previous chat. Escape returns to the lead. One action, from the list or from the conversation, opens the chat as a tab.
+In a chat's conversation over the lead, the person reads it, types in it, changes its model, answers its question, and moves to the next or previous chat. One action, from the list or from the conversation, opens the chat as a tab.
 
 ## PI-LEAD-008: Working without the lead stays possible
 
@@ -44,7 +44,7 @@ The Sessions list does not show the lead, because the lead is always the first t
 
 ## PI-LEAD-011: The lead speaks as the person's assistant
 
-The lead speaks as the person's assistant, and its own words lead its transcript. Before it checks chats or routes a request, it says in one short line what it does and why. After a route, it says which chat has the request and that the chat reports back when it finishes. A message that clearly responds to the content of one chat's report or question goes to that chat without either line. The lead never tells the person to reply in a chat. In the terminal, its calls gather under headings (PI-LEAD-017).
+The lead speaks as the person's assistant, and its own words lead its transcript. It writes nothing before or between its calls. After its calls, it says in one short sentence what it did, such as "I resumed the chat that did that work and passed your message to it." A message that clearly responds to the content of one chat's report or question goes to that chat with no line at all. The lead never tells the person to reply in a chat. In the terminal, its calls gather under headings (PI-LEAD-017).
 
 ## PI-LEAD-012: Every chat reports in one shape
 

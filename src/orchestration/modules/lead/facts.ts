@@ -5,6 +5,9 @@ import { defineFact } from "../../../infra/event-registry.js"
 export const LEAD_AGGREGATE_ID = "lead"
 
 const EntryIds = Schema.NonEmptyArray(Schema.NonEmptyString)
+/** The hash of the passages of a split request (`passagesHash`). A fact without it forwarded the whole entries; the
+ *  facts of builds before the split hold none. */
+const PassagesHash = Schema.optionalKey(Schema.NonEmptyString)
 
 /** The chat that a launch opens as the lead. The latest designation or dismissal decides. */
 const LeadChatDesignatedFactSchema = defineFact({
@@ -22,15 +25,16 @@ const LeadChatDismissedFactSchema = defineFact({
   payload: Schema.Struct({ sessionId: Schema.NonEmptyString }),
 })
 
-/** A chat that the lead started, and the ids of the person's entries in the lead chat that started it. */
+/** A chat that the lead started, and the forward that started it: the ids of the person's entries in the lead chat,
+ *  and the hash of their passages for a split request. */
 const LeadChatStartedFactSchema = defineFact({
   type: "lead.chat.started",
   version: 1,
   actor: Schema.Literal("system"),
-  payload: Schema.Struct({ sessionId: Schema.NonEmptyString, sourceEntryIds: EntryIds }),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString, sourceEntryIds: EntryIds, passagesHash: PassagesHash }),
 })
 
-/** The lead forwarded the person's entries to a chat. No fact holds message text. */
+/** The lead forwarded the person's entries, or passages of them, to a chat. No fact holds message text. */
 const LeadRequestForwardedFactSchema = defineFact({
   type: "lead.request.forwarded",
   version: 1,
@@ -40,6 +44,7 @@ const LeadRequestForwardedFactSchema = defineFact({
     targetSessionId: Schema.NonEmptyString,
     newChat: Schema.Boolean,
     sourceEntryIds: EntryIds,
+    passagesHash: PassagesHash,
   }),
 })
 

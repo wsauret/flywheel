@@ -5,6 +5,7 @@ import { chatInputContent } from "../../../../../src/infra/chat-input.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { createRouteRequestTool } from "../../../../../src/orchestration/modules/lead/route-request.js"
+import { routeRequestDisplay } from "../../../../../src/infra/tools/displays/lead.js"
 import { createFindChatTool } from "../../../../../src/orchestration/modules/lead/find-chat.js"
 import { createSessionMessaging } from "../../../../../src/orchestration/session/session-messaging.js"
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js"
@@ -262,6 +263,45 @@ test("earlier turns forward the person's messages oldest first, and the result l
     ["Fix the login page\nIt hangs.", "human"],
     ["Safari only", "human"],
   ])
+})
+
+test("a message split into parts starts one chat per part with only its passages; a part that the message does not hold refuses before any chat starts", async () => {
+  const lead = await routingLead()
+  const message = "Start two chats.\nOne fixes the login page\nso it stops hanging.\nThe other writes the release notes."
+  const before = await chatIds()
+  const reworded = await lead.route([{ kind: "user", content: message, origin: "human" }], { kind: "new", parts: ["One fixes the login screen"] })
+  expect(reworded.outcome).toBe("error")
+  expect(textOf(reworded)).toContain('the part "One fixes the login screen" is not in the person\'s messages word for word')
+  expect(await chatIds()).toEqual(before)
+  expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated"])
+
+  const loginInput = { kind: "new", parts: ["One fixes the login page so it stops hanging."] }
+  const login = await lead.again(loginInput)
+  const notes = await lead.again({ kind: "new", parts: ["The other writes the release notes."] })
+  expect([login.outcome, notes.outcome]).toEqual(["ok", "ok"])
+  expect(textOf(login)).toContain("with these parts of the person's messages.\nThe parts, by their first line:\n- One fixes the login page so it stops hanging.")
+  const targetOf = ({ details }: { readonly details?: unknown }): string => {
+    if (typeof details !== "object" || details === null || !("targetSessionId" in details) || typeof details.targetSessionId !== "string") throw new Error("expected the route's target")
+    return details.targetSessionId
+  }
+  const loginChat = targetOf(login)
+  const notesChat = targetOf(notes)
+  expect((await chatIds()).filter((id) => !before.includes(id)).toSorted()).toEqual([loginChat, notesChat].toSorted())
+  expect(loginChat).not.toBe(notesChat)
+  await settled()
+  // Each chat receives only the person's own words of its part, with the line break that the person wrote.
+  expect((await userEntries(loginChat)).map((entry) => [entry.message.kind === "user" ? entry.message.content : undefined, entry.message.kind === "user" ? entry.message.origin : undefined])).toEqual([["One fixes the login page\nso it stops hanging.", "human"]])
+  expect((await userEntries(notesChat)).map((entry) => entry.message.kind === "user" ? entry.message.content : undefined)).toEqual(["The other writes the release notes."])
+  // No fact holds the message's text.
+  expect(JSON.stringify(leadFacts())).not.toContain("login")
+
+  const factsBefore = leadFacts().length
+  const repeated = await lead.again(loginInput)
+  expect(textOf(repeated)).toContain(`These parts already started chat ${loginChat}`)
+  expect(leadFacts()).toHaveLength(factsBefore)
+  expect((await chatIds()).filter((id) => !before.includes(id))).toHaveLength(2)
+  // The route row shows the first line of each part.
+  expect(routeRequestDisplay.invocationBody?.({ kind: "new", parts: ["One fixes the login page\nso it stops hanging.", "The other"], note: "See chat abc." })?.content).toBe("- One fixes the login page\n- The other\n\nSee chat abc.")
 })
 
 test("after a routing pick through ask_user, an existing route forwards the person's message and no text of the answer", async () => {

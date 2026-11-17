@@ -86,16 +86,16 @@ describe("personEntrySelection", () => {
 
   test("answers the person's entries of the newest turn, oldest first, and leaves out a system-origin entry", () => {
     expect(select(branch, 0)).toEqual([
-      { entryId: "B", firstLine: "second", turnsBack: 0 },
-      { entryId: "C", firstLine: "third", turnsBack: 0 },
+      { entryId: "B", text: "second\nmore", turnsBack: 0 },
+      { entryId: "C", text: "third", turnsBack: 0 },
     ])
   })
 
   test("adds the person's entries of earlier turns", () => {
     expect(select(branch, 1)).toEqual([
-      { entryId: "A", firstLine: "first", turnsBack: 1 },
-      { entryId: "B", firstLine: "second", turnsBack: 0 },
-      { entryId: "C", firstLine: "third", turnsBack: 0 },
+      { entryId: "A", text: "first", turnsBack: 1 },
+      { entryId: "B", text: "second\nmore", turnsBack: 0 },
+      { entryId: "C", text: "third", turnsBack: 0 },
     ])
   })
 
@@ -106,14 +106,14 @@ describe("personEntrySelection", () => {
   test("a newest turn that a notice started holds no entry of the person and still counts as the newest", () => {
     const fromNotice = [person("A", "first"), answer("r1"), system("n"), toolCall("t")]
     expect(select(fromNotice, 0)).toEqual([])
-    expect(select(fromNotice, 1)).toEqual([{ entryId: "A", firstLine: "first", turnsBack: 1 }])
+    expect(select(fromNotice, 1)).toEqual([{ entryId: "A", text: "first", turnsBack: 1 }])
   })
 
   test("an earlier turn with no entry of the person is not counted", () => {
     const entries = [person("A", "first"), answer("r1"), system("n"), answer("r2"), person("B", "second")]
     expect(select(entries, 1)).toEqual([
-      { entryId: "A", firstLine: "first", turnsBack: 1 },
-      { entryId: "B", firstLine: "second", turnsBack: 0 },
+      { entryId: "A", text: "first", turnsBack: 1 },
+      { entryId: "B", text: "second", turnsBack: 0 },
     ])
   })
 

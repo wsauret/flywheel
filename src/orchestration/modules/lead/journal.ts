@@ -26,10 +26,17 @@ interface LeadJournalState {
   readonly readMarks: ReadonlyMap<string, string>
   /** Each chat's newest failed or cut state that the person saw, at its entry. */
   readonly seenMarks: ReadonlyMap<string, { readonly state: LeadSeenState; readonly entryId: string }>
-  /** The chat that a list of the person's entries started, in the order that its fact names them. */
-  startedBy(sourceEntryIds: readonly string[]): string | undefined
-  /** Whether the journal holds a forward of these entries, in this order, to this chat. */
-  forwarded(targetSessionId: string, sourceEntryIds: readonly string[]): boolean
+  /** The chat that a forward started. */
+  startedBy(forward: LeadForward): string | undefined
+  /** Whether the journal holds this forward to this chat. */
+  forwarded(targetSessionId: string, forward: LeadForward): boolean
+}
+
+/** One forward of the person's words: the person's entries, in order, and for a split request the hash of its
+ *  passages. */
+export interface LeadForward {
+  readonly sourceEntryIds: readonly string[]
+  readonly passagesHash?: string
 }
 
 /** One lead fact as a caller states it: its type and its payload. */
@@ -51,9 +58,9 @@ interface LeadJournalDeps {
   readonly now?: () => number
 }
 
-// Entry ids hold no line break, so the joined ids name one list.
-const idsKey = (ids: readonly string[]): string => ids.join("\n")
-const forwardKey = (targetSessionId: string, ids: readonly string[]): string => `${targetSessionId}\n${idsKey(ids)}`
+// Entry ids and hashes hold no line break or tab, so the joined parts name one forward.
+const sourceKey = ({ sourceEntryIds, passagesHash }: LeadForward): string => `${sourceEntryIds.join("\n")}\t${passagesHash ?? ""}`
+const forwardKey = (targetSessionId: string, forward: LeadForward): string => `${targetSessionId}\n${sourceKey(forward)}`
 
 /** The one mutable state of a journal, with its fold and its rule for a fact that it already holds. */
 function createLeadState() {
@@ -81,8 +88,8 @@ function createLeadState() {
     closed,
     readMarks,
     seenMarks,
-    startedBy: (sourceEntryIds) => startedBySource.get(idsKey(sourceEntryIds)),
-    forwarded: (targetSessionId, sourceEntryIds) => forwards.has(forwardKey(targetSessionId, sourceEntryIds)),
+    startedBy: (forward) => startedBySource.get(sourceKey(forward)),
+    forwarded: (targetSessionId, forward) => forwards.has(forwardKey(targetSessionId, forward)),
   }
 
   function apply(fact: LeadFact, seq: number): void {
@@ -97,10 +104,10 @@ function createLeadState() {
         return
       case "lead.chat.started":
         started.set(fact.payload.sessionId, fact.payload.sourceEntryIds)
-        startedBySource.set(idsKey(fact.payload.sourceEntryIds), fact.payload.sessionId)
+        startedBySource.set(sourceKey(fact.payload), fact.payload.sessionId)
         return
       case "lead.request.forwarded":
-        forwards.add(forwardKey(fact.payload.targetSessionId, fact.payload.sourceEntryIds))
+        forwards.add(forwardKey(fact.payload.targetSessionId, fact.payload))
         return
       case "lead.result.read":
         readMarks.set(fact.payload.sessionId, fact.payload.entryId)
@@ -133,7 +140,7 @@ function createLeadState() {
       case "lead.chat.started":
         return started.has(fact.payload.sessionId)
       case "lead.request.forwarded":
-        return state.forwarded(fact.payload.targetSessionId, fact.payload.sourceEntryIds)
+        return state.forwarded(fact.payload.targetSessionId, fact.payload)
       case "lead.result.read":
         return readMarks.get(fact.payload.sessionId) === fact.payload.entryId
       case "lead.chat.seen": {

@@ -1,4 +1,4 @@
-import { singleLine, strField } from "../detail-helpers.js";
+import { singleLine, strField, type ToolInput } from "../detail-helpers.js";
 import type { ToolDisplay } from "../types.js";
 
 /** The name of a route row that started a new chat. */
@@ -6,10 +6,19 @@ export const ROUTE_TO_NEW_CHAT = "Route to new chat";
 /** The name of a route row that sent the request to a chat that exists. */
 export const ROUTE_TO_CHAT = "Route to";
 
+/** The first line of each passage of a split request, as the route's input names them. */
+function partLines(input: ToolInput): string[] {
+  const parts = input["parts"];
+  if (!Array.isArray(parts)) return [];
+  return parts.flatMap((part) => typeof part === "string" ? [`- ${part.trim().split("\n", 1)[0] ?? ""}`] : []);
+}
+
 /** A route of the person's request by the lead. The row names the chat that
  *  it routed to by that chat's title now: a route to a chat in the list names
  *  the chat of its input, and a new chat is the one that the call's result
- *  states in `details.targetSessionId`, because the call holds no id for it. */
+ *  states in `details.targetSessionId`, because the call holds no id for it.
+ *  Its disclosure shows the first line of each passage of a split request,
+ *  then the lead's note. */
 export const routeRequestDisplay: ToolDisplay = {
   name: "route_request",
   action: "ui_meta",
@@ -20,8 +29,8 @@ export const routeRequestDisplay: ToolDisplay = {
   targetSession: (input) => strField(input, "chat") || undefined,
   targetTitleOnly: true,
   invocationBody: (input) => {
-    const note = strField(input, "note");
-    return note ? { content: note, filetype: "text", presentation: "disclosure" } : undefined;
+    const content = [partLines(input).join("\n"), strField(input, "note") ?? ""].filter(Boolean).join("\n\n");
+    return content ? { content, filetype: "text", presentation: "disclosure" } : undefined;
   },
   getPresentation: (input, _executionCwd, context) => {
     const kind = strField(input, "kind");

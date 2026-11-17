@@ -1,7 +1,7 @@
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { ChatInput } from "../../infra/chat-input.js"
 import { readConversationTail } from "../session/chat-session-run-evidence.js"
-import { isPersonEntry, personEntryInput, personEntrySelection, type PersonEntry, type PersonEntryRef } from "../session/conversation/person-entries.js"
+import { isPersonEntry, locatePassages, passagesHash, personEntryInput, personEntrySelection, type PersonEntry, type PersonEntryRef } from "../session/conversation/person-entries.js"
 import type { SendChatOutcome } from "./runtime-supervisor-types.js"
 
 type ForwardOutcome = { readonly ok: true } | { readonly ok: false; readonly reason: string }
@@ -18,10 +18,19 @@ export interface PersonEntryForward {
    *  stored content of its source. A copy is recorded under the entry id
    *  `person:forward:<source entry id>`, so a repeated forward of one entry
    *  to one chat commits nothing again (ARCH-SESSIONS-030, ARCH-SESSIONS-051).
+   *
+   *  With `passages`, it commits one message of the person instead: the
+   *  person's own text of each passage (`locatePassages`), in the order given
+   *  and separated by a blank line, with the attachments of every named
+   *  entry. It is recorded under `person:forward:<entry ids>:<passages hash>`,
+   *  so a repeat commits nothing again and another split of the same entries
+   *  commits its own message.
+   *
    *  Refuses, before it commits anything, a source or target that is not an
-   *  existing chat, an unreadable source, and an id that is not a person
-   *  entry of the source. */
-  forwardPersonEntries(input: { readonly sourceSessionId: string; readonly entryIds: readonly string[]; readonly targetSessionId: string }): Promise<ForwardOutcome>
+   *  existing chat, an unreadable source, an id that is not a person entry of
+   *  the source, and a passage that is empty or that the entries do not hold
+   *  word for word. */
+  forwardPersonEntries(input: { readonly sourceSessionId: string; readonly entryIds: readonly string[]; readonly targetSessionId: string; readonly passages?: readonly string[] }): Promise<ForwardOutcome>
 }
 
 export function createPersonEntryForward(deps: {
@@ -38,7 +47,7 @@ export function createPersonEntryForward(deps: {
     return selection.refs()
   }
 
-  async function forwardPersonEntries({ sourceSessionId, entryIds, targetSessionId }: Parameters<PersonEntryForward["forwardPersonEntries"]>[0]): Promise<ForwardOutcome> {
+  async function forwardPersonEntries({ sourceSessionId, entryIds, targetSessionId, passages }: Parameters<PersonEntryForward["forwardPersonEntries"]>[0]): Promise<ForwardOutcome> {
     const sourceConversation = await deps.conversationOf(sourceSessionId)
     if (sourceConversation === undefined) return { ok: false, reason: `Chat ${sourceSessionId} does not exist` }
     if (await deps.conversationOf(targetSessionId) === undefined) return { ok: false, reason: `Chat ${targetSessionId} does not exist` }
@@ -56,6 +65,18 @@ export function createPersonEntryForward(deps: {
     if (tail === undefined) return { ok: false, reason: `The conversation of chat ${sourceSessionId} cannot be read` }
     const missing = other ?? entryIds.find((id) => !found.has(id))
     if (missing !== undefined) return { ok: false, reason: `Entry ${missing} is not a message of the person in chat ${sourceSessionId}` }
+    if (passages !== undefined) {
+      const inputs = entryIds.flatMap((id) => { const entry = found.get(id); return entry ? [personEntryInput(entry)] : [] })
+      const located = locatePassages(inputs.map((input) => input.text), passages)
+      if (!located.ok) return located
+      const attachments = inputs.flatMap((input) => input.attachments ?? [])
+      const sent = await deps.sendChat(targetSessionId, {
+        text: located.passages.join("\n\n"),
+        ...(attachments.length > 0 ? { attachments } : {}),
+        submissionIds: [`forward:${entryIds.join(",")}:${passagesHash(passages)}`],
+      })
+      return sent.ok ? { ok: true } : sent
+    }
     for (const id of entryIds) {
       const entry = found.get(id)
       if (entry === undefined) continue

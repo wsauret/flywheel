@@ -222,7 +222,7 @@ Not: A launch binding or a new session kind for a chat that the lead started.
 
 ## ARCH-SESSIONS-051: A forward copies the person's entries
 
-The runtime routes a request by copying the person's own conversation entries from the lead to the target chat with human provenance. The model names the target and never supplies request text. The lead module records each forward in its own fact. A person's message that the lead forwards is that person's message.
+The runtime routes a request by copying the person's own conversation entries from the lead to the target chat with human provenance. The model names the target and never supplies request text. To split one message, the model can name passages of the person's entries; the runtime accepts only passages that the entries hold word for word, and copies them with the same provenance. The lead module records each forward in its own fact. A person's message that the lead forwards is that person's message.
 Not: A brief that the lead writes, or a session-provenance message that carries the request.
 
 ## ARCH-SESSIONS-052: Chat events reach the lead as notices
