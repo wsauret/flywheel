@@ -133,17 +133,17 @@ export function createShellNavigation(deps: ShellNavigationDeps) {
   const { signals, services } = useShellState()
   const overlay = useOverlay()
   const { places, composer } = deps
-  const { modelModal, backgroundModal, sessionModal, themeModal } = deps.overlays.modals
+  const { openActiveModelPicker, openBackgroundModal, openSessionsModal, openThemeModal } = deps.overlays.modals
   const viewer: Parameters<typeof createChildViewerOpener>[0]["viewer"] = (sessionId) => ({
     createSurface: services.createSessionSurface,
     appService: deps.appService, submissions: { send: composer.submissions.sendWithReceipt, recallQueued: composer.submissions.recallQueued },
     modelLabel: () => sessionServingLabel(signals.roleView(sessionId)),
     onOpenModel: (agentName) => {
       const slot = signals.roleView(sessionId)?.serving?.slot
-      if (slot !== undefined) void modelModal.openActiveModelPicker({ sessionId, slot, label: agentName })
+      if (slot !== undefined) void openActiveModelPicker({ sessionId, slot, label: agentName })
     },
     transcriptInView: deps.overlays.transcriptInView,
-    onOpenBackground: (target) => backgroundModal.openBackgroundModal(target),
+    onOpenBackground: (target) => openBackgroundModal(target),
     followBackground: signals.backgroundIndex.follow,
     compactionThreshold: () => signals.display.compactionThreshold,
     roleView: signals.roleView,
@@ -204,7 +204,7 @@ export function createShellNavigation(deps: ShellNavigationDeps) {
     draftCache: composer.draftCache, outbox: composer.submissions, composer: composer.handle, transcripts: services.transcripts, layout: deps.transcriptLayout, overlay, activateSessionById,
     restoreModule: modules.restore,
     resolveSessionRoute: (id) => readSessionRoute(deps.appService, signals.sessionRow, id),
-    reopen: { sessions: sessionModal.openSessionsModal, theme: themeModal.openThemeModal },
+    reopen: { sessions: openSessionsModal, theme: openThemeModal },
     startChat: async () => (await places.startChat()).kind !== "failed",
     lanes: deps.appService,
   })

@@ -12,7 +12,6 @@ import {
   type BackgroundIndexFilter,
   type BackgroundIndexState,
 } from "../../protocol/client/background-index.js"
-import type { ActiveBackgroundCommandView } from "../../protocol/status-protocol-types.js"
 import { sessionServingSelection } from "../../protocol/role-protocol-types.js"
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import { flattenWithCategories } from "../components/modal-select-helpers.js"
@@ -57,22 +56,6 @@ export interface BackgroundModalHook {
   landBackgroundRow: (rowIndex: number) => void
   stopBackgroundRow: (rowIndex: number) => void
   setBackgroundFilter: (filter: BackgroundIndexFilter) => void
-}
-
-/** Never throws: the inline transcript stop affordance fire-and-forgets
- *  this. Stop is idempotent (a settled task is a no-op), so the only failure
- *  mode is a transport error; the stop affordance disappearing is the
- *  success feedback. */
-export async function terminateBackgroundCommand(
-  deps: Pick<BackgroundModalDeps, "appService" | "showToast">,
-  sessionId: string,
-  command: Pick<ActiveBackgroundCommandView, "toolUseId">,
-): Promise<void> {
-  try {
-    await deps.appService.dispatch({ type: "background.terminate", sessionId, toolUseId: command.toolUseId })
-  } catch (err) {
-    deps.showToast({ message: errorMessage(err), variant: "error" })
-  }
 }
 
 function isRunningCommand(row: BackgroundWorkRow): boolean {

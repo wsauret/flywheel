@@ -255,7 +255,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
         authScope: () => ({ kind: "session", sessionId: "session-1" }),
         agentState: () => "idle",
         showRefreshFailure: () => {},
-        openPaidUseQuestion: (...args) => fixture.modal.openPaidUseQuestion(...args),
+        openPaidUseQuestion: async (...args) => fixture.modal.openPaidUseQuestion(...args),
       }, false)
       expect(fixture.modal.authView()).toMatchObject({ kind: "paid-use-question", account: { identity: "Exact" }, returnTo: "close" })
 

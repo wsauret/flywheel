@@ -1,8 +1,9 @@
 import type { JSX } from "solid-js"
 import type { ModalContext, ModalHandle, ModalReplaceOptions } from "../components/modal-stack.js"
 
-/** The settings root the tree children sit on. Bound late because the
- *  settings hook is constructed after the children it links to. */
+/** The settings root the tree children sit on. Bound when the settings
+ *  controller is created, which each child's loader does before it creates
+ *  the child, so the root is bound before any child opens. */
 interface SettingsRoot {
   open: () => void
   isOpen: () => boolean

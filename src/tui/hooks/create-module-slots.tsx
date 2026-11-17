@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createComponent, createEffect, createMemo, createRoot, getOwner, createSignal, ErrorBoundary, on, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
+import { createComponent, createEffect, createMemo, createSignal, ErrorBoundary, on, onCleanup, untrack, type Accessor, type JSX } from "solid-js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
@@ -14,6 +14,7 @@ import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
 import type { ToastInput } from "../context/toast.js"
 import type { TuiComponentSurface, TuiControllerHost, TuiModule, TuiNavigation, TuiSurface, TuiSurfaceHost } from "../tui-module.js"
 import { createDomainReader, type ModuleDomainIntakes } from "./create-module-domain-intakes.js"
+import { createLazyController } from "./lazy-controller.js"
 import type { SurfaceRequest } from "../commands/command-surfaces.js"
 
 const log = Log.create({ service: "module-slots" })
@@ -104,43 +105,35 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   }
 
   function controlledSurfaceOpener(module: TuiModule, surface: Extract<TuiSurface, { readonly loadController: unknown }>): (request?: SurfaceRequest) => boolean | Promise<boolean> {
-    const owner = getOwner()
-    let alive = true
-    let generation = 0
-    let dispose: (() => void) | undefined
-    let open: ((argument?: string) => void | Promise<boolean>) | undefined
-    let pending: Promise<void> | undefined
+    const controller = createLazyController(() => surface.loadController(), (create) => create({ enabled: () => enabled(module), modal: deps.modal, client: deps.client, foregroundId: deps.foregroundId, auth: deps.auth ?? (() => undefined), read: foreground, projectRoot: deps.projectRoot ?? (() => ""), showToast: deps.showToast, navigate: deps.navigate, clipboard: deps.clipboard, appVersion: deps.appVersion ?? "" }))
     // The latest opening that waits for the controller. A later one replaces
     // it, and the replaced one settles as accepted: the person moved on.
     let pendingPresentation: { readonly request: SurfaceRequest; readonly settle: (accepted: boolean) => void } | undefined
-    const clear = (): void => { generation += 1; dispose?.(); dispose = undefined; open = undefined; pending = undefined; pendingPresentation?.settle(false); pendingPresentation = undefined }
-    createEffect(on(() => enabled(module), (active) => { if (!active) clear() }))
-    onCleanup(() => { alive = false; clear() })
+    const settlePending = (accepted: boolean): void => { pendingPresentation?.settle(accepted); pendingPresentation = undefined }
+    createEffect(on(() => enabled(module), (active) => { if (!active) { controller.clear(); settlePending(false) } }))
+    onCleanup(() => settlePending(false))
     const present = async (opener: (argument?: string) => void | Promise<boolean>, request: SurfaceRequest): Promise<boolean> =>
       !request.isCurrent || request.isCurrent() ? (await opener(request.argument)) !== false : true
     return (presentation = {}) => {
       if (!enabled(module)) return false
+      const open = controller.current()
       if (open) return present(open, presentation)
       const accepted = Promise.withResolvers<boolean>()
+      // Only the first waiting opening follows the load; a later one takes its place.
+      const following = pendingPresentation !== undefined
       pendingPresentation?.settle(true)
       pendingPresentation = { request: presentation, settle: accepted.resolve }
-      if (pending) return accepted.promise
-      const request = generation
-      pending = surface.loadController().then(async (create) => {
-        if (!alive || request !== generation || !enabled(module)) return
-        const opened = createRoot((release) => {
-          dispose = release
-          return create({ enabled: () => enabled(module), modal: deps.modal, client: deps.client, foregroundId: deps.foregroundId, auth: deps.auth ?? (() => undefined), read: foreground, projectRoot: deps.projectRoot ?? (() => ""), showToast: deps.showToast, navigate: deps.navigate, clipboard: deps.clipboard, appVersion: deps.appVersion ?? "" })
-        }, owner)
-        open = opened
-        const current = pendingPresentation
-        pendingPresentation = undefined
-        if (current) current.settle(await present(opened, current.request))
-      }).catch((error: unknown) => {
-        contain(module, surface.id, error)
-        pendingPresentation?.settle(false)
-        pendingPresentation = undefined
-      }).finally(() => { if (request === generation) pending = undefined })
+      if (!following) {
+        void controller.load().then(async (opened) => {
+          const current = pendingPresentation
+          if (opened === undefined || current === undefined) return
+          pendingPresentation = undefined
+          current.settle(await present(opened, current.request))
+        }).catch((error: unknown) => {
+          contain(module, surface.id, error)
+          settlePending(false)
+        })
+      }
       return accepted.promise
     }
   }

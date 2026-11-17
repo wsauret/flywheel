@@ -14,3 +14,20 @@ export const LazySessionChangesModal = createLazyTuiView(KERNEL_COMMAND_NAMES.ch
 export const LazySettingsModal = createLazyTuiView(KERNEL_COMMAND_NAMES.settings, async () => (await import("./settings-modal.js")).SettingsModal)
 export const LazyStatusModal = createLazyTuiView(KERNEL_COMMAND_NAMES.status, async () => (await import("./status-modal.js")).StatusModal)
 export const LazyThemeModal = createLazyTuiView(settingCatalogRow("theme").label, async () => (await import("./theme-modal.js")).ThemeModal)
+
+/** The kernel modal controller modules, each imported on its modal's first
+ *  open, so startup evaluates none of them. */
+export const kernelModalControllers = {
+  auth: () => import("../hooks/use-auth-modal.js"),
+  background: () => import("../hooks/use-background-modal.js"),
+  changes: () => import("../hooks/use-session-changes-modal.js"),
+  commands: () => import("../hooks/use-command-palette.js"),
+  find: () => import("../hooks/use-find-modal.js"),
+  help: () => import("../hooks/use-help-modal.js"),
+  model: () => import("../hooks/use-model-modal.js"),
+  profile: () => import("../hooks/use-profile-modal.js"),
+  sessions: () => import("../hooks/use-session-modal.js"),
+  settings: () => import("../hooks/use-settings-modal.js"),
+  status: () => import("../hooks/use-status-modal.js"),
+  theme: () => import("../hooks/use-theme-modal.js"),
+}

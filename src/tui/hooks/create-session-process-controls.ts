@@ -1,8 +1,8 @@
+import { errorMessage } from "../../infra/error-message.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import { toolProcess } from "../../protocol/client/transcript-model.js"
 import type { RowProcessControls } from "../output-blocks/stop-affordance.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
-import { terminateBackgroundCommand } from "./use-background-modal.js"
 
 interface SessionProcessControlDeps {
   readonly appService: Pick<RuntimeClient, "dispatch">
@@ -24,7 +24,7 @@ export function createSessionProcessControls(deps: SessionProcessControlDeps): (
       },
       onStop: (toolUseId) => {
         if (!toolProcess(status(), toolUseId).managed) return
-        void terminateBackgroundCommand(deps, sessionId, { toolUseId })
+        void terminateBackgroundCommand(deps, sessionId, toolUseId)
       },
       // A child's Stop ends the parent's tool call it answers: the parent is
       // this transcript's session, and the call is the card's.
@@ -34,5 +34,17 @@ export function createSessionProcessControls(deps: SessionProcessControlDeps): (
         })
       },
     }
+  }
+}
+
+/** Never throws: the inline transcript stop affordance fire-and-forgets
+ *  this. Stop is idempotent (a settled task is a no-op), so the only failure
+ *  mode is a transport error; the stop affordance disappearing is the
+ *  success feedback. */
+async function terminateBackgroundCommand(deps: SessionProcessControlDeps, sessionId: string, toolUseId: string): Promise<void> {
+  try {
+    await deps.appService.dispatch({ type: "background.terminate", sessionId, toolUseId })
+  } catch (err) {
+    deps.showToast({ message: errorMessage(err), variant: "error" })
   }
 }

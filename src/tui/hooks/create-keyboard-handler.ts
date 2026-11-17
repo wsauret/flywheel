@@ -10,7 +10,6 @@ import { createAsyncReporter } from "./report-async.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionControlsHook } from "./use-session-controls.js"
-import type { SessionModalHook } from "./use-session-modal-types.js"
 
 type KeyboardEventLike = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }
 
@@ -47,7 +46,7 @@ interface KeyboardHandlerDeps {
   tabs: Accessor<readonly TabInfo[]>
   startNewChat: () => Promise<void>
   chat: Pick<ChatModeHook, "interruptChat">
-  sessionModal: Pick<SessionModalHook, "openSessionsModal">
+  openSessionsModal: () => void
   sessionControls: Pick<SessionControlsHook, "offered" | "resume">
   overlay: OverlayLayers
   questionInput: QuestionInputContext
@@ -69,7 +68,7 @@ interface PromptBarActions {
 }
 
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
-  const { signals, chat, sessionModal, overlay } = deps
+  const { signals, chat, overlay } = deps
 
   const reportAsync = createAsyncReporter(deps.showToast)
 
@@ -103,7 +102,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     newChat: () => reportAsync(deps.startNewChat),
     closeTab: closeForegroundTab,
     nextTab: () => cycleSession(1),
-    sessions: sessionModal.openSessionsModal,
+    sessions: deps.openSessionsModal,
   }
 
   function handleEscape(): void {

@@ -4,7 +4,7 @@ import type { TextEditorPresentation } from "../../../../src/tui/keymap/text-ent
 import { LazySessionModal } from "../../../../src/tui/modals/lazy-modal-registry.js"
 
 describe("modal source coherence", () => {
-  it("keeps kernel modals in the lazy registry and Remote behind its module controller loader", async () => {
+  it("keeps kernel modal views and controllers in the lazy registry and Remote behind its module controller loader", async () => {
     const composition = await Bun.file(fileURLToPath(new URL("../../../../src/tui/hooks/create-modals.tsx", import.meta.url))).text()
     const registry = await Bun.file(fileURLToPath(new URL("../../../../src/tui/modals/lazy-modal-registry.ts", import.meta.url))).text()
     const remoteModule = await Bun.file(fileURLToPath(new URL("../../../../src/tui/modules/remote/index.ts", import.meta.url))).text()
@@ -13,7 +13,8 @@ describe("modal source coherence", () => {
     expect(composition).toContain("lazy-modal-registry.js")
     expect(composition).not.toMatch(/import\(["']/)
     expect(registry.match(/createLazyTuiView\(/g)).toHaveLength(12)
-    expect(registry.match(/import\(["']/g)).toHaveLength(12)
+    expect(registry.match(/import\(["'](?:\.\/|\.\.\/components\/)/g)).toHaveLength(12)
+    expect(registry.match(/import\(["']\.\.\/hooks\/use-/g)).toHaveLength(12)
     expect(registry).not.toContain("orchestration")
     expect(registry).not.toContain("remote")
     expect(remoteModule).toContain('loadController: async () => (await import("./surface.js")).createRemoteSurface')

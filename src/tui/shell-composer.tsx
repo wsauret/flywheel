@@ -129,7 +129,7 @@ export function createShellCommands(deps: ShellCommandsDeps) {
       exit: exitTUI,
       restart: () => restartAttached(deps.attach),
       startClearedChat: places.startClearedChat,
-      openThemeModal: modals.themeModal.openThemeModal,
+      openThemeModal: modals.openThemeModal,
       openSurface: overlays.openSurface,
       captureSurfaceOpener: overlays.captureSurfaceOpener,
       focusSession: places.focusSession,
@@ -160,12 +160,12 @@ export function createShellCommands(deps: ShellCommandsDeps) {
     tabs: places.tabs,
     startNewChat: places.startNewChat,
     chat: composer.chat,
-    sessionModal: modals.sessionModal,
+    openSessionsModal: modals.openSessionsModal,
     sessionControls: composer.sessionControls,
     overlay,
     questionInput,
     promptPopup: composer.popupKeySlot,
-    openCommandPalette: modals.commandPalette.openCommandPalette,
+    openCommandPalette: modals.openCommandPalette,
     switchForeground: places.switchForeground,
     dispatchOutputCommand: deps.dispatchOutputCommand,
     closeTab: places.closeTab,
@@ -236,7 +236,7 @@ export function ShellComposer(props: {
         spinnerSource={signals.spinnerStatusSource}
         promptBorderLayout={promptBorderLayout}
         onDismissUpdate={dismissUpdateStatus}
-        onOpenChanges={modals.sessionChangesModal.openSessionChangesModal}
+        onOpenChanges={modals.openSessionChangesModal}
         history={composer.promptHistory}
         commandFrequency={composer.commandUses}
         clipboard={props.clipboard}
@@ -255,13 +255,13 @@ export function ShellComposer(props: {
         onAnswerQuestion={(toolUseId, answers) => composer.chat.answerQuestion(toolUseId, answers)}
         onCancelQuestion={(toolUseId) => composer.chat.cancelQuestion(toolUseId)}
         draftCache={composer.draftCache}
-        onOpenSessions={modals.sessionModal.openSessionsModal}
+        onOpenSessions={modals.openSessionsModal}
         onModuleAction={overlays.activateModuleRow}
-        onOpenModel={() => { void modals.modelModal.openActiveModelPicker() }}
+        onOpenModel={() => { void modals.openActiveModelPicker() }}
         onNew={commands.promptBarActions.newChat}
         onClose={commands.promptBarActions.closeTab}
         onNextTab={commands.promptBarActions.nextTab}
-        onOpenBackground={modals.backgroundModal.openBackgroundModal}
+        onOpenBackground={modals.openBackgroundModal}
         onResume={composer.sessionControls.resume}
         captureFocus={props.captureFocus}
       />

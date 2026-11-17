@@ -17,10 +17,9 @@ function tab(id: string, isForeground: boolean, kind: TabInfo["kind"] = "session
   return { kind, id, title: id, isForeground, isBusy: false, isBlocked: false }
 }
 
-type KeyboardDepsOverrides = Omit<Partial<KeyboardDeps>, "signals" | "chat" | "sessionModal" | "sessionControls"> & {
+type KeyboardDepsOverrides = Omit<Partial<KeyboardDeps>, "signals" | "chat" | "sessionControls"> & {
   signals?: Partial<KeyboardDeps["signals"]>
   chat?: Partial<KeyboardDeps["chat"]>
-  sessionModal?: Partial<KeyboardDeps["sessionModal"]>
   sessionControls?: Partial<KeyboardDeps["sessionControls"]>
 }
 
@@ -32,9 +31,6 @@ function createDeps(overrides: KeyboardDepsOverrides = {}): KeyboardDeps {
   }
   const chat: KeyboardDeps["chat"] = {
     interruptChat: mock(() => {}),
-  }
-  const sessionModal: KeyboardDeps["sessionModal"] = {
-    openSessionsModal: mock(() => {}),
   }
   const sessionControls: KeyboardDeps["sessionControls"] = {
     offered: () => ({ primary: null, stop: false }),
@@ -49,7 +45,7 @@ function createDeps(overrides: KeyboardDepsOverrides = {}): KeyboardDeps {
     tabs: overrides.tabs ?? (() => []),
     startNewChat: overrides.startNewChat ?? mock(async () => {}),
     chat: { ...chat, ...overrides.chat },
-    sessionModal: { ...sessionModal, ...overrides.sessionModal },
+    openSessionsModal: overrides.openSessionsModal ?? mock(() => {}),
     sessionControls: { ...sessionControls, ...overrides.sessionControls },
     overlay: overrides.overlay ?? createOverlayLayers(),
     questionInput: overrides.questionInput ?? createQuestionInputRegistry(),
@@ -177,9 +173,7 @@ describe("createKeyboardHandler", () => {
     const openSessionsModal = mock(() => {})
     const preventDefault = mock(() => {})
     const deps = createDeps({
-      sessionModal: {
-        openSessionsModal,
-      },
+      openSessionsModal,
     })
 
     createKeyboardHandler(deps).handleKey({ name: "s", ctrl: true, preventDefault })
@@ -277,7 +271,7 @@ describe("createKeyboardHandler", () => {
       closeTab,
       switchForeground,
       tabs,
-      sessionModal: { openSessionsModal },
+      openSessionsModal,
     }))
 
     promptBarActions.newChat()
@@ -388,9 +382,7 @@ describe("createKeyboardHandler", () => {
         interruptChat,
       },
       startNewChat,
-      sessionModal: {
-        openSessionsModal,
-      },
+      openSessionsModal,
       switchForeground,
       questionInput,
     })

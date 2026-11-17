@@ -1,6 +1,7 @@
 import { createEffect } from "solid-js"
 import { useModal, useOverlay } from "@tui/components/modal"
 import { presentKeymapIssues } from "@tui/context/keymap"
+import { useTheme } from "@tui/context/theme"
 import { useToast } from "@tui/context/toast"
 import { signInPage, type TerminalAttach } from "./terminal-attach.js"
 import { createSurfaceOpener } from "../protocol/client/surface-presentation.js"
@@ -14,7 +15,7 @@ import { createToastPresenter } from "./utils/toast-presenter.js"
 import { TUI_MODULES } from "./modules.js"
 import { closeChatSurface } from "./commands/close-chat-surface.js"
 import { createSurfaceRouter, type KernelSurfaceTable, type OpenSurface } from "./commands/command-surfaces.js"
-import { settingsPlace, type SettingsDestination } from "./settings-destination.js"
+import type { SettingsDestination } from "./settings-destination.js"
 import { useAutomaticAuth } from "./hooks/automatic-dialogs.js"
 import { createAttachFilesCommand } from "./hooks/create-attach-files-command.js"
 import { createModalModals } from "./hooks/create-modals.js"
@@ -38,7 +39,7 @@ interface ShellOverlaysDeps {
   readonly launcher: LauncherScope
   readonly clipboard: Clipboard
   readonly settingsOperations: SettingsOperations
-  readonly composer: Pick<ShellComposerCore, "chat" | "sessionControls" | "attachSlot" | "commandCatalog">
+  readonly composer: Pick<ShellComposerCore, "sessionControls" | "attachSlot" | "commandCatalog">
   readonly places: ShellPlaces
   readonly navigateToProcess: (toolUseId: string) => void
   /** The calls below reach owners that the shell builds after the overlays. */
@@ -55,6 +56,7 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
   const modal = useModal()
   const overlay = useOverlay()
   const toast = useToast()
+  const theme = useTheme()
   const { places, composer } = deps
   // The modals list the module rows, a module surface opens Settings or
   // another module's surface, and a module row opens any surface, so the slot
@@ -80,7 +82,7 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
   }
   const modals = createModalModals({
     directories: deps.directories, launcher: deps.launcher, clipboard: deps.clipboard, modal, signals, services, appService: deps.appService,
-    tabs: places.tabs, activeSessionCount: places.activeSessionCount, appVersion: deps.appVersion, chat: composer.chat, startChat: places.startChat, switchForeground: places.switchForeground,
+    tabs: places.tabs, activeSessionCount: places.activeSessionCount, appVersion: deps.appVersion, currentThemeName: () => theme.themeName, startChat: places.startChat, switchForeground: places.switchForeground,
     activateSession: places.activateSession, activateSessionById: deps.openSession, closeSessionTab: places.closeSessionTab, closeChat: places.closeChat,
     settings: services.settings, runtimeConfig: deps.runtimeConfig, settingsOperations: deps.settingsOperations,
     signInPage: signInPage(deps.attach),
@@ -94,23 +96,15 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
     openTarget: deps.openTarget,
   })
   openSettings.bind(modals.openSettingsDestination)
-  const transcriptInView = createTranscriptInView(() => { void modals.modelModal.openActiveModelPicker() })
+  const transcriptInView = createTranscriptInView(() => { void modals.openActiveModelPicker() })
   // Where this terminal opens every surface a command names: the kernel's own
   // by this table, and every module surface by its terminal home.
   const kernelSurfaces: KernelSurfaceTable = {
-    "background": () => modals.backgroundModal.openBackgroundModal(),
-    "models": ({ target }) => target?.kind === "transcript-in-view" ? transcriptInView.openModel() : modals.openSettingsDestination({ kind: "models" }),
-    "settings": ({ target }) => modals.openSettingsDestination(target?.kind === "place" ? settingsPlace(target.place) : { kind: "root" }),
-    "auth-profiles": ({ argument }) => modals.profileModal.openProfileSwitcher(argument),
-    "status": () => modals.statusModal.openStatusModal(),
-    "keyboard-shortcuts": () => modals.helpModal.openHelpModal(),
-    "commands": () => modals.commandPalette.openCommandPalette(),
+    ...modals.surfaces,
+    "models": ({ target, isCurrent }) => target?.kind === "transcript-in-view" ? transcriptInView.openModel() : modals.openSettingsDestination({ kind: "models" }, isCurrent),
     "new-chat": () => places.startNewChat(),
-    "sessions": () => modals.sessionModal.openSessionsModal(),
-    "changes": () => modals.sessionChangesModal.openSessionChangesModal(),
     "resume": () => composer.sessionControls.resume(),
     "attach-files": createAttachFilesCommand({ launcher: deps.launcher, showToast: services.showToast, slot: composer.attachSlot }),
-    "find": ({ argument }) => modals.findModal.openFindModal(argument),
     "close-chat": closeChatSurface({ agentInView: transcriptInView.agentInView, chatInFront: () => signals.sessionInputMode()?.kind === "chat" ? signals.foregroundId() : undefined, closeChat: places.closeChat, showToast: services.showToast }),
   }
   const router = createSurfaceRouter({ kernel: kernelSurfaces, modules: slots.surfaces, report: createAsyncReporter(services.showToast),
@@ -122,9 +116,12 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
     surfaces: () => [modal.stack, overlay.viewer.stack],
     openSurface: (surface, isCurrent, opening) => router(surface, { ...opening, isCurrent }),
   })
-  useAutomaticAuth({ auth: signals.auth, overlayOpen: () => overlay.isOpen(), open: modals.authModal.openAuthModal })
-  usePaidUseQuestion({ signals, overlayOpen: () => overlay.isOpen(), review: modals.reviewCachedActiveProfile })
-  useLoginQuestion({ auth: signals.auth, overlayOpen: () => overlay.isOpen(), open: modals.authModal.openLoginQuestion })
+  // The automatic questions are the only eager triggers of the kernel modals;
+  // a modal whose controller still loads occupies the screen like an open one.
+  const occupied = (): boolean => overlay.isOpen() || modals.opening()
+  useAutomaticAuth({ auth: signals.auth, overlayOpen: occupied, open: () => { void modals.openAuthModal() } })
+  usePaidUseQuestion({ signals, overlayOpen: occupied, review: modals.reviewCachedActiveProfile })
+  useLoginQuestion({ auth: signals.auth, overlayOpen: occupied, open: modals.openLoginQuestion })
   const configToasts = createToastPresenter(services.showToast)
   createEffect(() => {
     const config = deps.runtimeConfig.view()
