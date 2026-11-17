@@ -6,7 +6,6 @@ import * as path from "node:path";
 import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js";
 import {
   BUILD_METADATA_FILE,
-  BuildIdentityError,
   assertInstallLocation,
   buildIdentityBeside,
   buildInstallDir,
@@ -22,6 +21,7 @@ afterAll(() => {
 });
 
 const BUILD_ID = "a".repeat(64);
+const UNUSABLE_METADATA = /^The build metadata is not usable: /;
 
 function metadata(overrides: { [key: string]: unknown } = {}): string {
   return JSON.stringify({ version: "1.2.3", buildId: BUILD_ID, ...overrides });
@@ -75,13 +75,13 @@ describe("build metadata", () => {
       { buildId: ".hidden" },
       { buildId: `${"a".repeat(63)}.` },
     ]) {
-      expect(() => decodeBuildMetadata(metadata(overrides))).toThrow(BuildIdentityError);
+      expect(() => decodeBuildMetadata(metadata(overrides))).toThrow(UNUSABLE_METADATA);
     }
   });
 
   test("text that is not build metadata is refused", () => {
-    expect(() => decodeBuildMetadata("not json")).toThrow(BuildIdentityError);
-    expect(() => decodeBuildMetadata(JSON.stringify({ version: "1.2.3" }))).toThrow(BuildIdentityError);
+    expect(() => decodeBuildMetadata("not json")).toThrow(UNUSABLE_METADATA);
+    expect(() => decodeBuildMetadata(JSON.stringify({ version: "1.2.3" }))).toThrow(UNUSABLE_METADATA);
   });
 });
 
@@ -101,8 +101,8 @@ describe("immutable install target", () => {
     const target = buildInstallDir("/account/.flywheel", identity);
 
     expect(() => assertInstallLocation(identity, target)).not.toThrow();
-    expect(() => assertInstallLocation(identity, path.join("/account/.flywheel", "versions", "1.2.4", BUILD_ID))).toThrow(BuildIdentityError);
-    expect(() => assertInstallLocation(identity, path.join("/account/.flywheel", "versions", "1.2.3", "b".repeat(64)))).toThrow(BuildIdentityError);
+    expect(() => assertInstallLocation(identity, path.join("/account/.flywheel", "versions", "1.2.4", BUILD_ID))).toThrow(UNUSABLE_METADATA);
+    expect(() => assertInstallLocation(identity, path.join("/account/.flywheel", "versions", "1.2.3", "b".repeat(64)))).toThrow(UNUSABLE_METADATA);
   });
 });
 
@@ -159,6 +159,6 @@ describe("build identity digest", () => {
     const root = tree(PAYLOAD);
     fs.symlinkSync("flywheel-bin", path.join(root, "flywheel"));
 
-    expect(() => computeBuildId(root, process.platform)).toThrow(BuildIdentityError);
+    expect(() => computeBuildId(root, process.platform)).toThrow(UNUSABLE_METADATA);
   });
 });

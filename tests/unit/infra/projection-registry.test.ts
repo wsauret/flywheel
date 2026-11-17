@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { createEventProjection } from "../../../src/infra/event-projection.js"
-import { heldProjection, pinHeldProjection, releaseHeldProjections } from "../../../src/infra/projection-registry.js"
+import { heldProjection, pinHeldProjection } from "../../../src/infra/projection-registry.js"
 import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
 
@@ -79,14 +79,6 @@ describe("projection registry", () => {
     const a = heldProjection(one.reader, "counting:s1", () => createEventProjection(one.reader, counting))
     const b = heldProjection(two.reader, "counting:s1", () => createEventProjection(two.reader, counting))
     expect(a).not.toBe(b)
-  })
-
-  test("releasing makes the next ask build fresh, which is a fresh reader's case", () => {
-    const { reader } = countingReader(facts(4))
-    const build = () => heldProjection(reader, "counting:s1", () => createEventProjection(reader, counting))
-    const first = build()
-    releaseHeldProjections(reader)
-    expect(build()).not.toBe(first)
   })
 
   test("eviction under pressure is safe: a dropped entry rebuilds correctly", async () => {

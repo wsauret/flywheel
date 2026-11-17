@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { createSignal } from "solid-js"
 import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry as ToolEntryType } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import { renderToolEntry } from "./_tool-entry-render.js"
 import { writeEntry } from "./_write-entry-fixture.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
@@ -12,7 +12,7 @@ function provisionalFileEntry(path?: string): ToolEntryType {
     kind: "tool",
     id: "streaming-write",
     name: "write",
-    presentation: resolveToolPresentation("write", { path: path ?? "" }, "/workspace"),
+    presentation: resolveToolRowPresentation("write", { path: path ?? "" }, "/workspace").presentation,
     status: "streaming",
     fileChangeKind: "create",
     proposedDiff: {

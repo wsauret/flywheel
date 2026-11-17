@@ -11,9 +11,7 @@ const parsers = new Map<TreeSitterLanguage, Parser>()
 const parserLoads = new Map<TreeSitterLanguage, Promise<Parser>>()
 let runtimeLoad: Promise<void> | null = null
 
-/** Returns the packaged grammar name. Parser loading resolves real files, so the
- * package-name invariant cannot be observed through the production wrapper. */
-export function treeSitterWasmFile(language: TreeSitterLanguage): string {
+function treeSitterWasmFile(language: TreeSitterLanguage): string {
   return `tree-sitter-${language}.wasm`
 }
 

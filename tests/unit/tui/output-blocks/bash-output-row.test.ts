@@ -3,7 +3,7 @@ import { TextAttributes, type CapturedFrame } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import type { ToolEntry, ToolStreamingText } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
@@ -14,7 +14,7 @@ const CWD = "/workspace"
 
 /** Presentation always comes from the resolver, so a row fixture cannot claim a
  *  presentation the projectors would not produce. */
-const bashPresentation = (command: string) => resolveToolPresentation("bash", { command }, CWD)
+const bashPresentation = (command: string) => resolveToolRowPresentation("bash", { command }, CWD).presentation
 
 interface StreamingToolTextById {
   readonly [toolUseId: string]: ToolStreamingText
@@ -177,7 +177,7 @@ describe("bash output rows", () => {
       kind: "tool",
       id: "memory-row",
       name: "memory",
-      presentation: resolveToolPresentation("memory", { action: "replace", title: "Refine Bun runtime fact" }, CWD),
+      presentation: resolveToolRowPresentation("memory", { action: "replace", title: "Refine Bun runtime fact" }, CWD).presentation,
       status: "completed",
       timestamp: Date.now(),
     }, { hideVerb: false });

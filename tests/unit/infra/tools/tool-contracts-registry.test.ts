@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { getToolDisplay, resolveToolPresentation, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
 import { normalizeSkillId } from "../../../../src/infra/skill-id.js";
 import { testBaseTools, testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
@@ -69,7 +69,6 @@ describe("workflow call sentences", () => {
   ])("%s builds a sentence separately from its transcript presentation", (tool, input, name, detail) => {
     const row = resolveToolRowPresentation(tool, input, "/project");
     expect(row.sentence).toEqual({ name, detail });
-    expect(row.presentation).toEqual(resolveToolPresentation(tool, input, "/project"));
   });
 });
 
@@ -102,7 +101,7 @@ describe("base tool getDetail", () => {
   });
 
   it("edit: file path", () => {
-    expect(resolveToolPresentation("edit", { path: "/home/user/project/src/app.ts" }, executionCwd)).toEqual({ name: "Edit", detail: "src/app.ts" });
+    expect(resolveToolRowPresentation("edit", { path: "/home/user/project/src/app.ts" }, executionCwd).presentation).toEqual({ name: "Edit", detail: "src/app.ts" });
   });
 
   it("edit: names the family until a path arrives", () => {
@@ -142,7 +141,7 @@ describe("base tool getDetail", () => {
   });
 
   it("subagent: description via fallback", () => {
-    expect(resolveToolPresentation("subagent", { description: "Search files" }, executionCwd)).toEqual({ name: "Subagent", detail: "Search files" });
+    expect(resolveToolRowPresentation("subagent", { description: "Search files" }, executionCwd).presentation).toEqual({ name: "Subagent", detail: "Search files" });
   });
 
   it("workflow: short summary only", () => {
@@ -169,8 +168,8 @@ describe("base tool getDetail", () => {
   });
 
   it("checkpoint tools: name the section by its checkpoint title", () => {
-    expect(resolveToolPresentation("checkpoint_replace", { section: "nextStep", value: "ship" }, executionCwd)).toEqual({ name: "Update Checkpoint", detail: "Next step" });
-    expect(resolveToolPresentation("checkpoint_read", { section: "openQuestions" }, executionCwd)).toEqual({ name: "Read Checkpoint", detail: "Open questions" });
+    expect(resolveToolRowPresentation("checkpoint_replace", { section: "nextStep", value: "ship" }, executionCwd).presentation).toEqual({ name: "Update Checkpoint", detail: "Next step" });
+    expect(resolveToolRowPresentation("checkpoint_read", { section: "openQuestions" }, executionCwd).presentation).toEqual({ name: "Read Checkpoint", detail: "Open questions" });
     expect(getToolDisplay("checkpoint_read").getDetail?.({}, executionCwd)).toBeNull();
     expect(getToolDisplay("checkpoint_replace").getDetail?.({ section: "scratchpad", value: "x" }, executionCwd)).toBe("scratchpad");
   });
@@ -234,43 +233,43 @@ describe("testBaseTools registry", () => {
   });
 });
 
-describe("resolveToolPresentation", () => {
+describe("resolveToolRowPresentation presentation", () => {
   const executionCwd = "/home/user/project";
 
   it("keeps the raw tool identifier separate from the canonical presentation name", () => {
     expect(getToolDisplay("skill").name).toBe("skill");
-    expect(resolveToolPresentation("skill", { action: "list" }, executionCwd).name).toBe("List Skills");
+    expect(resolveToolRowPresentation("skill", { action: "list" }, executionCwd).presentation.name).toBe("List Skills");
     expect(getToolDisplay("bash").name).toBe("bash");
-    expect(resolveToolPresentation("bash", { command: "ls src" }, executionCwd)).toEqual({ name: "Bash", detail: "ls src" });
+    expect(resolveToolRowPresentation("bash", { command: "ls src" }, executionCwd).presentation).toEqual({ name: "Bash", detail: "ls src" });
     expect(getToolDisplay("SomeRandomTool").name).toBe("somerandomtool");
-    expect(resolveToolPresentation("SomeRandomTool", { subject: "anything" }, executionCwd)).toEqual({ name: "SomeRandomTool", detail: "anything" });
+    expect(resolveToolRowPresentation("SomeRandomTool", { subject: "anything" }, executionCwd).presentation).toEqual({ name: "SomeRandomTool", detail: "anything" });
   });
 
   it("keeps invocation presentation independent of settlement and accepts only trusted target context", () => {
     const control = { kind: "steer", session_id: "child", display_goal: "Invented name" };
-    expect(resolveToolPresentation("subagent", control, executionCwd)).toEqual({ name: "Subagent steer", detail: "" });
-    expect(resolveToolPresentation("subagent", control, executionCwd, { targetDescription: "Recorded goal" })).toEqual({ name: "Subagent steer", detail: "Recorded goal" });
+    expect(resolveToolRowPresentation("subagent", control, executionCwd).presentation).toEqual({ name: "Subagent steer", detail: "" });
+    expect(resolveToolRowPresentation("subagent", control, executionCwd, { targetDescription: "Recorded goal" }).presentation).toEqual({ name: "Subagent steer", detail: "Recorded goal" });
     const message = { to: "child", text: "Use the old parser" };
     expect(getToolDisplay("message_session").invocationBody?.(message)).toEqual({ content: message.text, filetype: "text", presentation: "disclosure" });
-    expect(resolveToolPresentation("message_session", message, executionCwd)).toEqual({ name: "Message to", detail: "child" });
-    expect(resolveToolPresentation("message_session", message, executionCwd, { targetDescription: "Recorded goal" })).toEqual({ name: "Message to", detail: "Recorded goal" });
+    expect(resolveToolRowPresentation("message_session", message, executionCwd).presentation).toEqual({ name: "Message to", detail: "child" });
+    expect(resolveToolRowPresentation("message_session", message, executionCwd, { targetDescription: "Recorded goal" }).presentation).toEqual({ name: "Message to", detail: "Recorded goal" });
     const input = { action: "save", name: "snowflake-cli-query" };
-    const resolved = Array.from({ length: 6 }, () => resolveToolPresentation("skill_manage", input, executionCwd));
+    const resolved = Array.from({ length: 6 }, () => resolveToolRowPresentation("skill_manage", input, executionCwd).presentation);
     for (const presentation of resolved) {
       expect(presentation).toEqual({ name: "Save Skill", detail: "snowflake-cli-query" });
     }
   });
 
   it("retains ordinary tool display names and argument details", () => {
-    expect(resolveToolPresentation("read", { path: "/home/user/project/src/index.ts", offset: 10, limit: 20 }, executionCwd)).toEqual({ name: "Read", detail: "src/index.ts:11-30" });
-    expect(resolveToolPresentation("search", { pattern: "TODO", path: "/home/user/project/src", glob: "*.ts" }, executionCwd)).toEqual({ name: "Search", detail: "\"TODO\" in src [*.ts]" });
-    expect(resolveToolPresentation("edit", {}, executionCwd)).toEqual({ name: "Edit", detail: "" });
-    expect(resolveToolPresentation("edit", { input: "@@ src/a.ts\n= 1aa..1aa\n~a\n@@ src/b.ts\n= 1bb..1bb\n~b" }, executionCwd)).toEqual({ name: "Edit", detail: "" });
-    expect(resolveToolPresentation("write", { path: ".flywheel/sessions/abc/handoff.json" }, executionCwd).name).toBe("Write Handoff");
+    expect(resolveToolRowPresentation("read", { path: "/home/user/project/src/index.ts", offset: 10, limit: 20 }, executionCwd).presentation).toEqual({ name: "Read", detail: "src/index.ts:11-30" });
+    expect(resolveToolRowPresentation("search", { pattern: "TODO", path: "/home/user/project/src", glob: "*.ts" }, executionCwd).presentation).toEqual({ name: "Search", detail: "\"TODO\" in src [*.ts]" });
+    expect(resolveToolRowPresentation("edit", {}, executionCwd).presentation).toEqual({ name: "Edit", detail: "" });
+    expect(resolveToolRowPresentation("edit", { input: "@@ src/a.ts\n= 1aa..1aa\n~a\n@@ src/b.ts\n= 1bb..1bb\n~b" }, executionCwd).presentation).toEqual({ name: "Edit", detail: "" });
+    expect(resolveToolRowPresentation("write", { path: ".flywheel/sessions/abc/handoff.json" }, executionCwd).presentation.name).toBe("Write Handoff");
   });
 
   it("skill list: bare call has no detail and every modifier is argument-only", () => {
-    const list = (input: { [key: string]: unknown }) => resolveToolPresentation("skill", { action: "list", ...input }, executionCwd);
+    const list = (input: { [key: string]: unknown }) => resolveToolRowPresentation("skill", { action: "list", ...input }, executionCwd).presentation;
     expect(list({})).toEqual({ name: "List Skills", detail: "" });
     expect(list({ query: "startup performance" }).detail).toBe("\"startup performance\"");
     expect(list({ limit: 20 }).detail).toBe("| head -20");
@@ -282,31 +281,31 @@ describe("resolveToolPresentation", () => {
   });
 
   it("skill load: canonical name plus the skill id only", () => {
-    expect(resolveToolPresentation("skill", { action: "load", skill_id: "tui-rendering" }, executionCwd)).toEqual({ name: "Load Skill", detail: "tui-rendering" });
-    expect(resolveToolPresentation("skill", { action: "load" }, executionCwd)).toEqual({ name: "Load Skill", detail: "" });
+    expect(resolveToolRowPresentation("skill", { action: "load", skill_id: "tui-rendering" }, executionCwd).presentation).toEqual({ name: "Load Skill", detail: "tui-rendering" });
+    expect(resolveToolRowPresentation("skill", { action: "load" }, executionCwd).presentation).toEqual({ name: "Load Skill", detail: "" });
   });
 
   it("skill resource: skill_id/path detail, with an offset modifier only when nonzero", () => {
-    const resource = (input: { [key: string]: unknown }) => resolveToolPresentation("skill", { action: "resource", ...input }, executionCwd);
+    const resource = (input: { [key: string]: unknown }) => resolveToolRowPresentation("skill", { action: "resource", ...input }, executionCwd).presentation;
     expect(resource({ skill_id: "tui-rendering", path: "references/colors.md" })).toEqual({ name: "Read Skill Resource", detail: "tui-rendering/references/colors.md" });
     expect(resource({ skill_id: "tui-rendering", path: "references/colors.md", offset: 0 }).detail).toBe("tui-rendering/references/colors.md");
     expect(resource({ skill_id: "tui-rendering", path: "references/colors.md", offset: 64000 }).detail).toBe("tui-rendering/references/colors.md | offset 64000");
   });
 
   it("skill: malformed historical input uses a neutral skill name without raw input", () => {
-    const presentation = resolveToolPresentation("skill", { action: "frobnicate", skill_id: "tui-rendering", body: "raw package text" }, executionCwd);
+    const presentation = resolveToolRowPresentation("skill", { action: "frobnicate", skill_id: "tui-rendering", body: "raw package text" }, executionCwd).presentation;
     expect(presentation).toEqual({ name: "Read Skill", detail: "" });
-    expect(resolveToolPresentation("skill", {}, executionCwd)).toEqual({ name: "Read Skill", detail: "" });
+    expect(resolveToolRowPresentation("skill", {}, executionCwd).presentation).toEqual({ name: "Read Skill", detail: "" });
   });
 
   it("skill_manage: save stays Save Skill and names the skill only", () => {
-    const manage = (input: { [key: string]: unknown }) => resolveToolPresentation("skill_manage", input, executionCwd);
+    const manage = (input: { [key: string]: unknown }) => resolveToolRowPresentation("skill_manage", input, executionCwd).presentation;
     expect(manage({ action: "save", name: "snowflake-cli-query" })).toEqual({ name: "Save Skill", detail: "snowflake-cli-query" });
     expect(manage({ action: "save", name: "snowflake-cli-query", path: "scripts/query.sh" })).toEqual({ name: "Write Skill File", detail: "snowflake-cli-query/scripts/query.sh" });
   });
 
   it("skill_manage: every remaining approved action name", () => {
-    const manage = (input: { [key: string]: unknown }) => resolveToolPresentation("skill_manage", { name: "snowflake-cli-query", ...input }, executionCwd);
+    const manage = (input: { [key: string]: unknown }) => resolveToolRowPresentation("skill_manage", { name: "snowflake-cli-query", ...input }, executionCwd).presentation;
     expect(manage({ action: "patch" })).toEqual({ name: "Patch Skill", detail: "snowflake-cli-query" });
     expect(manage({ action: "patch", path: "references/schema.md" })).toEqual({ name: "Patch Skill File", detail: "snowflake-cli-query/references/schema.md" });
     expect(manage({ action: "remove_file", path: "scripts/query.sh" })).toEqual({ name: "Remove Skill File", detail: "snowflake-cli-query/scripts/query.sh" });
@@ -317,25 +316,25 @@ describe("resolveToolPresentation", () => {
   });
 
   it("skill_manage: malformed historical input falls back to Manage Skill and exposes no argument", () => {
-    expect(resolveToolPresentation("skill_manage", { action: "merge", name: "snowflake-cli-query" }, executionCwd)).toEqual({ name: "Manage Skill", detail: "" });
-    expect(resolveToolPresentation("skill_manage", {}, executionCwd)).toEqual({ name: "Manage Skill", detail: "" });
-    expect(resolveToolPresentation("skill_manage", { action: "save", name: "Raw body: not a slug" }, executionCwd)).toEqual({ name: "Save Skill", detail: "" });
+    expect(resolveToolRowPresentation("skill_manage", { action: "merge", name: "snowflake-cli-query" }, executionCwd).presentation).toEqual({ name: "Manage Skill", detail: "" });
+    expect(resolveToolRowPresentation("skill_manage", {}, executionCwd).presentation).toEqual({ name: "Manage Skill", detail: "" });
+    expect(resolveToolRowPresentation("skill_manage", { action: "save", name: "Raw body: not a slug" }, executionCwd).presentation).toEqual({ name: "Save Skill", detail: "" });
   });
 
   it("skill_manage: the detail is the normalized package id execution mutates", () => {
-    expect(resolveToolPresentation("skill_manage", { action: "save", name: " Example-Skill " }, executionCwd)).toEqual({ name: "Save Skill", detail: "example-skill" });
+    expect(resolveToolRowPresentation("skill_manage", { action: "save", name: " Example-Skill " }, executionCwd).presentation).toEqual({ name: "Save Skill", detail: "example-skill" });
     expect(normalizeSkillId(" Example-Skill ")).toBe("example-skill");
   });
 
   it("memory: single operations resolve to the approved singular names with only the normalized title", () => {
-    const memory = (input: { [key: string]: unknown }) => resolveToolPresentation("memory", input, executionCwd);
+    const memory = (input: { [key: string]: unknown }) => resolveToolRowPresentation("memory", input, executionCwd).presentation;
     expect(memory({ action: "add", target: "memory", title: "Use Bun for project scripts", content: "Repo uses Bun." })).toEqual({ name: "Add Memory", detail: "Use Bun for project scripts" });
     expect(memory({ action: "replace", target: "memory", title: "Update the tooling note", old_text: "Uses npm.", content: "Uses Bun." })).toEqual({ name: "Replace Memory", detail: "Update the tooling note" });
     expect(memory({ action: "remove", target: "user", title: "Remove an obsolete preference", old_text: "Raw memory content." })).toEqual({ name: "Remove Memory", detail: "Remove an obsolete preference" });
   });
 
   it("memory: homogeneous batches are plural and mixed batches are Change Memories", () => {
-    const batch = (operations: unknown[]) => resolveToolPresentation("memory", { target: "user", title: "Update tooling preferences", operations }, executionCwd);
+    const batch = (operations: unknown[]) => resolveToolRowPresentation("memory", { target: "user", title: "Update tooling preferences", operations }, executionCwd).presentation;
     expect(batch([{ action: "add", content: "a" }, { action: "add", content: "b" }]).name).toBe("Add Memories");
     expect(batch([{ action: "replace", content: "a" }, { action: "replace", content: "b" }]).name).toBe("Replace Memories");
     expect(batch([{ action: "remove", old_text: "a" }, { action: "remove", old_text: "b" }]).name).toBe("Remove Memories");
@@ -344,16 +343,16 @@ describe("resolveToolPresentation", () => {
   });
 
   it("memory: malformed historical input uses Change Memory or Change Memories and never raw content", () => {
-    expect(resolveToolPresentation("memory", { action: "merge", target: "memory", title: "Reconcile project conventions" }, executionCwd)).toEqual({ name: "Change Memory", detail: "Reconcile project conventions" });
-    expect(resolveToolPresentation("memory", { action: "add", target: "memory", content: "Raw memory content." }, executionCwd)).toEqual({ name: "Add Memory", detail: "" });
-    expect(resolveToolPresentation("memory", { action: "add", target: "memory", title: "\u0085\u200B", content: "Raw memory content." }, executionCwd)).toEqual({ name: "Add Memory", detail: "" });
-    expect(resolveToolPresentation("memory", { operations: [{ content: "a" }, { content: "b" }], content: "Raw memory content." }, executionCwd)).toEqual({ name: "Change Memories", detail: "" });
+    expect(resolveToolRowPresentation("memory", { action: "merge", target: "memory", title: "Reconcile project conventions" }, executionCwd).presentation).toEqual({ name: "Change Memory", detail: "Reconcile project conventions" });
+    expect(resolveToolRowPresentation("memory", { action: "add", target: "memory", content: "Raw memory content." }, executionCwd).presentation).toEqual({ name: "Add Memory", detail: "" });
+    expect(resolveToolRowPresentation("memory", { action: "add", target: "memory", title: "\u0085\u200B", content: "Raw memory content." }, executionCwd).presentation).toEqual({ name: "Add Memory", detail: "" });
+    expect(resolveToolRowPresentation("memory", { operations: [{ content: "a" }, { content: "b" }], content: "Raw memory content." }, executionCwd).presentation).toEqual({ name: "Change Memories", detail: "" });
   });
 
   it("memory: details carry no colon, action token, target, or store path", () => {
     const details = [
-      resolveToolPresentation("memory", { action: "add", target: "memory", title: "Use Bun for project scripts", content: "Repo uses Bun." }, executionCwd).detail,
-      resolveToolPresentation("memory", { target: "user", title: "Update tooling preferences", operations: [{ action: "add", content: "a" }, { action: "remove", old_text: "b" }] }, executionCwd).detail,
+      resolveToolRowPresentation("memory", { action: "add", target: "memory", title: "Use Bun for project scripts", content: "Repo uses Bun." }, executionCwd).presentation.detail,
+      resolveToolRowPresentation("memory", { target: "user", title: "Update tooling preferences", operations: [{ action: "add", content: "a" }, { action: "remove", old_text: "b" }] }, executionCwd).presentation.detail,
     ];
     for (const detail of details) {
       expect(detail).not.toInclude(":");
@@ -364,8 +363,8 @@ describe("resolveToolPresentation", () => {
   });
 
   it("memory: normalizes the generated title through the shared boundary", () => {
-    expect(resolveToolPresentation("memory", { action: "replace", target: "memory", title: `${"A".repeat(58)}\u{1F469}\u200D\u{1F4BB}\r\nB\rC` }, executionCwd).detail).toBe(`${"A".repeat(58)}\u{1F469}\u200D\u{1F4BB}\u2026`);
-    expect(resolveToolPresentation("memory", { action: "add", target: "memory", title: "First\u0085Second\u2028Third\u2029Fourth" }, executionCwd).detail).toBe("First Second Third Fourth");
+    expect(resolveToolRowPresentation("memory", { action: "replace", target: "memory", title: `${"A".repeat(58)}\u{1F469}\u200D\u{1F4BB}\r\nB\rC` }, executionCwd).presentation.detail).toBe(`${"A".repeat(58)}\u{1F469}\u200D\u{1F4BB}\u2026`);
+    expect(resolveToolRowPresentation("memory", { action: "add", target: "memory", title: "First\u0085Second\u2028Third\u2029Fourth" }, executionCwd).presentation.detail).toBe("First Second Third Fourth");
   });
 });
 
@@ -393,13 +392,13 @@ describe("presentation sanitization", () => {
   const executionCwd = "/home/user/project";
 
   it("reduces a name and a detail to one logical line", () => {
-    const presentation = resolveToolPresentation("bash", { command: "echo one\necho two\r\nline\u2028sep\u2029ok" }, executionCwd);
+    const presentation = resolveToolRowPresentation("bash", { command: "echo one\necho two\r\nline\u2028sep\u2029ok" }, executionCwd).presentation;
     expect(presentation.detail).toBe("echo one echo two line sep ok");
     expect(presentation.name).toBe("Bash");
   });
 
   it("removes ESC/CSI, OSC, C1, and bidi bytes from the detail", () => {
-    const detail = (command: string) => resolveToolPresentation("bash", { command }, executionCwd).detail;
+    const detail = (command: string) => resolveToolRowPresentation("bash", { command }, executionCwd).presentation.detail;
     expect(detail("\u001b[31mred\u001b[0m")).toBe("red");
     expect(detail("\u001b]0;window title\u0007ls")).toBe("ls");
     expect(detail("plain\u0085\u0090text")).toBe("plain");
@@ -411,11 +410,11 @@ describe("presentation sanitization", () => {
   });
 
   it("preserves ordinary search punctuation", () => {
-    expect(resolveToolPresentation("search", { pattern: "TODO|FIXME.*\\d+", path: "/home/user/project/src", glob: "*.ts" }, executionCwd).detail)
+    expect(resolveToolRowPresentation("search", { pattern: "TODO|FIXME.*\\d+", path: "/home/user/project/src", glob: "*.ts" }, executionCwd).presentation.detail)
       .toBe("\"TODO|FIXME.*\\d+\" in src [*.ts]");
   });
 
   it("sanitizes the neutral fallback name of a tool nobody registered", () => {
-    expect(resolveToolPresentation("Some\u001b[1mTool", {}, executionCwd).name).toBe("SomeTool");
+    expect(resolveToolRowPresentation("Some\u001b[1mTool", {}, executionCwd).presentation.name).toBe("SomeTool");
   });
 });

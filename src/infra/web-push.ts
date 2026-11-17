@@ -36,11 +36,11 @@ const MAX_PLAINTEXT_BYTES = RECORD_SIZE - 16 - 4 - 1 - 65 - 16 - 1;
 const VAPID_TTL_SECONDS = 12 * 60 * 60;
 const PUSH_TTL_SECONDS = 24 * 60 * 60;
 
-export function toBase64Url(bytes: Uint8Array): string {
+function toBase64Url(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64url");
 }
 
-export function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
+function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
   const decoded = Buffer.from(text, "base64url");
   const copy = new Uint8Array(decoded.byteLength);
   copy.set(decoded);
@@ -68,40 +68,30 @@ async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, bytes: 
   return new Uint8Array(await subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: owned(salt), info: owned(info) }, key, bytes * 8));
 }
 
-/** The one-shot key material the encryption uses. Callers let it be generated;
- *  the known-answer test supplies the RFC's own values. */
-export interface EncryptionMaterial {
-  readonly serverKeyPair: CryptoKeyPair;
-  readonly salt: Uint8Array;
-}
-
-async function generateEncryptionMaterial(): Promise<EncryptionMaterial> {
-  const generated = await subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
-  if (!("privateKey" in generated)) throw new Error("expected an ECDH key pair");
-  return { serverKeyPair: generated, salt: crypto.getRandomValues(new Uint8Array(16)) };
-}
-
 /** Seals `plaintext` to a subscription as one `aes128gcm` record: the RFC 8188
  *  header (salt, record size, the server's ephemeral public key) followed by
- *  the ciphertext of the plaintext and the final-record delimiter. */
-export async function encryptWebPushPayload(subscription: WebPushSubscription, plaintext: Uint8Array, material: EncryptionMaterial): Promise<Uint8Array> {
+ *  the ciphertext of the plaintext and the final-record delimiter. Every call
+ *  generates a fresh ephemeral key pair and salt. */
+async function encryptWebPushPayload(subscription: WebPushSubscription, plaintext: Uint8Array): Promise<Uint8Array> {
   if (plaintext.byteLength > MAX_PLAINTEXT_BYTES) throw new Error(`a push payload may carry at most ${MAX_PLAINTEXT_BYTES} bytes`);
+  const serverKeyPair = await subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
   const clientPublic = fromBase64Url(subscription.keys.p256dh);
   const authSecret = fromBase64Url(subscription.keys.auth);
-  const serverPublic = new Uint8Array(await subtle.exportKey("raw", material.serverKeyPair.publicKey));
+  const serverPublic = new Uint8Array(await subtle.exportKey("raw", serverKeyPair.publicKey));
   const clientKey = await subtle.importKey("raw", owned(clientPublic), { name: "ECDH", namedCurve: "P-256" }, false, []);
-  const sharedSecret = new Uint8Array(await subtle.deriveBits({ name: "ECDH", public: clientKey }, material.serverKeyPair.privateKey, 256));
+  const sharedSecret = new Uint8Array(await subtle.deriveBits({ name: "ECDH", public: clientKey }, serverKeyPair.privateKey, 256));
   // RFC 8291 section 3.3: the input keying material binds both public keys.
   const ikm = await hkdf(authSecret, sharedSecret, concat(textEncoder.encode("WebPush: info\0"), clientPublic, serverPublic), 32);
   // RFC 8188 section 2: the content encryption key and the nonce.
-  const contentKey = await hkdf(material.salt, ikm, textEncoder.encode("Content-Encoding: aes128gcm\0"), 16);
-  const nonce = await hkdf(material.salt, ikm, textEncoder.encode("Content-Encoding: nonce\0"), 12);
+  const contentKey = await hkdf(salt, ikm, textEncoder.encode("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = await hkdf(salt, ikm, textEncoder.encode("Content-Encoding: nonce\0"), 12);
   const aes = await subtle.importKey("raw", owned(contentKey), { name: "AES-GCM", length: 128 }, false, ["encrypt"]);
   // 0x02 marks the last record; a notification never needs a second one.
   const padded = concat(plaintext, Uint8Array.of(2));
   const ciphertext = new Uint8Array(await subtle.encrypt({ name: "AES-GCM", iv: owned(nonce) }, aes, owned(padded)));
   const header = new Uint8Array(16 + 4 + 1 + serverPublic.byteLength);
-  header.set(material.salt, 0);
+  header.set(salt, 0);
   new DataView(header.buffer).setUint32(16, RECORD_SIZE);
   header[20] = serverPublic.byteLength;
   header.set(serverPublic, 21);
@@ -109,10 +99,10 @@ export async function encryptWebPushPayload(subscription: WebPushSubscription, p
 }
 
 /** The `Authorization: vapid` header for one push service origin (RFC 8292). */
-export async function vapidAuthorization(keys: VapidKeys, endpoint: string, subject: string, now: number = Date.now()): Promise<string> {
+async function vapidAuthorization(keys: VapidKeys, endpoint: string, subject: string): Promise<string> {
   const audience = new URL(endpoint).origin;
   const header = toBase64Url(textEncoder.encode(JSON.stringify({ typ: "JWT", alg: "ES256" })));
-  const claims = toBase64Url(textEncoder.encode(JSON.stringify({ aud: audience, exp: Math.floor(now / 1000) + VAPID_TTL_SECONDS, sub: subject })));
+  const claims = toBase64Url(textEncoder.encode(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + VAPID_TTL_SECONDS, sub: subject })));
   const signingInput = `${header}.${claims}`;
   const privateKey = await subtle.importKey("pkcs8", owned(fromBase64Url(Redacted.value(keys.privateKey))), { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   // WebCrypto ECDSA yields the raw r || s pair, which is exactly the JWS form.
@@ -139,9 +129,7 @@ export async function sendWebPush(input: {
   readonly signal?: AbortSignal;
 }): Promise<WebPushOutcome> {
   input.signal?.throwIfAborted();
-  const material = await generateEncryptionMaterial();
-  input.signal?.throwIfAborted();
-  const body = await encryptWebPushPayload(input.subscription, textEncoder.encode(JSON.stringify(input.message)), material);
+  const body = await encryptWebPushPayload(input.subscription, textEncoder.encode(JSON.stringify(input.message)));
   input.signal?.throwIfAborted();
   const authorization = await vapidAuthorization(input.vapid, input.subscription.endpoint, input.subject);
   input.signal?.throwIfAborted();

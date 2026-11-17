@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { ToolEntry as ToolEntryType } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import { createBlockDisclosureChannel } from "../../../../src/tui/context/block-disclosure.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
@@ -26,7 +26,7 @@ async function canonicalMultiFileEditEntry() {
     kind: "tool",
     id: "edit-many",
     name: "edit",
-    presentation: resolveToolPresentation("edit", { input: patchInput }, CWD),
+    presentation: resolveToolRowPresentation("edit", { input: patchInput }, CWD).presentation,
     status: "completed",
     fileChangeKind: "patch",
     mutationEvidence: fixture.evidence,
@@ -135,7 +135,7 @@ describe("tool entry multi-file disclosure", () => {
       fileChangeKind: undefined,
       id: "replace-many",
       name: "replace",
-      presentation: resolveToolPresentation("replace", { files: ["src/first.ts", "src/second.ts"] }, CWD),
+      presentation: resolveToolRowPresentation("replace", { files: ["src/first.ts", "src/second.ts"] }, CWD).presentation,
     }
     const result = await renderToolEntry(block, { height: 64, evidenceReader: fixture.reader })
     try {

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { ReviewNoticeMutationSchema, type ReviewNoticeMutation } from "../../../src/infra/review-notice.js";
+import { ReviewNoticeMutationSchema } from "../../../src/infra/review-notice.js";
 
 describe("review notice mutation evidence", () => {
   it("retains a mutation file's source-truncation count", () => {
-    const review: ReviewNoticeMutation = {
+    const review: typeof ReviewNoticeMutationSchema.Type = {
       name: "large-diff",
       action: "patched",
       reach: "project",

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import type { MutationEvidence } from "../../../src/infra/mutation-evidence.js"
 import { AgentSystemMessageV2DataSchema } from "../../../src/infra/events.js"
-import { ToolResultEventDataV2Schema, ToolExecutionOutputRecordedDataV2Schema } from "../../../src/infra/runtime-event-payload-types.js"
+import { ToolExecutionOutputRecordedDataV2Schema } from "../../../src/infra/runtime-event-payload-types.js"
 import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact } from "../../../src/infra/runtime-fact-parser.js"
 import { extractToolContentFact } from "../../../src/infra/tool-content-extraction.js"
 import { hydrateToolContentFact } from "../../../src/infra/tool-content-hydration.js"
@@ -104,13 +104,10 @@ describe("reference-backed mutation evidence contracts", () => {
   })
 
   test("current live event boundaries reject inline mutation payloads", () => {
-    const result = { tool_use_id: "tool", details: { mutationEvidence: evidence } }
     const output = { tool_use_id: "tool", output: "", mutationEvidence: evidence }
     const notice = { message: "Skills updated", mutationEvidence: evidence }
-    expect(Schema.decodeUnknownSync(ToolResultEventDataV2Schema)(result)).toEqual(result)
     expect(Schema.decodeUnknownSync(ToolExecutionOutputRecordedDataV2Schema)(output)).toEqual(output)
     expect(Schema.decodeUnknownSync(AgentSystemMessageV2DataSchema)(notice)).toEqual(notice)
-    expect(() => Schema.decodeUnknownSync(ToolResultEventDataV2Schema)({ ...result, details: { mutation: inline } })).toThrow()
     expect(() => Schema.decodeUnknownSync(ToolExecutionOutputRecordedDataV2Schema)({ ...output, mutation: inline })).toThrow()
     expect(() => Schema.decodeUnknownSync(AgentSystemMessageV2DataSchema)({ ...notice, reviewMutations: [] })).toThrow()
   })
