@@ -11,7 +11,6 @@ import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.j
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
 import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
 import { experimentsModule } from "../../../../../src/orchestration/modules/experiments.js"
-import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import { createExperimentsRuntime, experimentsRuntime, type ExperimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
@@ -19,6 +18,7 @@ import type { CommandOutcome } from "../../../../../src/protocol/command-catalog
 import { testDirectories } from "../../../../helpers/directories.js"
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
+import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage } from "../../agent-runtime/tools/_fixtures.js"
 
 const directories: string[] = []
 afterEach(async () => {

@@ -33,8 +33,6 @@ const FinalizeGroupsSchema = Schema.Struct({
   groups: Schema.Array(FinalizeGroupSchema).check(Schema.isMinLength(1)),
 })
 
-export type FinalizeGroups = typeof FinalizeGroupsSchema.Type
-
 const decodeGroups = Schema.decodeUnknownSync(FinalizeGroupsSchema, { onExcessProperty: "error" })
 
 export interface FinalizeChildRunDeps {

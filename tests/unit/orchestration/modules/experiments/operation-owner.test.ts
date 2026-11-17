@@ -4,13 +4,10 @@ import { asAsyncEventWriter, type InFlightRecord } from "../../../../../src/infr
 import { Log } from "../../../../../src/infra/log.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import {
-  EXPERIMENT_GIT_SETTLEMENT_KIND,
-  EXPERIMENT_OPERATION_KIND,
   createExperimentOperation,
-  experimentInterruptionMessage,
   experimentStopRetirement,
   findExperimentInterruption,
-  type PendingExperimentResult,
+  type ExperimentOperation,
 } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
@@ -24,6 +21,14 @@ afterEach(() => {
 function row(kind: string, key = "run"): InFlightRecord {
   return { kind, key, payload: { state: "running" }, raw: "{\"state\":\"running\"}" }
 }
+
+// The in-flight kinds that released runners hold their work under: a reopened
+// runner must still read these exact rows.
+const EXPERIMENT_OPERATION_KIND = "experiment.operation"
+const EXPERIMENT_GIT_SETTLEMENT_KIND = "experiment.git_settlement"
+const experimentInterruptionMessage = "Experiment work was interrupted with an unresolved operation. Inspect the experiment worktree, then run /experiment clear discard to discard the operation and leave the worktree as it is. The runtime will not rerun, revert, commit, or discard it by itself."
+
+type PendingExperimentResult = Parameters<ExperimentOperation["measured"]>[0]
 
 const unexpectedRecord = async () => { throw new Error("unexpected experiment fact") }
 const admit = (command = "measure") => async () => ({ command })

@@ -5,8 +5,8 @@ import { createOrderedLane } from "../../../infra/ordered-lane.js"
 import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
 import type { ExperimentFact } from "./facts.js"
 
-export const EXPERIMENT_OPERATION_KIND = "experiment.operation"
-export const EXPERIMENT_GIT_SETTLEMENT_KIND = "experiment.git_settlement"
+const EXPERIMENT_OPERATION_KIND = "experiment.operation"
+const EXPERIMENT_GIT_SETTLEMENT_KIND = "experiment.git_settlement"
 const EXPERIMENT_OPERATION_KEY = "run"
 const INTERRUPTION_KINDS = [EXPERIMENT_OPERATION_KIND, EXPERIMENT_GIT_SETTLEMENT_KIND]
 const log = Log.create({ service: "experiment-operation" })
@@ -14,7 +14,7 @@ const log = Log.create({ service: "experiment-operation" })
 /** Retires the live run's hold in the commit of the fact that records its outcome. */
 export const EXPERIMENT_OPERATION_RETIREMENT: readonly InFlightWrite[] = [{ op: "drop", kind: EXPERIMENT_OPERATION_KIND, key: EXPERIMENT_OPERATION_KEY }]
 
-export const experimentInterruptionMessage = "Experiment work was interrupted with an unresolved operation. Inspect the experiment worktree, then run /experiment clear discard to discard the operation and leave the worktree as it is. The runtime will not rerun, revert, commit, or discard it by itself."
+const experimentInterruptionMessage = "Experiment work was interrupted with an unresolved operation. Inspect the experiment worktree, then run /experiment clear discard to discard the operation and leave the worktree as it is. The runtime will not rerun, revert, commit, or discard it by itself."
 
 /** What a settlement reads of one measurement, bound to the exact candidate
  *  content it measured. It is also the durable `pending` hold's result, so a
@@ -26,7 +26,7 @@ const PendingExperimentResultSchema = Schema.Struct({
   measuredTree: Schema.String,
   resultTree: Schema.String,
 })
-export type PendingExperimentResult = typeof PendingExperimentResultSchema.Type
+type PendingExperimentResult = typeof PendingExperimentResultSchema.Type
 
 /** The `experiment.operation` hold, the durable image of the operation
  *  state. `running` is a measurement whose outcome is unknown, `settling` the

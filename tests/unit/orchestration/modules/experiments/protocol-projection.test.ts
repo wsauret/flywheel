@@ -2,16 +2,21 @@ import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.j
 import { experimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
 import { describe, expect, it } from "bun:test"
 import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../../../src/infra/event-store-types.js"
-import { createExperimentViewProtocolProjection, createExperimentViewProtocolReader, experimentViewFromSnapshot } from "../../../../../src/orchestration/modules/experiments/protocol.js"
+import { createExperimentsProtocol, experimentsBackgroundReaders } from "../../../../../src/orchestration/modules/experiments/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createExperimentOperation, type ExperimentOperation, type PendingExperimentResult } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
+import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
-import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
-import type { ViewedSessionStore } from "../../../../../src/orchestration/app-service/session-view-projection.js"
+import type { SessionEntry, SessionStore } from "../../../../../src/orchestration/session-store/types.js"
+import type { ModuleProtocolServices } from "../../../../../src/orchestration/app-service/module-protocol-host.js"
+import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
+import { protocolBackgroundSchema } from "../../../../../src/protocol/modules.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
+import { Schema } from "effect"
+import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
-import { chatEntry } from "../../app-service/app-service-doubles.js"
+import { repoDefinitions } from "../../../../helpers/project-definitions.js"
+import { chatEntry, fakeManager, fakeSessionStore } from "../../app-service/app-service-doubles.js"
 import { chatRunner } from "../../app-service/_frontend-projection-fixtures.js"
 import { storedExperimentFact } from "../../agent-runtime/tools/_fixtures.js"
 
@@ -67,7 +72,8 @@ class FactLog {
 function sessionStore(entries: Map<string, SessionEntry>) {
   const listeners = new Set<(changed: ReadonlySet<string> | undefined) => void>()
   const revisions = new Map<string, number>()
-  const store = {
+  const store: SessionStore = {
+    ...fakeSessionStore(entries),
     get: (sessionId: string) => entries.get(sessionId),
     allIds: () => [...entries.keys()],
     revision: (sessionId: string) => revisions.get(sessionId) ?? 0,
@@ -75,7 +81,7 @@ function sessionStore(entries: Map<string, SessionEntry>) {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
     },
-  } satisfies ViewedSessionStore
+  }
   return {
     store,
     subscribers: () => listeners.size,
@@ -87,6 +93,8 @@ function sessionStore(entries: Map<string, SessionEntry>) {
     },
   }
 }
+
+type PendingExperimentResult = Parameters<ExperimentOperation["measured"]>[0]
 
 const result = (latency: number): PendingExperimentResult => ({ status: "passed", metrics: { latency }, durationMs: 0, measuredTree: "tree", resultTree: "tree" })
 
@@ -112,13 +120,47 @@ function countingReader(reader: EventReader, onRead: () => void): EventReader {
   }
 }
 
+/** The module's protocol runtime as the host composes it: a live session in
+ *  `store` reads the held projection, any other session the module's own
+ *  background reader over the same facts. */
+function experimentsProtocolOver(deps: {
+  readonly store: SessionStore
+  readonly reader: EventReader
+  readonly onStored: FactLog["onStored"]
+  readonly publish: ModuleProtocolServices["publish"]
+}) {
+  const history = experimentsBackgroundReaders(deps.reader)
+  const reader = asAsyncEventReadSurface(deps.reader)
+  const runtime = createExperimentsProtocol({
+    eventStore: reader,
+    projectionReader: reader,
+    eventWriter: refusingEventWriter(),
+    manager: fakeManager(),
+    sessionStore: deps.store,
+    interruptSession: async () => false,
+    definitions: repoDefinitions(),
+    onStored: deps.onStored,
+    publish: deps.publish,
+    snapshotPosition: () => 0,
+    hasLiveSession: (sessionId) => deps.store.get(sessionId) !== undefined,
+    // The background lane decodes the Worker's answer with the domain's own codec.
+    background: async (domain, sessionId) => Schema.decodeUnknownSync(protocolBackgroundSchema(domain))(await history.experiment_view(sessionId)),
+    modules: NO_MODULE_SERVICES,
+    enabled: () => true,
+  })
+  return {
+    snapshot: async (sessionId: string) => (await runtime.serve.experimentViewSnapshot({ type: "experimentViewSnapshot", sessionId })).experimentView,
+    dispose: runtime.dispose,
+  }
+}
+
 function harness(entries: Map<string, SessionEntry>, log = new FactLog()) {
   const store = sessionStore(entries)
   const inputs: RuntimeUiPatchInput[] = []
   const sequencer = createRuntimeUiPatchSequencer()
-  const projection = createExperimentViewProtocolProjection({
-    sessionStore: store.store,
-    reader: asAsyncEventReadSurface(log.reader),
+  const projection = experimentsProtocolOver({
+    store: store.store,
+    reader: log.reader,
     onStored: log.onStored,
     publish: (input) => { inputs.push(input); return sequencer.publish(input) },
   })
@@ -133,7 +175,7 @@ describe("experiment view protocol projection", () => {
     let reads = 0
     const reader = countingReader(log.reader, () => { reads += 1 })
     const store = sessionStore(new Map([["chat-1", chatEntry()]]))
-    const projection = createExperimentViewProtocolProjection({ sessionStore: store.store, reader: asAsyncEventReadSurface(reader), onStored: log.onStored, publish: createRuntimeUiPatchSequencer().publish })
+    const projection = experimentsProtocolOver({ store: store.store, reader, onStored: log.onStored, publish: createRuntimeUiPatchSequencer().publish })
 
     expect(reads).toBe(0)
     expect(store.subscribers()).toBe(0)
@@ -271,7 +313,7 @@ describe("experiment view protocol projection", () => {
     projection.dispose()
   })
 
-  it("keeps durable rows with running false when a session departs, then releases its subscription", async () => {
+  it("keeps durable rows with running false when a session departs, then serves its history and releases its subscription", async () => {
     const execution = experimentOperation()
     await begin(execution, "measure")
     const { projection, store, log, views } = harness(new Map([["chat-1", chatEntry({ runner: runnerWith(execution) })]]))
@@ -282,7 +324,7 @@ describe("experiment view protocol projection", () => {
     store.set("chat-1", null)
     await flush()
     expect(views().at(-1)).toMatchObject({ running: false, runs: [{ run: 1 }] })
-    expect(await projection.snapshot("chat-1")).toBeNull()
+    expect(await projection.snapshot("chat-1")).toMatchObject({ running: false, runs: [{ run: 1 }] })
 
     execution.failed()
     await flush()
@@ -309,7 +351,8 @@ describe("experiment view protocol projection", () => {
     log.commit("old", run(1, 0, 10))
     log.commit("old", initialized(1, "second"))
     log.commit("old", run(2, 1, 20, "crash"))
-    const read = createExperimentViewProtocolReader(asAsyncEventReadSurface(log.reader))
+    const history = experimentsBackgroundReaders(log.reader)
+    const read = async (sessionId: string) => (await history.experiment_view(sessionId)).experimentView
 
     const view = await read("old")
     expect(view).toMatchObject({ name: "second", segment: 1, running: false, runCounts: { total: 1, kept: 0, crashed: 1 } })
@@ -334,11 +377,10 @@ describe("experiment view protocol projection", () => {
     projection.dispose()
   })
 
-  it("shows an active mode without initialization as an empty view", () => {
-    const view = experimentViewFromSnapshot({
-      mode: { active: true, workDir: "/repo" }, configuration: null, segments: [], runs: [], currentSegment: 0, secondaryMetrics: [],
-      resumedTurns: 0, baselineMetric: null, bestMetric: null, confidence: null, protectedPaths: [], sealedPaths: [], guardRevision: 1,
-    }, false)
+  it("shows an active mode without initialization as an empty view", async () => {
+    const log = new FactLog()
+    log.commit("chat-1", mode(true))
+    const view = (await experimentsBackgroundReaders(log.reader).experiment_view("chat-1")).experimentView
     expect(view).toMatchObject({ name: null, metric: { name: "metric", unit: "" }, active: true, running: false, runs: [] })
   })
 })

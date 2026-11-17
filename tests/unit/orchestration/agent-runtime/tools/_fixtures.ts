@@ -1,3 +1,4 @@
+import { expect } from "bun:test";
 import * as os from "node:os";
 
 import { unguardedSpawnOwned } from "../../../../helpers/real-process-fixture.js";
@@ -8,7 +9,7 @@ import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { createExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
+import { createExperimentOperation, findExperimentInterruption } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js";
 import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
 import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
@@ -85,6 +86,13 @@ export function testExperimentOperation() {
     record: async () => { throw new Error("unexpected experiment fact"); },
   });
 }
+
+/** The in-flight kind that released runners hold an experiment run under. */
+export const EXPERIMENT_OPERATION_KIND = "experiment.operation";
+
+/** The message the operation owner reports while a run hold is interrupted. */
+export const experimentInterruptionMessage = await findExperimentInterruption(async () => [{ kind: EXPERIMENT_OPERATION_KIND, key: "run", payload: { state: "running" }, raw: "{\"state\":\"running\"}" }])
+  ?? expect.unreachable("a running hold is interrupted work");
 
 /** The path lines of a list result, without its notes. */
 export function pathLines(content: ToolResult["content"]): string[] {

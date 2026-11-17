@@ -52,7 +52,7 @@ interface ReviewHalfRequirements {
  *  review started. */
 type SkillNotificationLevel = "off" | "on" | "verbose";
 
-export interface LearningReviewConfig {
+interface LearningReviewConfig {
   /** Memory review fires every N user turns; 0 disables the half. */
   memoryIntervalTurns: number;
   /** Skill review fires at N accumulated LLM calls; 0 disables the half. */
@@ -72,7 +72,7 @@ interface ReviewActionReport {
 
 /** One review notification: the grouped summary a reader is shown, plus the
  *  individual skill writes that summary reports. */
-export interface ReviewNotice {
+interface ReviewNotice {
   content: string;
   mutationEvidence?: MutationEvidence;
 }
@@ -468,7 +468,7 @@ const DIGEST_ASSISTANT_CHARS = 200;
  *  assistant texts, and assistant tool names. Tool arguments and old tool
  *  results never enter the digest. Never used on the unrouted path, where the
  *  full replay stays warm in the parent's cache. */
-export function digestConversation(messages: ReadonlyArray<ConversationMessage>): Promise<ConversationMessage[]> {
+function digestConversation(messages: ReadonlyArray<ConversationMessage>): Promise<ConversationMessage[]> {
   return runInTaskSlices("learning-review:digest", digestConversationWork(messages));
 }
 

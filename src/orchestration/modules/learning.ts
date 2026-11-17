@@ -21,7 +21,7 @@ import type { CliCommandContext, CliNounContribution, CliVerb } from "../cli-con
 /** The durable-learning write surfaces of one runner. Both are always built
  *  for an enabled module so the tool schema surface stays identical across
  *  chat, workers, subagents, and the review fork. */
-export interface LearningRuntime {
+interface LearningRuntime {
   readonly memory: MemoryToolDeps
   readonly skillManage: SkillManageToolDeps
 }

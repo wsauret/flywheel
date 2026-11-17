@@ -89,7 +89,6 @@ export const ExperimentFactSchemas = [
 const ExperimentFactSchema = Schema.Union(ExperimentFactSchemas)
 
 export type ExperimentFact = typeof ExperimentFactSchema.Type
-export type ExperimentModeChangedFact = Extract<ExperimentFact, { type: "experiment.mode.changed" }>
 export type ExperimentInitializedFact = Extract<ExperimentFact, { type: "experiment.initialized" }>
 export type ExperimentRunRecordedFact = Extract<ExperimentFact, { type: "experiment.run.recorded" }>
 

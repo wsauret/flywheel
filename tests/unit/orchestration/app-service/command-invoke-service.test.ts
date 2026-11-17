@@ -6,14 +6,13 @@ import { composeModuleRuntimes, moduleRuntimeHandle } from "../../../../src/infr
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import type { RuntimeCommandInvocation } from "../../../../src/protocol/command-catalog-protocol-types.js"
 import { createCommandInvokeService, type CommandInvokeDeps } from "../../../../src/orchestration/app-service/command-invoke-service.js"
 import type { CommandHost } from "../../../../src/orchestration/app-service/command-host.js"
 import type { ModuleHealthCheck } from "../../../../src/orchestration/module-health.js"
 import { SHIPPED_MODULES, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js"
-import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage } from "../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
 import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
 import { moduleDescriptor } from "../../../../src/orchestration/config/module-descriptor.js"
@@ -25,6 +24,7 @@ import { testDirectories } from "../../../helpers/directories.js"
 import { repoDefinitions, repoModules, sourceRunDefinitions } from "../../../helpers/project-definitions.js"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage } from "../agent-runtime/tools/_fixtures.js"
 
 /** A module the kernel has never heard of. Its command reaches the service
  *  through the composition alone: no router, host, or protocol edit names it. */
@@ -246,7 +246,7 @@ describe("command invocation", () => {
           })
         },
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
     const { invoke } = service({ supervisor })
     try {

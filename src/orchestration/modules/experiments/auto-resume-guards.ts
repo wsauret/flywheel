@@ -13,7 +13,7 @@ interface AutoResumeGuardRuntime {
   state: AutoResumeGuardState;
 }
 
-export function countConsecutiveDiscardOrCrashRuns(state: AutoResumeGuardState): number {
+function countConsecutiveDiscardOrCrashRuns(state: AutoResumeGuardState): number {
   let count = 0;
   for (const result of state.results.toReversed()) {
     if (result.segment !== state.currentSegment) break;

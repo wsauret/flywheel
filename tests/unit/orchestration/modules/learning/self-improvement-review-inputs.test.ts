@@ -2,7 +2,6 @@ import { describe, expect, it } from "bun:test";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ResolvedRole, ResolvedRoles } from "../../../../../src/orchestration/config/roles.js";
 import {
-  digestConversation,
   resolveReviewRoute,
   reviewReplay,
 } from "../../../../../src/orchestration/modules/learning/learning-review.js";
@@ -38,12 +37,13 @@ describe("review route resolution", () => {
 
     expect(await reviewReplay(sameModel, history)).toBe(history);
     const routed = await reviewReplay(alternateModel, history);
-    expect(routed).toEqual(await digestConversation(history));
+    expect(routed[0]).toMatchObject({ kind: "user", content: expect.stringContaining("USER: question-0") });
     expect(routed.slice(1)).toEqual(history.slice(-24));
   });
 });
 
-describe("digestConversation", () => {
+describe("the digest a routed review replays", () => {
+  const routedReplay = (messages: ReadonlyArray<ConversationMessage>) => reviewReplay({ routed: true }, messages);
   function user(text: string): ConversationMessage {
     return { kind: "user", content: text };
   }
@@ -62,7 +62,7 @@ describe("digestConversation", () => {
 
   it("returns short conversations verbatim", async () => {
     const messages = [user("hello"), assistant("hi")];
-    expect(await digestConversation(messages)).toEqual(messages);
+    expect(await routedReplay(messages)).toEqual(messages);
   });
 
   it("keeps the recent tail verbatim and collapses older turns into one synthetic user digest", async () => {
@@ -70,7 +70,7 @@ describe("digestConversation", () => {
     const tail: ConversationMessage[] = [];
     for (let i = 0; i < 24; i++) tail.push(i % 2 === 0 ? user(`recent-${i}`) : assistant(`reply-${i}`));
 
-    const digest = await digestConversation([...older, ...tail]);
+    const digest = await routedReplay([...older, ...tail]);
 
     expect(digest).toHaveLength(25);
     expect(digest.slice(1)).toEqual(tail);
@@ -92,7 +92,7 @@ describe("digestConversation", () => {
 
     // A 24-message tail would open on the toolResult pair; the tail must
     // stretch to include their assistant tool_use message.
-    const digest = await digestConversation([...older, ...boundary, ...tail]);
+    const digest = await routedReplay([...older, ...boundary, ...tail]);
 
     expect(digest[0]?.kind).toBe("user");
     expect(digest[1]).toEqual(boundary[0]);
@@ -102,7 +102,7 @@ describe("digestConversation", () => {
   it("returns everything verbatim when tail extension reaches the start of the conversation", async () => {
     const messages: ConversationMessage[] = [assistant("calling", ["bash"])];
     for (let i = 0; i < 25; i++) messages.push(toolResult(`output-${i}`));
-    expect(await digestConversation(messages)).toEqual(messages);
+    expect(await routedReplay(messages)).toEqual(messages);
   });
 
   it("truncates collapsed user lines to 300 chars and assistant lines to 200", async () => {
@@ -110,7 +110,7 @@ describe("digestConversation", () => {
     const tail: ConversationMessage[] = [];
     for (let i = 0; i < 24; i++) tail.push(user(`recent-${i}`));
 
-    const digest = await digestConversation([...older, ...tail]);
+    const digest = await routedReplay([...older, ...tail]);
     const head = digest[0];
     if (head?.kind !== "user" || typeof head.content !== "string") throw new Error("expected synthetic user digest");
     expect(head.content).toContain(`USER: ${"u".repeat(300)}\n`);

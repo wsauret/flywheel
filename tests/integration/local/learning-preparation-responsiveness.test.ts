@@ -5,7 +5,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types.js";
 import { collectSkillLoadStats, refreshSkillLoadStatsSnapshot } from "../../../src/orchestration/modules/learning/skill-load-stats.js";
 import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js";
-import { createLearningReview, digestConversation } from "../../../src/orchestration/modules/learning/learning-review.js";
+import { createLearningReview, reviewReplay } from "../../../src/orchestration/modules/learning/learning-review.js";
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
@@ -93,7 +93,7 @@ it("prepares a learning review from populated history without starving host time
     }
     const context = await withinTimerBudget(() => tree.buildContext({ allowAssistantTail: true }));
     expect(context.messages).toHaveLength(history.length);
-    await withinTimerBudget(() => digestConversation(context.messages));
+    await withinTimerBudget(() => reviewReplay({ routed: true }, context.messages));
 
     const state = {
       moduleIds: ["skills", "learning"] as const,

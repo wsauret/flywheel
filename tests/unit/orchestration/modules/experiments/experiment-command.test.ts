@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test"
 import type { CommandMethod, CommandPrompt } from "../../../../../src/orchestration/app-service/command-host.js"
 import type { CommandOutcome } from "../../../../../src/protocol/command-catalog-protocol-types.js"
 import { executeExperimentCommand, type ExperimentCommandDeps } from "../../../../../src/orchestration/modules/experiments/experiment-command.js"
-import type { ExperimentModeChangedFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
 
 const charter = `# Experiment charter
 
@@ -43,7 +43,7 @@ Measure one change.
 `
 
 function harness(overrides: Partial<ExperimentCommandDeps> = {}) {
-  const facts: ExperimentModeChangedFact[] = []
+  const facts: ExperimentFact[] = []
   const prompts: CommandPrompt[] = []
   const methods: CommandMethod[] = []
   const stops: boolean[] = []

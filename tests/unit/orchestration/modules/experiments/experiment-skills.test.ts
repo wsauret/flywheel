@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js"
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js"
-import { createFinalizeChildGrant, type FinalizeGroups } from "../../../../../src/orchestration/modules/experiments/finalize-child-run.js"
+import { createFinalizeChildGrant } from "../../../../../src/orchestration/modules/experiments/finalize-child-run.js"
 import { shippedDefinitionBundles } from "../../../../../src/orchestration/modules.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { readSkillPackageFiles } from "../../../../../src/workflows/skill-context.js"
@@ -30,7 +30,7 @@ const loopRules = readFileSync(join(EXPERIMENT_SKILLS, "experiment-charter", "re
 
 const HASH_A = "a".repeat(40)
 const HASH_B = "b".repeat(40)
-const groups: FinalizeGroups = {
+const groups = {
   base: HASH_A,
   trunk: "main",
   final_tree: HASH_B,

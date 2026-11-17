@@ -19,7 +19,7 @@ import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.
 import type { AskUserController } from "../../../../../src/orchestration/runner/ask-user-controller.js";
 import type { SkillManageToolDeps } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
-import type { LearningRuntime } from "../../../../../src/orchestration/modules/learning.js";
+import { learningModule } from "../../../../../src/orchestration/modules/learning.js";
 import { workflowsModule } from "../../../../../src/orchestration/modules/workflows.js";
 import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
 import type { ModuleId } from "../../../../../src/protocol/module-ids.js";
@@ -79,6 +79,9 @@ type WorkflowsRuntime = NonNullable<ReturnType<typeof workflowsModule.runtime.cr
 function workflowsRuntime(mode: WorkflowsMode): WorkflowsRuntime {
   return { deps: () => workflowDeps(mode), authority: () => fullAuthority() };
 }
+
+/** The durable-learning write surfaces the learning module builds for one runner. */
+type LearningRuntime = ReturnType<typeof learningModule.runtime.create>;
 
 function learningRuntime(root = userDataRoot): LearningRuntime {
   return { memory: { accountHome: root, sessionId: "sess-1" }, skillManage: skillManageDeps(root) };

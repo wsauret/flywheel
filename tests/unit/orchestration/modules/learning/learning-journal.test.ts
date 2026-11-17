@@ -11,7 +11,6 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type EventReader, type Loc
 import {
   openPendingAudit,
   reconcilePendingAudits,
-  type AuditFact,
   type PendingAudit,
 } from "../../../../../src/orchestration/modules/learning/learning-journal.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
@@ -24,6 +23,8 @@ import { runOperation } from "../../../../../src/orchestration/modules/learning/
 import { operationIdentity, writeOperationManifest } from "../../../../../src/orchestration/modules/learning/skill-operation-manifest.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js";
+
+type AuditFact = PendingAudit["fact"];
 
 const TMP = fileTemporaryDirectory("flywheel-learning-journal-test-");
 const SESSION = "sess-audit";

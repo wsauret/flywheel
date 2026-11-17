@@ -2,12 +2,14 @@ import { expect, test } from "bun:test"
 import { createLogExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/log-experiment.js"
 import { keepExperimentChanges } from "../../../../../../src/orchestration/modules/experiments/git-operations.js"
 import { createExperimentGitSettlement } from "../../../../../../src/orchestration/modules/experiments/git-settlement.js"
-import { EXPERIMENT_OPERATION_KIND, createExperimentOperation, experimentInterruptionMessage, type PendingExperimentResult } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
+import { createExperimentOperation, type ExperimentOperation } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { OwnedCommandRunner } from "../../../../../../src/infra/owned-command.js"
 import type { InFlightRecord } from "../../../../../../src/infra/event-store-types.js"
 import type { ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/projection.js"
 import type { ExperimentRunRecordedFact } from "../../../../../../src/orchestration/modules/experiments/facts.js"
-import { makeContext, storedExperimentFact, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
+import { EXPERIMENT_OPERATION_KIND, experimentInterruptionMessage, makeContext, storedExperimentFact, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
+
+type PendingExperimentResult = Parameters<ExperimentOperation["measured"]>[0]
 
 const configuration = {
   segment: 0,

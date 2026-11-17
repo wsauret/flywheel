@@ -45,14 +45,14 @@ export function experimentsBackgroundReaders(reader: EventReader): ModuleBackgro
  *  gone. Nothing is built until the first `snapshot` or the first stored
  *  experiment fact: startup never reads an experiment aggregate or subscribes
  *  to the session store for this domain. */
-export interface ExperimentViewProtocolProjection {
+interface ExperimentViewProtocolProjection {
   /** The current view of one live session; null when the session is not live
    *  or has no experiment history. Arms the projection. */
   snapshot(sessionId: string): Promise<FrontendExperimentView | null>
   dispose(): void
 }
 
-export interface ExperimentViewProtocolProjectionDeps {
+interface ExperimentViewProtocolProjectionDeps {
   readonly sessionStore: ViewedSessionStore
   readonly reader: AsyncEventReadSurface
   /** The store's post-commit broadcast (RuntimeEventStore.onStored). */
@@ -81,7 +81,7 @@ interface ArmedProjection {
   readonly dispose: () => void
 }
 
-export function createExperimentViewProtocolProjection(deps: ExperimentViewProtocolProjectionDeps): ExperimentViewProtocolProjection {
+function createExperimentViewProtocolProjection(deps: ExperimentViewProtocolProjectionDeps): ExperimentViewProtocolProjection {
   let armed: ArmedProjection | null = null
   let disposed = false
 
@@ -249,7 +249,7 @@ async function durableView(session: TrackedSession, sessionId: string): Promise<
 
 /** The wire view of one durable snapshot. A session that was never
  *  initialized and is not in active mode has no experiment, so no view. */
-export function experimentViewFromSnapshot(snapshot: ExperimentSnapshot, running: boolean): FrontendExperimentView | null {
+function experimentViewFromSnapshot(snapshot: ExperimentSnapshot, running: boolean): FrontendExperimentView | null {
   const configuration = snapshot.configuration
   if (!configuration && !snapshot.mode.active) return null
   const runs = snapshot.runs.map(toFrontendRun)
@@ -292,7 +292,7 @@ function toFrontendRun(run: ExperimentSnapshot["runs"][number]): FrontendExperim
 
 /** A reader for the background lane: one held projection per asked session,
  *  history only, so `running` is always false. */
-export function createExperimentViewProtocolReader(reader: AsyncEventReadSurface): (sessionId: string) => Promise<FrontendExperimentView | null> {
+function createExperimentViewProtocolReader(reader: AsyncEventReadSurface): (sessionId: string) => Promise<FrontendExperimentView | null> {
   const projections = new Map<string, ExperimentProjection>()
   return async (sessionId) => {
     let projection = projections.get(sessionId)

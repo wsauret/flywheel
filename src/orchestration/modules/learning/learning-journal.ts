@@ -56,7 +56,7 @@ const log = Log.create({ service: "learning-journal" });
 
 /** The facts a learning write must leave behind. Nothing else is journalled:
  *  every other fact belongs to a caller that can retry its own work. */
-export type AuditFact = MemoryWrittenFact | SkillWrittenFact | SkillOperationTransitionedFact;
+type AuditFact = MemoryWrittenFact | SkillWrittenFact | SkillOperationTransitionedFact;
 
 const AUDIT_TYPES = ["memory.written", "skill.written", "skill.operation.transitioned"] as const;
 
