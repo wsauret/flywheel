@@ -1,0 +1,36 @@
+src/tui/hooks/create-module-slots.tsx
+  h_4b47e9e4a8b456 29-30,34-35,38,64-69,73,110
+src/tui/hooks/create-runtime-startup-status.ts
+  h_4b47e9e4a8b456 10
+tests/unit/tui/hooks/create-height-index.test.ts
+  h_4b47e9e4a8b456 215,217,219-231
+tests/unit/tui/hooks/create-module-slots.test.tsx
+  h_4b47e9e4a8b456 46-47,72,278,310,343
+vscode/src/extension.ts
+  h_4b47e9e4a8b456 10
+vscode/src/providers/auth-notification-coordinator.test.ts
+  h_4b47e9e4a8b456 13
+vscode/src/providers/auth-notification-coordinator.ts
+  h_4b47e9e4a8b456 8,67,71,73
+vscode/src/webview/changes.test.ts
+  h_4b47e9e4a8b456 117,192,282,298,361,418
+webview/src/app/agent-group-controls.test.ts
+  h_4b47e9e4a8b456 4,220-244
+webview/src/app/agent-group.tsx
+  h_4b47e9e4a8b456 12,113
+webview/src/app/compact-tool-rows.tsx
+  h_4b47e9e4a8b456 2,5-6,9-12,16-17
+webview/src/client/tool-runs.ts
+  h_4b47e9e4a8b456 156-165,171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "47802480edc1febb55e644fcd92738d4087b6d61",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
