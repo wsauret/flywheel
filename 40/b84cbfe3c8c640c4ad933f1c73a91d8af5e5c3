@@ -1,0 +1,16 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 99
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-mirror.test.ts
+  h_4b47e9e4a8b456 180-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "40b84cbfe3c8c640c4ad933f1c73a91d8af5e5c3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
