@@ -1,0 +1,16 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 45
+bench/harbor/configs/fh-deepseek-1017-max-openrouter.toml
+  h_4b47e9e4a8b456 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "05aa3dc4fd971f9c528fa7304ad61f473140607f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
