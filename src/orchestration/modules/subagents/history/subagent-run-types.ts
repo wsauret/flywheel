@@ -6,26 +6,6 @@ import type { HashMap } from "effect"
 type SubagentRunStatus = "created" | "completed" | "partial" | "failed" | "interrupted" | "paused" | "cancelled" | "stopped"
 type SubagentInterruptionReason = "runtime_restarted"
 
-export interface SubagentRunCreateInput {
-  childRunId: string
-  toolUseId?: string
-  modelRequestId?: string
-  /** Durable conversation of the dispatching runner. Cold-runtime recovery
-   *  folds its recovery message into this conversation; absent when the
-   *  dispatcher has no durable tree (a subagent dispatching a grandchild). */
-  conversationId?: string
-  agentType: string
-  description: string
-  model: string
-  effort?: string
-  /** Present (true) only for forked general-agent runs. */
-  fork?: true
-  maxTurns: number
-  tools: ReadonlyArray<string>
-  /** Canonical effective child directory. Required for every current write. */
-  executionCwd: string
-}
-
 export interface DurableSubagentRunCreateInput {
   childSessionId: string
   childRunId: string

@@ -3,12 +3,20 @@ import { errorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
 import type { AccountServiceInstallation } from "../orchestration/app-service/account-service-installation.js"
 import { launchAccountRuntime } from "./runtime-attach.js"
+import { SERVE_EXIT } from "./serve-contract.js"
 
 const log = Log.create({ service: "serve" })
 
 /** Why a serving account service stopped. An account home that no longer
  *  exists stops it as `unheld`. */
 export type ServeStop = "retired" | "signaled" | "unheld"
+
+/** The exit code a stopped service ends with. A service that retires because
+ *  nothing holds it, or because its account home is gone, is not one its
+ *  manager keeps running: a client started it, or its home no longer exists. */
+export function serveExitCode(stop: ServeStop): number {
+  return stop === "unheld" ? SERVE_EXIT.parked : SERVE_EXIT.restart
+}
 
 /** The service that a stopping service starts once its address is free. */
 export type NextService = "own successor" | "registered job" | "none"

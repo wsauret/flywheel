@@ -62,7 +62,7 @@ export function ModelSheet() {
       (left?.scope.kind !== "session" || (right.scope.kind === "session" && left.scope.sessionId === right.scope.sessionId)),
   })
   const revision = createModelCatalogRevision(() => owner().scope)
-  const [seat] = createResource(() => {
+  const [seat, { refetch: rereadSeat }] = createResource(() => {
     const currentRevision = revision()
     return currentRevision === undefined ? false : { owner: owner(), revision: currentRevision }
   }, async ({ owner: current }, previous): Promise<{
@@ -96,11 +96,14 @@ export function ModelSheet() {
 
   // Each read takes its generation when it starts, inside the action, so a
   // tap that joins a running read does not make that read stale. Saves to
-  // one seat run in order, from this sheet or the Models sheet, so the last
-  // tap lands last. A save writes the seat shown at its tap: a queued save
-  // that runs after the workflow moved on still writes that seat.
+  // one seat run in order, from this sheet or the Models sheet. A save writes
+  // the seat shown at its tap and expects the profile entry shown then: a
+  // queued save that runs after the workflow moved on still writes that seat,
+  // and the runtime refuses it as stale if an earlier save changed the entry.
+  // A failed save reads the seat again, so a retry expects the entry the file
+  // holds now.
   const save = (option: ModelOptionRow, effort: EffortOptionRow["effort"]): Promise<boolean> => {
-    const target = { scope: scope(), slot: slot() }
+    const target = { scope: scope(), slot: slot(), expected: visible()?.assignment?.configured ?? { kind: "absent" } as const }
     const seatName = inView()?.title ?? "Defaults"
     return client.actions.runInOrder(actionKey("model-seat", target.slot.roleId), effortKey(option, effort), () => {
       const read = ++generation
@@ -110,8 +113,10 @@ export function ModelSheet() {
           if (result.warning) client.report("warning", result.warning)
           else client.report("info", `${seatName}: ${result.label}`)
           client.closeSheet()
+        }, (cause: unknown) => {
+          failed(cause)
+          void rereadSeat()
         })
-        .catch(failed)
     })
   }
 

@@ -6,10 +6,9 @@ interface Contributions {
   readonly prompts: { readonly text: string };
 }
 interface Observers { readonly turn: (event: string) => void }
-interface Transformers { readonly prompt: (value: string) => string }
 interface Gates { readonly execution: (input: string) => boolean }
 
-type Module = ModuleDescriptor<Contributions, Observers, Transformers, Gates>;
+type Module = ModuleDescriptor<Contributions, Observers, Gates>;
 
 const core = {
   id: "core",
@@ -20,7 +19,6 @@ const core = {
     { domain: "prompts", id: "core", value: { text: "core" } },
   ],
   observers: [{ seam: "turn", observer: (_event: string) => undefined }],
-  transformers: [{ seam: "prompt", id: "core", order: 20, transformer: (value: string) => `${value}:core` }],
   gates: [],
 } as const satisfies Module;
 
@@ -30,18 +28,16 @@ const extension = {
   availability: { kind: "available" },
   contributions: [{ domain: "tools", id: "write", value: { name: "write" } }],
   observers: [],
-  transformers: [{ seam: "prompt", id: "extension", order: 10, transformer: (value: string) => `${value}:extension` }],
   gates: [{ seam: "execution", gate: (_input: string) => true }],
 } as const satisfies Module;
 
 describe("capability module composition", () => {
-  test("is independent of catalog order and sorts domains, ids, and transformers", () => {
+  test("is independent of catalog order and sorts domains and ids", () => {
     const forward = composeModules([core, extension]);
     const reverse = composeModules([extension, core]);
     expect(reverse).toEqual(forward);
     expect(forward.enabledModuleIds).toEqual(["core", "extension"]);
     expect(forward.contributions.map(({ domain, id }) => `${String(domain)}:${id}`)).toEqual(["prompts:core", "tools:read", "tools:write"]);
-    expect(forward.transformers.map(({ id }) => id)).toEqual(["extension", "core"]);
   });
 
   test("removes every declaration from a disabled module", () => {
@@ -66,14 +62,6 @@ describe("capability module composition", () => {
     expect(() => composeModules([core, core])).toThrow("Duplicate capability module id: core");
     expect(() => composeModules([core, { ...extension, contributions: [{ domain: "tools", id: "read", value: { name: "other" } }] }])).toThrow("Duplicate tools contribution id: read");
     expect(() => composeModules([extension, { ...core, gates: [{ seam: "execution", gate: (_input: string) => false }] }])).toThrow("Duplicate gate for seam: execution");
-  });
-
-  test("rejects duplicate transformer identities across the complete catalog", () => {
-    const duplicate = {
-      ...extension,
-      transformers: [{ seam: "prompt", id: "core", order: 10, transformer: (value: string) => value }],
-    } as const satisfies Module;
-    expect(() => composeModules([core, duplicate], { disabledModuleIds: ["extension"] })).toThrow("Duplicate transformer for seam prompt and id: core");
   });
 
   test("warns instead of rejecting explicitly degraded contribution domains", () => {

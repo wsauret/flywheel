@@ -10,6 +10,7 @@
 import { mayHaveSurvivingDescendant } from "../../../infra/container-mark.js";
 import { Log } from "../../../infra/log.js";
 import { bunContainerProbe, processStart, type ContainerProbe } from "../../../infra/process-container.js";
+import type { RepositoryState } from "./bash-copy-repository-state.js";
 import { discardPrivateCopy } from "./bash-private-copy.js";
 import type { CopyTreeState } from "./bash-private-copy-tree.js";
 
@@ -21,8 +22,9 @@ const log = Log.create({ service: "bash-private-copy" });
  *  refreshes a home the sweep may be removing. */
 export const REUSE_IDLE_LIMIT_MS = 24 * 60 * 60 * 1000;
 
-/** What a copy's home layout depends on. The private Git directory is built
- *  again on every take, so the Git directories and formats are not part of it. */
+/** What a copy's home layout depends on. The private Git directory is kept or
+ *  seeded again by the real repository's state (`ReusableCopy.git`), so the Git
+ *  directories and formats are not part of it. */
 export interface CopyGeometry {
   readonly realRoot: string;
   /** The directory name under `tree/`: the Git top level's name, or the real root's outside Git. */
@@ -36,8 +38,15 @@ export interface CopyGeometry {
 export interface ReusableCopy {
   readonly home: string;
   readonly geometry: CopyGeometry;
-  /** What each mirror of the last take left in the home. */
+  /** What the home holds: each mirror's state from the last take, with the
+   *  copy's listings its landing's change scan read (`CopyChanges.listings`). */
   readonly state: CopyTreeState;
+  /** In a repository, the real state the last take seeded the private Git
+   *  directory from, and the private state that seed produced. A copy comes
+   *  back to its pool only after a landing whose own read of the private state
+   *  equalled `baseline`, so the next take of the same real state keeps the
+   *  directory and this baseline instead of seeding and reading it again. */
+  readonly git?: { readonly fingerprint: string; readonly baseline: RepositoryState };
   /** When the last take of this copy finished, as `Date.now()`. */
   readonly refreshedAt: number;
 }

@@ -18,7 +18,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
+import { heldDirectoryPrototype } from "../../helpers/contained-directory-spies.js";
 import { moduleProtocolRows, type ModuleId, composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, migrateLegacyCapabilityModules, effectiveModuleIds } from "../../../src/orchestration/modules.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
@@ -30,6 +31,7 @@ import type { SkillManageToolDeps } from "../../../src/orchestration/modules/lea
 import type { WorkflowToolDeps } from "../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import type { AskUserController } from "../../../src/orchestration/runner/ask-user-controller.js";
 import { createModuleProjection } from "../../../src/orchestration/app-service/module-projection.js";
+import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { createCommandCatalogProjection } from "../../../src/orchestration/app-service/command-catalog-projection.js";
 import { createDefinitionAvailability } from "../../../src/orchestration/app-service/definition-availability.js";
 import { watchDefinitionRoots } from "../../../src/orchestration/app-service/definition-root-watcher.js";
@@ -121,9 +123,12 @@ async function startHarness(configSource = ""): Promise<Harness> {
   disposals.push(unsubscribe);
 
   const patches: RuntimeUiPatchInput[] = [];
-  const moduleProjection = await createModuleProjection({
+  const runtimeConfig = await createRuntimeConfigOwner({ configPath, watch: false });
+  disposals.push(() => runtimeConfig.dispose());
+  const moduleProjection = createModuleProjection({
     location: { configPath },
     capabilities,
+    runtimeConfig,
     publish: (patch) => { patches.push(patch) },
     persistentProcesses,
     settlePublication: async () => { await availability.refresh() },
@@ -493,12 +498,12 @@ describe("one runtime's optional capability surfaces", () => {
 
   it("keeps a committed change whose durability failed in effect on every surface", async () => {
     const harness = await startHarness();
-    const original = ContainedDirectory.prototype.publishFileBytesThrough;
+    const original = heldDirectoryPrototype().publishFileBytesThrough;
     // Inject after real publication at the shared boundary: the bytes are in
     // place and their durability is unknown. Windows flushes files, so a
     // directory-fsync injection cannot reach its durability result.
     let failed = false;
-    const publication = spyOn(ContainedDirectory.prototype, "publishFileBytesThrough").mockImplementation(function (this: ContainedDirectory, pending, name, content, expected, metadata) {
+    const publication = spyOn(heldDirectoryPrototype(), "publishFileBytesThrough").mockImplementation(function (this: ContainedDirectory, pending, name, content, expected, metadata) {
       const attempt = original.call(this, pending, name, content, expected, metadata);
       if (attempt.status !== "published") return attempt;
       if (name === "flywheel.toml" && harness.configText().includes('"learning"') && !failed) {

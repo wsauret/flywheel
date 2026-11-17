@@ -6,6 +6,7 @@ import * as path from "node:path";
 
 import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
 import { canonicalMutationPath, withMutationQueueKey } from "../../../../../src/infra/file-mutation-queue.js";
@@ -26,7 +27,6 @@ describe("edit tool", () => {
         edits: {
           type: "array",
           minItems: 1,
-          description: expect.any(String),
           items: {
             type: "object",
             properties: { old_string: expect.any(Object), new_string: expect.any(Object), replace_all: expect.any(Object) },
@@ -69,7 +69,7 @@ describe("edit tool", () => {
     const target = path.join(tmpDir, "file.txt");
     fs.writeFileSync(target, "before one before");
     const edit = createEditDefinition();
-    const prepared = prepareToolCall({ id: "old-shape", name: "edit", input: { path: "file.txt", old_string: "one", new_string: "two" } }, new Map([["edit", edit]]));
+    const prepared = prepareToolCall({ id: "old-shape", name: "edit", input: { path: "file.txt", old_string: "one", new_string: "two" } }, new Map([["edit", edit]]), admitEveryTool);
     const result = await executePreparedTool(prepared, makeContext({ executionCwd: tmpDir }));
     expect(result.outcome).toBe("ok");
     expect(String(result.content)).toStartWith("Note: `old_string`, `new_string` were read as the one entry of `edits`.\nUpdated file.txt");

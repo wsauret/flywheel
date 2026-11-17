@@ -10,6 +10,7 @@ import { COMPOSER_RETURN_KIND } from "../../../../../src/orchestration/session/c
 import { removeOwnerPid } from "../../../../../src/orchestration/session/pid-lock.js"
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { liveSessionControl } from "../../../../../src/orchestration/session/live-session-control.js"
+import { processSettled } from "../../../../helpers/process-settled.js"
 
 const createHarness = subagentChildHarnesses()
 describe("subagent private input at handoff", () => {
@@ -47,7 +48,7 @@ describe("subagent private input at handoff", () => {
       expect(source.drainPending()).toBeNull()
       options.runtimeSurfaces!.handoff!.onContent({ summary: "done" })
       runs.results[0]!.resolve({ servedRequests: 0, terminal: { kind: "completed" }, durationMs: 1 })
-      await Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)))
+      await Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)))
       const tree = await tryOpenConversationTree({ sessionId: parent, conversationId: parentConversation, store: harness.reader, writer: harness.writer })
       expect(JSON.stringify(await tree!.getBranch())).toContain("keep my words")
       expect(JSON.stringify(await tree!.buildContext())).not.toContain("keep my words")
@@ -84,7 +85,7 @@ describe("subagent private input at handoff", () => {
       options.lifecycle.onHandoffStarted!()
       options.runtimeSurfaces!.handoff!.onContent({ summary: "done" })
       let closed = false
-      const completion = Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)))
+      const completion = Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)))
         .then(() => { closed = true })
       runs.results[0]!.resolve({ servedRequests: 0, terminal: { kind: "completed" }, durationMs: 1 })
       await released.promise
@@ -133,7 +134,7 @@ describe("subagent private input at handoff", () => {
       options.lifecycle.onHandoffStarted!()
       options.runtimeSurfaces!.handoff!.onContent({ summary: "done" })
       let closed = false
-      const completion = Promise.all(harness.backgroundTasks.processRecords().map((process) => harness.backgroundTasks.waitProcess(process.id)))
+      const completion = Promise.all(harness.backgroundTasks.processRecords().map((process) => processSettled(harness.backgroundTasks, process.id)))
         .then(() => { closed = true })
       runs.results[0]!.resolve({ servedRequests: 0, terminal: { kind: "completed" }, durationMs: 1 })
       await released.promise

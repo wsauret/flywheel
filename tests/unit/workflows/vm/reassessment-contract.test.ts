@@ -4,7 +4,7 @@ import type { Attempt, LogicalNode } from "../../../../src/workflows/vm/graph-ty
 import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../../../src/workflows/vm/reassessment-contract.js";
 import { reassessesRetiredFor, reassessmentIssues, reassessmentProposal, type ReassessmentControl } from "../../../../src/workflows/vm/reassessment.js";
 import { loadBriefs } from "../../../../src/workflows/brief.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const milestone = {
   type: "object",
@@ -160,7 +160,7 @@ describe("the reassess contract of a for node from before phases", () => {
 });
 
 describe("loading a reassess phase", () => {
-  const planned = (reassess: { readonly output?: { readonly summary: string } } = {}) => Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const planned = (reassess: { readonly output?: { readonly summary: string } } = {}) => loadedWorkflow({
     id: "planned",
     name: "Planned",
     phases: [

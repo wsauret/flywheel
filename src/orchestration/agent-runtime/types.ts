@@ -34,7 +34,6 @@ import type { ChildSlotRegistry } from "./child-slot-registry.js";
 import type { StartModelWorkflow } from "./tools/workflow-tool.js";
 import type { CapabilityAccess, ToolProfile } from "./tools/types.js";
 import type { ModuleRuntimes } from "../../infra/module-runtime.js";
-import type { ToolOutcome } from "../../infra/tool-outcome.js";
 import type { AgentLoopMaintenance, AgentLoopPersistence, AgentLoopTerminal, FinalizedCheckpointSwap, RestoredAgentWait } from "./agent-loop-types.js";
 import type { RecallPort } from "../../protocol/conversation-recall.js";
 import type { ModuleServices } from "../../infra/module-service.js";
@@ -371,7 +370,10 @@ interface AgentBaseOptions {
    *  answered decision it claims through this, so a context without it cannot
    *  confirm one. */
   sessionEventStore?: AsyncEventStateReadSurface;
-  /** Asynchronous read authority for registered session projections. */
+  /** The one read surface of this run's durable facts: registered session
+   *  projections, the conversation checkpoint, usage settlement, and the
+   *  recorded stale-mask seed. Every producer that gives the run a
+   *  `sessionEventWriter` sets it. */
   sessionEventReader?: AsyncEventStateReadSurface;
   /** Resolves the `<env>` block this runner's prompt carries. Absent means the
    *  prompt renders no environment, which is what prompt tooling and unit
@@ -407,7 +409,6 @@ export type AgentOptions = AgentBaseOptions & {
 
 export interface Agent {
   send(input: string | AgentLoopWakeInput): void;
-  end(): void;
   abort(): void;
   interruptGeneration?(): boolean;
   readonly done: Promise<AgentRunResult>;
@@ -483,9 +484,3 @@ export function failureTerminal(terminal: AgentRunTerminal): AgentFailureReason 
       return terminal;
   }
 }
-
-export type AgentStreamEvent =
-  | { type: "tool_use"; toolUseId: string; toolName: string; toolInput: AgentToolInput }
-  | { type: "tool_result"; toolUseId: string; outcome: ToolOutcome }
-  | { type: "text" }
-  | { type: "result" };

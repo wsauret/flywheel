@@ -13,7 +13,7 @@ function languageFromPath(path?: string): string | undefined {
   return dot > 0 ? fileName?.slice(dot + 1).toLowerCase() : undefined
 }
 
-export function renderFileDiffLine(text: string, path?: string, syntaxHighlight = false): string {
+function renderFileDiffLine(text: string, path?: string, syntaxHighlight = false): string {
   return renderCode(text, syntaxHighlight ? languageFromPath(path) : undefined)
 }
 
@@ -24,7 +24,7 @@ export function renderFileDiffLine(text: string, path?: string, syntaxHighlight 
  *  thousand reactive rows, each with its own memos and effects to build and to
  *  reconcile again on every later change. The mounted file owns its current
  *  markup; earlier streaming revisions are not retained. */
-export function renderFileDiffRows(rows: FileDiffFile["rows"], path: string | undefined, syntaxHighlight: boolean): string {
+function renderFileDiffRows(rows: FileDiffFile["rows"], path: string | undefined, syntaxHighlight: boolean): string {
   let html = ""
   let oldLine: number | undefined
   let newLine: number | undefined

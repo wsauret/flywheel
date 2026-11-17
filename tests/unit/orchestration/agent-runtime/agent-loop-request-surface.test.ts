@@ -14,6 +14,7 @@ import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/a
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
+import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { chain, fakeAvailability, fakeClient, singletonCandidate, textStream } from "./llm/_provider-chain-harness.js"
@@ -292,8 +293,78 @@ describe("per-request persistent-process policy", () => {
       kind: "tool_use",
       toolCall: expect.objectContaining({ id: "tc_bash", name: "bash", repairedFrom: "Bash" }),
     }))
+    // The surface plans 'bash', so the call that the dispatcher repaired from 'Bash' is admitted and runs.
+    expect(events.find((event) => event.kind === "tool_result" && event.toolUseId === "tc_bash")).toMatchObject({ outcome: "ok", content: [{ type: "text", text: "ran" }] })
     expect(interactionProfileIds).toEqual(["default", "default"])
     expect(attributionAdmissions).toEqual(["request-1", "request-1"])
+  })
+
+  it("refuses a repaired call to a tool that needs a module that the request's captured module set disables", async () => {
+    let executions = 0
+    const skillManage: RuntimeTool = {
+      name: "skill_manage",
+      action: "ui_meta",
+      description: "skill package tool",
+      inputSchema: { type: "object", properties: {} },
+      isConcurrencySafe: true,
+      execute: async () => { executions += 1; return { content: "written", outcome: "ok" } },
+    }
+    const surface = await createRequestToolSurface(
+      () => ({
+        eligibleTools: new RequestToolMap([["skill_manage", skillManage]]),
+        tools: new RequestToolMap([["skill_manage", skillManage]]),
+        omitted: [],
+        usable: new Set(["skill_manage"]), turnedOff: [],
+        registrationIds: new Map([["skill_manage", "skill_manage"]]),
+        registrationIdentities: new Map([["skill_manage", "skill_manage"]]),
+        definitionAvailability: testDefinitionAvailability(),
+      }),
+      () => composeFirstPartyModules(undefined, ["skills"]),
+      testRuntimeConfigCapture,
+    )
+    let request = 0
+    const client: LLMClient = { historyTarget: ownHistoryTarget,
+      accessProvider: "anthropic_api",
+      modelFamily: "anthropic",
+      model: "test-model",
+      toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      contextLimit: 100_000,
+      outputLimit: 8_000,
+      supportsReasoning: false,
+      async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
+        if (request++ === 0) {
+          yield { kind: "tool_use", toolCall: { id: "tc_skill_manage", name: "SkillManage", input: {} } }
+          yield { kind: "done", stopReason: "tool_use" }
+          return
+        }
+        yield { kind: "text_delta", text: "done", blockKey: "text" }
+        yield { kind: "done", stopReason: "end_turn" }
+      },
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
+    }
+    const events: StreamEvent[] = []
+
+    await runAgentLoop({
+      client: asModelClient(client),
+      tools: surface,
+      systemPrompt: () => stableSystemPrompt("test"),
+      instruction: "remember",
+      executionCwd: tmpdir(),
+      userDataRoot: `${tmpdir()}/.test-account`, projectRoot: tmpdir(),
+      persistence: { history: { append: () => {} } },
+      seed: { kind: "fresh" },
+      onEvent: (event) => { events.push(event) },
+      providerSessionKey: "provider-session", promptCacheKey: "provider-session",
+      artifactScopeId: "artifact-scope",
+      retrievalSessionId: "retrieval-session",
+    })
+
+    expect(events).toContainEqual(expect.objectContaining({ kind: "tool_use", toolCall: expect.objectContaining({ id: "tc_skill_manage", name: "skill_manage", repairedFrom: "SkillManage" }) }))
+    expect(events.find((event) => event.kind === "tool_result" && event.toolUseId === "tc_skill_manage")).toMatchObject({
+      outcome: "error",
+      content: [{ type: "text", text: "skills is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml" }],
+    })
+    expect(executions).toBe(0)
   })
 })
 

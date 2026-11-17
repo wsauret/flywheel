@@ -213,34 +213,6 @@ export function foldQueueFacts(events: readonly StoredFact[], from: QueueProject
   })
 }
 
-export function loadWorkflowStateFromEvents(events: readonly StoredFact[]): WorkflowView["status"] | undefined {
-  let queueExists = false
-  let status: WorkflowView["status"] | undefined
-  let missingCreation: StoredFact | null = null
-  for (const event of workflowFamilyEvents(events)) {
-    if (!QUEUE_STATUS_FACT_TYPES.some((type) => type === event.type)) continue
-    const fact = parseProjectionFact(event, parseWorkflowQueueFact)
-    switch (fact.type) {
-      case "queue.created":
-        queueExists = true
-        missingCreation = null
-        status = fact.version === 9 ? fact.payload.queue.status : fact.payload.rows.status
-        break
-      case "queue.deleted":
-        queueExists = false
-        missingCreation = null
-        status = undefined
-        break
-      case "queue.state.changed":
-        if (queueExists) status = fact.payload.status
-        else missingCreation = event
-        break
-    }
-  }
-  if (missingCreation) throw missingQueue(missingCreation)
-  return status
-}
-
 function initialState(): QueueProjectionState {
   return { queue: null }
 }

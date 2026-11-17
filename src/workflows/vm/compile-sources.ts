@@ -1,7 +1,6 @@
 import { latestReducer, VOTE_COUNTING_REDUCERS } from "../reducers/registry.js";
 import type { JoinContracts, ReducerParams, RegisteredReducer } from "../reducers/reducer.js";
 import type { ResolvedAgent } from "../agent-resolution.js";
-import { workflowInputContract } from "../brief.js";
 import { compiledFields, type CompiledField, type WorkflowInputValue } from "../output-contract/compile.js";
 import type { Field, FieldMap } from "../output-contract/grammar.js";
 import { parseFieldRef } from "../field-ref.js";
@@ -122,7 +121,7 @@ export function resolveSources(
   launchInput: CompileLaunchInput,
   rejected: ReadonlySet<WorkflowPhase> = new Set(),
 ): ResolvedSources {
-  const file = workflow.provenance?.layer === "session";
+  const file = workflow.provenance.layer === "session";
   const sources = outputSources(workflow);
   const locations = new Map<WorkflowPhase, PhaseLocation>();
   walkPhases(workflow.phases, (phase, location) => locations.set(phase, location));
@@ -184,10 +183,10 @@ export function resolveSources(
   const listField = (ref: string, reader: PhaseLocation, fail: (reason: string) => Error) => {
     const { source: sourceId, field } = parseFieldRef(ref);
     const isInput = sourceId === WORKFLOW_INPUT_SOURCE_ID;
-    if (isInput && workflowInputContract(workflow) === null) throw fail(`reads the launch input through "${ref}", but the workflow declares no input contract`);
+    if (isInput && workflow.inputContract === null) throw fail(`reads the launch input through "${ref}", but the workflow declares no input contract`);
     const source = isInput ? undefined : sources.get(sourceId);
     if (!isInput && source === undefined) throw fail(`reads "${sourceId}", which names no phase of one agent, named agent, or join output`);
-    const fields = isInput ? workflowInputContract(workflow)?.fields : source === undefined ? undefined : outputFields(source, reader);
+    const fields = isInput ? workflow.inputContract?.fields : source === undefined ? undefined : outputFields(source, reader);
     const list = fields?.find(({ key }) => key === field);
     if (list?.type !== "list") throw fail(`reads "${ref}", which is not a declared list field${isInput ? " of the input contract" : ""}`);
     const width = file && isInput ? launchWidth(launchInput, field, list.max) : list.max;

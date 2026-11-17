@@ -1,7 +1,7 @@
 import { expect, test, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
+import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js";
 import { join } from "node:path";
 import { withConfigOwnership, withConfigOwnershipBlocking, type ConfigReadResult } from "../../../../src/orchestration/config/config-file.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
@@ -24,7 +24,7 @@ test("a config patch cannot overwrite an external edit after its admitted read",
 test("contained publication refusal throws instead of reporting saved bytes", () => {
   const configPath = join(temporaryDirectory("config-refusal-"), "flywheel.toml");
   writeFileSync(configPath, "show_thinking = true\n");
-  const publish = spyOn(ContainedDirectory.prototype, "publishFileBytesThrough").mockReturnValue({ status: "not_applied", error: new Error("publication refused") });
+  const publish = spyOn(heldDirectoryPrototype(), "publishFileBytesThrough").mockReturnValue({ status: "not_applied", error: new Error("publication refused") });
   try {
     withConfigOwnershipBlocking({ configPath }, (config) => {
       config.readText();
@@ -43,7 +43,7 @@ test("indeterminate publication classifies one held reread candidate-first", () 
     const configPath = join(temporaryDirectory("config-indeterminate-"), "flywheel.toml");
     const prior = outcome === "equal" ? candidate : "show_thinking = true\n";
     if (outcome !== "absent") writeFileSync(configPath, prior);
-    const publish = spyOn(ContainedDirectory.prototype, "publishFileBytesThrough").mockImplementation(() => {
+    const publish = spyOn(heldDirectoryPrototype(), "publishFileBytesThrough").mockImplementation(() => {
       if (outcome === "candidate") writeFileSync(configPath, candidate);
       if (outcome === "other") writeFileSync(configPath, "theme = \"aura\"\n");
       if (outcome === "unreadable") {

@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { JsonValue } from "../../../infra/auth/bounded-json.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { asRecord } from "../../../infra/record.js";
 import { ProviderRequestValidationError } from "../../agent-runtime/llm/errors.js";
@@ -127,7 +128,7 @@ export interface PluginGate {
   /** The answer to one hook request: `path` names the hook's call and `body` is its parsed JSON, or undefined for
    *  text that is not JSON. Undefined refuses the request as one that the gate cannot read. The hook waits for an
    *  answer that is still a promise. */
-  answer(path: string, body: unknown): object | Promise<object> | undefined;
+  answer(path: string, body: JsonValue | undefined): object | Promise<object> | undefined;
 }
 
 /**
@@ -150,7 +151,7 @@ export function servePluginGate(gate: PluginGate): PluginGateServer {
       unix: socketPath,
       fetch: async (request) => {
         const text = await request.text();
-        let body: unknown;
+        let body: JsonValue | undefined;
         try {
           body = JSON.parse(text);
         } catch {

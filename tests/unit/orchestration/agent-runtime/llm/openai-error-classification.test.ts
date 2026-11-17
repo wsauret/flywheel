@@ -6,7 +6,7 @@ import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream }
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { ApiError, ContentRefused, fromStreamError, TransientDisconnect } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { ApiError, fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
@@ -209,13 +209,12 @@ describe("classifyOpenAIStreamError folds ChatGptAdapterApiError into the stream
     const message = "This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.";
     const frame = await drainAdapterEvents({ type: "error", error: { type: "invalid_request_error", code: "cyber_policy", message } });
     const refused = fromStreamError(normalizeProviderAttemptFailure(classify(new ChatGptAdapterTransportError("read", frame))).cause);
-    expect(refused).toBeInstanceOf(ContentRefused);
-    if (!(refused instanceof ContentRefused)) throw new Error("expected ContentRefused");
+    if (refused._tag !== "ContentRefused") throw new Error(`expected ContentRefused, got ${refused._tag}`);
     expect(refused.policy).toBe("cyber_policy");
     expect(refused.reason).toBe(`ChatGPT backend error: ${message}`);
 
     const dropped = classify(new ChatGptAdapterTransportError("read", new Error("websocket closed: 1006")));
-    expect(fromStreamError(normalizeProviderAttemptFailure(dropped).cause)).toBeInstanceOf(TransientDisconnect);
+    expect(fromStreamError(normalizeProviderAttemptFailure(dropped).cause)._tag).toBe("TransientDisconnect");
   });
 
   test.each(["cyber_policy", "bio_policy", "misalignment_policy_violation"])("a Responses %s rejection is a policy refusal over HTTP and in the stream", (code) => {
@@ -402,7 +401,7 @@ describe("chat-completions error classification", () => {
       expect(classified.reason).toBe(reason);
       // Two new images in one batch, and the provider names neither, so the refusal guesses no part.
       expect(classified.part).toBeUndefined();
-      expect(fromStreamError(classified)).toBeInstanceOf(ContentRefused);
+      expect(fromStreamError(classified)._tag).toBe("ContentRefused");
       expect(repairContentRefusal(withImage.messages, classified, "openrouter")?.contentRepair).toEqual({ kind: "remove", toolUseIds: ["call-a", "call-b"] });
     });
 

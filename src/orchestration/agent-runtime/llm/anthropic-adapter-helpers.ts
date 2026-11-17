@@ -6,7 +6,7 @@ import { toAnthropicMessagesRequest } from "./conversions/anthropic-messages.js"
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW, classifyQuotaError, ContentFilteredError, ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError } from "./errors.js";
 import { supportsAdaptiveThinking, supportsEagerToolStreamingOnCopilot, supportsPerTurnEffort } from "./model-compat.js";
 import { isTransientNetworkError } from "./provider-failure.js";
-import { STREAM_TTFT_TIMEOUT_MS } from "./stream-watchdog.js";
+import { STREAM_TTFT_TIMEOUT_MS } from "./stream-liveness.js";
 import type { ConversationMessage, StreamOptions } from "./types.js";
 import type { SystemPromptTiers } from "./system-prompt-tiers.js";
 import type { ProviderHistoryTarget } from "./provider-history.js";

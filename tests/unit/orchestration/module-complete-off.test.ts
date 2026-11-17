@@ -62,7 +62,7 @@ interface CapabilityObservations extends Required<ObservableContributions> {
 type CompleteOffTable = { readonly [Id in CatalogId]: ObservableProbe };
 
 const COMPLETE_OFF_ROWS: CompleteOffTable = {
-  "ask-user": { contributions: { tools: ["ask_user"], promptFragments: ["ask-user-root"] } },
+  "ask-user": { contributions: { tools: ["ask_user"] } },
   "background-commands": { contributions: { settings: ["background-commands"] }, settlesAfterAdmission: ["background-commands"] },
   bash: { contributions: { tools: ["bash"] } },
   "bug-reports": { contributions: { settings: ["bug-reports"] } },
@@ -84,6 +84,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   papercuts: { contributions: { tools: ["papercut_log", "papercut_dispose"], settings: ["papercuts"], commands: ["papercuts"] } },
   "project-notifications": { contributions: { settings: ["project-notifications", "project-notifications-desktop"], commands: ["notifications"] }, observers: ["notify"] },
   "provider-anthropic-api": { contributions: { providers: ["anthropic_api"] } },
+  "provider-baseten": { contributions: { providers: ["baseten"] } },
   "provider-chatgpt": { contributions: { providers: ["chatgpt"] } },
   "provider-claude-agent-sdk": { contributions: { providers: ["claude_agent_sdk"], settings: ["provider-claude-agent-sdk"] } },
   "provider-deepseek": { contributions: { providers: ["deepseek"] } },
@@ -336,10 +337,10 @@ describe("catalog-exhaustive complete-off behavior", () => {
         .map((fragment) => fragment.render({ kernel, modules, tools: plan.tools, memorySnapshot: "", capabilities: promptCapabilities([...plan.tools.values()]) })));
       const orchestration = fragments.find((text) => text?.startsWith("# Orchestrating with workflows"));
       if (orchestration) {
-        expect(orchestration).toContain("Write a workflow file for the task and launch it by content or path with the workflow tool.");
+        expect(orchestration).toContain("Start independent units of work at the same time.");
         expect(orchestration).toContain("Workflows is On:");
         expect(orchestration).toContain("ask the person, and pass the answer as `input` to the next workflow.");
-        expect(orchestration.includes("Give the work of one agent to a subagent.")).toBe(plan.tools.has("subagent"));
+        expect(orchestration.includes("give it to one implementer subagent")).toBe(plan.tools.has("subagent"));
         expect(orchestration).not.toContain("ask_user");
       }
       const reminder = composition.installedContributions.find((contribution) => contribution.domain === "turnReminders" && contribution.id === "workflow-orchestration");

@@ -251,8 +251,8 @@ export function decodeGuardianReply(line: string): GuardianReply | undefined {
     return pid === undefined ? undefined : { v: 1, kind, id, pid }
   }
   if (kind === "rejected") {
-    const reason = frameRejection(frame.reason)
-    return reason === undefined ? undefined : { v: 1, kind, id, reason }
+    const { reason } = frame
+    return isGuardianRejection(reason) ? { v: 1, kind, id, reason } : undefined
   }
   if (kind === "opened" || kind === "closed") {
     const generation = frameToken(frame.generation)
@@ -270,7 +270,7 @@ export function decodeGuardianReply(line: string): GuardianReply | undefined {
  *  Worker reaches the guardian through the same vocabulary the pipe accepts
  *  and through no more of it. */
 export function decodeGuardianCommand(value: unknown): GuardianCommand | undefined {
-  const fields = objectFields(value)
+  const fields = asObjectFields(value)
   if (!fields) return undefined
   const token = frameToken(fields.token)
   if (token === undefined) return undefined
@@ -282,11 +282,11 @@ export function decodeGuardianCommand(value: unknown): GuardianCommand | undefin
 }
 
 export function decodeGuardianLeaseOutcome(value: unknown): GuardianLeaseOutcome | undefined {
-  const fields = objectFields(value)
+  const fields = asObjectFields(value)
   if (!fields) return undefined
   if (fields.kind === "rejected") {
-    const reason = frameRejection(fields.reason)
-    if (reason === undefined || !hasExactKeys(fields, ["kind", "reason"])) return undefined
+    const { reason } = fields
+    if (!isGuardianRejection(reason) || !hasExactKeys(fields, ["kind", "reason"])) return undefined
     return { kind: "rejected", reason }
   }
   if (fields.kind !== "adopted" && fields.kind !== "released") return undefined
@@ -353,7 +353,7 @@ export function createGuardianFrameReader(): GuardianFrameReader {
 
 /** The string-keyed view of a JSON or structured-clone object, or nothing
  *  for any other value. */
-export function objectFields(value: unknown): UnknownFields | undefined {
+export function asObjectFields(value: unknown): UnknownFields | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined
   // SAFETY: The runtime object check proves that the JSON or structured-clone value has a string-keyed object view.
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: JSON and structured-clone objects require a string-keyed view after runtime validation
@@ -368,7 +368,7 @@ function frameFields(line: string): UnknownFields | undefined {
   } catch {
     return undefined
   }
-  const frame = objectFields(parsed)
+  const frame = asObjectFields(parsed)
   if (!frame) return undefined
   return frame.v === GUARDIAN_PROTOCOL_VERSION ? frame : undefined
 }
@@ -382,7 +382,7 @@ function frameToken(value: unknown): string | undefined {
  *  bound. */
 export function decodeStopHold(value: unknown): StopHold | null | undefined {
   if (value === null) return null
-  const fields = objectFields(value)
+  const fields = asObjectFields(value)
   if (!fields || !hasExactKeys(fields, ["path", "boundMs"])) return undefined
   const { path, boundMs } = fields
   if (typeof path !== "string" || !isAbsolute(path)) return undefined
@@ -390,18 +390,19 @@ export function decodeStopHold(value: unknown): StopHold | null | undefined {
   return { path, boundMs }
 }
 
-function frameRejection(value: unknown): GuardianRejection | undefined {
-  switch (value) {
-    case "not-a-container": return "not-a-container"
-    case "container-unproven": return "container-unproven"
-    case "at-capacity": return "at-capacity"
-    case "token-retired": return "token-retired"
-    case "unknown-token": return "unknown-token"
-    case "unknown-generation": return "unknown-generation"
-    case "generation-retired": return "generation-retired"
-    case "unauthorized": return "unauthorized"
-    default: return undefined
-  }
+const GUARDIAN_REJECTIONS: ReadonlySet<unknown> = new Set<GuardianRejection>([
+  "not-a-container",
+  "container-unproven",
+  "at-capacity",
+  "token-retired",
+  "unknown-token",
+  "unknown-generation",
+  "generation-retired",
+  "unauthorized",
+])
+
+function isGuardianRejection(value: unknown): value is GuardianRejection {
+  return GUARDIAN_REJECTIONS.has(value)
 }
 
 function correlationId(value: unknown): number | undefined {

@@ -12,7 +12,11 @@ function applied(parts: readonly OutputDelta[], start: OutputView["streamingTool
 }
 
 describe("partitionStreamingTextDelta", () => {
-  test.each([["ascii", "x".repeat(9000)], ["multibyte", "界".repeat(3000) + "🙂".repeat(500)]])("splits a long %s text into bounded parts that rebuild it exactly", (_kind, content) => {
+  test.each([
+    ["ascii", "x".repeat(9000)],
+    ["multibyte", "界".repeat(3000) + "🙂".repeat(500)],
+    ["escaped", "say \"hi\" \\ path\u0001\u001f\ttab\n界🙂".repeat(400)],
+  ])("splits a long %s text into bounded parts that rebuild it exactly", (_kind, content) => {
     const ops: StreamingToolTextOp[] = [{ kind: "set", toolUseId: "bash-1", entry: { content } }]
     const delta: OutputDelta = { visibleMessageCount: 4, truncateTo: 2, blocks: [{ kind: "append-content", index: 2, blockId: "text:a", contentOffset: 0, text: "hi" }], streamingToolTextOps: ops }
     const parts = partitionStreamingTextDelta(delta)
@@ -22,6 +26,10 @@ describe("partitionStreamingTextDelta", () => {
     expect(parts[0]).toMatchObject({ visibleMessageCount: 4, truncateTo: 2, blocks: delta.blocks })
     expect(parts.slice(1).every((part) => part.blocks.length === 0 && part.truncateTo === undefined && part.visibleMessageCount === undefined)).toBe(true)
     for (const part of parts) expect(Buffer.byteLength(JSON.stringify(part.streamingToolTextOps), "utf8")).toBeLessThanOrEqual(2048 + 256)
+    const pieces = parts.flatMap((part) => (part.streamingToolTextOps ?? []).flatMap((op) =>
+      op.kind === "set" ? [op.entry.content ?? ""] : op.kind === "edit" ? op.edits.flatMap((edit) => edit.kind === "append" ? [edit.text] : []) : []))
+    expect(pieces.join("")).toBe(content)
+    for (const piece of pieces) expect(Buffer.byteLength(JSON.stringify(piece), "utf8")).toBeLessThanOrEqual(2048)
     expect(applied(parts)).toEqual({ "bash-1": { content } })
   })
 

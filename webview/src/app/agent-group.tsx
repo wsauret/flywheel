@@ -99,7 +99,7 @@ export function AgentGroup(props: {
           setOpen(value => !value)
           if (open() && loaded() === undefined) props.onHydrateGroup(props.block.id)
         }}>
-        <span class="chevron">{active() ? <span class="marker-dot live" /> : linkedSession() !== undefined ? <span class="marker-dot" /> : open() ? "▾" : count() === 0 ? <span class="marker-dot" /> : "▸"}</span>
+        <span class="chevron">{active() ? <span class="marker-dot live" /> : linkedSession() !== undefined || (!open() && count() === 0) ? <span class="marker-dot" /> : open() ? "▾" : "▸"}</span>
         <SubagentHeader parts={parts()} />
         <Show when={!initializing() && linkedSession() !== undefined}><span class="agent-open">{"\u2197 Open"}</span></Show>
       </button>

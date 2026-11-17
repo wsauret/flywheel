@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { heapStats } from "bun:jsc";
 
-import { sanitizeExternalText, stripAnsiEscapes } from "../../../src/infra/control-characters.js";
+import { createStreamingSanitizer, sanitizeExternalText, stripAnsiEscapes } from "../../../src/infra/control-characters.js";
 
 const ESC = "\u001b";
 
@@ -95,5 +95,38 @@ describe("sanitizeExternalText", () => {
     // A rope of one node per character would add about 320,000 strings here.
     expect(strings() - before).toBeLessThan(5_000);
     expect(kept).toHaveLength(40);
+  });
+
+  it("gives the same text for any chunking of input with and without control characters", () => {
+    let seed = 7;
+    const random = (limit: number): number => {
+      seed = (seed * 48_271) % 2_147_483_647;
+      return seed % limit;
+    };
+    const clean = ["a", "b", " ", "[", "]", "\\", "m", "P", "\n", "\t", "界", "🙂"];
+    const controls = ["\r", ESC, "\u0007", "\u0000", "\u007f", "\u009b", "\u009c", "\u009d", "\u0090"];
+    let chunks = 0;
+    while (chunks < 1_000) {
+      const withControls = random(2) === 0;
+      const alphabet = withControls ? [...clean, ...controls] : clean;
+      const characters = Array.from({ length: 1 + random(80) }, () => alphabet[random(alphabet.length)]!);
+      const input = characters.join("");
+      // Splits keep code points whole: an escape that a chunk ends on the high
+      // half of a surrogate pair takes only that half, which the whole-text
+      // sanitizer never does.
+      const parts: string[] = [];
+      let start = 0;
+      while (start < characters.length) {
+        const end = Math.min(characters.length, start + 1 + random(12));
+        parts.push(characters.slice(start, end).join(""));
+        start = end;
+      }
+      const streamed: string[] = [];
+      const sanitizer = createStreamingSanitizer((text) => { streamed.push(text); });
+      for (const part of parts) sanitizer.push(part);
+      sanitizer.finish();
+      expect(streamed.join("")).toBe(sanitizeExternalText(input));
+      chunks += parts.length;
+    }
   });
 });

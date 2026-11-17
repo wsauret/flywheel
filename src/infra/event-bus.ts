@@ -420,7 +420,6 @@ type EmitInput<T extends FlywheelEventType> = {
   readonly data: FlywheelEventData<T>;
   readonly id?: string;
   readonly timestamp?: number;
-  readonly causality?: FlywheelEvent["causality"];
 };
 
 export type EmitFn = <T extends FlywheelEventType>(
@@ -443,7 +442,6 @@ export function createEmit(target: Pick<EventBus, "emit">): EmitFn {
       sessionId: input.sessionId,
       timestamp: input.timestamp ?? Date.now(),
       data: input.data,
-      ...(input.causality ? { causality: input.causality } : {}),
     } as FlywheelEvent);
   };
 }

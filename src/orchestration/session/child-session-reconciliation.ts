@@ -48,7 +48,7 @@ const reconciliationLanes = new WeakMap<AsyncEventStateReadSurface, Map<string, 
 interface ReconcileChildSessionCompletionsInput {
   readonly parentSessionId: string
   readonly reader: AsyncEventStateReadSurface
-  readonly projectionReader?: AsyncEventStateReadSurface
+  readonly projectionReader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
   readonly deliverNotification?: (notification: HeldBackgroundNotification) => Promise<boolean>
   /** The parent's tool-execution projection when the caller holds it, such
@@ -112,10 +112,10 @@ export async function reconcileChildSessionCompletions(
   const sweep = async (): Promise<ChildSessionReconciliation> => {
     await settleSweptSessions(input)
     return parentLane(input.reader, input.parentSessionId).run(async () => {
-      const reader = input.projectionReader ?? input.reader
-      const previousHolds = new Set((await reader.readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).map(({ key }) => key))
-      const { completeDelivery } = await reconcileChildSessionCompletionsNow(input)
-      return completeDelivery(await reofferChildCompletions(input, previousHolds, sweepAfterCommit(input)))
+      const reader = input.projectionReader
+      const held = await reader.readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)
+      const { wrote, completeDelivery } = await reconcileChildSessionCompletionsNow(input)
+      return completeDelivery(await reofferChildCompletions(input, held, wrote, sweepAfterCommit(input)))
     })
   }
   return sweepWithFaultNotice(input.reader, input.parentSessionId, sweep)
@@ -142,21 +142,32 @@ function parentLane(reader: AsyncEventStateReadSurface, parentSessionId: string)
  *  takes the parent's lane: started inside the sweep, it would wait behind
  *  the sweep forever. Other readers settle nothing. */
 async function settleSweptSessions(input: ReconcileChildSessionCompletionsInput): Promise<void> {
-  const reader = input.projectionReader ?? input.reader
+  const reader = input.projectionReader
   if (!reader.settleBefore) return
   const parent = await readSession({ input }, input.parentSessionId)
   await reader.settleBefore([input.parentSessionId, ...parent?.childSessionIds ?? []])
 }
 
+/** Runs the child and workflow passes of one sweep. `wrote` is true when a
+ *  pass wrote a result or offered a held notification; every such pass also
+ *  counts in `reconciledCount`, and the re-offer step reads the held
+ *  notifications again only then. */
 async function reconcileChildSessionCompletionsNow(
   input: ReconcileChildSessionCompletionsInput,
-): Promise<{ completeDelivery: (heldKeys: ReadonlySet<string>) => Promise<ChildSessionReconciliation> }> {
-  const reader = input.projectionReader ?? input.reader
+): Promise<{ wrote: boolean; completeDelivery: (heldKeys: ReadonlySet<string>) => Promise<ChildSessionReconciliation> }> {
+  const reader = input.projectionReader
   const { index, batches, childChanges, first, changedChildren, changedWorkflows } = await readChildReconciliationChanges(reader, input.parentSessionId)
+  // Nothing that a pass reads changed, and no delivered workflow completion
+  // waits for its commit, so the passes would read and write nothing. Only
+  // the re-offer of held notifications runs.
+  if (!first && changedChildren.size === 0 && changedWorkflows.size === 0 && index.pendingWorkflows.size === 0) {
+    index.consume(batches, [])
+    return { wrote: false, completeDelivery: completeWorkflowDelivery({ input, index }, 0, 0) }
+  }
   const context: ReconciliationContext = { input, index, childChanges, parentTools: input.parentTools ?? createToolExecutionProjection(reader, input.parentSessionId) }
   const measurement: ReconciliationMeasurement = { workflowAggregateReads: 0 }
   const parent = await readSession(context, input.parentSessionId)
-  if (!parent) return { completeDelivery: async () => ({ reconciledCount: 0, workflowAggregateReads: 0, durableTerminalChildSessionIds: [], linkedNonterminalWorkflowToolUseIds: [] }) }
+  if (!parent) return { wrote: false, completeDelivery: async () => ({ reconciledCount: 0, workflowAggregateReads: 0, durableTerminalChildSessionIds: [], linkedNonterminalWorkflowToolUseIds: [] }) }
 
   let reconciledCount = 0
   if (first) {
@@ -184,6 +195,7 @@ async function reconcileChildSessionCompletionsNow(
   })
   const runs = (await Promise.all([...changedWorkflows].map(async (workflowId) => {
     const run = await childReads.read(workflowId, () => workflowRunReader(reader).read(workflowId), null)
+    // A member that another parent adopted, or that was deleted, leaves.
     if (!run || run.launchedFrom.parentSessionId !== input.parentSessionId) {
       index.workflows.delete(workflowId)
       index.durable.delete(workflowId)
@@ -220,8 +232,19 @@ async function reconcileChildSessionCompletionsNow(
   reconciledCount += subagents.reconciledCount
   for (const id of subagents.durableTerminalChildSessionIds) index.durable.add(id)
   index.consume(batches, subagents.seededChildSessionIds)
-  const linkedNonterminalWorkflowToolUseIds = [...index.nonterminal.values()]
-  return { completeDelivery: async (heldKeys) => {
+  return { wrote: reconciledCount > 0, completeDelivery: completeWorkflowDelivery(context, reconciledCount, measurement.workflowAggregateReads) }
+}
+
+/** Marks durable each workflow completion that the parent's conversation now
+ *  holds and that no notification holds back, acknowledges it to the
+ *  workflow's runner, and states the sweep's result. */
+function completeWorkflowDelivery(
+  context: Pick<ReconciliationContext, "input" | "index">,
+  reconciledCount: number,
+  workflowAggregateReads: number,
+): (heldKeys: ReadonlySet<string>) => Promise<ChildSessionReconciliation> {
+  const { input, index } = context
+  return async (heldKeys) => {
     const conversations = new Map<string, Awaited<ReturnType<typeof readChildCompletionConversation>>>()
     try {
       for (const [id, notification] of index.pendingWorkflows) {
@@ -237,13 +260,14 @@ async function reconcileChildSessionCompletionsNow(
         if (notification.sequence !== undefined) liveWorkflowControl(input.reader, id)?.acknowledgeCompletion?.(notification.sequence)
       }
     } finally { for (const tree of conversations.values()) tree?.getStorage().dispose() }
+    const linkedNonterminalWorkflowToolUseIds = [...index.nonterminal.values()]
     return {
       reconciledCount,
-      workflowAggregateReads: measurement.workflowAggregateReads,
+      workflowAggregateReads,
       durableTerminalChildSessionIds: [...index.durable],
       ...(linkedNonterminalWorkflowToolUseIds.length > 0 ? { linkedNonterminalWorkflowToolUseIds } : {}),
     }
-  } }
+  }
 }
 
 async function reconcileSubagentCompletions(
@@ -251,7 +275,7 @@ async function reconcileSubagentCompletions(
   children: readonly { readonly id: string; readonly session: ChildPlacement | null }[],
 ): Promise<SubagentReconciliation> {
   const { input } = context
-  const reader = input.projectionReader ?? input.reader
+  const reader = input.projectionReader
   const pending: Array<Omit<SubagentCompletionCandidate, "tool"> & { readonly toolUseId: string }> = []
   const durableTerminalChildSessionIds = new Set<string>()
   const subagents = children.flatMap(({ id, session }) => session?.kind === "subagent" && session.launchedFrom.parentSessionId === input.parentSessionId ? [id] : [])
@@ -337,7 +361,7 @@ async function publishSubagentCompletions(
 ): Promise<number> {
   const { input } = context
   for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt += 1) {
-    const reader = input.projectionReader ?? input.reader
+    const reader = input.projectionReader
     // Bind publication to a sequence read before the evidence. A Stop can
     // settle a parent call outside this reconciliation's ordered lane.
     const parentExpectedSeq = await reader.aggregateSeq(`session:${input.parentSessionId}`) + 1
@@ -426,7 +450,7 @@ async function publishSubagentCompletions(
  *  run that started since the candidates were read. */
 async function prepareLifecycleAppends(context: ReconciliationContext, candidates: readonly SubagentCompletionCandidate[], now: string): Promise<GuardedEventStoreAppend[]> {
   if (candidates.length === 0) return []
-  const reader = context.input.projectionReader ?? context.input.reader
+  const reader = context.input.projectionReader
   const sequences = await Promise.all(candidates.map((candidate) => reader.aggregateSeq(`session:${candidate.childSessionId}`)))
   const current = await installedChildSessionHistory().readParentReconciliationRuns(reader, context.input.parentSessionId,
     new Map(candidates.map((candidate) => [candidate.childSessionId, undefined])))
@@ -472,7 +496,7 @@ async function reconcileChild(
     if (!candidate) return { wrote: false, durable: false }
     if (candidate.kind === "nonterminal") return { wrote: false, durable: false, linkedNonterminalToolUseId: candidate.toolUseId }
     if (candidate.kind === "delivered") return { wrote: false, durable: true }
-    const reader = input.projectionReader ?? input.reader
+    const reader = input.projectionReader
     const parentExpectedSeq = await reader.aggregateSeq(`session:${input.parentSessionId}`) + 1
     // An unmoved aggregate proves the batched evidence is still current.
     // Any writer, including our preceding child, invalidates that evidence.
@@ -529,7 +553,7 @@ async function reconcileChild(
       tree.getStorage().dispose()
       return { wrote: false, durable: false }
     }
-    const notificationHeld = (await (input.projectionReader ?? input.reader).readInFlight(
+    const notificationHeld = (await input.projectionReader.readInFlight(
       input.parentSessionId,
       QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND,
     )).some((row) => row.key === entryId)
@@ -617,7 +641,7 @@ async function deliverSettledNotification(context: ReconciliationContext, candid
   const state = await tree.getState()
   const baseId = `workflow-completion:${candidate.childSessionId}`
   const baseEntry = state.entriesById[baseId]
-  const heldRows = await (input.projectionReader ?? input.reader).readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)
+  const heldRows = await input.projectionReader.readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)
   // The parent already read or still holds an earlier outcome of this call,
   // such as the start failure before a Resume; a different one is new.
   const heldBase = heldRows.find((row) => row.key === baseId)
@@ -648,7 +672,7 @@ function sweepAfterCommit(input: ReconcileChildSessionCompletionsInput): () => P
 // so a stricter pass here would refuse every session written before the
 // current `session.created` version.
 async function readSession(context: Pick<ReconciliationContext, "input">, sessionId: string): Promise<ReplayedSession | null> {
-  const state = await createSingleSessionMetadataProjection(context.input.projectionReader ?? context.input.reader, sessionId).replay()
+  const state = await createSingleSessionMetadataProjection(context.input.projectionReader, sessionId).replay()
   if (state.deleted[sessionId] || state.errors[sessionId]) return null
   return state.sessions[sessionId] ?? null
 }

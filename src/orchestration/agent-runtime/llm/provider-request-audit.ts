@@ -19,7 +19,6 @@ import {
   type ProviderRequestIdentity,
   type ProviderRequestAuditOmittedTool,
   type ProviderRequestAuditResponseInput,
-  type ProviderRequestAuditContextApplication,
   type ProviderRequestAuditTool,
   type ProviderRequestUsageInput,
   type ProviderStreamSummary,
@@ -68,7 +67,6 @@ export interface ProviderRequestAuditWriter {
     toolHistoryProjection?: PromptToolHistoryProjection;
     historyLowering?: PromptHistoryLowering;
     requestContext: string | undefined;
-    contextApplication?: ProviderRequestAuditContextApplication;
     /** The durable conversation-tree leaf that `messages` were assembled from (`captureTreeLeaf`). Absent for a
      *  conversation that has no durable tree. */
     treeLeafEntryId?: string | null;
@@ -85,10 +83,6 @@ export interface ProviderRequestAuditWriter {
     responseId?: string;
     error?: ProviderRequestAuditResponseInput["error"];
     transportContext?: ProviderRequestAuditResponseInput["transportContext"];
-  }): void | Promise<void>;
-  recordAbandonedResponse?(handle: ProviderRequestAuditHandle, input: {
-    outcome: ProviderRequestAuditResponseInput["outcome"];
-    error: ProviderRequestAuditResponseInput["error"];
   }): void | Promise<void>;
   recordUsage(
     handle: ProviderRequestAuditHandle,
@@ -141,7 +135,7 @@ export function createProviderRequestAuditWriter(
   };
   const starts = new Map<string, number>();
   // One register per writer, pinned to one conversation. Prompt/tool hashes
-  // retain reusable bodies; transformer evidence retains only the active request.
+  // retain reusable bodies.
   const dedup: ConversationDedup = {};
 
   async function recordRequest(input: Parameters<ProviderRequestAuditWriter["recordRequest"]>[0]): Promise<ProviderRequestAuditHandle> {
@@ -174,7 +168,6 @@ export function createProviderRequestAuditWriter(
       ...(input.toolHistoryProjection ? { toolHistoryProjection: input.toolHistoryProjection } : {}),
       ...(input.historyLowering ? { historyLowering: input.historyLowering } : {}),
       ...(input.requestContext ? { requestContext: input.requestContext } : {}),
-      ...(input.contextApplication ? { contextApplication: input.contextApplication } : {}),
       ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
       ...(deps.parentToolUseId ? { parentToolUseId: deps.parentToolUseId } : {}),
     }, dedup);
@@ -208,16 +201,6 @@ export function createProviderRequestAuditWriter(
       ...(input.error ? { error: input.error } : {}),
       ...(input.transportContext ? { transportContext: input.transportContext } : {}),
     });
-  }
-
-  async function recordAbandonedResponse(
-    handle: ProviderRequestAuditHandle,
-    input: {
-      outcome: ProviderRequestAuditResponseInput["outcome"];
-      error: ProviderRequestAuditResponseInput["error"];
-    },
-  ): Promise<void> {
-    await recordResponse(handle, input);
   }
 
   async function recordUsage(
@@ -258,5 +241,5 @@ export function createProviderRequestAuditWriter(
 
   return {
     ...(deps.resolveTreeLeafEntryId ? { captureTreeLeaf: deps.resolveTreeLeafEntryId } : {}),
-    recordRequest, recordDispatch, recordResponse, recordAbandonedResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
+    recordRequest, recordDispatch, recordResponse, recordUsage, recordStreamStarted, recordStreamEvent, recordStreamCompleted, recordStreamSummary };
 }

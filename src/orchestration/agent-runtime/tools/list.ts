@@ -56,22 +56,22 @@ function formatListResult(result: ListFilesResult, root: string, executionCwd: s
 const LIST_INPUT_SCHEMA = {
   type: "object",
   properties: {
-    path: { type: "string", description: "Directory to inspect, cwd-relative or absolute inside the workspace (default: '.')" },
-    pattern: { type: "string", description: "Glob pattern for recursive path discovery, relative to path (for example '**/*.ts')" },
-    depth: { type: "number", description: "Maximum traversal depth, clamped to 1-12 (default: 1 without pattern, 8 with pattern)" },
-    include: { type: "string", enum: ["all", "files", "directories"], description: "Filter returned path types (default: all)" },
-    sort: { type: "string", enum: ["name", "mtime"], description: "Sort order: \"name\" (directories first, alphabetical; default) or \"mtime\" (most recently modified first, like `ls -t`)" },
+    path: { type: "string", description: "Directory to list, relative or absolute inside the workspace (default: '.')" },
+    pattern: { type: "string", description: "Glob relative to path, such as '**/*.ts'" },
+    depth: { type: "number", description: "Max depth, 1-12 (default: 1, or 8 with pattern)" },
+    include: { type: "string", enum: ["all", "files", "directories"] },
+    sort: { type: "string", enum: ["name", "mtime"], description: "name: directories first, then alphabetical (default). mtime: newest first, like `ls -t`" },
     hidden: { type: "boolean", description: "Include dot-segment paths (default: true)" },
-    respect_gitignore: { type: "boolean", description: "Exclude every path ignored by the workspace .gitignore (default: false: ignored files are listed, and ignored directories are listed but not entered)" },
-    limit: { type: "number", description: "Maximum paths to return, clamped to 1-1000 (default: 200)" },
-    offset: { type: "number", description: "0-based result offset for stable pagination (default: 0)" },
+    respect_gitignore: { type: "boolean", description: "Hide every ignored path (default: false)" },
+    limit: { type: "number", description: "Max paths, 1-1000 (default: 200)" },
+    offset: { type: "number", description: "Paths to skip, for paging (default: 0)" },
   },
 } as const;
 
 export const listDefinition: RuntimeTool = {
   name: "list",
   action: "list",
-  description: `List file and directory paths for directory inspection and candidate path discovery. Returns cwd-relative POSIX paths only; directories end in '/'. Without pattern, lists the target directory shallowly by default. With pattern, performs bounded recursive path discovery; narrow path and pattern first. Artifact directories (node_modules, dist, .git, and similar), the runtime state directory, and directories the .gitignore excludes are listed but not entered unless path names one. A listing is stopped with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time or ${SEARCH_WALL_BACKSTOP_SECONDS} seconds spent waiting on slow file reads. sort: "mtime" orders newest-first (like \`ls -t\`) for recent-file discovery, and with limit it replaces \`ls -lat | head -N\`. Confirm an optional directory exists (root listing or prior step context) before listing or searching inside it: missing optional directories such as docs/ are normal in fresh projects, and failed probes are trace noise, not discovery. Use search for file contents.`,
+  description: "List file and directory paths, relative to cwd; directories end in '/'. Without pattern, lists one level. With pattern, finds matching paths recursively; narrow path and pattern first. Artifact and ignored directories are listed but not entered unless path names one. Use search for file contents.",
   inputSchema: LIST_INPUT_SCHEMA,
   inputValidationSchema: {
     ...LIST_INPUT_SCHEMA,

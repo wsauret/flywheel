@@ -9,12 +9,14 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { buildDefinitionDriftRejectedFact, buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js"
 import { parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
-import { loadDefinitionLineageFromEvents, workflowLaunchOf } from "../../../../src/workflows/definition-provenance-projection.js"
+import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { recordedWorkflow } from "../../../../src/workflows/loader.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill } from "../../../helpers/skill-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
 
 function makeWriter(sessionId: string, baseDir: string) {
   const store = createSqliteEventStore(resolveEventStoreDbFile(baseDir))
@@ -97,8 +99,8 @@ describe("definition provenance facts", () => {
       expect(compiled.userRequestSha256).toBe(hashContent("Build the feature").sha256)
       // A registered launch ran no verifier, so its launch names the layer and
       // the worst case alone.
-      expect(compiled).toMatchObject({ worstCaseAttempts: 2, verification: null })
-      expect(workflowLaunchOf(lineage)).toEqual({ source: { kind: "registered", layer: "project" }, worstCaseAttempts: 2 })
+      expect(compiled).toMatchObject({ worstCaseAttempts: 2, verification: null, warnings: [] })
+      expect(lineage.definitions["workflow:wf"]?.provenance).toMatchObject({ layer: "project" })
       handle.dispose()
 
       const reopened = makeWriter("session-1", projectRoot)
@@ -115,7 +117,7 @@ describe("definition provenance facts", () => {
   // Remove after 2027-04-30 with the frozen v8 decoder.
   it("reads a stored v8 file run with catalog keys and rebuilds it without them", () => {
     const provenance = { layer: "session" as const, filePath: "/session/scratch/workflows/wf.workflow.yaml", id: "wf" }
-    const { provenance: _provenance, ...definition } = workflowDefinition(provenance.filePath)
+    const definition = canonicalWorkflowRecord(workflowDefinition(provenance.filePath))
     const retired = {
       use_when: "Investigate a problem.", confirmation_template: "debug",
       requires_description: false, "user-invocable": false, "disable-model-invocation": true,
@@ -174,14 +176,11 @@ describe("definition provenance facts", () => {
     }
   })
 
-  it("reads a workflow file's launch: its path in the session directory, its verifier result, its worst case, and its warnings", async () => {
+  it("records a workflow file's launch: its file, its verifier result, its worst case, and its warnings", async () => {
     const projectRoot = mkdtempSync(join(tmpdir(), "flywheel-definition-launch-"))
     try {
       const handle = makeWriter("session-1", projectRoot)
-      // The project sits in another session's scratch, as a UAT fixture
-      // project does, so the file's own session directory is the last one in
-      // its path.
-      const filePath = "/repo/.flywheel/sessions/outer/scratch/fixture/.flywheel/sessions/chat-1/scratch/workflows/review.workflow.yaml"
+      const filePath = "/repo/.flywheel/sessions/chat-1/scratch/workflows/review.workflow.yaml"
       const workflow = { ...workflowDefinition(filePath), provenance: { layer: "session" as const, filePath, id: "wf" } }
       for (const fact of buildWorkflowCompilationFacts({
         workflow,
@@ -196,8 +195,9 @@ describe("definition provenance facts", () => {
         await handle.writer.record(fact)
       }
 
-      expect(workflowLaunchOf(handle.loadLineage())).toEqual({
-        source: { kind: "file", path: "scratch/workflows/review.workflow.yaml" },
+      const lineage = handle.loadLineage()
+      expect(lineage.definitions["workflow:wf"]?.provenance).toEqual({ layer: "session", filePath, id: "wf" })
+      expect(lineage.compiledWorkflow).toMatchObject({
         verification: "invalid",
         worstCaseAttempts: 14,
         warnings: ["Step 0, flow.0: unreachable_work: the node cannot run."],
@@ -217,7 +217,7 @@ describe("definition provenance facts", () => {
     try {
       const handle = makeWriter("v8", projectRoot)
       const filePath = "/project/.flywheel/sessions/chat-1/scratch/workflows/survey.workflow.yaml"
-      const { provenance: _provenance, ...definition } = workflowDefinition(filePath)
+      const definition = canonicalWorkflowRecord(workflowDefinition(filePath))
       await handle.writer.record(parseDefinitionProvenanceFact({
         type: "definition.loaded", version: 7, actor: "flywheel",
         payload: { kind: "workflow", id: "wf", definition, provenance: { layer: "session", filePath, id: "wf" } },
@@ -234,7 +234,9 @@ describe("definition provenance facts", () => {
       const compiled = lineage.compiledWorkflow
       if (!compiled || !("stepIds" in compiled)) throw new Error("expected a compilation row that names step ids")
       expect(compiled.stepIds).toEqual(["plan"])
-      expect(workflowLaunchOf(lineage)).toEqual({ source: { kind: "file", path: "scratch/workflows/survey.workflow.yaml" } })
+      expect(compiled).not.toHaveProperty("worstCaseAttempts")
+      expect(compiled).not.toHaveProperty("verification")
+      expect(lineage.definitions["workflow:wf"]?.provenance).toEqual({ layer: "session", filePath, id: "wf" })
       handle.dispose()
     } finally {
       rmSync(projectRoot, { recursive: true, force: true })
@@ -249,7 +251,7 @@ describe("definition provenance facts", () => {
     try {
       const handle = makeWriter("v9", projectRoot)
       const filePath = "/project/.flywheel/sessions/chat-1/scratch/workflows/survey.workflow.yaml"
-      const { provenance: _provenance, ...definition } = workflowDefinition(filePath)
+      const definition = canonicalWorkflowRecord(workflowDefinition(filePath))
       await handle.writer.record(parseDefinitionProvenanceFact({
         type: "definition.loaded", version: 7, actor: "flywheel",
         payload: { kind: "workflow", id: "wf", definition, provenance: { layer: "session", filePath, id: "wf" } },
@@ -262,11 +264,9 @@ describe("definition provenance facts", () => {
         },
       }))
 
-      expect(workflowLaunchOf(handle.loadLineage())).toEqual({
-        source: { kind: "file", path: "scratch/workflows/survey.workflow.yaml" },
-        verification: "partially_proved",
-        worstCaseAttempts: 4,
-      })
+      const compiled = handle.loadLineage().compiledWorkflow
+      expect(compiled).toMatchObject({ verification: "partially_proved", worstCaseAttempts: 4 })
+      expect(compiled).not.toHaveProperty("warnings")
       handle.dispose()
     } finally {
       rmSync(projectRoot, { recursive: true, force: true })
@@ -281,7 +281,7 @@ describe("definition provenance facts", () => {
     try {
       const handle = makeWriter("v10", projectRoot)
       const filePath = "/project/.flywheel/sessions/chat-1/scratch/workflows/survey.workflow.yaml"
-      const { provenance: _provenance, ...definition } = workflowDefinition(filePath)
+      const definition = canonicalWorkflowRecord(workflowDefinition(filePath))
       await handle.writer.record(parseDefinitionProvenanceFact({
         type: "definition.loaded", version: 7, actor: "flywheel",
         payload: { kind: "workflow", id: "wf", definition, provenance: { layer: "session", filePath, id: "wf" } },
@@ -296,9 +296,8 @@ describe("definition provenance facts", () => {
       }))
 
       const lineage = handle.loadLineage()
-      expect(lineage.compiledWorkflow).toMatchObject({ stepIds: ["plan"] })
-      expect(workflowLaunchOf(lineage)).toEqual({
-        source: { kind: "file", path: "scratch/workflows/survey.workflow.yaml" },
+      expect(lineage.compiledWorkflow).toMatchObject({
+        stepIds: ["plan"],
         verification: "invalid",
         worstCaseAttempts: 3,
         warnings: ["Step 0, flow.0: unreachable_work: the node cannot run."],
@@ -539,12 +538,12 @@ describe("definition provenance facts", () => {
 })
 
 function workflowDefinition(filePath: string): WorkflowDefinition {
-  return {
+  return loadedWorkflow({
     id: "wf",
     name: "Workflow",
     phases: [{ phase: "plan", brief: "Plan the work.", name: "Plan", dependencies: [planning.id], output: { summary: "The plan." }, writes: [] }, { phase: "implement", brief: "Implement the plan.", name: "Implement", dependencies: [implementation.id], writes: [] }],
     provenance: { layer: "project", filePath, id: "wf" },
-  }
+  })
 }
 
 function attempt(id: string, definitionId: string, briefId: string): AttemptRow {

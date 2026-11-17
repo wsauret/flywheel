@@ -3,12 +3,12 @@ import type { ClientSummary } from "../../src/protocol/client/host-contract.js"
 
 /** What the tab says about the project at a glance: the session is working,
  *  the page has lost the runtime, or neither. */
-export type TabState = "idle" | "working" | "away"
+type TabState = "idle" | "working" | "away"
 
 const BADGE = { working: "#89d185", away: "#8b8b8b" }
 const PRODUCT = "Flywheel"
 
-export function tabState(summary: Pick<ClientSummary, "health" | "busy">): TabState {
+function tabState(summary: Pick<ClientSummary, "health" | "busy">): TabState {
   // A connection that drops and heals earns nothing: only a runtime the client
   // has given up reaching for now marks the tab, and the mark lifts on its own.
   if (summary.health.kind === "faulted") return "away"
@@ -19,7 +19,7 @@ export function tabState(summary: Pick<ClientSummary, "health" | "busy">): TabSt
  *  tabs open reads the session name, and the product last as the family name.
  *  A working session and a page that has lost the runtime say so up front,
  *  where a truncated tab still shows it. */
-export function tabTitle(sessionTitle: string | undefined, state: TabState): string {
+function tabTitle(sessionTitle: string | undefined, state: TabState): string {
   const parts = [sessionTitle, PRODUCT].filter((part) => part !== undefined && part.length > 0)
   if (state === "working") return `Working · ${parts.join(" · ")}`
   if (state === "away") return `Runtime lost · ${parts.join(" · ")}`
@@ -29,7 +29,7 @@ export function tabTitle(sessionTitle: string | undefined, state: TabState): str
 /** The tab's icon: the brand tile, with a dot in the corner while the session
  *  works, greyed while the page has lost the runtime. Drawn at tab size so the
  *  badge stays a readable share of the icon. */
-export function faviconSvg(state: TabState): string {
+function faviconSvg(state: TabState): string {
   const tile = brandTileSvg(64, { corners: "rounded" })
   if (state === "idle") return tile
   const badge = state === "working"
@@ -38,7 +38,7 @@ export function faviconSvg(state: TabState): string {
   return tile.replace("</svg>", `${badge}</svg>`)
 }
 
-export function faviconHref(state: TabState): string {
+function faviconHref(state: TabState): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(faviconSvg(state))}`
 }
 

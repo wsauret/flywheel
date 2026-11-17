@@ -13,7 +13,7 @@ interface TextBlockProps {
   settled?: boolean
 }
 
-export function assistantDisplayContent(content: string): string {
+function assistantDisplayContent(content: string): string {
   return content.replace(/\n+$/, "")
 }
 

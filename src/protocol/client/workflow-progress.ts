@@ -109,34 +109,30 @@ export function workflowProgress({ attempts, tree }: Pick<LoadedWorkflowView, "a
   }
 }
 
-/** One piece of a summary line. The tone says how a client emphasizes it,
- *  so the terminal and the web client color the same words the same way. */
+/** One toned piece of a workflow card: a bar part, a fold, an agent detail,
+ *  or a join's coverage. The tone says how a client emphasizes it, so the
+ *  terminal and the web client color the same words the same way. */
 export interface SummaryPart {
   readonly text: string
   readonly tone: "plain" | "done" | "failed" | "muted"
 }
 
-const SUMMARY_SEPARATOR: SummaryPart = { text: " · ", tone: "muted" }
+/** How many units are done, how many failed, and how many run when several
+ *  run at once, such as `12/85 done, 1 failed, 3 running`. */
+function countText(progress: Pick<WorkflowProgress, "done" | "total" | "failed" | "running">): string {
+  return `${progress.done}/${progress.total} done${progress.failed > 0 ? `, ${progress.failed} failed` : ""}${progress.running > 1 ? `, ${progress.running} running` : ""}`
+}
 
-/** The aggregate line of a tree workflow, which every client shows before
- *  any agent: how many units are done, how many failed, and for each phase
- *  over a list how many of its agents finished, whether its join folded, and
- *  the coverage or the selection its reducer reports. An empty list reads as
- *  zero targets with no fraction, and a phase whose list has not expanded
- *  says that it waits for its items. A run whose coverage is incomplete keeps
- *  its completed status; this line names the coverage beside it. Bound and
- *  stuck read as failed because the repeat stopped without establishing that
- *  its work was complete. */
-export function workflowSummaryParts(progress: WorkflowProgress): readonly SummaryPart[] {
-  const parts: SummaryPart[] = [{ text: `${progress.done}/${progress.total} done`, tone: progress.total > 0 && progress.done === progress.total ? "done" : "plain" }]
-  if (progress.failed > 0) parts.push({ text: `, ${progress.failed} failed`, tone: "failed" })
-  if (progress.running > 1) parts.push({ text: `, ${progress.running} running`, tone: "plain" })
-  for (const list of progress.lists) parts.push(SUMMARY_SEPARATOR, ...listSummary(list))
-  for (const { state } of progress.loops) parts.push(SUMMARY_SEPARATOR, {
-    text: `round ${state.iteration} of at most ${state.maxIterations}${state.outcome === undefined ? "" : ` · ${loopOutcomeText(state.iteration, state.outcome)}`}`,
-    tone: state.outcome === undefined ? "plain" : state.outcome === "dry" ? "done" : "failed",
-  })
-  return parts
+/** The aggregate line of a tree workflow as plain text: its count, then for
+ *  each phase over a list how many of its agents finished, whether its join
+ *  folded, and the coverage or the selection its reducer reports, then each
+ *  repeat's round and outcome. An empty list reads as zero targets with no
+ *  fraction, and a phase whose list has not expanded says that it waits for
+ *  its items. A run whose coverage is incomplete keeps its completed status;
+ *  this line names the coverage beside it. */
+export function workflowSummaryText(progress: WorkflowProgress): string {
+  const loops = progress.loops.map(({ state }) => `round ${state.iteration} of at most ${state.maxIterations}${state.outcome === undefined ? "" : ` · ${loopOutcomeText(state.iteration, state.outcome)}`}`)
+  return [countText(progress), ...progress.lists.map(listSummary), ...loops].join(" · ")
 }
 
 /** Repeat decisions use the same words in aggregate lines and join lines. */
@@ -154,21 +150,17 @@ export function roundTarget({ number, outcome }: WorkflowTreeRound): string | un
   return ` → ${outcome === "next" ? `round ${number + 1}` : loopOutcomeText(number, outcome)}`
 }
 
-function listSummary(list: WorkflowListProgress): readonly SummaryPart[] {
+function listSummary(list: WorkflowListProgress): string {
   const join = list.join
-  if (join === undefined) {
-    return [{ text: `${list.label}: ${list.disposition === "skipped" ? "skipped" : "waiting for its items"}`, tone: "muted" }]
-  }
-  const parts: SummaryPart[] = join.slots === 0
-    ? [{ text: `${list.label}: 0 targets`, tone: "plain" }]
-    : [{ text: `${list.label}: ${join.completed + join.failed}/${join.slots} agents`, tone: join.completed + join.failed === join.slots ? "done" : "plain" }]
-  if (join.failed > 0) parts.push({ text: `, ${join.failed} failed`, tone: "failed" })
-  if (join.missing > 0) parts.push({ text: `, ${join.missing} missing`, tone: "failed" })
-  parts.push({ text: join.state === "settled" ? ", joined" : ", join pending", tone: "muted" })
+  if (join === undefined) return `${list.label}: ${list.disposition === "skipped" ? "skipped" : "waiting for its items"}`
+  const parts = [join.slots === 0 ? `${list.label}: 0 targets` : `${list.label}: ${join.completed + join.failed}/${join.slots} agents`]
+  if (join.failed > 0) parts.push(`${join.failed} failed`)
+  if (join.missing > 0) parts.push(`${join.missing} missing`)
+  parts.push(join.state === "settled" ? "joined" : "join pending")
   const coverage = join.coverage
-  if (coverage !== undefined && coverage.status !== "empty") parts.push({ text: `, ${coverageLabel(coverage)}`, tone: coverageTone(coverage) })
-  if (join.selection !== undefined) parts.push({ text: `, ${selectionText(join.selection)}`, tone: "plain" })
-  return parts
+  if (coverage !== undefined && coverage.status !== "empty") parts.push(coverageLabel(coverage))
+  if (join.selection !== undefined) parts.push(selectionText(join.selection))
+  return parts.join(", ")
 }
 
 /** What a selecting join kept and dropped, in the words every client shows:
@@ -225,10 +217,5 @@ export function workflowCoverage(progress: Pick<WorkflowProgress, "lists">): rea
  *  coverage that each join reports: what a parent chat's compact workflow
  *  card adds. It names how many agents run only when several run at once. A completed run with incomplete coverage names it here. */
 export function workflowProgressCount(progress: Pick<WorkflowProgress, "done" | "total" | "failed" | "running" | "lists">): string {
-  return [`${progress.done}/${progress.total} done${progress.failed > 0 ? `, ${progress.failed} failed` : ""}${progress.running > 1 ? `, ${progress.running} running` : ""}`, ...workflowCoverage(progress)].join(" · ")
-}
-
-/** The summary line as plain text, for a reader that does not color it. */
-export function workflowSummaryText(progress: WorkflowProgress): string {
-  return workflowSummaryParts(progress).map(({ text }) => text).join("")
+  return [countText(progress), ...workflowCoverage(progress)].join(" · ")
 }

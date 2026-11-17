@@ -8,7 +8,7 @@ import { launchPersistentSubprocess, type PersistentSubprocess } from "../infra/
 import { startupTrace } from "../infra/startup-trace.js"
 import type { RuntimeStartupStatus } from "../protocol/app-service-types.js"
 import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../protocol/client/runtime-identity.js"
-import { createAccountAttachResponseReader, encodeAccountAttach, type AccountModuleRequest } from "../protocol/account-attach.js"
+import { createAccountAttachResponseReader, encodeAccountAttach, type AccountModuleAnswerHandler, type AccountModuleRequest } from "../protocol/account-attach.js"
 import { requestAccountModule } from "./account-module-request.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../protocol/runtime-liveness.js"
 import { createServeStatusReader, decodeServeStartRefusal, ServeStartupFailure } from "../protocol/serve-handshake.js"
@@ -86,7 +86,7 @@ export interface AccountRuntimeAttach {
    *  connection that opens no project, and calls `onAnswer` with each answer
    *  until the service ends the request. Rejects with the service's failure,
    *  or when the connection closes first. Call it once `ensure` resolved. */
-  requestModule(module: string, request: AccountModuleRequest, onAnswer: (answer: unknown) => void): Promise<void>
+  requestModule(module: string, request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler): Promise<void>
   /** Restarts the account service and this terminal in place
    *  (PI-INTERACTION-048). It asks the service that serves now to make way
    *  for a successor, waits as a cutover waits while that service's blockers

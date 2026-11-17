@@ -6,10 +6,10 @@ import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-ho
 import { makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
 import { WorkflowStructureRejectedError } from "../../../../src/workflows/vm/structural-admission.js"
 import { nonEmpty } from "../../../helpers/non-empty.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
-const LINEAR_WORKFLOW = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const LINEAR_WORKFLOW = loadedWorkflow({
   id: "linear-guardrails",
   name: "Linear guardrails",
   phases: ["prepare", "work", "review"].map((phase) => ({ phase, brief: `Do the ${phase} task.`, writes: [] })),

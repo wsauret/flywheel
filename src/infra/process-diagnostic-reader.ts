@@ -95,7 +95,7 @@ const RELAY_LEVELS: ReadonlyMap<string, RelayLevel> = new Map([
  *  pipe can put well before the relay. A record with no log level relays at
  *  INFO. */
 export function relayProcessDiagnostic(
-  log: { readonly [level in RelayLevel]: (message: unknown, extra?: RelayFields) => void },
+  log: { readonly [level in RelayLevel]: (message: string, extra?: RelayFields) => void },
   record: ProcessDiagnosticRecord,
   context: RelayFields,
 ): void {

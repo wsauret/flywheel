@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
-import type { AgentStreamEvent } from "../../../../../src/orchestration/agent-runtime/types.ts"
+import { createEmit, EventBus } from "../../../../../src/infra/event-bus.ts"
+import type { ToolCallEventData } from "../../../../../src/infra/runtime-event-payload-types.ts"
+import { createModuleChatObservers } from "../../../../../src/orchestration/chat/module-observers.ts"
+import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams.ts"
+import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.ts"
+import { createTestChatSessionDeps } from "../../chat/_chat-session-agent-runtime-fixtures.ts"
 import { createExperimentChatObserver } from "../../../../../src/orchestration/modules/experiments/chat-observer.ts"
 import type { ExperimentSnapshot } from "../../../../../src/orchestration/modules/experiments/projection.ts"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.ts"
@@ -35,12 +40,7 @@ function snapshot(overrides: Partial<ExperimentSnapshot> = {}): ExperimentSnapsh
   }
 }
 
-const runEvent: AgentStreamEvent = {
-  type: "tool_use",
-  toolUseId: "run-1",
-  toolName: "run_experiment",
-  toolInput: {},
-}
+const runToolUse: ToolCallEventData["tool_use"] = { id: "run-1", name: "run_experiment", input: {} }
 
 function harness(initial: ExperimentSnapshot | undefined = snapshot()) {
   let current: ExperimentSnapshot | undefined = initial
@@ -69,7 +69,7 @@ describe("experiment chat observer", () => {
     await h.observer.onTurnComplete("turn_end")
     expect(h.facts).toEqual([])
 
-    h.observer.onEvent(runEvent)
+    h.observer.onToolInput(runToolUse)
     await h.observer.onTurnComplete("turn_end")
     expect(h.facts.map((fact) => fact.type)).toEqual(["experiment.resumed"])
     expect(h.facts[0]?.payload).toEqual({ turn: 1, reason: "turn_end" })
@@ -112,7 +112,7 @@ describe("experiment chat observer", () => {
 
     for (const item of cases) {
       const h = harness(item.state)
-      h.observer.onEvent(runEvent)
+      h.observer.onToolInput(runToolUse)
       await h.observer.onTurnComplete("turn_end")
       expect(h.facts.map((fact) => fact.type)).toEqual(["experiment.mode.changed"])
       expect(h.facts[0]?.payload).toEqual({ active: false, workDir: item.state.mode.workDir })
@@ -121,7 +121,7 @@ describe("experiment chat observer", () => {
     }
 
     const inactive = harness(snapshot({ mode: { active: false, workDir: "/repo" } }))
-    inactive.observer.onEvent(runEvent)
+    inactive.observer.onToolInput(runToolUse)
     await inactive.observer.onTurnComplete("turn_end")
     expect(inactive.facts).toEqual([])
   })
@@ -142,5 +142,70 @@ describe("experiment chat observer", () => {
     expect(order[0]).toBe("record:experiment.resumed:compaction")
     expect(order[1]).toContain("<experiment_resume>")
     expect(order[1]).toContain("Re-read .experiment/charter.md after compaction")
+  })
+})
+
+/** The chat observer seam as a chat builds it: the shipped catalog, with the
+ *  experiments observer counting the tool inputs that reach it. */
+function chatSeam(options: { readonly experiments: boolean }) {
+  const toolInputs: string[] = []
+  const catalog = SHIPPED_MODULES.map((module) => module.id !== "experiments" ? module : {
+    ...module,
+    observers: module.observers.map((entry) => ({
+      ...entry,
+      observer: (context: ModuleChatObserverContext) => {
+        const observer = entry.observer(context)
+        return { ...observer, onToolInput: (toolUse: ToolCallEventData["tool_use"]) => { toolInputs.push(toolUse.id); observer.onToolInput?.(toolUse) } }
+      },
+    })),
+  })
+  const composition = composeFirstPartyModules(catalog, options.experiments ? [] : ["experiments"])
+  const deps = createTestChatSessionDeps({ sessionId: "experiment-seam", createAgent: () => { throw new Error("the seam starts no runner") } })
+  const bus = new EventBus()
+  const subscribed: string[] = []
+  const observers = createModuleChatObservers(() => composition, {
+    sessionId: deps.sessionId, eventStore: deps.infra.eventStore, projectionReader: deps.infra.eventStore,
+    writer: deps.infra.sessionEventWriter, enqueueSilentSystem: () => {}, showSystemMessage: () => {},
+  }, {
+    subscribeToType(type, listener, subscription) {
+      subscribed.push(type)
+      return bus.subscribeToType(type, listener, subscription)
+    },
+  })
+  return { bus, emit: createEmit(bus), observers, subscribed, toolInputs }
+}
+
+describe("experiment chat observer seam", () => {
+  it("A completed tool input reaches the experiments observer once; 500 text deltas in the same turn reach it zero times", async () => {
+    const seam = chatSeam({ experiments: true })
+    expect(seam.subscribed).toEqual(["tool.input.completed"])
+
+    for (let index = 0; index < 250; index++) {
+      seam.emit("model.content.delta", { sessionId: "experiment-seam", data: { delta: { type: "text_delta", text: "x" }, block_key: "answer" } })
+    }
+    seam.emit("tool.input.completed", { sessionId: "experiment-seam", data: { tool_use: runToolUse } })
+    seam.emit("tool.input.completed", { sessionId: "experiment-seam", data: { tool_use: { id: "nested-1", name: "run_experiment", input: {} }, parent_tool_use_id: "agent-1" } })
+    for (let index = 0; index < 250; index++) {
+      seam.emit("model.content.delta", { sessionId: "experiment-seam", data: { delta: { type: "text_delta", text: "x" }, block_key: "answer" } })
+    }
+    await seam.bus.drain()
+
+    expect(seam.toolInputs).toEqual(["run-1"])
+    await seam.observers.onTurnComplete("turn_end")
+    expect(seam.subscribed).toEqual(["tool.input.completed"])
+    await seam.observers.dispose()
+    await seam.bus.dispose()
+  })
+
+  it("With the experiments module off, the session subscribes to no runtime event for observers", async () => {
+    const seam = chatSeam({ experiments: false })
+    seam.emit("tool.input.completed", { sessionId: "experiment-seam", data: { tool_use: runToolUse } })
+    await seam.bus.drain()
+    await seam.observers.onTurnComplete("turn_end")
+
+    expect(seam.subscribed).toEqual([])
+    expect(seam.toolInputs).toEqual([])
+    await seam.observers.dispose()
+    await seam.bus.dispose()
   })
 })

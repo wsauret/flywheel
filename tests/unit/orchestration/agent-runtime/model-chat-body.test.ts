@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import { CHALLENGE, CODE_REFERENCES, FOLLOW_UP_WORK, KEEP_GOING, MODEL_GUIDANCE, OPEN_CHOICES } from "../../../../src/orchestration/agent-runtime/model-chat-body.js";
+import { MODEL_GUIDANCE } from "../../../../src/orchestration/agent-runtime/model-chat-body.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
@@ -18,7 +18,7 @@ import { createProjectDefinitionRegistry } from "../../../../src/workflows/defin
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { planPromptRequest, promptParts, type PromptAssembly } from "../../../../scripts/prompt-assembly.js";
 import { testDirectories } from "../../../helpers/directories.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const spec = (name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFields => ({ action: "ui_meta", description: `${name} tool`, ...opts, name });
 const TOOLS: ToolPromptFields[] = [spec("bash"), spec("read")];
@@ -40,6 +40,17 @@ const guidanceOf = (model: string): Pick<BuildSystemPromptOptions, "modelGuidanc
 const build = (model: string, overrides: Partial<Parameters<typeof promptOptions>[0]> = {}): string =>
   buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", chatHost: { communication: true }, ...guidanceOf(model), ...overrides }));
 
+/** The open-choice rule as the chat body states it. The agents' core prompt states the same sentences, so the
+ *  assembled subagent request below fails when the two drift apart. */
+const OPEN_CHOICES = (() => {
+  const rule = /^- \*\*Open choices\.\*\* (.+)$/m.exec(build("claude-opus-5.5"))?.[1];
+  if (rule === undefined) throw new Error("expected the open-choice commitment in the chat body");
+  return rule;
+})();
+const KEEP_GOING = "Keep working until the task is done. End the turn before that only when you need an answer that only the user can give";
+const FOLLOW_UP_WORK = "Do not drop follow-up work that you notice.";
+const CHALLENGE = "When the user questions a claim, says that they are confused, or proposes a simpler model, first restate their model.";
+
 /** One phrase that marks each guidance block in a rendered body. */
 const BLOCK_MARKERS = {
   progress: "Give short updates while you work",
@@ -59,14 +70,14 @@ const BASE_SECTIONS = ["# This session", "# Acting", "# Finishing the work", "# 
 const BASE_MARKERS = [
   "Do not work them out again, and do not reopen them",
   "When you compare options, finish with the one that you recommend",
-  "report the action that was refused, what refused it, and the reason that it gave",
+  "report the refused action, what refused it, and its reason",
   "Ask for permission only where a capable colleague would ask",
   "A permission covers that kind of step for the rest of the task",
   "Name the real risks and limits that remain",
   "It replaces that goal only when the user cancels it or asks for work that cannot go with it",
   KEEP_GOING,
   FOLLOW_UP_WORK,
-  CODE_REFERENCES,
+  "name a file, a function, or a flag only when the reader must open or use it",
   OPEN_CHOICES,
   CHALLENGE,
 ] as const;
@@ -127,9 +138,10 @@ describe("chat body", () => {
     expect(listed).toBe(unlisted);
     expect(unlisted).toStartWith("You are Flywheel's chat agent.");
     for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS]) expect(occurrences(unlisted, rule)).toBe(1);
+    expect(unlisted.indexOf(KEEP_GOING)).toBeLessThan(unlisted.indexOf(FOLLOW_UP_WORK));
     for (const kept of DOCTRINE_SECTIONS) expect(unlisted).toContain(kept);
     for (const gone of [...CORE_SECTIONS, "PROPORTIONALITY:", "CONVERSATION-FIRST DELIVERY:", "CHAT CHANGE REVIEW:", "COMMUNICATION:", "MODEL NOTES:", "Provider Interaction Notes"]) expect(unlisted).not.toContain(gone);
-    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "do not stop at a feasibility verdict, a diagnosis, or design approval", "a request to plan first does not set such a limit", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "a subagent result carries them in its summary", "**Do what the request asks and do not expand its scope.** Avoid changing public interfaces or contracts without the approval of the user.", "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.", "Spikes and experiments are the exception"]) {
+    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "the skill alone sizes the review to the change", "**Orchestration pays for itself.**", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "do not stop at a feasibility verdict, a diagnosis, or design approval", "a request to plan first does not set such a limit", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "Record your own deviations from that intent as you work. After", "**Do what the request asks and do not expand its scope.** Avoid changing public interfaces or contracts without the approval of the user.", "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.", "Spikes and experiments are the exception"]) {
       expect(unlisted).toContain(commitment);
     }
     expect(unlisted).not.toContain("trivial edits");
@@ -190,7 +202,7 @@ describe("chat body", () => {
       expect(sections.every((index, at) => index >= 0 && (at === 0 || index > sections[at - 1]!))).toBe(true);
       for (const shared of ["they/them", "Use no name that you made up during the work"]) expect(body).toContain(shared);
       // Each base rule renders once: an add-in block keeps only the conditions that it adds to the base.
-      for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "Persist until the task is fully handled", "A long session is", "If one part is truly blocked"]) expect(occurrences(body, rule)).toBe(1);
+      for (const rule of [...BASE_MARKERS, ...FOLDED_MARKERS, ...BASE_SECTIONS, "closing offers", "one idea per sentence", "one-line update before your first tool call", "A long session is", "If one part is truly blocked"]) expect(occurrences(body, rule)).toBe(1);
       expect(body).not.toContain("\u2014");
     }
     // Every GPT entry but luna's takes an authorized next step without ending the turn.

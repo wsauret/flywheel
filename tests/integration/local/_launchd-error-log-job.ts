@@ -12,13 +12,13 @@
 import { appendFileSync, existsSync, readFileSync, writeSync } from "node:fs"
 import { join } from "node:path"
 
-import { keepServiceErrorLogBounded } from "../../../src/cli/startup.js"
+import { keepServiceErrorLogBounded } from "../../../src/cli/service-error-log.js"
 import { Log } from "../../../src/infra/log.js"
 
 const [errorLog, markers] = process.argv.slice(2)
 if (errorLog === undefined || markers === undefined) throw new Error("usage: _launchd-error-log-job.ts <error log> <markers directory>")
 await Log.init({ dir: markers, print: false })
-keepServiceErrorLogBounded(errorLog)
+keepServiceErrorLogBounded(errorLog, 2)
 const events = join(markers, "events.log")
 appendFileSync(events, "start\n")
 const start = readFileSync(events, "utf8").split("\n").filter((event) => event === "start").length

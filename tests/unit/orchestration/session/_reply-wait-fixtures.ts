@@ -117,7 +117,7 @@ export function live(here: Project, sessionId: string): LiveTestSession {
 export function runChild(tasks: BackgroundWorkRegistry, childSessionId: string): void {
   tasks.track({
     done: new Promise(() => {}),
-    meta: { id: `${childSessionId}-run`, type: "subagent", settlementOwner: "child_session", description: childSessionId, model: "test-model", roleSessionId: childSessionId, toolUseId: `${childSessionId}-tool` },
+    meta: { id: `${childSessionId}-run`, type: "subagent", description: childSessionId, model: "test-model", roleSessionId: childSessionId, toolUseId: `${childSessionId}-tool` },
     kill: { run: () => {} },
   })
 }

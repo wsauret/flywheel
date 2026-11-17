@@ -17,7 +17,7 @@ import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { asRecord } from "../../../infra/record.js";
 import { describeInputRepair } from "./coerce-input.js";
 import type { ExecutionWhitelist } from "./tool-policy.js";
-import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
+import { executePreparedTool, prepareToolCall, preparedToolAdmission, withInputRepairNotice, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tool-dispatch.js";
 import type { ToolConcurrencyGate } from "./tool-concurrency-gate.js";
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
 import type { ToolCall } from "../llm/types.js";
@@ -35,8 +35,17 @@ export interface NestedToolFactPublisher {
   result(call: ToolCall, result: ToolResult, meta: NestedToolFactMeta): void | Promise<void>;
 }
 
+/** One nested call's answer: its result, and the tool of the callable map that the dispatcher resolved the called
+ *  name to after repair. It is undefined when the name resolved to no tool, and on a closed batch, which resolves
+ *  nothing. */
+interface NestedToolDispatch {
+  readonly result: ToolResult;
+  readonly tool: RuntimeTool | undefined;
+}
+
 export interface NestedToolDispatchBatch {
-  execute(name: string, input: unknown): Effect.Effect<ToolResult, PersistenceWriteRefused>;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
+  execute(name: string, input: unknown): Effect.Effect<NestedToolDispatch, PersistenceWriteRefused>;
   /** The names of the registered calls that have no terminal result yet. */
   unsettled(): ReadonlyArray<string>;
   /** Stops registration, interrupts and joins owned calls, then fills only missing terminal cells. */
@@ -159,7 +168,7 @@ export function createNestedToolDispatchBatch(options: {
   readonly executionWhitelist?: ExecutionWhitelist;
   readonly onNestedStart?: (breadcrumb: string) => void;
   readonly toolExecutionGate?: ToolExecutionGate;
-  readonly executionAdmission?: (toolName: string) => import("./tool-dispatch.js").PreparedCallCapabilityAdmission;
+  readonly executionAdmission: ExecutionAdmission;
 }): NestedToolDispatchBatch {
   if (options.parentToolUseId.length === 0 || options.parentToolUseId.includes("#")) {
     throw new Error("Nested tool parent ID must be non-empty and cannot contain '#'.");
@@ -182,8 +191,8 @@ export function createNestedToolDispatchBatch(options: {
     );
   });
 
-  const execute = (name: string, rawInput: unknown): Effect.Effect<ToolResult, PersistenceWriteRefused> => Effect.suspend(() => {
-    if (closed) return Effect.succeed({ content: "Code tool dispatch is closed.", outcome: "interrupted" });
+  const execute = (name: string, rawInput: unknown): Effect.Effect<NestedToolDispatch, PersistenceWriteRefused> => Effect.suspend(() => {
+    if (closed) return Effect.succeed({ result: { content: "Code tool dispatch is closed.", outcome: "interrupted" }, tool: undefined });
     sequence += 1;
     const input = asRecord(typeof rawInput === "string" ? readJsonValue(rawInput)?.value : rawInput);
     const call: ToolCall = {
@@ -193,8 +202,8 @@ export function createNestedToolDispatchBatch(options: {
       ...(input ? {} : { inputParseError: `Tool '${name}' received an input that is not an object.` }),
       ...(options.modelRequestId ? { modelRequestId: options.modelRequestId } : {}),
     };
-    const prepared = prepareToolCall(call, options.tools);
-    prepared.capabilityAdmission = options.executionAdmission?.(prepared.call.name);
+    const prepared = prepareToolCall(call, options.tools, options.executionAdmission);
+    const { tool } = prepared;
     const notices = [
       ...(typeof rawInput === "string" && input ? [describeInputRepair({ kind: "parsed_value", path: "input", type: "object" })] : []),
       ...(prepared.call.repairedFrom ? [`Note: tool '${prepared.call.repairedFrom}' was read as '${prepared.call.name}'.`] : []),
@@ -210,13 +219,17 @@ export function createNestedToolDispatchBatch(options: {
         yield* publishTerminal(entry, refused);
         return refused;
       }
-      if (prepared.validationResult !== undefined || prepared.tool === undefined) {
-        const validation = withInputRepairNotice(prepared, prepared.validationResult ?? { content: `Unknown tool '${name}'.`, outcome: "error" as const });
+      const refuse = (reason: ToolResult) => Effect.gen(function* () {
+        const validation = withInputRepairNotice(prepared, reason);
         yield* publish(options.publisher.validation(prepared.call, validation, meta));
         entry.terminal = validation;
         return validation;
-      }
-      yield* publish(options.publisher.input(prepared.call, prepared.tool, meta));
+      });
+      // An unresolved name records a compact reason: the provider-level text lists every callable name, which
+      // the caller's own diagnostic replaces (ARCH-TOOLS-009).
+      if (tool === undefined) return yield* refuse({ content: `Unknown tool '${prepared.call.name}'.`, outcome: "error" });
+      if (prepared.validationResult !== undefined) return yield* refuse(prepared.validationResult);
+      yield* publish(options.publisher.input(prepared.call, tool, meta));
       options.onNestedStart?.(`-> ${toolExpression(prepared.call.name)} ${JSON.stringify(redactDeep(prepared.call.input))}`);
       const context: ToolContext = {
         ...options.context,
@@ -246,7 +259,7 @@ export function createNestedToolDispatchBatch(options: {
         ? { content: `Tool '${name}' was interrupted before it could complete.`, outcome: "interrupted" as const }
         : { content: `Tool '${name}' failed: ${errorMessage(Cause.squash(cause))}`, outcome: "error" as const },
       );
-    }));
+    }), Effect.map((result) => ({ result, tool })));
   });
 
   return {

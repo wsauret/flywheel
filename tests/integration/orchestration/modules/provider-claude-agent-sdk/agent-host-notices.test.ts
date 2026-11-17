@@ -10,12 +10,13 @@ import { formatRuntimeNotification } from "../../../../../src/orchestration/agen
 import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/agent-loop-history.js";
 import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
-import { conversationTierEntry, DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
 import { parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
-import { createHostRegistry, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
+import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { agentLoop, dispatchedIds, hostScript, isDispatcher, LOOKUP, registryProxy, SYSTEM, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
+import { agentLoop, dispatchedIds, hostScript, isDispatcher, LOOKUP, SYSTEM, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedToolCalls, type FakeHostRun, type StreamResult } from "./_claude-sdk-client.js";
 import type { FakeReply, RecordedRequest } from "./_fake-host.js";
 
@@ -23,9 +24,7 @@ const temporary = temporaryDirectories();
 removeEngineProbes();
 const diagnostics = captureDiagnostics();
 
-let registry: HostRegistry;
-afterEach(async () => { await registry.drain(); });
-const agentHosts = registryProxy(() => registry);
+afterEach(async () => { await processAgentHosts.drain(); });
 
 const PROCESS = { name: "process", description: "Waits on background work.", input_schema: { type: "object", properties: { action: { type: "string" } }, required: ["action"] } };
 const ACK = "Wait acknowledged for at most 240 seconds. The loop parks after this turn's other tool calls finish.";
@@ -91,7 +90,6 @@ const dispatchPayload = (agentId: string) => diagnostics.payloads("provider.clau
 
 describe("a runtime notice after a parked batch", () => {
   test("rides on the wait's result byte for byte, also after a pause in which the host hears nothing, with no dispatch and a record of the fold, and no other protocol reads the engine's text", async () => {
-    registry = createHostRegistry();
     const NOTICE = completion("4217");
     await onFakeHost(temporary, scripted({ wait: [calls(WAIT), DONE] }), async (run) => {
       const { host } = run;
@@ -136,11 +134,10 @@ describe("a runtime notice after a parked batch", () => {
       expect(failover).not.toContain(encoded(tier));
       expect(instructions.split(tier)).toHaveLength(2);
       expect(fork).toContain(encoded(NOTICE));
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("folds in history order: on a later step's result, on each wait of an expiry and a rewait, and with several notices in one tail", async () => {
-    registry = createHostRegistry();
     const NOTICE = completion("77");
     await onFakeHost(temporary, scripted({ later: [calls(LOOK), calls(LOOK), DONE], expiry: [calls(WAIT), calls(WAIT), DONE], several: [calls(WAIT), DONE] }), async (run) => {
       const { host } = run;
@@ -186,11 +183,10 @@ describe("a runtime notice after a parked batch", () => {
 
       expect(dispatchedIds(host.requests)).toHaveLength(3);
       expect(loops.map(wrappers)).toEqual([1, 1, 1]);
-    }, { seams: { agentHosts } });
+    });
   }, 180_000);
 
   test("in a mixed batch, the earlier result passes unchanged and the last success result carries the notice", async () => {
-    registry = createHostRegistry();
     const NOTICE = completion("5");
     await onFakeHost(temporary, scripted({ mixed: [calls(LOOK, WAIT), DONE], errorFirst: [calls(LOOK, WAIT), DONE] }), async (run) => {
       const { host } = run;
@@ -212,13 +208,12 @@ describe("a runtime notice after a parked batch", () => {
         { id: batches[1]![0], isError: true, texts: ["Error: no key named k."] }, { id: batches[1]![1], isError: false, texts: [ACK, NOTICE] },
       ], input: [] });
       expect(dispatchedIds(host.requests)).toHaveLength(2);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 });
 
 describe("a runtime notice that no open call can carry dispatches", () => {
   test("after a failed, blank, or full last result, as top-level text under a new agent id, and never inside an error", async () => {
-    registry = createHostRegistry();
     const NOTICE = completion("9");
     const cases = [
       { name: "failed", reason: "error", content: [{ type: "text" as const, text: "Error: no key named k." }], isError: true as const },
@@ -245,11 +240,10 @@ describe("a runtime notice that no open call can carry dispatches", () => {
         expect(sent.input.some((text) => text.trimEnd() === NOTICE.trimEnd())).toBe(true);
         expect(sent.results.some((result) => result.texts.some((text) => text.includes(NOTICE)))).toBe(false);
       }
-    }, { seams: { agentHosts } });
+    });
   }, 180_000);
 
   test("after the agent answered, by one dispatch that resumes it under its id", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, scripted({ answered: [DONE, DONE] }), async (run) => {
       const { host } = run;
       const agent = await parent(run, "answered");
@@ -262,13 +256,12 @@ describe("a runtime notice that no open call can carry dispatches", () => {
       expect(dispatchPayload(first ?? "").map((payload) => payload["resumed"])).toEqual([false, true]);
       expect(coordinator(second)).toHaveLength(1);
       expect(wrappers(agent)).toBe(2);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 });
 
 describe("any input that is not only runtime notices dispatches", () => {
   test("a person's message, a session message of every relation, an unlabeled nudge, and a notice beside unlabeled input or text equal to it", async () => {
-    registry = createHostRegistry();
     const NOTICE = completion("1");
     const session = (relation: "parent" | "child" | "sibling", waits: boolean): ConversationMessage => ({
       kind: "user", content: `A ${relation} message.`,
@@ -300,13 +293,12 @@ describe("any input that is not only runtime notices dispatches", () => {
       expect(restarts.map((payload) => payload["trigger"])).toEqual(names.map(() => "results-with-input"));
       expect(loops.map(wrappers)).toEqual(names.map(() => 2));
       expect(dispatchedIds(host.requests)).toHaveLength(names.length * 2);
-    }, { seams: { agentHosts } });
+    });
   }, 180_000);
 });
 
 describe("the work of runtime notices", () => {
   test("two hosted parents of one tree that each read three notices run in one engine, and the dispatcher sends only their starts", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     const waiting = [calls(WAIT), calls(WAIT), calls(WAIT), DONE];
     await onFakeHost(temporary, scripted({ one: waiting, two: waiting }), async (run) => {
@@ -324,6 +316,6 @@ describe("the work of runtime notices", () => {
       expect(launches).toBe(1);
       expect(dispatchedIds(host.requests)).toHaveLength(2);
       expect(results.map((result) => folds(result).length)).toEqual([3, 3]);
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { launches += 1; return launch(input); }; } } });
   }, 180_000);
 });

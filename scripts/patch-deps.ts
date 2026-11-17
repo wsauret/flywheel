@@ -34,20 +34,8 @@ const patches: Patch[] = [{
   name: "preserve terminal special colors without ANSI palette support",
   glob: "node_modules/@opentui/core/chunk-*.js",
   find: `    const supported = await this.detectOSCSupport();
-    if (!supported) {
-      return {
-        palette: Array(size).fill(null),
-        defaultForeground: null,
-        defaultBackground: null,
-        cursorColor: null,
-        mouseForeground: null,
-        mouseBackground: null,
-        tekForeground: null,
-        tekBackground: null,
-        highlightBackground: null,
-        highlightForeground: null
-      };
-    }
+    if (!supported)
+      return emptyTerminalColors(size);
     const indicesToQuery = [...Array(size).keys()];
     const idleTimeout = env2.OTUI_PALETTE_IDLE_TIMEOUT_MS;
     const [paletteResults, specialColors] = await Promise.all([

@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { Schema } from "effect"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
@@ -18,6 +16,8 @@ import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-f
 import arms from "./golden/committed-v10-history-arms.json"
 import { commitWorkflowRecovery } from "../../../../src/orchestration/workflow-host/recovery-commit.js"
 import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { quietHostDeps } from "./host-test-support.js"
 
 const drivers: SqliteVmDriver[] = []
 const closers: Array<() => void> = []
@@ -27,7 +27,7 @@ afterEach(() => {
   for (const driver of drivers.splice(0)) driver.close()
 })
 
-const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const workflow = loadedWorkflow({
   id: "blocked-recovery",
   name: "Blocked recovery",
   phases: [
@@ -101,6 +101,7 @@ function restarted(vm: SqliteVmDriver, startMode: WorkflowVmStartMode, worker: W
   }
   closers.push(close)
   const host = createWorkflowVmHost({
+    ...quietHostDeps(asAsyncEventWriter(store)),
     servedConversations: async () => new Set(),
     requestAddenda: async () => [],
     startMode,
@@ -131,7 +132,7 @@ describe("blocked work survives a restart", () => {
     const vm = new SqliteVmDriver({ workflow, skills, control: launchedBeforePhases })
     drivers.push(vm)
     const { control: before, corrective } = await seedPausedCorrectiveChain(vm, "stop before reassessment")
-    const entries = vm.context()!.entries
+    const entries = (await vm.context())!.entries
     vm.store.append({ aggregateId: vm.aggregateId, sessionId: vm.sessionId, timestamp: 999, type: "queue.created", version: 9, actor: "flywheel", payload: {} })
     const repaired = await commitWorkflowRecovery({
       sessionId: vm.sessionId, reader: asAsyncEventReadSurface(vm.store), writer: asAsyncEventWriter(vm.store),

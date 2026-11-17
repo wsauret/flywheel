@@ -1,9 +1,8 @@
-import { describe, expect, jest, spyOn, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { createHash } from "node:crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
 
-import { createFatalExit, fatalExitCode } from "../../../src/cli/fatal-exit.js"
 import { runServe } from "../../../src/cli/serve.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
@@ -212,6 +211,33 @@ describe("a start of a parked lane that listens", () => {
 })
 
 describe("the entry's fatal path", () => {
+  let processes = 0
+  /** Thrown by the mocked `process.exit`, which never returns. */
+  const exited = new Error("the process exited")
+  /** The exit codes of one process whose fatal path the calls of `fail`
+   *  drive. A process has one fatal exit, so each case loads the entry's
+   *  module afresh, as a new process does. The process stays, and its log
+   *  stays open. */
+  async function exitCodes(fail: (exitFatally: typeof import("../../../src/cli/fatal-exit.js").exitFatally) => readonly Promise<void>[]): Promise<number[]> {
+    processes += 1
+    const entry: typeof import("../../../src/cli/fatal-exit.js") = await import(`../../../src/cli/fatal-exit.js?process=${processes}`)
+    const exits: number[] = []
+    const exit = spyOn(process, "exit").mockImplementation((code) => {
+      exits.push(Number(code ?? 0))
+      throw exited
+    })
+    const closeLog = spyOn(Log, "closeGlobal").mockImplementation(async () => {})
+    try {
+      for (const ended of await Promise.allSettled(fail(entry.exitFatally))) {
+        if (ended.status === "fulfilled" || ended.reason !== exited) throw new Error("each fatal call ends in process.exit", { cause: ended })
+      }
+    } finally {
+      exit.mockRestore()
+      closeLog.mockRestore()
+    }
+    return exits
+  }
+
   test("a malformed account configuration still listens and clears the lane's failing streak", async () => {
     const { directories, userDataRoot } = await failingAccount()
     fs.writeFileSync(path.join(userDataRoot, "flywheel.toml"), "[updates\n")
@@ -237,16 +263,13 @@ describe("the entry's fatal path", () => {
     const error = spyOn(Log.Default, "error")
     const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
     try {
-      expect(await fatalExitCode(new Error(held.message, { cause: held }), "thrown")).toBe(SERVE_EXIT.parked)
+      expect(await exitCodes((exitFatally) => [exitFatally(new Error(held.message, { cause: held }), "thrown")])).toEqual([SERVE_EXIT.parked])
       // The first park writes its fatal record in full, with how the failure
       // reached the entry and its detail.
       expect(error.mock.calls).toEqual([["fatal", { kind: "thrown", error: held.message, errorDetail: expect.objectContaining({ message: held.message, stack: expect.stringContaining(held.message), cause: expect.objectContaining({ name: "ServeStartupFailure" }) }) }]])
       // The service never listened, so the start failed.
       expect(stderr.mock.calls).toEqual([[`flywheel: failed to start: ${held.message}\n`]])
       expect(JSON.parse(startRecordText(userDataRoot)).failing).toEqual({ since: expect.any(Number), lastAt: expect.any(Number), starts: 6, cause: held.message, causeKind: "thrown", refusal: { kind: "port-in-use", port: 41000 }, parked: FIRST_PARK })
-      // A process fails its start once; any later failure exits as any
-      // command's does.
-      expect(await fatalExitCode(new Error("a later failure"), "thrown")).toBe(1)
     } finally {
       error.mockRestore()
       stderr.mockRestore()
@@ -265,7 +288,7 @@ describe("the entry's fatal path", () => {
     const debug = spyOn(Log.Default, "debug")
     const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
     try {
-      expect(await fatalExitCode(new Error(`the account store cannot be opened with ${secret}`), "thrown")).toBe(SERVE_EXIT.parked)
+      expect(await exitCodes((exitFatally) => [exitFatally(new Error(`the account store cannot be opened with ${secret}`), "thrown")])).toEqual([SERVE_EXIT.parked])
       expect(error).not.toHaveBeenCalled()
       expect(debug.mock.calls).toEqual([["fatal", { kind: "thrown", error: cause, errorDetail: expect.objectContaining({ name: "Error", message: cause, stack: expect.stringContaining(cause) }) }]])
       expect(JSON.stringify(debug.mock.calls)).not.toContain(secret)
@@ -287,7 +310,7 @@ describe("the entry's fatal path", () => {
     const error = spyOn(Log.Default, "error")
     try {
       // The start served its minute, so the failure joins no streak.
-      expect(await fatalExitCode(new Error("the hub stopped"), "thrown")).toBe(1)
+      expect(await exitCodes((exitFatally) => [exitFatally(new Error("the hub stopped"), "thrown")])).toEqual([1])
       expect(stderr.mock.calls).toEqual([["flywheel: fatal thrown failure: the hub stopped\n"]])
     } finally {
       stderr.mockRestore()
@@ -297,19 +320,16 @@ describe("the entry's fatal path", () => {
 
   test("a failure that arrives while the first one ends exits with the code that the first one decided, and records and counts only the first", async () => {
     const { userDataRoot } = await failingAccount()
-    const exits: number[] = []
-    const entry = createFatalExit({ exit: (code) => { exits.push(code) } })
     const error = spyOn(Log.Default, "error")
     const stderr = spyOn(process.stderr, "write").mockImplementation(() => true)
     try {
       // Two floating rejections in one tick: the first one's streak decision
       // parks the lane, so the second must not exit with the code that
       // restarts it.
-      await Promise.all([
-        entry.fatal(new Error("the account store cannot be opened"), "unhandled rejection"),
-        entry.fatal(new Error("a floating rejection"), "unhandled rejection"),
-      ])
-      expect(exits).toEqual([SERVE_EXIT.parked, SERVE_EXIT.parked])
+      expect(await exitCodes((exitFatally) => [
+        exitFatally(new Error("the account store cannot be opened"), "unhandled rejection"),
+        exitFatally(new Error("a floating rejection"), "unhandled rejection"),
+      ])).toEqual([SERVE_EXIT.parked, SERVE_EXIT.parked])
       expect(error.mock.calls.map(([message]) => message)).toEqual(["fatal"])
       expect(stderr.mock.calls).toEqual([["flywheel: fatal unhandled rejection: the account store cannot be opened\n"]])
     } finally {
@@ -317,23 +337,5 @@ describe("the entry's fatal path", () => {
       stderr.mockRestore()
     }
     expect(JSON.parse(startRecordText(userDataRoot)).failing).toMatchObject({ starts: 6, cause: "the account store cannot be opened", causeKind: "thrown", parked: FIRST_PARK })
-  })
-
-  test("a failure that arrives while the first one ends exits 1 when the first one decides nothing within a second", async () => {
-    jest.useFakeTimers()
-    try {
-      const exits: number[] = []
-      const entry = createFatalExit({ exit: (code) => { exits.push(code) }, decide: () => new Promise<number>(() => {}) })
-      void entry.fatal(new Error("the account store cannot be opened"), "uncaught exception")
-      const second = entry.fatal(new Error("a floating rejection"), "unhandled rejection")
-      jest.advanceTimersByTime(999)
-      await Promise.resolve()
-      expect(exits).toEqual([])
-      jest.advanceTimersByTime(1)
-      await second
-      expect(exits).toEqual([1])
-    } finally {
-      jest.useRealTimers()
-    }
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AGENT_HOST_SOCKET_VARIABLE, createHostGate, serveHostGate, type AgentStepSink, type HostStepItem, type RefusedHostStep } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
+import { AGENT_HOST_SOCKET_VARIABLE, createHostGate, serveHostGate, type AgentStepSink, type HostGateHooks, type HostStepItem } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
 
 /** The host plugin's hook module source, which each host's copy holds byte for byte. */
 const HOOK_SOURCE = join(import.meta.dir, "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-plugin/hooks/register.js.txt");
@@ -25,7 +25,7 @@ async function* failingRequest(): AsyncGenerator<unknown, unknown> {
 /** A gate whose host records what the gate tells it. `settled` answers each step's settlement, at once unless a test
  *  holds it. */
 function gate(settled: () => Promise<boolean> = async () => true) {
-  const refused: RefusedHostStep[] = [];
+  const refused: Parameters<HostGateHooks["refused"]>[0][] = [];
   const advanced: string[] = [];
   const asked: string[] = [];
   const admitted: string[] = [];
@@ -148,6 +148,7 @@ describe("the host gate", () => {
     const server = serveHostGate({ serve: (path, body) => { paths.push(path); return host.serve(path, body); } });
     try {
       expect(readFileSync(join(server.pluginPath, "hooks/register.js"), "utf8")).toBe(readFileSync(HOOK_SOURCE, "utf8"));
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the hook input and step that the Claude engine passes to a plugin hook
       type Handler = ($: unknown, e: { readonly turnId: string; readonly index: number; readonly messageCount: number; readonly agentId: string }, send: (step: unknown) => AsyncGenerator<unknown, unknown>) => AsyncGenerator<unknown, unknown>;
       const hooks = new Map<string, Handler>();
       const plugin: { register(on: (event: string, handler: Handler) => { catch(handler: Handler): void }): void } = await import(join(server.pluginPath, "hooks/register.js"));

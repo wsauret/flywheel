@@ -18,7 +18,7 @@ export function recordProviderCatalogFailure(providerId: string, discovery: Cata
   });
 }
 
-export interface CatalogSemanticDigest {
+interface CatalogSemanticDigest {
   readonly count: number;
   readonly sum: string;
   readonly xor: string;
@@ -30,7 +30,7 @@ interface CatalogDiagnosticSamples<T> {
   readonly digest: CatalogSemanticDigest;
 }
 
-export interface CatalogCollisionSample {
+interface CatalogCollisionSample {
   readonly modelId: string;
   readonly dataUse: CatalogDataUse;
   readonly wireModelIds: readonly string[];
@@ -43,7 +43,7 @@ export interface CatalogDiscoveryDiagnostics {
   readonly collisions: CatalogDiagnosticSamples<CatalogCollisionSample>;
 }
 
-export class CatalogSemanticDigestAccumulator {
+class CatalogSemanticDigestAccumulator {
   private count = 0;
   private sum = 0n;
   private xor = 0n;

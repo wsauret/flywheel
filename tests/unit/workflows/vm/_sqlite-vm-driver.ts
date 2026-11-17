@@ -3,7 +3,6 @@ import { mkdirSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { isDeepStrictEqual } from "node:util"
-import { Schema } from "effect"
 import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
@@ -12,7 +11,7 @@ import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js"
 import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
 import { loadHandoffsFromEvents } from "../../../../src/workflows/output-contract/projection.js"
-import { loadContextStateFromEvents } from "../../../../src/workflows/context-bundle/context-projection.js"
+import { accumulatorStateFromProjection, createWorkflowContextProjection } from "../../../../src/workflows/context-bundle/context-projection.js"
 import { buildContextAccumulatedFact, buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { createWorkflowContextStore, type WorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
@@ -23,7 +22,7 @@ import { resolveSkillClosure } from "../../../../src/workflows/skill-closure.js"
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { createWorkflowCommitHost } from "../../../../src/workflows/vm/commit-host.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host-types.js"
@@ -46,8 +45,10 @@ import {
   type WorkflowSessionFact,
 } from "../../../../src/workflows/vm/session-facts.js"
 import { initializeWorkflow, replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { quietHostDeps } from "./host-test-support.js"
 
-export const acceptanceWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const acceptanceWorkflow = loadedWorkflow({
   id: "sqlite-acceptance",
   name: "SQLite acceptance",
   phases: [
@@ -64,7 +65,7 @@ export const acceptanceSkills: SkillRegistryRevision = testSkillRevision([
 /** Acceptance shape for blocked work: the phase after the work phase is
  *  the phase that reassessed a blocker in a build before blocked
  *  retirement. */
-export const blockedWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const blockedWorkflow = loadedWorkflow({
   id: "sqlite-blocked",
   name: "SQLite blocked acceptance",
   phases: [
@@ -168,8 +169,9 @@ export class SqliteVmDriver {
     return loadQueueFromEvents(this.events())
   }
 
-  context() {
-    return loadContextStateFromEvents(this.events())
+  /** The workflow context as its held projection reads it from the store. */
+  async context() {
+    return accumulatorStateFromProjection(await createWorkflowContextProjection(asAsyncEventReadSurface(this.store), this.sessionId).replay())
   }
 
   handoffs() {
@@ -379,7 +381,6 @@ export class SqliteVmDriver {
       return {
         control: replayWorkflowControl(events),
         queue: loadQueueFromEvents(events),
-        context: loadContextStateFromEvents(events),
         handoffs: loadHandoffsFromEvents(events),
         lineage: loadDefinitionLineageFromEvents(events),
       }
@@ -516,6 +517,7 @@ export class SqliteVmDriver {
     return createWorkflowCommitHost({
       sessionId: this.sessionId,
       writer,
+      commitBatch: (events) => requireGuardedEventAppender(writer, "The driver commits through guarded batches").appendBatchGuarded(events),
       reader: asAsyncEventReadSurface(this.store),
       definitionRevision: this.definitionRevision,
       workflow: this.workflow,
@@ -575,6 +577,7 @@ function storedProposalMatches(
  *  through `answer`. */
 export function mapHost(vm: SqliteVmDriver, startMode: WorkflowVmStartMode, answer: WorkflowVmHostDeps["attemptRunner"]["run"], messages: Pick<Partial<WorkflowVmHostDeps>, "requestAddenda" | "addressedMessages" | "preAttemptPolicy"> = {}) {
   return createWorkflowVmHost({
+    ...quietHostDeps(asAsyncEventWriter(vm.store)),
     servedConversations: async () => new Set(),
     requestAddenda: async () => [],
     startMode,

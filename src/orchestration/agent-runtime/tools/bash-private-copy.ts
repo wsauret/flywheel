@@ -17,10 +17,11 @@ import { Log } from "../../../infra/log.js";
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
 import { readRepositoryRefs, readReftableStack } from "./bash-copy-refs.js";
-import { readCopyRepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
+import { digestStateEntries, readCopyRepositoryState, readIndexDigest, type RepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
 import { runPrivateCopyJob } from "./bash-private-copy-jobs.js";
 import { PRIVATE_COPY_RECORD, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
 import type { CopyGeometry, PrivateCopyPool, ReusableCopy } from "./bash-private-copy-pool.js";
+import type { HeldListing } from "./bash-private-copy-mirror.js";
 import { rootAtPathBoundary, type CopiedProject, type CopyChanges, type CopyTopologyRequest } from "./bash-private-copy-tree.js";
 import { BEFORE_IMAGE, type SessionFolderSnapshot } from "./bash-session-observation.js";
 
@@ -50,11 +51,14 @@ export interface PrivateProjectCopy extends LandableCopy {
 }
 
 /** What one refresh wrote: entries cloned or placed again and entries removed,
- *  over the tree, base, and session image, and the take's duration. */
+ *  over the tree, base, and session image, and the take's duration. In a
+ *  repository, `reseeded` tells whether the private Git directory was seeded
+ *  again because the real repository moved, or kept. */
 export interface CopyRefresh {
   readonly recloned: number;
   readonly removed: number;
   readonly refreshMs: number;
+  readonly reseeded?: boolean;
 }
 
 /** A cwd outside the project needs a containing Git work tree before a command can run. */
@@ -69,7 +73,12 @@ export class NoContainingWorkTreeError extends Error {
  *  Git work tree. Both paths must be canonical physical paths. Records the
  *  copy under home. With a pool that holds an idle copy of the same geometry,
  *  refreshes that copy in its own home instead: only what drifted is written
- *  again, and the returned `home` is the reused one. A reused home whose
+ *  again, and the returned `home` is the reused one. Its private Git directory
+ *  keeps its refs and objects when the real repository's HEAD, refs, stash,
+ *  index, formats, and linked trees are as the last take seeded them;
+ *  otherwise it is seeded again. Its index is always copied again from the
+ *  real one, because a command can set index flags that no state read sees.
+ *  A reused home whose
  *  directories were replaced is retired before anything is written into it,
  *  and a refresh that fails retires the home and takes a new copy under
  *  `home`. Throws NoContainingWorkTreeError when cwd is outside both, or
@@ -82,17 +91,18 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
   const fromProject = relative(projectRoot, executionCwd);
   const outside = fromProject === ".." || fromProject.startsWith(`..${sep}`) || isAbsolute(fromProject);
   let reused: ReusableCopy | undefined;
+  let held: ReusableCopy["git"];
   let prepared: Promise<void> | undefined;
   // Runs once the geometry is known: selects the home, resets a reused one,
-  // and starts the private Git directory in it.
+  // and starts the private Git directory in it unless the reused one holds one.
   const prepare = (geometry: CopyGeometry, format: string | undefined): Promise<void> => {
     prepared = (async () => {
       const idle = input.pool?.checkout(geometry);
       if (idle && await intactHome(idle)) {
         reused = idle;
-        await resetHome(idle);
+        if (await resetHome(idle)) held = idle.git;
       }
-      if (format !== undefined) await initializePrivateGit(input.runGit, join(reused?.home ?? input.home, "git"), format);
+      if (format !== undefined && !held) await initializePrivateGit(input.runGit, join(reused?.home ?? input.home, "git"), format);
     })();
     return prepared;
   };
@@ -107,22 +117,42 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
     const copyRoot = join(treeRoot, geometry.projectInTree);
     const baseRoot = join(home, "base");
     const privateGit = join(home, "git");
+    // The held directory is kept only while the real repository is as its seed
+    // left it; a moved HEAD, ref, stash, or index seeds a new one first.
+    let kept: ReusableCopy["git"];
+    if (git && held) {
+      const [index, stack] = await Promise.all([readIndexDigest(git.gitDir, input.runGit), reftable(git) ? readReftableStack(git.commonDir) : undefined]);
+      const fingerprint = realFingerprint(git, index, stack);
+      if (fingerprint === held.fingerprint) kept = held;
+      else {
+        await rm(privateGit, { recursive: true, force: true, maxRetries: 3 });
+        await initializePrivateGit(input.runGit, privateGit, git.format);
+      }
+    }
     const execute = async (args: string[], stdin?: string): Promise<string> => {
       const result = await input.runGit(["git", `--git-dir=${privateGit}`, "-c", `core.hooksPath=${join(home, "seed-hooks")}`, ...args], { timeoutMs: GIT_TIMEOUT_MS, ...(stdin === undefined ? {} : { stdin }) });
       if (result.exitCode !== 0 || result.timedOut || result.stdoutTruncated) throw new Error(result.stderr || "Git seeding did not finish completely");
       return result.stdout;
     };
+    let seededStack: ReadonlyMap<string, Buffer> | undefined;
     const tree = await runPrivateCopyJob({
       kind: "copy",
       request: {
         realRoot, home, copyRoot, baseRoot, guard: input.guard, whollyIgnored: git?.whollyIgnored ?? [],
         ...(input.scratchDir ? { scratchDir: input.scratchDir } : {}),
         ...(reused ? { prior: reused.state } : {}),
-        git: git && { ...git, privateGitDir: privateGit, projectInTree: geometry.projectInTree, treeRoot },
+        git: git && { ...git, privateGitDir: privateGit, projectInTree: geometry.projectInTree, treeRoot, kept: kept !== undefined },
       },
-    }, git ? () => seedPrivateRefs(privateGit, git, execute) : undefined);
+    }, git && !kept ? async () => { seededStack = await seedPrivateRefs(privateGit, git, execute); } : undefined);
+    if (git && (await readdir(privateGit)).some(name => name.startsWith("sharedindex."))) await execute(["update-index", "--no-split-index"]);
     if (git && geometry.projectInTree) await hideEntriesOutsideProject(treeRoot, geometry.projectInTree, input.runGit);
-    const repository = git ? await readCopyRepositoryState(privateGit, input.runGit) : null;
+    let repository: RepositoryState | null = null;
+    let seeded: ReusableCopy["git"];
+    if (git) {
+      repository = kept?.baseline ?? await readCopyRepositoryState(privateGit, input.runGit);
+      // The seed copied the real index and reftable stack, so the fingerprint digests what was seeded, not a later read.
+      seeded = kept ?? { fingerprint: realFingerprint(git, repository.index, seededStack), baseline: repository };
+    }
     // The mirror state and tally stay in memory; the record keeps its shape.
     const { observedSession, state, tally, ...copiedTree } = tree;
     const copy = await runPrivateCopyJob({
@@ -132,8 +162,8 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
     return {
       ...copy, home, scratchDir: input.scratchDir ?? home,
       ...(observedSession ? { observedSession } : {}),
-      reuse: { home, geometry, state, refreshedAt: Date.now() },
-      ...(reused ? { refresh: { recloned: tally.recloned, removed: tally.removed, refreshMs: Math.round(performance.now() - started) } } : {}),
+      reuse: { home, geometry, state, refreshedAt: Date.now(), ...(seeded ? { git: seeded } : {}) },
+      ...(reused ? { refresh: { recloned: tally.recloned, removed: tally.removed, refreshMs: Math.round(performance.now() - started), ...(git ? { reseeded: kept === undefined } : {}) } } : {}),
     };
   } catch (error) {
     // A Git listing can fail while the checkout is still being prepared; the
@@ -148,11 +178,11 @@ export async function takePrivateProjectCopy(input: { readonly projectRoot: stri
 
 /** Copies the real refs into the new private Git directory: direct refs as
  *  one `packed-refs` file, symbolic refs in one transaction, then HEAD, the
- *  stash and its reflog, and the branches of the real linked trees. */
-async function seedPrivateRefs(privateGit: string, git: GitLayout, execute: (args: string[], stdin?: string) => Promise<string>): Promise<void> {
-  const reftable = /extensions.refstorage reftable/i.test(git.format);
-  if (reftable) {
-    const stack = await readReftableStack(git.commonDir);
+ *  stash and its reflog, and the branches of the real linked trees. Answers
+ *  the reftable stack it copied, or undefined in a files repository. */
+async function seedPrivateRefs(privateGit: string, git: GitLayout, execute: (args: string[], stdin?: string) => Promise<string>): Promise<ReadonlyMap<string, Buffer> | undefined> {
+  const stack = reftable(git) ? await readReftableStack(git.commonDir) : undefined;
+  if (stack) {
     const directory = join(privateGit, "reftable");
     for (const name of await readdir(directory)) await rm(join(directory, name));
     for (const [name, bytes] of stack) await writeFile(join(directory, name), bytes, { flag: "wx" });
@@ -178,7 +208,7 @@ async function seedPrivateRefs(privateGit: string, git: GitLayout, execute: (arg
   // Git rejects HEAD and its current referent in the same transaction.
   if (git.head.startsWith("ref: ")) await execute(["symbolic-ref", "HEAD", git.head.trim().slice(5)]);
   else await execute(["update-ref", "--no-deref", "HEAD", git.head.trim()]);
-  const entries = reftable ? [] : git.stash.split("\n").filter(Boolean).toReversed();
+  const entries = stack ? [] : git.stash.split("\n").filter(Boolean).toReversed();
   if (entries.length === 0) {
     const stashObject = refs.find(({ ref }) => ref === "refs/stash")?.oid;
     if (stashObject) await execute(["update-ref", "refs/stash", stashObject]);
@@ -188,7 +218,7 @@ async function seedPrivateRefs(privateGit: string, git: GitLayout, execute: (arg
     const subject = entry.slice(space + 1);
     await execute(["update-ref", "--create-reflog", ...(subject ? ["-m", subject] : []), "refs/stash", entry.slice(0, space)]);
   }
-  if (/extensions.refstorage reftable/i.test(git.format)) {
+  if (stack) {
     const others = git.worktreeListing.split("\0\0").filter(row => !row.startsWith(`worktree ${git.topLevel}\0`));
     for (const [i, row] of others.entries()) {
       const branch = row.split("\0").find(field => field.startsWith("branch "))?.slice(7);
@@ -197,9 +227,20 @@ async function seedPrivateRefs(privateGit: string, git: GitLayout, execute: (arg
       await execute([`--git-dir=${directory}`, "symbolic-ref", "HEAD", branch]);
     }
   }
-  if ((await readdir(privateGit)).some(name => name.startsWith("sharedindex."))) {
-    await execute(["update-index", "--no-split-index"]);
-  }
+  return stack;
+}
+
+function reftable(git: GitLayout): boolean {
+  return /extensions.refstorage reftable/i.test(git.format);
+}
+
+/** Digests every input the seed copies from the real repository: HEAD, the
+ *  refs, the stash, the formats, the linked trees, the reftable stack (present
+ *  exactly in a reftable repository), and the index entries. Equal
+ *  fingerprints seed equal private Git state. */
+function realFingerprint(git: GitLayout, index: StateDigest, stack: ReadonlyMap<string, Buffer> | undefined): string {
+  const parts = [git.head, git.refs, git.stash, git.format, git.worktreeListing, JSON.stringify(index)].map(part => Buffer.from(part));
+  return digestStateEntries([...parts, ...[...stack ?? []].flatMap(([name, bytes]) => [Buffer.from(name), bytes])]).sha256;
 }
 
 async function initializePrivateGit(runGit: OwnedCommandRunner, privateGit: string, format: string): Promise<void> {
@@ -257,15 +298,18 @@ function firstReplaced(paths: readonly string[]): { readonly path: string; reado
 }
 
 /** Returns a reused home to what a new take finds: no record, no entry beside
- *  `tree`, `base`, and the session image, and nothing under `tree` beside the
- *  chain to the copy root. Every generated file is then created again with
- *  exclusive create, which fails on any entry left in its place. */
-async function resetHome(copy: ReusableCopy): Promise<void> {
+ *  `tree`, `base`, the session image, and a held private Git directory without
+ *  its index, and
+ *  nothing under `tree` beside the chain to the copy root. Every generated
+ *  file is then created again with exclusive create, which fails on any entry
+ *  left in its place. Answers whether the home still holds the private Git
+ *  directory of `copy.git` (see `pruneHeldGit`). */
+async function resetHome(copy: ReusableCopy): Promise<boolean> {
   const { home, geometry } = copy;
   const removal = { recursive: true, force: true, maxRetries: 3 } as const;
   // The record goes first, as in a discard: a home without one is a copy no landing reads.
   await rm(join(home, PRIVATE_COPY_RECORD), removal);
-  const kept = new Set(["tree", "base", ...(copy.state.session ? [BEFORE_IMAGE] : [])]);
+  const kept = new Set(["tree", "base", ...(copy.state.session ? [BEFORE_IMAGE] : []), ...(copy.git ? ["git"] : [])]);
   for (const name of await readdir(home)) if (!kept.has(name)) await rm(join(home, name), removal);
   let directory = join(home, "tree");
   for (const next of [geometry.treeName, ...geometry.projectInTree.split(sep).filter(Boolean)]) {
@@ -274,6 +318,45 @@ async function resetHome(copy: ReusableCopy): Promise<void> {
   }
   // At the Git top level the pointer sits at the copy root, which the mirror keeps.
   await rm(join(home, "tree", geometry.treeName, ".git"), removal);
+  if (!copy.git) return false;
+  const privateGit = join(home, "git");
+  if (await pruneHeldGit(privateGit)) return true;
+  await rm(privateGit, removal);
+  return false;
+}
+
+/** The entries of a private Git directory that hold the refs, HEAD, and stash
+ *  of `RepositoryState`, the protected linked trees, and the object store,
+ *  each with its seeded kind. A landing proved the state they hold equal to
+ *  the baseline. The index is not one of them: its entries are proven equal,
+ *  but a command can set skip-worktree and assume-unchanged flags that no
+ *  state read sees, so every take copies the real index again. */
+const HELD_GIT_ENTRIES: ReadonlyMap<string, "file" | "directory"> = new Map([
+  ["HEAD", "file"], ["packed-refs", "file"],
+  ["objects", "directory"], ["refs", "directory"], ["logs", "directory"], ["reftable", "directory"], ["worktrees", "directory"],
+]);
+
+/** Removes every entry of a held private Git directory that the seed writes
+ *  again or that a command left, such as its config, info, hooks, index, lock
+ *  files, and the alternates file, and keeps `HELD_GIT_ENTRIES`. A command
+ *  could have put a link where a kept entry was, and this
+ *  process writes below `objects/info` without the command's guard, so a kept
+ *  entry of another kind answers false and the caller seeds a new directory. */
+async function pruneHeldGit(privateGit: string): Promise<boolean> {
+  const kindOf = (path: string): "file" | "directory" | "other" | "missing" => {
+    const stats = lstatSync(path, { throwIfNoEntry: false });
+    return !stats ? "missing" : stats.isFile() ? "file" : stats.isDirectory() ? "directory" : "other";
+  };
+  if (kindOf(privateGit) !== "directory") return false;
+  for (const name of await readdir(privateGit)) {
+    const kind = HELD_GIT_ENTRIES.get(name);
+    if (kind === undefined) await rm(join(privateGit, name), { recursive: true, force: true, maxRetries: 3 });
+    else if (kindOf(join(privateGit, name)) !== kind) return false;
+  }
+  const info = join(privateGit, "objects", "info");
+  if (kindOf(join(privateGit, "objects")) !== "directory" || !["directory", "missing"].includes(kindOf(info))) return false;
+  await rm(join(info, "alternates"), { force: true });
+  return true;
 }
 
 /** Each directory from below `from` down to `to`. */
@@ -294,10 +377,12 @@ export async function readPrivateProjectCopy(home: string): Promise<LandableCopy
   return read.kind === "recorded" ? { kind: "recorded", copy: { ...read.copy, home } } : read;
 }
 
-/** Finds every change the command made in its copy, on a Worker (see `scanCopyChanges`). */
-export async function detectCopyChanges(copy: CopiedProject): Promise<CopyChanges> {
+/** Finds every change the command made in its copy, on a Worker (see
+ *  `scanCopyChanges`). `baseListings`, the base listings its take left
+ *  (`reuse.state.base.listings`), spare reading the base again. */
+export async function detectCopyChanges(copy: CopiedProject, baseListings?: ReadonlyMap<string, HeldListing>): Promise<CopyChanges> {
   const { realRoot, copyRoot, baseRoot, shared, files, links } = copy;
-  return runPrivateCopyJob({ kind: "scan", copy: { realRoot, copyRoot, baseRoot, shared, files, links } });
+  return runPrivateCopyJob({ kind: "scan", copy: { realRoot, copyRoot, baseRoot, shared, files, links }, ...(baseListings ? { baseListings } : {}) });
 }
 
 /** A project below the Git top level is copied alone, so the rest of the

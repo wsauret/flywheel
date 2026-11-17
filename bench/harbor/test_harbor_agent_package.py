@@ -240,7 +240,7 @@ class PublicationTargetTest(unittest.TestCase):
         self.assertEqual(package.publication_target("abcdef012345", "v1.2.3"), {"branch": "main", "tag": "flywheel-v1.2.3-abcdef012345"})
 
     def test_agent_repository_may_hold_only_package_refs(self) -> None:
-        package.require_package_refs_only({"HEAD": "a", "refs/heads/main": "a", "refs/heads/build/abcdef012345": "b", "refs/tags/flywheel-v1.2.3-abcdef012345": "a"})
+        package.require_package_refs_only({"HEAD": "a", "refs/heads/main": "a", "refs/heads/build/abcdef012345": "b", "refs/tags/flywheel-v1.2.3-abcdef012345": "a", "refs/heads/zcode-0.17.0-wrapper": "c"})
         for foreign in ("refs/notes/ai", "refs/heads/feature", "refs/tags/v1.2.3"):
             with self.subTest(ref=foreign), self.assertRaisesRegex(RuntimeError, foreign):
                 package.require_package_refs_only({"refs/heads/main": "a", foreign: "c"})

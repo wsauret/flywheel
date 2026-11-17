@@ -6,11 +6,11 @@ description: Use for the smallest complete verification of a change.
 
 Use the smallest complete verification of the work, then stop. Start with the changed behavior and acceptance requirements, not an inventory of everything that could be tested.
 
-Choose the fewest focused checks that prove the change. Tests alone are sufficient when they establish the required behavior. A test that mocks an external boundary does not prove that boundary: when the change touches a live service, a dependency's behavior, or a real entrypoint, a throwaway probe against the real thing is the gap tests cannot cover, and it belongs in the selected checks. Use UAT beyond that only for a specific gap or an explicit acceptance requirement. Honor explicit repository gates. Do not add broader suites, adjacent scenarios, or verification agents without a concrete evidence gap.
+Choose the fewest focused checks that prove the change. Do not add verification agents without a concrete evidence gap.
 
 For ordinary changes, prefer unit tests plus a dedicated testing script that exercises the changed behavior through its real boundary. Do not assume integration tests exist or that their name implies a particular cost or scope. If repository instructions specify test tiers, required gates, or execution rules, follow them. Otherwise, use this default.
 
-Assume past observations are stale. Prior test output, subagent results, and review reports can guide the checks but do not prove the current state. Run the selected checks yourself against the current implementation, then read their output and exit status. A new verification pass requires fresh observations; do not accept an earlier run because no change is known. Minimal verification means the smallest decisive fresh check, not recycled evidence.
+Prior test output, subagent results, and review reports do not prove the current state. Run the selected checks yourself against the current implementation, then read their output and exit status.
 
 Stop as soon as required evidence is complete, or report a failure or unavailable prerequisite. Keep the result short: checks run, outcomes, and any remaining uncertainty. Use a claim table only when distinct requirements need it. Do not turn a small change into an exhaustive verification campaign.
 

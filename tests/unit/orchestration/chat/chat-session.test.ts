@@ -141,10 +141,9 @@ describe("chat subagent registry wired to the next-turn mailbox", () => {
     const done = Promise.withResolvers<BackgroundWorkResult>()
     registry.track({
       done: done.promise,
-      meta: { id: "t1", type: "subagent", description: "Read config" },
+      meta: { id: "t1", type: "background_command", description: "Read config" },
     })
-    // The registry delivers a settled batch from a later timer, so the test
-    // parks on the next turn's input the way a chat turn does.
+    // The test parks on the next turn's input the way a chat turn does.
     const nextTurn = mailbox.prepareWaitForInput().commit()
     done.resolve({ status: "completed", content: "config found" })
 
@@ -152,7 +151,7 @@ describe("chat subagent registry wired to the next-turn mailbox", () => {
     expect(drained).not.toBeNull()
     if (drained?.kind !== "message") throw new Error("expected message input")
     expect(drained.origin).toBe("silent-system")
-    expect(drained.text).toContain("<subagent_notifications>")
+    expect(drained.text).toContain("<background_command_notification>")
     expect(drained.text).toContain("config found")
   })
 })
@@ -210,7 +209,6 @@ describe("chat title from a command's turn", () => {
     const createAgent: AgentFactory = (): Agent => ({
       done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
       send() {},
-      end() {},
       abort() {},
     })
     const titles: Array<{ label: string; shortLabel: string }> = []
@@ -240,7 +238,6 @@ describe("chat title from a command's turn", () => {
       return {
         done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
         send() {},
-        end() {},
         abort() {},
       }
     }
@@ -281,7 +278,6 @@ describe("chat title environment refresh", () => {
         return {
           done: Promise.resolve<AgentRunResult>({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
           send() {},
-          end() {},
           abort() {},
         }
       }
@@ -303,7 +299,6 @@ describe("chat title environment refresh", () => {
             : { kind: "api_error", message: "Authentication requires attention", recovery: { kind: "none" } },
         }),
         send() {},
-        end() {},
         abort() {},
       }
     }

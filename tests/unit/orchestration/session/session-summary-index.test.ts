@@ -2,28 +2,13 @@ import { Database } from "bun:sqlite"
 import { describe, expect, spyOn, test, afterEach } from "bun:test"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import * as fs from "node:fs"
-import { dbFile, readyBudget, sourceFor, removeIndexDirectories } from "./_summary-index-fixtures.js"
+import { dbFile, readyBudget, recorded, sourceFor, streamSummaryFact, removeIndexDirectories } from "./_summary-index-fixtures.js"
 import { CorruptEventRowError, type AsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
 import { generationStatistics, initialGenerationEvidence, reduceGenerationEvidence } from "../../../../src/orchestration/session/session-generation-statistics.js"
-import type { GenerationMeasurement } from "../../../../src/orchestration/session/provider-request-audit-types.js"
 import { sessionSummaryFact, usageV4Fact } from "../../../fixtures/session-summary-history.js"
-import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 
 afterEach(removeIndexDirectories)
-
-const recorded = (outputTokens: number, durationMs: number): GenerationMeasurement => ({
-  kind: "recorded", basis: "O200kBase", outputTokens, durationMs, measuredBlocks: 1, excludedBlocks: 0,
-})
-
-/** The stored summary of one provider stream that measured `generation`. */
-function streamSummaryFact(position: number, sessionId: string, generation: GenerationMeasurement): StoredFact {
-  return { ...sessionSummaryFact(position, sessionId, "model.stream.summary.recorded", 3, {
-    requestId: `request-${position}`, identity: { providerSessionKey: sessionId }, turn: 1, rawEventCount: 2, countsBySource: {}, countsByKind: {},
-    interDelta: { count: 0, meanMs: 0, p50Ms: 0, p90Ms: 0, p99Ms: 0, maxMs: 0, ge1s: 0, ge2s: 0, ge5s: 0, ge10s: 0 },
-    watchdog: { thinkingStallCount: 0 }, recovery: { streamRetryCount: 0, reasoningDisabledRetryCount: 0 }, bigGapTransitions: [], generation,
-  }), actor: "flywheel" }
-}
 
 interface SummaryIndexRef {
   current?: ReturnType<typeof acquireSessionSummaryIndex>
@@ -596,32 +581,6 @@ describe("session summary index", () => {
     } finally {
       await index.dispose()
     }
-  })
-
-  test("one new stream summary costs one fact read, whatever the session count and history length", async () => {
-    async function costOfOneSummary(sessionCount: number) {
-      const facts: StoredFact[] = []
-      for (let round = 0; round < 20; round++) {
-        for (let session = 0; session < sessionCount; session++) facts.push(streamSummaryFact(facts.length + 1, `s${session}`, recorded(100, 1000)))
-      }
-      const history = sourceFor(facts, 10_000)
-      const counter = countStateRequests(history.source)
-      const index = acquireSessionSummaryIndex(dbFile(), counter.reader)
-      try {
-        await index.replay()
-        counter.take()
-        history.append(streamSummaryFact(facts.length + 1, "s0", recorded(100, 3000)))
-        await index.replay()
-        const requests = counter.take()
-        expect((await index.readImmediate(["s0"])).summaries.get("s0")?.averageGenerationTokensPerSecond).toBe(2100 * 1000 / 23_000)
-        return { requests: requests.length, facts: factsRead(requests) }
-      } finally {
-        await index.dispose()
-      }
-    }
-    const few = await costOfOneSummary(3)
-    expect(few.facts).toBe(1)
-    expect(await costOfOneSummary(100)).toEqual(few)
   })
 
   test("rebuilds an index of the previous generation, whose rows had no speed", async () => {

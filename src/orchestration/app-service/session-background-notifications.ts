@@ -12,7 +12,6 @@ type NotifiableEntry = SessionEntry
 interface BackgroundNotificationDeliveryContext {
   readonly sessionId: string
   readonly projectRoot: string
-  readonly eventStore: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter
   /** The session owner closes admission before teardown joins durable work. */
@@ -40,7 +39,7 @@ export function createBackgroundNotificationDelivery(ctx: BackgroundNotification
       conversationId,
       sessionId: ctx.sessionId,
       projectRoot: ctx.projectRoot,
-      store: ctx.eventStore,
+      store: ctx.projectionReader,
       projectionReader: ctx.projectionReader,
       writer: ctx.eventWriter,
     })
@@ -60,7 +59,7 @@ export function createBackgroundNotificationDelivery(ctx: BackgroundNotification
     // runner of this session tracks the finished workflow again as work it
     // waits on, and its turn never comes to rest.
     const { key } = notification
-    if (committed && key !== undefined && completionWorkIds(key).some((id) => liveWorkflowControl(ctx.eventStore, id))) ctx.sweepAfterCommit()
+    if (committed && key !== undefined && completionWorkIds(key).some((id) => liveWorkflowControl(ctx.projectionReader, id))) ctx.sweepAfterCommit()
     return committed
   }
 

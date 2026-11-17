@@ -3,7 +3,7 @@ import { rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { GroupMarkReading } from "../../../src/infra/container-mark.js"
-import type { AbandonedLease, GuardianLedger, LedgerLease } from "../../../src/infra/guardian-ledger.js"
+import type { AbandonedLease, GuardianLedger } from "../../../src/infra/guardian-ledger.js"
 import { Log } from "../../../src/infra/log.js"
 import { GUARDIAN_LEDGER_RECHECK_MS, runProcessGuardian, type GuardianHost } from "../../../src/infra/process-guardian.js"
 import { encodeGuardianFrame, type GuardianReply, type GuardianRequest } from "../../../src/infra/process-guardian-protocol.js"
@@ -150,7 +150,7 @@ function record(token: string, guardianPid: number): string {
  *  ones dead guardians left, and every record removed, in order. Each record
  *  belongs to its writer, as on disk. */
 function ledgerProbe(...left: readonly AbandonedLease[]) {
-  const held = new Map<string, LedgerLease>()
+  const held = new Map<string, Parameters<GuardianLedger["hold"]>[0]>()
   const abandoned = new Map(left.map((lease) => [record(lease.token, lease.guardianPid), lease]))
   const dropped: string[] = []
   return {

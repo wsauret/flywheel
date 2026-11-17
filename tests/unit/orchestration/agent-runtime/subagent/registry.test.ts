@@ -6,33 +6,16 @@ import { makeDeps } from "./_fixtures.js";
 describe("subagent tool — registry", () => {
   describe("renderSubagentRoster", () => {
     it("names each agent type with its details, while the tool description names none", () => {
-      const roster = renderSubagentRoster(makeDeps().agentRegistry, () => true);
+      const roster = renderSubagentRoster(makeDeps().agentRegistry, () => true, false);
 
-      expect(roster).toContain("- explorer: ");
-      expect(roster).toContain("read-only");
+      expect(roster).toContain("- explorer (read-only): ");
       expect(roster).toContain("- implementer: ");
       // The roster renders in the session tier, so the tool bytes are the same for every agent.
-      expect(subagentDescription(() => true, false)).not.toContain("- explorer: ");
+      expect(subagentDescription(() => true, false)).not.toContain("- explorer");
     });
 
     it("tells an agent with no dispatchable type to do the work directly", () => {
-      expect(renderSubagentRoster(new Map(), () => true)).toBe("# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.");
-    });
-
-    it("adds review routing when a persona of the reviewer role family is scoped", () => {
-      const reviewer = {
-        kind: "persona" as const,
-        name: "reviewer-code-quality",
-        description: "Reviews implemented code.",
-        role: "reviewer-quality",
-        tools: ["read"],
-        maxTurns: 20,
-        systemPrompt: "Review the supplied change.",
-      };
-      const review = "- Review/analysis: use a reviewer agent for code review or plan evaluation.";
-
-      expect(renderSubagentRoster(new Map([[reviewer.name, reviewer]]), () => true)).toContain(review);
-      expect(renderSubagentRoster(makeDeps().agentRegistry, () => true)).not.toContain(review);
+      expect(renderSubagentRoster(new Map(), () => true, false)).toBe("# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.");
     });
 
     it("adds Advisor routing policy only when Advisor is scoped", () => {
@@ -45,8 +28,8 @@ describe("subagent tool — registry", () => {
         maxTurns: 20,
         systemPrompt: "Give private read-only advice.",
       };
-      const withAdvisor = renderSubagentRoster(new Map([["advisor", advisor]]), () => true);
-      const withoutAdvisor = renderSubagentRoster(makeDeps().agentRegistry, () => true);
+      const withAdvisor = renderSubagentRoster(new Map([["advisor", advisor]]), () => true, false);
+      const withoutAdvisor = renderSubagentRoster(makeDeps().agentRegistry, () => true, false);
 
       for (const text of [
         "two materially different approaches",
@@ -61,13 +44,13 @@ describe("subagent tool — registry", () => {
         "exact decision",
         "relevant context and project authority",
         "plausible alternatives",
-        "supports or weakens each alternative",
+        "evidence for and against each",
         "prior attempts and what they ruled out",
         "uncertainty",
         "fork: true only when accumulated conversation context",
-        "private, read-only guidance",
-        "parent owns the final decision",
-        "failure or unavailability must not block",
+        "Its guidance is private",
+        "you own the decision",
+        "If it fails or is unavailable",
       ]) expect(withAdvisor).toContain(text);
       expect(withoutAdvisor).not.toContain("two materially different approaches");
     });

@@ -83,7 +83,6 @@ describe("auth attention publisher", () => {
         if (refusals > 0) throw new Error("notification journal append failed")
         applied.push(episode)
       } }],
-      transformers: [],
       gates: [],
     } as const satisfies FirstPartyModule
     const modules: readonly FirstPartyModule[] = [journal]

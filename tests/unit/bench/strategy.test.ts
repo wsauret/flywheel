@@ -2,7 +2,8 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { createRunStore } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
+import { createPersonaStore, type PersonaStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import {
   assertSameVariants,
   buildPlanJudgePrompt,
@@ -150,7 +151,6 @@ function fakeRuntime(options: {
                     });
                   },
                   abort: () => {},
-                  end: () => {},
                   done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: options.terminalFor?.(agent, call) ?? { kind: "completed" as const } }),
                 };
               },
@@ -235,10 +235,12 @@ async function strategyConfig(identity: RunConfig["identity"]): Promise<RunConfi
 const STRATEGY_SOURCE = "strategy-source";
 const strategySource = async () => STRATEGY_SOURCE;
 
-async function storedStrategyRun(root: string): Promise<{ directory: string; store: Awaited<ReturnType<typeof createRunStore>>; config: RunConfig }> {
+const PLAN_TASK_IDS = PLAN_TASKS.map((task) => task.id);
+
+async function storedStrategyRun(root: string): Promise<{ directory: string; store: PersonaStore; config: RunConfig }> {
   const directory = join(root, "strategy-results");
   const config = await strategyConfig({ profileId: "strategy-profile", authorityIncarnation: "strategy-incarnation", contentIdentity: "replaced" });
-  const store = await createRunStore({ resultsRoot: root, directory }, config);
+  const store = await createPersonaStore({ resultsRoot: root, directory }, config, PLAN_TASK_IDS);
   return { directory, store, config };
 }
 
@@ -382,12 +384,12 @@ describe("research strategy benchmark", () => {
         scoringVersion: "strategy-v1",
       });
       const dir = join(root, "strategy");
-      await createRunStore({ resultsRoot: root, directory: dir }, storedConfig(STRATEGY_PERSONA));
+      await createPersonaStore({ resultsRoot: root, directory: dir }, storedConfig(STRATEGY_PERSONA), PLAN_TASK_IDS);
       const resumed = await parseArgs(["--resume", dir]);
       expect(resumed.repeats).toBe(2);
       await expect(parseArgs(["--rescore", dir, "--repeats", "3"])).rejects.toThrow("Results repeats 2 conflict with --repeats 3");
       const foreign = join(root, "foreign");
-      await createRunStore({ resultsRoot: root, directory: foreign }, storedConfig("plan-research-strategy"));
+      await createPersonaStore({ resultsRoot: root, directory: foreign }, storedConfig("plan-research-strategy"), PLAN_TASK_IDS);
       await expect(parseArgs(["--resume", foreign])).rejects.toThrow("Results persona plan-research-strategy is not a strategy benchmark");
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -476,8 +478,9 @@ describe("strategy main", () => {
       expect((await store.loadConfig()).sourceIdentity).toBe(STRATEGY_SOURCE);
 
       // A campaign whose tasks predate the corpus pin is read-only evidence: even a rescore refuses.
-      const configPath = join(directory, "run-config.json");
-      await Bun.write(configPath, JSON.stringify({ ...await Bun.file(configPath).json(), taskIdentity: structuredIdentity({ tasks: PLAN_TASKS }) }));
+      const manifestPath = join(directory, "campaign.json");
+      const manifest = await Bun.file(manifestPath).json();
+      await Bun.write(manifestPath, JSON.stringify({ ...manifest, config: { ...manifest.config, taskIdentity: structuredIdentity({ tasks: PLAN_TASKS }) } }));
       await expect(captureConsole(() => main(["--rescore", directory], create, strategySource))).rejects.toThrow(RESEARCH_TASKS_CHANGED);
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -488,11 +491,13 @@ describe("strategy main", () => {
     for (const ledger of ["attempt", "judge-attempt"] as const) {
       const root = await mkdtemp(join(tmpdir(), "flywheel-strategy-main-"));
       try {
-        const { directory, store } = await storedStrategyRun(root);
+        // The ledger refuses an invalid append, so each malformed row is written past it.
+        const { directory } = await storedStrategyRun(root);
+        const events = join(directory, "events.jsonl");
         if (ledger === "attempt") {
-          await store.appendAttempt(failedAttempt({ model: "wrong-model" }));
+          await appendFixtureLine(events, failedAttempt({ model: "wrong-model" }));
         } else {
-          await store.appendJudgeAttempt({
+          await appendFixtureLine(events, {
             kind: "judge-attempt",
             attemptId: crypto.randomUUID(),
             at: "2026-09-02T00:00:00.000Z",

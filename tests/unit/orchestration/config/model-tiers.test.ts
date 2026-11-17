@@ -1,9 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import {
-  recommendedModelsForFamily,
+  modelPowerSortRank,
   resolveModelForTier,
   resolveModelForTierAcrossFamilies,
-  resolveModelTier,
 } from "../../../../src/orchestration/config/model-tiers.js";
 import { modelTierForReference } from "../../../../src/protocol/model-tier-reference.js";
 import { fakeModelInfos, makeModelsClient, modelInfo, tierAvailableModels, tierModelIds } from "../../../helpers/model-tier-fixtures.js";
@@ -13,21 +12,15 @@ const anthropicAvailable = tierAvailableModels.get("anthropic")!;
 const openaiAvailable = tierAvailableModels.get("openai")!;
 const googleAvailable = tierAvailableModels.get("google")!;
 
-describe("resolveModelTier", () => {
+describe("resolveModelForTier", () => {
   test("resolves tier aliases through the dynamic catalog", async () => {
     expect(modelTierForReference(undefined)).toBeUndefined();
     expect(modelTierForReference("powerful")).toBe("powerful");
-    expect(await resolveModelTier("powerful", "openai", openaiAvailable, tierOptions)).toBe(tierModelIds.openai.powerful);
-    expect(await resolveModelTier("mid", "google", googleAvailable, tierOptions)).toBe(tierModelIds.google.mid);
-    expect(await resolveModelTier("cheap", "anthropic", anthropicAvailable, tierOptions)).toBe(tierModelIds.anthropic.cheap);
-    expect(await resolveModelTier("opus", "openai", openaiAvailable, tierOptions)).toBe(tierModelIds.openai.powerful);
-    expect(await resolveModelTier("flash", "google", googleAvailable, tierOptions)).toBe(tierModelIds.google.mid);
-  });
-
-  test("passes explicit model IDs through unchanged without needing a catalog", async () => {
-    expect(await resolveModelTier("claude-opus-4-7", "anthropic", undefined, tierOptions)).toBe("claude-opus-4-7");
-    expect(await resolveModelTier("gpt-5.4", "openai", undefined, tierOptions)).toBe("gpt-5.4");
-    expect(await resolveModelTier("my-custom-model-v2", "anthropic", undefined, tierOptions)).toBe("my-custom-model-v2");
+    expect(modelTierForReference("opus")).toBe("powerful");
+    expect(modelTierForReference("flash")).toBe("mid");
+    expect(await resolveModelForTier("powerful", "openai", openaiAvailable, tierOptions)).toBe(tierModelIds.openai.powerful);
+    expect(await resolveModelForTier("mid", "google", googleAvailable, tierOptions)).toBe(tierModelIds.google.mid);
+    expect(await resolveModelForTier("cheap", "anthropic", anthropicAvailable, tierOptions)).toBe(tierModelIds.anthropic.cheap);
   });
 
   test("requires provider availability for abstract tier resolution", async () => {
@@ -38,13 +31,9 @@ describe("resolveModelTier", () => {
 
 describe("dynamic tier catalog", () => {
   test("admits old models from source capability", async () => {
-    const models = await recommendedModelsForFamily("openai", openaiAvailable, tierOptions);
-    expect(models).toContain("gpt-5.4");
-    expect(models).toContain("gpt-5-mini");
-    expect(models).toContain("gpt-5-nano");
-    expect(models).toContain("gpt-5.3-chat-latest");
-    expect(models).toContain("gpt-4.1");
-    expect(models).toContain("gpt-4o");
+    for (const model of ["gpt-5.4", "gpt-5-mini", "gpt-5-nano", "gpt-5.3-chat-latest", "gpt-4.1", "gpt-4o"]) {
+      expect(await modelPowerSortRank("openai", model, openaiAvailable, tierOptions)).toBeDefined();
+    }
   });
 
 
@@ -54,12 +43,11 @@ describe("dynamic tier catalog", () => {
       "claude-opus-4-5": modelInfo("anthropic", "claude-opus-4-5", "claude-opus", 5, 25, "2026-02-03"),
     });
 
-    const models = await recommendedModelsForFamily("anthropic", new Set(["claude-opus-4-6", "claude-opus-4-5"]), {
-      ...tierOptions,
-      modelInfos: client.modelInfos,
-    });
+    const available = new Set(["claude-opus-4-6", "claude-opus-4-5"]);
+    const options = { ...tierOptions, modelInfos: client.modelInfos };
 
-    expect(models).toEqual(["claude-opus-4.6", "claude-opus-4.5"]);
+    expect(await modelPowerSortRank("anthropic", "claude-opus-4-6", available, options)).toMatchObject({ tier: 0, index: 0 });
+    expect(await modelPowerSortRank("anthropic", "claude-opus-4-5", available, options)).toMatchObject({ tier: 0, index: 1 });
   });
 
   test("admits models without release dates", async () => {
@@ -70,12 +58,9 @@ describe("dynamic tier catalog", () => {
       }),
     });
 
-    const models = await recommendedModelsForFamily("anthropic", new Set(["claude-opus-unknown"]), {
-      ...tierOptions,
-      modelInfos: client.modelInfos,
-    });
+    const available = new Set(["claude-opus-unknown"]);
 
-    expect(models).toEqual(["claude-opus-unknown"]);
+    expect(await modelPowerSortRank("anthropic", "claude-opus-unknown", available, { ...tierOptions, modelInfos: client.modelInfos })).toBeDefined();
   });
 
   test("filters models that lack tool calls or text output", async () => {
@@ -84,8 +69,11 @@ describe("dynamic tier catalog", () => {
       "gpt-6-no-tools": modelInfo("openai", "gpt-6-no-tools", "gpt", 4, 20, "2026-03-01", { toolCall: false }),
       "gpt-6-audio": modelInfo("openai", "gpt-6-audio", "gpt", 4, 20, "2026-03-01", { modalities: { input: ["text"], output: ["audio"] } }),
     });
-    const models = await recommendedModelsForFamily("openai", new Set(["gpt-6", "gpt-6-no-tools", "gpt-6-audio"]), { ...tierOptions, modelInfos: client.modelInfos });
-    expect(models).toEqual(["gpt-6"]);
+    const available = new Set(["gpt-6", "gpt-6-no-tools", "gpt-6-audio"]);
+    const options = { ...tierOptions, modelInfos: client.modelInfos };
+    expect(await modelPowerSortRank("openai", "gpt-6", available, options)).toBeDefined();
+    expect(await modelPowerSortRank("openai", "gpt-6-no-tools", available, options)).toBeUndefined();
+    expect(await modelPowerSortRank("openai", "gpt-6-audio", available, options)).toBeUndefined();
   });
 
   test("resolves unpriced custom models by stable id only after every ranked tier is empty", async () => {
@@ -147,8 +135,11 @@ describe("dynamic tier catalog", () => {
     const client = makeModelsClient({
       "gpt-5.5": modelInfo("openai", "gpt-5.5", "gpt", 5, 30, "2026-04-23"),
     });
-    const models = await recommendedModelsForFamily("openai", new Set(["gpt-5.5", "gpt-5.5-2026-04-23"]), { ...tierOptions, modelInfos: client.modelInfos });
-    expect(models).toEqual(["gpt-5.5"]);
+    const available = new Set(["gpt-5.5", "gpt-5.5-2026-04-23"]);
+    const options = { ...tierOptions, modelInfos: client.modelInfos };
+    // A second catalog entry for the snapshot would rank the stable alias second.
+    expect(await modelPowerSortRank("openai", "gpt-5.5", available, options)).toMatchObject({ index: 0 });
+    expect(await resolveModelForTier("powerful", "openai", available, options)).toBe("gpt-5.5");
   });
 
   test("uses canonical model metadata for a dated snapshot identity", async () => {
@@ -193,12 +184,10 @@ describe("dynamic tier catalog", () => {
       "moonshotai/kimi-k3": modelInfo("openai", "moonshotai/kimi-k3", "kimi", 1.2, 5, "2026-05-01"),
       "openai/gpt-6-astra": modelInfo("openai", "openai/gpt-6-astra", "gpt", 2, 10, "2026-05-01"),
     });
-    const models = await recommendedModelsForFamily(
-      "openai",
-      new Set(["moonshotai/kimi-k3", "openai/gpt-6-astra"]),
-      { ...tierOptions, modelInfos: client.modelInfos },
-    );
-    expect(models).toEqual(["moonshotai/kimi-k3", "openai/gpt-6-astra"]);
+    const available = new Set(["moonshotai/kimi-k3", "openai/gpt-6-astra"]);
+    const options = { ...tierOptions, modelInfos: client.modelInfos };
+    expect(await modelPowerSortRank("openai", "moonshotai/kimi-k3", available, options)).toBeDefined();
+    expect(await modelPowerSortRank("openai", "openai/gpt-6-astra", available, options)).toBeDefined();
   });
 });
 

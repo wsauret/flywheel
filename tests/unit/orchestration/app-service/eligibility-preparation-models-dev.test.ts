@@ -16,6 +16,8 @@ import { testCapabilityModules, testProviderSelection } from "../../../helpers/p
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import type { SubscriptionUsagePublishedSnapshot } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { Redacted } from "effect"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 
 const DIRECTORIES = testDirectories(process.cwd())
 const PROFILE = { id: "work", directory: authDir(DIRECTORIES.userDataRoot, "work") }
@@ -29,7 +31,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     const lineage = "00000000-0000-4000-8000-000000000012"
     access.writeFile("auth.json", JSON.stringify({ google_vertex: { type: "api_key", key: "vertex", lineageId: lineage } }))
     access.close()
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const vertex = { kind: "singleton", providerId: "google_vertex", spendMode: "direct_api" } as const
     const auth = testAuthContext({ apiKeys: { google_vertex: "vertex" }, credentialLineages: { google_vertex: lineage } })
     let probes = 0
@@ -65,7 +67,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       allowTrainingRoutes: () => false,
       userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: service.publish,
       current: service.state,
@@ -87,7 +89,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
   })
 
   test.each(["unchanged", "auth", "preferences"] as const)("an audit preserves settled first-party fallback at every publication only for unchanged inputs: %s", async (changed) => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const candidate = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
     const key = accessProviderAccountKey(candidate)
     const published: (number | undefined)[] = []
@@ -132,7 +134,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: (state) => {
         published.push(state.inventoryCandidates.get(key)?.audit?.remaining)
@@ -190,11 +192,11 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       const verified = 2 - (state.inventoryCandidates.get(key)?.audit?.remaining ?? 2)
       for (const [index, id] of ["grok-a", "grok-b"].entries()) {
         expect(state.picker.has(id)).toBe(index < verified)
-        expect(state.worker.candidateOffering?.(candidate, id, false) !== undefined).toBe(index < verified)
+        expect(state.worker.candidateOfferings(candidate, id, false)[0] !== undefined).toBe(index < verified)
       }
       expect(state.picker.has(modelId)).toBe(admitted)
       expect(state.catalogs.get("anthropic_api")?.effective.has(modelId)).toBe(admitted)
-      expect(state.worker.candidateOffering?.(unaffected, modelId, false) !== undefined).toBe(admitted)
+      expect(state.worker.candidateOfferings(unaffected, modelId, false)[0] !== undefined).toBe(admitted)
       if (admitted) {
         expect(state.picker.get(modelId)).toEqual(snapshots[0]?.picker.get(modelId))
         expect(state.accountCatalogs.get(unaffectedKey)?.effective.has(modelId)).toBe(true)
@@ -206,16 +208,16 @@ describe("eligibility preparation with a models.dev catalog source", () => {
   })
 
   test("a free-plan account serves only alone, and a reading that changes a plan republishes once (PI-MODEL-038)", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const harness = freePlanHarness(service, ["paid", "free"])
     harness.plans.set("free", "free").set("paid", "pro")
 
     const beside = await harness.prepare(PROFILE, { mode: "fresh" })
     const paid = harness.candidate("paid")
     const free = harness.candidate("free")
-    expect(beside.worker.candidateOffering?.(paid, "gpt-a", false)?.wireModelId).toBe("gpt-a")
-    expect(beside.worker.candidateOffering?.(free, "gpt-a", false)).toBeUndefined()
-    expect(beside.worker.candidateModelUnavailableReason?.(free, "gpt-a")).toContain("only paid accounts rotate")
+    expect(beside.worker.candidateOfferings(paid, "gpt-a", false)[0]?.wireModelId).toBe("gpt-a")
+    expect(beside.worker.candidateOfferings(free, "gpt-a", false)[0]).toBeUndefined()
+    expect(beside.worker.candidateModelUnavailableReason(free, "gpt-a")).toContain("only paid accounts rotate")
 
     // A usage publication that changes no plan publishes nothing, and one that cannot read the plan keeps the mark.
     const published = harness.publications()
@@ -226,31 +228,31 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     // A preparation that cannot read the plan of the same identity keeps the mark.
     harness.plans.delete("free")
     const unread = await harness.prepare(PROFILE, { mode: "fresh" })
-    expect(unread.worker.candidateOffering?.(free, "gpt-a", false)).toBeUndefined()
+    expect(unread.worker.candidateOfferings(free, "gpt-a", false)[0]).toBeUndefined()
 
     // The plan turns paid: the account serves again beside its sibling.
     const beforePaid = harness.publications()
     await harness.prepare.reconcileFreePlans(PROFILE, harness.publication({ paid: "pro", free: "plus" }))
     expect(harness.publications()).toBe(beforePaid + 1)
-    expect(service.state(PROFILE.id)?.worker.candidateOffering?.(free, "gpt-a", false)?.wireModelId).toBe("gpt-a")
+    expect(service.state(PROFILE.id)?.worker.candidateOfferings(free, "gpt-a", false)[0]?.wireModelId).toBe("gpt-a")
 
     // The idle account reconnects as another identity whose plan is not read yet: the mark of the identity it
     // replaced does not follow it, and a publication that does not read the new identity leaves it serving.
     await harness.prepare.reconcileFreePlans(PROFILE, harness.publication({ paid: "pro", free: "free" }))
-    expect(service.state(PROFILE.id)?.worker.candidateOffering?.(free, "gpt-a", false)).toBeUndefined()
+    expect(service.state(PROFILE.id)?.worker.candidateOfferings(free, "gpt-a", false)[0]).toBeUndefined()
     harness.plans.set("free", "free")
     harness.identities.set("free", "someone-else@example.com")
     const reconnected = await harness.prepare(PROFILE, { mode: "fresh" })
-    expect(reconnected.worker.candidateOffering?.(free, "gpt-a", false)?.wireModelId).toBe("gpt-a")
+    expect(reconnected.worker.candidateOfferings(free, "gpt-a", false)[0]?.wireModelId).toBe("gpt-a")
     await harness.prepare.reconcileFreePlans(PROFILE, harness.publication({ paid: "pro" }))
-    expect(service.state(PROFILE.id)?.worker.candidateOffering?.(free, "gpt-a", false)?.wireModelId).toBe("gpt-a")
+    expect(service.state(PROFILE.id)?.worker.candidateOfferings(free, "gpt-a", false)[0]?.wireModelId).toBe("gpt-a")
 
     // A free-plan account alone in the profile serves, and the usage authority is never opened.
     harness.identities.delete("free")
     harness.accounts.splice(0, 1)
     const opened = harness.opened()
     const alone = await harness.prepare(PROFILE, { mode: "fresh" })
-    expect(alone.worker.candidateOffering?.(free, "gpt-a", false)?.wireModelId).toBe("gpt-a")
+    expect(alone.worker.candidateOfferings(free, "gpt-a", false)[0]?.wireModelId).toBe("gpt-a")
     expect(harness.opened()).toBe(opened)
     await harness.prepare.dispose()
     await service.dispose()
@@ -258,7 +260,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
 
   test("a usage publication reconciles free-plan accounts without a durable read, for any number of accounts (PI-MODEL-038)", async () => {
     for (const members of [2, 12]) {
-      const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+      const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
       const ids = Array.from({ length: members }, (_, index) => `account-${index}`)
       const harness = freePlanHarness(service, ids)
       await harness.prepare(PROFILE, { mode: "fresh" })
@@ -275,7 +277,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
   })
 
   test("a manual recheck queues an exact-account audit inside the cooldown, supersedes an active audit, and drops when its inputs changed, and a refused model audits after every discovery", async () => {
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const candidate = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
     const key = accessProviderAccountKey(candidate)
     let auth = "auth-v1"
@@ -292,7 +294,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: DIRECTORIES.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]),
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])),
       prepare: service.prepare,
       publish: (state) => { service.publish(state); published.resolve() },
       current: service.state,
@@ -410,7 +412,7 @@ function freePlanHarness(service: ReturnType<typeof createProviderModelPreferenc
     allowTrainingRoutes: () => false,
     userDataRoot: DIRECTORIES.userDataRoot,
     resolveKey: async () => undefined,
-    moduleSelection: () => testCapabilityModules(),
+    moduleSelection: () => testCapabilityModules(), observeAuth: diskAuthObservation(() => testCapabilityModules()),
     prepare: service.prepare,
     publish: (state) => { publications += 1; service.publish(state) },
     current: service.state,

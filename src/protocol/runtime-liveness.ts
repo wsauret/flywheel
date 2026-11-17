@@ -272,8 +272,16 @@
  *  Version 86: a tool row may carry `endedAt`, when the work that outlived
  *  its call ended, such as a background command, so every client states how
  *  long the command ran. An older client rejects such a row.
+ *  Version 87: the session domain `side-question-request` ships a running
+ *  side answer as `side-question-request.appended` patches of the text it
+ *  gained, and a client that missed one reads the request again. An older
+ *  client rejects the patches.
+ *  Version 88: `model.save_effort` and `model.reset_assignments` require the
+ *  `expected` profile-config entry of each role they write, and a model
+ *  assignment row carries that entry as `configured`. The runtime refuses an
+ *  older peer's mutation, and an older client rejects the rows.
  */
-export const RUNTIME_PROTOCOL_VERSION = 86
+export const RUNTIME_PROTOCOL_VERSION = 88
 
 export const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

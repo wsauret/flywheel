@@ -74,7 +74,7 @@ function residentConnection(count: number, bodyBytes = BODY_BYTES) {
       kind: "available", sessionId: request.sessionId, manifest: request.manifest, requestedOffset: request.offset, offset: request.offset,
       totalFiles: evidenceManifest.entries, totalBytes: evidenceManifest.bytes, files: evidenceFiles, nextOffset: null,
     }),
-    modelAssignments: async () => [{ slot: { kind: "role", roleId: "chat" }, label: "Chat", model: "model-a", effort: "high", modelSource: "default", matchesInheritedPair: true }],
+    modelAssignments: async () => [{ slot: { kind: "role", roleId: "chat" }, label: "Chat", model: "model-a", effort: "high", modelSource: "default", matchesInheritedPair: true, configured: { kind: "absent" } }],
     roleSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((id) => ({ sessionId: id, view: { assignments: {}, serving: { slot: { kind: "role", roleId: "chat" }, selection: { model: "model-a", effort: "high" } } } })) }),
     effortOptions: async () => [],
     commandCatalog: async () => ({ revision: 1, builtInCommands: [], offCommands: [], snapshotPosition: 0 }),

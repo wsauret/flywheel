@@ -1,4 +1,6 @@
-import type { HeartbeatClock } from "../../src/protocol/modules/remote/relay-channel.js"
+import type { HeartbeatTiming } from "../../src/protocol/modules/remote/relay-channel.js"
+
+type HeartbeatClock = NonNullable<HeartbeatTiming["clock"]>
 
 /** A heartbeat clock that stays still while socket and crypto setup settles. */
 export function manualHeartbeatClock(): { readonly clock: HeartbeatClock; readonly advance: (ms: number) => void; readonly now: () => number } {

@@ -2,22 +2,20 @@
  *  owned-process seam: validation, live output, compression, the scratchpad
  *  shim, and the foreground spool. The integration tier runs the real shell. */
 
-import { beforeAll, describe, expect, it } from "bun:test";
-import { Effect } from "effect";
+import { afterEach, beforeAll, describe, expect, it, mock, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { Parser } from "web-tree-sitter";
 
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
+import * as treeSitter from "../../../../../src/infra/tree-sitter-parser.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import type { RuntimeTool, RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
-import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf } from "./_bash-fixtures.js";
+import type { RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { dispatchTool as dispatch, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf } from "./_bash-fixtures.js";
 import { makeContext } from "./_fixtures.js";
 import { createPrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 
@@ -27,13 +25,6 @@ const pathOf = (env: { readonly [name: string]: string | undefined }) => Object.
 beforeAll(async () => {
   await loadBashParser();
 });
-
-/** A call as the dispatcher runs it: the tool's execution policy, then its execution. */
-const dispatch = (def: RuntimeTool, input: RuntimeToolInput, context: ToolContext) => Effect.runPromise(executeDispatchedTool({
-  prepared: prepareToolCall({ id: "call-1", name: def.name, input }, new Map([[def.name, def]]), { ok: true }),
-  context,
-  gate: createToolConcurrencyGate(1),
-}));
 
 describe("bash tool: file reads count as reads", () => {
   const directory = temporaryDirectories();
@@ -46,9 +37,13 @@ describe("bash tool: file reads count as reads", () => {
     fs.writeFileSync(path.join(root, "..", "outside.ts"), lines(3));
     const ledger = new FileReadLedger();
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ exited: Promise.resolve({ code: exitCode, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }) }));
-    await createBashDefinition({ operations: makeMockOps() }).execute({ command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
+    await dispatch(createBashDefinition({ operations: makeMockOps() }), { command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
     return { root, ledger };
   }
+
+  afterEach(() => {
+    mock.restore();
+  });
 
   function staleness(root: string, ledger: FileReadLedger, name: string, changed?: { start: number; end: number }) {
     const file = canonicalMutationPath(path.join(root, name));
@@ -65,6 +60,13 @@ describe("bash tool: file reads count as reads", () => {
     // The read is inferred from command syntax, so it never authorizes a whole-file replacement.
     const a = canonicalMutationPath(path.join(root, "a.ts"));
     expect(ledger.versionStaleness(a, fs.readFileSync(a))).toBe("unread");
+  });
+
+  it("records a read from the command policy's parse, with no second parse", async () => {
+    const parse = spyOn(Parser.prototype, "parse");
+    const { root, ledger } = await ledgerAfter("cat a.ts && echo ok");
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(staleness(root, ledger, "a.ts", { start: 1, end: 3 })).toBeUndefined();
   });
 
   it("records nothing for a failed command, shell syntax beyond plain reads, a file outside the project, or output compression would shorten", async () => {
@@ -114,7 +116,7 @@ describe("bash tool: mock operations (DI surface)", () => {
     expect(writeCalls.length).toBe(1);
     expect(writeCalls[0]!.path.startsWith(os.tmpdir())).toBe(true);
     expect(deleteCalls.length).toBe(1);
-    const home = await def.execute({ command: "echo hello", cwd: "~" }, ctx);
+    const home = await dispatch(def, { command: "echo hello", cwd: "~" }, ctx);
     expect(home.outcome).toBe("ok");
     expect(String(home.content)).toStartWith("[Path '~' was expanded to '");
     expect(spawn.launches.at(-1)?.cwd).toBe(os.homedir());
@@ -333,7 +335,7 @@ describe("bash tool: timeout bounds", () => {
       [10001, 10.001, "Note: timeout 10001 was read as milliseconds: 10.001 seconds."],
       [4000000, 3600, "Note: timeout 4000000 was read as milliseconds: 4000 seconds; capped at 3600 seconds."],
     ] as const) {
-      const result = await def.execute({ command: "echo hi", timeout: requested }, ctx);
+      const result = await dispatch(def, { command: "echo hi", timeout: requested }, ctx);
       expect(result.outcome).toBe("ok");
       expect(result.content).toBe(`${note}\ndone`);
       expect(timeout).toBe(seconds);
@@ -497,6 +499,24 @@ describe("bash tool: command policy (via tool)", () => {
     const result = await runCommand("sleep 240; tail -5 build.log", new Set(["bash"]));
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("sleeping longer than 30s");
+  });
+
+  it("refuses a shell-level background job, and runs an ampersand inside quotes", async () => {
+    const job = await runCommand("sleep 5 &", new Set(["bash"]));
+    expect(job.outcome).toBe("error");
+    expect(String(job.content)).toStartWith("Shell-level backgrounding was not executed.");
+    expect((await runCommand("echo '&'", new Set(["bash"]))).outcome).toBe("ok");
+  });
+
+  it("refuses a shell-level background job also when the bash parser is unavailable", async () => {
+    spyOn(treeSitter, "loadTreeSitterParser").mockRejectedValue(new Error("no wasm"));
+    try {
+      const job = await runCommand("sleep 5 &", new Set(["bash"]));
+      expect(job.outcome).toBe("error");
+      expect(String(job.content)).toStartWith("Shell-level backgrounding was not executed.");
+    } finally {
+      mock.restore();
+    }
   });
 });
 

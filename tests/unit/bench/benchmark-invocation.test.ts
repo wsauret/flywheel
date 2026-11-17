@@ -112,7 +112,6 @@ describe("benchmark Agent invocation", () => {
       received = agentOptions;
       return {
         send: (message) => { sent = message; },
-        end: () => undefined,
         abort: () => undefined,
         done: Promise.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "completed" } }),
       };
@@ -133,7 +132,6 @@ describe("benchmark Agent invocation", () => {
     let invocationSettled = false;
     const createAgent: AgentFactory = () => ({
       send: () => undefined,
-      end: () => undefined,
       abort: () => { aborted = true; },
       done: new Promise((resolve) => { settle = resolve; }),
     } satisfies Agent);

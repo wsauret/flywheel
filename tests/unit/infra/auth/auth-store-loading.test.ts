@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { authStoreObservationKey, authStoreObservedRevision, getCredential, loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../../src/infra/auth/auth-store.js";
+import { authStoreObservationKey, authStoreObservedRevision, loadAuthStoreWithDiagnostics, storedApiKeyHint } from "../../../../src/infra/auth/auth-store.js";
 import type { Credential } from "../../../../src/infra/auth/auth-store-types.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { installedCredentialProviderIds, installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js";
 
 const slots = (providerId: string): "subscription" | "metered" => providerId === "chatgpt" ? "subscription" : "metered";
 const temporaryDirectory = temporaryDirectories();
@@ -148,8 +149,9 @@ describe("loadAuthStore", () => {
     const dir = makeTmpDir();
     const credential = { type: "api_key" as const, key: "sk-x" };
     writeAuthJson(dir, { anthropic_api: metered(credential) });
-    expect(getCredential("anthropic_api", dir)).toEqual(credential);
-    expect(getCredential("missing", dir)).toBeUndefined();
+    const current = loadAuthStoreWithDiagnostics(dir, installedCredentialProviderIds(), installedCredentialSlotClassifier());
+    expect(current.store).toEqual({ anthropic_api: credential });
+    expect(current.dropped).toEqual([]);
   });
 
   test("excludes legacy instances", () => {

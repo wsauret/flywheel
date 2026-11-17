@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test"
 import { createSideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
-import { SIDE_QUESTION_PENDING_RESULT } from "../../../../../src/orchestration/modules/side-question/context.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 
@@ -52,7 +51,7 @@ describe("session side questions", () => {
     await f.started
     expect(f.runs[0]!.messages).toHaveLength(29)
     expect(f.runs[0]!.messages.at(-2)).toEqual({
-      kind: "toolResult", toolUseId: "live", content: [{ type: "text", text: SIDE_QUESTION_PENDING_RESULT }],
+      kind: "toolResult", toolUseId: "live", content: [{ type: "text", text: "The main conversation has not received the result of this call yet, so a side question cannot read it." }],
     })
     expect(source).toEqual(before)
     expect(f.host.snapshot().current?.state).toBe("running")
@@ -169,7 +168,7 @@ describe("session side questions", () => {
       run: async () => { throw new Error("provider initialization failed") },
     })
     const updates: Array<string | null> = []
-    host.subscribe((view) => { updates.push(view?.current?.state ?? null) })
+    host.subscribe((change) => { if (change.kind === "control") updates.push(change.view?.current?.state ?? null) })
     await host.ask("question")
     await host.settled()
     expect(host.snapshot().current?.state).toBe("error")

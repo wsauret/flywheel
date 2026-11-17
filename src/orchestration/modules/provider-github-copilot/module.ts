@@ -26,7 +26,7 @@ const definition = {
   displayName: "Copilot Subscription",
   shortName: "Copilot",
   billingUrl: "https://github.com/settings/billing",
-  supportedFamilies: ["anthropic", "openai", "google"],
+ 
   defaultChatTransport: "openai-completions",
   configHints: ["flywheel auth login --copilot"],
   cli: { flag: "copilot", name: "GitHub Copilot" },
@@ -72,7 +72,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const [{ buildCopilotClients }, { createAnthropicAdapter, operationsFromAnthropicClient }, { createOpenAIAdapter }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([
       import("./clients.js"), import("../../agent-runtime/llm/anthropic.js"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/openai-completions.js"),
     ]);
-    const { anthropic, openai, resetIdleConnections } = buildCopilotClients(
+    const { anthropic, openai } = buildCopilotClients(
       cred, connection, candidate,
       (expected, next) => replaceCredentialInstance(
         definition.id,
@@ -85,15 +85,15 @@ const createClient: AccessProviderFactory = async (build) => {
     );
     if (endpoint === "anthropic-messages") return createAnthropicAdapter(Redacted.make("copilot"), wireModelId, info, {
       operations: operationsFromAnthropicClient(anthropic), accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
-      resetIdleConnections, availability, candidate,
+      availability, candidate,
     });
     if (endpoint === "openai-completions") return createOpenAIChatCompletionsAdapter(openai, wireModelId, info, {
       accessProvider: definition.id, providerHint: "github-copilot", extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
-      resetIdleConnections, availability, candidate,
+      availability, candidate,
     });
     return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("copilot") }, wireModelId, info, {
       client: openai, accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
-      resetIdleConnections, availability, candidate,
+      availability, candidate,
     });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(model, attribution.resolvedModelMetadata)));
 };
@@ -110,6 +110,5 @@ export const githubCopilotModule = {
     { domain: "settings", id: `provider-github-copilot:${MONTHLY_CREDIT_CAP.key}`, value: MONTHLY_CREDIT_CAP },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

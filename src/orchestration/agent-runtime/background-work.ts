@@ -3,7 +3,6 @@
  * registry owns the rest of the lifecycle (stall watchdog timer, completion
  * notification XML).
  *
- * Registries coalesce subagents that settle in the same event-loop turn.
  * Completed work remains owed until its notification commits to the conversation.
  *
  * The registry is runtime-only. Any model-visible result derived from a
@@ -22,10 +21,9 @@ import {
   formatChildInterruptedNotification,
   formatStandaloneNotification,
   formatSubagentNotificationBatch,
-  retireCompletedSubagents,
   type BackgroundNotificationEntry,
 } from "./background-work-notifications.js";
-import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type CommandExit } from "./background-work-processes.js";
+import { commandIndexRecord, createBackgroundProcessTable, type BackgroundOutputRequest, type BackgroundProcessRecord, type BackgroundWorkOutput, type CommandExit, type LiveProcessTask } from "./background-work-processes.js";
 import type { ManagedCommand } from "./tools/managed-command.js";
 import type { BackgroundWorkProgress, WorkReference } from "./background-work-progress.js";
 import { backgroundHandoffBlock, awaitedWork as awaits, type HandoffBlock } from "./background-work-readiness.js";
@@ -90,8 +88,6 @@ interface BackgroundWorkMetaBase extends ToolCallIdentity {
   type: string;
   description: string;
   toolUseId?: string;
-  /** Durable child runs publish through cross-session reconciliation. */
-  settlementOwner?: "child_session";
   /** The key the completion publishes under, so a repeat of it commits once. */
   notificationKey?: string;
 }
@@ -199,10 +195,6 @@ interface TaskLifecycle extends BackgroundWorkProgress {
   pendingDeliveryCount(): number;
   /** Snapshot of active background tasks available for targeted control. */
   activeBackgroundCommands(): ActiveBackgroundCommandDescriptor[];
-  /** Reads the retained output of one active task through the reader its
-   *  producer supplied. `unknown` covers settled and never-known ids alike;
-   *  `unsupported` names a live task with no pull-readable output. */
-  readTaskOutput(toolUseId: string, request: BackgroundOutputRequest): Promise<BackgroundWorkOutput>;
   /** Session-scoped active and settled process records, keyed by task metadata id. */
   processRecords(): BackgroundProcessRecord[];
   processRecord(processId: string): BackgroundProcessRecord | undefined;
@@ -210,9 +202,6 @@ interface TaskLifecycle extends BackgroundWorkProgress {
    *  long as its record lasts; absent for every other kind of task. */
   processCommand(processId: string): ManagedCommand | undefined;
   readProcessOutput(processId: string, request: BackgroundOutputRequest): Promise<BackgroundWorkOutput>;
-  /** Awaits the canonical terminal promise for one session process. The wait is
-   * event-driven and bounded; false means unknown, aborted, or timed out. */
-  waitProcess(processId: string, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<boolean>;
   /** Session-scoped live channel for a running command's output tail. The
    *  per-turn `ToolContext.onExecutionOutput` channel dies with its turn; a
    *  command's tail outlives turns and runners, in the foreground hold and
@@ -238,11 +227,6 @@ interface TaskLifecycle extends BackgroundWorkProgress {
   ownsNotification(key: string): boolean;
   /** Fences delivery callbacks and settles accepted durable hold admissions. */
   closeNotifications(): Promise<void>;
-  /** Forgets the settled child runs that a durable notification delivered
-   *  past this registry, such as reconciliation that reaches the runner after
-   *  a person stopped or deleted a paused child. Without it the run stays
-   *  counted, and the parent parks as if it still waited on that child. */
-  retireDeliveredSubagents(runIds: readonly string[]): void;
   /** Stops serving the host: no new work is admitted, and no notification is
    *  delivered, because the host that would read one is closing. `track()` from
    *  here on registers what it is given and terminates it at once, so a task
@@ -263,27 +247,13 @@ interface TaskLifecycle extends BackgroundWorkProgress {
   terminateAll(): Promise<void>;
 }
 
-interface SettledNotificationFlush {
-  /** Delivers the batch of subagents that have already settled, now, instead of
-   *  when its timer fires.
-   *
-   *  A settled batch waits on a timer so subagents finishing together arrive as
-   *  one notification. That wait is only ever an optimisation, and a caller
-   *  about to start a turn must not let it decide ordering: a message the user
-   *  sends first would otherwise reach the model on its own, and the
-   *  notification would follow as a turn of its own -- one more model request,
-   *  carrying nothing but runtime data, after the model already answered
-   *  without it. Idempotent, and a no-op when nothing has settled. */
-  flushSettledNotifications(): void;
-}
-
-interface ChatRegistry extends TaskLifecycle, SettledNotificationFlush {
+interface ChatRegistry extends TaskLifecycle {
   kind: "chat";
   assertHandoffReady(): HandoffBlock | null;
   track(args: TrackArgs): TrackHandle;
 }
 
-interface WorkflowRegistry extends TaskLifecycle, SettledNotificationFlush {
+interface WorkflowRegistry extends TaskLifecycle {
   kind: "workflow";
   track(args: TrackArgs): TrackHandle;
   /** Returns owned work that is still active, including a running background
@@ -298,16 +268,15 @@ export type BackgroundWorkRegistry = ChatRegistry | WorkflowRegistry;
 /** The host surface that admits child work without exposing registry lifecycle controls. */
 export type BackgroundWorkTracking = Pick<BackgroundWorkRegistry, "track" | "detach" | "processRecord" | "liveWorkReferences" | "awaitedTaskCount" | "pendingDeliveryCount" | "observeWorkChanges" | "deliverDurableSubagentNotification" | "ownsNotification">;
 
-interface ActiveEntry {
+/** The one record of a live task. Its process record derives from it. */
+interface ActiveEntry extends LiveProcessTask {
   meta: BackgroundWorkMeta;
   done: Promise<BackgroundWorkResult>;
   stall: StallWatchdog | undefined;
   kill: KillControl | undefined;
-  readOutput: ((request: BackgroundOutputRequest) => Promise<string>) | undefined;
   interruption: ChildInterruption | undefined;
   /** Ends the observation of `interruption` when the entry leaves. */
   stopObservingInterruption: (() => void) | undefined;
-  startedAtMs: number;
   hostClose: "detach" | undefined;
   wait: boolean;
   /** Who asked for the stop that is under way, or undefined while none is.
@@ -363,6 +332,12 @@ function clearStall(entry: ActiveEntry): void {
   }
 }
 
+/** A subagent and a workflow run in a child session, which a Resume can run
+ *  again under the id of its settled run. */
+function isChildRun(type: string): boolean {
+  return type === "subagent" || type === "workflow";
+}
+
 function identityOf(meta: BackgroundWorkMeta): ToolCallIdentity {
   return {
     ...(meta.parentToolUseId ? { parentToolUseId: meta.parentToolUseId } : {}),
@@ -379,8 +354,9 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions & { kind: "wo
 export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundWorkRegistry;
 export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundWorkRegistry {
   const active = new Map<string, ActiveEntry>();
+  const activeByToolUse = new Map<string, ActiveEntry>();
   const completedSubagents: CompletedEntry[] = [];
-  const processes = createBackgroundProcessTable();
+  const processes = createBackgroundProcessTable(active);
   const lastExecutionOutputs = new Map<string, string>();
   let publishedIds = "";
   let admitting = true;
@@ -413,18 +389,15 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     ];
   };
 
-  function track(args: TrackArgs, onSettled: (entry: ActiveEntry, result: BackgroundWorkResult, settledCleanly: boolean) => void): TrackHandle {
+  function track(args: TrackArgs): TrackHandle {
     // One id names one live task. A second registration for a live id would
     // strand the first task's watchdog, kill control and notification, so it is
     // refused before any of this one exists.
     if (active.has(args.meta.id)) throw new Error(`Background task ${args.meta.id} is already active`);
+    // A live id was refused above, so a known one here is a settled record.
     const priorProcess = processes.record(args.meta.id)
     if (priorProcess) {
-      const resumableChild = args.meta.settlementOwner === "child_session"
-        && (priorProcess.kind === "subagent" || priorProcess.kind === "workflow")
-        && priorProcess.status !== "running"
-        && priorProcess.status !== "stopping"
-      if (!resumableChild) throw new Error(`Background task ${args.meta.id} is already known in this session`)
+      if (!isChildRun(args.meta.type) || !isChildRun(priorProcess.kind)) throw new Error(`Background task ${args.meta.id} is already known in this session`)
       const priorToolUseId = processes.forget(args.meta.id)
       if (priorToolUseId) lastExecutionOutputs.delete(priorToolUseId)
     }
@@ -437,6 +410,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       stall: args.stall,
       kill: args.kill,
       readOutput: args.readOutput,
+      command: args.command,
       interruption: args.interruption,
       stopObservingInterruption: undefined,
       startedAtMs: args.startedAtMs ?? Date.now(),
@@ -464,31 +438,20 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     };
     armStall();
     active.set(args.meta.id, entry);
+    if (args.meta.toolUseId !== undefined) activeByToolUse.set(args.meta.toolUseId, entry);
     entry.stopObservingInterruption = args.interruption?.observe(() => { interruptionChanged(entry); });
-    processes.admit({
-      id: args.meta.id,
-      type: args.meta.type,
-      description: args.meta.description,
-      startedAtMs: entry.startedAtMs,
-      toolUseId: args.meta.toolUseId,
-      readOutput: args.readOutput,
-      command: args.command,
-      done: args.done,
-      stopRequested: () => entry.stopRequestedBy !== undefined,
-    });
     recordCommand(commandIndexRecord(args.meta, entry.startedAtMs));
     notifyChange();
 
     const settle = (outcome: { ok: true; result: BackgroundWorkResult } | { ok: false; err: unknown }) => {
-      clearStall(entry);
-      if (!active.has(args.meta.id)) return;
-      active.delete(args.meta.id);
-      entry.stopObservingInterruption?.();
+      // A detached entry already left, and a later task may track under its id.
+      if (active.get(args.meta.id) !== entry) return;
+      release(entry);
       const result = backgroundWorkOutcome({
         description: entry.meta.description, stallFired: entry.stallFired, stallTimeoutMs: entry.stall?.timeoutMs,
         killedBy: entry.stopRequestedBy,
       }, outcome);
-      const evictedToolUseId = processes.settle(args.meta.id, { status: result.status, exit: result.exit });
+      const evictedToolUseId = processes.settle(entry, { status: result.status, exit: result.exit });
       if (evictedToolUseId) lastExecutionOutputs.delete(evictedToolUseId);
       // A command the host tore down ended too, so its outcome is recorded
       // even when no notification is. The record goes before the change, so
@@ -577,13 +540,12 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     return commands;
   }
 
-  async function readTaskOutput(toolUseId: string, request: BackgroundOutputRequest): Promise<BackgroundWorkOutput> {
-    for (const entry of active.values()) {
-      if (entry.meta.toolUseId !== toolUseId) continue;
-      if (!entry.readOutput) return { ok: false, reason: "unsupported" };
-      return { ok: true, text: await entry.readOutput(request) };
-    }
-    return { ok: false, reason: "unknown" };
+  /** Ends this registry's observation of a live entry. */
+  function release(entry: ActiveEntry): void {
+    clearStall(entry);
+    active.delete(entry.meta.id);
+    if (entry.meta.toolUseId !== undefined) activeByToolUse.delete(entry.meta.toolUseId);
+    entry.stopObservingInterruption?.();
   }
 
   function notifyChange(): void {
@@ -625,11 +587,8 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
   }
 
   function terminate(toolUseId: string): boolean {
-    for (const entry of active.values()) {
-      if (entry.meta.toolUseId !== toolUseId) continue;
-      return requestStop(entry, "user", true) === "requested";
-    }
-    return false;
+    const entry = activeByToolUse.get(toolUseId);
+    return entry !== undefined && requestStop(entry, "user", true) === "requested";
   }
 
   function terminateProcess(processId: string, source: BackgroundKillSource): StopDecision {
@@ -641,12 +600,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     const entry = active.get(processId);
     if (!entry) return false;
     entry.suppressNotification = true;
-    clearStall(entry);
-    active.delete(processId);
-    entry.stopObservingInterruption?.();
-    // The task is another owner's from now on, so no record of it here says
-    // it runs.
-    processes.forget(processId);
+    release(entry);
     notifyChange();
     return true;
   }
@@ -699,16 +653,12 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
   function streamExecutionOutput(toolUseId: string, output: string, identity: ToolCallIdentity = {}): void {
     // A tracked command's identity comes from its entry; foreground work in its
     // hold is not tracked yet, so the caller's identity is the only one it has.
-    for (const entry of active.values()) {
-      if (entry.meta.toolUseId !== toolUseId) continue;
-      opts.onExecutionOutput?.(toolUseId, output, identityOf(entry.meta));
-      return;
-    }
-    opts.onExecutionOutput?.(toolUseId, output, identity);
+    const entry = activeByToolUse.get(toolUseId);
+    opts.onExecutionOutput?.(toolUseId, output, entry ? identityOf(entry.meta) : identity);
   }
 
   /** Removes the settled child-session runs that a durable notification
-   *  covers, or every one when it names none, and returns them. A child that
+   *  covers, or every one when it names none. A child that
    *  a person interrupted ends only when the notification names its run.
    *  Neither kind retires merely because its notification entered a queue.
    *  A workflow's run reports its end only after the parent's sweep reads
@@ -717,12 +667,14 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
    *  the run, as the durable settlement owner. A later run of the workflow
    *  is a new entry under the same id, so only the entries that were live
    *  when the notification was offered retire. */
-  function retireDeliveredSubagents(runIds: readonly string[] | undefined, workflows: ReadonlyMap<string, ActiveEntry>): CompletedEntry[] {
+  function retireDeliveredSubagents(runIds: readonly string[] | undefined, workflows: ReadonlyMap<string, ActiveEntry>): void {
     for (const runId of runIds ?? []) interruptedByPerson.delete(runId);
     for (const [runId, entry] of workflows) {
       if (active.get(runId) === entry) detach(runId);
     }
-    return retireCompletedSubagents(completedSubagents, runIds);
+    const delivered = runIds === undefined ? undefined : new Set(runIds);
+    const owed = completedSubagents.filter((entry) => delivered !== undefined && !delivered.has(entry.meta.id));
+    completedSubagents.splice(0, completedSubagents.length, ...owed);
   }
 
   function liveWorkflows(runIds: readonly string[] | undefined): ReadonlyMap<string, ActiveEntry> {
@@ -732,81 +684,62 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     }));
   }
 
-  // New durable child runs publish through reconciliation. Historical inline
-  // subagents retain the existing same-tick notification contract.
-  const settleIntoNotifications = () => {
-    let flushScheduled = false;
-    const flush = (): void => {
-      flushScheduled = false;
-      const batch = completedSubagents.filter((entry) => entry.meta.settlementOwner !== "child_session");
-      if (batch.length === 0) return;
-      const retained = completedSubagents.filter((entry) => entry.meta.settlementOwner === "child_session");
-      completedSubagents.splice(0, completedSubagents.length, ...retained);
-      enqueueNotification(formatSubagentNotificationBatch(batch, activeSubagentCount()), undefined, batch.map(({ meta }) => meta), true);
-    };
-    const deliverDurableSubagentNotification = (notification: DurableSubagentNotification): Promise<void> | undefined => {
-      if (!admitting) return undefined;
-      // The delivery of a pending key returns that key's receipt and sends nothing.
-      if (notification.key !== undefined && notificationIsPending(notification.key)) return enqueueNotification(notification.text, notification.key, undefined, true) ?? Promise.resolve();
-      const ids = notification.completionRunIds?.length ? notification.completionRunIds : notification.key === undefined ? undefined : completionWorkIds(notification.key);
-      const workflows = liveWorkflows(ids);
-      const batch = completedSubagents.filter((entry) => ids === undefined || ids.includes(entry.meta.id));
-      const interrupted = (ids ?? []).flatMap((id) => {
-        const entry = interruptedByPerson.get(id);
-        return entry ? [entry.meta] : [];
-      });
-      const known = [...interrupted, ...batch.map((entry) => entry.meta)];
-      const work = ids?.length ? ids.map((id) => ({
-        id,
-        description: known.find((meta) => meta.id === id)?.description ?? processes.record(id)?.description ?? `child result ${id}`,
-      })) : undefined;
-      const text = notification.text.length > 0 ? notification.text : formatSubagentNotificationBatch(batch, activeSubagentCount());
-      const delivered = enqueueNotification(text, notification.key, work, true);
-      if (!delivered) {
-        retireDeliveredSubagents(ids, workflows);
-        return Promise.resolve();
-      }
-      return delivered.then(() => {
-        retireDeliveredSubagents(ids, workflows);
-        notifyChange();
-      });
-    };
-    const onSettled = (entry: ActiveEntry, result: BackgroundWorkResult, settledCleanly: boolean): void => {
-      if (entry.meta.type === "workflow") {
-        if (result.status === "stopped" || result.status === "cancelled") completedSubagents.push({ meta: entry.meta, result });
-        return;
-      }
-      if (entry.meta.type !== "subagent") {
-        const completed = { meta: entry.meta, result };
-        if (entry.wait && !result.content) return;
-        enqueueNotification(entry.wait ? result.content : formatStandaloneNotification(completed), entry.meta.notificationKey, [entry.meta], entry.wait === true && result.runtimeNotice === true);
-        return;
-      }
-      // An interrupted run has not ended and owes no result. A person's
-      // interrupt leaves it the parent's work; any other is not active work,
-      // so no wait or handoff holds on it (PI-AGENT-025). Its Resume tracks
-      // it again.
-      if (result.status === "interrupted") {
-        if (result.interruptedBy === "person") interruptedByPerson.set(entry.meta.id, entry);
-        announceInterruption(entry, result.interruptedBy);
-        return;
-      }
-      completedSubagents.push({ meta: entry.meta, result });
-      if (entry.meta.settlementOwner === "child_session") {
-        // The child session publishes its own completion through
-        // reconciliation. When that publication itself rejected, no durable
-        // completion exists for reconciliation to deliver, so this registry
-        // delivers the synthesized failure now rather than leaving the parent
-        // parked on a child it will never hear from.
-        if (!settledCleanly) deliverDurableSubagentNotification({ text: "", completionRunIds: [entry.meta.id] });
-        return;
-      }
-      if (flushScheduled) return;
-      flushScheduled = true;
-      setTimeout(flush, 0);
-    };
-    return { onSettled, deliverDurableSubagentNotification, flush };
-  };
+  function deliverDurableSubagentNotification(notification: DurableSubagentNotification): Promise<void> | undefined {
+    if (!admitting) return undefined;
+    // The delivery of a pending key returns that key's receipt and sends nothing.
+    if (notification.key !== undefined && notificationIsPending(notification.key)) return enqueueNotification(notification.text, notification.key, undefined, true) ?? Promise.resolve();
+    const ids = notification.completionRunIds?.length ? notification.completionRunIds : notification.key === undefined ? undefined : completionWorkIds(notification.key);
+    const workflows = liveWorkflows(ids);
+    const batch = completedSubagents.filter((entry) => ids === undefined || ids.includes(entry.meta.id));
+    const interrupted = (ids ?? []).flatMap((id) => {
+      const entry = interruptedByPerson.get(id);
+      return entry ? [entry.meta] : [];
+    });
+    const known = [...interrupted, ...batch.map((entry) => entry.meta)];
+    const work = ids?.length ? ids.map((id) => ({
+      id,
+      description: known.find((meta) => meta.id === id)?.description ?? processes.record(id)?.description ?? `child result ${id}`,
+    })) : undefined;
+    const text = notification.text.length > 0 ? notification.text : formatSubagentNotificationBatch(batch, activeSubagentCount());
+    const delivered = enqueueNotification(text, notification.key, work, true);
+    if (!delivered) {
+      retireDeliveredSubagents(ids, workflows);
+      return Promise.resolve();
+    }
+    return delivered.then(() => {
+      retireDeliveredSubagents(ids, workflows);
+      notifyChange();
+    });
+  }
+
+  function onSettled(entry: ActiveEntry, result: BackgroundWorkResult, settledCleanly: boolean): void {
+    if (entry.meta.type === "workflow") {
+      if (result.status === "stopped" || result.status === "cancelled") completedSubagents.push({ meta: entry.meta, result });
+      return;
+    }
+    if (entry.meta.type !== "subagent") {
+      const completed = { meta: entry.meta, result };
+      if (entry.wait && !result.content) return;
+      enqueueNotification(entry.wait ? result.content : formatStandaloneNotification(completed), entry.meta.notificationKey, [entry.meta], entry.wait === true && result.runtimeNotice === true);
+      return;
+    }
+    // An interrupted run has not ended and owes no result. A person's
+    // interrupt leaves it the parent's work; any other is not active work,
+    // so no wait or handoff holds on it (PI-AGENT-025). Its Resume tracks
+    // it again.
+    if (result.status === "interrupted") {
+      if (result.interruptedBy === "person") interruptedByPerson.set(entry.meta.id, entry);
+      announceInterruption(entry, result.interruptedBy);
+      return;
+    }
+    completedSubagents.push({ meta: entry.meta, result });
+    // The child session publishes its own completion through
+    // reconciliation. When that publication itself rejected, no durable
+    // completion exists for reconciliation to deliver, so this registry
+    // delivers the synthesized failure now rather than leaving the parent
+    // parked on a child it will never hear from.
+    if (!settledCleanly) deliverDurableSubagentNotification({ text: "", completionRunIds: [entry.meta.id] });
+  }
 
   const lifecycle: TaskLifecycle = {
     activeSubagentCount,
@@ -815,37 +748,32 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     pendingDeliveryCount: () => outstanding().pending.length,
     liveWorkReferences,
     observeWorkChanges: (listener) => { workListeners.add(listener); return () => { workListeners.delete(listener); }; },
-    holdsWait: (toolUseId) => [...active.values()].some((entry) => entry.wait && entry.meta.toolUseId === toolUseId),
+    holdsWait: (toolUseId) => activeByToolUse.get(toolUseId)?.wait === true,
     activeBackgroundCommands,
-    readTaskOutput,
     processRecords: processes.records,
     processRecord: processes.record,
     processCommand: processes.command,
     readProcessOutput: processes.readOutput,
-    waitProcess: processes.wait,
     streamExecutionOutput,
     recordSettlement: (meta, result, timing) => {
       recordCommand(commandIndexRecord(meta, timing.startedAtMs, { result, settledAtMs: timing.settledAtMs }));
       return recordSettledOutput(meta, result);
     },
-    deliverDurableSubagentNotification: (notification) => settling.deliverDurableSubagentNotification(notification),
+    deliverDurableSubagentNotification,
     ownsNotification: notificationIsPending,
     closeNotifications: async () => { notifications.close(); await opts.settleNotificationAdmission?.(); },
-    retireDeliveredSubagents: (runIds) => { retireDeliveredSubagents(runIds, liveWorkflows(runIds)); },
     stopAdmission,
     terminate,
     terminateProcess,
     detach,
-    handoverCandidates: () => [...active.keys()].map((id) => processes.command(id)).filter((command): command is ManagedCommand => command?.owned !== undefined),
+    handoverCandidates: () => [...active.values()].flatMap(({ command }) => command?.owned === undefined ? [] : [command]),
     terminateAll,
   };
 
-  const settling = settleIntoNotifications();
   return {
     kind: opts.kind,
     ...lifecycle,
-    flushSettledNotifications: settling.flush,
-    track: (args) => track(args, settling.onSettled),
+    track,
     assertHandoffReady(): HandoffBlock | null {
       const work = outstanding();
       return backgroundHandoffBlock(work.live, [

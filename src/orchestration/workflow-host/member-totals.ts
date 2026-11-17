@@ -8,7 +8,7 @@ import { yieldToNextTask } from "../../infra/task-scheduling.js"
 import { workflowRunOwner } from "../module-catalog.js"
 import { BUDGET_FACT_TYPES, initialBudgetProjectionState, reduceBudgetEvent, type BudgetProjectionState } from "../session/budget-projection.js"
 import type { UsageTotals } from "../session/budget-summary.js"
-import { createSessionMetadataProjection, reduceSessionMetadataEvent } from "../session/session-metadata-projection.js"
+import { createSessionMetadataProjection, readableSessions, reduceSessionMetadataEvent } from "../session/session-metadata-projection.js"
 import { countToolCall, initialToolCallCount, TOOL_EXECUTION_FACT_TYPES, type ToolCallCount } from "../session/tool-execution-projection.js"
 import { workflowMembershipReader } from "../session/workflow-membership.js"
 import { EPISODE_EVIDENCE_FACT_TYPES } from "../session-store/duration.js"
@@ -116,10 +116,10 @@ async function workflowUsageSessions(reader: AsyncEventReadSurface, workflowId: 
   // A converted run's retired session can still be the launch parent of a
   // child that no member conversation adopted; that child is a descendant.
   const reached = new Set([workflowId, ...members])
-  const { sessions } = await createSessionMetadataProjection(reader).replay()
+  const catalog = await createSessionMetadataProjection(reader).replay()
   for (;;) {
     const before = reached.size
-    for (const [id, session] of Object.entries(sessions)) {
+    for (const [id, session] of readableSessions(catalog)) {
       if (session.kind !== "chat" && session.launchedFrom && reached.has(session.launchedFrom.parentSessionId)) reached.add(id)
     }
     if (before === reached.size) break
@@ -183,6 +183,7 @@ const TOOL_FACT_TYPE_NAMES: readonly string[] = TOOL_EXECUTION_FACT_TYPES
 const EVIDENCE_FACT_TYPE_NAMES: readonly string[] = EPISODE_EVIDENCE_FACT_TYPES
 const BUDGET_FACT_TYPE_NAMES: readonly string[] = BUDGET_FACT_TYPES
 const DURATION_FACT_TYPE_NAMES: readonly string[] = SESSION_DURATION_FACT_TYPES
+const ACTIVITY_FACT_TYPES = [...new Set([...BUDGET_FACT_TYPES, ...TOOL_EXECUTION_FACT_TYPES, ...EPISODE_EVIDENCE_FACT_TYPES, ...SESSION_DURATION_FACT_TYPES])]
 /** Every durations version that any fold gave, so a seed that replaces a
  *  workflow's state never gives a version that an earlier state gave. */
 let durationsVersions = 0
@@ -209,10 +210,14 @@ function workflowMemberTotalsOwner(reader: AsyncEventReadSurface) {
       ids?.delete(id)
       if (ids?.size === 0) lookup.delete(key)
     }
-    async function* changedFacts(types: readonly string[], upper: number, aggregateIds?: readonly string[]) {
+    // Both catch-ups read the range by type alone and route each fact through
+    // the owner maps. A filter by owner would seek every owner for every type
+    // on each advance, so its cost would grow with the owners that any reader
+    // ever measured; a fact that no held workflow owns costs one lookup.
+    async function* changedFacts(types: readonly string[], upper: number) {
       let after = position
       while (after < upper) {
-        const page = await reader.readPage({ types, aggregateIds }, upper, after, true, "deferred")
+        const page = await reader.readPage({ types }, upper, after, true, "deferred")
         yield* page.facts
         if (page.continuationPosition === null) return
         after = page.continuationPosition
@@ -228,8 +233,8 @@ function workflowMemberTotalsOwner(reader: AsyncEventReadSurface) {
         position = upper
         return
       }
-      // Membership facts have no aggregate filter: a new child names an existing
-      // parent, but its own aggregate was not known before this range.
+      // A new child names an existing parent, but its own aggregate was not
+      // known before this range.
       for await (const event of changedFacts(OWNERSHIP_FACT_TYPES, upper)) {
         if (event instanceof CorruptEventRowError) {
           // oxlint-disable-next-line eslint/no-throw-literal -- boundary: preserve the narrowed durable-row Error and its identity
@@ -267,8 +272,7 @@ function workflowMemberTotalsOwner(reader: AsyncEventReadSurface) {
         }
       }
       if (byAggregate.size > 0) {
-        const types = [...new Set([...BUDGET_FACT_TYPES, ...TOOL_EXECUTION_FACT_TYPES, ...EPISODE_EVIDENCE_FACT_TYPES, ...SESSION_DURATION_FACT_TYPES])]
-        for await (const event of changedFacts(types, upper, [...byAggregate.keys()])) {
+        for await (const event of changedFacts(ACTIVITY_FACT_TYPES, upper)) {
           const aggregate = event instanceof CorruptEventRowError ? event.row.aggregateId : event.aggregateId
           for (const id of byAggregate.get(aggregate) ?? []) {
             const state = workflows.get(id)

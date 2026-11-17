@@ -7,6 +7,9 @@ import type { AuthProfileResolution } from "../../../../src/orchestration/auth/a
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { ChatSessionEntry, SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-types.js"
+import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/app-service.js"
+import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-admission.js"
+import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
@@ -132,8 +135,33 @@ export function fakeProjections() {
     },
     outputProjection: { async flush() {}, watch() {}, dispose() {} },
     config: { view: () => configView, refresh: async () => configView, mutate: async () => await new Promise<never>(() => {}), dispose: async () => {} },
+    projectFiles: { search: async () => ({ entries: [], total: 0 }) },
+    modelAssignments: {
+      loadAssignments: unused("Model assignments"),
+      loadSessionModelPlan: unused("Model assignments"),
+      listModelOptions: unused("Model assignments"),
+      listEffortOptions: unused("Model assignments"),
+      saveEffort: unused("Model assignments"),
+      resetDefaults: unused("Model assignments"),
+      globalDefaultRoles: unused("Model assignments"),
+      modelRoles: unused("Model assignments"),
+    } satisfies AdmittedModelAssignmentService,
+    providerModels: {
+      query: unused("Provider-model preferences"),
+      set: unused("Provider-model preferences"),
+      deselectAll: unused("Provider-model preferences"),
+      recheck: unused("Provider-model preferences"),
+      setAutoEnableNewModels: unused("Provider-model preferences"),
+      setFreeRoutes: unused("Provider-model preferences"),
+    } satisfies ProviderModelPreferenceService,
+    ...authMutationDoubles(),
+    subscriptionSpendConsent: { mutate: async () => { throw new Error("Subscription spend consent is not used in this fixture") } },
+    warmTools: async () => {},
+    publishReferences: async () => {},
   }
 }
+
+
 
 /** The app-service tests exercise routing at the controller boundary. */
 export function workflowController(_sessionStore: SessionStore, _manager: SessionManager): WorkflowController {
@@ -154,7 +182,7 @@ export function workflowController(_sessionStore: SessionStore, _manager: Sessio
 export function workflowProtocol(options: {
   readonly controller: WorkflowController
   readonly supervisor?: RuntimeSupervisor
-  readonly store?: EventStore | RuntimeEventStore
+  readonly store?: EventStore | RuntimeEventStore | ReturnType<typeof createMemoryStore>
   readonly sessions?: SessionStore
   readonly manager?: SessionManager
   readonly hosts?: Pick<WorkflowHosts, "isRunning" | "onChange" | "abort">
@@ -171,7 +199,7 @@ export function workflowProtocol(options: {
     background: async () => { throw new Error("Workflow protocol fixture reads its own aggregate") },
     modules: workflowProtocolServices({
       modules: NO_MODULE_SERVICES, projectRoot: "/workspace", controller: options.controller,
-      auth: { snapshot: async () => { throw new Error("Auth read not requested") }, select: async () => false, list: async () => [] },
+      auth: { snapshot: async () => { throw new Error("Auth read not requested") }, select: async () => false, list: async () => [], resident: async () => undefined },
       authStatus: projections.authStatusProjection, supervisor: options.supervisor ?? runtimeSupervisor(), bus,
       deletion: options.manager ?? fakeManager(),
       hosts: options.hosts ?? { isRunning: () => false, onChange: () => () => {}, abort: async () => false },
@@ -403,4 +431,9 @@ export function runtimeSupervisor(overrides: Partial<RuntimeSupervisor> = {}): R
     runtimeState: () => null,
     ...overrides,
   }
+}
+
+/** A method of a required service that this fixture's tests never reach. */
+function unused(service: string): () => Promise<never> {
+  return async () => { throw new Error(`${service} are not used in this fixture`) }
 }

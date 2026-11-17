@@ -9,13 +9,13 @@ import { Effect, Schema } from "effect"
 import { composeModules } from "../../../../src/infra/module-descriptor.js"
 import { moduleServiceHandle } from "../../../../src/infra/module-service.js"
 import { composeModuleProcessServices, type ModuleProcessServices } from "../../../../src/orchestration/app-service/module-service-host.js"
-import { projectRuntimeConfig } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
 import { configSection, type ModuleConfigSection } from "../../../../src/orchestration/config/config-section.js"
-import { CONFIG_DEFAULTS, flywheelConfigKeys, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
+import { CONFIG_DEFAULTS, installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
 import { settingDefinitions } from "../../../../src/orchestration/config/setting-definitions.js"
 import type { FirstPartyModule } from "../../../../src/orchestration/modules.js"
 import { installedConfigSections } from "../../../../src/orchestration/module-catalog.js"
 import { kernelPorts } from "../../../helpers/module-kernel.js"
+import { runtimeConfigView } from "../../../helpers/runtime-config-view.js"
 
 const ProbeSectionSchema = Schema.Struct({
   greeting: Schema.String.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed("hello"))),
@@ -43,7 +43,6 @@ const probeModule = {
   service: { handle: probeService, create: (services: ModuleProcessServices): ProbeService => ({ greeting: configSection(services.config.snapshot().config, probeSection).greeting, dispose() {} }) },
   contributions: [{ domain: "config", id: probeSection.key, value: probeSection }],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -62,7 +61,7 @@ describe("a synthetic module under the config contribution contract", () => {
   it("composes the section into the setting definitions, the recognized root keys, and the loader schema", () => {
     expect(installedConfigSections(catalog)).toEqual([probeSection])
     expect(settingDefinitions(catalog).find((definition) => definition.id === "probe")).toMatchObject({ kind: "retained-section", key: "probe", owner: "probe greeting", protocolExposure: "secret" })
-    expect(flywheelConfigKeys(catalog).at(-1)).toBe("probe")
+    expect(Object.keys(installedConfigSchema(catalog).fields).at(-1)).toBe("probe")
     const decoded = Schema.decodeUnknownSync(installedConfigSchema(catalog))({ probe: { greeting: "hi" } })
     expect(configSection(decoded, probeSection)).toEqual({ greeting: "hi" })
     expect(decoded.show_thinking).toBe(CONFIG_DEFAULTS.show_thinking)
@@ -70,7 +69,7 @@ describe("a synthetic module under the config contribution contract", () => {
 
   it("reads the section's own default from a config that carries none, and never projects it into the kernel view", () => {
     expect(configSection(CONFIG_DEFAULTS, probeSection)).toEqual({ greeting: "hello" })
-    const view = projectRuntimeConfig({ revision: 1, config: Schema.decodeUnknownSync(installedConfigSchema(catalog))({ probe: { greeting: "private" } }), warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "/scratch/project")
+    const view = runtimeConfigView({ revision: 1, config: Schema.decodeUnknownSync(installedConfigSchema(catalog))({ probe: { greeting: "private" } }), warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "/scratch/project")
     expect(JSON.stringify(view)).not.toContain("private")
     expect(view.values).not.toHaveProperty("probe")
   })

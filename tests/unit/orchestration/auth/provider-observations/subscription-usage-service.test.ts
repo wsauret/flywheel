@@ -353,6 +353,24 @@ describe("subscription usage service", () => {
     expect(service.metric("supported", "account", "ai_credits")).toMatchObject({ kind: "retained", metric: { allowanceMode: "finite" } })
     await service.settled()
   })
+
+  test("a reading that the store already holds, such as a reader's cached rate-limit report read again, stays supported", async () => {
+    const directory = profile("repeated-reading")
+    const definitions = [definition("supported")]
+    writeAccounts(directory, definitions)
+    const service = createSubscriptionUsageService({
+      profile: () => ({ id: "default", directory }),
+      registry: () => registry(definitions, new Map([["supported", readerFor("supported")]])),
+      thresholds: () => [],
+      now: () => 10_000,
+    })
+
+    expect((await service.check({ forceRefresh: true }))?.accounts[0]?.kind).toBe("supported")
+    const repeated = (await service.check({ forceRefresh: true }))?.accounts[0]
+    expect(repeated).toMatchObject({ kind: "supported", snapshot: { observedAtMs: 10_000 } })
+    expect(repeated).not.toHaveProperty("message")
+    await service.settled()
+  })
   test("names the expired sign-in and /auth, and retains a prior reading for inspection", async () => {
     const expiredService = (name: string, retainedReading: boolean) => {
       const directory = profile(name)

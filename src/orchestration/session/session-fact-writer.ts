@@ -1,4 +1,4 @@
-import type { AsyncEventWriter, EventPayload, EventStoreAppend, GuardedAppendResult, InFlightWrite, StoredFact } from "../../infra/event-store-types.js"
+import type { AsyncEventWriter, EventPayload, EventStoreAppend, GuardedAppendResult, InFlightWrite, StoredFact, InFlightPayload } from "../../infra/event-store-types.js"
 import { requireGuardedEventAppender } from "../../infra/event-store-types.js"
 import type { EventStoreDrainResult, EventStoreEnqueueResult, EventStoreWriterLease } from "../../infra/event-store-writer-lane-types.js"
 import { Log } from "../../infra/log.js"
@@ -39,11 +39,11 @@ export interface SessionFactWriter {
    *  outcome (`record`'s `inFlight`), so the two land together. Resolves when
    *  the state is durable; a caller whose contract is record-before-act must
    *  await it and treat a rejection as the operation being refused. */
-  putInFlight?(kind: string, key: string, payload: unknown): Promise<void>
+  putInFlight?(kind: string, key: string, payload: InFlightPayload): Promise<void>
   /** Retires in-flight state when an operation has no outcome fact. */
   dropInFlight?(kind: string, key: string): Promise<void>
   /** Guarded transition of one in-flight cell through the shared writer lane. */
-  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: unknown | null): Promise<boolean>
+  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
   /** Appends a fact at exactly `expectedSeq`. A lost race resolves as a typed
    * conflict. Real storage failures still reject. */
   recordGuarded(fact: SessionFact, expectedSeq: number): Promise<GuardedAppendResult | null>
@@ -262,7 +262,7 @@ export function createSessionFactWriter(deps: SessionFactWriterDeps): SessionFac
    *  silently recording nothing. The rejection propagates: a preparation that
    *  could not be stored (disk full, closed store) must stop the operation it
    *  guards instead of letting it run unrecoverable. */
-  async function putInFlight(kind: string, key: string, payload: unknown): Promise<void> {
+  async function putInFlight(kind: string, key: string, payload: InFlightPayload): Promise<void> {
     await eventWriter.putInFlight?.(sessionId, kind, key, payload)
   }
 
@@ -270,7 +270,7 @@ export function createSessionFactWriter(deps: SessionFactWriterDeps): SessionFac
     await eventWriter.dropInFlight?.(sessionId, kind, key)
   }
 
-  async function swapInFlight(kind: string, key: string, expectedRaw: string | null, payload: unknown | null): Promise<boolean> {
+  async function swapInFlight(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean> {
     return await eventWriter.swapInFlight?.(sessionId, kind, key, expectedRaw, payload) ?? false
   }
 

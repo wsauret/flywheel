@@ -10,7 +10,7 @@ import { withEventStore } from "../../../../../src/infra/with-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import type { StartupDirectories } from "../../../../../src/infra/directory-authorities.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import { getSharedModelsClient, resetSharedLlmClients } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../src/orchestration/config/llm-clients.js";
 import * as workflowDeps from "../../../../../src/orchestration/workflow-host/deps.js";
 
 
@@ -162,7 +162,7 @@ describe("skill maintenance request hosts", () => {
 
   test.each(hosts)("$name prepares exact profile eligibility before workflow dependencies", async (host) => {
     const dirs = directories(2);
-    resetSharedLlmClients();
+    clearSharedModelListingClients();
     const refresh = spyOn(getSharedModelsClient(dirs.userDataRoot), "refresh").mockResolvedValue(undefined);
     let prepared: workflowDeps.PrepareWorkflowDepsInput | undefined;
     const prepare = spyOn(workflowDeps, "prepareWorkflowDeps").mockImplementation(async (input) => {
@@ -178,7 +178,7 @@ describe("skill maintenance request hosts", () => {
     } finally {
       prepare.mockRestore();
       refresh.mockRestore();
-      resetSharedLlmClients();
+      clearSharedModelListingClients();
     }
   });
 

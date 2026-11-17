@@ -168,24 +168,24 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
       return (await controller(query.scope)).listEffortOptions(query.slot, query.model)
     },
     async saveEffort(command) {
-      const { slot, model, effort } = command
+      const { slot, model, effort, expected } = command
       refuseTurnedOff(slot)
       if (command.scope.kind === "defaults-and-session" && (await deps.roleCaptureStore.read(command.scope.sessionId))?.kind === "workflow-agent") {
-        return (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort)
+        return (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort, expected)
       }
       if (command.scope.kind === "defaults-and-session" && isProfileModelRole(slot.roleId)) {
-        return (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort)
+        return (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort, expected)
       }
       if (command.scope.kind !== "defaults-and-session") {
-        return (await controller(command.scope)).saveEffort(slot, model, effort)
+        return (await controller(command.scope)).saveEffort(slot, model, effort, expected)
       }
-      const defaults = await (await controller(DEFAULTS_SCOPE)).saveEffort(slot, model, effort)
+      const defaults = await (await controller(DEFAULTS_SCOPE)).saveEffort(slot, model, effort, expected)
       // Effort-inherit on a concrete model has no session-snapshot
       // representation, so the defaults write intentionally stands alone and
       // the open tab keeps its current assignment.
       if (model !== null && effort == null) return defaults
       try {
-        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort)
+        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).saveEffort(slot, model, effort, expected)
         return { label: defaults.label, mirrored: true }
       } catch (err) {
         return { label: defaults.label, warning: `Default saved, but this tab was not updated: ${errorMessage(err)}`, mirrored: false }
@@ -196,14 +196,14 @@ export function createRuntimeModelAssignmentService(deps: RuntimeModelAssignment
       const { admits } = admission()
       const slots = command.slots.filter((slot) => admits(slot.roleId))
       if (command.scope.kind === "defaults-and-session" && (await deps.roleCaptureStore.read(command.scope.sessionId))?.kind === "workflow-agent") {
-        return { rows: await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits) }
+        return { rows: await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits, command.expected) }
       }
       if (command.scope.kind !== "defaults-and-session") {
-        return { rows: await (await controller(command.scope)).resetDefaults(slots, admits) }
+        return { rows: await (await controller(command.scope)).resetDefaults(slots, admits, command.expected) }
       }
-      const rows = await (await controller(DEFAULTS_SCOPE)).resetDefaults(slots, admits)
+      const rows = await (await controller(DEFAULTS_SCOPE)).resetDefaults(slots, admits, command.expected)
       try {
-        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits)
+        await (await controller({ kind: "session", sessionId: command.scope.sessionId })).resetDefaults(slots, admits, command.expected)
         return { rows, mirrored: true }
       } catch (err) {
         return { rows, warning: `Defaults reset, but this tab was not updated: ${errorMessage(err)}`, mirrored: false }

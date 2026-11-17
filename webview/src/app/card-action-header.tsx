@@ -114,8 +114,9 @@ export function CardActionHeader(props: {
       } else if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
         event.preventDefault()
         event.stopPropagation()
+        const previous = index < 0 ? buttons.length - 1 : (index - 1 + buttons.length) % buttons.length
         const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
-          : event.key === "ArrowDown" ? (index + 1) % buttons.length : (index < 0 ? buttons.length - 1 : (index - 1 + buttons.length) % buttons.length)
+          : event.key === "ArrowDown" ? (index + 1) % buttons.length : previous
         buttons[next]?.focus()
       } else if (event.key === "Tab") close()
     }

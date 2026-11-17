@@ -1,12 +1,11 @@
 import { describe, expect, it, mock } from "bun:test"
-import type { CapturedFrame } from "@opentui/core"
+import { TextAttributes, type CapturedFrame } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import type { ToolEntry, ToolStreamingText } from "../../../../src/infra/output-blocks.js"
 import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
-import { STRIKETHROUGH } from "../../../../src/tui/utils/text-attributes.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 import { processStatus } from "../../../helpers/runtime-views.js"
 
@@ -590,11 +589,11 @@ describe("bash output rows", () => {
       expect(frame).not.toContain("aborted")
 
       const spans = result.captureSpans()
-      const commandStruck = ["bun", "run test"].some((text) => (((spanContaining(spans, text)?.attributes ?? 0) & STRIKETHROUGH) === STRIKETHROUGH))
+      const commandStruck = ["bun", "run test"].some((text) => (((spanContaining(spans, text)?.attributes ?? 0) & TextAttributes.STRIKETHROUGH) === TextAttributes.STRIKETHROUGH))
       expect(commandStruck).toBe(true)
       const interrupted = spanContaining(spans, "Interrupted")
       expect(interrupted?.fg.equals(theme.error)).toBe(true)
-      expect(((interrupted?.attributes ?? 0) & STRIKETHROUGH)).toBe(0)
+      expect(((interrupted?.attributes ?? 0) & TextAttributes.STRIKETHROUGH)).toBe(0)
     } finally {
       result.renderer.destroy()
     }

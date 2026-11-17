@@ -233,47 +233,94 @@ function nestedClauses(outer: ShellCommand, words: readonly string[], cwd: strin
   return commandClauses({ ...outer, words, shown: words, pipedIn: false, writes: [] }, cwd)
 }
 
+/** The clauses of one command of a line, and the directory the commands after it run in. */
+interface LineStep {
+  readonly cwd: string
+  readonly clauses: readonly Clause[]
+}
+
+function lineStep(command: ShellCommand, cwd: string): LineStep {
+  const [head, ...args] = command.words
+  if (head !== "cd") return { cwd, clauses: commandClauses(command, cwd) }
+  const target = args.includes("--") ? args[args.indexOf("--") + 1] : operands(args, []).at(-1)
+  return { cwd: target === undefined ? cwd : posix.isAbsolute(target) ? target : posix.join(cwd, target), clauses: [] }
+}
+
 function lineClauses(line: string): readonly Clause[] {
   const clauses: Clause[] = []
   let cwd = ""
   for (const command of parseShell(line)) {
-    const [head, ...args] = command.words
-    if (head === "cd") {
-      const target = args.includes("--") ? args[args.indexOf("--") + 1] : operands(args, []).at(-1)
-      if (target !== undefined) cwd = posix.isAbsolute(target) ? target : posix.join(cwd, target)
-      continue
-    }
-    clauses.push(...commandClauses(command, cwd))
+    const step = lineStep(command, cwd)
+    cwd = step.cwd
+    clauses.push(...step.clauses)
   }
   return clauses
 }
 
 const TIERS: readonly Tier[] = ["act", "look", "setup"]
 
-/** One sentence for a whole line: what it changes or runs first, then what
- *  it looks at, each verb once with its subjects in the order they ran. */
-function compose(clauses: readonly Clause[]): ToolPresentation | undefined {
-  const shown = clauses.some((clause) => clause.tier !== "setup") ? clauses.filter((clause) => clause.tier !== "setup") : clauses
-  const groups = new Map<string, string[]>()
-  for (const tier of TIERS) {
-    for (const clause of shown) {
-      if (clause.tier !== tier) continue
-      const details = groups.get(clause.name) ?? []
-      if (clause.detail !== "" && !details.includes(clause.detail)) details.push(clause.detail)
-      groups.set(clause.name, details)
+/** The sentence of a shell line, folded one completed command at a time.
+ *  It holds the directory and the clauses grouped by tier and verb, so a
+ *  command is read once, and renders only after the groups change: what the
+ *  line changes or runs first, then what it looks at, each verb once with its
+ *  subjects in the order they ran. Setup work shows only when nothing else
+ *  ran. A line that none of those describe presents as its first command
+ *  with words. */
+export class ShellSentenceFold {
+  private cwd = ""
+  /** Subjects by verb, in first-seen order, for each tier. */
+  private readonly groups = new Map<Tier, Map<string, string[]>>(TIERS.map((tier) => [tier, new Map()]))
+  private firstShown: string | undefined
+  private rendered: ToolPresentation | undefined
+
+  /** Reads commands that completed after the ones already read. */
+  add(commands: readonly ShellCommand[]): void {
+    for (const command of commands) {
+      if (this.firstShown === undefined && command.words.length > 0) {
+        this.firstShown = command.shown.join(" ")
+        this.rendered = undefined
+      }
+      const step = lineStep(command, this.cwd)
+      this.cwd = step.cwd
+      for (const clause of step.clauses) {
+        const verbs = this.groups.get(clause.tier)
+        const subjects = verbs?.get(clause.name) ?? []
+        if (clause.detail !== "" && !subjects.includes(clause.detail)) subjects.push(clause.detail)
+        verbs?.set(clause.name, subjects)
+        this.rendered = undefined
+      }
     }
   }
-  const [first, ...rest] = groups
-  if (first === undefined) return undefined
-  return { name: first[0], detail: `${first[1].join(", ")}${rest.map(([name, details]) => `; ${`${name} ${details.join(", ")}`.trim()}`).join("")}` }
-}
 
-/** Present a shell command as what it does: its reads, searches, edits, and
- *  the programs it runs. A command none of those describe presents as itself,
- *  without its directory changes, environment wrappers, and output shaping. */
-export function shellSentence(command: string): ToolPresentation {
-  const sentence = compose(lineClauses(command))
-  if (sentence !== undefined) return sentence
-  const first = parseShell(command).find((parsed) => parsed.words.length > 0)
-  return { name: "Ran", detail: first === undefined ? command : first.shown.join(" ") }
+  /** The sentence of the commands read so far. Undefined while no command
+   *  has words: such a line presents as the whole line. */
+  sentence(): ToolPresentation | undefined {
+    this.rendered ??= this.compose()
+    return this.rendered
+  }
+
+  /** A copy that reads on from the commands read so far, for commands that
+   *  can still change, such as one that waits for its heredoc body. */
+  fork(): ShellSentenceFold {
+    const copy = new ShellSentenceFold()
+    copy.cwd = this.cwd
+    copy.firstShown = this.firstShown
+    for (const [tier, verbs] of this.groups) copy.groups.set(tier, new Map([...verbs].map(([verb, subjects]) => [verb, [...subjects]])))
+    return copy
+  }
+
+  private compose(): ToolPresentation | undefined {
+    const working = (this.groups.get("act")?.size ?? 0) + (this.groups.get("look")?.size ?? 0) > 0
+    const merged = new Map<string, string[]>()
+    for (const tier of working ? TIERS.filter((shown) => shown !== "setup") : TIERS) {
+      for (const [name, subjects] of this.groups.get(tier) ?? []) {
+        const details = merged.get(name) ?? []
+        for (const subject of subjects) if (!details.includes(subject)) details.push(subject)
+        merged.set(name, details)
+      }
+    }
+    const [first, ...rest] = merged
+    if (first !== undefined) return { name: first[0], detail: `${first[1].join(", ")}${rest.map(([name, details]) => `; ${`${name} ${details.join(", ")}`.trim()}`).join("")}` }
+    return this.firstShown === undefined ? undefined : { name: "Ran", detail: this.firstShown }
+  }
 }

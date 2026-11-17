@@ -10,7 +10,7 @@ import { loadResearchTasks, type ResearchAnswerKey } from "./research-task.js";
 export const BENCHMARK_MODES = ["research", "reviewer", "implement"] as const;
 export type BenchmarkMode = typeof BENCHMARK_MODES[number];
 
-export const DEFAULT_IMPLEMENTER_TIMEOUT_MS = 25 * 60 * 1_000;
+const DEFAULT_IMPLEMENTER_TIMEOUT_MS = 25 * 60 * 1_000;
 
 export interface BenchmarkTask {
   id: string;
@@ -68,7 +68,7 @@ const REVIEW_VARIANTS: readonly ReviewVariant[] = ["recorded", "restore"];
 /** Where a review sandbox's files come from: the fixture's vendored `project/`
  *  directory, or a commit of this repository with the reviewed diff applied to
  *  its working tree. */
-export type ReviewSource = { readonly kind: "project" } | { readonly kind: "commit"; readonly commit: string; readonly variant: ReviewVariant };
+type ReviewSource = { readonly kind: "project" } | { readonly kind: "commit"; readonly commit: string; readonly variant: ReviewVariant };
 
 /** A review task reviews one change in a sandbox that holds every file the
  *  reviewer reads, so a clone of the repository that holds the fixture can run it. */
@@ -266,7 +266,7 @@ function fixturesFor(tasks: readonly ReviewTask[], persona: string): readonly Re
 }
 
 /** The prompt of a fixture that records none in `prompt.md`. */
-export function reviewPrompt(artifact: ReviewTask["artifact"], hint: string, source: ReviewSource["kind"] = "project"): string {
+function reviewPrompt(artifact: ReviewTask["artifact"], hint: string, source: ReviewSource["kind"] = "project"): string {
   if (artifact === "plan.md") {
     return `Review the implementation plan in plan.md against the project in this directory. ${hint}. Verify every claim the plan makes about the code against the code itself before trusting it. Report every defect you find, citing the plan location and the file:line code evidence; be specific enough that a reader can act.`;
   }

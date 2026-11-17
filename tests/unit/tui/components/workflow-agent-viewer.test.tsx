@@ -63,7 +63,7 @@ async function renderAgent(props: Partial<WorkflowAgentViewerProps> & Pick<Workf
         query: unexpectedQuery,
       }}
       title={(id) => id === "parent" ? "Fanout-fail" : undefined}
-      onBack={() => events.push("back")} onClose={() => events.push("close")} showToast={() => {}} showThinking={false} diffColors={() => "theme"} {...props} />
+      onBack={() => events.push("back")} onClose={() => events.push("close")} showToast={() => {}} {...props} />
   </TickPoolProvider></ThemeProvider>, { width: options.width ?? 100, height: 32 })
   renders.push(render)
   await render.flush()

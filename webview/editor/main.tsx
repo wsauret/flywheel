@@ -5,6 +5,7 @@ import { mountClient } from "../src/index.js"
 import { postMessageSocketLayer, ViewBridge } from "./post-message-socket.js"
 import "./vscode-theme.css"
 import { editorInputReloadStorage } from "../src/client/input-reload-storage.js"
+import type { InputReloadCheckpoint } from "../src/client/input-reload-checkpoint.js"
 import { editorClientReplacement } from "./client-replacement.js"
 
 /** The editor host shell. It has no UI of its own: it wires the client to
@@ -21,7 +22,7 @@ const root = document.querySelector<HTMLElement>("#root")
 if (!root) throw new Error("the host page has no #root")
 
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: native VS Code state is decoded by the checkpoint storage adapter
-declare function acquireVsCodeApi(): { postMessage(message: ViewMessage): void; getState(): unknown; setState(value: unknown): void }
+declare function acquireVsCodeApi(): { postMessage(message: ViewMessage): void; getState(): unknown; setState(value: InputReloadCheckpoint | undefined): void }
 const vscode = acquireVsCodeApi()
 
 const bridge = new ViewBridge((message) => vscode.postMessage(message))

@@ -28,5 +28,5 @@ export const bugReportsModule = {
     { domain: "commands", id: BUG_REPORT_COMMAND, value: { id: BUG_REPORT_COMMAND, title: BUG_REPORT_COMMAND_NAME, description: "Send a bug report with an optional note", aliases: [], opens: BUG_REPORT_SURFACE } },
     { domain: "settings", id: "bug-reports", value: { control: "binary", group: "Interface", label: "Bug reports", description: "Send crash reports to Flywheel automatically and allow /report" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule

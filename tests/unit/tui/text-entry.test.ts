@@ -3,7 +3,6 @@ import {
   createControlledTextEditor,
   MULTILINE_TEXT_ENTRY_POLICY,
   normalizedPrintableText,
-  resolveTextEntryAction,
   SINGLE_LINE_TEXT_ENTRY_POLICY,
   type TextEntryVisualLine,
 } from "../../../src/tui/keymap/text-entry.js"
@@ -137,8 +136,7 @@ describe("controlled text editor", () => {
     const editor = createControlledTextEditor({ value: () => value, setValue: (next) => { value = next }, policy: SINGLE_LINE_TEXT_ENTRY_POLICY, history: "disabled" })
     editor.setSelection(0, value.length)
     editor.handlePaste("new-secret")
-    expect(resolveTextEntryAction({ name: "z", ctrl: true })).toBe("undo")
-    editor.handleKey({ name: "z", ctrl: true })
+    expect(editor.handleKey({ name: "z", ctrl: true })).toBe("handled")
     expect(value).toBe("new-secret")
   })
 

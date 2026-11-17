@@ -454,7 +454,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
     const r = await openWaitRun({
       humanFacing: true, contextLimit: 10_000,
       // The seed keeps the first request under the proactive trigger and puts the nudged request over it, so a change in the tool text moves both.
-      seed: { kind: "user", content: `Watch CI.${"y".repeat(28_000)}`, origin: "human" },
+      seed: { kind: "user", content: `Watch CI.${"y".repeat(29_500)}`, origin: "human" },
       responses: [LAUNCH_WAIT, SAVE, said("Watching CI.")],
       atParks: [],
     });

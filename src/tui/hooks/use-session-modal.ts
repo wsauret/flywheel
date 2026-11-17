@@ -604,7 +604,7 @@ function rowIndexOf(rows: readonly PickerRow[], target: PickerRow): number {
  *  enrichment (budget, queue, fork) failed; empty when nothing is degraded.
  *  Metadata-scope errors never reach this path: those sessions surface as
  *  corrupt picker rows, which cannot be opened. */
-export function sessionDetailWarning(errors: readonly SessionCatalogError[], sessionId: string): string {
+function sessionDetailWarning(errors: readonly SessionCatalogError[], sessionId: string): string {
   return errors.some((error) => error.sessionId === sessionId)
     ? "Some details for this session couldn't be loaded"
     : ""

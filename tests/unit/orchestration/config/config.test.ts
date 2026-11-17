@@ -310,6 +310,12 @@ describe("loadConfig: capability modules", () => {
     const { config, moduleError } = configWith(["show_thinking = true"]);
     expect(config.modules).toEqual(MODULE_IDS);
     expect(moduleError).toBeUndefined();
+    const existing = configWith(['disabled_modules = ["provider-deepseek", "code-mode"]', "show_thinking = true"]);
+    expect(existing.config.modules).toContain("provider-baseten");
+    expect(existing.config.modules).not.toContain("provider-deepseek");
+    expect(existing.config.modules).not.toContain("code-mode");
+    expect(existing.config.show_thinking).toBe(true);
+    expect(existing.moduleError).toBeUndefined();
   });
 
   it("reads an empty module selection", () => {

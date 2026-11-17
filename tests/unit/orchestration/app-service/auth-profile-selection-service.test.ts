@@ -19,6 +19,7 @@ import { publishTestWorkflow, startTestWorkflowMember } from "../session/_sessio
 import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-catalog.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -150,7 +151,7 @@ describe("runtime auth profile selection service", () => {
     const sessions = sessionDouble(setup.projectRoot)
     const service = createRuntimeAuthProfileSelectionService({ profileManager: locked, sessionManager: sessions, prepareSessionTarget, selectWorkflowProfile: noWorkflow })
 
-    const deps = { authProfileSelection: { ...service, settle: async () => {} } }
+    const deps = { ...authMutationDoubles(), authProfileSelection: { ...service, settle: async () => {} } }
     for (const mutation of [
       { type: "auth.profile.select", scope: { kind: "defaults-and-session", sessionId: "foreground" }, id: "default" },
       { type: "auth.profile.create", scope: { kind: "defaults" }, displayName: "Created" },

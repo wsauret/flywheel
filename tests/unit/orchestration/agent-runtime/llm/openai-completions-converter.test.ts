@@ -417,7 +417,7 @@ describe("chat-completions stream normalization", () => {
     ], undefined, (index) => { now = 100 + index * 20; }), (event) => measurement.observe(event, now))
       .finally(() => clock.mockRestore());
     const generatedChunks = deltas.filter((delta) => "arguments" in delta.function && delta.function.arguments).length;
-    expect(await measurement.complete()).toMatchObject({
+    expect(await measurement.complete(() => undefined)).toMatchObject({
       outputTokens: generatedChunks > 1 ? 15 : 0,
       durationMs: generatedChunks > 1 ? (generatedChunks - 1) * 20 : 0,
       measuredBlocks: generatedChunks > 1 ? 1 : 0,

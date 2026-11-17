@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { buildCustomProviderSlice, customProviderById, customProviderIds, customProviderModelUnavailableReason, installCustomProviders, isCustomProviderModel, publishCustomProviderSlice, subscribeCustomProviderRetirement } from "../../../../src/infra/llm/custom-provider-registry.js";
-import { detectModelFamily, isCustomProviderOnlyModel } from "../../../../src/infra/llm/model-family.js";
+import { buildCustomProviderSlice, customProviderById, customProviderIds, customProviderModelUnavailableReason, isCustomProviderModel, publishCustomProviderSlice, subscribeCustomProviderRetirement } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { installCustomProviders } from "../../../helpers/custom-providers.js";
+import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 
 // The registry is the process projection of [custom_providers] config. These
 // tests cover its replace semantics and how family detection and the
@@ -72,12 +73,5 @@ describe("family detection for custom models", () => {
   it("never overrides a first-party family pattern", () => {
     installCustomProviders([LOCAL_LLAMA]);
     expect(detectModelFamily("gpt-4o")).toBe("openai");
-    expect(isCustomProviderOnlyModel("gpt-4o")).toBe(false);
-  });
-
-  it("marks ids only a custom entry declares as custom-only", () => {
-    installCustomProviders([LOCAL_LLAMA]);
-    expect(isCustomProviderOnlyModel("llama-3.3-70b")).toBe(true);
-    expect(isCustomProviderOnlyModel("llama-3.3-70b[large]")).toBe(true);
   });
 });

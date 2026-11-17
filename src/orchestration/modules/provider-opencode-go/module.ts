@@ -15,7 +15,7 @@ const definition = {
   displayName: "OpenCode Go Subscription",
   shortName: "OpenCode Go",
   billingUrl: OPENCODE_GO_BILLING_URL,
-  supportedFamilies: ["anthropic", "openai"],
+ 
   defaultChatTransport: "openai-completions",
   configHints: ["flywheel auth login --opencode-go"],
   cli: { flag: "opencode-go", name: "OpenCode Go" },
@@ -95,6 +95,5 @@ export const opencodeGoModule = {
     { domain: "settings", id: "provider-opencode-go", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow supported models through an OpenCode Go subscription" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

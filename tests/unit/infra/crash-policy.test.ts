@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { exitAfter, makeCrashPolicy, type UncaughtKind } from "../../../src/infra/crash-policy.js"
+import { exitAfter, installCrashPolicy, type UncaughtKind } from "../../../src/infra/crash-policy.js"
 
 interface LogRecord {
   readonly level: "warn" | "error"
@@ -19,14 +19,32 @@ function recordingLog() {
   }
 }
 
+/** The two handlers `installCrashPolicy` adds to this process's events.
+ *  They are removed again before the test drives them, so the test runner's
+ *  own failure handling stays as it was. */
+function installedHandlers(options: Parameters<typeof installCrashPolicy>[0]) {
+  const exceptions = new Set(process.listeners("uncaughtException"))
+  const rejections = new Set(process.listeners("unhandledRejection"))
+  installCrashPolicy(options)
+  const uncaughtException = process.listeners("uncaughtException").find((listener) => !exceptions.has(listener))
+  const unhandledRejection = process.listeners("unhandledRejection").find((listener) => !rejections.has(listener))
+  if (uncaughtException) process.off("uncaughtException", uncaughtException)
+  if (unhandledRejection) process.off("unhandledRejection", unhandledRejection)
+  if (!uncaughtException || !unhandledRejection) throw new Error("installCrashPolicy added no handler for one of the two events")
+  return {
+    uncaughtException: (error: Error) => { uncaughtException(error, "uncaughtException") },
+    unhandledRejection: (reason: unknown) => { unhandledRejection(reason, Promise.resolve()) },
+  }
+}
+
 /** A policy whose fatal function and immediate exit only record their calls.
  *  The fatal function never settles unless a case says so, as a real one
  *  that ends its process never returns. */
-function recordedPolicy(options: { readonly fatal?: (failure: unknown, kind: UncaughtKind) => Promise<void> } = {}) {
+function recordedPolicy(options: { readonly fatal?: (cause: unknown, kind: UncaughtKind) => Promise<void> } = {}) {
   const { log, records } = recordingLog()
   const fatals: { readonly error: unknown; readonly kind: UncaughtKind }[] = []
   let exits = 0
-  const policy = makeCrashPolicy({
+  const policy = installedHandlers({
     role: "project-executor",
     log,
     fatal: (failure, kind) => {
@@ -49,7 +67,7 @@ function abortReason(): Error {
   return reason
 }
 
-describe("makeCrashPolicy", () => {
+describe("installCrashPolicy", () => {
   test("contains a floating abort with one WARN, and counts its repeats once when the window ends", async () => {
     const { policy, records, fatals, exits } = recordedPolicy()
 

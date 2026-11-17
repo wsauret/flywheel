@@ -9,7 +9,7 @@ import type { ToolDisplay } from "../tools/types.js";
 import { getFiletype } from "../tools/filetype.js";
 import { nestedExecutePresentation } from "./execute-presentation.js";
 import type { OutputProjectionEvent, ToolInput } from "./output-projection-events.js";
-import type { PendingToolInfo, TrackedTool } from "./output-tool-projection-types.js";
+import type { PendingToolInfo, PlacedTool } from "./output-tool-projection-types.js";
 import { StreamingToolInputs } from "./streaming-tool-inputs.js";
 import {
   extractFilePath,
@@ -19,7 +19,6 @@ import {
   retainStreamingProposal,
   refineStreamingTool,
   type ToolMaterializerOptions,
-  trackToolRow,
 } from "./structured-event-tool-materializer.js";
 import { isBackgroundResult, resolveTrackedToolResult, type SettledExecution } from "./structured-event-tool-results.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
@@ -41,23 +40,20 @@ function childGoal(block: AgentGroupBlock): string {
 }
 
 type ToolUseEvent = Extract<OutputProjectionEvent, { type: "tool-use" }>;
-type AgentToolUseEvent = Extract<OutputProjectionEvent, { type: "agent-tool-use" }>;
 
-function fileProposalFields(contract: ToolDisplay, input: ToolInput | undefined, executionCwd: string, includeProposal = true): Partial<Pick<ToolEntry, "fileChangeKind" | "proposedDiff">> {
+function fileProposalFields(contract: ToolDisplay, input: ToolInput | undefined, executionCwd: string): Partial<Pick<ToolEntry, "fileChangeKind" | "proposedDiff">> {
   if (!input || !contract.fileChangeKind) return {};
   const fileChangeKind = typeof contract.fileChangeKind === "function" ? contract.fileChangeKind(input) : contract.fileChangeKind;
-  if (!includeProposal) return { fileChangeKind };
   const proposal = createProvisionalDiffInput(fileChangeKind);
   proposal.complete(input);
   return { fileChangeKind, proposedDiff: provisionalDiffDisplayPaths(proposal.snapshot(), executionCwd) };
 }
 
 export class OutputToolProjector {
-  private trackedTools = new Map<string, TrackedTool>();
+  private trackedTools = new Map<string, PlacedTool>();
   private readonly streamingInputs: StreamingToolInputs;
   private streamingToolIds = new Set<string>();
   private pendingTools = new Map<string, PendingToolInfo>();
-  private subagentAgentIds = new Set<string>();
   private deferredToolResults = new Set<string>();
   private executionOutputs = new Map<string, SettledExecution>();
   // Identity survives viewport eviction and foreground turn resets.
@@ -78,7 +74,6 @@ export class OutputToolProjector {
       builder: this.builder,
       trackedTools: this.trackedTools,
       streamingToolIds: this.streamingToolIds,
-      subagentAgentIds: this.subagentAgentIds,
       executionCwd: this.executionCwd,
       sessionId: this._sessionId,
       // A subagent call names its child by `session_id`, a message by `to`,
@@ -98,7 +93,6 @@ export class OutputToolProjector {
     this.streamingInputs.reset();
     this.streamingToolIds.clear();
     this.pendingTools.clear();
-    this.subagentAgentIds.clear();
     this.executionOutputs.clear();
   }
 
@@ -128,14 +122,6 @@ export class OutputToolProjector {
     }
   }
 
-  /** True when the tool use is a nested subagent dispatch rendered as a
-   *  single child row (an agent-block tool tracked as a row). Callers use it
-   *  to tell an expected nested id apart from a genuinely unknown one. */
-  isNestedDispatchRow(toolUseId: string): boolean {
-    const tracked = this.trackedTools.get(toolUseId);
-    return tracked?.kind === "row" && getToolDisplay(tracked.toolName).rendersAsAgentBlock !== undefined;
-  }
-
   get trackedToolCount(): number { return this.trackedTools.size; }
 
   get hasActiveTools(): boolean { return this.trackedTools.size > 0; }
@@ -151,34 +137,17 @@ export class OutputToolProjector {
     }
   }
 
-  abandonToolInputs(reason: "failed" | "interrupted" | "retry", parentToolUseId?: string): void {
-    const parentAgentId = parentToolUseId ? this.parentAgentId(parentToolUseId) : undefined;
-    if (parentToolUseId && parentAgentId === undefined) return;
-    for (const [toolUseId, pending] of this.pendingTools) {
-      if (pending.parentAgentId !== parentAgentId) continue;
-      // An unfinished input persists no tool call, so the durable fold has no
-      // row for a top-level preview: it leaves the live display too, or every
-      // later block index differs between the two (ARCH-PROTOCOL-054). A
-      // child row inside a container is no transcript coordinate and keeps
-      // its settled status.
-      if (reason === "retry" || parentAgentId === undefined) {
-        const removedChild = this.builder.removeToolPreview(toolUseId);
-        this.trackedTools.delete(toolUseId);
-        if (removedChild) this.shiftTrackedChildIndexes(removedChild.agentId, removedChild.childIndex);
-      } else {
-        this.resolveToolResult(toolUseId, reason === "interrupted" ? "interrupted" : "error", [{ type: "text", text: "Not started: provider response failed." }], "render");
-      }
+  /** An unfinished input persists no tool call, so the durable fold has no
+   *  row for its preview: the preview leaves the live display too, or every
+   *  later block index differs between the two (ARCH-PROTOCOL-054). */
+  abandonToolInputs(): void {
+    for (const toolUseId of this.pendingTools.keys()) {
+      this.builder.removeToolPreview(toolUseId);
+      this.trackedTools.delete(toolUseId);
       this.pendingTools.delete(toolUseId);
       this.streamingInputs.discard(toolUseId);
       this.streamingToolIds.delete(toolUseId);
       this.builder.streamingText.clear(toolUseId);
-    }
-  }
-
-  private shiftTrackedChildIndexes(agentId: string, removedIndex: number): void {
-    for (const [toolUseId, tracked] of this.trackedTools) {
-      if (tracked.kind !== "row" || tracked.agentId !== agentId || tracked.childIndex <= removedIndex) continue;
-      this.trackedTools.set(toolUseId, { ...tracked, childIndex: tracked.childIndex - 1 });
     }
   }
 
@@ -193,7 +162,6 @@ export class OutputToolProjector {
       return;
     }
     const parentTracked = event.parentToolUseId ? this.trackedTools.get(event.parentToolUseId) : undefined;
-    const parentAgentId = event.parentToolUseId ? this.parentAgentId(event.parentToolUseId) : undefined;
     // A script's nested calls can arrive before their parent code call is
     // registered: the durable-fact broadcast applies synchronously while the
     // parent's stream events ride the batched UI bus. The translator stamps
@@ -203,8 +171,8 @@ export class OutputToolProjector {
     const nestedInCode = event.nestedInCode === true
       || (parentTracked?.kind === "standalone" && parentTracked.toolName === "code")
       || (parentTracked === undefined && event.parentToolUseId !== undefined && this.pendingTools.get(event.parentToolUseId)?.name === "code");
-    if (event.parentToolUseId && !parentAgentId && !nestedInCode) {
-      log.debug("dropping nested event under a non-container parent", {
+    if (event.parentToolUseId && !nestedInCode) {
+      log.debug("dropping nested event under a parent that is not a script", {
         sessionId: this.sessionId,
         parentToolUseId: event.parentToolUseId,
         toolUseId,
@@ -214,21 +182,16 @@ export class OutputToolProjector {
     }
 
     const isStreamingStart = input !== undefined && Object.keys(input).length === 0;
-
-    // A dispatch from inside another subagent falls through to the child-row
-    // paths: nested subagents render as a single row in the dispatcher's box,
-    // never as a top-level agent block.
-
     const rendersAsAgentBlock = typeof contract.rendersAsAgentBlock === "function"
       ? contract.rendersAsAgentBlock(input ?? {})
       : contract.rendersAsAgentBlock === true;
-    if (rendersAsAgentBlock && !parentAgentId) {
+    if (rendersAsAgentBlock) {
       if (!toolUseId) return;
       this.handleSubagentToolUse(name, input, toolUseId, isStreamingStart, event.timestamp);
       return;
     }
 
-    if (!parentAgentId && !nestedInCode && this.handleTopLevelToolUse(name, contract, input, toolUseId, isStreamingStart, event.timestamp)) {
+    if (!nestedInCode && this.handleTopLevelToolUse(name, contract, input, toolUseId, isStreamingStart, event.timestamp)) {
       if (input && toolUseId) this.insertLeadingText(toolUseId, name, input, event.timestamp, event.leadingTextId);
       return;
     }
@@ -237,34 +200,26 @@ export class OutputToolProjector {
       const pending: PendingToolInfo = {
         name,
         timestamp: event.timestamp,
-        parentAgentId,
         renderLayout: "row",
         ...(nestedInCode ? { runCategoryOverride: "execute", presentationOverride: nestedExecutePresentation(event.name, input) } : {}),
       };
       this.pendingTools.set(toolUseId, pending);
       materializePendingTool(this.opts, pending, toolUseId, {}, true);
-      const inSubagent = this.isSubagentTool(toolUseId);
-      this.streamingInputs.start(toolUseId, name, { body: !inSubagent, inSubagent });
+      this.streamingInputs.start(toolUseId, name);
       return;
     }
 
     if (toolUseId) {
-      materializeImmediateTool(this.opts, name, input, toolUseId, parentAgentId, event.timestamp,
+      materializeImmediateTool(this.opts, name, input, toolUseId, event.timestamp,
         nestedInCode ? nestedExecutePresentation(event.name, input) : undefined,
         nestedInCode ? "execute" : undefined);
     } else {
-      this.pushUntrackedToolRow(name, contract, input, parentAgentId, event.timestamp);
+      this.pushUntrackedToolRow(name, contract, input, event.timestamp);
     }
   }
 
-  handleAgentToolUse(event: AgentToolUseEvent): void {
-    const name = canonicalize(event.name);
-    if (isHiddenFromTranscript(getToolDisplay(name), event.input)) return;
-    this.pushToolToAgent(event.agentId, event.toolUseId, name, event.input, event.timestamp);
-  }
-
   handleToolInputDelta(toolUseId: string, delta: string): void {
-    const update = this.streamingInputs.append(toolUseId, delta, this.isSubagentTool(toolUseId));
+    const update = this.streamingInputs.append(toolUseId, delta);
     if (!update) return;
     if (update.proposedDiff) this.builder.streamingText.setProposedDiff(toolUseId, update.proposedDiff);
     if (update.kind === "failed") {
@@ -275,14 +230,14 @@ export class OutputToolProjector {
     const pending = this.pendingTools.get(toolUseId);
     if (pending && update.presentationInput) {
       this.refineLayout(toolUseId, pending, update.presentationInput);
-      refineStreamingTool(this.opts, toolUseId, update.presentationInput);
+      refineStreamingTool(this.opts, toolUseId, update.presentationInput, update.row);
     }
 
     if (!this.streamingToolIds.has(toolUseId) || update.proposedDiff) return;
     const tracked = this.trackedTools.get(toolUseId);
     if (!tracked || tracked.kind === "agent") return;
 
-    if (tracked.streamsInput && !(tracked.kind === "row" && tracked.inSubagent)) {
+    if (tracked.streamsInput) {
       const streamingInput = getToolDisplay(tracked.toolName).streamingInput;
       const body = streamingInput
         ? Object.entries(streamingInput.bodyFields).find(([field]) => update.additions[field] !== undefined)
@@ -362,14 +317,14 @@ export class OutputToolProjector {
       const rendersAsAgentBlock = typeof contract.rendersAsAgentBlock === "function"
         ? contract.rendersAsAgentBlock(input)
         : contract.rendersAsAgentBlock === true;
-      if (pending.parentAgentId === undefined && pending.renderLayout === "row" && rendersAsAgentBlock) {
+      if (pending.renderLayout === "row" && rendersAsAgentBlock) {
         this.streamingInputs.discard(toolUseId);
         this.streamingToolIds.delete(toolUseId);
         materializePendingTool(this.opts, { ...pending, renderLayout: "subagent" }, toolUseId, input, false);
         this.builder.streamingText.clear(toolUseId);
         return;
       }
-      const proposal = this.streamingInputs.complete(toolUseId, name, input, this.isSubagentTool(toolUseId));
+      const proposal = this.streamingInputs.complete(toolUseId, name, input);
       if (proposal) this.builder.streamingText.clearSilently(toolUseId);
       finalizeStreamingTool(this.opts, toolUseId, input, proposal);
       this.builder.streamingText.clear(toolUseId);
@@ -385,7 +340,7 @@ export class OutputToolProjector {
       return;
     }
     this.insertLeadingText(toolUseId, name, input, timestamp, leadingTextId);
-    const proposal = this.streamingInputs.complete(toolUseId, name, input, this.isSubagentTool(toolUseId));
+    const proposal = this.streamingInputs.complete(toolUseId, name, input);
     if (proposal) this.builder.streamingText.clearSilently(toolUseId);
     finalizeStreamingTool(this.opts, toolUseId, input, proposal);
     this.builder.streamingText.clear(toolUseId);
@@ -454,10 +409,10 @@ export class OutputToolProjector {
     isStreamingStart: boolean,
     timestamp: number,
   ): void {
-    const pending: PendingToolInfo = { name, timestamp, parentAgentId: undefined, renderLayout: "subagent" };
+    const pending: PendingToolInfo = { name, timestamp, renderLayout: "subagent" };
     if (isStreamingStart) {
       this.pendingTools.set(toolUseId, pending);
-      this.streamingInputs.start(toolUseId, name, { body: true, inSubagent: this.isSubagentTool(toolUseId) });
+      this.streamingInputs.start(toolUseId, name);
       materializePendingTool(this.opts, pending, toolUseId, {}, true);
       return;
     }
@@ -466,7 +421,7 @@ export class OutputToolProjector {
 
   private refineLayout(toolUseId: string, pending: PendingToolInfo, input: ToolInput): void {
     const display = getToolDisplay(pending.name);
-    if (pending.parentAgentId !== undefined || pending.renderLayout !== "row"
+    if (pending.renderLayout !== "row"
       || typeof display.rendersAsAgentBlock !== "function" || !display.rendersAsAgentBlock(input)) return;
     const refined = { ...pending, renderLayout: "subagent" as const };
     this.pendingTools.set(toolUseId, refined);
@@ -482,8 +437,6 @@ export class OutputToolProjector {
     } else if (tracked?.kind === "standalone") {
       const index = this.builder.toolBlockIndex(toolUseId);
       if (index !== undefined) this.builder.patchTool(index, { linkUri });
-    } else if (tracked?.kind === "row") {
-      this.builder.finalizeAgentChildTool(tracked.agentId, tracked.childIndex, { linkUri });
     }
   }
 
@@ -513,9 +466,9 @@ export class OutputToolProjector {
   ): boolean {
     const isDiffStreaming = contract.extractDiff !== undefined;
     if (isStreamingStart && isDiffStreaming && toolUseId) {
-      const pending: PendingToolInfo = { name, timestamp, parentAgentId: undefined, renderLayout: "standalone-mutation" };
+      const pending: PendingToolInfo = { name, timestamp, renderLayout: "standalone-mutation" };
       this.pendingTools.set(toolUseId, pending);
-      this.streamingInputs.start(toolUseId, name, { body: true, inSubagent: this.isSubagentTool(toolUseId) });
+      this.streamingInputs.start(toolUseId, name);
       materializePendingTool(this.opts, pending, toolUseId, {}, true);
       return true;
     }
@@ -529,7 +482,7 @@ export class OutputToolProjector {
 
     if (isDiffStreaming) {
       if (toolUseId) {
-        materializeImmediateTool(this.opts, name, input, toolUseId, undefined, timestamp);
+        materializeImmediateTool(this.opts, name, input, toolUseId, timestamp);
         return true;
       }
       const rowPresentation = resolveToolRowPresentation(name, input, this.executionCwd);
@@ -559,46 +512,16 @@ export class OutputToolProjector {
     return false;
   }
 
-  private isSubagentTool(toolUseId: string): boolean {
-    const tracked = this.trackedTools.get(toolUseId);
-    return tracked?.kind === "row" && tracked.inSubagent;
-  }
-
   private retainStreamingProposals(): void {
     for (const proposal of this.streamingInputs.retain()) {
       retainStreamingProposal(this.opts, proposal.toolUseId, proposal.fileChangeKind, proposal.proposedDiff);
     }
   }
 
-  private pushToolToAgent(
-    agentId: string,
-    toolUseId: string | undefined,
-    name: string,
-    input: ToolInput | undefined,
-    timestamp: number,
-  ): void {
-    const contract = getToolDisplay(name);
-    const rawPath = input ? extractFilePath(input) : undefined;
-    const tool: ToolEntry = {
-      kind: "tool",
-      id: toolUseId ?? randomUUID(),
-      name,
-      ...resolveToolRowPresentation(name, input, this.executionCwd),
-      action: contract.action,
-      timestamp,
-      status: "pending",
-      ...(rawPath && { linkUri: toFileUri(rawPath, this.executionCwd) }),
-      ...fileProposalFields(contract, input, this.executionCwd, !this.subagentAgentIds.has(agentId)),
-    };
-    const tracked = trackToolRow(this.builder, tool, name, agentId, contract.streamingInput !== undefined, this.subagentAgentIds, this.sessionId);
-    if (toolUseId && tracked) this.trackedTools.set(toolUseId, tracked);
-  }
-
   private pushUntrackedToolRow(
     name: string,
     contract: ToolDisplay,
     input: ToolInput | undefined,
-    parentAgentId: string | undefined,
     timestamp: number,
   ): void {
     const rawPath = input ? extractFilePath(input) : undefined;
@@ -610,11 +533,10 @@ export class OutputToolProjector {
       action: contract.action,
       timestamp,
       status: contract.isOptimistic ? "completed" : "pending",
-      ...(rawPath && { linkUri: toFileUri(rawPath, this.executionCwd) }),
-      ...fileProposalFields(contract, input, this.executionCwd, !parentAgentId || !this.subagentAgentIds.has(parentAgentId)),
+      ...(rawPath ? { linkUri: toFileUri(rawPath, this.executionCwd) } : {}),
+      ...fileProposalFields(contract, input, this.executionCwd),
     };
-    if (parentAgentId) this.builder.pushToolRowToAgent(parentAgentId, tool);
-    else this.builder.pushStandaloneToolEntry(tool);
+    this.builder.pushStandaloneToolEntry(tool);
   }
 
 }

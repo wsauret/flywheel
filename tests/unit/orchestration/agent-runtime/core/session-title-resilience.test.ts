@@ -94,7 +94,6 @@ describe("generateSessionTitle — resilience", () => {
       return {
         done,
         send() {},
-        end() {},
         abort() {
           runnerAborted = true
           resolveDone({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } })
@@ -129,7 +128,6 @@ describe("generateSessionTitle — resilience", () => {
             terminal: { kind: "api_error", message: "Authentication requires attention", recovery: { kind: "none" } },
           }),
           send() {},
-          end() {},
           abort() {},
         }
       }
@@ -186,7 +184,6 @@ describe("generateSessionTitle — resilience", () => {
             })
           }
         },
-        end() {},
         abort() {},
       }
     }

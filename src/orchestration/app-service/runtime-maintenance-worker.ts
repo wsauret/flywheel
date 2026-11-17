@@ -70,7 +70,7 @@ export async function runRuntimeMaintenanceWorker(worker: WorkerSelf, init: Runt
   })
 }
 
-export interface RuntimeMaintenanceLifecycleInput {
+interface RuntimeMaintenanceLifecycleInput {
   /** Aborts when the job's owner ends its generation, which is how the owner
    *  withdraws the job (ARCH-RUNTIME-044). */
   readonly lifetime: AbortSignal
@@ -83,7 +83,7 @@ export interface RuntimeMaintenanceLifecycleInput {
 }
 
 /** Owns cancellation and ordered settlement for one bounded maintenance Worker run. */
-export async function runRuntimeMaintenanceLifecycle(input: RuntimeMaintenanceLifecycleInput): Promise<void> {
+async function runRuntimeMaintenanceLifecycle(input: RuntimeMaintenanceLifecycleInput): Promise<void> {
   try {
     await input.work(input.lifetime)
   } catch (error) {
@@ -108,7 +108,7 @@ export async function runRuntimeMaintenanceLifecycle(input: RuntimeMaintenanceLi
 }
 
 /** Runs ordered maintenance boundaries and checks cancellation before each one. */
-export async function runSerializedMaintenanceSteps(
+async function runSerializedMaintenanceSteps(
   signal: AbortSignal,
   steps: readonly (() => void | Promise<void>)[],
 ): Promise<void> {

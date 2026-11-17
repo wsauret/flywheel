@@ -61,7 +61,7 @@ function harness(options: Omit<RuntimeHandlerOptions, "version"> = {}) {
   const stub = stubService()
   const warnings: Array<{ message: unknown; fields: unknown }> = []
   const infos: Array<{ message: unknown; fields: unknown }> = []
-  const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: (message: unknown, fields?: unknown) => { warnings.push({ message, fields }) } }
+  const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: (message: string, fields?: { readonly [key: string]: unknown }) => { warnings.push({ message, fields }) } }
   const layer = runtimeHandlers({ client: stub.service, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: VERSION, ...options })
   return { stub, layer, warnings, infos }
 }
@@ -175,7 +175,7 @@ describe("RuntimeEvents client identity", () => {
 describe("RuntimeEvents bounded per-connection queue", () => {
   test.each([0, 5000])("gracefully stops admission and drains %s queued events without waiting for heartbeat", async (count) => {
     const { stub, infos } = harness()
-    const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
+    const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
     const received: RuntimeEventFrame[] = []
     await Effect.runPromise(Effect.gen(function*() {
       const blocked = yield* Deferred.make<void>()
@@ -208,10 +208,35 @@ describe("RuntimeEvents bounded per-connection queue", () => {
     expect(infos.filter((entry) => entry.message === "runtime event stream unsubscribed")).toHaveLength(1)
   })
 
+  test.each([1, 20])("delivers one published frame to %s subscribers without decoding it", async (subscribers) => {
+    const { stub } = harness()
+    const log = { debug: () => {}, info: () => {}, error: () => {}, warn: () => {} }
+    const published = markerEvent(1)
+    const delivered = await Effect.runPromise(Effect.gen(function*() {
+      const received: object[] = []
+      const fibers = []
+      for (let index = 0; index < subscribers; index += 1) {
+        fibers.push(yield* runtimeEventDelivery(stub.service, log, RUNTIME_LIVENESS_POLICY, () => {}).pipe(
+          Stream.runForEach((frame) => Effect.sync(() => { if (markerPosition(frame) !== undefined) received.push(frame) })),
+          Effect.forkScoped,
+        ))
+      }
+      while (stub.listenerCount() < subscribers) yield* Effect.yieldNow
+      stub.emit(published)
+      while (received.length < subscribers) yield* Effect.yieldNow
+      for (const fiber of fibers) yield* Fiber.interrupt(fiber)
+      return received
+    }).pipe(Effect.scoped))
+    // A decode builds a new value, so each subscriber holding the published
+    // object itself proves that delivery ran no decoder for any of them.
+    expect(delivered).toHaveLength(subscribers)
+    for (const frame of delivered) expect(frame).toBe(published)
+  })
+
   test("a blocked delivery consumer admits a bounded newest batch before recovery and unsubscribes on interruption", async () => {
     const { stub, infos } = harness()
     const subscribed = Promise.withResolvers<void>()
-    const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
+    const log = { debug: () => {}, info: (message: string, fields?: { readonly [key: string]: unknown }) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
     const received: RuntimeEventFrame[] = []
     await Effect.runPromise(Effect.gen(function*() {
       const blocked = yield* Deferred.make<void>()

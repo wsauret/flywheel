@@ -26,7 +26,6 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
     id: entry.id,
     displayName: entry.displayName,
     shortName: entry.displayName,
-    supportedFamilies: ["openai"],
     defaultChatTransport: "openai-completions",
     configHints: [`flywheel auth login --provider ${entry.id}`],
     cli: { name: entry.displayName },
@@ -66,7 +65,6 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
     availability: { kind: "available" },
     contributions: [{ domain: "providers", id: entry.id, value: { definition, createClient } }],
     observers: [],
-    transformers: [],
     gates: [],
   };
 }

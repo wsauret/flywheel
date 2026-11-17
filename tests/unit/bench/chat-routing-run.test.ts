@@ -44,7 +44,6 @@ function agentFactory(inputs: readonly Readonly<RuntimeToolInput>[], captured: A
         void Promise.all(inputs.map((input) => exposed.tool?.execute(input, TOOL_CONTEXT))).then(() => resolve({ kind: "completed" }));
       },
       abort: () => resolve({ kind: "interrupted" }),
-      end: () => resolve({ kind: "input_closed" }),
       done: settled.promise,
     };
   };
@@ -68,7 +67,7 @@ describe("Chat routing production interception", () => {
     const outcome = await runChatRoutingTask({ createAgent: (options) => {
       captured = options;
       return {
-        send: () => {}, abort: () => {}, end: () => {},
+        send: () => {}, abort: () => {},
         done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
       };
     } }, { ...request(), moduleSelection: () => selected });
@@ -141,7 +140,7 @@ describe("Chat routing production interception", () => {
     const createAgent = (_options: AgentOptions) => {
       const done = Promise.withResolvers<AgentRunResult>();
       return {
-        send: () => {}, end: () => {},
+        send: () => {},
         abort: () => { settled = true; done.resolve({ servedRequests: 0, durationMs: 2, terminal: { kind: "interrupted" } }); },
         done: done.promise,
       };
@@ -160,7 +159,7 @@ describe("Chat routing production interception", () => {
       createAgent: () => {
         const done = Promise.withResolvers<AgentRunResult>();
         return {
-          send: () => {}, end: () => {},
+          send: () => {},
           abort: () => { void external.promise.then(() => done.resolve({ servedRequests: 0, durationMs: 2, terminal: { kind: "interrupted" } })); },
           done: done.promise,
         };
@@ -197,7 +196,7 @@ describe("Chat routing production interception", () => {
           options.onEvent({ type: "model.usage.measured", data: { usage_entry: { attemptId: "00000000-0000-4000-8000-000000000002", occurredAt: "2026-09-02T00:00:00.000Z", profileId: "routing-test", attribution: { kind: "unattributed" }, spendMode: "direct_api", credentialLineage: "10000000-0000-4000-8000-000000000001", model: "test", tokens: { input: 5, output: 6, cacheRead: 0, cacheWrite: 0, reasoning: 0 }, classification: "real_spend", price: { kind: "priced", estimatedUsd: 0.1, rateCard: {}, provenance: "test" }, currency: "USD", coverage: "complete" }, budget_stream_id: "routing-test" } });
           done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "api_error", message: sentinel, recovery: { kind: "none" } } });
         },
-        abort: () => {}, end: () => {}, done: done.promise,
+        abort: () => {}, done: done.promise,
       };
     };
     const error = await runChatRoutingTask({ createAgent }, request()).catch((caught: unknown) => caught);
@@ -224,7 +223,6 @@ describe("Chat routing production interception", () => {
           done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
         },
         abort: () => {},
-        end: () => {},
         done: done.promise,
       };
     };

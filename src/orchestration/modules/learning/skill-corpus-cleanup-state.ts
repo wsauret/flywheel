@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact, InFlightPayload } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { parseSkillFact, skillCleanupCompletedFact } from "../../../workflows/skill-facts.js"
 import { skillPackageManifestIdentity, type BundledCorpusIdentity, type SkillPackageIdentity, type SkillPackageManifestEntry } from "../../../workflows/skill-schema.js"
@@ -29,7 +29,7 @@ const log = Log.create({ service: "skill-corpus-cleanup" })
 
 export type CoreManifest = readonly Readonly<SkillPackageManifestEntry>[]
 
-interface CleanupLease {
+type CleanupLease = {
   readonly coreIdentity: BundledCorpusIdentity
   readonly coreManifest: CoreManifest
   readonly ownerId: string
@@ -59,9 +59,9 @@ type SkillCorpusCleanupClaim =
 
 interface SkillCorpusCleanupWriter {
   append(event: EventStoreAppend): StoredFact | Promise<StoredFact>
-  putInFlight(sessionId: string, kind: string, key: string, payload: unknown): void | Promise<void>
+  putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): void | Promise<void>
   dropInFlight(sessionId: string, kind: string, key: string): void | Promise<void>
-  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): boolean | Promise<boolean>
+  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): boolean | Promise<boolean>
 }
 
 interface SkillCorpusCleanupStateDeps {

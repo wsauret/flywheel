@@ -2,7 +2,7 @@ import type { CatalogCanonicalRow, CatalogLimits } from "../llm/model-catalog-re
 import { validateCanonicalRows } from "../llm/model-catalog-resolution.js";
 import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../llm/access-provider.js";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
-import { ContainedFileTooLargeError } from "../descriptor-directory.js";
+import { ContainedFileTooLargeError } from "../descriptor-directory-contract.js";
 import { Log } from "../log.js";
 
 const log = Log.create({ service: "provider-model-catalog-store" });
@@ -38,7 +38,7 @@ export interface SavedModelRefusals { readonly [wireModelId: string]: SavedModel
 /** How long a saved refusal applies. An account can change what it grants without a new credential: the person
  *  turns on usage credits, changes the plan, or signs the CLI in as another account. After this time the model
  *  is offered again, and one refused request saves the refusal again. */
-export const MODEL_REFUSAL_LIFETIME_MS = 24 * 60 * 60 * 1000;
+const MODEL_REFUSAL_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 /** The refusals that still apply at `now`. A time far in the future, from a clock that moved back, also ends. */
 export function liveModelRefusals(refusals: SavedModelRefusals, now: number): SavedModelRefusals {

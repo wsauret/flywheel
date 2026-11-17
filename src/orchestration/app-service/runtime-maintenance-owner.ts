@@ -12,7 +12,7 @@ import type { RuntimeMaintenanceWorkerInit } from "./runtime-maintenance-worker.
 const log = Log.create({ service: "runtime-maintenance-owner" })
 
 /** One project's startup maintenance job, as the project's composition knows it. */
-export interface ProjectMaintenanceJob {
+interface ProjectMaintenanceJob {
   readonly directories: StartupDirectories
   /** Serves the project's state channel on `port` for the job's Worker, from
    *  the project's one writer. The returned close stops serving and joins the

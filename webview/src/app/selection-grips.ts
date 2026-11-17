@@ -33,12 +33,12 @@ interface GripDocument<Pad> extends Pick<Document, "addEventListener" | "removeE
   readonly body: { append(...nodes: NoInfer<Pad>[]): void }
   createElement(tagName: string): Pad
   getSelection(): GripSelection | null
-  elementFromPoint(x: number, y: number): object | null
+  elementFromPoint(x: number, y: number): GripNode | null
 }
 interface GripScroller<Pad> extends Pick<HTMLElement, "addEventListener" | "removeEventListener"> {
   readonly ownerDocument: GripDocument<Pad>
   readonly classList: { toggle(token: string, force: boolean): void; remove(token: string): void }
-  contains(other: unknown): boolean
+  contains(other: GripNode | null): boolean
   getBoundingClientRect(): Pick<DOMRect, "top" | "right" | "bottom" | "left">
 }
 type CaretDocument<Pad> = GripDocument<Pad> & {

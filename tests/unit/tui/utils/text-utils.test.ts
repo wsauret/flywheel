@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import { BoxRenderable, TextRenderable, fg } from "@opentui/core"
 import { testRender } from "@opentui/solid"
-import { displayWidth, fitChunks, shareWidth, truncateText, truncateToWidth, useWrappedLineCount } from "../../../../src/tui/utils/text"
+import { displayWidth, fitChunks, shareWidth, truncateToWidth, useWrappedLineCount } from "../../../../src/tui/utils/text"
 
 describe("wrappedLineCount", () => {
   for (const wrapMode of ["word", undefined] as const) {
@@ -35,33 +35,6 @@ describe("wrappedLineCount", () => {
       }
     })
   }
-})
-
-describe("truncate", () => {
-  it("returns text unchanged when shorter than maxLen", () => {
-    expect(truncateText("hello", 10)).toBe("hello")
-  })
-
-  it("returns text unchanged when exactly maxLen", () => {
-    expect(truncateText("hello", 5)).toBe("hello")
-  })
-
-  it("truncates to maxLen total characters including ellipsis", () => {
-    const result = truncateText("abcdefghij", 6)
-    expect(result).toBe("abcde\u2026")
-    expect(result.length).toBe(6)
-  })
-
-  it("hard-slices without ellipsis when maxLen < 4", () => {
-    expect(truncateText("hello", 3)).toBe("hel")
-    expect(truncateText("hello", 2)).toBe("he")
-    expect(truncateText("hello", 1)).toBe("h")
-    expect(truncateText("hello", 0)).toBe("")
-  })
-
-  it("handles maxLen of exactly 4 (boundary for ellipsis behavior)", () => {
-    expect(truncateText("abcde", 4)).toBe("abc\u2026")
-  })
 })
 
 describe("displayWidth", () => {

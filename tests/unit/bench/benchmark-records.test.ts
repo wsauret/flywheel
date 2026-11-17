@@ -1,12 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { AttemptRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
 import {
   appendCampaignRecords,
   exportCampaignRecords,
   loadAllCampaignRecords,
-  loadCampaignRecords,
   type CampaignHeader,
   type CellLine,
   type ScoreLine,
@@ -36,6 +35,11 @@ function recordsFile(root: string): string {
   return join(root, HEADER.persona, `${HEADER.stamp}.jsonl`);
 }
 
+/** The campaign of `file`, read the way a ranking reads every campaign under its records root. */
+async function loadCampaign(file: string) {
+  return (await loadAllCampaignRecords(dirname(dirname(file)))).find((records) => records.file === file);
+}
+
 describe("benchmark records", () => {
   it("round-trips a campaign and appends only the cells and scores the file does not hold", async () => {
     const root = directory("benchmark-records-");
@@ -43,7 +47,7 @@ describe("benchmark records", () => {
     expect(await appendCampaignRecords(file, HEADER, { cells: [cell("t1")], scores: [score("t1")] })).toEqual({ cells: 1, scores: 1, grades: 0, failures: 0 });
     const other = { model: "other-judge", effort: "high" };
     expect(await appendCampaignRecords(file, HEADER, { cells: [cell("t1"), cell("t2")], scores: [score("t1"), score("t1", other), score("t2")] })).toEqual({ cells: 1, scores: 2, grades: 0, failures: 0 });
-    expect(await loadCampaignRecords(file)).toEqual({ file, header: HEADER, cells: [cell("t1"), cell("t2")], scores: [score("t1"), score("t1", other), score("t2")], grades: [], failures: [] });
+    expect(await loadCampaign(file)).toEqual({ file, header: HEADER, cells: [cell("t1"), cell("t2")], scores: [score("t1"), score("t1", other), score("t2")], grades: [], failures: [] });
     // The same header written in another key order is the same campaign.
     const { kind, version, persona, mode, stamp, judge, scoringVersion, personaGuidanceIdentity } = HEADER;
     const reordered: CampaignHeader = { personaGuidanceIdentity, scoringVersion, judge: { effort: judge.effort, model: judge.model }, stamp, mode, persona, version, kind };
@@ -65,7 +69,7 @@ describe("benchmark records", () => {
     const attempts = [attempt("a1", 0, { kind: "timed-out", timeoutMs: 1_500_000 }), attempt("a2", 1, { kind: "failed", message: "Native grade failed: exit code 1" })];
     await exportCampaignRecords(file, header, [], attempts, [], [task], root);
     await exportCampaignRecords(file, header, [], attempts, [], [task], root);
-    const records = await loadCampaignRecords(file);
+    const records = await loadCampaign(file);
     expect(records?.cells).toEqual([{
       kind: "cell", variant: "model-a@medium", model: "model-a", effort: "medium", task: "t1", taskIdentity: "t1-identity", repeat: 0, sourceIdentity: "source",
       durationMs: 1_500_000, accounting: ACCOUNTING, output: { kind: "timed-out", candidateIdentity: "t1-candidate", timeoutMs: 1_500_000 },
@@ -87,12 +91,12 @@ describe("benchmark records", () => {
       const file = recordsFile(directory(`benchmark-records-${name.replace(" ", "-")}-`));
       mkdirSync(join(file, ".."), { recursive: true });
       writeFileSync(file, lines.map((line) => `${JSON.stringify(line)}\n`).join(""));
-      await expect(loadCampaignRecords(file), name).rejects.toThrow(message);
+      await expect(loadCampaign(file), name).rejects.toThrow(message);
     }
     const torn = recordsFile(directory("benchmark-records-torn-"));
     mkdirSync(join(torn, ".."), { recursive: true });
     writeFileSync(torn, `${JSON.stringify(HEADER)}\n`);
     appendFileSync(torn, JSON.stringify(cell("t1")).slice(0, 20));
-    await expect(loadCampaignRecords(torn)).rejects.toThrow(":2 is not valid JSON");
+    await expect(loadCampaign(torn)).rejects.toThrow(":2 is not valid JSON");
   });
 });

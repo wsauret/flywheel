@@ -9,7 +9,7 @@ import { roleGroups } from "./model-roles.js"
  *  model and the effort match the inherited pair (PI-MODEL-008). */
 
 const assignment = (roleId: string, model: string, matchesInheritedPair = false): ModelAssignmentRow =>
-  ({ slot: { kind: "role", roleId }, label: roleId, model, effort: "medium", modelSource: "explicit", matchesInheritedPair })
+  ({ slot: { kind: "role", roleId }, label: roleId, model, effort: "medium", modelSource: "explicit", matchesInheritedPair, configured: { kind: "absent" } })
 
 describe("roleGroups", () => {
   test("groups consecutive roles under the runtime's group names and marks unassigned seats", () => {

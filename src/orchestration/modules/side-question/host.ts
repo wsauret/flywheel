@@ -14,8 +14,19 @@ export interface SideQuestionRun {
   readonly id: string
   readonly messages: readonly ConversationMessage[]
   readonly signal: AbortSignal
+  /** The whole answer so far, when it changed other than by growing. */
   readonly onAnswer: (answer: string) => void
+  /** Text that the answer gained at its end. */
+  readonly onAppend: (text: string) => void
 }
+
+/** One change a host publishes: its control state (revision, history, and
+ *  request), null once the host is retired; the request alone; or text that
+ *  the running answer gained. */
+export type SideQuestionHostChange =
+  | { readonly kind: "control"; readonly view: SideQuestionView | null }
+  | { readonly kind: "request"; readonly current: SideQuestionRequest | null }
+  | { readonly kind: "appended"; readonly text: string }
 
 interface SideQuestionHostDeps {
   readonly signal: AbortSignal
@@ -25,7 +36,7 @@ interface SideQuestionHostDeps {
 
 export interface SideQuestionHost extends ChatModuleHost {
   snapshot(): SideQuestionView
-  subscribe(listener: (view: SideQuestionView | null, change: "control" | "request") => void): () => void
+  subscribe(listener: (change: SideQuestionHostChange) => void): () => void
   ask(question: string): Promise<string>
   stop(requestId: string): Promise<boolean>
   clear(revision: number): Promise<boolean>
@@ -45,7 +56,7 @@ function exchangesAsMessages(exchanges: readonly SideQuestionExchange[]): Conver
 /** One attached chat owns the history, serialized mutations, and independently cancellable request fiber. */
 export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestionHost {
   const history: Array<SideQuestionExchange & { source: readonly ConversationMessage[]; prefix: readonly ConversationMessage[] }> = []
-  const listeners = new Set<(view: SideQuestionView | null, change: "control" | "request") => void>()
+  const listeners = new Set<(change: SideQuestionHostChange) => void>()
   let current: SideQuestionRequest | null = null
   let revision = 0
   let disposed = false
@@ -57,9 +68,12 @@ export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestion
     exchanges: history.map(({ id, question, answer }) => ({ id, question, answer })),
     current: current ? { ...current } : null,
   })
-  function publish(change: "control" | "request" = "control", retired = false): void {
-    if (change === "control") revision++
-    for (const listener of listeners) listener(retired ? null : snapshot(), change)
+  function publish(change: SideQuestionHostChange): void {
+    for (const listener of listeners) listener(change)
+  }
+  function publishControl(retired = false): void {
+    revision++
+    publish({ kind: "control", view: retired ? null : snapshot() })
   }
   function serialize<T>(run: () => Promise<T>): Promise<T> {
     const result = queue.then(run)
@@ -89,16 +103,23 @@ export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestion
         const prefix = exchangesAsMessages(history)
         const id = randomUUID()
         current = { id, question, answer: "", state: "running" }
-        publish()
+        publishControl()
         const messages = [...source, ...prefix, { kind: "user" as const, origin: "human" as const, content: sideQuestionReminder + question }]
         const bridge = bridgeExternalPromise(async (signal) => {
           let result: AgentRunResult
           try {
-            result = await deps.run({ id, messages, signal, onAnswer: (answer) => {
-              if (current?.id !== id || signal.aborted || current.answer === answer) return
-              current = { ...current, answer }
-              publish("request")
-            } })
+            result = await deps.run({ id, messages, signal,
+              onAnswer: (answer) => {
+                if (current?.id !== id || signal.aborted || current.answer === answer) return
+                current = { ...current, answer }
+                publish({ kind: "request", current })
+              },
+              onAppend: (text) => {
+                if (current?.id !== id || signal.aborted || text.length === 0) return
+                current = { ...current, answer: current.answer + text }
+                publish({ kind: "appended", text })
+              },
+            })
           } catch {
             result = { durationMs: 0, servedRequests: 0, terminal: { kind: "api_error", message: "Side request initialization failed", recovery: { kind: "retry" } } }
           }
@@ -113,7 +134,7 @@ export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestion
               if (history.length > 20) history.shift()
             }
             log.debug("side request settled", { requestId: id, state: current.state, durationMs: result.durationMs, exchanges: history.length })
-            publish()
+            publishControl()
           }
         })
         const fiber = Effect.runFork(bridge.owned)
@@ -142,7 +163,7 @@ export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestion
         history.length = 0
         current = null
         log.info("side history cleared", { expectedRevision: expected })
-        publish()
+        publishControl()
         return true
       })
     },
@@ -161,7 +182,7 @@ export function createSideQuestionHost(deps: SideQuestionHostDeps): SideQuestion
         history.length = 0
         current = null
         log.info("side host disposed", { revision })
-        publish("control", true)
+        publishControl(true)
         listeners.clear()
       })
       return disposal

@@ -50,7 +50,7 @@ describe("process tool", () => {
       expect(attended.description).toContain(text);
       expect(unattended.description).not.toContain(text);
     }
-    expect(unattended.description).toContain("Use one action: list returns the ids that the other actions take");
+    expect(unattended.description).toContain("list returns the ids of your work; never guess an id from a log suffix.");
     expect((await attended.execute({ action: "list" }, context)).content).toBe("No managed processes and no children. Other sessions of this project are in list_sessions.");
     expect((await unattended.execute({ action: "list" }, context)).content).toBe("No managed processes and no children.");
   });
@@ -152,7 +152,6 @@ describe("process tool", () => {
     await done.promise;
     expect(registry.processRecord("cancelled-child")?.status).toBe("cancelled");
     expect((await tool.execute({ action: "list" }, context)).content).toContain("cancelled");
-    expect(await registry.waitProcess("cancelled-child", { signal: AbortSignal.abort() })).toBe(true);
   });
 
   it("keeps list and direct lookup bounded after settled history eviction", async () => {

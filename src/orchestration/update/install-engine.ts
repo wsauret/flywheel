@@ -56,7 +56,8 @@ import { cpSync, closeSync, existsSync, fsyncSync, openSync, readdirSync, readFi
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import type { OwnedCommandRunner } from "../../infra/owned-command.js";
@@ -187,7 +188,7 @@ export async function installBuild(request: InstallRequest): Promise<InstallOutc
   const { identity, digest } = admitPayload(request.sourceDir, request.platform);
   const buildDir = buildInstallDir(request.userDataRoot, identity);
 
-  const accountRoot = ContainedDirectory.open(path.dirname(request.userDataRoot), [path.basename(request.userDataRoot)], { privateDirectories: true });
+  const accountRoot = openContainedDirectory(path.dirname(request.userDataRoot), [path.basename(request.userDataRoot)], { privateDirectories: true });
   try {
     // Refused before anything is placed: an installation that cannot publish
     // its launcher must not leave a new build tree and a moved `current` behind.
@@ -267,7 +268,7 @@ function admitPayload(sourceDir: string, platform: string): AdmittedPayload {
 }
 
 function readBuildMetadata(dir: string): BuildIdentity {
-  const directory = ContainedDirectory.openExisting(path.dirname(dir), [path.basename(dir)]);
+  const directory = openExistingContainedDirectory(path.dirname(dir), [path.basename(dir)]);
   if (!directory) refuse(`there is no build at ${JSON.stringify(dir)}`);
   try {
     const raw = directory.readFile(BUILD_METADATA_FILE, METADATA_READ_BYTES);
@@ -530,7 +531,7 @@ export function rollBackActivation(request: { readonly userDataRoot: string; rea
   /** Why `current` could not be written, when that is why the rollback ended. */
   let unpublished: unknown;
   try {
-    accountRoot = ContainedDirectory.open(path.dirname(userDataRoot), [path.basename(userDataRoot)], { privateDirectories: true });
+    accountRoot = openContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)], { privateDirectories: true });
     authority = createUpdateAuthority({ dbFile: updateAuthorityDbFile(userDataRoot, UPDATE_PROTOCOL_VERSION) });
     const claim = authority.claim({ nowMs: request.nowMs, freshForMs: 0, leaseMs: LEASE_MS });
     if (claim.kind !== "won") return { kind: "kept", cause: "lease-held", reason: "another Flywheel process holds the update lease" };
@@ -781,7 +782,7 @@ function openWrapperDirectory(wrapperDir: string): ContainedDirectory {
       missing.unshift(path.basename(base));
       base = path.dirname(base);
     }
-    return ContainedDirectory.open(base, missing);
+    return openContainedDirectory(base, missing);
   } catch (error) {
     refuse(`the wrapper directory ${JSON.stringify(wrapperDir)} cannot be used: ${errorMessage(error)}`);
   }

@@ -46,6 +46,7 @@ export interface OpenSessionKeeper {
 
 export interface OpenSessionKeeperOptions {
   readonly client: Pick<RuntimeConnection, "dispatch" | "subscribe" | "onLane">
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
   readonly random?: () => number
   /** The delay before a retry; tests supply one that fires on their cue. */

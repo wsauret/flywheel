@@ -26,7 +26,7 @@ interface EnvSnapshot {
 /** The two directory authorities a snapshot describes (ARCH-DIRECTORIES-001). A snapshot is
  *  keyed by both: the same execution directory under a different project is a
  *  different environment, and reusing one for the other would be wrong. */
-export interface EnvScope {
+interface EnvScope {
   readonly projectRoot: string;
   readonly executionCwd: string;
 }

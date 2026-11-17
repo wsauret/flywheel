@@ -175,9 +175,9 @@ export interface AdmittedClientOptions {
   /** Launch authority every provider build receives. */
   launcher?: LauncherScope;
   /** Eligibility captured before this client was admitted. */
-  eligibility?: CapturedProviderModelEligibility;
+  eligibility?: AccessProviderModelEligibility;
   /** Captures eligibility when the caller has not supplied it explicitly. */
-  getProviderModelEligibility?: () => CapturedProviderModelEligibility | undefined;
+  getProviderModelEligibility?: () => AccessProviderModelEligibility | undefined;
   /** The training-route permission that a request reads when it states no capture of its own
    *  (`ModelRequestCapture`). */
   allowTrainingRoutes: boolean;
@@ -210,14 +210,9 @@ export interface CreateClientOptions extends AdmittedClientOptions {
   connection?: EffectiveProviderConnection;
 }
 
-interface CapturedProviderModelEligibility extends AccessProviderModelEligibility {
-  readonly profileId?: string;
-  readonly revision?: number;
-}
-
 /** The routing policy of one request (`ModelRequestCapture`), with its eligibility resolved. */
 interface RequestCapture {
-  readonly eligibility: CapturedProviderModelEligibility | undefined;
+  readonly eligibility: AccessProviderModelEligibility | undefined;
   readonly allowTrainingRoutes: boolean;
   readonly requestAdmission: AdmittedClientOptions["requestAdmission"];
 }
@@ -346,7 +341,7 @@ function buildChainClient(
       attribution,
       ...(admission.tokenizerIdentity === undefined ? {} : { tokenizerIdentity: admission.tokenizerIdentity }),
       // The account's lineup under this request's eligibility and permission, without the models that it refused.
-      accountOfferings: [...eligibility?.modelIds ?? []].flatMap((offered) => eligibility?.candidateOfferings?.(attribution.candidate, offered, allowTrainingRoutes) ?? []),
+      accountOfferings: [...eligibility?.modelIds ?? []].flatMap((offered) => eligibility?.candidateOfferings(attribution.candidate, offered, allowTrainingRoutes) ?? []),
     });
     return createFailoverClient({
       model: plan.model,

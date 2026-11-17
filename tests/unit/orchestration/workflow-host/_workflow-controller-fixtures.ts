@@ -29,7 +29,7 @@ import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, repoModules } from "../../../helpers/project-definitions"
 import { testDirectories } from "../../../helpers/directories"
-import { testCapabilityModules, testProviderRegistry } from "../../../helpers/provider-authority"
+import { testCapabilityModules, testEligibility, testProviderRegistry } from "../../../helpers/provider-authority"
 import { composeRealmModuleSnapshot, type ModuleId } from "../../../../src/orchestration/modules"
 import { MODULE_IDS, moduleDisabledReason } from "../../../../src/protocol/module-ids.js"
 import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
@@ -513,7 +513,6 @@ export function makeWorkflowDeps(): WorkflowDeps {
   const providers = testProviderRegistry()
   const createAgent: WorkflowDeps["createAgent"] = () => ({
     send: () => {},
-    end: () => {},
     abort: () => {},
     done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }),
   })
@@ -539,17 +538,16 @@ export function makeWorkflowDeps(): WorkflowDeps {
     captureProviderConnection: async () => ({
       connection,
       providers,
-      eligibility: {
+      eligibility: testEligibility({
         modelIds: new Set(["gpt-5.5", "gpt-5.4"]),
-        modelUnavailableReason: () => undefined,
-        candidateOffering: (candidate, model) => ({
+        candidateOfferings: (candidate, model) => [{
           candidate,
           wireModelId: model,
           dataUse: "standard",
           transport: "openai-responses",
           resolvedModelMetadata: fakeModelInfos.get(model),
-        }),
-      },
+        }],
+      }),
       runtimeConfig: captureRuntimeConfig(),
       requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit: () => ({ createAgent, createLLMClient }),
     }),

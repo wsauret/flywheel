@@ -7,7 +7,6 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { migrateDefinitionIdentitySkillCatalog } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-skill-catalog.js"
 import { migrateWorkflowDefinitionIdentityContext } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity.js"
-import { applyLegacyStepOverrides, parseLegacyStepRecord, type LegacyStepRecord } from "../../../../src/workflows/legacy-step-migration.js"
 import {
   DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID,
   definitionIdentityMismatches,
@@ -31,6 +30,7 @@ import {
   processRoot,
   readRows,
   recordedPositionIds,
+  type LegacyStepRecord,
   seedLegacyAggregate,
   writeProjectWorkflowStepOneSkillTwice,
 } from "./_legacy-workflow-aggregate.js"
@@ -98,18 +98,6 @@ describe("reconstructLegacyStepRecord", () => {
       "disable-model-invocation": true,
     })
     expect<string | undefined>(promptBody).toBe(boundSkills(processRoot, WORKFLOW_ID).get("spec-create")?.body)
-  })
-
-  it("reads a recorded snapshot that granted the retired ask_user scope as the record a current binding reconstructs", () => {
-    const bound = legacyBindings(processRoot, WORKFLOW_ID).get("spec-create")
-    if (!bound) throw new Error(`Test fixture needs bound skill ${SPEC_CREATE_SKILL_ID}`)
-    const reconstructed = legacyRecordOf(bound)
-    const scope = reconstructed.settings?.toolScoping
-    if (!scope) throw new Error("Test fixture needs a binding with a tool scope")
-    const recorded = { ...reconstructed, settings: { ...reconstructed.settings, toolScoping: { ...scope, ask_user: true } } }
-
-    expect(parseLegacyStepRecord(recorded)).toEqual(reconstructed)
-    expect(applyLegacyStepOverrides(reconstructed, { toolScoping: { ...scope, ask_user: false } })).toEqual(reconstructed)
   })
 })
 

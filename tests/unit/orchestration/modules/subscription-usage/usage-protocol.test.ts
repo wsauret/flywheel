@@ -14,7 +14,6 @@ import type { UsageEntry } from "../../../../../src/infra/llm/usage-entry.js"
 import { createInertSubscriptionUsageService } from "../../../../helpers/subscription-usage-service-fixture.js"
 import { projectUsageAccounts } from "../../../../../src/orchestration/modules/subscription-usage/usage-projection.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "../../app-service/app-service-doubles.js"
-import { CHATGPT_RATE_LIMIT_RESET_TYPE } from "../../../../../src/infra/llm/subscription-usage.js"
 
 const roots: string[] = []
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
@@ -193,9 +192,9 @@ describe("unified Usage protocol", () => {
         state: "supported", providerId: "chatgpt", instanceId: "account", identity: "me@example.com",
         providerStatus: "ok", observedAtMs: 1, readerGeneration: 1, metrics: [], spendSources: [], crossedThresholds: [],
         resetCredits: { availableCount: 2, credits: [
-          { id: "later", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: null, title: "Reset" },
-          { id: "spent", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "redeemed", expiresAtMs: 1 },
-          { id: "first", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: 2, title: "Reset" },
+          { id: "later", resetType: "codex_rate_limits", status: "available", expiresAtMs: null, title: "Reset" },
+          { id: "spent", resetType: "codex_rate_limits", status: "redeemed", expiresAtMs: 1 },
+          { id: "first", resetType: "codex_rate_limits", status: "available", expiresAtMs: 2, title: "Reset" },
         ] },
       }] },
       metered: [], providerDisplayName: () => "Personal", metricDetail: () => false, quotaBySource: new Map(), allowanceCaps: new Map(), activity: undefined,

@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { formatReconstruction, reconstructPromptForRequest } from "../../../src/cli/event-search"
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import { runEventSearch } from "../../../src/cli/event-search"
+import { formatReconstruction } from "../../../src/cli/event-search-format"
+import * as hardExitClock from "../../../src/infra/hard-exit-clock"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths"
@@ -20,7 +22,27 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true })
+  process.exitCode = 0
 })
+
+/** What `flywheel events search --session <sessionId> --reconstruct
+ *  <requestId>` prints, with `flags` after it. The command's hard-exit clock
+ *  is a Worker, which this test does not start. */
+async function reconstruct(sessionId: string, requestId: string, ...flags: string[]): Promise<{ readonly out: string; readonly err: string }> {
+  const out: string[] = []
+  const err: string[] = []
+  const clock = spyOn(hardExitClock, "startHardExitClock").mockImplementation(() => ({ cancel: async () => {} }))
+  const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => { out.push(args.map(String).join(" ")) })
+  const error = spyOn(console, "error").mockImplementation((...args: unknown[]) => { err.push(args.map(String).join(" ")) })
+  try {
+    await runEventSearch(["--session", sessionId, "--reconstruct", requestId, ...flags], tmpDir)
+  } finally {
+    clock.mockRestore()
+    log.mockRestore()
+    error.mockRestore()
+  }
+  return { out: out.join("\n"), err: err.join("\n") }
+}
 
 const tools = [{ name: "read", registrationId: "read", executableId: "read", description: "Read", input_schema: { type: "object" } }]
 
@@ -101,14 +123,9 @@ describe("events:search --reconstruct", () => {
     const sessionId = "cli-recon-1"
     const requestId = await recordFirstOfTurnRequest(sessionId, "conv-cli-recon-1")
 
-    const result = await reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId })
-    if (result.kind !== "reconstructed") throw new Error(`expected a reconstruction, got ${result.kind}`)
+    expect(JSON.parse((await reconstruct(sessionId, requestId, "--json")).out)).toMatchObject({ kind: "reconstructed", verified: true, systemPrompt: "be helpful", tools })
 
-    expect(result.verified).toBe(true)
-    expect(result.systemPrompt).toBe("be helpful")
-    expect(result.tools).toEqual(tools)
-
-    const text = formatReconstruction(requestId, result, { json: false })
+    const text = (await reconstruct(sessionId, requestId)).out
     expect(text).toContain("verified=true")
     expect(text).toContain("be helpful")
     expect(text).not.toContain("mid-turn")
@@ -118,28 +135,22 @@ describe("events:search --reconstruct", () => {
     const sessionId = "cli-recon-workflow"
     const requestId = await recordFirstOfTurnRequest(sessionId, "conv-cli-recon-workflow", "workflow")
 
-    const result = await reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId })
-    if (result.kind !== "reconstructed") throw new Error(`expected a reconstruction, got ${result.kind}`)
-
-    expect(result.verified).toBe(true)
-    expect(result.systemPrompt).toBe("be helpful")
-    expect(result.tools).toEqual(tools)
+    expect(JSON.parse((await reconstruct(sessionId, requestId, "--json")).out)).toMatchObject({ kind: "reconstructed", verified: true, systemPrompt: "be helpful", tools })
   })
 
   test("does not use debug logs as reconstruction state", async () => {
     const sessionId = "cli-recon-log"
     const requestId = await recordFirstOfTurnRequestInDebugLog(sessionId, "conv-cli-recon-log")
 
-    await expect(reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId }))
-      .rejects.toThrow(`no provider request ${requestId}`)
+    expect((await reconstruct(sessionId, requestId)).err).toContain(`no provider request ${requestId}`)
+    expect(process.exitCode).toBe(1)
   })
 
   test("emits JSON when --json is set", async () => {
     const sessionId = "cli-recon-json"
     const requestId = await recordFirstOfTurnRequest(sessionId, "conv-cli-recon-json")
 
-    const result = await reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId })
-    expect(JSON.parse(formatReconstruction(requestId, result, { json: true }))).toMatchObject({
+    expect(JSON.parse((await reconstruct(sessionId, requestId, "--json")).out)).toMatchObject({
       requestId,
       kind: "reconstructed",
       verified: true,
@@ -182,8 +193,7 @@ describe("events:search --reconstruct", () => {
     const sessionId = "cli-recon-missing"
     await recordFirstOfTurnRequest(sessionId, "conv-cli-recon-missing")
 
-    await expect(
-      reconstructPromptForRequest({ projectRoot: tmpDir, sessionId, requestId: "no-such-request" }),
-    ).rejects.toThrow(/no provider request no-such-request/)
+    expect((await reconstruct(sessionId, "no-such-request")).err).toMatch(/no provider request no-such-request/)
+    expect(process.exitCode).toBe(1)
   })
 })

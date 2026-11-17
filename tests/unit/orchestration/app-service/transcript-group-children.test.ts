@@ -502,14 +502,15 @@ describe("historical nested children", () => {
     return live
   }
 
-  it("replays subagent row settlement with the same short messages as live rows", async () => {
+  it("replays subagent row settlement with the short messages a settled row states", async () => {
     const historical = await historicalChildren("container")
-    const group = liveProjector({ name: "subagent", input: { persona: "explorer", description: "Look", prompt: "Look" } }).getBlocks()
-      .find((block) => block.kind === "agentGroup")
-    const liveRows = group?.kind === "agentGroup" ? group.children.filter((block): block is ToolEntry => block.kind === "tool") : []
 
-    expect(liveRows).toHaveLength(cases.length)
-    expect(historical.slice(0, cases.length).map(settlement)).toEqual(liveRows.map(settlement))
+    expect(historical.slice(0, cases.length).map(settlement)).toEqual([
+      { status: "completed", errorMessage: undefined, statusMessage: undefined },
+      { status: "error", errorMessage: "No such file", statusMessage: undefined },
+      { status: "blocked", errorMessage: undefined, statusMessage: "Waiting for approval" },
+      { status: "interrupted", errorMessage: undefined, statusMessage: undefined },
+    ])
   })
 
   it("names a running card's message row by the recipient its result states, and states a held outcome, as the live row does", async () => {

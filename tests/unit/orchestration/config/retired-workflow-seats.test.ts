@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { decodeCanonicalConfigText } from "../../../../src/orchestration/config/loader.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
-import { migrateModelAssignments, pruneStaleConfig, updateModelAssignment } from "../../../../src/orchestration/config/writer.js";
+import { migrateModelAssignments, pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
 // A config that a release before 2026-10-16 saved: the Workflow Agent as
@@ -189,7 +189,7 @@ effort = "high"
 
   it("survive a model save, which writes every seat under its current name", () => {
     const configPath = retiredFile();
-    updateModelAssignment(roleSlot("brief.fly.spec-review"), { model: "gpt-5.4", effort: "low" }, { configPath, authProfileId: () => "Work" });
+    updateModelAssignments({ mutations: [{ slot: roleSlot("brief.fly.spec-review"), patch: { model: "gpt-5.4", effort: "low" } }] }, { configPath, authProfileId: () => "Work" });
 
     const text = readFileSync(configPath, "utf8");
     expectEverySeat(text);

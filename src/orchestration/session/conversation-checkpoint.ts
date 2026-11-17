@@ -123,6 +123,7 @@ function sectionSizes(checkpoint: ConversationCheckpoint): string {
 
 export interface ConversationCheckpointOwner {
   read(): Promise<ConversationCheckpoint | undefined>;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the section value of the checkpoint tool's model input, which `replace` decodes with the checkpoint schema
   replace(section: CheckpointSection, value: unknown): Promise<ConversationCheckpoint>;
   decide(decision: CheckpointDecision): Promise<ConversationCheckpoint>;
 }

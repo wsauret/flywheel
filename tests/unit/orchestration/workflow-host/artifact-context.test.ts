@@ -12,7 +12,7 @@ import type { ArtifactWriter } from "../../../../src/workflows/context-bundle/at
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js";
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js";
 import { deps } from "../../workflows/vm/attempt-runner-test-support.js";
-import { createMemoryStore, initialFacts, testHost } from "../../workflows/vm/host-test-support.js";
+import { createMemoryStore, initialFacts, quietHostDeps, testHost } from "../../workflows/vm/host-test-support.js";
 import { digest, fixture, row, timestamp } from "../session/_session-change-fixtures.js";
 
 function observeFileAcquisition() {
@@ -465,14 +465,15 @@ describe("buildArtifactContext", () => {
       handoff: { files_modified: ["src/safe.ts"] },
     });
     const order: string[] = [];
-    const host = testHost(createMemoryStore(initialFacts()), {
+    const memory = createMemoryStore(initialFacts());
+    const host = testHost(memory, {
       attemptRunner: createAttemptExecutor(deps({
         context: { getContext: async () => context.getContext() },
         buildArtifactContext: (writers, signal) => buildArtifactContext(writers.map((writer) => ({ ...writer, conversationIds: ["c-previous"] })), contextDeps(), signal),
         recordInvocation: async () => { order.push("invocation"); },
         worker: async () => { throw new Error("worker must not start"); },
       })),
-      lifecycle: { flushConversation: () => { order.push("flushed"); } },
+      lifecycle: { ...quietHostDeps(memory).lifecycle, settleBackground: () => { order.push("settled"); } },
     });
     const running = host.run();
     await started.promise;
@@ -483,7 +484,7 @@ describe("buildArtifactContext", () => {
     expect(order).toEqual([]);
     release.resolve();
     expect(await disposing).toEqual({ kind: "disposed" });
-    expect(order).toEqual(["flushed"]);
+    expect(order).toEqual(["settled"]);
   });
 
   test("bounds acquisition and UTF-8 output for 24 large edited files", async () => {

@@ -69,7 +69,8 @@
 
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
-import { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../descriptor-directory.js";
 import { errorMessage } from "../error-message.js";
 import { Log } from "../log.js";
 import { updateAuthorityDbFile, versionsDir } from "../paths.js";
@@ -470,7 +471,7 @@ function nextTask(): Promise<void> {
 /** The private names an interrupted activation left beside `current`, whose
  *  writer is gone. */
 function abandonedActivations(userDataRoot: string): readonly string[] {
-  const accountData = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   if (!accountData) return [];
   try {
     return accountData.entryNames().filter((name) => {
@@ -485,7 +486,7 @@ function abandonedActivations(userDataRoot: string): readonly string[] {
 function removeAbandonedActivations(userDataRoot: string): readonly string[] {
   const abandoned = abandonedActivations(userDataRoot);
   if (abandoned.length === 0) return [];
-  const accountData = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   if (!accountData) return [];
   try {
     return abandoned.filter((name) => remove(accountData, name));
@@ -495,7 +496,7 @@ function removeAbandonedActivations(userDataRoot: string): readonly string[] {
 }
 
 function openVersionsRoot(userDataRoot: string): ContainedDirectory | undefined {
-  const accountData = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   if (!accountData) return undefined;
   try {
     return accountData.openExistingChild(path.basename(versionsDir(userDataRoot)));

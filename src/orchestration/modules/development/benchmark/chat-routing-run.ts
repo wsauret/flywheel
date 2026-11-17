@@ -103,7 +103,7 @@ function routingComposition(
     }),
   };
 }
-export function failureFromTerminal(terminal: AgentRunTerminal): ChatRoutingFailureTerminal | null {
+function failureFromTerminal(terminal: AgentRunTerminal): ChatRoutingFailureTerminal | null {
   const failure = failureTerminal(terminal);
   if (!failure) return null;
   switch (failure.kind) {

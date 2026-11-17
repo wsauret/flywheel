@@ -1,13 +1,20 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import * as fs from "node:fs"
 import { join } from "node:path"
-import { appendJsonLine, createJsonFile } from "../../../src/orchestration/modules/development/benchmark/json-lines.js"
+import { Schema } from "effect"
+import { createJsonFile, createJsonLinesLedger } from "../../../src/orchestration/modules/development/benchmark/json-lines.js"
 import { ensuredDirectoryUnder } from "../../../src/orchestration/modules/development/benchmark/paths.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()
 
 const spies: Array<{ mockRestore(): void }> = []
+
+/** Appends one record through the typed ledger that every benchmark log writes with. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: any record, for a ledger that decodes with Schema.Unknown
+async function appendRecord(path: string, value: unknown): Promise<void> {
+  await createJsonLinesLedger(async () => path, Schema.Unknown, "reject").append(value)
+}
 
 afterEach(() => {
   for (const spy of spies.splice(0)) spy.mockRestore()
@@ -45,7 +52,7 @@ describe("benchmark JSONL durability", () => {
     spies.push(sync)
 
     await createJsonFile(join(directory, "run-config.json"), "{}\n")
-    await appendJsonLine(join(directory, "runs.jsonl"), { run: 1 })
+    await appendRecord(join(directory, "runs.jsonl"), { run: 1 })
 
     expect(sync).toHaveBeenCalledTimes(process.platform === "win32" ? 0 : 2)
   })
@@ -53,11 +60,11 @@ describe("benchmark JSONL durability", () => {
   test("does not resync the parent directory for an existing ledger name", async () => {
     const directory = temporaryDirectory("flywheel-json-lines-")
     const ledger = join(directory, "runs.jsonl")
-    await appendJsonLine(ledger, { run: 1 })
+    await appendRecord(ledger, { run: 1 })
     const sync = spyOn(fs, "fsyncSync").mockImplementation(() => {})
     spies.push(sync)
 
-    await appendJsonLine(ledger, { run: 2 })
+    await appendRecord(ledger, { run: 2 })
 
     expect(sync).not.toHaveBeenCalled()
   })

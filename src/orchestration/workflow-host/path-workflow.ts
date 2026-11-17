@@ -17,7 +17,8 @@
 import { createHash, randomBytes } from "node:crypto"
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { ContainedDirectory, ContainedFileTooLargeError, ContainedPathError } from "../../infra/descriptor-directory.js"
+import { ContainedFileTooLargeError, ContainedPathError, type ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { DebugLog } from "../../infra/debug-log.js"
 import { errnoCode, errorMessage } from "../../infra/error-message.js"
 import { sessionScratchDir } from "../../infra/paths.js"
@@ -40,11 +41,10 @@ import {
   renderWorkflowFileDiagnostic,
   workflowDiagnosticText,
   workflowPhaseLocations,
-  type AuthoredWorkflowDefinition,
   type WorkflowFileDiagnostic,
 } from "../../workflows/workflow-file.js"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../infra/workflow-yaml.js"
-import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
+import { agentLabel, agentRecords, DEFAULT_COUNTED_LIST_MAX, dotFreeSlugIssue, namedAgents, phaseLabel, walkPhases, type AgentRecordKeys, type AuthoredWorkflow, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
 import type { WorkflowDefinitionRefusal, WorkflowDefinitionResolution } from "./workflow-admission.js"
 
 /** What a workflow file may grant an agent: the tools and personas of the
@@ -75,7 +75,7 @@ export function saveWorkflowContent(sessionDir: string, content: string): string
   const bytes = Buffer.byteLength(content)
   if (bytes > WORKFLOW_FILE_MAX_BYTES) throw new Error(`the workflow content holds ${bytes} bytes, more than the limit of ${WORKFLOW_FILE_MAX_BYTES}`)
   const name = workflowContentFileName(content)
-  const directory = ContainedDirectory.open(sessionDir, relative(sessionDir, sessionWorkflowsDir(sessionDir)).split(sep), { noFollowBase: true })
+  const directory = openContainedDirectory(sessionDir, relative(sessionDir, sessionWorkflowsDir(sessionDir)).split(sep), { noFollowBase: true })
   try {
     const file = join(directory.canonicalPath(), name)
     const replaced = directory.hasEntry(name)
@@ -194,7 +194,7 @@ function resolveWorkflowFile(path: string, sessionDir: string, savedContent?: st
   const missing = `no file exists at ${shown}; write it in this session's workflow directory ${dir}`
   let directory: ContainedDirectory | undefined
   try {
-    directory = ContainedDirectory.openExisting(sessionDir, relative(sessionDir, dirname(named)).split(sep), { noFollowBase: true })
+    directory = openExistingContainedDirectory(sessionDir, relative(sessionDir, dirname(named)).split(sep), { noFollowBase: true })
     if (!directory) return { ok: false, reason: missing }
     const file = join(directory.canonicalPath(), basename(named))
     if (savedContent !== undefined) return { ok: true, file, shown, content: savedContent }
@@ -218,7 +218,7 @@ function resolveWorkflowFile(path: string, sessionDir: string, savedContent?: st
 
 /** Problems that make a decoded file depend on a contract outside itself.
  *  Brief loading refuses a `runs` name that this file does not hold. */
-function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflowDefinition): WorkflowFileDiagnostic[] {
+function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflow): WorkflowFileDiagnostic[] {
   const diagnostics: WorkflowFileDiagnostic[] = []
   const at = (keyPath: string, message: string, entry?: string): void => { diagnostics.push({ file, ...(entry === undefined ? {} : { entry }), keyPath, message }) }
   const slugIssue = dotFreeSlugIssue(definition.id)
@@ -242,7 +242,7 @@ function selfContainmentDiagnostics(file: string, definition: AuthoredWorkflowDe
 function countedListWarnings(file: string, workflow: WorkflowDefinition): WorkflowFileDiagnostic[] {
   const locations = workflowPhaseLocations(workflow)
   const records = agentRecords(workflow)
-  return [...workflow.briefs ?? []].flatMap(([definitionId, brief]) => brief.defaultedLists.map((field) => {
+  return [...workflow.briefs].flatMap(([definitionId, brief]) => brief.defaultedLists.map((field) => {
     const place = locations.byRecord.get(definitionId)
     const keys = records.get(definitionId)?.keys
     const at = place?.keyPath ?? "phases"

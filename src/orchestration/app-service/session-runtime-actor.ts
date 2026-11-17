@@ -67,7 +67,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   const { mailbox, ownAcceptedWork, awaitAcceptedWork, hasAcceptedWork, waitForStartup } =
     createSessionWorkSettlement(() => startup.kind === "starting" ? startup.promise : undefined)
   const settleStartup = () => settleWithin(waitForStartup(), ctx.closeStartupGraceMs ?? CLOSE_STARTUP_GRACE_MS)
-  const inputControl = createChatSessionControl({ store: ctx.eventStore, sessionId, lane: mailbox, runner: () => {
+  const inputControl = createChatSessionControl({ store: ctx.projectionReader, sessionId, lane: mailbox, runner: () => {
     const entry = ctx.sessionStore.get(sessionId)
     return entry?.kind === "chat" ? entry.runner : undefined
   } })
@@ -75,7 +75,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   let undo: { readonly controller: AbortController; readonly settled: Promise<SessionChangesUndoResult> } | undefined
 
   const durability: ChatDurabilityContext = chatDurabilityContext(ctx, sessionId)
-  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, eventStore: ctx.eventStore, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => lifecycle.kind === "open" && !ctx.isDisposed(),
+  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => lifecycle.kind === "open" && !ctx.isDisposed(),
     // A send or activation can commit while its own reconciliation holds the
     // lane, so the sweep runs after it rather than inside it.
     sweepAfterCommit: () => { void reconcileChildSessionCompletions().catch((error: unknown) => { recordBackgroundFailure(log, "sweep after a held workflow completion", { sessionId }, error) }) },
@@ -185,7 +185,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       if (!admitsWork()) throw err
       const message = errorMessage(err)
       log.error("chat runner restore failed", { sessionId, conversationId, error: message, errorDetail: errorDetail(err) })
-      ctx.onRunnerError?.(sessionId, message)
+      ctx.onRunnerError(sessionId, message)
     }
   }
 
@@ -205,7 +205,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const message = errorMessage(error)
     startup = { kind: "failed", message }
     ctx.sessionStore.showStartupFailure(sessionId, `Chat startup failed: ${message}`)
-    ctx.onRunnerError?.(sessionId, message)
+    ctx.onRunnerError(sessionId, message)
     if (restWatch) {
       void mailbox.run(() => vacateFailedStart()).then((tail) => tail()).catch((cause: unknown) => { recordBackgroundFailure(log, "vacate failed start", { sessionId }, cause) })
     }
@@ -226,8 +226,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const start = performance.now()
     const prepared = await prepareDeactivation(ctx, sessionId)
       .catch((error: unknown) => { recordBackgroundFailure(log, "prepare finished session deactivation", { sessionId }, error) })
-    if (message) ctx.onRunnerError?.(sessionId, message)
-    else ctx.onRunnerDone?.(sessionId)
+    if (message) ctx.onRunnerError(sessionId, message)
     await endActor(prepared ? () => finalizeDisposition(ctx, sessionId, prepared) : undefined)
     log.info("session closed", { sessionId, disposition: "finished", failed: message !== undefined, durationMs: durationMs(start) })
   }
@@ -442,7 +441,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     }
     // The sweep never decides the send: the runner may already hold the
     // input, and a failed sweep shows on the session as its own fault.
-    const reconciliation = await ctx.reconcileChildSessionCompletions?.(
+    const reconciliation = await ctx.reconcileChildSessionCompletions(
       sessionId,
       { deliverNotification: (notification) => backgroundNotifications.deliver(entry, notification) },
     ).catch((error: unknown) => {
@@ -471,7 +470,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     } catch (err) {
       const message = errorMessage(err)
       const reason = renderUnsavedPreRunnerTurn(ctx.sessionStore, sessionId, message)
-      ctx.onRunnerError?.(sessionId, message)
+      ctx.onRunnerError(sessionId, message)
       return () => Promise.resolve({ ok: false, reason })
     }
     void ensureChatRunner().catch(() => {})
@@ -567,7 +566,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       if (entry?.kind === "chat") {
         await backgroundNotifications.drainHeld(entry)
         const recovered = activation.status === "opened" ? activation
-          : await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.eventStore, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
+          : await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
         // The settlement above is already durable; the wake reports whether a
         // runner resumed it.
         if (options?.wake && recovered.completedLeaf) return continuation.continueCommitted((runner) => runner.resumeCommitted())
@@ -628,7 +627,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const session = await ctx.manager.read(sessionId)
     const kind = session?.kind ?? ctx.sessionStore.get(sessionId)?.kind
     const retiredWorkflowId = session?.kind === "workflow-agent" ? session.workflowMembership.workflowId : undefined
-    const retiredAgentQuestion = retiredWorkflowId !== undefined && ctx.resumeWorkflow !== undefined
+    const retiredAgentQuestion = retiredWorkflowId !== undefined
     if (kind !== "chat" && !retiredAgentQuestion) return refuseQuestion(command.toolUseId, "not_chat")
     const writer = createSessionFactWriter({ sessionId, writer: ctx.eventWriter })
     try {
@@ -640,8 +639,8 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       // The durable fact above is the authority; the resume folds it into the
       // agent's conversation before any agent of the workflow re-enters.
       log.info("retired agent question settled", { sessionId, toolUseId: command.toolUseId, settlement: command.kind })
-      try { await ctx.resumeWorkflow?.(retiredWorkflowId) }
-      catch (error) { ctx.onRunnerError?.(sessionId, errorMessage(error)) }
+      try { await ctx.resumeWorkflow(retiredWorkflowId) }
+      catch (error) { ctx.onRunnerError(sessionId, errorMessage(error)) }
       return ready({ ok: true })
     }
 
@@ -661,11 +660,11 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       const wake = await runActivation({ wake: true })
       return async () => {
         try { await wake() }
-        catch (error) { ctx.onRunnerError?.(sessionId, errorMessage(error)) }
+        catch (error) { ctx.onRunnerError(sessionId, errorMessage(error)) }
         return { ok: true }
       }
     } catch (error) {
-      ctx.onRunnerError?.(sessionId, errorMessage(error))
+      ctx.onRunnerError(sessionId, errorMessage(error))
       return ready({ ok: true })
     }
   }
@@ -779,13 +778,12 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     if (runner) await runner.awaitLogicalTurnDurability()
     return mailbox.run(async () => {
       const currentEntry = ctx.sessionStore.get(sessionId)
-      const outcome = await ctx.reconcileChildSessionCompletions?.(
+      const outcome = await ctx.reconcileChildSessionCompletions(
         sessionId,
         currentEntry
           ? { deliverNotification: (notification) => backgroundNotifications.deliver(currentEntry, notification) }
           : undefined,
       )
-        ?? { reconciledCount: 0, workflowAggregateReads: 0 }
       if (currentEntry && !currentEntry.runner) await backgroundNotifications.drainHeld(currentEntry)
       if (outcome.reconciledCount > 0) await refreshOpenChatDisplay(ctx, sessionId)
       return outcome

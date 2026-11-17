@@ -4,7 +4,7 @@ import { DebugLog } from "../../../src/infra/debug-log.js"
 import { createRowChurnMonitor } from "../../../src/tui/output-window/output-window-scroll-anomalies.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
-import { LINE_WHEEL } from "../../../src/tui/output-window/output-window-wheel.js"
+import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import { asScrollBox, fakeScrollBox, mountController, snapshotFor } from "../../fixtures/output-scroll-harness.js"
 import { makeView, renderWindow, snapshot, textBlock, windowOf } from "./_output-window-transcript.js"
 
@@ -91,7 +91,7 @@ describe("OutputWindow fight record across a resize", () => {
     const blocks = Array.from({ length: 30 }, (_, i) => textBlock(`b${i}`, Array.from({ length: 60 }, (_word, word) => `w${i}_${word}`).join(" ")))
     const { view } = makeView(snapshot({ blocks, window: windowOf({ endBlockIndex: 29 }) }))
     const records = spyOn(DebugLog, "record").mockImplementation(() => {})
-    const { result, slot } = await renderWindow(view, 12, 80, "workflow-agent", false, undefined, LINE_WHEEL, { sessionId: "s-resize" })
+    const { result, slot } = await renderWindow(view, 12, 80, "workflow-agent", false, undefined, wheelProfileFor("darwin", {}), { sessionId: "s-resize" })
     try {
       for (let frame = 0; frame < 6; frame += 1) await result.renderOnce()
       for (let step = 0; step < 20; step += 1) {

@@ -107,7 +107,6 @@ export const bugReportsProtocol = defineProtocolModule({
     type: "bugReport.submit",
     fields: { ...BugReportInputFields, sessionId: Schema.optionalKey(text(200)) },
     result: BugReportResultSchema,
-    policy: "lossless",
     refuse: (error): BugReportResult => ({ ok: false, kind: "unavailable", error }),
   })],
 })

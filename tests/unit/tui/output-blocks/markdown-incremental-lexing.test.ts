@@ -4,7 +4,6 @@ import { marked } from "marked"
 import { configureMarkdownLexer, plainOf } from "../../../../src/tui/output-blocks/markdown/format-token.js"
 import { foldTokensToSegments, lexMarkdown, renderToLineModel, TEXT_SEGMENT_LINES, type MarkdownSegment } from "../../../../src/tui/output-blocks/markdown/line-model.js"
 import { createStreamingSegments } from "../../../../src/tui/output-blocks/markdown/streaming-line-model.js"
-import { assistantDisplayContent } from "../../../../src/tui/output-blocks/text-block.js"
 import type { MarkdownStyles, StyleSpec } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
 import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/utils/text-attributes.js"
 
@@ -80,16 +79,6 @@ const PROSE = [
 ].join("\n")
 
 describe("createStreamingSegments", () => {
-  it("keeps assistant progress compact as streaming text grows past trailing newlines", () => {
-    const streaming = createStreamingSegments()
-    for (const source of ["First paragraph.\n", "First paragraph.\n\n", "First paragraph.\n\nSecond paragraph.\n\n"]) {
-      const display = assistantDisplayContent(source)
-      expect(settled(streaming(display, styles))).toEqual(renderToLineModel(display, styles))
-    }
-    expect(settled(streaming(assistantDisplayContent("First paragraph.\n\nSecond paragraph.\n\n"), styles)))
-      .toEqual(renderToLineModel("First paragraph.\n\nSecond paragraph.", styles))
-  })
-
   it("matches full re-lex at every prefix for mixed markdown (small chunks)", () => {
     assertIncrementalMatchesFull(PROSE, 3)
   })

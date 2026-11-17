@@ -2,13 +2,14 @@ import { describe, it, expect } from "bun:test"
 
 describe("agent runtime typed errors (T1)", () => {
   it("toFailureReason maps each typed error to the correct AgentFailureReason variant", async () => {
-    const { ContextOverflow, OutputOverflow, ApiError, TransientDisconnect, StreamStalled, ApiOverloaded, AgentAborted, toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { ContextOverflow, OutputOverflow, ApiError, StreamStalled, AgentAborted, fromStreamError, toFailureReason } = await import("../../../../../src/orchestration/agent-runtime/errors.js")
+    const { LlmStreamError } = await import("../../../../../src/orchestration/agent-runtime/llm/errors.js")
     expect(toFailureReason(new ContextOverflow())).toEqual({ kind: "context_overflow" })
     expect(toFailureReason(new OutputOverflow())).toEqual({ kind: "output_overflow" })
     expect(toFailureReason(new ApiError({ message: "x", recovery: { kind: "none" } }))).toEqual({ kind: "api_error", message: "x", recovery: { kind: "none" } })
-    expect(toFailureReason(new TransientDisconnect({ message: "y" }))).toEqual({ kind: "transient_disconnect", message: "y" })
+    expect(toFailureReason(fromStreamError(new LlmStreamError("y", "transient")))).toEqual({ kind: "transient_disconnect", message: "y" })
     expect(toFailureReason(new StreamStalled({ message: "s", attribution: { kind: "unattributed" } }))).toEqual({ kind: "stream_stalled", message: "s", attribution: { kind: "unattributed" } })
-    expect(toFailureReason(new ApiOverloaded({ message: "z" }))).toEqual({ kind: "api_overloaded", message: "z" })
+    expect(toFailureReason(fromStreamError(new LlmStreamError("z", "overload")))).toEqual({ kind: "api_overloaded", message: "z" })
     expect(toFailureReason(new AgentAborted())).toEqual({ kind: "aborted" })
   })
 
@@ -74,7 +75,7 @@ describe("agent resilience with typed errors (T3)", () => {
         attempts++
         try {
           for await (const _event of withStreamAttempt(async function* (): AsyncGenerator<never> {
-            throw new ThinkingStallError({ blockKey: "thinking:0", elapsedMs: 120_000, summary: "partial" })
+            throw new ThinkingStallError({ blockKey: "thinking:0", elapsedMs: 120_000 })
           }, {})) {
             void _event
           }

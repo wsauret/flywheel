@@ -12,6 +12,7 @@ import { challengeConversationEvidence } from "../../../bench/chat-ab/challenge-
 const temporary = temporaryDirectories();
 
 test("captures only root assistant text appended after the challenge position", () => {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: stored message content, which the reader decodes from JSON lines
   const row = (position: number, sessionId: string, kind: "user" | "assistant", content: unknown) => ({
     source: "store", sessionId, position, type: "chat.entries.appended", version: 3, actor: "flywheel",
     payload: { conversationId: "root", entries: [{ kind: "message", id: `entry-${position}`, parentId: null, timestamp: "2026-10-22T00:00:00Z", message: { kind, content } }] },

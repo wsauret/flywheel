@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
 import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
 import { isRecord, type UnknownRecord } from "../../../infra/record.js";
-import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
+import { unsupportedSubscriptionUsageOutcome, type SubscriptionUsageJson, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
 import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
 import { ensureFreshXaiTokens, XaiTokenRefreshError } from "./token-refresh.js";
 
@@ -35,7 +35,7 @@ function superGrokSpendSources(payload: UnknownRecord, enablement: "enabled" | "
   return sources;
 }
 
-function superGrokMetrics(raw: unknown) {
+function superGrokMetrics(raw: SubscriptionUsageJson) {
   const response = requiredRecord(raw, "SuperGrok", "response");
   const payload = requiredRecord(response.config, "SuperGrok", "config");
   const metrics: SubscriptionUsageMetric[] = [];

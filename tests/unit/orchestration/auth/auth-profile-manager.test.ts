@@ -4,7 +4,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { join } from "node:path";
 import { AuthProfileDisplayNameConflictError, AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
@@ -397,8 +398,8 @@ describe("AuthProfileManager", () => {
     const store = new AuthProfileStore(root);
     const manager = new AuthProfileManager({ userDataRoot: root, projectRoot: join(root, "project"), env: {}, store });
     await manager.create("Default");
-    const original = ContainedDirectory.prototype.writeFile;
-    const write = spyOn(ContainedDirectory.prototype, "writeFile").mockImplementation(function (this: ContainedDirectory, name, content) {
+    const original = heldDirectoryPrototype().writeFile;
+    const write = spyOn(heldDirectoryPrototype(), "writeFile").mockImplementation(function (this: ContainedDirectory, name, content) {
       if (name === ".profile-retirements.json") throw new Error("ledger write failed");
       return original.call(this, name, content);
     });
@@ -416,8 +417,8 @@ describe("AuthProfileManager", () => {
     const root = temporaryDirectory("auth-profile-manager-after-commit-");
     const manager = new AuthProfileManager({ userDataRoot: root, projectRoot: join(root, "project"), env: {} });
     await manager.create("Default");
-    const original = ContainedDirectory.prototype.writeFile;
-    const write = spyOn(ContainedDirectory.prototype, "writeFile").mockImplementation(function (this: ContainedDirectory, name, content) {
+    const original = heldDirectoryPrototype().writeFile;
+    const write = spyOn(heldDirectoryPrototype(), "writeFile").mockImplementation(function (this: ContainedDirectory, name, content) {
       const result = original.call(this, name, content);
       return name === ".profile-retirements.json" ? new Error("ledger directory sync failed") : result;
     });
@@ -427,7 +428,7 @@ describe("AuthProfileManager", () => {
       write.mockRestore();
     }
     expect(manager.inspect()).toMatchObject({ id: "default-2", availableProfiles: [{ id: "default-2" }], retirements: { default: "default-2" } });
-    const remove = spyOn(ContainedDirectory.prototype, "removeTree").mockImplementation(() => { throw new Error("remove failed"); });
+    const remove = spyOn(heldDirectoryPrototype(), "removeTree").mockImplementation(() => { throw new Error("remove failed"); });
     try {
       await expect(manager.delete("default", undefined, null)).rejects.toThrow("remove failed");
     } finally {

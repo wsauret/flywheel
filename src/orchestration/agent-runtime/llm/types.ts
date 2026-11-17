@@ -370,10 +370,14 @@ export interface TransportContextFrame {
 
 type StreamTelemetrySource = "provider" | "normalized" | "watchdog" | "request";
 
+export interface TelemetryFields { [key: string]: unknown }
+
 export interface StreamTelemetryObservation {
   source: StreamTelemetrySource;
   kind: string;
-  metadata?: UnknownFields;
+  /** The observation's fields. A function builds them only when the telemetry records the observation, so a
+   *  per-frame caller pays nothing for a frame that is only counted. */
+  metadata?: TelemetryFields | (() => TelemetryFields);
 }
 
 export type StreamTelemetryObserveResult = void | Promise<void>;
@@ -482,12 +486,6 @@ export interface StreamOptions {
   outputTokenLimit?: number;
   stopSequences?: readonly string[];
   providerOptions?: ProviderRequestOptions;
-  /** Evidence gate for in-stream retries: returns true once the current
-   *  attempt has produced durable turn content (assistant output or tool
-   *  calls). With evidence, a stream failure settles the turn with the partial
-   *  intact instead of silently discarding and re-billing it; the outer
-   *  recovery layer owns what happens next. */
-  attemptProducedEvidence?: () => boolean;
   /** Request-scoped debug telemetry for provider-wire activity, watchdog
    *  liveness, and normalized stream milestones. Not model context. */
   telemetry?: StreamTelemetrySink;

@@ -43,9 +43,13 @@ export function sessionHeaderParts(target: HeaderTarget, width: number, threshol
   const elapsedMs = headerElapsedMs(target)
   if (elapsedMs >= 1000) parts.push(formatElapsed(elapsedMs))
   const reading = sessionContext(target, threshold)
-  const context = width < 60 ? "" : totalsLoading && width < 80 ? "totals loading" : reading === null ? "… ctx" : reading.trigger === 0 && threshold === 0
-    ? `${(reading.tokens / 1000).toFixed(1)}k ctx`
-    : `${Math.round(reading.copy.used * 100)}% ctx`
+  const contextText = (): string => {
+    if (width < 60) return ""
+    if (totalsLoading && width < 80) return "totals loading"
+    if (reading === null) return "… ctx"
+    return reading.trigger === 0 && threshold === 0 ? `${(reading.tokens / 1000).toFixed(1)}k ctx` : `${Math.round(reading.copy.used * 100)}% ctx`
+  }
+  const context = contextText()
   const before = parts.join(" · ") + (parts.length > 0 && context ? " · " : "")
   const average = budget?.averageGenerationTokensPerSecond
   const speed = width >= 80 && average !== undefined ? `${Math.round(average)} tok/s` : ""

@@ -11,7 +11,9 @@ import { createTranscriptProjectionCache } from "../../../../src/orchestration/a
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
+import { countStateRequests } from "../../../helpers/state-requests.js"
 import { batch, deltas, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 /** A canonical absolute directory on every host; a bare `/scratch` is not one on Windows. */
 const SCRATCH = resolve("/scratch")
@@ -26,7 +28,7 @@ describe("output projection child cards", () => {
     const projectedIds: string[] = []
     const childToolCounts = new Map<string, number>()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -49,7 +51,7 @@ describe("output projection child cards", () => {
       projectedIds.length = 0
       const changeChild = async (seq: number): Promise<void> => {
         if (source === "store") {
-          store.updateChatEntry("child-b", { outputBlocks: [textBlock(`busy-${seq}`)], visibleMessageCountSuffix: 1, outputChanges: batch([upsertChange(0, textBlock(`busy-${seq}`))]) })
+          store.updateChatEntry("child-b", { tokens: seq })
           await projection.flush("child-b")
         } else {
           const event: StoredFact = { id: `event-${seq}`, position: seq, seq, aggregateId: "conversation:child-b", sessionId: "child-b", actor: "agent", type: "tool-execution-started", version: 1, timestamp: 1, payload: {} }
@@ -87,7 +89,7 @@ describe("output projection child cards", () => {
     let duration = 0
     let stored: (events: readonly StoredFact[]) => void = () => {}
     let retired: (sessionId: string) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -176,7 +178,7 @@ describe("output projection child cards", () => {
     const cache = createTranscriptProjectionCache({ reader, projectionReader: local, sessionStore: store, projectRoot: SCRATCH })
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -234,13 +236,13 @@ describe("output projection child cards", () => {
     }
   })
 
-  test("a card projected before its child is bound links on the next stored batch, alone", async () => {
+  test("a card projected before its child is bound links when its session links the child, alone", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     const projectedIds: string[] = []
     const bound = new Set<string>(["a"])
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
@@ -261,18 +263,65 @@ describe("output projection child cards", () => {
       s.patches.length = 0
       projectedIds.length = 0
 
+      // A batch that links no child to the parent leaves the unbound card as it is.
+      stored([{ id: "other", position: 1, seq: 1, aggregateId: "conversation:other", sessionId: "other", actor: "agent", type: "tool-execution-started", version: 1, timestamp: 1, payload: {} }])
+      await projection.flush("parent")
+      expect(projectedIds).toEqual([])
+
       bound.add("b")
-      const event: StoredFact = { id: "event", position: 1, seq: 1, aggregateId: "conversation:child-b", sessionId: "child-b", actor: "agent", type: "tool-execution-started", version: 1, timestamp: 1, payload: {} }
-      stored([event])
+      const linked: StoredFact = { id: "linked", position: 2, seq: 1, aggregateId: "session:parent", sessionId: "parent", actor: "flywheel", type: "session.child.linked", version: 1, timestamp: 1, payload: { childSessionId: "child-b", lastUpdated: "2026-10-04T14:11:21.164Z" } }
+      stored([linked])
       await projection.flush("parent")
       expect(projectedIds).toEqual(["b"])
       expect(deltas(s.patches, "parent").flatMap((delta) => delta.blocks.map((change) => change.kind === "upsert" ? change.blockId : change.kind))).toEqual(["tool:b"])
 
       projectedIds.length = 0
-      store.updateChatEntry("child-b", { outputBlocks: [textBlock("busy")], visibleMessageCountSuffix: 1, outputChanges: batch([upsertChange(0, textBlock("busy"))]) })
+      store.updateChatEntry("child-b", { tokens: 100 })
       await projection.flush("child-b")
       await projection.flush("parent")
       expect(projectedIds).toEqual(["b"])
+    } finally {
+      projection.dispose()
+    }
+  })
+
+  test("a card whose child links while the card's first projection runs projects again bound", async () => {
+    const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
+    const s = sink()
+    const projectedIds: string[] = []
+    let bound = false
+    const firstProjection = Promise.withResolvers<void>()
+    const projecting = Promise.withResolvers<void>()
+    let stored: (events: readonly StoredFact[]) => void = () => {}
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
+      sessionStore: store,
+      shipped: s.shipped,
+      onStored: (listener) => { stored = listener; return () => {} },
+      projectBlock: async (sessionId, block) => {
+        if (sessionId !== "parent" || block.kind !== "tool") return block
+        projectedIds.push(block.id)
+        // The first projection read the run summaries before the link committed.
+        const unbound = !bound
+        if (projectedIds.length === 1) { projecting.resolve(); await firstProjection.promise }
+        if (unbound) return block
+        return { kind: "agentGroup", containerKind: "subagent", id: block.id, toolUseId: block.id, label: block.id, description: "", children: [], totalToolCount: 0, status: "active", timestamp: 1, linkUri: `flywheel://session/child-${block.id}` }
+      },
+    })
+    try {
+      store.openSessionRuntime({ sessionId: "parent", conversationId: "conv-parent" })
+      // The session's first pass links every block it holds, so the card arrives in a later pass.
+      await projection.flush("parent")
+      const card: AnyBlock = { kind: "tool", id: "b", name: "subagent", presentation: { name: "Agent", detail: "b" }, status: "pending", timestamp: 1 }
+      store.updateChatEntry("parent", { outputBlocks: [card], visibleMessageCountSuffix: 0, outputChanges: batch([upsertChange(0, card)]) })
+      const flushed = projection.flush("parent")
+      await projecting.promise
+      bound = true
+      stored([{ id: "linked", position: 1, seq: 1, aggregateId: "session:parent", sessionId: "parent", actor: "flywheel", type: "session.child.linked", version: 1, timestamp: 1, payload: { childSessionId: "child-b", lastUpdated: "2026-10-04T14:11:21.164Z" } }])
+      firstProjection.resolve()
+      await flushed
+      await projection.flush("parent")
+      expect(projectedIds).toEqual(["b", "b"])
+      expect(deltas(s.patches, "parent").flatMap((delta) => delta.blocks).findLast((change) => change.kind === "upsert")).toMatchObject({ block: { kind: "agentGroup", linkUri: "flywheel://session/child-b" } })
     } finally {
       projection.dispose()
     }
@@ -294,7 +343,7 @@ describe("output projection child cards", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     // The envelope keeps the name the sender had when it sent: the quick title
     // that a workflow carries until its generated title arrives.
     const message: AnyBlock = { kind: "userMessage", id: "msg:wf:call", content: "Which file should I check?", timestamp: 1, pending: false, injected: false, from: { sessionId: "wf", name: quickTitle, relation: "child" } }
@@ -342,7 +391,7 @@ describe("output projection child cards", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     // Each row was built with the name its result recorded at sending. The
     // second recipient was deleted since, so no metadata names it now.
     const toRecipient: AnyBlock = { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Draft plan" }, action: "ui_meta", status: "completed", timestamp: 1, targetSessionId: "recipient" }
@@ -446,12 +495,13 @@ describe("output projection child cards", () => {
     appendTool("child", "ask", "message_session", { to: "parent", text: "Which color?", wait: true })
     appendResult("child", "ask", { targetName: "Title Test" })
     appendTool("child", "wait-again", "message_session", { to: "parent", wait: true })
-    const local = asAsyncEventReadSurface(events)
+    const counter = countStateRequests(asAsyncEventReadSurface(events))
+    const local = counter.reader
     const cache = createTranscriptProjectionCache({ reader: local, projectionReader: local, sessionStore: { get: () => undefined }, projectRoot: SCRATCH })
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, onStored: (listener) => { stored = listener; return () => {} }, projectBlock: cache.projectBlock })
     const card: AnyBlock = { kind: "tool", id: "dispatch", name: "subagent", presentation: { name: "Agent", detail: "Alpha waiter" }, status: "pending", timestamp: 1 }
     const activity = () => {
       const shipped = deltas(s.patches, "parent").flatMap((delta) => delta.blocks).findLast((change) => change.kind === "upsert")
@@ -472,11 +522,14 @@ describe("output projection child cards", () => {
       }
       // The recipient's own title names every call, before and after its result.
       expect(activity()).toMatchObject({ detail: "Chat · Title Test" })
+      counter.take()
       stored([events.append({ aggregateId: "session:parent", sessionId: "parent", timestamp: Date.now(), actor: "flywheel", type: "session.label.updated", version: 1, payload: {
         label: "Renamed parent", shortLabel: "Renamed", name: "Renamed parent", lastUpdated: "2026-10-04T14:11:26.296Z", userNamed: true,
       } })])
       await projection.flush("parent")
       expect(activity()).toMatchObject({ detail: "Chat · Renamed parent" })
+      // The card names its newest call once per projection.
+      expect(counter.take().filter((request) => request.aggregateId === "session:parent" && request.query?.types?.includes("session.label.updated"))).toHaveLength(1)
     } finally {
       projection.dispose()
       await cache.dispose()

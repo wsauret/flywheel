@@ -1,11 +1,8 @@
-import { fileURLToPath } from "node:url"
-
 import { embeddedEntrySpecifier, runsThroughBun } from "../infra/cli-subprocess.js"
 import type { StartupDirectories } from "../infra/directory-authorities.js"
-import { EXECUTABLE_ROLES } from "../infra/executable-roles.js"
 import { Log } from "../infra/log.js"
 import { lockCommandSupervisorEntry } from "../infra/command-supervisor-entry.js"
-import { createLauncherScope, createProcessSupervisor, type LauncherContext, type ProcessSupervisor } from "../infra/process-supervisor.js"
+import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherContext, type ProcessSupervisor } from "../infra/process-supervisor.js"
 import { startupTrace } from "../infra/startup-trace.js"
 import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
 import type { RuntimeIdentity as DisplayedRuntimeIdentity } from "../protocol/client/runtime-identity.js"
@@ -14,14 +11,6 @@ import type { TerminalAttach } from "../tui/terminal-attach.js"
 import type { AccountRuntimeAttach, RuntimeIdentity } from "./runtime-attach.js"
 
 const log = Log.create({ service: "runtime-launch" })
-
-/** A source run starts its guardian through the source entry, which holds
- *  the snapshot of a dev service that the guardian runs from (ARCH-DISTRIBUTION-030). */
-export function guardianCommand(): readonly string[] {
-  return runsThroughBun(process.execPath)
-    ? [process.execPath, fileURLToPath(new URL("../../scripts/source-cli.ts", import.meta.url)), EXECUTABLE_ROLES.guardian]
-    : [process.execPath, EXECUTABLE_ROLES.guardian]
-}
 
 export interface CliLauncher extends LauncherContext {
   dispose(): Promise<void>

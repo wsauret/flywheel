@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import type { ChatInputLike } from "../../../../src/infra/chat-input.js"
-import { adoptedBlocks, createChatSubmissions, UNCONFIRMED_COMMAND, undeliveredNotice, WAITING_RECALL, type ChatSubmissionResult, type ChatSubmissionsDeps } from "../../../../src/protocol/client/chat-submissions.js"
+import { adoptedBlocks, createChatSubmissions, undeliveredNotice, type ChatSubmissionResult, type ChatSubmissionsDeps } from "../../../../src/protocol/client/chat-submissions.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createComposerReturns } from "../../../../src/protocol/client/composer-returns.js"
 import type { ClaimComposerReturnsResult } from "../../../../src/protocol/composer-returns.js"
+
+const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
+const UNCONFIRMED_COMMAND = "Flywheel did not confirm that the command arrived. Run it again if it does not start."
 
 /** A resident window that reaches the session's first block, so it proves
  *  nothing about the messages it does not hold. */
@@ -475,7 +478,6 @@ describe("messages lost with the connection", () => {
     expect(submissions.recallLocal("s")).toEqual({ kind: "waiting", notice: WAITING_RECALL })
     expect(submissions.recallLocal("s", entry!.id)).toEqual({ kind: "waiting", notice: WAITING_RECALL })
     expect(submissions.pending("s")).toEqual([entry!])
-    expect(WAITING_RECALL).toMatch(/sends it when the connection/)
   })
 
   it("answers Up or Edit on a message still being sent the same way: it may already be recorded, so it stays", async () => {

@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
 import type { StoredTokens } from "../../../infra/auth/openai-auth-types.js";
 import type { UnknownRecord } from "../../../infra/record.js";
-import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
+import { boundedProviderText, readBoundedSubscriptionUsageJson, unsupportedSubscriptionUsageOutcome, type SubscriptionUsageMetric, type SubscriptionUsageReader, type SubscriptionUsageReaderContext, type SubscriptionUsageResetConsumer, type SubscriptionUsageResetCredits, type SubscriptionUsageJson, type SubscriptionUsageSpendSource } from "../../../infra/llm/subscription-usage.js";
 import { malformed, oauthTokens, percent, prepaidBalance, readerIdentity, requiredNumber, requiredRecord, requiredString, usageJson, usageReport, usageRequest, type FetchLike } from "../../../infra/llm/subscription-usage-reader.js";
 import { ensureFreshChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
 import { ChatGPTTokenRefreshError } from "../../auth/openai-oauth.js";
@@ -87,7 +87,7 @@ function chatGptSpendSources(payload: UnknownRecord): SubscriptionUsageSpendSour
   return sources;
 }
 
-function chatGptMetrics(raw: unknown) {
+function chatGptMetrics(raw: SubscriptionUsageJson) {
   const payload = requiredRecord(raw, "ChatGPT", "response");
   const plan = requiredString(payload, "plan_type", "ChatGPT");
   const rateLimit = payload.rate_limit === undefined || payload.rate_limit === null ? undefined : requiredRecord(payload.rate_limit, "ChatGPT", "rate_limit");
@@ -129,7 +129,7 @@ function resetCreditCounts(raw: unknown): { availableCount: number } | undefined
   if (!Number.isSafeInteger(availableCount)) throw malformed("ChatGPT", "reset credit counts are invalid");
   return { availableCount };
 }
-function resetCreditDetails(raw: unknown, counts: { availableCount: number }): SubscriptionUsageResetCredits {
+function resetCreditDetails(raw: SubscriptionUsageJson, counts: { availableCount: number }): SubscriptionUsageResetCredits {
   const payload = requiredRecord(raw, "ChatGPT", "reset credits response");
   const credits = Array.isArray(payload.credits) ? payload.credits.map((rawCredit) => {
     const credit = requiredRecord(rawCredit, "ChatGPT", "reset credit"); const grantedAtMs = optionalDate(credit, "granted_at"); const expiresAtMs = optionalDate(credit, "expires_at");
@@ -174,7 +174,7 @@ export function createChatGPTUsageReader(fetchImpl: FetchLike = fetch, fresh: Fr
     const decoded = await usageJson(response);
     if (decoded.kind === "failed") return decoded.outcome;
     try {
-      const payload = requiredRecord(decoded.value, "ChatGPT", "response"); const normalized = chatGptMetrics(payload); const counts = resetCreditCounts(payload.rate_limit_reset_credits); let resetCredits;
+      const payload = requiredRecord(decoded.value, "ChatGPT", "response"); const normalized = chatGptMetrics(decoded.value); const counts = resetCreditCounts(payload.rate_limit_reset_credits); let resetCredits;
       if (counts !== undefined) {
         if (counts.availableCount === 0) resetCredits = { ...counts, credits: [] };
         else {

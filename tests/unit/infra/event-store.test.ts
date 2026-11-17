@@ -393,6 +393,21 @@ describe("writer over a store from an older release", () => {
       old.close()
     }
   })
+  test("an append stores NULL causality columns, and a row written with values still reads them", () => {
+    const parent = appendFact("a.parent")
+    const child = appendFact("a.child")
+    const db = new Database(path.join(tmpDir, "flywheel.sqlite"))
+    try {
+      expect(db.query("select parent_event_id, caused_by_event_id from event where id = ?").get(child.id))
+        .toEqual({ parent_event_id: null, caused_by_event_id: null })
+      db.query("update event set parent_event_id = ?, caused_by_event_id = ? where id = ?").run(parent.id, parent.id, child.id)
+    } finally {
+      db.close()
+    }
+    expect(store.read({ aggregateId: "session:txn" }).find((event) => event.id === child.id))
+      .toMatchObject({ parentEventId: parent.id, causedByEventId: parent.id })
+  })
+
   // Migration passes build inserters over raw connections before the store is
   // configured, and a store written by an older release lacks the companion
   // tables the inserter prepares against eagerly. This launch path must not
@@ -427,6 +442,7 @@ describe("staged session content", () => {
   test("refuses missing and wrong-length evidence atomically without discarding staged nodes", async () => {
     const nodes: SessionContentNodeRow[] = []
     const reference = await buildSessionContent("retained patch", async rows => { nodes.push(...rows) })
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: stored artifact evidence, malformed on purpose
     const makeFact = (evidence: unknown): EventStoreAppend => ({
       ...batchFact(0), sessionId: "evidence", aggregateId: "session:evidence",
       type: "file.artifact.recorded", payload: { artifactKind: "mutation_diff", evidence },

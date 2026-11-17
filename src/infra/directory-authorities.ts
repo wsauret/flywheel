@@ -80,20 +80,6 @@ export class AccountHomeRefusal extends Error {
   }
 }
 
-/** Nearest ancestor of `startDir` holding a `.git` entry. A worktree or
- * submodule marks its root with a `.git` file rather than a directory, so both
- * count. Outside a repository the resolved starting directory is returned. */
-export function nearestProjectRoot(startDir: string): string {
-  const start = resolve(startDir)
-  let current = start
-  while (!existsSync(join(current, ".git"))) {
-    const parent = dirname(current)
-    if (parent === current) return start
-    current = parent
-  }
-  return current
-}
-
 interface StartupDirectoryDiscovery {
   readonly selection: StartupDirectorySelection
   readonly accountHome: string
@@ -158,9 +144,17 @@ export function accountProjectDirectories(account: AccountDirectories, projectRo
   }
 }
 
-function containingRepositoryRoot(executionCwd: string): string | undefined {
-  const candidate = nearestProjectRoot(executionCwd)
-  return existsSync(join(candidate, ".git")) ? canonicalDirectory(candidate, "repository directory") : undefined
+/** Nearest ancestor of `startDir` holding a `.git` entry, or undefined
+ *  outside a repository. A worktree or submodule marks its root with a `.git`
+ *  file rather than a directory, so both count. */
+function containingRepositoryRoot(startDir: string): string | undefined {
+  let current = resolve(startDir)
+  while (!existsSync(join(current, ".git"))) {
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+  return canonicalDirectory(current, "repository directory")
 }
 
 function publishStartupDirectories(discovery: StartupDirectoryDiscovery, projectRoot: string): StartupDirectories {

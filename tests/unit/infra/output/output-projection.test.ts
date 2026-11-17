@@ -54,11 +54,11 @@ describe("OutputProjector", () => {
     projector.apply({ type: "push-thinking", text: "reasoning", timestamp: 2, blockKey: "thinking" });
     expect(projector.streamPhase).toBe("thinking");
 
-    // complete-thinking exits the "thinking" phase to null (UI coalesces
-    // to "Idle") — the block stays in the projection, but the phase
-    // doesn't linger past the block boundary.
-    projector.apply({ type: "complete-thinking", timestamp: 3 });
-    expect(projector.streamPhase).toBeNull();
+    // The answer that follows the thought completes it and takes the phase:
+    // the block stays in the projection, but the phase doesn't linger past
+    // the block boundary.
+    projector.apply({ type: "push-text", text: "answer", timestamp: 3, blockKey: "text" });
+    expect(projector.streamPhase).toBe("generating");
 
     const block = projector.getBlocks()[0];
     expect(block?.kind).toBe("thinking");
@@ -609,19 +609,6 @@ describe("OutputProjector", () => {
       expect(tool).toMatchObject({ kind: "tool", name: "read", action: "file_read", status: "completed" });
       projector.apply({ type: "end-turn", timestamp: 3, finalStatus: "completed" });
       expect(projector.getBlocks()[0]).toBe(tool);
-    });
-
-    it("stale fail-agent against an interrupted pending block leaves status at interrupted (no resurrection)", () => {
-      const projector = new OutputProjector({ executionCwd: "/workspace" });
-      projector.apply({ type: "tool-use", toolUseId: "agent-x", name: "subagent", input: { persona: "Worker", description: "do work" }, timestamp: 1 });
-      projector.apply({ type: "end-turn", timestamp: 2, finalStatus: "paused" });
-      const interrupted = projector.getBlocks().find((b) => b.kind === "agentGroup");
-      if (interrupted?.kind !== "agentGroup") { expect.unreachable(); return; }
-      expect(interrupted.status).toBe("interrupted");
-      projector.apply({ type: "fail-agent", agentId: interrupted.id, message: "stale failure" });
-      const group = projector.getBlocks().find((b) => b.kind === "agentGroup");
-      if (group?.kind !== "agentGroup") { expect.unreachable(); return; }
-      expect(group.status).toBe("interrupted");
     });
   });
 });

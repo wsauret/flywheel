@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { componentBuffer } from "../../../src/infra/descriptor-directory-posix-component.js";
 import { isDirectoryEntryAt, posixContainedDirectoryBackend } from "../../../src/infra/descriptor-directory-posix.js";
-import type { ContainedDirectoryContract } from "../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
 
 const isPosix = process.platform === "linux" || process.platform === "darwin";
 let base: string;
@@ -18,7 +18,7 @@ afterEach(() => {
   rmSync(base, { recursive: true, force: true });
 });
 
-function withBase<T>(use: (directory: ContainedDirectoryContract) => T): T {
+function withBase<T>(use: (directory: ContainedDirectory) => T): T {
   const directory = posixContainedDirectoryBackend.open(base, [], {});
   try {
     return use(directory);

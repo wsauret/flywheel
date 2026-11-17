@@ -8,7 +8,7 @@ import type { ModuleServiceInstance, PortableModuleServices } from "../../app-se
 import { configSection } from "../../config/config-section.js"
 import type { ConfigMutationResult, RuntimeConfigSnapshot } from "../../config/runtime-config-owner.js"
 import { createMcpAuthenticationService, type McpAuthenticationService } from "./authentication.js"
-import { processClaudeEngine } from "./claude-engine.js"
+import { accountEngineSession, processClaudeEngine } from "./claude-engine.js"
 import { resolveMcpClient } from "./clients.js"
 import { isMcpConnector, mcpConfigSection, resolveMcpConfig, withMcpConnectors, type McpConfig, type McpConnectorServer } from "./config.js"
 import { mcpExpectedToken, removeMcpServer, setMcpClaudeAiConnectors, setMcpClient, setMcpEnabled, type McpSelectedMutation } from "./config-mutation.js"
@@ -70,7 +70,7 @@ export function createMcpService(services: PortableModuleServices, options: Pick
   const applications = createOrderedLane()
   const listeners = new Set<() => void>()
   const authDir = accountAuthDir(services.directories.userDataRoot)
-  const claudeEngine = options.claudeEngine ?? processClaudeEngine(authDir, services.launcher)
+  const claudeEngine = options.claudeEngine ?? processClaudeEngine(accountEngineSession(authDir, services.launcher))
   const claudeLogins = async () => await services.modules.get(claudeLoginEngines)?.logins() ?? []
   const connectors = options.connectors ?? createMcpConnectors(claudeLogins)
   const registry = (source: McpConfig) => withMcpConnectors(resolveMcpConfig(source, projectRoot), source, projectRoot, source.claude_ai_connectors ? connectorList : {})

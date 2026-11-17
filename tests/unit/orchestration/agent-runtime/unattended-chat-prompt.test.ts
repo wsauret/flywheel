@@ -10,7 +10,7 @@ import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { capabilityAccessFor } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityRequest } from "../../../../src/orchestration/config/module-policy.js";
-import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules, unattendedModuleIds, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js";
 import { canonicalModuleIds } from "../../../../src/protocol/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js";
@@ -79,12 +79,14 @@ interface RequestOptions {
   readonly revision?: ProjectDefinitionRegistryRevision;
   /** The root chat whose boundary the request holds; the request's own purpose by default. */
   readonly treeRoot?: AgentPurpose;
+  /** The tree's module capture; every installed module by default. */
+  readonly capture?: FirstPartyModuleComposition;
 }
 
 /** One request under the capability boundary of its tree's root chat, with the session messaging that a chat runner
  *  holds. */
-async function request(purpose: AgentPurpose, { withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine, revision = definitions, treeRoot = purpose }: RequestOptions = {}) {
-  const planAssembly = { ...assembly, definitions: revision };
+async function request(purpose: AgentPurpose, { withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine, revision = definitions, treeRoot = purpose, capture = modules }: RequestOptions = {}) {
+  const planAssembly = { ...assembly, definitions: revision, capture, live: capture };
   const planned = await planPromptRequest(planAssembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess: rootAccess(treeRoot, withoutChildren), sessions: unusedSessionMessaging() });
   planned.tools.delete("handoff");
   return { planned, tools: [...planned.tools.keys()], messageSession: planned.tools.get("message_session"), parts: await promptParts(planAssembly, purpose, planned, { ...sources, engineeringDoctrine, sessionIdentity }) };
@@ -92,7 +94,7 @@ async function request(purpose: AgentPurpose, { withoutChildren = false, enginee
 
 /** The skill ids of a system prompt's catalog, in order. */
 function catalog(parts: readonly { readonly text: string }[]): string[] {
-  const after = parts.map((part) => part.text).join("\n").split("Installed skills, trigger descriptions only:\n")[1] ?? "";
+  const after = parts.map((part) => part.text).join("\n").split("Installed skills:\n")[1] ?? "";
   const ids: string[] = [];
   for (const row of after.split("\n")) {
     const id = /^- ([a-z0-9-]+): /.exec(row)?.[1];
@@ -130,7 +132,7 @@ describe("system prompt of an unattended chat", () => {
     // The guidance states the unattended contract and nothing that steers the work; an unattended chat runs no
     // brief and has no parent, so it is not told to hand off or message one.
     const guidance = unattended.parts.find((part) => part.label === "working unattended")?.text;
-    expect(guidance).toBe("WORKING UNATTENDED:\nYou complete one request without a person available to answer questions. Your final reply is the result.\n\n- Never end with an offer to do the work again or in another way.");
+    expect(guidance).toBe("WORKING UNATTENDED:\nYou complete one request without a person available to answer questions. Your final reply is the result: never end it with an offer of more work.");
   });
 
   // Nobody reviews an unattended chat's result, so its verification rule asks for every named requirement instead of
@@ -141,7 +143,6 @@ describe("system prompt of an unattended chat", () => {
       "Use the smallest complete verification of the work, then stop.",
       "Add UAT beyond that only for a specific evidence gap or explicit acceptance requirement.",
       "Honor explicit repository gates, but do not add broader suites or adjacent scenarios without a concrete reason.",
-      "minimal means the smallest decisive fresh check, not reuse of an earlier result",
     ];
     const core = async (purpose: AgentPurpose) => (await request(purpose)).parts.find((part) => part.label === "core system prompt")?.text ?? "";
     const subagent = await core(SUBAGENT);
@@ -183,11 +184,31 @@ describe("system prompt of an unattended chat", () => {
     expect(withChildren.parts.map((part) => part.label)).not.toContain("session identity");
   });
 
+  // ARCH-CONTEXT-033: an unattended tree whose capture has no workflow tool can reach no workflow, so its kernel tool
+  // text names none. An attended tree keeps the words, because a peer can message a live workflow (PI-INTERACTION-050).
+  test("names no workflow in message_session or process of an unattended tree without the workflow tool, where an attended tree keeps them", async () => {
+    const withoutWorkflows = composeFirstPartyModules(undefined, ["workflows"]);
+    const workflowWords = async (purpose: AgentPurpose, capture?: FirstPartyModuleComposition) => {
+      const { planned } = await request(purpose, capture ? { capture } : {});
+      const messageSession = planned.tools.get("message_session");
+      // An unattended tree offers message_session in short form, whose words are its contract (ARCH-CONTEXT-038).
+      return { messaging: messageSession?.contract?.() ?? JSON.stringify([messageSession?.description, messageSession?.inputSchema]), processTargets: JSON.stringify(planned.tools.get("process")?.inputSchema).includes('"targets"') };
+    };
+    const unattended = await workflowWords(UNATTENDED, withoutWorkflows);
+    expect(unattended.messaging).not.toMatch(/workflow/i);
+    expect(unattended.messaging).toContain('"enum":["session"]');
+    expect(unattended.processTargets).toBe(false);
+    for (const kept of [await workflowWords(INTERACTIVE, withoutWorkflows), await workflowWords(UNATTENDED)]) {
+      expect(kept.messaging).toContain("To direct a workflow that you launched, target its workflow id");
+      expect(kept.processTargets).toBe(true);
+    }
+  });
+
   // PI-AGENT-121: no person watches a child stream or reads a message of an unattended chat, and its run has no
   // installed command to inspect its own session records. A subagent runs one brief, so it never self-debugs.
   test("leaves out the streaming sentence, the person rules of messaging, and self-debugging, where the interactive chat keeps them", async () => {
-    const STREAMING = "The subagent's streaming output (text, tool calls) is visible to the user in real time.";
-    const PERSON = ["Your person sees every message that you send or receive", "When a message needs a decision from your person", "Return delegated results through handoff"];
+    const STREAMING = "The user sees the subagent's output as it streams.";
+    const PERSON = ["Your person sees every message that you send or receive", "of your person if you have no parent"];
     const SELF_DEBUG = "flywheel events search";
     const surface = async (purpose: AgentPurpose, treeRoot = purpose) => {
       const { planned, parts } = await request(purpose, { treeRoot });
@@ -196,8 +217,9 @@ describe("system prompt of an unattended chat", () => {
         tools: JSON.stringify([...planned.tools.values()].map((tool) => [tool.name, tool.description, tool.promptGuidelines, tool.inputSchema])),
         // The tools whose words depend on whether a person reads the tree, which every agent of the tree shares.
         treeWorded: JSON.stringify(["bash", "subagent", "message_session", "process"].map((name) => planned.tools.get(name)).map((tool) => [tool?.description, tool?.promptGuidelines, tool?.inputSchema])),
-        subagent: planned.tools.get("subagent")?.description ?? "",
-        messaging: `${messageSession?.description ?? ""}\n${messageSession?.promptGuidelines?.join("\n") ?? ""}`,
+        // An unattended tree offers these tools in short form, whose words are their contracts (ARCH-CONTEXT-038).
+        subagent: planned.tools.get("subagent")?.contract?.() ?? planned.tools.get("subagent")?.description ?? "",
+        messaging: messageSession?.contract?.() ?? `${messageSession?.description ?? ""}\n${messageSession?.promptGuidelines?.join("\n") ?? ""}`,
         prompt: parts.map((part) => part.text).join("\n"),
       };
     };
@@ -214,6 +236,10 @@ describe("system prompt of an unattended chat", () => {
     expect(unattended.messaging).toContain("A message is not a conversation.");
     for (const rule of PERSON) expect(unattended.messaging).not.toContain(rule);
     expect(unattended.prompt).not.toContain(SELF_DEBUG);
+    // The persona catalog follows the dispatch tool's form (ARCH-CONTEXT-039).
+    expect(chat.prompt).toContain("# Subagents");
+    expect(unattended.prompt).not.toContain("# Subagents");
+    expect(unattended.subagent).toContain("# Subagents");
 
     // A child of a tree reads the tree's words, not its own purpose's (ARCH-CONTEXT-018).
     for (const [treeRoot, rootSurface] of [[INTERACTIVE, chat], [UNATTENDED, unattended]] as const) {

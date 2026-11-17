@@ -7,7 +7,7 @@ import type { AttachedRuntimeClient, RuntimeClient } from "../../../../src/proto
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
 import { createSurfaceOpener } from "../../../../src/protocol/client/surface-presentation.js"
 import { experimentViewDomain } from "../../../../src/protocol/modules/experiments.js"
-import { sideQuestionDomain } from "../../../../src/protocol/modules/side-question.js"
+import { sideQuestionProtocol } from "../../../../src/protocol/modules/side-question.js"
 import { createSideQuestionSurface } from "../../../../src/tui/modules/side-question/surface.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { createModalScrollController } from "../../../../src/tui/components/modal-scroll-controller.js"
@@ -266,7 +266,7 @@ describe("controlled module surfaces", () => {
     const service = fakeAppService()
     let cachedDuringRetirement = false
     const module: TuiModule = { id: "side-question", surfaces: [{ id: "side-question", loadController: async () => (host) => {
-      onCleanup(() => { cachedDuringRetirement = !!host.read(sideQuestionDomain) })
+      onCleanup(() => { cachedDuringRetirement = !!host.read(sideQuestionProtocol.domains[0]) })
       return createSideQuestionSurface(host)
     } }] }
     const built = createRoot((dispose) => {

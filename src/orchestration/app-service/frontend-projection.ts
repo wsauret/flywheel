@@ -45,8 +45,8 @@ export interface FrontendProjection {
   liveCatalogRow(sessionId: string): Promise<SessionCatalogRow | null>
   /** The listed row for a session, or null for a child or an unknown id. */
   catalogRow(sessionId: string): Promise<SessionCatalogRow | null>
-  /** Subscribe to whole-row patches for changed metadata IDs, live revisions,
-   *  and liveness transitions. Unchanged catalog rows are not re-projected. */
+  /** Subscribe to whole-row patches for changed metadata IDs, changed live
+   *  row inputs, and liveness transitions. Unchanged catalog rows are not re-projected. */
   subscribe(onChanges: (changes: readonly SessionChange[]) => void): Unsubscribe
   dispose(): void
 }
@@ -62,7 +62,8 @@ export interface FrontendProjectionDeps {
 
 interface CatalogDiffState {
   keyById: Map<string, string | null>
-  revisionById: Map<string, number>
+  /** The entry values each live row was last projected from. */
+  inputsById: Map<string, readonly unknown[]>
   liveIds: Set<string>
   metadataById: Map<string, DurableSessionCatalogRow>
   /** Sessions this diff has met as children. A child is never keyed, so its
@@ -132,20 +133,22 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
     let disposed = false
     let timer: ReturnType<typeof setTimeout> | null = null
     let lastNotifiedAt = 0
-    // Per-session change gate, mirroring the sibling protocol projections: a live
-    // row is a function of its store entry (gated by `sessionStore.revision`) and
-    // its durable metadata (gated by manager change IDs). Metadata and stat
-    // changes also refresh durable-only rows. Only affected IDs are re-emitted.
+    // Per-session change gate, as the status projection gates its view: a
+    // live row is a function of the entry values it reads (`catalogRowInputs`)
+    // and its durable metadata (gated by manager change IDs). Metadata and
+    // stat changes also refresh durable-only rows. Only affected IDs are
+    // re-emitted, so a streaming session, whose entry moves on every output
+    // sync, projects no row until a value its row shows changes.
     const liveIds = listedLiveIds(deps.sessionStore)
     // Live rows only: durable rows reach the client through snapshot(), so the
     // initial diff baseline never pays a whole-catalog read.
     const initialRows = new Map(liveIds.flatMap((id) => {
       const entry = deps.sessionStore.get(id)
-      return entry ? [[id, { row: entrySummary(id, entry), revision: deps.sessionStore.revision(id) }] as const] : []
+      return entry ? [[id, { row: entrySummary(id, entry), inputs: catalogRowInputs(entry) }] as const] : []
     }))
     const diffState: CatalogDiffState = {
       keyById: new Map(),
-      revisionById: new Map(),
+      inputsById: new Map(),
       liveIds: new Set(),
       metadataById: new Map(),
       children: new Set(),
@@ -153,6 +156,10 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
     }
     const pendingStats = new Set<string>()
     const pendingMetadata = new Set<string>()
+    // Listed sessions whose store entry moved since the last flush. Undefined
+    // after a store membership or order change, when the flush sweeps every
+    // live and formerly live row.
+    let pendingLive: Set<string> | undefined = new Set()
     const initialized = (async () => {
       const initialMetadataById = await metadataForIds(deps, liveIds)
       if (disposed) return
@@ -168,7 +175,7 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
         // A notification during this read belongs to the first patch, even if
         // the baseline read already includes its committed value.
         diffState.keyById.set(id, pendingMetadata.has(id) || pendingStats.has(id) ? null : JSON.stringify(row))
-        diffState.revisionById.set(id, initial.revision)
+        diffState.inputsById.set(id, initial.inputs)
         diffState.liveIds.add(id)
       }
     })().catch((error: unknown) => { log.warn("session catalog baseline failed", { error: errorMessage(error) }) })
@@ -194,15 +201,17 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
       if (disposed) return
       flushing = true
       await initialized
+      const live = pendingLive
       const metadata = new Set(pendingMetadata)
       const removals = new Set(pendingRemovals)
       const stats = new Set(pendingStats)
+      pendingLive = new Set()
       pendingMetadata.clear()
       pendingRemovals.clear()
       pendingStats.clear()
       let changes: readonly SessionChange[]
       try {
-        changes = await diffSessionCatalog(deps, diffState, metadata, removals, stats)
+        changes = await diffSessionCatalog(deps, diffState, live, metadata, removals, stats)
       } catch (err) {
         // A scoped catalog read failure must never kill the patch stream: it
         // once died silently here and every later launch stayed invisible to
@@ -211,6 +220,8 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
           diffSuspended = true
           log.warn("session catalog diff failed; patches suspended until a later signal succeeds", { error: errorMessage(err), errorDetail: errorDetail(err) })
         }
+        if (live) for (const id of live) pendingLive?.add(id)
+        else pendingLive = undefined
         for (const id of removals) pendingRemovals.add(id)
         for (const id of metadata) pendingMetadata.add(id)
         for (const id of stats) pendingStats.add(id)
@@ -234,7 +245,18 @@ export function createFrontendProjection(deps: FrontendProjectionDeps): Frontend
       timer = setTimeout(flush, Math.max(0, delay))
     }
 
-    const unsubscribeStore = deps.sessionStore.onChange(notify, "frontend-projection")
+    const unsubscribeStore = deps.sessionStore.onChange((changed) => {
+      if (!changed) {
+        pendingLive = undefined
+        notify()
+        return
+      }
+      // The catalog lists chats only, so a child's change wakes nothing.
+      const listed = [...changed].filter((id) => deps.sessionStore.get(id)?.kind === "chat")
+      if (listed.length === 0) return
+      for (const id of listed) pendingLive?.add(id)
+      notify()
+    }, "frontend-projection")
     const unsubscribeManager = deps.manager.subscribe((change) => {
       if (change.kind === "deleted") {
         if (listedIds.has(change.sessionId) || diffState.keyById.has(change.sessionId)) pendingRemovals.add(change.sessionId)
@@ -299,26 +321,28 @@ async function readSessionMetadata(deps: FrontendProjectionDeps, sessionId: stri
   return session && session.kind !== "workflow" ? durableCatalogRowFromSession(sessionId, session, recordedExecutionCwd(session, deps.projectRoot)) : undefined
 }
 
+/** `pendingLive` names the listed sessions whose store entry moved; undefined
+ *  sweeps every live and formerly live row. */
 async function diffSessionCatalog(
   deps: FrontendProjectionDeps,
   state: CatalogDiffState,
+  pendingLive: ReadonlySet<string> | undefined,
   pendingMetadata: Set<string>,
   pendingRemovals: ReadonlySet<string>,
   pendingStats: Set<string>,
 ): Promise<SessionChange[]> {
   const changes: SessionChange[] = []
   const seen = new Set<string>()
-  const liveIds = listedLiveIds(deps.sessionStore)
-  const ids = new Set([...liveIds, ...state.liveIds, ...pendingMetadata, ...pendingRemovals, ...pendingStats, ...state.failedProjections])
+  const liveIds = pendingLive ?? [...listedLiveIds(deps.sessionStore), ...state.liveIds]
+  const ids = new Set([...liveIds, ...pendingMetadata, ...pendingRemovals, ...pendingStats, ...state.failedProjections])
   const metadataById = state.metadataById
   // Only rows whose metadata, summary, projection, or live membership changed
   // need a fresh scoped metadata read.
-  const liveIdSet = new Set(liveIds)
   const statIds = [...ids].filter((id) => !pendingRemovals.has(id)
     && (pendingMetadata.has(id)
       || pendingStats.has(id)
       || state.failedProjections.has(id)
-      || state.liveIds.has(id) !== liveIdSet.has(id)))
+      || state.liveIds.has(id) !== (deps.sessionStore.get(id)?.kind === "chat")))
   if (statIds.length > 0) {
     const catalog = await metadataForIds(deps, statIds)
     for (const id of statIds) metadataById.delete(id)
@@ -374,13 +398,13 @@ function changedCatalogRow(
     state.children.add(id)
     return null
   }
-  const revision = live ? deps.sessionStore.revision(id) : 0
+  const inputs = live ? catalogRowInputs(live) : undefined
   const isLive = live !== undefined
   const known = state.keyById.has(id)
   const unchanged = known
     && !statsDirty
     && !metadataDirty
-    && state.revisionById.get(id) === revision
+    && sameInputs(state.inputsById.get(id), inputs)
     && state.liveIds.has(id) === isLive
   if (unchanged) return null
 
@@ -391,7 +415,8 @@ function changedCatalogRow(
     : null
   if (!row) return null
   const key = JSON.stringify(row)
-  state.revisionById.set(id, revision)
+  if (inputs) state.inputsById.set(id, inputs)
+  else state.inputsById.delete(id)
   if (isLive) state.liveIds.add(id)
   else state.liveIds.delete(id)
   if (state.keyById.get(id) === key) return null
@@ -420,7 +445,7 @@ function appendRemovedCatalogRows(
   }
   for (const id of removed) {
     state.keyById.delete(id)
-    state.revisionById.delete(id)
+    state.inputsById.delete(id)
     state.liveIds.delete(id)
     state.metadataById.delete(id)
     state.children.delete(id)
@@ -460,6 +485,16 @@ export function projectSessionView(view: SessionView, executionCwd: string, evid
 
 function projectEntrySummary(id: string, entry: SessionEntry, metadata: DurableSessionCatalogRow): SessionRow {
   return mergeListMetadata(entrySummary(id, entry, metadata), metadata)
+}
+
+/** The entry values `entrySummary` reads. Notices are replaced, never
+ *  mutated, so identity tells a change. */
+function catalogRowInputs(entry: SessionEntry): readonly unknown[] {
+  return [entry.description, entry.shortDescription, entry.notices, entryActivity(entry), entry.startedAt]
+}
+
+function sameInputs(a: readonly unknown[] | undefined, b: readonly unknown[] | undefined): boolean {
+  return a === b || (a !== undefined && b !== undefined && a.length === b.length && a.every((value, index) => value === b[index]))
 }
 
 function entrySummary(id: string, entry: SessionEntry, metadata?: DurableSessionCatalogRow): CatalogRowWithoutExecutionCwd {

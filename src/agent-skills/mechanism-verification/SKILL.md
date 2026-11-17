@@ -1,5 +1,6 @@
 ---
 description: Use when verifying precise behavioral runtime claims by tracing actual code paths.
+disable-model-invocation: true
 ---
 
 # Mechanism Verification

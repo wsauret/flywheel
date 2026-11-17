@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { SubscriptionUsageAlert } from "../../../../../src/infra/llm/usage-authority.js";
+import type { SubscriptionUsageAlert } from "../../../../../src/infra/llm/subscription-usage-store.js";
 import { createSubscriptionUsageNotificationMaterializer } from "../../../../../src/orchestration/modules/subscription-usage/notification-materializer.js";
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../../src/infra/notification-episode.js";
 

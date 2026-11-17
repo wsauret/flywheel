@@ -4,7 +4,7 @@ import type { RuntimeQuery, RuntimeQueryResult } from "../../../src/protocol/app
 import { runtimeQuery } from "../../helpers/runtime-dispatch.js"
 import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/module-domain.js"
 import { moduleHostCommand, PROTOCOL_BACKGROUND_DOMAINS, protocolBackgroundSchema } from "../../../src/protocol/modules.js"
-import type { RuntimeExperimentViewSnapshotResult } from "../../../src/protocol/modules/experiments.js"
+import type { FrontendExperimentView } from "../../../src/protocol/modules/experiments.js"
 import {
   defineProtocolDomain,
   defineProtocolModule,
@@ -58,7 +58,7 @@ test("host command integrations resolve declared keys and reject ambiguous catal
 })
 
 /** A module no table names: one workspace domain and one session domain
- *  with a background codec and an omitted editor exposure. */
+ *  with a background codec. */
 interface Tally { readonly total: number }
 interface TallySnapshot { readonly snapshotPosition: number; readonly tally: Tally }
 type TallyPatch = { readonly kind: "tally.changed"; readonly tally: Tally }
@@ -78,8 +78,8 @@ const LedgerPatchSchema: Schema.Codec<LedgerPatch> = Schema.Union([
 ])
 
 /** A read that is not a snapshot, and one user mutation, beside the domains. */
-const tallyHistory = defineProtocolQuery({ query: "tallyHistory", input: { limit: Schema.Number }, result: Schema.Struct({ totals: Schema.Array(Schema.Number) }), deadline: "output", editor: "omitted" })
-const tallyReset = defineProtocolMutation({ type: "tally.reset", fields: { reason: Schema.String }, result: Schema.Struct({ ok: Schema.Literal(true), total: Schema.Number }), policy: "lossless" })
+const tallyHistory = defineProtocolQuery({ query: "tallyHistory", input: { limit: Schema.Number }, result: Schema.Struct({ totals: Schema.Array(Schema.Number) }), deadline: "output" })
+const tallyReset = defineProtocolMutation({ type: "tally.reset", fields: { reason: Schema.String }, result: Schema.Struct({ ok: Schema.Literal(true), total: Schema.Number }) })
 
 const syntheticProtocol = defineProtocolModule({
   id: "development",
@@ -103,7 +103,6 @@ const syntheticProtocol = defineProtocolModule({
       snapshot: { query: "ledgerSnapshot", input: { limit: Schema.Number }, result: LedgerSnapshotSchema, deadline: "output", background: LedgerBackgroundSchema },
       patch: LedgerPatchSchema,
       view: { snapshot: (result) => result.ledger, patch: (payload) => payload.kind === "ledger.updated" ? payload.ledger : null },
-      editor: "omitted",
     }),
   ],
 })
@@ -167,7 +166,6 @@ describe("protocol module registry composition", () => {
     expect(Schema.decodeUnknownSync(results.ledgerSnapshot)(ledger)).toEqual(ledger)
     expect(Schema.decodeUnknownSync(results.tallyHistory)({ totals: [1, 2] })).toEqual({ totals: [1, 2] })
     expect(() => Schema.decodeUnknownSync(results.tallySnapshot)(ledger)).toThrow()
-    expect(protocolMutationTable(mutations, (mutation) => mutation.policy)).toEqual({ "tally.reset": "lossless" })
 
     const PatchSchema = Schema.Union(domains.map((domain) => domain.patch))
     expect(Schema.decodeUnknownSync(PatchSchema)({ kind: "tally.changed", tally: { total: 1 } })).toEqual({ kind: "tally.changed", tally: { total: 1 } })
@@ -183,7 +181,6 @@ describe("protocol module registry composition", () => {
     expect(protocolDomainTable(domains, (domain) => domain.delivery)).toEqual({ tally: "latest-collapsible", ledger: "durable-resnapshot" })
     expect(protocolQueryTable(reads, (read) => read.deadline)).toEqual({ tallySnapshot: "control", ledgerSnapshot: "output", tallyHistory: "output" })
     expect(protocolBackgroundDomains(domains).map((domain) => domain.domain)).toEqual(["ledger"])
-    expect(protocolQueryTable(reads, (read) => read.editor === "omitted" ? "omitted" : "exposed")).toEqual({ tallySnapshot: "exposed", ledgerSnapshot: "omitted", tallyHistory: "omitted" })
     expect(protocolMutationTable(mutations, (mutation) => mutation.editor === "omitted" ? "omitted" : "exposed")).toEqual({ "tally.reset": "exposed" })
   })
 
@@ -221,7 +218,6 @@ describe("protocol module registry composition", () => {
       protocol: { contract: syntheticProtocol, create: runtime, background } as never,
       contributions: [],
       observers: [],
-      transformers: [],
       gates: [],
     } as const satisfies FirstPartyModule
     const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
@@ -248,7 +244,7 @@ describe("protocol module registry composition", () => {
 
   test("the shipped registry reaches every table", () => {
     type ModuleIntake = Assert<Equal<Pick<RuntimeDomainIntakeBindings, "experiment_view" | "papercuts">, { readonly experiment_view: object; readonly papercuts: object }>>
-    type ExperimentResult = Assert<Equal<RuntimeQueryResult<{ readonly type: "experimentViewSnapshot"; readonly sessionId: string }>, RuntimeExperimentViewSnapshotResult>>
+    type ExperimentResult = Assert<Equal<RuntimeQueryResult<{ readonly type: "experimentViewSnapshot"; readonly sessionId: string }>, { readonly snapshotPosition: number; readonly experimentView: FrontendExperimentView | null }>>
     const shipped: [ModuleIntake, ExperimentResult] = [true, true]
     expect(shipped).toEqual([true, true])
 

@@ -15,6 +15,7 @@ import { sink } from "./_output-projection-fixtures.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const TAIL = { content: "listening\n" }
 const APPEND: StreamingToolTextOp = { toolUseId: "toolu_kept", kind: "set", entry: TAIL }
@@ -249,7 +250,7 @@ describe("the output of commands a keeper holds for a session no host holds", ()
     const { projection, published, shipped, notify } = projected()
     const store = fakeSessionStore(new Map([["paused", chatEntry({ outputBlocks: () => [], streamingToolText: { toolu_kept: TAIL }, visibleMessageCountSuffix: 0 })]]))
     let pending = { changes: [], fullResync: false, changedTools: new Set(["toolu_kept"]) }
-    const output = createOutputProjection({
+    const output = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: { ...store, allIds: () => ["paused"], revision: () => 1 + pending.changedTools.size, drainOutputChanges: () => { const drained = pending; pending = { ...drained, changedTools: new Set() }; return drained } },
       keptOutput: { liveOutput: () => ({}) },
       shipped,

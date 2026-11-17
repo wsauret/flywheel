@@ -3,6 +3,7 @@ import {
   initialTransition,
   transition,
   types,
+  type StateValue,
 } from "xstate";
 import { parseCommittedWorkflowControl, type CommittedWorkflowControl } from "./committed-control.js";
 import {
@@ -96,29 +97,6 @@ function commitCommand(pending: PendingWorkflowCommit): WorkflowMutation {
   };
 }
 
-function followUpCommand(control: CommittedWorkflowControl): WorkflowMutation {
-  const followUp = control.followUp;
-  if (!followUp?.pendingInput) throw new Error("Workflow invariant rejected follow-up command without a pending request");
-  return {
-    kind: "run_follow_up",
-    input: {
-      workflowDefinitionId: control.definitionIdentity.workflowDefinitionId,
-      input: followUp.pendingInput,
-      identity: followUp.identity,
-      conversationId: followUp.conversationId,
-      requestSequence: followUp.requestSequence,
-    },
-  };
-}
-
-/** Rebuild the command implied by already committed control without proposing another fact. */
-export function continueCommittedWorkflow(control: CommittedWorkflowControl): WorkflowTransitionResult {
-  const state = replayDecodedWorkflow(control);
-  return {
-    state,
-    command: control.status === "follow_up" ? followUpCommand(control) : { kind: "none" },
-  };
-}
 /** The command that admits the next attempt in graph order beside the
  *  attempts that run now, or none when every ready attempt waits on another
  *  or the author's `max_parallel` admits no more. */
@@ -141,14 +119,12 @@ function postCommitCommand(pending: PendingWorkflowCommit): WorkflowMutation {
     return { kind: "run_attempts", attempts: [executionInput(attempt, pending.proposedCommitted, terminal.version)] };
   }
   if (event.type === "RECOVER") {
-    if (pending.proposedCommitted.status === "follow_up") return followUpCommand(pending.proposedCommitted);
-    if (pending.nextLifecycle === "paused") return { kind: "none" };
+    // A recovered follow-up holds pending input, which nothing runs now.
+    if (pending.nextLifecycle === "paused" || pending.nextLifecycle === "follow_up") return { kind: "none" };
     return admission(pending.proposedCommitted, terminal.version);
   }
   if (pending.nextLifecycle === "ready" || pending.nextLifecycle === "executing") return admission(pending.proposedCommitted, terminal.version);
-  return event.type === "FOLLOW_UP_REQUESTED" || (event.type === "RESUME" && pending.proposedCommitted.status === "follow_up")
-    ? followUpCommand(pending.proposedCommitted)
-    : { kind: "none" };
+  return { kind: "none" };
 }
 
 /** The command that admits the next attempt once the host has forked the
@@ -266,6 +242,8 @@ const workflowMachine = createMachine({
         FOLLOW_UP_TRANSFERRED: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
       },
     },
+    // Replay only, with the follow-up arm of `completed`: a recorded
+    // follow-up run (refer to `replayFollowUpRun`).
     follow_up: {
       on: {
         FOLLOW_UP_SUCCEEDED: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
@@ -299,11 +277,11 @@ function commandFromActions(actions: readonly { readonly args: readonly unknown[
   return parseWorkflowCommand(actions[0]?.args[0]);
 }
 
-function stateFromSnapshot(snapshot: { readonly value: unknown; readonly context: WorkflowMachineContext }): WorkflowMachineState {
+function stateFromSnapshot(snapshot: { readonly value: StateValue; readonly context: WorkflowMachineContext }): WorkflowMachineState {
   return { lifecycle: workflowLifecycle(snapshot.value), context: snapshot.context };
 }
 
-function workflowLifecycle(value: unknown): VmLifecycle {
+function workflowLifecycle(value: StateValue): VmLifecycle {
   switch (value) {
     case "bootstrapping": return "bootstrapping";
     case "ready": return "ready";

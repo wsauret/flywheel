@@ -6,7 +6,6 @@ import { createEffect, createMemo, createSignal, Show, untrack, type Accessor } 
 import { Key } from "@solid-primitives/keyed"
 import { errorMessage } from "../../../infra/error-message.js"
 import type { RuntimeClient } from "../../../protocol/app-service-types.js"
-import type { DiffColorMode } from "../../../orchestration/config/schema.js"
 import { dispatchInterrupt, offeredSessionControls, resumeMutation, sessionControls, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowAgentPlace, workflowOutline } from "../../../protocol/client/workflow-outline.js"
 import { workflowAgentBand, workflowAgentHeaderDrops, workflowAgentModel, workflowAgentMove, workflowAgentOpenTarget, workflowBriefLine, workflowNextAgentLabel, type WorkflowAgentHeaderDrop, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"
@@ -68,8 +67,6 @@ export interface WorkflowAgentViewerProps {
   readonly onShown?: (target: WorkflowAgentTarget) => void
   readonly onHistoryShown?: (sessionId: string | undefined) => void
   readonly showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success" }) => void
-  readonly showThinking: boolean
-  readonly diffColors: () => DiffColorMode
 }
 
 /** One agent's view of a workflow, or the follow-up conversation's, in two

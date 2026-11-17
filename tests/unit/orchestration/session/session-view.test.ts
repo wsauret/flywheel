@@ -6,9 +6,8 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
-import { noopEmitter } from "./_budget-store-fixtures"
+import { contextEvent, recordRuntimeEvent } from "./_budget-store-fixtures"
 import { createSessionViewLoader, loadSessionView, toSessionView } from "../../../../src/orchestration/session-store/view"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
 import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types"
@@ -55,9 +54,8 @@ async function commitUserTurn(conversationId: string, sessionId: string): Promis
 
 async function recordBudget(sessionId: string, opts: { cost?: number; input?: number; output?: number; contextPrompt?: number; contextWindow?: number }): Promise<void> {
   const writer = createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(reader) })
-  const budgetStore = createSessionBudgetStore({ sessionId, emitter: noopEmitter, reader: asAsyncEventReadSurface(reader), recorder: writer.record })
   if (opts.cost !== undefined || opts.input !== undefined || opts.output !== undefined) {
-    await budgetStore.recordRuntimeEvent({
+    await recordRuntimeEvent(writer.record, {
       type: "model.turn.completed",
       data: {
         total_cost_usd: opts.cost ?? 0,
@@ -66,9 +64,8 @@ async function recordBudget(sessionId: string, opts: { cost?: number; input?: nu
     })
   }
   if (opts.contextPrompt !== undefined || opts.contextWindow !== undefined) {
-    await budgetStore.recordContextUtilization(opts.contextPrompt ?? 0, opts.contextWindow ?? 0)
+    await recordRuntimeEvent(writer.record, contextEvent(opts.contextPrompt ?? 0, opts.contextWindow ?? 0))
   }
-  await budgetStore.dispose()
   writer.dispose()
 }
 

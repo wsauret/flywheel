@@ -13,7 +13,8 @@ import { canObserveSqliteLocks, sqliteLocksSeenByOtherProcesses } from "../../he
 import { chmodSync, chownSync, closeSync, constants, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { constants as osConstants, tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedDirectory, ContainedPathError, withContainedDirectory } from "../../../src/infra/descriptor-directory.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory, withContainedDirectory } from "../../../src/infra/descriptor-directory.js";
 import { openAt } from "../../../src/infra/open-at.js";
 
 let base: string;
@@ -30,7 +31,7 @@ afterEach(() => {
 });
 
 function withBase<T>(use: (directory: ContainedDirectory) => T): T {
-  const directory = ContainedDirectory.open(base, []);
+  const directory = openContainedDirectory(base, []);
   try {
     return use(directory);
   } finally {
@@ -102,7 +103,7 @@ describe.skipIf(!DESCRIPTOR_RELATIVE)("descriptor failure diagnostics", () => {
   it("identifies the directory-walk stage without disclosing the path", () => {
     symlinkSync(outside, join(base, "linked"));
 
-    expect(() => ContainedDirectory.open(base, ["linked"])).toThrow("stage=open-child-initial");
+    expect(() => openContainedDirectory(base, ["linked"])).toThrow("stage=open-child-initial");
   });
 });
 
@@ -112,7 +113,7 @@ describe("the base a walk starts at", () => {
     const link = join(base, "linked-root");
     symlinkSync(outside, link);
 
-    const directory = ContainedDirectory.open(link, ["store"]);
+    const directory = openContainedDirectory(link, ["store"]);
     try {
       directory.writeFile("note.md", "installed");
     } finally {
@@ -127,8 +128,8 @@ describe("the base a walk starts at", () => {
     const link = join(base, "linked-root");
     symlinkSync(outside, link);
 
-    expect(() => ContainedDirectory.open(link, ["store"], { noFollowBase: true })).toThrow();
-    expect(() => ContainedDirectory.openExisting(link, ["store"], { noFollowBase: true })).toThrow(ContainedPathError);
+    expect(() => openContainedDirectory(link, ["store"], { noFollowBase: true })).toThrow();
+    expect(() => openExistingContainedDirectory(link, ["store"], { noFollowBase: true })).toThrow(ContainedPathError);
     expect(readdirSync(join(outside, "store"))).toEqual([]);
   });
 });
@@ -275,7 +276,7 @@ describe("filling one entry from a byte stream", () => {
   // The held descriptor stays open until the write settles: the writer resolves
   // its own cleanup against it.
   async function withHeldBase<T>(use: (directory: ContainedDirectory) => Promise<T>): Promise<T> {
-    const directory = ContainedDirectory.open(base, []);
+    const directory = openContainedDirectory(base, []);
     try {
       return await use(directory);
     } finally {
@@ -348,7 +349,7 @@ describe("contained directory public methods", () => {
     mkdirSync(join(base, "existing"));
     symlinkSync(outside, join(base, "linked"));
 
-    const missing = ContainedDirectory.openExisting(base, ["absent"]);
+    const missing = openExistingContainedDirectory(base, ["absent"]);
     expect(missing).toBeUndefined();
     expect(readdirSync(base).sort()).toEqual(["existing", "linked"]);
 
@@ -361,7 +362,7 @@ describe("contained directory public methods", () => {
     if (POSIX_FILE_MODES) {
       const privatePath = join(base, "created");
       const before = lstatSync(privatePath, { bigint: true });
-      ContainedDirectory.openExisting(base, ["created"], { privateDirectories: true })?.close();
+      openExistingContainedDirectory(base, ["created"], { privateDirectories: true })?.close();
       withBase((directory) => directory.openChild("created", { privateDirectories: true })).close();
       expect(lstatSync(privatePath, { bigint: true }).ctimeNs).toBe(before.ctimeNs);
       // A new folder can take its parent's group, such as wheel under /tmp. chmod silently drops setgid for a
@@ -370,7 +371,7 @@ describe("contained directory public methods", () => {
       for (const mode of [0o777, 0o2700]) {
         chmodSync(privatePath, mode);
         expect(lstatSync(privatePath).mode & 0o7777).toBe(mode);
-        ContainedDirectory.openExisting(base, ["created"], { privateDirectories: true })?.close();
+        openExistingContainedDirectory(base, ["created"], { privateDirectories: true })?.close();
         expect(lstatSync(privatePath).mode & 0o7777).toBe(0o700);
       }
     }
@@ -430,8 +431,8 @@ describe("contained directory public methods", () => {
   it("publishes through a rename and moves entries between held directories", () => {
     mkdirSync(join(base, "source"));
     mkdirSync(join(base, "target"));
-    const source = ContainedDirectory.open(base, ["source"]);
-    const target = ContainedDirectory.open(base, ["target"]);
+    const source = openContainedDirectory(base, ["source"]);
+    const target = openContainedDirectory(base, ["target"]);
     try {
       expect(source.publishFileThrough("pending", "published", "new")).toBeUndefined();
       source.renameInto("published", target, "moved");
@@ -519,7 +520,7 @@ describe("contained directory public methods", () => {
   it("requires the held directory to retain its path identity", () => {
     const path = join(base, "held");
     mkdirSync(path);
-    const held = ContainedDirectory.open(base, ["held"]);
+    const held = openContainedDirectory(base, ["held"]);
     try {
       held.requireSamePathAs(path);
       renameSync(path, join(base, "moved"));

@@ -11,7 +11,7 @@ import type { ProviderAvailability, QuotaStanding } from "../../../../../src/orc
 import { chain, failoverFailure, fakeAvailability, fakeClient, preparedRequest, singletonCandidate, subscriptionCandidate, textStream } from "./_provider-chain-harness.js";
 import { harness } from "./_provider-availability-harness.js";
 import { testDirectories } from "../../../../helpers/directories.js";
-import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
@@ -142,16 +142,16 @@ test("runtime admission uses captured paid permission with the captured training
   const runtimeConfig = Object.freeze({ ...testRuntimeConfigCapture(), allowTrainingRoutes: true });
   const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {}, profileId: "default", getAuth: () => auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(), captureRuntimeConfig: () => runtimeConfig,
     authDirectory: () => directory, connection, userDataRoot: directories.userDataRoot, modelsClient: fakeModelsClient,
-    getProviderModelEligibility: () => ({ modelUnavailableReason: () => undefined, candidateModelUnavailableReason: (candidate) => candidate.spendMode === "automatic" ? undefined : "automatic only", candidateOffering: (candidate, model, allowTrainingRoutes) => {
+    getProviderModelEligibility: () => testEligibility({ candidateModelUnavailableReason: (candidate) => candidate.spendMode === "automatic" ? undefined : "automatic only", candidateOfferings: (candidate, model, allowTrainingRoutes) => {
       trainingPolicyReads.push(allowTrainingRoutes);
-      return allowTrainingRoutes ? {
+      return allowTrainingRoutes ? [{
         candidate,
         wireModelId: `${model}:training`,
         dataUse: "contributor" as const,
         transport: "openai-responses" as const,
         catalogMetadata: { supportedEndpoints: ["/responses"] },
         resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-      } : undefined;
+      }] : [];
     } }),
     captureSubscriptionAdmission: async () => ({ consent: { profileId: "default", usageGeneration: 1, authorityIncarnation: "test", authorityRevision: 1,
       rows: [{ envelope, status: "accepted" }],

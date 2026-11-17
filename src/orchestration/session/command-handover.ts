@@ -30,7 +30,7 @@ export const COMMAND_HANDOVER_IN_FLIGHT_KIND = "session.command_handover"
  *    so every status of the session, the one read from history included,
  *    shows the command with its Stop. A host of the conversation that takes
  *    the command over, or the keeper at the command's end, retires the row. */
-export interface CommandHandoverRow {
+export type CommandHandoverRow = {
   readonly version: 1
   readonly handoffId: string
   readonly sessionId: string

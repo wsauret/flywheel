@@ -6,15 +6,12 @@ import type { AskUserController } from "../../../../../src/orchestration/runner/
 import type { ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/launch-origin.js";
 import { answeredAskUserResult, createAskUserTool } from "../../../../../src/orchestration/agent-runtime/tools/ask-user.js";
 import { normalizeAskUserInput } from "../../../../../src/infra/tools/displays/ask-user.js";
-import type { RuntimeTool, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { askUserModule } from "../../../../../src/orchestration/modules/ask-user.js";
-import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentInputAnswer } from "../../../../../src/protocol/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
-import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 /** A session writer that stores each fact it records, appending it to `recorded`. */
 function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
@@ -144,7 +141,7 @@ describe("ask_user tool", () => {
     const result = await executePreparedTool(prepareToolCall({ id: "ask", name: "ask_user", input: {
       question: "Which mode?", context: "Choose a mode.",
       options: ["Fast", "Safe"],
-    } }, new Map([[tool.name, tool]]), { ok: true }), makeContext());
+    } }, new Map([[tool.name, tool]]), admitEveryTool), makeContext());
 
     expect(result).toEqual({
       content: "Note: string options were read as option labels.\nUser answered:\n- Which mode?: Safe",
@@ -167,7 +164,7 @@ describe("ask_user tool", () => {
         { question: "Option?", options: ["A", "B"] },
         { question: "Filename?", options: ["one.txt", "two.txt"] },
       ],
-    } }, new Map([[tool.name, tool]]), { ok: true }), makeContext());
+    } }, new Map([[tool.name, tool]]), admitEveryTool), makeContext());
 
     expect(result).toEqual({
       content: "Note: string options were read as option labels.\nUser answered:\n- Option?: A\n- Filename?: (cancelled by the user)",
@@ -471,29 +468,5 @@ describe("ask_user tool", () => {
       expect(result.content).toContain("The debug workflow is retired. Flywheel no longer launches it.");
       expect(result.content).not.toContain("Confirmation id");
     });
-  });
-});
-
-// The kernel identity section says "ask the person" and names no module tool;
-// the module that owns the question tool names it, only where it is planned.
-describe("ask-user prompt fragment", () => {
-  const fragment = askUserModule.contributions.find((contribution) => contribution.domain === "promptFragments");
-  const askUser = createAskUserTool({ ask: async () => ({ kind: "cancelled" }), answerQuestion: () => {}, cancelQuestion: () => {}, suspendAll: () => false }, {});
-  const render = (tools: ReadonlyMap<string, RuntimeTool>) => {
-    if (fragment?.domain !== "promptFragments") throw new Error("The ask-user module contributes no prompt fragment");
-    return fragment.value.render({ kernel: testKernelToolDeps({ userDataRoot: "/scratch" }), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: null, capabilities: promptCapabilities([...tools.values()]) });
-  };
-  const planned = (...names: string[]) => new Map(names.map((name) => [name, { ...askUser, name }]));
-
-  it("tells a root chat that plans ask_user and can start a child to ask the person with it for a waiting child", () => {
-    for (const starter of ["subagent", "workflow"]) {
-      expect(render(planned("ask_user", starter))).toContain("ask the person with ask_user, then reply to the child with message_session");
-    }
-  });
-
-  it("says nothing where ask_user is not planned or no child can start", () => {
-    expect(render(new Map())).toBeUndefined();
-    expect(render(planned("subagent", "workflow"))).toBeUndefined();
-    expect(render(planned("ask_user"))).toBeUndefined();
   });
 });

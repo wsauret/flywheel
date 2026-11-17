@@ -53,7 +53,7 @@ export interface ChildSessionBodyProps {
   readonly layoutSlot: TranscriptLayoutSlot
   readonly createProcessControls: (sessionId: string) => RowProcessControls
   readonly sessionIntro: Omit<SessionIntroProps, "availableWidth" | "sessionKind">
-  readonly showThinking: boolean
+  readonly showThinking: Accessor<boolean>
   readonly diffColors: () => DiffColorMode
   readonly active: Accessor<boolean>
   readonly focused: Accessor<boolean>
@@ -148,7 +148,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
             sessionIntro={{ ...props.sessionIntro, sessionKind: kind, availableWidth: () => props.width }}
             running={surface.agentState() === "active"}
             command={outputCommand()}
-            showThinking={props.showThinking}
+            showThinking={props.showThinking()}
             streamingToolText={surface.streamingToolText()}
             diffColors={props.diffColors}
             onNearEdge={surface.pageOutput}

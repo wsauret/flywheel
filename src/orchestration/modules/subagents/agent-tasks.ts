@@ -7,7 +7,7 @@ export const subagentTasks: ModuleAgentTasks = {
   toolId: "subagent",
   handoffSchema: SUBAGENT_HANDOFF_SCHEMA,
   // The one reader is the chat routing benchmark, which runs with every module on.
-  roster: (agents) => renderSubagentRoster(agents, () => true),
+  roster: (agents) => renderSubagentRoster(agents, () => true, false),
   tool: (execute) => subagentToolWith(execute, () => true, false),
   task: buildSubagentTask,
   validate: (input, agents) => {

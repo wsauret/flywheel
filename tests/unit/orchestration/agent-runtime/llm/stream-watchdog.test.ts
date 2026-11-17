@@ -1,9 +1,41 @@
 import { describe, expect, test } from "bun:test";
-import { createStreamDeadline, isHeartbeatStreamEvent, STREAM_IDLE_TIMEOUT_FAST_MS, STREAM_REASONING_IDLE_TIMEOUT_MS } from "../../../../../src/orchestration/agent-runtime/llm/stream-watchdog.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
+import {
+  createStreamLiveness,
+  isHeartbeatStreamEvent,
+  STREAM_IDLE_TIMEOUT_FAST_MS,
+  STREAM_REASONING_IDLE_TIMEOUT_MS,
+  STREAM_TTFT_TIMEOUT_MS,
+  throwIfLivenessFailure,
+  type StreamLivenessOptions,
+} from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
 import type { StreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
+import type { StreamTelemetryObservation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ThinkingStallError } from "../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js";
 import { controlledClock } from "./_stream-deadline-clock.js";
+
+/** One liveness owner on a controlled clock, with the watchdog observations it reports. */
+function ownedLiveness(options: Partial<StreamLivenessOptions> = {}) {
+  const time = controlledClock();
+  const observed: StreamTelemetryObservation[] = [];
+  let expiredCount = 0;
+  const liveness = createStreamLiveness({
+    label: "test",
+    provider: "Test",
+    telemetry: { observe: (observation) => { observed.push(observation); } },
+    clock: time.clock,
+    ...options,
+  }, { onExpired: () => { expiredCount += 1; }, onReasoning: () => {} });
+  const watchdog = (kind: string) => observed.filter((observation) => observation.source === "watchdog" && observation.kind === kind).map((observation) => observation.metadata);
+  return {
+    time,
+    liveness,
+    timeouts: () => watchdog("timeout"),
+    stalls: () => watchdog("stall").map((metadata) => (typeof metadata === "function" ? metadata() : metadata)?.lastChunkAgeMs),
+    thinkingStalls: () => watchdog("thinking_stall"),
+    expiredCount: () => expiredCount,
+  };
+}
 
 describe("isHeartbeatStreamEvent", () => {
   test("classifies OpenAI Responses keepalive frames as heartbeats", () => {
@@ -16,321 +48,243 @@ describe("isHeartbeatStreamEvent", () => {
   });
 });
 
-describe("createStreamDeadline", () => {
-  test("resets that only extend the deadline still time out from the last reset", async () => {
-    // Each stream chunk resets the deadline; a reset that moves it later leaves
-    // the watchdog asleep, and the timeout must still be measured from the last
-    // reset, never from the one the watchdog went to sleep on.
-    const time = controlledClock();
-    const timeouts: unknown[] = [];
-    const deadline = createStreamDeadline({ idleTimeoutMs: 100, clock: time.clock, onTimeout: (event) => timeouts.push(event) });
-    try {
-      deadline.reset();
-      await time.advance(60);
-      deadline.reset();
-      await time.advance(60);
-      deadline.reset();
-      await time.advance(99);
-      expect(timeouts).toEqual([]);
-      await time.advance(1);
-      expect(timeouts).toEqual([{ phase: "idle", idleTimeoutMs: 100 }]);
-    } finally { await deadline.close(); }
+describe("stream liveness deadline", () => {
+  test("a stream silent past its deadline still fails with the stall error, once", async () => {
+    const { time, liveness, timeouts, expiredCount } = ownedLiveness({ idleTimeoutMs: 100, timeoutMessage: () => "Test stream idle timeout" });
+    liveness.frame();
+    await time.advance(99);
+    expect(liveness.failure).toBeUndefined();
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 100 }]);
+    expect(expiredCount()).toBe(1);
+    const failure = liveness.failure?.error;
+    expect(failure).toBeInstanceOf(ProviderAttemptFailure);
+    expect(failure).toMatchObject({ message: "Test stream idle timeout" });
+    await time.advance(1_000);
+    expect(expiredCount()).toBe(1);
   });
 
-  test("a reset that moves the deadline earlier fires at the earlier time", async () => {
-    const time = controlledClock();
-    const timeouts: unknown[] = [];
-    const deadline = createStreamDeadline({ idleTimeoutMs: 100, clock: time.clock, onTimeout: (event) => timeouts.push(event) });
-    try {
-      deadline.reset(500, "pre-stream");
-      await time.advance(100);
-      deadline.reset(50);
-      await time.advance(49);
-      expect(timeouts).toEqual([]);
-      await time.advance(1);
-      expect(timeouts).toEqual([{ phase: "idle", idleTimeoutMs: 50 }]);
-    } finally { await deadline.close(); }
+  test("frames that only extend the deadline still time out from the last frame", async () => {
+    // Each frame moves the deadline later and leaves the pending timer alone;
+    // the timeout is still measured from the last frame.
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 100 });
+    liveness.frame();
+    await time.advance(60);
+    liveness.frame();
+    await time.advance(60);
+    liveness.frame();
+    await time.advance(99);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 100 }]);
   });
 
-  test("excludes consumer wait from the remaining idle deadline", async () => {
-    const time = controlledClock();
-    const timeouts: unknown[] = [];
-    const deadline = createStreamDeadline({ idleTimeoutMs: 100, clock: time.clock, onTimeout: (event) => timeouts.push(event) });
-    try {
-      deadline.reset();
-      await time.advance(30);
-      const resume = deadline.pause();
-      await time.advance(1_000);
-      expect(timeouts).toEqual([]);
-      resume();
-      await time.advance(69);
-      expect(timeouts).toEqual([]);
-      await time.advance(1);
-      expect(timeouts).toEqual([{ phase: "idle", idleTimeoutMs: 100 }]);
-    } finally { await deadline.close(); }
+  test("a frame that moves the deadline earlier fires at the earlier time", async () => {
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 50 });
+    liveness.preStream();
+    await time.advance(100);
+    liveness.frame();
+    await time.advance(49);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 50 }]);
+  });
+
+  test("a pause holds the deadline", async () => {
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 100 });
+    liveness.frame();
+    await time.advance(30);
+    const resume = liveness.pause();
+    await time.advance(1_000);
+    expect(timeouts()).toEqual([]);
+    resume();
+    await time.advance(69);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 100 }]);
+  });
+
+  test("frames during a pause do not count: they arm from the pause start, so the paused time gives no credit", async () => {
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 20 });
+    liveness.frame();
+    await time.advance(5);
+    const resume = liveness.pause();
+    await time.advance(100);
+    liveness.frame();
+    liveness.keepalive();
+    await time.advance(100);
+    resume();
+    await time.advance(19);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 20 }]);
   });
 
   test("retains TTFT time across nested pauses with idempotent releases", async () => {
-    const time = controlledClock();
-    const deadline = createStreamDeadline({ idleTimeoutMs: 20, clock: time.clock, onTimeout: () => {} });
-    try {
-      deadline.reset(100, "pre-stream");
-      await time.advance(40);
-      const outer = deadline.pause();
-      await time.advance(100);
-      const inner = deadline.pause();
-      outer();
-      outer();
-      await time.advance(100);
-      expect(deadline.timeout).toBeUndefined();
-      inner();
-      await time.advance(59);
-      expect(deadline.timeout).toBeUndefined();
-      await time.advance(1);
-      expect(deadline.timeout).toEqual({ phase: "pre-stream", idleTimeoutMs: 100 });
-    } finally { await deadline.close(); }
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 20 });
+    liveness.preStream();
+    await time.advance(40);
+    const outer = liveness.pause();
+    await time.advance(100);
+    const inner = liveness.pause();
+    outer();
+    outer();
+    await time.advance(100);
+    expect(liveness.failure).toBeUndefined();
+    inner();
+    await time.advance(STREAM_TTFT_TIMEOUT_MS - 41);
+    expect(liveness.failure).toBeUndefined();
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "pre-stream", idleTimeoutMs: STREAM_TTFT_TIMEOUT_MS }]);
   });
 
   test("preserves the progress cap while paused heartbeats cannot time out", async () => {
-    const time = controlledClock();
-    const deadline = createStreamDeadline({ idleTimeoutMs: 20, progressCapMs: 40, clock: time.clock, onTimeout: () => {} });
-    try {
-      deadline.reset();
-      await time.advance(15);
-      deadline.keepalive();
-      const resume = deadline.pause();
-      await time.advance(1_000);
-      expect(deadline.timeout).toBeUndefined();
-      resume();
-      await time.advance(15);
-      expect(deadline.timeout).toBeUndefined();
-      deadline.keepalive();
-      await time.advance(9);
-      expect(deadline.timeout).toBeUndefined();
-      await time.advance(1);
-      expect(deadline.timeout?.phase).toBe("idle");
-    } finally { await deadline.close(); }
+    // The progress cap (five minutes of real-event silence) is shorter than the
+    // frame clock that the keepalives keep re-arming.
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 200_000 });
+    liveness.frame();
+    await time.advance(150_000);
+    liveness.keepalive();
+    const resume = liveness.pause();
+    await time.advance(1_000_000);
+    expect(timeouts()).toEqual([]);
+    resume();
+    await time.advance(100_000);
+    expect(timeouts()).toEqual([]);
+    liveness.keepalive();
+    await time.advance(49_999);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 200_000 }]);
   });
 
   test("excludes local wait from stall thresholds and reported chunk age", async () => {
-    const time = controlledClock();
-    const stalls: number[] = [];
-    const deadline = createStreamDeadline({ idleTimeoutMs: 100, clock: time.clock, stallThresholds: [20, 40], onTimeout: () => {}, onStall: (event) => stalls.push(event.lastChunkAgeMs) });
-    try {
-      deadline.reset();
-      await time.advance(15);
-      const resume = deadline.pause();
-      await time.advance(1_000);
-      expect(stalls).toEqual([]);
-      resume();
-      await time.advance(5);
-      expect(stalls).toEqual([20]);
-      await time.advance(20);
-      expect(stalls).toEqual([20, 40]);
-    } finally { await deadline.close(); }
+    const { time, liveness, stalls } = ownedLiveness({ idleTimeoutMs: 100, stallThresholds: [20, 40] });
+    liveness.frame();
+    await time.advance(15);
+    const resume = liveness.pause();
+    await time.advance(1_000);
+    expect(stalls()).toEqual([]);
+    resume();
+    await time.advance(5);
+    expect(stalls()).toEqual([20]);
+    await time.advance(20);
+    expect(stalls()).toEqual([20, 40]);
   });
 
-  test("resets observed while paused arm from the resumed clock", async () => {
-    const time = controlledClock();
-    const deadline = createStreamDeadline({ idleTimeoutMs: 20, clock: time.clock, onTimeout: () => {} });
-    try {
-      deadline.reset();
-      await time.advance(5);
-      const resume = deadline.pause();
-      await time.advance(100);
-      deadline.reset(30, "pre-stream");
-      deadline.keepalive();
-      await time.advance(100);
-      resume();
-      await time.advance(29);
-      expect(deadline.timeout).toBeUndefined();
-      await time.advance(1);
-      expect(deadline.timeout).toEqual({ phase: "pre-stream", idleTimeoutMs: 30 });
-    } finally { await deadline.close(); }
+  test("reuses the pending timer across frames and fast pause and resume pairs", async () => {
+    const { time, liveness } = ownedLiveness({ idleTimeoutMs: 100 });
+    liveness.frame();
+    await time.advance(10);
+    const timers = time.sleepCalls;
+    expect(timers).toBeGreaterThan(0);
+    for (let index = 0; index < 100; index += 1) {
+      liveness.frame();
+      liveness.pause()();
+    }
+    await time.advance(1);
+    expect(time.sleepCalls).toBe(timers);
+    expect(time.pendingSleeps).toBe(1);
   });
 
-  test("reuses the active timer across fast pause and resume pairs", async () => {
-    const time = controlledClock();
-    const deadline = createStreamDeadline({ idleTimeoutMs: 100, clock: time.clock, onTimeout: () => {} });
-    try {
-      deadline.reset();
-      await time.advance(10);
-      const sleeps = time.sleepCalls;
-      expect(sleeps).toBeGreaterThan(0);
-      for (let index = 0; index < 100; index += 1) deadline.pause()();
-      await time.advance(1);
-      expect(time.sleepCalls).toBe(sleeps);
-      expect(time.pendingSleeps).toBe(1);
-    } finally { await deadline.close(); }
-  });
-
-  test("closes and joins a paused watcher without waiting for release", async () => {
-    const time = controlledClock();
-    const timeouts: unknown[] = [];
-    const deadline = createStreamDeadline({ idleTimeoutMs: 20, clock: time.clock, onTimeout: (event) => timeouts.push(event) });
-    deadline.reset();
-    const resume = deadline.pause();
+  test("closing a paused owner cancels its timer and ignores later releases", async () => {
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 20 });
+    liveness.frame();
+    const resume = liveness.pause();
     await time.advance(100);
-    const closed = deadline.close();
-    expect(deadline.close()).toBe(closed);
-    await closed;
+    liveness.close();
     expect(time.pendingSleeps).toBe(0);
     resume();
-    deadline.pause()();
+    liveness.pause()();
+    liveness.frame();
     await time.advance(100);
-    expect(timeouts).toEqual([]);
+    expect(timeouts()).toEqual([]);
   });
 
-  test("keepalives re-arm the frame clock so a thinking pause survives", async () => {
-    const time = controlledClock();
-    let timedOut = false;
-    const deadline = createStreamDeadline({
-      idleTimeoutMs: 20,
-      progressCapMs: 200,
-      clock: time.clock,
-      onTimeout: () => {
-        timedOut = true;
-      },
-    });
-    deadline.reset();
+  test("keepalives re-arm the frame clock so a quiet stream survives", async () => {
+    const { time, liveness } = ownedLiveness({ idleTimeoutMs: 20 });
+    liveness.frame();
     await time.advance(15);
-    deadline.keepalive();
+    liveness.keepalive();
     await time.advance(15);
-    expect(timedOut).toBe(false);
-    await deadline.close();
+    expect(liveness.failure).toBeUndefined();
   });
 
   test("frame silence after a keepalive still fires the idle deadline", async () => {
-    const time = controlledClock();
-    let timedOut = false;
-    const deadline = createStreamDeadline({
-      idleTimeoutMs: 20,
-      progressCapMs: 200,
-      clock: time.clock,
-      onTimeout: () => {
-        timedOut = true;
-      },
-    });
-    deadline.reset();
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 20 });
+    liveness.frame();
     await time.advance(5);
-    deadline.keepalive();
+    liveness.keepalive();
     await time.advance(20);
-    expect(timedOut).toBe(true);
-    await deadline.close();
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 20 }]);
   });
 
   test("keepalives alone cannot extend real-event silence past the progress cap", async () => {
-    const time = controlledClock();
-    let timedOut = false;
-    const deadline = createStreamDeadline({
-      idleTimeoutMs: 20,
-      progressCapMs: 40,
-      clock: time.clock,
-      onTimeout: () => {
-        timedOut = true;
-      },
-    });
-    deadline.reset();
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 100_000 });
+    liveness.frame();
     for (let i = 0; i < 6; i++) {
-      await time.advance(10);
-      deadline.keepalive();
+      await time.advance(50_000);
+      liveness.keepalive();
     }
-    expect(timedOut).toBe(true);
-    await deadline.close();
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: 100_000 }]);
   });
 
-  test("a TTFT-length reset is never shortened by a smaller progress cap", async () => {
-    const time = controlledClock();
-    let timedOut = false;
-    const deadline = createStreamDeadline({
-      idleTimeoutMs: 200,
-      ttftTimeoutMs: 600,
-      progressCapMs: 300,
-      clock: time.clock,
-      onTimeout: () => {
-        timedOut = true;
-      },
-    });
-    deadline.reset(600, "pre-stream");
-    await time.advance(250);
-    await time.advance(250);
-    expect(timedOut).toBe(false);
-    await time.advance(250);
-    expect(timedOut).toBe(true);
-    expect(deadline.timeout?.phase).toBe("pre-stream");
-    await deadline.close();
+  test("a TTFT-length deadline is never shortened by the progress cap", async () => {
+    const { time, liveness, timeouts } = ownedLiveness({ idleTimeoutMs: 200 });
+    liveness.preStream();
+    await time.advance(STREAM_TTFT_TIMEOUT_MS - 1);
+    expect(timeouts()).toEqual([]);
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "pre-stream", idleTimeoutMs: STREAM_TTFT_TIMEOUT_MS }]);
   });
 });
 
-describe("armStreamLiveness", () => {
-  test("uses one five-minute deadline only while a reasoning block is active", () => {
-    const resets: number[] = [];
-    const attempt = {
-      signal: new AbortController().signal,
-      startStreamDeadline: () => {},
-      resetStreamDeadline: (timeoutMs) => { resets.push(timeoutMs ?? -1); },
-      recordStreamKeepalive: () => {},
-      observeReasoning: () => {},
-      throwIfStreamTimedOut: () => {},
-    } satisfies StreamAttempt;
-    const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
-
+describe("stream liveness reasoning policy", () => {
+  test("uses one five-minute deadline only while a reasoning block is active", async () => {
+    expect(STREAM_REASONING_IDLE_TIMEOUT_MS).toBe(300_000);
+    const { time, liveness, timeouts, thinkingStalls } = ownedLiveness();
     liveness.begin("reasoning:0");
     liveness.append("working");
+    await time.advance(STREAM_REASONING_IDLE_TIMEOUT_MS - 1);
     liveness.frame();
+    await time.advance(STREAM_REASONING_IDLE_TIMEOUT_MS - 1);
+    expect(liveness.failure).toBeUndefined();
     liveness.complete("reasoning:0");
-
-    expect(STREAM_REASONING_IDLE_TIMEOUT_MS).toBe(300_000);
-    expect(resets).toEqual([
-      STREAM_REASONING_IDLE_TIMEOUT_MS,
-      STREAM_REASONING_IDLE_TIMEOUT_MS,
-      STREAM_REASONING_IDLE_TIMEOUT_MS,
-      STREAM_IDLE_TIMEOUT_FAST_MS,
-    ]);
+    await time.advance(STREAM_IDLE_TIMEOUT_FAST_MS - 1);
+    expect(liveness.failure).toBeUndefined();
+    await time.advance(1);
+    expect(timeouts()).toEqual([{ phase: "idle", idleTimeoutMs: STREAM_IDLE_TIMEOUT_FAST_MS }]);
+    expect(thinkingStalls()).toEqual([]);
   });
 
-  test("uses the configured reasoning timeout as the active stream deadline", () => {
+  test("uses the configured reasoning timeout as the active stream deadline", async () => {
     const previous = process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS;
-    const resets: number[] = [];
     process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS = "420000";
     try {
-      const attempt = {
-        signal: new AbortController().signal,
-        startStreamDeadline: () => {},
-        resetStreamDeadline: (timeoutMs) => { resets.push(timeoutMs ?? -1); },
-        recordStreamKeepalive: () => {},
-        observeReasoning: () => {},
-        throwIfStreamTimedOut: () => {},
-      } satisfies StreamAttempt;
-      armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined }).begin("reasoning:0");
-      expect(resets).toEqual([420_000]);
+      const { time, liveness, thinkingStalls } = ownedLiveness();
+      liveness.begin("reasoning:0");
+      await time.advance(419_999);
+      expect(liveness.failure).toBeUndefined();
+      await time.advance(1);
+      expect(thinkingStalls()).toEqual([{ blockKey: "reasoning:0", elapsedMs: 420_000, summaryChars: 0 }]);
     } finally {
       if (previous === undefined) delete process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS;
       else process.env.FLYWHEEL_STREAM_THINKING_STALL_TIMEOUT_MS = previous;
     }
   });
 
-  test("classifies deadline expiry during reasoning as a thinking stall", () => {
-    let deadlineOptions: Parameters<StreamAttempt["startStreamDeadline"]>[0] | undefined;
-    const attempt = {
-      signal: new AbortController().signal,
-      startStreamDeadline: (options) => { deadlineOptions = options; },
-      resetStreamDeadline: () => {},
-      recordStreamKeepalive: () => {},
-      observeReasoning: () => {},
-      throwIfStreamTimedOut: () => {},
-    } satisfies StreamAttempt;
-    const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
+  test("a thinking stall reports summaryChars equal to the streamed reasoning length", async () => {
+    const { time, liveness, timeouts, thinkingStalls } = ownedLiveness();
     liveness.begin("reasoning:0");
     liveness.append("working");
-
-    if (!deadlineOptions) throw new Error("stream deadline was not armed");
-    const event = { phase: "idle", idleTimeoutMs: STREAM_REASONING_IDLE_TIMEOUT_MS } as const;
-    deadlineOptions.onTimeout?.(event);
-
-    const timeout = deadlineOptions.timeoutError?.(event);
-    expect(timeout).toBeInstanceOf(ThinkingStallError);
-    expect(timeout).toMatchObject({ blockKey: "reasoning:0", summary: "working" });
+    liveness.append(" on it");
+    await time.advance(STREAM_REASONING_IDLE_TIMEOUT_MS);
+    expect(thinkingStalls()).toEqual([{ blockKey: "reasoning:0", elapsedMs: STREAM_REASONING_IDLE_TIMEOUT_MS, summaryChars: "working on it".length }]);
+    expect(timeouts()).toEqual([]);
+    const failure = liveness.failure?.error;
+    if (!(failure instanceof ProviderAttemptFailure)) throw new Error(`expected a provider attempt failure, got ${String(failure)}`);
+    expect(failure.cause).toBeInstanceOf(ThinkingStallError);
+    expect(failure.cause).toMatchObject({ blockKey: "reasoning:0" });
   });
 
   test("preserves caller cancellation when it races a deadline", () => {
@@ -338,11 +292,8 @@ describe("armStreamLiveness", () => {
     caller.abort();
     const attempt = {
       signal: new AbortController().signal,
-      startStreamDeadline: () => {},
-      resetStreamDeadline: () => {},
-      recordStreamKeepalive: () => {},
-      observeReasoning: () => {},
-      throwIfStreamTimedOut: () => { throw new ThinkingStallError({ elapsedMs: 300_000, summary: "working" }); },
+      armLiveness: () => { throw new Error("not armed in this test"); },
+      throwIfStreamTimedOut: () => { throw new ThinkingStallError({ elapsedMs: 300_000 }); },
     } satisfies StreamAttempt;
 
     expect(() => throwIfLivenessFailure(new Error("caller cancelled"), attempt, caller.signal)).toThrow("caller cancelled");

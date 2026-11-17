@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, typ
 import { basename, isAbsolute, join, relative, sep } from "node:path";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errorMessage } from "../../../infra/error-message.js";
-import { ContainedDirectory } from "../../../infra/descriptor-directory.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../../infra/descriptor-directory.js";
 import { Log } from "../../../infra/log.js";
 import { osAccount } from "../../../infra/os-account.js";
 import type { ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
@@ -151,7 +151,7 @@ function profileLoginLocations(authDir: string, accountHome?: string): readonly 
     return entries.filter((entry) => entry.isDirectory()).map(({ name }) => name).sort().map((name) => ({ configDir: join(root, name) }));
   }
   const names = entries.map(({ name }) => name).sort();
-  const directory = ContainedDirectory.openExisting(authDir, [LOGIN_ACCOUNTS_DIRECTORY], { noFollowBase: true });
+  const directory = openExistingContainedDirectory(authDir, [LOGIN_ACCOUNTS_DIRECTORY], { noFollowBase: true });
   if (directory === undefined) return [];
   try {
     const own = new Set(directory.directoryEntryNames());
@@ -168,7 +168,7 @@ function profileLoginLocations(authDir: string, accountHome?: string): readonly 
         const parts = relative(profiles, reference.configDir).split(sep);
         const [profile, logins] = parts;
         if (parts.length !== 3 || profile === undefined || !isAuthProfileName(profile) || logins !== LOGIN_ACCOUNTS_DIRECTORY) throw new Error("reference outside profile logins");
-        const target = ContainedDirectory.openExisting(home, [".flywheel", "auth", "profiles", ...parts], { noFollowBase: true });
+        const target = openExistingContainedDirectory(home, [".flywheel", "auth", "profiles", ...parts], { noFollowBase: true });
         if (target === undefined) throw new Error("missing reference target");
         try {
           // Keychain item names include this path. Preserve the account home's spelling after the no-follow walk.
@@ -205,7 +205,7 @@ export function loginDirectories(authDir: string, accountHome?: string): readonl
 export function writeClaudeLoginReferences(sourceProfile: string, destinationProfile: string): void {
   for (const configDir of loginDirectories(sourceProfile)) {
     if (cliLoginAccount(configDir) === undefined) continue;
-    const references = ContainedDirectory.open(destinationProfile, [LOGIN_ACCOUNTS_DIRECTORY], { privateDirectories: true, noFollowBase: true });
+    const references = openContainedDirectory(destinationProfile, [LOGIN_ACCOUNTS_DIRECTORY], { privateDirectories: true, noFollowBase: true });
     try {
       if (!references.createExclusive(`${crypto.randomUUID()}${REFERENCE_SUFFIX}`, JSON.stringify({ version: 1, configDir }))) throw new Error("Claude login reference already exists");
     } finally {

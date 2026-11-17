@@ -5,11 +5,12 @@ import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/wo
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { pruneSupersededWorkflowViewFacts } from "../../../../src/workflows/view/view-store.js"
-import { Schema } from "effect"
 import { acceptanceWorkflow, SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { nonEmpty } from "../../../helpers/non-empty.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { quietHostDeps } from "./host-test-support.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -19,7 +20,7 @@ afterEach(() => {
 
 /** The acceptance workflow with a work phase that composes the `work`
  *  package, so a published revision of that package reaches the step. */
-const composingWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const composingWorkflow = loadedWorkflow({
   ...acceptanceWorkflow,
   phases: acceptanceWorkflow.phases.map((phase) => "phase" in phase && phase.phase === "work" ? { ...phase, dependencies: ["work"] } : phase),
 })
@@ -35,6 +36,7 @@ function host(
   servedConversations: WorkflowVmHostDeps["servedConversations"] = async () => new Set(),
 ) {
   return createWorkflowVmHost({
+    ...quietHostDeps(writer),
     requestAddenda: async () => [],
     startMode,
     sessionId: vm.sessionId,

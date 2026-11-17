@@ -87,7 +87,7 @@ describe("SessionBudgetStore — accumulation", () => {
     await budgetStore.recordRuntimeEvent(resultNoCost());
     await budgetStore.recordRuntimeEvent(resultEvent(0.03));
 
-    expect(await budgetStore.getTotalCost()).toBeCloseTo(0.03, 10);
+    expect((await budgetStore.metrics()).cost).toBeCloseTo(0.03, 10);
     budgetStore.dispose();
   });
 
@@ -412,7 +412,7 @@ describe("SessionBudgetStore — token tracking", () => {
     await budgetStore.recordRuntimeEvent(resultEvent(0.01, 1000, 500));
     await budgetStore.recordRuntimeEvent(resultEvent(0.02, 1800, 800));
 
-    expect(await budgetStore.getOutputTokensUsed()).toBe(800); // 500 + (800-500)
+    expect((await readBudgetSummary(sessionId, baseDir)).outputTokens).toBe(800); // 500 + (800-500)
     expect(await budgetStore.getTokensUsed()).toBe(2600); // (1000+500) + (800+300)
     budgetStore.dispose();
   });
@@ -425,7 +425,7 @@ describe("SessionBudgetStore — token tracking", () => {
     await budgetStore.recordRuntimeEvent(resultNoUsage(0.01));
 
     expect(await budgetStore.getTokensUsed()).toBe(0);
-    expect(await budgetStore.getTotalCost()).toBe(0.01); // cost still tracked
+    expect((await budgetStore.metrics()).cost).toBe(0.01); // cost still tracked
     budgetStore.dispose();
   });
 
@@ -438,7 +438,7 @@ describe("SessionBudgetStore — token tracking", () => {
     // cost-only result within the same process (cumulative cost increased)
     await budgetStore.recordRuntimeEvent(resultNoUsage(0.015));
     expect(await budgetStore.getTokensUsed()).toBe(700); // tokens unchanged
-    expect(await budgetStore.getTotalCost()).toBeCloseTo(0.015, 10); // cost updated to cumulative value
+    expect((await budgetStore.metrics()).cost).toBeCloseTo(0.015, 10); // cost updated to cumulative value
     budgetStore.dispose();
   });
 
@@ -451,7 +451,7 @@ describe("SessionBudgetStore — token tracking", () => {
     await budgetStore.recordRuntimeEvent(resultEvent(0.031, 1000, 500, 15_000, 2_000));
 
     // Cost should be exactly what the agent reported
-    expect(await budgetStore.getTotalCost()).toBeCloseTo(0.031, 10);
+    expect((await budgetStore.metrics()).cost).toBeCloseTo(0.031, 10);
     // Token budget reflects only non-cache tokens
     expect(await budgetStore.getTokensUsed()).toBe(1500);
     budgetStore.dispose();

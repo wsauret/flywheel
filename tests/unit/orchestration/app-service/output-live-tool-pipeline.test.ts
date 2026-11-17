@@ -5,10 +5,9 @@ import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { createThinkingAccumulator, emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
+import { emitTurnAssistant } from "../../../../src/orchestration/agent-runtime/emit.js"
 import { emitAgentStreamEvent } from "../../../../src/orchestration/agent-runtime/runner-stream-events.js"
 import { createTurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
@@ -16,6 +15,7 @@ import { RequestToolMap } from "../../../helpers/request-tool-surface.js"
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js"
 import { observeSessionRun } from "../../../../src/orchestration/agent-runtime/session-run-observation.js"
 import { tailRequest } from "./_output-projection-fixtures.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("live/derived tool pipeline equivalence", () => {
   it("keeps one settled tool row between text runs when the canonical assistant is published", async () => {
@@ -35,7 +35,7 @@ describe("live/derived tool pipeline equivalence", () => {
         options: { onEvent },
         tools: new RequestToolMap(),
         costTracker,
-        thinking: createThinkingAccumulator(),
+        thinking: { sawDelta: false },
         parentToolUseId: undefined,
         contextWindow: 200_000,
         providerSessionKey: "test",
@@ -78,7 +78,7 @@ describe("live/derived tool pipeline equivalence", () => {
         { kind: "assistant", content: [{ type: "text", text: "AFTER" }] },
       ], [entryId, resultEntryId, afterEntryId])
       tree.getStorage().dispose()
-      const projection = createSessionDetailProjection({
+      const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
         sessionStore: { get: () => undefined },
         manager: { read: async () => ({ label: "Pipeline", lastUpdated: "2026-01-01T00:00:00.000Z", lifecycleState: "inactive" as const, name: "Pipeline", kind: "chat" as const, command: "chat" as const, conversationId, executionCwd: tmpDir }) },

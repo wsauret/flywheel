@@ -1,20 +1,23 @@
 import { describe, expect, test } from "bun:test"
 import { RGBA } from "@opentui/core"
-import {
-  MODEL_MODAL_COST_COLUMN_WIDTH,
-  costBarText,
-  costGradient,
-  costMarker,
-  priceHeaderText,
-  priceValueText,
-} from "../../../../src/tui/modals/model-modal-cost.js"
+import { costBarText, priceHeaderText, priceValueText } from "../../../../src/tui/modals/model-modal-cost.js"
 import { styledTextContent, theme } from "./_model-modal-fixtures.js"
-import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
+import { resolveTheme, type TuiTheme } from "../../../../src/tui/context/theme/resolve.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
+
+/** The bar colors of a price range with no marker. */
+function gradient(resolved: TuiTheme, width: number) {
+  return costBarText(undefined, [1], resolved, width).chunks.map((chunk) => chunk.fg)
+}
+
+/** The marker's column in a 1 to 100 bar of width nine, or -1 with no marker. */
+function markerColumn(value: number | undefined): number {
+  return styledTextContent(costBarText(value, [1, 100], theme, 9)).indexOf("●")
+}
 
 describe("model modal cost presentation", () => {
   test("builds a themed piecewise gradient through semantic colors", () => {
-    const colors = costGradient(theme, 7)
+    const colors = gradient(theme, 7)
     expect(colors).toHaveLength(7)
     expect(colors[0]).toEqual(theme.success)
     expect(colors[2]).toEqual(theme.info)
@@ -23,10 +26,10 @@ describe("model modal cost presentation", () => {
   })
 
   test("places logarithmic markers at the range boundaries and midpoint", () => {
-    expect(costMarker(1, 1, 100, 9)).toBe(0)
-    expect(costMarker(10, 1, 100, 9)).toBe(4)
-    expect(costMarker(100, 1, 100, 9)).toBe(8)
-    expect(costMarker(undefined, 1, 100, 9)).toBeUndefined()
+    expect(markerColumn(1)).toBe(0)
+    expect(markerColumn(10)).toBe(4)
+    expect(markerColumn(100)).toBe(8)
+    expect(markerColumn(undefined)).toBe(-1)
   })
 
   test("renders a white marker while retaining gradient metadata", () => {
@@ -41,7 +44,7 @@ describe("model modal cost presentation", () => {
   test("uses resolved semantic colors in dark and light themes", () => {
     for (const mode of ["dark", "light"] as const) {
       const resolved = resolveTheme(flywheelTheme, mode)
-      const colors = costGradient(resolved, 4)
+      const colors = gradient(resolved, 4)
       expect(colors).toEqual([resolved.success, resolved.info, resolved.primary, resolved.error])
     }
   })
@@ -49,7 +52,6 @@ describe("model modal cost presentation", () => {
   test("builds an exact three by seventeen price table", () => {
     const header = styledTextContent(priceHeaderText(theme))
     const values = styledTextContent(priceValueText({ input: 10, cacheRead: 0.25, output: 50 }, theme))
-    expect(MODEL_MODAL_COST_COLUMN_WIDTH).toBe(17)
     expect(header).toBe("Input            Cached input     Output           ")
     expect(values).toBe("$10 / 1M         $0.25 / 1M       $50 / 1M         ")
     expect(header).toHaveLength(51)

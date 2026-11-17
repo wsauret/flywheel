@@ -40,7 +40,7 @@ export function childSessionProjectionAttachment(store: Pick<SessionStore, "open
       visibleMessageCountPrefix: (history?.visibleMessageCount ?? 0) - visibleSuffix,
     })
     const updateEntry = (patch: Parameters<SessionStore["updateChatEntry"]>[1]) => store.updateChatEntry(input.sessionId, patch)
-    const output = createOutputSession({ sessionId: input.sessionId, executionCwd: input.executionCwd, priorBlocks, updateEntry })
+    const output = createOutputSession({ sessionId: input.sessionId, executionCwd: input.executionCwd, prior: { blocks: priorBlocks, sequenceStart: start }, updateEntry })
     const adapter = new SessionEventAdapter({ outputSession: output, updateEntry })
     let open = true
     const emit = createEmit({ emit: (event) => { if (open) adapter.handle(event) } })

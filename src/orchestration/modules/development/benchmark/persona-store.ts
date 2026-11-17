@@ -32,13 +32,13 @@ export interface PersonaStore extends RunStore {
   roleReport(): Promise<string>;
 }
 
-/** Historical split-ledger results have no writable persona campaign contract. They remain readable through the report command. */
+/** Historical split-ledger results have no writable persona campaign contract. Their retained report.md stays readable. */
 async function readPersonaManifest(location: RunStoreLocation): Promise<Manifest> {
   const directory = await realDirectoryUnder(location.resultsRoot, location.directory, "The benchmark results directory");
   const text = await readJsonFile(join(directory, "campaign.json"));
   if (text === undefined) {
     if (await readJsonFile(join(directory, "run-config.json")) !== undefined) {
-      throw new Error("Historical persona results are read-only; use --report or start a new results directory");
+      throw new Error("Historical persona results are read-only; read their retained report.md or start a new results directory");
     }
     throw new Error(`No persona campaign at ${directory}`);
   }

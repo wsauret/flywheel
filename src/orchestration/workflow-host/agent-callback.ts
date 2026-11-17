@@ -2,6 +2,7 @@ import type { AuthContext } from "../../infra/auth/auth-context.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../agent-runtime/emit.js"
 import type { EmitFn } from "../../infra/event-bus.js"
+import type { ConnectionState } from "../../infra/output-blocks.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import type { ModelFamily } from "../../infra/llm/model-family.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../session/conversation/turn-end-record.js"
@@ -22,9 +23,8 @@ import type { AgentHostContextOptions } from "../runner/types.js"
 import { CONTINUATION_MESSAGES } from "../agent-runtime/continuation-messages.js"
 import { readAuthorizedRestoredWait, readChatTurnEndEvidence } from "../session/chat-session-run-evidence.js"
 import type { SessionFactWriter } from "../session/session-fact-writer.js"
-import { resolveWorkflowAgentRole } from "../config/role-selection.js"
+import { personaRoleChain, resolveWorkflowAgentRole } from "../config/role-selection.js"
 import type { RoleResolver } from "../config/roles.js"
-import { createReconnectNoticeConnectionStateHandler } from "../agent-runtime/agent-resilience.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { capacityWaitAuthority } from "../session/capacity-wait.js"
 import { workerOutcome } from "./worker-outcome.js"
@@ -33,7 +33,7 @@ import { HandoffInvalidError } from "../../workflows/context-bundle/handoff-erro
 import { workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
 import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from "../agent-runtime/background-execution-owner.js"
 import type { CommandHandoverAuthority } from "../agent-runtime/command-handover.js"
-import { createBackgroundWorkRegistry, type ActiveBackgroundCommandDescriptor, type BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import { createBackgroundWorkRegistry, type BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import type { FirstPartyModuleComposition } from "../modules.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
@@ -101,8 +101,6 @@ export interface WorkerCallbackDeps {
   sessionEventWriter: SessionFactWriter
   /** Workflow session barrier shared by every production worker and nested child. */
   applyNestedStoredFact?: AgentOptions["applyNestedStoredFact"]
-  onNotification?: AgentOptions["onNotification"]
-  onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void
   /** Admitted agents keyed by definition id. Each owns its output contract,
    *  the personas its worker may dispatch, and the persona it runs as. */
   resolvedAgents: ReadonlyMap<string, ResolvedAgent>
@@ -224,17 +222,6 @@ export function createWorkerCallback(
   // The workers that run now, by attempt id, in the order they started.
   const slots = new Map<string, WorkerSlot>()
   const moduleWaiters = new Map<string, Set<(modules: ModuleRuntimes | undefined) => void>>()
-  // The background commands of each running agent; the session shows them
-  // all.
-  const backgroundCommands = new Map<string, readonly ActiveBackgroundCommandDescriptor[]>()
-  const publishBackgroundCommands = (attemptId: string, commands: readonly ActiveBackgroundCommandDescriptor[] | undefined): void => {
-    if (commands === undefined || commands.length === 0) {
-      if (!backgroundCommands.delete(attemptId)) return
-    } else {
-      backgroundCommands.set(attemptId, commands)
-    }
-    opts.onBackgroundCommandsChanged?.([...backgroundCommands.values()].flat())
-  }
   // One captured prefix for all workers in this admitted workflow.
   const memorySnapshot = opts.moduleSelection.contributions.flatMap((entry) => entry.domain === "memory" ? [entry.value.snapshot({ projectRoot, accountHome: opts.accountHome })] : []).filter((value): value is string => value !== null).join("\n\n") || null
 
@@ -259,6 +246,7 @@ export function createWorkerCallback(
     const resolveRoles = createSessionRoleResolver({
       reader: opts.projectionReader, projectRoot, sessionId, userDataRoot: opts.userDataRoot,
       capture: opts.captureProviderConnection, requiredRoleIds: new Set(persona?.role ? [persona.role] : []),
+      personas: new Map([[attempt.definitionId, { roles: personaRoleChain(persona?.role) }]]),
     })
     const foregroundBashHold = createForegroundBashHoldController((ids) => { resources.projection?.updateForegroundBash(ids) })
     try {
@@ -271,8 +259,8 @@ export function createWorkerCallback(
     // The parked count of the live view reads the same rule.
     const toolUseIds = conversationToolUseIds(await resources.conversation.getState())
     // The agent's own input and its own events: every event it emits names
-    // its attempt (`causality.runId`), so a client tells the agents that run
-    // at the same time apart.
+    // the agent's own session, so a client tells the agents that run at the
+    // same time apart.
     const agentInput = opts.agentInputs.open({ attemptId: attempt.id, conversationId })
     let settlePrivateInput = true
     const injectionQueue = agentInput.queue
@@ -280,10 +268,7 @@ export function createWorkerCallback(
       const timestamp = type === "agent.turn.parked" && "park" in event.data && event.data.park === "interrupted" ? agentInput.cut?.timestamp : event.timestamp
       resources.emit<typeof type>(type, { sessionId, data: event.data, ...(timestamp === undefined ? {} : { timestamp }) })
     }
-    const setRecoveredConnectionState = createReconnectNoticeConnectionStateHandler(
-      (state) => resources.projection?.lifecycle.onConnectionState?.(state),
-      (operation) => { emitAgent("agent.notice.changed", { sessionId, data: { operation } }) },
-    )
+    const setConnectionState = (state: ConnectionState): void => { resources.projection?.lifecycle.onConnectionState?.(state) }
     const observerChain = opts.createObserverChain?.()
     const countToolUses = createToolUseCounter(toolUseIds)
     // The agent's live entry carries the same count, so the workflow's live
@@ -310,7 +295,7 @@ export function createWorkerCallback(
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({
       kind: "workflow",
       enqueueNotification: notifications.enqueue,
-      onChange: (commands) => { resources.projection?.updateBackgroundCommands(commands); publishBackgroundCommands(attempt.id, commands) },
+      onChange: (commands) => { resources.projection?.updateBackgroundCommands(commands) },
       onExecutionOutput: (toolUseId, output, identity) => {
         emitToolExecutionOutput(forward, toolUseId, output, identity)
       },
@@ -499,7 +484,6 @@ export function createWorkerCallback(
         },
         ...busBridge,
         onEvent: forward,
-        onNotification: opts.onNotification,
         onSystemMessage: (message, level) => {
           emitAgent("agent.system_message.recorded", { sessionId, data: { message, level } })
         },
@@ -508,7 +492,7 @@ export function createWorkerCallback(
           kind: "parkable", ...(restoredWait ? { restoredWait } : {}), ...(continuedWait ? { continuedWait } : {}),
           ...busBridge.lifecycle,
           signal, inputSource: observers.inputSource,
-          onConnectionState: setRecoveredConnectionState,
+          onConnectionState: setConnectionState,
           onTurnEnded: observers.onTurnEnded,
           onToolBatchSettled: observers.onToolBatchSettled,
           onHandoffStarted: () => { injectionQueue.handoffStarted() },
@@ -597,6 +581,7 @@ export function createWorkerCallback(
     const unregister = registerLiveSessionControl(eventStore, {
       sessionId,
       member: {
+        workflowId,
         modules: async () => slot.modules,
         backgroundTasks: background.tasks,
         compact: async () => { if (injectionQueue.isHandingOff) return false; injectionQueue.enqueueCompact(); return true },
@@ -645,7 +630,7 @@ export function createWorkerCallback(
         },
         message: userPrompt,
         resilience: {
-          setConnectionState: setRecoveredConnectionState,
+          setConnectionState,
           pushSystemMessage: (msg, level) => {
             emitAgent("agent.system_message.recorded", { sessionId, data: { message: msg, level } })
           },
@@ -693,7 +678,6 @@ export function createWorkerCallback(
       releaseConversation()
       slots.delete(attempt.id)
       for (const resolve of moduleWaiters.get(conversationId) ?? []) resolve(undefined)
-      publishBackgroundCommands(attempt.id, undefined)
     }
     } finally {
       // Close producers, flush buffered writes, and dispose the tree in order.

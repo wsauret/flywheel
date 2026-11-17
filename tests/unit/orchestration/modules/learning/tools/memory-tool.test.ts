@@ -13,8 +13,8 @@ import { createMemoryTool } from "../../../../../../src/orchestration/modules/le
 import { capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { CapabilityGrant } from "../../../../../../src/orchestration/config/module-policy.js";
-import { composeFirstPartyModules, type ModuleId } from "../../../../../../src/orchestration/modules.js";
-import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
+import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
+import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
 
@@ -232,7 +232,7 @@ describe("memory tool", () => {
           title: "Test memory update",
           operations: Array.from({ length: count }, () => ({ action: "add", content: "Duplicate." })),
         },
-      }, tools);
+      }, tools, admitEveryTool);
       return executePreparedTool(prepared, { ...makeContext(), capabilityAccess: access(["learning"]) });
     };
     const result = await dispatch(65);
@@ -572,23 +572,23 @@ describe("memory tool mutation artifact", () => {
 describe("memory tool under capability policy", () => {
   const WRITE = { title: "Save a preference", action: "add", target: "project", content: "Prefers concise replies." };
 
-  function dispatch(capabilityAccess: CapabilityAccess): Promise<{ outcome: string; content: string | object }> {
+  /** Dispatches under a request admitted with `moduleIds` enabled, while the live selection is `capabilityAccess`. */
+  async function dispatch(moduleIds: readonly string[], capabilityAccess: CapabilityAccess): Promise<{ outcome: string; content: string | object }> {
     const tools = new Map<string, RuntimeTool>([["memory", makeTool()]]);
-    const prepared = prepareToolCall({ id: "memory-call", name: "memory", input: WRITE }, tools);
+    const prepared = prepareToolCall({ id: "memory-call", name: "memory", input: WRITE }, tools, await requestAdmission(tools, composeRealmModuleSnapshot({ moduleIds })));
     return executePreparedTool(prepared, { ...makeContext(), capabilityAccess });
   }
 
-  it("refuses a stale call before anything is written to the store", async () => {
-    const result = await dispatch(access([]));
+  it("refuses a call that the request's captured module set does not hold before anything is written to the store", async () => {
+    const result = await dispatch([], access([]));
 
-    expect(result.outcome).toBe("error");
-    expect(result.content).toContain("learning is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml");
+    expect(result).toEqual({ content: "Tool 'memory' is not registered in this request capability snapshot", outcome: "error" });
     expect(existsSync(memoryFile())).toBe(false);
     expect(recorded).toHaveLength(0);
   });
 
-  it("writes for an admitted review whose grant outlives the disable", async () => {
-    const result = await dispatch(access([], { operation: "the self-improvement review", required: ["learning"], moduleIds: ["learning"], capabilities: ["learning"], requireWorkflowConfirmation: true, workflowsMode: "off", identity: "learning" }));
+  it("writes for an admitted review whose request outlives the disable", async () => {
+    const result = await dispatch(["learning"], access([], { operation: "the self-improvement review", required: ["learning"], moduleIds: ["learning"], capabilities: ["learning"], requireWorkflowConfirmation: true, workflowsMode: "off", identity: "learning" }));
 
     expect(result.outcome).toBe("ok");
     expect(readFileSync(memoryFile(), "utf8")).toContain("concise");

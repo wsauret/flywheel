@@ -122,9 +122,9 @@ function skillRecord(skill: SkillDefinition): SkillRecord {
 function loadedFact(
   kind: DefinitionKind,
   id: string,
-  definition: unknown,
+  definition: ReturnType<typeof canonicalWorkflowRecord> | AgentRecord | SkillRecord,
   provenance?: typeof DefinitionProvenanceSchema.Type,
-  retiredStepGrammar?: unknown,
+  retiredStepGrammar?: ReturnType<typeof canonicalStepWorkflowRecord>,
 ): DefinitionProvenanceFact {
   return parseDefinitionProvenanceFact({
     type: "definition.loaded",

@@ -19,7 +19,7 @@
 import { readJsonValue } from "../../../infra/llm/json-parse.js";
 import { definitionText } from "../llm/tool-definition-text.js";
 import type { ToolInputRepair } from "../llm/types.js";
-import { discriminatedBranch, schemaProblems, toSchemaNode, type SchemaNode, type SchemaProperties } from "./validate-input.js";
+import { compiledSchema, discriminatedBranch, schemaProblems, type SchemaNode, type SchemaProperties } from "./validate-input.js";
 
 interface UnknownFields {
   [key: string]: unknown;
@@ -74,9 +74,40 @@ export function coerceToolInput(
   onRepair: InputRepairObserver = NO_REPAIR_OBSERVER,
   options: CoercionOptions = {},
 ): UnknownFields {
-  const schemaNode = toSchemaNode(schema);
-  const coercion: Coercion = { onRepair, verbatimText: options.verbatimText === true };
-  const unwrapped = schemaProblems(input, schemaNode).length === 0 ? input : unwrapSingleWrapper(input, schemaNode, coercion);
+  const schemaNode = compiledSchema(schema);
+  return coerceAgainst(input, schemaNode, schemaProblems(input, schemaNode), { onRepair, verbatimText: options.verbatimText === true });
+}
+
+/** A tool call's input after coercion, with the validation verdict that the dispatcher keeps. */
+export interface CoercedToolCallInput {
+  /** The input to run: the coerced value, or the original object when coercion changed nothing. */
+  readonly input: UnknownFields;
+  /** The schema problems of `input`; empty means it is valid. */
+  readonly problems: readonly string[];
+  /** The schema problems of the original input, which a refusal reports. */
+  readonly originalProblems: readonly string[];
+}
+
+/**
+ * Coerces a tool call's input and validates it in the same walk of the
+ * compiled schema. The problems of the original input decide whether a
+ * wrapper unwraps, and they are the refusal text when the coerced input is
+ * invalid too, so the dispatcher does not validate the same input again.
+ */
+export function coerceToolCallInput(
+  input: UnknownFields,
+  schema: UnknownFields,
+  onRepair: InputRepairObserver,
+  options: CoercionOptions,
+): CoercedToolCallInput {
+  const schemaNode = compiledSchema(schema);
+  const originalProblems = schemaProblems(input, schemaNode);
+  const coerced = coerceAgainst(input, schemaNode, originalProblems, { onRepair, verbatimText: options.verbatimText === true });
+  return { input: coerced, problems: coerced === input ? originalProblems : schemaProblems(coerced, schemaNode), originalProblems };
+}
+
+function coerceAgainst(input: UnknownFields, schemaNode: SchemaNode, originalProblems: readonly string[], coercion: Coercion): UnknownFields {
+  const unwrapped = originalProblems.length === 0 ? input : unwrapSingleWrapper(input, schemaNode, coercion);
   const converted = coerceValue(unwrapped, schemaNode, "", coercion);
   return isPlainObject(converted) ? converted : input;
 }

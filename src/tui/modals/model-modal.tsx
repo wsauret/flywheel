@@ -216,8 +216,8 @@ function selectRow(row: ModalRow, displayIndex: number, onSelect: (flatIndex: nu
 }
 
 function emptyText(state: ModelModalState): string {
-  if (state.view.kind === "models") return state.query ? "No matching models." : "No models available."
-  return "No model assignments found."
+  if (state.view.kind === "models") return state.loading ? "Loading models..." : state.query ? "No matching models." : "No models available."
+  return state.loading ? "Loading model assignments..." : "No model assignments found."
 }
 
 function rowText(row: ModalRow, selected: boolean, theme: TuiTheme, width: number, auth: ModelModalState["auth"], pendingEffort?: ModelSelectionEffort): StyledText {

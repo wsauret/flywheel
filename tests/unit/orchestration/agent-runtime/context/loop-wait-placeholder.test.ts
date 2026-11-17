@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { durableSubagentCompletionNotification } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
 import type { ProviderStreamEvent, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
@@ -123,6 +124,12 @@ describe("agent loop wait settlement", () => {
     });
     registry.track({ done: first.promise, meta: { id: "first", type: "subagent", description: "First" } });
     registry.track({ done: second.promise, meta: { id: "second", type: "subagent", description: "Second" } });
+    // A child's completion reaches its parent through reconciliation, which
+    // delivers the durable notification after the child's run settles.
+    const settleChild = async (run: PromiseWithResolvers<BackgroundWorkResult>, childRunId: string, description: string, content: string) => {
+      run.resolve({ status: "completed", content });
+      await registry.deliverDurableSubagentNotification(durableSubagentCompletionNotification([{ type: "subagent", childRunId, description, result: await run.promise }], registry.activeSubagentCount()));
+    };
 
     const waitTurn = (id: string) => ({
       events: [
@@ -165,8 +172,8 @@ describe("agent loop wait settlement", () => {
         prepareWaitForInput: () => ({
           commit: async () => {
             parkCount++;
-            if (parkCount === 1) first.resolve({ status: "completed", content: "one" });
-            if (parkCount === 2) second.resolve({ status: "completed", content: "two" });
+            if (parkCount === 1) await settleChild(first, "first", "First", "one");
+            if (parkCount === 2) await settleChild(second, "second", "Second", "two");
             if (queued.length === 0) await new Promise<void>((resolve) => { wake = resolve; });
             return queued.shift() ?? null;
           },
@@ -180,8 +187,8 @@ describe("agent loop wait settlement", () => {
     expect(result.kind).toBe("completed");
     expect(parkCount).toBe(2);
     expect(canonicalNotifications).toHaveLength(2);
-    expect(canonicalNotifications[0]).toContain("<remaining_active>1</remaining_active>");
-    expect(canonicalNotifications[1]).toContain("<remaining_active>0</remaining_active>");
+    expect(canonicalNotifications[0]).toContain("<description>First</description>");
+    expect(canonicalNotifications[1]).toContain("<description>Second</description>");
   });
 
   test("a non-subagent task returns an interrupted wait to Waiting after parallel chat work", async () => {
@@ -332,7 +339,7 @@ describe("agent loop wait settlement", () => {
       isConcurrencySafe: true,
       execute: async () => {
         const done = new Promise<BackgroundWorkResult>((resolve) => { settle = resolve; });
-        registry.track({ done, meta: { id: "bg_1", type: "subagent", description: "spawned mid-turn" } });
+        registry.track({ done, meta: { id: "bg_1", type: "background_command", description: "spawned mid-turn" } });
         return { content: "launched", outcome: "ok" };
       },
     };
@@ -370,7 +377,7 @@ describe("agent loop wait settlement", () => {
         prepareWaitForInput: () => ({
           commit: async () => {
             parkCount++;
-            settle?.({ status: "completed", content: "subagent result" });
+            settle?.({ status: "completed", content: "background result" });
             if (queued.length === 0) await new Promise<void>((resolve) => { wake = resolve; });
             return queued.shift() ?? null;
           },
@@ -388,7 +395,7 @@ describe("agent loop wait settlement", () => {
     // The loop asked the model again only after the park, and that request
     // carries the real notification.
     expect(capturedMessages).toHaveLength(2);
-    expect(JSON.stringify(capturedMessages[1]?.at(-1))).toContain("subagent result");
+    expect(JSON.stringify(capturedMessages[1]?.at(-1))).toContain("background result");
   });
 
   test("a refused handoff over live work keeps input open until the verifier settles", async () => {

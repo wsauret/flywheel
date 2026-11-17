@@ -7,7 +7,7 @@ import { createToolConcurrencyGate } from "../../../../../src/orchestration/agen
 import type { RuntimeTool, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import type { EventPayload, StoredFact } from "../../../../../src/infra/event-store-types.js";
-import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
+import { RequestToolMap, requestAdmission } from "../../../../helpers/request-tool-surface.js";
 import { SLOW_UNIT_BUDGET_MS } from "../../../../../src/infra/event-loop-lag.js";
 import { Log } from "../../../../../src/infra/log.js";
 import { createHandoffTracker } from "../../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
@@ -61,7 +61,7 @@ describe("nested tool dispatch batch", () => {
       parentToolUseId: "outer", publisher: publisher(events),
     });
     if (when !== "while queued") admission.start({ id: "finish" });
-    const result = Effect.runPromise(batch.execute("read", when === "with malformed input" ? null : {}));
+    const result = Effect.runPromise(batch.execute("read", when === "with malformed input" ? null : {})).then((dispatch) => dispatch.result);
     if (when === "while queued") { await entered.promise; admission.start({ id: "finish" }); }
     release();
     expect(await result).toMatchObject({ outcome: "blocked", content: expect.stringContaining("session ended") });
@@ -94,7 +94,7 @@ describe("nested tool dispatch batch", () => {
     ], { concurrency: "unbounded" }));
     await Effect.runPromise(batch.close());
 
-    expect(results.map((result) => result.outcome)).toEqual(["ok", "ok"]);
+    expect(results.map(({ result }) => result.outcome)).toEqual(["ok", "ok"]);
     expect(calls.sort()).toEqual(["outer#1", "outer#2"]);
     expect(events.indexOf("input:outer#1")).toBeLessThan(events.indexOf("result:outer#1:ok"));
     expect(events.filter((event) => event.startsWith("result:"))).toHaveLength(2);
@@ -146,8 +146,8 @@ describe("nested tool dispatch batch", () => {
     const unknown = await Effect.runPromise(batch.execute("missing", {}));
     await Effect.runPromise(batch.close());
 
-    expect(invalid.outcome).toBe("error");
-    expect(unknown.outcome).toBe("error");
+    expect(invalid).toMatchObject({ result: { outcome: "error" }, tool: strict });
+    expect(unknown).toEqual({ result: { content: "Unknown tool 'missing'.", outcome: "error" }, tool: undefined });
     expect(executions).toBe(0);
     expect(events).toEqual(["validation:outer#1", "validation:outer#2"]);
   });
@@ -168,24 +168,39 @@ describe("nested tool dispatch batch", () => {
         result: (_call, result) => { results.push(result); },
       },
     });
-    const result = await Effect.runPromise(batch.execute("Read", '{"count":"2"}'));
+    const { result, tool: resolved } = await Effect.runPromise(batch.execute("Read", '{"count":"2"}'));
+    expect(resolved).toBe(read);
     expect(result.outcome).toBe("ok");
     expect(String(result.content)).toContain("Note: the text value of `input` was read as an object.");
     expect(String(result.content)).toContain("Note: the text value of `count` was read as a number.");
     expect(received).toEqual([{ count: 2 }]);
-    const invalid = await Effect.runPromise(batch.execute("Read", "{}"));
+    const { result: invalid } = await Effect.runPromise(batch.execute("Read", "{}"));
     expect(invalid.outcome).toBe("error");
     expect(invalid.content).toStartWith("Note: the text value of `input` was read as an object.\nNote: tool 'Read' was read as 'read'.\n");
     expect(invalid.content).toContain("count");
     expect(validations.at(-1)).toEqual(invalid);
     read.prepareAdmission = async () => ({});
-    const afterPreparation = await Effect.runPromise(batch.execute("Read", "{}"));
+    const { result: afterPreparation } = await Effect.runPromise(batch.execute("Read", "{}"));
     expect(afterPreparation.outcome).toBe("error");
     expect(afterPreparation.content).toStartWith("Note: the text value of `input` was read as an object.\nNote: tool 'Read' was read as 'read'.\n");
     expect(results.at(-1)).toEqual(afterPreparation);
-    for (const rawInput of ['{"count":', [], null, 2]) expect((await Effect.runPromise(batch.execute("read", rawInput))).outcome).toBe("error");
+    for (const rawInput of ['{"count":', [], null, 2]) expect((await Effect.runPromise(batch.execute("read", rawInput))).result.outcome).toBe("error");
     await Effect.runPromise(batch.close());
     expect(received).toHaveLength(1);
+  });
+
+  it("admits a nested call named 'Bash' through the request surface's admission and runs bash", async () => {
+    const received: unknown[] = [];
+    const bash: RuntimeTool = { ...tool("bash", async (input) => { received.push(input); return { content: "ran", outcome: "ok" }; }), inputSchema: { type: "object", properties: { command: { type: "string" } } } };
+    const tools = new Map([[bash.name, bash]]);
+    const batch = createNestedToolDispatchBatch({
+      executionAdmission: await requestAdmission(tools),
+      tools, context: context(), gate: createToolConcurrencyGate(10), parentToolUseId: "outer", publisher: publisher([]),
+    });
+    const result = await Effect.runPromise(batch.execute("Bash", { command: "pwd" }));
+    await Effect.runPromise(batch.close());
+    expect(result).toEqual({ result: { content: "Note: tool 'Bash' was read as 'bash'.\nran", outcome: "ok" }, tool: bash });
+    expect(received).toEqual([{ command: "pwd" }]);
   });
 
   it("does not emit a breadcrumb when validation fails", async () => {
@@ -251,7 +266,7 @@ describe("nested tool dispatch batch", () => {
 
     expect(events.filter((event) => event === "result:outer#1:interrupted")).toHaveLength(1);
     const late = await Effect.runPromise(batch.execute("slow", {}));
-    expect(late).toEqual({ content: "Code tool dispatch is closed.", outcome: "interrupted" });
+    expect(late).toEqual({ result: { content: "Code tool dispatch is closed.", outcome: "interrupted" }, tool: undefined });
     expect(events.filter((event) => event.startsWith("input:"))).toHaveLength(1);
   });
 
@@ -342,7 +357,7 @@ describe("nested tool dispatch batch", () => {
         result: (_call, _result, meta) => { facts.push({ kind: "result", parent: meta.parentToolUseId, request: meta.modelRequestId }); },
       },
     });
-    const result = await Effect.runPromise(batch.execute("blocked", {}));
+    const { result } = await Effect.runPromise(batch.execute("blocked", {}));
     await Effect.runPromise(batch.close());
     expect(result).toEqual({ content: "denied", outcome: "error" });
     expect(executed).toBe(false);

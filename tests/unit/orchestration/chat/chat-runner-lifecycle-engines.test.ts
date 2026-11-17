@@ -59,7 +59,6 @@ function makeChat() {
           await options.lifecycle.onTurnParked?.(parked)
         })().catch(() => {})
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }

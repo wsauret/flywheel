@@ -5,6 +5,26 @@ import type { AuthProfileRetirements } from "../../../../src/infra/auth/auth-pro
 import { createAuthProfileWatcherOwner, type WatchedCatalogSession } from "../../../../src/orchestration/app-service/auth-profile-watcher-owner.js"
 import { subscribeAuthOwners } from "../../../../src/orchestration/app-service/auth-owner-subscription.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
+import { createWorkflowRunWriter } from "../../../../src/orchestration/modules/workflows/run-facts.js"
+import { createWorkflowRunReader } from "../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
+import { countStateRequests } from "../../../helpers/state-requests.js"
+import { seedWorkflowRuns } from "../workflow-host/_workflow-host-fixtures.js"
+
+const temporary = temporaryDirectories()
+
+const DEFAULTS: AuthProfileResolution = {
+  id: "Personal",
+  persistedId: "Personal",
+  displayName: "Personal",
+  source: "sticky",
+  directory: "/scratch/auth/Personal",
+  availableProfiles: [{ id: "Personal", displayName: "Personal" }],
+  projectBinding: undefined,
+  retirements: {},
+}
 
 describe("auth profile watcher owner", () => {
   test("refreshes the exact live-session profile without changing the default selection", async () => {
@@ -143,7 +163,9 @@ describe("auth profile watcher owner", () => {
           subscribe: (listener) => { notify = listener; return () => {} },
           listForIds: async (ids) => { listedRows += ids.length; return { sessions: ids.map((id) => row(id, id === "chat-b" ? "b" : undefined)) } },
         },
-        reconcileWorkflows: async () => {},
+        onStored: () => () => {},
+        runs: { changedRuns: () => new Set() },
+        reconcileWorkflow: async () => {},
         reconcileWatchers: owner.reconcile,
         watchSessions: (sessions) => { const watching = owner.watchSessions(sessions); settled.push(watching); return watching },
         publish: () => {},
@@ -167,5 +189,93 @@ describe("auth profile watcher owner", () => {
     expect(many.rowsPerChange).toBe(few.rowsPerChange)
     // A changed session on another profile is watched from its row.
     expect(many.watched).toEqual(["/profiles/a", "/profiles/b"])
+  })
+})
+
+describe("auth owner subscription", () => {
+  /** Subscribes the auth owners over `workflows` registered runs. Run reads go through a counted
+   *  reader, and every workflow reconciliation resolves its run. */
+  const subscribe = async (workflows: number) => {
+    const dir = temporary("flywheel-auth-owner-runs-")
+    const { store, base, manager } = await seedWorkflowRuns(dir, Array.from({ length: workflows }, () => "Personal"))
+    const { reader, take } = countStateRequests(base)
+    const runs = createWorkflowRunReader(reader)
+    let lists = 0
+    const owner = createWorkflowAuthOwner({
+      reader: { ...runs, list: () => { lists++; return runs.list() }, listOpen: () => { lists++; return runs.listOpen() } },
+      writer: createWorkflowRunWriter(base, (...args) => manager.commitWorkflow(...args)),
+      profiles: { inspect: () => DEFAULTS },
+      userDataRoot: "/scratch",
+      onSelected: async () => {},
+    })
+    // Startup resolves every run, and persists the profile that wf-0 took
+    // from the defaults, before the subscription starts.
+    expect(await owner.list()).toHaveLength(workflows)
+    const reconciled: string[] = []
+    const resolutions: Promise<unknown>[] = []
+    let notify: (change: SessionMetadataChange) => void = () => {}
+    const unsubscribe = subscribeAuthOwners({
+      manager: {
+        subscribe: (listener) => { notify = listener; return () => {} },
+        listForIds: async (ids) => ({ sessions: ids.map((id): WatchedCatalogSession => ({ id, lifecycleState: "active" })) }),
+      },
+      onStored: store.onStored,
+      runs,
+      reconcileWorkflow: async (workflowId) => {
+        reconciled.push(workflowId)
+        const resolution = owner.resident(workflowId)
+        resolutions.push(resolution)
+        await resolution
+      },
+      reconcileWatchers: async () => {},
+      watchSessions: async () => {},
+      publish: () => {},
+      reconcileSessions: () => {},
+      onError: (error) => { throw error },
+    })
+    take()
+    lists = 0
+    /** The run reads, lists, and reconciled workflows since the last call. */
+    const cost = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await Promise.all(resolutions)
+      const spent = { reads: take().length, lists, reconciled: [...reconciled] }
+      lists = 0
+      reconciled.length = 0
+      return spent
+    }
+    const close = () => { unsubscribe(); store.close() }
+    return { notify, cost, close, writer: createWorkflowRunWriter(base, (...args) => manager.commitWorkflow(...args)) }
+  }
+
+  test("N session changes over M workflow runs (M of 2 and 200) issue zero run reads and list no run", async () => {
+    const sessionChanges = async (workflows: number) => {
+      const owners = await subscribe(workflows)
+      try {
+        for (let index = 0; index < 20; index++) owners.notify({ kind: "changed", sessionIds: [`agent-${index}`] })
+        owners.notify({ kind: "deleted", sessionId: "agent-0" })
+        return await owners.cost()
+      } finally {
+        owners.close()
+      }
+    }
+    const nothing = { reads: 0, lists: 0, reconciled: [] }
+    expect(await sessionChanges(2)).toEqual(nothing)
+    expect(await sessionChanges(200)).toEqual(nothing)
+  })
+
+  test("A stored fact of one workflow reconciles that workflow only, with one read", async () => {
+    const rename = async (workflows: number) => {
+      const owners = await subscribe(workflows)
+      try {
+        expect(await owners.writer.update("wf-1", (current) => ({ ...current, label: "Renamed" }), "user")).toBe(true)
+        return await owners.cost()
+      } finally {
+        owners.close()
+      }
+    }
+    const one = { reads: 1, lists: 0, reconciled: ["wf-1"] }
+    expect(await rename(2)).toEqual(one)
+    expect(await rename(200)).toEqual(one)
   })
 })

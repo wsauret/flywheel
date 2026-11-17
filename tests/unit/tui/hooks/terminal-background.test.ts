@@ -1,11 +1,15 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { NativeSession, RGBA } from "@opentui/core"
+import { NativeSession, rgbToHex, type RGBA } from "@opentui/core"
 import { testRender, useRenderer } from "@opentui/solid"
 import { Writable } from "node:stream"
 import { createRoot, createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import { ThemeProvider, useTheme } from "../../../../src/tui/context/theme.js"
-import { createTerminalBackground, oscDefaultBackground } from "../../../../src/tui/hooks/create-terminal-background.js"
+import { createTerminalBackground } from "../../../../src/tui/hooks/create-terminal-background.js"
+
+function oscDefaultBackground(color: RGBA): string {
+  return `\x1b]11;${rgbToHex(color)}\x07`
+}
 
 test("captures before compatible OSC 11 writes and never sets a system background", async () => {
   let context!: ReturnType<typeof useTheme>
@@ -184,13 +188,30 @@ test("delivers only the latest background after a real native output refusal", a
   }
 })
 
-describe("oscDefaultBackground", () => {
-  test("pads single-digit channels", () => {
-    expect(oscDefaultBackground(RGBA.fromInts(0, 0, 0))).toBe("\x1b]11;#000000\x07")
-    expect(oscDefaultBackground(RGBA.fromInts(1, 2, 3))).toBe("\x1b]11;#010203\x07")
+describe("the default background sequence", () => {
+  async function backgroundWrites(themeName: string, mode: "dark" | "light"): Promise<string[]> {
+    const writes: string[] = []
+    const result = await testRender(() => createComponent(ThemeProvider, {
+      mode, themeName, compatibleRendering: () => "on",
+      get children() {
+        createTerminalBackground({
+          write: sequence => { writes.push(new TextDecoder().decode(sequence)); return true },
+          idle: async () => {},
+        })
+        return null
+      },
+    }), { width: 20, height: 3 })
+    try {
+      await result.renderOnce()
+      return writes.filter(sequence => sequence.startsWith("\x1b]11;"))
+    } finally { result.renderer.destroy(); await result.renderer.closed }
+  }
+
+  test("pads single-digit channels", async () => {
+    expect(await backgroundWrites("ayu", "dark")).toEqual(["\x1b]11;#0b0e14\x07"])
   })
 
-  test("handles full-intensity channels", () => {
-    expect(oscDefaultBackground(RGBA.fromInts(255, 255, 255))).toBe("\x1b]11;#ffffff\x07")
+  test("handles full-intensity channels", async () => {
+    expect(await backgroundWrites("vesper", "light")).toEqual(["\x1b]11;#ffffff\x07"])
   })
 })

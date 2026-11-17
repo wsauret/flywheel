@@ -16,6 +16,7 @@
 
 import OpenAI from "openai";
 import type { ChatCompletionCreateParamsStreaming, ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions.js";
+import type { CompletionUsage } from "openai/resources/completions.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
@@ -35,7 +36,7 @@ import { cacheWriteTokens } from "./openai-usage-normalization.js";
 import { cacheControlFor } from "./anthropic-adapter-helpers.js";
 import { openAIReasoningEffort, supportsThinkingDisable } from "./model-compat.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
+import { throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
@@ -212,6 +213,10 @@ function chatCompletionsReasoningParams(
 ): UnknownFields {
   if (!info.reasoning || accessProvider === "github_copilot") return {};
   const wireEffort = chatCompletionsReasoningEffort(effort, info);
+  if (accessProvider === "baseten") {
+    if (wireEffort) return { reasoning_effort: wireEffort };
+    return effort === "off" && info.reasoningEfforts?.includes("none") ? { reasoning_effort: "none" } : {};
+  }
   if (accessProvider === "deepseek") {
     const forcedTool = toolChoice !== undefined && toolChoice !== "auto" && toolChoice !== "none";
     return wireEffort && !forcedTool ? { thinking: { type: "enabled" }, reasoning_effort: wireEffort } : { thinking: { type: "disabled" } };
@@ -340,7 +345,7 @@ export async function createOpenAIChatCompletionsAdapter(
   defaultModel: string,
   openingInfo: ModelInfo,
   overrides?: {
-    accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>; resetIdleConnections?: () => void | Promise<void>;
+    accessProvider?: AccessProviderId; extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>;
     candidate?: AccessProviderCandidate;
     /** Exact catalog transport ID, distinct from canonical model metadata. */
     wireModelId?: string;
@@ -355,7 +360,7 @@ export async function createOpenAIChatCompletionsAdapter(
     availability?: ProviderAvailability;
     /** Reads the amount in USD that the provider's own usage report states as charged for the request, for a
      *  provider that states one; undefined when the report states none. */
-    reportedChargeUsd?: (usage: unknown) => number | undefined;
+    reportedChargeUsd?: (usage: CompletionUsage) => number | undefined;
   },
 ): Promise<ConnectedClient & { withModelInfo(info: ModelInfo, providerOutputCap?: number): LLMClient }> {
   const accessProvider = overrides?.accessProvider ?? "openai_api";
@@ -405,7 +410,7 @@ export async function createOpenAIChatCompletionsAdapter(
           const runId = crypto.randomUUID();
           const params = descriptor.params;
           const requestOpts = headers ? { signal: attempt.signal, headers } : { signal: attempt.signal };
-          const streamLiveness = armStreamLiveness(attempt, {
+          const streamLiveness = attempt.armLiveness({
             label: "llm-openai-completions",
             provider: "OpenAI chat-completions",
             telemetry: options.telemetry,
@@ -449,11 +454,11 @@ export async function createOpenAIChatCompletionsAdapter(
                 responseStarted = true;
                 yield { kind: "provider_response_started" } as const;
               }
-              observeProviderTelemetry(options.telemetry, "chunk", {
+              observeProviderTelemetry(options.telemetry, "chunk", () => ({
                 choiceCount: chunk.choices?.length ?? 0,
                 finishReason: chunk.choices?.[0]?.finish_reason ?? undefined,
                 hasUsage: chunk.usage !== undefined,
-              });
+              }));
               const choice = chunk.choices?.[0];
               const delta = choice?.delta;
 

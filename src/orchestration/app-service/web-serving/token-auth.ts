@@ -10,7 +10,7 @@ const TOKEN_PATTERN = /^[0-9a-f]{48}$/
 const STAGING_SUFFIX = /^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/
 
 /** Generate a new 192-bit token encoded as hexadecimal. */
-export function generateToken(): string {
+function generateToken(): string {
   return randomBytes(24).toString("hex")
 }
 

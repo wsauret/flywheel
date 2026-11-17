@@ -62,7 +62,7 @@ function heldDispatch({ commandHandover, holdOnAbort = false, sessionEventStore 
       runnerOptions = options;
       runningAtRequest.push(options.runtimeSurfaces?.background?.tasks.activeBackgroundCommands().map((command) => command.id) ?? []);
       if (options.runtimeSurfaces?.background) background.resolve(options.runtimeSurfaces.background);
-      return { send() { options.lifecycle.signal?.addEventListener("abort", aborted, { once: true }); }, end() {}, abort: aborted, done: done.promise };
+      return { send() { options.lifecycle.signal?.addEventListener("abort", aborted, { once: true }); }, abort: aborted, done: done.promise };
     },
   });
   const ids = ["child-run", "child", "child-conversation"];

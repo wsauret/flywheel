@@ -367,7 +367,7 @@ export type DefinitionHashRecordedPayload =
   | typeof DefinitionHashRecordedPayloadSchema.Type
   | typeof DefinitionHashRecordedV2PayloadSchema.Type
   | typeof DefinitionHashRecordedV1PayloadSchema.Type
-export type CurrentWorkflowCompiledPayload = typeof WorkflowCompiledPayloadSchema.Type
+type CurrentWorkflowCompiledPayload = typeof WorkflowCompiledPayloadSchema.Type
 export type WorkflowCompiledPayload =
   | CurrentWorkflowCompiledPayload
   | typeof WorkflowCompiledV10PayloadSchema.Type
@@ -383,13 +383,4 @@ export type DefinitionDriftRejectedFact = typeof DefinitionDriftRejectedFactSche
 
 export function parseDefinitionProvenanceFact(value: unknown): DefinitionProvenanceFact {
   return parseDefinitionProvenanceFactFromRegistry<DefinitionProvenanceFact>(value)
-}
-
-/** What the launch of a run recorded about its own admission: the
- *  worst-case attempt count, the verifier result, null when the launch ran
- *  no verifier, and the warnings. A v9 row warned about nothing. Undefined
- *  for a row from before a launch recorded them. */
-export function recordedLaunchAdmission(payload: WorkflowCompiledPayload): Pick<CurrentWorkflowCompiledPayload, "worstCaseAttempts" | "verification" | "warnings"> | undefined {
-  if (!("worstCaseAttempts" in payload)) return undefined
-  return { worstCaseAttempts: payload.worstCaseAttempts, verification: payload.verification, warnings: "warnings" in payload ? payload.warnings : [] }
 }

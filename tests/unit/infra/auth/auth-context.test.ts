@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import { apiKey, resolveAuthContext as resolveAuthContextWithSlots } from "../../../../src/infra/auth/auth-context.js";
 import { plainApiKey } from "../../../helpers/auth-context.js";
 import { createKeyResolver, type CredentialCommandRunner } from "../../../../src/infra/auth/resolve-key.js";
-import { setCredential } from "../../../../src/infra/auth/auth-store-mutations.js";
+import { setMeteredCredentialWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
 import { fileTemporaryDirectory } from "../../../helpers/directories.js";
 
 /** The account layout the auth store is written for: an account home holding a
@@ -68,13 +68,13 @@ describe("resolveAuthContext", () => {
   });
 
   it("picks up API key from the unified store", async () => {
-    await setCredential("anthropic_api", { type: "api_key", key: "stored-key" }, TEST_DIR);
+    await setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "stored-key" }, TEST_DIR, () => "metered");
     const auth = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
     expect(plainApiKey(auth, "anthropic_api")).toBe("stored-key");
   });
 
   it("carries the persisted opaque lineage without deriving it from the secret", async () => {
-    await setCredential("anthropic_api", { type: "api_key", key: "stored-key" }, TEST_DIR);
+    await setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "stored-key" }, TEST_DIR, () => "metered");
     const first = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
     const second = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
 
@@ -84,7 +84,7 @@ describe("resolveAuthContext", () => {
   });
 
   it("resolves a !command API key from the store through the injected resolver", async () => {
-    await setCredential("openai_api", { type: "api_key", key: "!print-my-key" }, TEST_DIR);
+    await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "!print-my-key" }, TEST_DIR, () => "metered");
     const resolver = keyResolver({ "print-my-key": "test-key-from-cmd" });
     const auth = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: resolver.resolveKey });
     expect(plainApiKey(auth, "openai_api")).toBe("test-key-from-cmd");
@@ -92,19 +92,19 @@ describe("resolveAuthContext", () => {
   });
 
   it("detects chatgpt configured from oauth credential in store", async () => {
-    await setCredential("chatgpt", {
+    await setMeteredCredentialWithReceipt("chatgpt", {
       type: "oauth",
       access: "access-token",
       refresh: "refresh-token",
       expires: Date.now() + 3_600_000,
-    }, TEST_DIR);
+    }, TEST_DIR, () => "metered");
     const auth = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
     expect((auth.providers.get("chatgpt")?.kind === "oauth")).toBe(true);
   });
 
   it("ignores an uninstalled provider and resolves a healthy installed credential", async () => {
-    await setCredential("removed_provider", { type: "api_key", key: "stale-key" }, TEST_DIR);
-    await setCredential("anthropic_api", { type: "api_key", key: "healthy-key" }, TEST_DIR);
+    await setMeteredCredentialWithReceipt("removed_provider", { type: "api_key", key: "stale-key" }, TEST_DIR, () => "metered");
+    await setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "healthy-key" }, TEST_DIR, () => "metered");
     const auth = await resolveAuthContext({
       authDir: TEST_DIR,
       resolveKey: keyResolver().resolveKey,
@@ -154,11 +154,11 @@ describe("resolveAuthContext", () => {
     expect(auth.droppedCredentials).toEqual(["anthropic_api"]);
   });
 
-  it("calling resolveAuthContext() again after setCredential() returns updated snapshot", async () => {
+  it("calling resolveAuthContext() again after a credential write returns updated snapshot", async () => {
     const before = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
     expect(apiKey(before, "anthropic_api")).toBeUndefined();
 
-    await setCredential("anthropic_api", { type: "api_key", key: "new-key" }, TEST_DIR);
+    await setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "new-key" }, TEST_DIR, () => "metered");
     const after = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: keyResolver().resolveKey });
     expect(plainApiKey(after, "anthropic_api")).toBe("new-key");
   });

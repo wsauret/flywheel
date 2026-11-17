@@ -42,10 +42,6 @@ function contextStateFromEvents(events: readonly StoredFact[]): ContextProjectio
   })
 }
 
-export function loadContextStateFromEvents(events: readonly StoredFact[]): AccumulatorState | null {
-  return accumulatorStateFromProjection(contextStateFromEvents(events))
-}
-
 /** The context that one recipient of a session reads from its stored
  *  facts, with every record it leaves out and why. Without a recipient, it
  *  is the workflow scope. */

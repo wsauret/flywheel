@@ -11,7 +11,7 @@ const ProbeFact = defineFact({ type: "probe.recorded", version: 1, actor: Schema
 const fact = { type: "probe.recorded", version: 1, actor: "flywheel", payload: { count: 2 } } as const
 function owner(id: string, sessionSchemas: Required<NonNullable<FirstPartyModule["facts"]>>["sessionSchemas"]): FirstPartyModule {
   return {
-    id, dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], transformers: [], gates: [],
+    id, dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], gates: [],
     facts: { prefixes: ["probe."], sessionSchemas },
   }
 }

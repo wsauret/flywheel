@@ -1,7 +1,8 @@
-import { expect, test } from "bun:test";
+import { afterEach, expect, setSystemTime, spyOn, test } from "bun:test";
+import { copyFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { benchmarkSlug, normalizeModelScores, recentScoreModel } from "../../../src/infra/llm/model-scores-document.js";
-import { createModelScoresReader, scoresForModel } from "../../../src/infra/llm/model-scores.js";
+import { readModelScores, scoresForModel } from "../../../src/infra/llm/model-scores.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { createModelsClient } from "../../../src/infra/llm/models.js";
 import { modelsDevDocument } from "../../helpers/model-catalog-fixtures.js";
@@ -10,6 +11,26 @@ import { scoreCatalogModels } from "../../../src/orchestration/config/model-scor
 const directories = temporaryDirectories();
 const now = new Date("2026-10-19T00:00:00Z");
 const scope = ["example-a", "example-b", "example-c"];
+
+afterEach(() => {
+  setSystemTime();
+});
+
+/** Serves benchmark requests from `handler` until the returned spy is restored. */
+function serveBenchmarks(handler: (url: string, init?: RequestInit) => Promise<Response>) {
+  return spyOn(globalThis, "fetch").mockImplementation(Object.assign(
+    (request: string | URL | Request, init?: RequestInit) => handler(String(request), init),
+    { preconnect: () => {} },
+  ));
+}
+
+/** A fresh user data root that holds only the benchmark cache that `root` persisted, as a new process would find it. */
+function persistedCopy(root: string): string {
+  const copy = directories("benchmark-cache-copy-");
+  mkdirSync(join(copy, "models"));
+  copyFileSync(join(root, "models", "benchmark-tiers.json"), join(copy, "models", "benchmark-tiers.json"));
+  return copy;
+}
 
 function feeds() {
   return {
@@ -98,47 +119,54 @@ test("normalizes external null and malformed rows without inventing measurements
 });
 
 test("fetches lazily once a day, shares concurrent reads, persists freshness and retains last good data after failure", async () => {
-  let clock = now;
+  setSystemTime(now);
   let fail = false;
   const calls: { url: string; init: RequestInit | undefined }[] = [];
   const input = feeds();
-  const fetcher: typeof fetch = Object.assign(async (request: string | URL | Request, init?: RequestInit) => {
-    const url = String(request);
+  const fetcher = serveBenchmarks(async (url, init) => {
     calls.push({ url, init });
     if (fail) throw new Error("offline");
     return Response.json(url.includes("supabase") ? input.terminal : url.endsWith("speed.json") ? input.speed : input.models);
-  }, { preconnect: () => {} });
-  const root = directories("benchmark-cache-");
-  const deps = { fetch: fetcher, now: () => clock };
-  const read = createModelScoresReader(root, deps);
-  expect(calls).toHaveLength(0);
-  const [first, simultaneous] = await Promise.all([read(), read()]);
-  expect(first).toEqual(simultaneous);
-  expect(calls).toHaveLength(3);
-  expect(calls.find((call) => call.url.includes("supabase"))?.init).toMatchObject({
-    method: "POST", body: '{"package":"terminal-bench/terminal-bench","name":"4-0-0"}',
   });
-  expect(await createModelScoresReader(root, deps)()).toEqual(first);
-  expect(calls).toHaveLength(3);
-  clock = new Date(now.getTime() + 86_400_000);
-  fail = true;
-  expect(await read()).toEqual(first);
-  expect(calls).toHaveLength(6);
-  expect(await createModelScoresReader(root, deps)()).toEqual(first);
-  expect(calls).toHaveLength(6);
+  try {
+    const root = directories("benchmark-cache-");
+    const [first, simultaneous] = await Promise.all([readModelScores(root), readModelScores(root)]);
+    expect(first).toEqual(simultaneous);
+    expect(calls).toHaveLength(3);
+    expect(calls.find((call) => call.url.includes("supabase"))?.init).toMatchObject({
+      method: "POST", body: '{"package":"terminal-bench/terminal-bench","name":"4-0-0"}',
+    });
+    expect(await readModelScores(persistedCopy(root))).toEqual(first);
+    expect(calls).toHaveLength(3);
+    setSystemTime(new Date(now.getTime() + 86_400_000));
+    fail = true;
+    expect(await readModelScores(root)).toEqual(first);
+    expect(calls).toHaveLength(6);
+    expect(await readModelScores(persistedCopy(root))).toEqual(first);
+    expect(calls).toHaveLength(6);
+  } finally {
+    fetcher.mockRestore();
+  }
 });
 
 test("states unavailable without a cache and falls back to BenchLM when Terminal-Bench changes", async () => {
-  const root = directories("benchmark-unavailable-");
-  const unavailable: typeof fetch = Object.assign(async () => { throw new Error("offline"); }, { preconnect: () => {} });
-  expect(await createModelScoresReader(root, { fetch: unavailable, now: () => now })()).toBeUndefined();
+  setSystemTime(now);
+  const unavailable = serveBenchmarks(async () => { throw new Error("offline"); });
+  try {
+    expect(await readModelScores(directories("benchmark-unavailable-"))).toBeUndefined();
+  } finally {
+    unavailable.mockRestore();
+  }
   const { models, speed } = feeds();
-  const changedTerminal: typeof fetch = Object.assign(async (request: string | URL | Request) =>
-    Response.json(String(request).includes("supabase") ? { changed: true } : String(request).endsWith("speed.json") ? speed : models),
-  { preconnect: () => {} });
-  const snapshot = await createModelScoresReader(directories("benchmark-fallback-"), { fetch: changedTerminal, now: () => now })();
-  expect(snapshot?.terminalAvailable).toBe(false);
-  expect(scoresForModel("example-c", snapshot, scope, ["low", "high"]).scores?.map((row) => row.qualityTier)).toEqual([10, 10]);
+  const changedTerminal = serveBenchmarks(async (url) =>
+    Response.json(url.includes("supabase") ? { changed: true } : url.endsWith("speed.json") ? speed : models));
+  try {
+    const snapshot = await readModelScores(directories("benchmark-fallback-"));
+    expect(snapshot?.terminalAvailable).toBe(false);
+    expect(scoresForModel("example-c", snapshot, scope, ["low", "high"]).scores?.map((row) => row.qualityTier)).toEqual([10, 10]);
+  } finally {
+    changedTerminal.mockRestore();
+  }
 });
 
 test("scope includes recent direct catalogs and excludes old, future, unknown-date and OpenRouter-only models", async () => {

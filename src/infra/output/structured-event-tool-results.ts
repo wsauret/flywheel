@@ -2,7 +2,7 @@ import { Option, Result, Schema } from "effect";
 import { AgentFailureDisplaySchema, type AgentFailureDisplay, type ToolEntry } from "../output-blocks.js";
 import { isDeliveryConfirmationText } from "../delivery-confirmation.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
-import { getToolDisplay } from "../tools/tool-display-registry.js";
+import { contractReadRow, getToolDisplay } from "../tools/tool-display-registry.js";
 import type { ToolDisplay } from "../tools/types.js";
 import { sanitizeExternalText } from "../control-characters.js";
 import { blockedStatusLine, extractErrorText, launderToolError, resolveAgentFailureDisplay } from "./output-formatter.js";
@@ -44,7 +44,7 @@ export interface SettledExecution {
  *  and disclose no body (see AgentGroupBlock's ToolList), so a preview-bearing
  *  diff, filetype, or captured output would never render. The durable mutation
  *  artifact is not a preview but the evidence that a durable write happened,
- *  so it travels with the child on both the live and the replayed path. */
+ *  so it travels with the replayed child. */
 export function childRowDisplayFields(fields: ToolResultDisplayFields): ToolResultDisplayFields {
   return {
     ...(fields.exitCode !== undefined ? { exitCode: fields.exitCode } : {}),
@@ -219,17 +219,18 @@ export function resultStatusMessage(details: unknown): string | undefined {
   return typeof message === "string" ? singleLine(sanitizeExternalText(message)) || undefined : undefined;
 }
 
-/** A result that names its target shows that name as the row's detail. */
-function nameResultTarget(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, name: string): void {
-  if (tracked.kind === "standalone") {
-    const index = builder.toolBlockIndex(toolUseId);
-    const block = index === undefined ? undefined : builder.getBlocks()[index];
-    if (index !== undefined && block?.kind === "tool") builder.patchTool(index, { presentation: { ...block.presentation, detail: name } });
-  } else if (tracked.kind === "row") {
-    const group = builder.getBlocks().find((block) => block.kind === "agentGroup" && block.id === tracked.agentId);
-    const child = group?.kind === "agentGroup" ? group.children[tracked.childIndex] : undefined;
-    if (child) builder.patchAgentChild(tracked.agentId, tracked.childIndex, { presentation: { ...child.presentation, detail: name } });
-  }
+/** Whether an ok result read a short-form tool's contract, which dispatch states under `details.contractRead`
+ *  (PI-AGENT-131). Exported for the derived-history tool-result meta reader. */
+export function resultReadContract(details: unknown): boolean {
+  return asRecord(details)?.contractRead === true;
+}
+
+/** Patches the presentation of a row from what its result states. */
+function presentResult(builder: StructuredOutputBuilder, tracked: PlacedTool, toolUseId: string, patch: (row: ToolEntry) => Partial<ToolEntry>): void {
+  if (tracked.kind !== "standalone") return;
+  const index = builder.toolBlockIndex(toolUseId);
+  const block = index === undefined ? undefined : builder.getBlocks()[index];
+  if (index !== undefined && block?.kind === "tool") builder.patchTool(index, patch(block));
 }
 
 export function resolveTrackedToolResult(
@@ -247,17 +248,13 @@ export function resolveTrackedToolResult(
     ...extractDisplayMeta(details, { source: tracked.toolName, toolUseId }),
     ...(settled?.mutationEvidence ? { mutationEvidence: settled.mutationEvidence } : {}),
   };
-  const projectedMeta = rawMeta.mutationEvidence !== undefined
+  const displayMeta = rawMeta.mutationEvidence !== undefined
     ? { ...rawMeta, mutationEvidence: mutationEvidenceSummaryDisplayPaths(rawMeta.mutationEvidence, executionCwd) }
     : rawMeta;
-  const displayMeta = tracked.kind === "row" && tracked.inSubagent ? childRowDisplayFields(projectedMeta) : projectedMeta;
   const waiting = outcome === "ok" ? resultStatusMessage(details) : undefined;
   switch (tracked.kind) {
     case "agent":
       resolveAgentResult(builder, tracked, outcome, rawContent, details, displayMeta);
-      break;
-    case "row":
-      resolveRowResult(builder, tracked, outcome, rawContent, displayMeta, waiting);
       break;
     case "standalone":
       if (tracked.toolName === "subagent" && outcome === "ok" && agentPartial(details)) {
@@ -269,7 +266,11 @@ export function resolveTrackedToolResult(
       break;
   }
   const targetName = resultTargetName(details);
-  if (targetName !== undefined) nameResultTarget(builder, tracked, toolUseId, targetName);
+  if (targetName !== undefined) presentResult(builder, tracked, toolUseId, (row) => ({ presentation: { ...row.presentation, detail: targetName } }));
+  if (outcome === "ok" && resultReadContract(details)) {
+    const read = contractReadRow(tracked.toolName);
+    presentResult(builder, tracked, toolUseId, () => read);
+  }
 }
 
 function resolveAgentResult(
@@ -304,37 +305,6 @@ function resolveAgentResult(
   }
 }
 
-
-function resolveRowResult(
-  builder: StructuredOutputBuilder,
-  tracked: Extract<PlacedTool, { kind: "row" }>,
-  outcome: ToolOutcome,
-  rawContent: LlmToolOutputPart[] | undefined,
-  displayMeta: ToolResultDisplayFields,
-  waiting: string | undefined,
-): void {
-  if (getToolDisplay(tracked.toolName).fileChangeKind || displayMeta.mutationEvidence !== undefined) {
-    builder.patchAgentChild(tracked.agentId, tracked.childIndex, {
-      proposedDiff: undefined, diff: undefined, invocationBody: undefined,
-      ...(displayMeta.mutationEvidence !== undefined ? { mutationEvidence: displayMeta.mutationEvidence } : {}),
-    });
-  }
-  if (outcome === "interrupted") {
-    builder.interruptAgentChildTool(tracked.agentId, tracked.childIndex);
-  } else if (outcome === "blocked") {
-    builder.blockAgentChildTool(tracked.agentId, tracked.childIndex, blockedStatusLine(extractResultText(rawContent) ?? ""));
-  } else if (outcome === "error" || outcome === "cancelled" || outcome === "stopped") {
-    const rawText = extractErrorText(rawContent) ?? "Unknown error";
-    const message = launderToolError(rawText);
-    builder.errorAgentChildTool(tracked.agentId, tracked.childIndex, message, failureEvidence(displayMeta));
-  } else {
-    const contract = getToolDisplay(tracked.toolName);
-    const content = displayedResultContent(contract, preservedResultText(contract, rawContent), undefined, displayMeta.background);
-    const settled = verifiedCompletionMeta(contract, rawContent, displayMeta, content);
-    if (waiting === undefined) builder.completeAgentChildTool(tracked.agentId, tracked.childIndex, settled);
-    else builder.patchAgentChild(tracked.agentId, tracked.childIndex, { ...settled, status: "blocked", statusMessage: waiting });
-  }
-}
 
 function resolveStandaloneResult(
   builder: StructuredOutputBuilder,

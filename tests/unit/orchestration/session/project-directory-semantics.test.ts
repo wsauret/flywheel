@@ -15,7 +15,6 @@ import { selectStartupDirectories, type ProjectDirectories } from "../../../../s
 import { toFileUri } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createMemoryTool } from "../../../../src/orchestration/modules/learning/tools/memory.js"
 import { writeDefinition } from "../../../../src/orchestration/agent-runtime/tools/write.js"
 import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
@@ -27,6 +26,7 @@ import { tryOpenConversationTree } from "../../../../src/orchestration/session/c
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 interface Repo {
   readonly root: string
@@ -99,8 +99,8 @@ async function recordRelativeToolCall(store: EventStore, sessionId: string, conv
   tree.getStorage().dispose()
 }
 
-function historyProjection(store: EventStore, projectRoot: string, manager: Parameters<typeof createSessionDetailProjection>[0]["manager"]) {
-  return createSessionDetailProjection({
+function historyProjection(store: EventStore, projectRoot: string, manager: Parameters<typeof testSessionDetailProjection>[0]["manager"]) {
+  return testSessionDetailProjection({
     projectRoot,
     sessionStore: { get: () => undefined },
     manager,

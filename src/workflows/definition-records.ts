@@ -5,6 +5,7 @@ import {
   namedAgents,
   WorkflowDefinitionSchema,
   type AgentRecordRef,
+  type AuthoredWorkflow,
   type PhaseOrRepeat,
   type WorkflowDefinition,
 } from "./workflow-schema.js"
@@ -66,8 +67,9 @@ export function phaseStructure(phases: readonly PhaseOrRepeat[]): readonly unkno
 
 /** The workflow as authored, without the loader's attachments. The schema
  *  type carries no provenance or loaded content, so the decoded value is the
- *  durable record shape. */
-export function canonicalWorkflowRecord(workflow: WorkflowDefinition): typeof WorkflowDefinitionSchema.Type {
+ *  durable record shape. A recorded definition that no loader attached
+ *  content to has the same record. */
+export function canonicalWorkflowRecord(workflow: AuthoredWorkflow & Partial<Pick<WorkflowDefinition, "provenance" | "briefs" | "inputContract">>): typeof WorkflowDefinitionSchema.Type {
   const { provenance: _provenance, briefs: _briefs, inputContract: _inputContract, retiredStepGrammar: _retiredStepGrammar, ...source } = workflow
   return Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(source)
 }

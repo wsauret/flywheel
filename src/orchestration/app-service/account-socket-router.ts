@@ -1,4 +1,4 @@
-import { Redacted } from "effect"
+import { Redacted, type Schema } from "effect"
 import { join } from "node:path"
 import { errorMessage } from "../../infra/error-message.js"
 import { startRefusalOf } from "../../protocol/serve-handshake.js"
@@ -69,7 +69,7 @@ export function createAccountSocketRouter<Connection extends object | string | n
    *  service of `module`, which sends each answer through `answer` and
    *  settles when the request ends. `withdrawn` aborts when the client
    *  closes first. A rejection is the failure the client reads. */
-  readonly moduleRequest: (module: string, request: AccountModuleRequest, answer: (payload: unknown) => Promise<void>, withdrawn: AbortSignal) => Promise<void>
+  readonly moduleRequest: (module: string, request: AccountModuleRequest, answer: (payload: Schema.Json) => Promise<void>, withdrawn: AbortSignal) => Promise<void>
   /** The client root and identity this runtime serves, or why it serves none. */
   readonly client: () => Promise<SettledControlUiAssetState>
   readonly openProject: (canonicalProjectRoot: string, intent: "runtime" | "browser", connection: Connection, onStartupStep?: (reached: StartupReached) => void) => Promise<AccountProjectConnection>

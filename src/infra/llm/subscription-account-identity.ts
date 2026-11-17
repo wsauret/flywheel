@@ -23,7 +23,7 @@ export function createSubscriptionAccountIdentity(providerId: string, instanceId
 }
 
 /** Hashes a provider subject without retaining its raw value. */
-export function subscriptionSubjectDigest(subject: string): string {
+function subscriptionSubjectDigest(subject: string): string {
   requireIdentityPart(subject, "subject");
   return `v1:${createHash("sha256").update(subject, "utf8").digest("hex")}`;
 }

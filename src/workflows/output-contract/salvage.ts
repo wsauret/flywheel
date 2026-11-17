@@ -14,6 +14,7 @@ import type { OutputIssue } from "./paths.js";
 
 /** The problems of one value as a declared field decodes it, with only its
  *  declared keys; empty when it decodes. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one field value of an agent's delivered handoff
 function decodeIssues(field: Field, value: unknown): readonly OutputIssue[] {
   const declared = walkValue(field, value, "", (fields, record) => declaredPayload(fields, record).payload);
   const decoded = Schema.decodeUnknownResult(fieldSchema(field), { errors: "all" })(declared);

@@ -24,7 +24,7 @@ import { generationHolders, makeWorkflowDeps } from "./_headless-run-fixtures.js
 
 const directory = temporaryDirectories()
 const launcher = { spawnOwned: async () => { throw new Error("unused") }, adoptOwned: async () => { throw new Error("unused") }, open() { return this }, close: async () => ({ settled: true as const }) }
-const completedAgent: AgentFactory = () => ({ send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) })
+const completedAgent: AgentFactory = () => ({ send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) })
 
 describe("runHeadlessTask ownership", () => {
   test("retires finalized result checkpoints at the canonical flush barrier", async () => {
@@ -53,7 +53,7 @@ describe("runHeadlessTask ownership", () => {
             } finally { store.close() }
           })().catch(done.reject)
         },
-        end() {}, abort() {}, done: done.promise,
+        abort() {}, done: done.promise,
       }
     }
     const result = await runHeadlessTask("work", {
@@ -79,7 +79,7 @@ describe("runHeadlessTask ownership", () => {
           })
           options.lifecycle.onTurnEnded?.({ handoffWritten: false, turnCount: 1 })
         },
-        end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
+        abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
       }
     }
     const result = await runHeadlessTask("work", {
@@ -140,7 +140,7 @@ describe("runHeadlessTask ownership", () => {
       result = await runHeadlessTask("work", {
         modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false,
         prepareWorkflowDeps: async () => makeWorkflowDeps(() => ({
-          send() {}, end() {}, abort() {},
+          send() {}, abort() {},
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" as const } }).then((value) => { order.push("runner settled"); return value }),
         })),
       })
@@ -207,14 +207,14 @@ describe("runHeadlessTask ownership", () => {
       if (options.conversation.kind !== "durable-tree") throw new Error("expected durable conversation")
       const conversation = options.conversation
       priorToolCalls.push(conversation.priorMessages.filter((message) => message.kind === "toolResult" && message.toolUseId === "tool-before-fault").length)
-      if (runs > 1) return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" as const } }) }
+      if (runs > 1) return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" as const } }) }
       const done = (async () => {
         await conversation.append({ kind: "assistant", content: [{ type: "tool_use", id: "tool-before-fault", name: "read", input: {} }] })
         await conversation.append({ kind: "toolResult", toolUseId: "tool-before-fault", content: [{ type: "text", text: "read" }] })
         await conversation.flush?.()
         return { servedRequests: 0, durationMs: 1, terminal: { kind: "api_overloaded" as const, message: "overloaded" } }
       })()
-      return { send() {}, end() {}, abort() {}, done }
+      return { send() {}, abort() {}, done }
     }
     try {
       const result = await runHeadlessTask("work", {
@@ -239,7 +239,7 @@ describe("runHeadlessTask ownership", () => {
     const createAgent: AgentFactory = () => {
       runs += 1
       const terminal = { kind: "api_error" as const, message: "no capacity", recovery: { kind: "at" as const, atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } as const } }
-      return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
+      return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
     }
     const write = spyOn(process.stderr, "write").mockImplementation(() => true)
     const realSleep = abort.abortableSleep

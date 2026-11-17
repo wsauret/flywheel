@@ -38,6 +38,9 @@
     }
   },
   // These dependencies are loaded by tools from strings or resolved file paths,
-  // so knip cannot see a static import reference.
-  "ignoreDependencies": ["@vscode/tree-sitter-wasm"]
+  // so knip cannot see a static import reference. The decision-model packages
+  // serve the vendored plugin and diff rules under scripts/oxlint-plugin-jev/
+  // and scripts/anti-slop-llm/, which oxlint loads by path and which stay
+  // outside the analyzed project so their upstream exports are not reported.
+  "ignoreDependencies": ["@vscode/tree-sitter-wasm", "@ai-sdk/openai", "@ai-sdk/typesafe-ai", "ai", "synckit"]
 }

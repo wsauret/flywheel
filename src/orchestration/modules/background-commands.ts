@@ -12,6 +12,5 @@ export const backgroundCommandsModule = {
     { domain: "settings", id: "background-commands", value: { control: "binary", label: "Background Commands", description: "Allow commands and tasks to continue in the background" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

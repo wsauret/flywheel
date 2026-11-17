@@ -115,14 +115,29 @@ test("skips unsupported event and patch discriminators with metadata only", () =
   })
 })
 
-test("rejects malformed known frames and known cursor identities", () => {
-  assert.throws(() => decodeRuntimeEventFrame({
+test("skips a patch of an unknown kind by its discriminators alone, and reports only the cursor descriptor", () => {
+  assert.deepEqual(decodeRuntimeEventFrame({
     type: "patch",
     patch: {
-      cursor: { scope: "session", domain: "changes" },
+      cursor: { scope: "session", domain: "changes", future: "private" },
       payload: { kind: "future.changed" },
     },
-  }))
+  }), {
+    kind: "unsupported",
+    diagnostic: {
+      kind: "unsupported_patch",
+      cursor: { scope: "session", domain: "changes" },
+      payloadKind: "future.changed",
+    },
+  })
+})
+
+test("rejects malformed known frames", () => {
+  assert.throws(() => decodeRuntimeEventFrame({ ...changesFrame(4, 3), patch: { ...changesFrame(4, 3).patch, position: "4" } }))
+  assert.throws(() => decodeRuntimeEventFrame({ type: "patch", patch: { ...changesFrame(4, 3).patch, cursor: { scope: 7, domain: "changes" } } }))
+  assert.throws(() => decodeRuntimeEventFrame({ type: "patch", patch: { ...changesFrame(4, 3).patch, payload: { kind: 7 } } }))
+  assert.throws(() => decodeRuntimeEventFrame({ type: 7 }))
+  assert.throws(() => decodeRuntimeEventFrame(null))
   assert.throws(() => decodeRuntimeEventFrame({
     type: "patch",
     patch: {

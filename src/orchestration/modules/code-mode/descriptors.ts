@@ -2,6 +2,7 @@ import { Effect, Schema } from "effect"
 import * as Tool from "../../../infra/code-mode/tool.js"
 import type { JsonSchema, Tool as CodeModeTool } from "../../../infra/code-mode/tool.js"
 import { toolError, type ToolError } from "../../../infra/code-mode/tool-error.js"
+import type { ToolRuntimeError } from "../../../infra/code-mode/tool-runtime.js"
 import type { Tools } from "../../../infra/code-mode/tools.js"
 import type { BoundedStringCodeModeOutput, RuntimeTool } from "../../agent-runtime/tools/types.js"
 
@@ -105,7 +106,8 @@ type ToolGroup = { [segment: string]: CodeModeTool | ToolGroup }
 
 /** Builds the Code Mode `tools` trie from descriptors whose paths
  *  `describeCodeModeTools` already proved free of prefix collisions. */
-export function toolTrie(descriptors: readonly CodeModeToolDescriptor[], execute: (descriptor: CodeModeToolDescriptor, input: unknown) => Effect.Effect<CodeToolResult, ToolError>): Tools {
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
+export function toolTrie(descriptors: readonly CodeModeToolDescriptor[], execute: (descriptor: CodeModeToolDescriptor, input: unknown) => Effect.Effect<CodeToolResult, ToolError | ToolRuntimeError>): Tools {
   const root: ToolGroup = {}
   for (const descriptor of descriptors) {
     let group = root

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import type { ResearchAnswerKey } from "../../../src/orchestration/modules/development/benchmark/research-task.js";
-import { createBenchmarkCatalog, DEFAULT_IMPLEMENTER_TIMEOUT_MS, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
+import { createBenchmarkCatalog, resolveReviewFixture } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { PLAN_FILE } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
 
@@ -40,7 +40,8 @@ describe("benchmark catalog", () => {
       expect(task.timeoutMs).toBeGreaterThanOrEqual(1);
       expect(task.taskDir.startsWith(catalog.implementTasksDir)).toBe(true);
     }
-    expect(tasks.some((task) => task.timeoutMs === DEFAULT_IMPLEMENTER_TIMEOUT_MS)).toBe(true);
+    // A task that states no limit runs for 25 minutes.
+    expect(tasks.some((task) => task.timeoutMs === 25 * 60 * 1_000)).toBe(true);
   });
 
   it("keeps every review fixture directory inside the fixtures directory", async () => {
@@ -276,6 +277,7 @@ describe("real-review fixtures", () => {
     const dedicatedDir = join(fixturesDir, "structure");
     await cp(fixtureDir, dedicatedDir, { recursive: true });
     const manifest = { title: "Structure", review_prompt_hint: "", defects: [] };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the fixture manifest field that the catalog decodes
     const writeReviewers = (reviewers: unknown) => Bun.write(join(dedicatedDir, "manifest.json"), JSON.stringify({ ...manifest, reviewers }));
     await writeReviewers(["reviewer-code-elegance", "reviewer-mechanism"]);
     const ids = async (persona: string) => (await reviewCatalog.reviewTasks(persona)).map((task) => task.id);

@@ -72,7 +72,6 @@ const definition = {
   displayName: "SuperGrok Subscription",
   shortName: "SuperGrok",
   billingUrl: "https://grok.com/?_s=billing",
-  supportedFamilies: ["openai"],
   defaultChatTransport: "openai-responses",
   configHints: ["flywheel auth login --supergrok"],
   cli: { flag: "supergrok", name: "SuperGrok" },
@@ -195,6 +194,5 @@ export const supergrokModule = {
     { domain: "settings", id: "provider-supergrok", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow xAI models through a SuperGrok subscription" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

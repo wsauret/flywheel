@@ -1,5 +1,5 @@
-import { describe, expect, it } from "bun:test"
-import { COMMAND_CATALOG_WAIT_MS, routeSlashToken, type CommandCatalogReadiness } from "../../../../src/protocol/client/slash-route.js"
+import { describe, expect, it, jest } from "bun:test"
+import { routeSlashToken, type CommandCatalogReadiness } from "../../../../src/protocol/client/slash-route.js"
 import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
 
 /** A client's catalog intake: nothing until `arrive` publishes the owners. */
@@ -15,9 +15,22 @@ function catalog(initial: readonly string[] | undefined) {
 }
 
 describe("routeSlashToken", () => {
-  it("waits at most as long as the command catalog read itself", () => {
-    const policy = runtimeCallPolicies.commandCatalog
-    expect(policy._tag === "BestEffort" ? policy.deadlineMs : undefined).toBe(COMMAND_CATALOG_WAIT_MS)
+  it("waits at most as long as the command catalog read itself", async () => {
+    jest.useFakeTimers()
+    try {
+      const early = catalog(undefined)
+      const routing = routeSlashToken(early.readiness, early.route("doctor"))
+      if (routing.kind !== "waiting") throw new Error(`expected a wait, got ${routing.kind}`)
+      let settled = false
+      void routing.settled.finally(() => { settled = true })
+      jest.advanceTimersByTime(runtimeCallPolicies.commandCatalog.deadlineMs - 1)
+      await Promise.resolve()
+      expect(settled).toBe(false)
+      jest.advanceTimersByTime(1)
+      expect(await routing.settled).toEqual({ kind: "loading", notice: "Commands are still loading; your command stays in the prompt" })
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("routes a token the client already owns at once, even before the catalog arrives", () => {

@@ -15,6 +15,7 @@ import { NavigationProvider } from "../../../../src/tui/context/navigation.js"
 import { resolvedTheme } from "../components/prompt-border-fixtures.js"
 import { viewerSurface } from "../components/_child-session-viewer-fixtures.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import type { FrontendMutation } from "../../../../src/protocol/app-service-types.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []
 afterEach(() => { for (const render of renders.splice(0)) render.renderer.destroy() })
@@ -89,7 +90,7 @@ it("dispatches admitted Interrupt and person Resume, preserving the held detail 
   if (original.kind !== "subagent") throw new Error("expected a subagent row")
   const [row, setRow] = createSignal({ ...original, admittedActions: ["subagent.interrupt", "subagent.resume"] as const })
   const dispatched: unknown[] = []
-  const answered = async (mutation: unknown) => { dispatched.push(mutation); return { ok: true as const } }
+  const answered = async (mutation: FrontendMutation) => { dispatched.push(mutation); return { ok: true as const } }
   let retains = 0
   let releases = 0
   const render = await renderBlock(block, 100, {

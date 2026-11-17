@@ -1,15 +1,9 @@
-import type { FrontendOutputBlock, FrontendToolStreamingText } from "./app-service-types.js"
+import type { FrontendOutputBlock } from "./app-service-types.js"
 
 const utf8Encoder = new TextEncoder()
 
-export function frontendUtf8Bytes(text: string): number {
+function frontendUtf8Bytes(text: string): number {
   return utf8Encoder.encode(text).byteLength
-}
-
-export function frontendToolStreamingTextBytes(body: FrontendToolStreamingText): number {
-  if ("proposedDiff" in body) return frontendUtf8Bytes(JSON.stringify(body.proposedDiff))
-  if (body.previewCheck !== undefined) return frontendUtf8Bytes(body.previewCheck)
-  return frontendUtf8Bytes(body.content) + (body.filetype === undefined ? 0 : frontendUtf8Bytes(body.filetype))
 }
 
 export function frontendOutputBlockBytes(block: FrontendOutputBlock): number {

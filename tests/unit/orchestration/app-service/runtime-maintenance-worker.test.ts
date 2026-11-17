@@ -3,8 +3,13 @@ import { maintainSkillLifecycleIfAdmitted } from "../../../../src/orchestration/
 import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, test } from "bun:test";
-import { runRuntimeMaintenanceLifecycle, runSerializedMaintenanceSteps } from "../../../../src/orchestration/app-service/runtime-maintenance-worker.js";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/debug-log.js";
+import { createMessagePortProcessEndpoint } from "../../../../src/infra/internal-process-channel.js";
+import type { GuardianControl } from "../../../../src/infra/process-supervisor.js";
+import { createMaintenanceQueue } from "../../../../src/orchestration/app-service/runtime-maintenance-owner.js";
+import { serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js";
+import { servedProjectState } from "./_served-project-state-fixture.js";
 import { pruneRetiredFactFamilies } from "../../../../src/orchestration/session/event-store-maintenance.js";
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
@@ -18,109 +23,124 @@ afterEach(() => {
   for (const dir of created.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-interface Gate {
-  readonly promise: Promise<void>;
-  readonly release: () => void;
-}
+/** A guardian that declares a generation and proves it empty on close; the
+ *  job under test launches no process. */
+const idleGuardian: Pick<GuardianControl, "openGeneration"> = {
+  openGeneration: async () => ({
+    request: async () => { throw new Error("this generation leases nothing") },
+    pid: async () => process.pid,
+    close: async () => ({ settled: true as const }),
+  }),
+};
 
-function gate(): Gate {
-  let release = (): void => {};
-  const promise = new Promise<void>((resolve) => { release = resolve; });
-  return { promise, release };
-}
+const WORKER_URL = new URL("../../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href;
+// The maintenance Worker loads the runtime module graph in a fresh isolate,
+// which can take over 5 s on a loaded runner, so each Worker test owns its
+// deadline.
+const WORKER_BOOT_TEST_TIMEOUT_MS = 60_000;
 
-async function isPending(promise: Promise<void>): Promise<boolean> {
-  const marker = Symbol("pending");
-  return await Promise.race([promise.then(() => false), Promise.resolve(marker)]) === marker;
-}
-
-describe("maintenance Worker lifecycle", () => {
-  test("normal completion waits for cleanup settlement and closes launcher before the log", async () => {
-    const cleanup = gate();
-    const order: string[] = [];
-    const completed = runRuntimeMaintenanceLifecycle({
-      lifetime: new AbortController().signal,
-      work: async () => { order.push("work"); await cleanup.promise; order.push("cleanup-settled"); },
-      closeLauncher: async () => { order.push("launcher-close"); },
-      logOwnershipClosed: () => { order.push("closure-log"); },
-      closeLog: async () => { order.push("log-close"); },
-      exit: () => { order.push("exit"); },
-      reportFailure: () => {},
-    });
-
-    await Promise.resolve();
-    expect(await isPending(completed)).toBe(true);
-    expect(order).toEqual(["work"]);
-    cleanup.release();
-    await completed;
-    expect(order).toEqual(["work", "cleanup-settled", "launcher-close", "closure-log", "log-close", "exit"]);
-  });
-
-  test("an ended lifetime aborts the work, and settlement waits for its delayed finally without reporting a failure", async () => {
-    const finallyGate = gate();
-    const abortObserved = gate();
-    const lifetime = new AbortController();
-    const order: string[] = [];
-    const failures: string[] = [];
-    const completed = runRuntimeMaintenanceLifecycle({
-      lifetime: lifetime.signal,
-      work: async (signal) => {
-        await new Promise<void>((resolve) => signal.addEventListener("abort", () => { abortObserved.release(); resolve(); }, { once: true }));
-        try { await finallyGate.promise; } finally { order.push("child-finally"); }
-        signal.throwIfAborted();
+/** A prepared project whose state is served on this thread to the job's
+ *  state channel. `holdCheckpoints` holds the job's first step until the case
+ *  releases it. `requests` lists the maintenance requests that reach the
+ *  writer, in order. */
+function maintainedProject(holdCheckpoints: Promise<void>) {
+  const directories = workspace("[]");
+  const checkpointsEntered = Promise.withResolvers<void>();
+  const project = servedProjectState(directories, {
+    maintenance: {
+      enterCheckpointPage: () => {
+        checkpointsEntered.resolve();
+        return holdCheckpoints;
       },
-      closeLauncher: async () => { order.push("launcher-close"); },
-      logOwnershipClosed: () => { order.push("closure-log"); },
-      closeLog: async () => { order.push("log-close"); },
-      exit: () => { order.push("exit"); },
-      reportFailure: (stage) => { failures.push(stage); },
-    });
-
-    await Promise.resolve();
-    lifetime.abort(new DOMException("the owner ended the generation", "AbortError"));
-    await abortObserved.promise;
-    expect(await isPending(completed)).toBe(true);
-    expect(order).toEqual([]);
-    finallyGate.release();
-    await completed;
-    expect(order).toEqual(["child-finally", "launcher-close", "closure-log", "log-close", "exit"]);
-    // A withdrawn job is its owner's decision, not a failure.
-    expect(failures).toEqual([]);
+    },
   });
+  const served = { opened: 0, stopped: 0 };
+  const job = {
+    directories,
+    serveState: (port: MessagePort) => {
+      served.opened++;
+      const stop = serveProjectStateChannel(project.state, createMessagePortProcessEndpoint({ port, decode: (value) => value }), { kind: "maintenance", projectId: directories.projectRoot });
+      return async () => { await stop(); served.stopped++; };
+    },
+  };
+  return {
+    job, served, checkpointsEntered: checkpointsEntered.promise,
+    get requests() { return project.requests.filter((kind) => kind.startsWith("maintenance.")); },
+    close: project.close,
+  };
+}
 
-  test("work and launcher-close failures are contained while every owned cleanup runs once", async () => {
-    const calls = { launcher: 0, log: 0, exit: 0 };
-    const failures: string[] = [];
-    await runRuntimeMaintenanceLifecycle({
-      lifetime: new AbortController().signal,
-      work: async () => { throw new Error("cleanup failed"); },
-      closeLauncher: async () => { calls.launcher++; throw new Error("launcher close failed"); },
-      logOwnershipClosed: () => {},
-      closeLog: async () => { calls.log++; },
-      exit: () => { calls.exit++; },
-      reportFailure: (stage, error) => { failures.push(`${stage}: ${String(error)}`); },
-    });
+/** The records the maintenance Worker forwarded to its owner while `run` ran. */
+async function forwardedRecords(run: () => Promise<void>): Promise<readonly DebugLogRecordInput[]> {
+  const records: DebugLogRecordInput[] = [];
+  const record = spyOn(DebugLog, "record").mockImplementation((input) => { records.push(input); });
+  try {
+    await run();
+  } finally {
+    record.mockRestore();
+  }
+  return records;
+}
 
-    expect(calls).toEqual({ launcher: 1, log: 1, exit: 1 });
-    expect(failures).toEqual([
-      "work: Error: cleanup failed",
-      "launcher: Error: launcher close failed",
-    ]);
-  });
-});
+const payloadOf = (record: DebugLogRecordInput): { readonly [field: string]: unknown } =>
+  typeof record.payload === "object" && record.payload !== null ? Object.fromEntries(Object.entries(record.payload)) : {};
+const messages = (records: readonly DebugLogRecordInput[]): readonly unknown[] => records.map((record) => payloadOf(record).message);
+const workFailures = (records: readonly DebugLogRecordInput[]) =>
+  records.filter((record) => payloadOf(record).message === "startup maintenance settlement failed" && payloadOf(record).stage === "work");
 
-describe("serialized maintenance cancellation", () => {
-  test("does not enter the next synchronous store step after cancellation", async () => {
-    const controller = new AbortController();
-    const calls: string[] = [];
+describe("the startup maintenance job", () => {
+  test("Maintenance steps run one at a time in order", async () => {
+    const hold = Promise.withResolvers<void>();
+    const project = maintainedProject(hold.promise);
+    const maintenance = createMaintenanceQueue({ workerUrl: WORKER_URL, guardian: idleGuardian });
+    try {
+      const records = await forwardedRecords(async () => {
+        maintenance.project(project.job).admit();
+        await project.checkpointsEntered;
+        // A step that has not settled holds every later step and the job.
+        let settled = false;
+        const disposal = maintenance.dispose().then(() => { settled = true; });
+        await Bun.sleep(20);
+        expect(project.requests).toEqual(["maintenance.finalized-checkpoints"]);
+        expect(settled).toBe(false);
+        hold.resolve();
+        await disposal;
+      });
+      expect(project.requests.slice(0, 2)).toEqual(["maintenance.finalized-checkpoints", "maintenance.drop-retired-indexes"]);
+      const done = messages(records);
+      expect(done.indexOf("startup event-store maintenance done")).toBeGreaterThanOrEqual(0);
+      expect(done.indexOf("startup event-store maintenance done")).toBeLessThan(done.indexOf("idle scratch sweep done"));
+      expect(done).not.toContain("startup maintenance settlement failed");
+      expect(project.served).toEqual({ opened: 1, stopped: 1 });
+    } finally {
+      hold.resolve();
+      await project.close();
+    }
+  }, WORKER_BOOT_TEST_TIMEOUT_MS);
 
-    await expect(runSerializedMaintenanceSteps(controller.signal, [
-      async () => { calls.push("before"); controller.abort(new Error("released")); },
-      () => { calls.push("store"); },
-    ])).rejects.toThrow("released");
-
-    expect(calls).toEqual(["before"]);
-  });
+  test("a job withdrawn during a step runs no later step and reports no failure", async () => {
+    const hold = Promise.withResolvers<void>();
+    const project = maintainedProject(hold.promise);
+    const maintenance = createMaintenanceQueue({ workerUrl: WORKER_URL, guardian: idleGuardian });
+    try {
+      const records = await forwardedRecords(async () => {
+        const handle = maintenance.project(project.job);
+        handle.admit();
+        await project.checkpointsEntered;
+        const withdrawn = handle.withdraw();
+        hold.resolve();
+        await withdrawn;
+        await maintenance.dispose();
+      });
+      expect(project.requests).toEqual(["maintenance.finalized-checkpoints"]);
+      expect(messages(records)).not.toContain("startup event-store maintenance done");
+      expect(workFailures(records)).toEqual([]);
+      expect(project.served).toEqual({ opened: 1, stopped: 1 });
+    } finally {
+      hold.resolve();
+      await project.close();
+    }
+  }, WORKER_BOOT_TEST_TIMEOUT_MS);
 });
 
 /** One project with its own account data root, so the capability selection this

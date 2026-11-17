@@ -3,9 +3,9 @@
 Read this when you write a brief for an agent that changes project files: one agent that implements, a coordinator of agents that implement, or a phase that repairs review findings.
 
 {{if:type:implementer}}
-The brief wires the phase. It does not teach the method. The `implementation` skill owns how to implement, and it composes `implementation-planning`, `test-driven-development`, and `verification`. Run a single implementer as `persona: implementer`, which brings `implementation`. Give any other agent that implements `dependencies: [implementation]`. Do not copy the text of these skills into the brief.
+The brief wires the phase. It does not teach the method. The `implementation` skill owns how to implement, and it composes `test-driven-development` and `verification`. Run a single implementer as `persona: implementer`, which brings `implementation`. Give any other agent that implements `dependencies: [implementation]`. Do not copy the text of these skills into the brief.
 {{else}}
-The brief wires the phase. It does not teach the method. The `implementation` skill owns how to implement, and it composes `implementation-planning`, `test-driven-development`, and `verification`. Give each agent that implements `dependencies: [implementation]`. Do not copy the text of these skills into the brief.
+The brief wires the phase. It does not teach the method. The `implementation` skill owns how to implement, and it composes `test-driven-development` and `verification`. Give each agent that implements `dependencies: [implementation]`. Do not copy the text of these skills into the brief.
 {{end}}
 
 ## Wiring checklist

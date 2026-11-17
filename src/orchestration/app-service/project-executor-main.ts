@@ -48,10 +48,10 @@ export function projectExecutorFatal(options: {
   readonly log: Pick<ReturnType<typeof Log.create>, "warn" | "error">
   readonly runtime: () => Pick<RuntimeComposition, "flushDurableState"> | undefined
   readonly exit: (code: number) => void
-}): (failure: unknown, kind: UncaughtKind) => Promise<void> {
+}): (cause: unknown, kind: UncaughtKind) => Promise<void> {
   const { log, runtime, exit } = options
-  return (failure, kind) => {
-    recordFatal(log, kind, failure)
+  return (cause, kind) => {
+    recordFatal(log, kind, cause)
     return exitAfter({
       log, boundMs: FATAL_FLUSH_BOUND_MS,
       settle: () => runtime()?.flushDurableState() ?? Promise.resolve(),

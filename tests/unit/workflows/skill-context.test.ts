@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { tmpdir } from "node:os";
 import { mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ContainedDirectoryContract } from "../../../src/infra/descriptor-directory-contract.js";
+import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
 import type { SkillDirectoryEntry } from "../../../src/workflows/skill-context.js";
 import { readSkillPackage, readSkillPackageFiles, readSkillResource, withSkillRoot } from "../../../src/workflows/skill-context.js";
 import { renderSkillClosure, renderSkillContext } from "../../../src/workflows/skill-render.js";
@@ -40,7 +40,7 @@ function writePackage(root: string, name: string, skillFile: string, resource = 
   writeFileSync(join(packageDir, "references", "api.md"), resource);
 }
 
-function entriesOf(directory: ContainedDirectoryContract): readonly SkillDirectoryEntry[] {
+function entriesOf(directory: ContainedDirectory): readonly SkillDirectoryEntry[] {
   return directory.entryNames().map((name) => ({ name, type: name === "references" ? "directory" : "file" }));
 }
 
@@ -323,7 +323,7 @@ describe("skill root containment and selection", () => {
 
   it("bounds root listing even when every examined entry is skipped", () => {
     let examined = 0;
-    function* skippedEntries(_directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* skippedEntries(_directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       for (;;) {
         examined++;
         yield { name: `metadata-${examined}`, type: "file" };
@@ -338,7 +338,7 @@ describe("skill root containment and selection", () => {
     const decoy = join(TMP, "decoy-root");
     mkdirSync(decoy, { recursive: true });
     let replaced = false;
-    function* replaceRoot(_directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* replaceRoot(_directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       if (!replaced) {
         replaced = true;
         renameSync(ROOT, join(TMP, "moved-root"));
@@ -409,7 +409,7 @@ describe("readSkillPackage", () => {
     // it beside another directory's file list would advertise resources the
     // loaded package never held.
     let replaced = false;
-    function* replaceThenWalk(directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* replaceThenWalk(directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       if (!replaced) {
         replaced = true;
         renameSync(PACKAGE_DIR, join(TMP, "moved-package"));
@@ -423,7 +423,7 @@ describe("readSkillPackage", () => {
 
   it("stops examining a package directory at the scan bound, whatever the entries are", () => {
     let examined = 0;
-    function* endlessSkippedEntries(_directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* endlessSkippedEntries(_directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       for (;;) {
         examined++;
         yield { name: `skipped-${examined}`, type: "symlink" };
@@ -440,7 +440,7 @@ describe("readSkillPackage", () => {
     // An editor saving in place mid-load: the body was already read, so a
     // published snapshot would pair one revision's procedure with the file
     // list of another.
-    function* rewriteThenWalk(directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* rewriteThenWalk(directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       writeFileSync(join(PACKAGE_DIR, "SKILL.md"), "---\ndescription: Process PDF files\n---\nEdited body.");
       yield* entriesOf(directory);
     }
@@ -451,7 +451,7 @@ describe("readSkillPackage", () => {
   it("refuses the package when a declared resource changes after the walk measured it", () => {
     const binding = bindFixture();
 
-    function* walkThenEditResource(directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* walkThenEditResource(directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       yield* entriesOf(directory);
       writeFileSync(join(PACKAGE_DIR, "references", "api.md"), "API notes, rewritten and longer");
     }
@@ -496,7 +496,7 @@ describe("readSkillPackageFiles", () => {
     // The swap a path-based reread cannot survive: the entry was a contained
     // regular file when it was measured, and it is a link out of the package
     // when it is read.
-    function* walkThenLinkResource(directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* walkThenLinkResource(directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       yield* entriesOf(directory);
       unlinkSync(join(PACKAGE_DIR, "references", "api.md"));
       symlinkSync(join(TMP, "secret.txt"), join(PACKAGE_DIR, "references", "api.md"));

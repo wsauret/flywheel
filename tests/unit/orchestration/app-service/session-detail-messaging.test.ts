@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { chatEntriesAppendedVersion } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/planned-session-continuation.js"
@@ -10,12 +9,13 @@ import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { chatEntry, durableRow, managerWithSessions } from "./_frontend-projection-fixtures.js"
 import { fixture } from "./_project-control-client-fixture.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 /** The detail of chat-1 over `reader`, with a runner (`live`) or without one. */
 function detail(reader: EventStoreReadSurface, live: boolean) {
   const projectionReader = asAsyncEventReadSurface(reader)
   const manager = managerWithSessions([durableRow("chat-1", { lifecycleState: "active", executionCwd: FIXTURE_EXECUTION_CWD }), durableRow("parent", { label: "Design chat", lifecycleState: "active", executionCwd: FIXTURE_EXECUTION_CWD, conversationId: "parent-conv" })])
-  return createSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => live ? chatEntry() : undefined }, manager, reader: projectionReader, projectionReader })
+  return testSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => live ? chatEntry() : undefined }, manager, reader: projectionReader, projectionReader })
 }
 
 const timestamp = "2026-10-04T00:00:00.000Z"

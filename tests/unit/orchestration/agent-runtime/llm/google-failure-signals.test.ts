@@ -110,6 +110,17 @@ it("Google settles dispatch before SDK invocation and rejection prevents invocat
   expect(invocationOrder).toEqual([]);
 });
 
+// A short-form tool's open object root (ARCH-CONTEXT-038) reaches Google unchanged.
+it("declares a short-form tool's open object schema to Google unchanged", async () => {
+  streamChunks = [{ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }], usageMetadata: USAGE }];
+  const schema = { type: "object", properties: {}, additionalProperties: true };
+  const client = await createTestGoogleAdapter();
+
+  for await (const _event of client.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [{ name: "web", description: "Research the web.", input_schema: schema }], systemPrompt: stableSystemPrompt("sys") })) {}
+
+  expect(lastRequest?.config).toMatchObject({ tools: [{ functionDeclarations: [{ name: "web", parametersJsonSchema: schema }] }] });
+});
+
 it("declares a custom-wire tool to Google with the description it declares for the function wire", async () => {
   streamChunks = [{ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }], usageMetadata: USAGE }];
   const applyPatch = {

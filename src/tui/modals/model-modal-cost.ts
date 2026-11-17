@@ -2,7 +2,7 @@ import { RGBA, StyledText, fg as stFg, type TextChunk } from "@opentui/core"
 import { blendToward } from "../context/theme/color-contrast.js"
 import type { TuiTheme } from "../context/theme/resolve.js"
 
-export const MODEL_MODAL_COST_COLUMN_WIDTH = 17
+const MODEL_MODAL_COST_COLUMN_WIDTH = 17
 const COST_MARKER = "●"
 const COST_BAR_SEGMENT = "━"
 
@@ -16,7 +16,7 @@ export function modelModalContentWidth(modalWidth: number): number {
   return Math.max(24, modalWidth - 14)
 }
 
-export function costGradient(theme: TuiTheme, width: number): RGBA[] {
+function costGradient(theme: TuiTheme, width: number): RGBA[] {
   if (width <= 0) return []
   const stops = [theme.success, theme.info, theme.primary, theme.error] as const
   if (width === 1) return [stops[0]]
@@ -28,7 +28,7 @@ export function costGradient(theme: TuiTheme, width: number): RGBA[] {
   })
 }
 
-export function costMarker(value: number | undefined, minimum: number, maximum: number, width: number): number | undefined {
+function costMarker(value: number | undefined, minimum: number, maximum: number, width: number): number | undefined {
   if (value === undefined || value <= 0 || minimum <= 0 || maximum <= 0 || width <= 0) return undefined
   if (width === 1) return 0
   if (minimum === maximum) return Math.floor((width - 1) / 2)

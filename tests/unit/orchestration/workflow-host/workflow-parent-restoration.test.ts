@@ -19,6 +19,7 @@ import { workflowLaunchHost } from "../../../../src/orchestration/workflow-host/
 import { createChildSessionControl } from "../../../../src/orchestration/session/child-session-control.js"
 import { createProcessTool } from "../../../../src/orchestration/agent-runtime/tools/process.js"
 import { createWaitToolPolicy } from "../../../../src/orchestration/agent-runtime/agent-loop-wait.js"
+import { processSettled } from "../../../helpers/process-settled.js"
 
 afterEach(cleanupProjectRoots)
 
@@ -91,7 +92,7 @@ describe("workflow parent restoration", () => {
           expect(replacement.processRecord("child")?.status).toBe("running")
           expect((await tool.execute({ action: "list" }, context)).content).toContain("child")
           expect((await tool.execute({ action: "status", process_id: "child" }, context)).content).toContain("running")
-          const waiting = replacement.waitProcess("child")
+          const waiting = processSettled(replacement, "child")
           await started?.onCoreCompleted?.("child", { completed: true, attemptsCompleted: 1, attemptsTotal: 1, tokens: 0, cost: 0 })
           expect(await waiting).toBe(true)
           expect(replacement.awaitedTaskCount()).toBe(0)
@@ -102,7 +103,7 @@ describe("workflow parent restoration", () => {
       } else if (assertion === "tracking") {
         expect(parentTasks.awaitedTaskCount()).toBe(1)
         expect(parentTasks.activeBackgroundCommands()).toMatchObject([{ id: "child", description: "Saved request", toolUseId: "original-launch" }])
-        const waiting = parentTasks.waitProcess("child")
+        const waiting = processSettled(parentTasks, "child")
         await started?.onCoreCompleted?.("child", { completed: true, attemptsCompleted: 1, attemptsTotal: 1, tokens: 0, cost: 0 })
         expect(await waiting).toBe(true)
         expect(parentTasks.awaitedTaskCount()).toBe(0)
@@ -125,7 +126,7 @@ describe("workflow parent restoration", () => {
         earlierRunNotice.resolve()
         await notice
         expect(parentTasks.awaitedTaskCount()).toBe(1)
-        const waiting = parentTasks.waitProcess("child")
+        const waiting = processSettled(parentTasks, "child")
         expect(parentTasks.terminate("original-launch")).toBe(true)
         expect(await waiting).toBe(true)
         expect(workflowHosts._abortCalls).toContain("child")

@@ -20,7 +20,7 @@ import { bundleFiles, launcherSourceSha256, MACOS_LAUNCHER_BUNDLE, MACOS_LAUNCHE
 const ROOT = resolve(import.meta.dir, "..");
 const NAME = "Flywheel";
 
-async function run(argv: readonly string[]): Promise<void> {
+async function runBuildCommand(argv: readonly string[]): Promise<void> {
   const subprocess = Bun.spawn([...argv], { cwd: ROOT, stdout: "inherit", stderr: "inherit", windowsHide: true });
   if ((await subprocess.exited) !== 0) throw new Error(`${argv[0]} failed`);
 }
@@ -36,7 +36,7 @@ await mkdir(join(contents, "MacOS"), { recursive: true });
 await mkdir(join(contents, "Resources"), { recursive: true });
 
 const binary = join(contents, "MacOS", NAME);
-await run(["clang", "-arch", "arm64", "-arch", "x86_64", "-O2", "-Wall", "-Wextra", "-Werror", "-o", binary, source]);
+await runBuildCommand(["clang", "-arch", "arm64", "-arch", "x86_64", "-O2", "-Wall", "-Wextra", "-Werror", "-o", binary, source]);
 await chmod(binary, 0o755);
 
 // The icon is the brand tile every other surface shows, rendered at each size
@@ -48,7 +48,7 @@ await mkdir(iconset, { recursive: true });
 for (const [name, size] of [["16x16", 16], ["16x16@2x", 32], ["32x32", 32], ["32x32@2x", 64], ["128x128", 128], ["128x128@2x", 256], ["256x256", 256], ["256x256@2x", 512], ["512x512", 512], ["512x512@2x", 1024]] as const) {
   await writeFile(join(iconset, `icon_${name}.png`), await sharp(Buffer.from(brandTileSvg(size, { corners: "rounded" }))).png().toBuffer());
 }
-await run(["iconutil", "-c", "icns", "-o", join(contents, "Resources", `${NAME}.icns`), iconset]);
+await runBuildCommand(["iconutil", "-c", "icns", "-o", join(contents, "Resources", `${NAME}.icns`), iconset]);
 await rm(iconset, { recursive: true, force: true });
 
 // LSUIElement keeps the bundle out of the Dock and app switcher: it is a
@@ -76,7 +76,7 @@ const plist = [
 ].join("\n");
 await writeFile(join(contents, "Info.plist"), plist);
 await writeFile(join(contents, "PkgInfo"), "APPL????");
-await run(["codesign", "--sign", "-", "--force", "--identifier", MACOS_LAUNCHER_IDENTIFIER, bundle]);
+await runBuildCommand(["codesign", "--sign", "-", "--force", "--identifier", MACOS_LAUNCHER_IDENTIFIER, bundle]);
 
 const files: { [relativePath: string]: { sha256: string; bytes: number } } = {};
 for (const file of await bundleFiles(bundle)) {

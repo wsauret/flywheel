@@ -116,7 +116,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     children: Schema.mutable(Schema.Array(ToolEntrySchema)), totalToolCount: NonNegativeInt,
     // Optional, because a version-23 runtime never sent the open episode: a
     // client then reads a stopped clock and shows the settled active time.
-    latestChild: Schema.optionalKey(Schema.String), duration: Schema.optionalKey(Schema.Number), activeStartedAt: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
+    duration: Schema.optionalKey(Schema.Number), activeStartedAt: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
     timestamp: Schema.Number, model: Schema.optionalKey(Schema.String),
     linkUri: Schema.optionalKey(Schema.String), toolUseId: Schema.String, card: Schema.optionalKey(WorkflowCardSchema),
   }),
@@ -126,7 +126,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     status: Schema.Literal("paused"), pausedBy: Schema.Literals(["person", "agent", "runtime"]),
     activity: Schema.optionalKey(ToolPresentationSchema), summary: Schema.optionalKey(Schema.String),
     children: Schema.mutable(Schema.Array(ToolEntrySchema)), totalToolCount: NonNegativeInt,
-    latestChild: Schema.optionalKey(Schema.String), duration: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
+    duration: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
     timestamp: Schema.Number, model: Schema.optionalKey(Schema.String),
     linkUri: Schema.optionalKey(Schema.String), toolUseId: Schema.String, card: Schema.optionalKey(WorkflowCardSchema),
   }),
@@ -136,7 +136,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     status: Schema.Literal("error"), failure: AgentFailureDisplaySchema,
     activity: Schema.optionalKey(ToolPresentationSchema), summary: Schema.optionalKey(Schema.String),
     children: Schema.mutable(Schema.Array(ToolEntrySchema)), totalToolCount: NonNegativeInt,
-    latestChild: Schema.optionalKey(Schema.String), duration: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
+    duration: Schema.optionalKey(Schema.Number), totalTokens: Schema.optionalKey(Schema.Number),
     timestamp: Schema.Number, model: Schema.optionalKey(Schema.String),
     linkUri: Schema.optionalKey(Schema.String), toolUseId: Schema.String, card: Schema.optionalKey(WorkflowCardSchema),
   }),

@@ -10,7 +10,6 @@ import { createForegroundBashHoldController } from "../../../../src/orchestratio
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js";
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js";
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js";
-import { completeRuntimeToolSurfaces } from "../../../../src/orchestration/agent-runtime/factory.js";
 import { deriveChildRuntimeSurfaces } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import type { CaptureRuntimeConfig } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import type { RuntimeToolSurfaces } from "../../../../src/orchestration/agent-runtime/types.js";
@@ -50,10 +49,10 @@ async function assembleBash(options: {
   const client = asModelClient(attempt);
   const directories = testDirectories(process.cwd());
   const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ stdout: streamOf("ready\n") }));
-  const surfaces = completeRuntimeToolSurfaces(
-    { background, foregroundBashHold },
-    { launcher: createLauncherScope({ spawnOwned: spawn.spawnOwned, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }) },
-  );
+  const surfaces: RuntimeToolSurfaces = {
+    background, foregroundBashHold,
+    launcher: createLauncherScope({ spawnOwned: spawn.spawnOwned, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
+  };
   const assembled = await assembleRuntimeForTurn({
     providerSessionLifetime: testProviderSessionLifetime(),
     options: {
@@ -131,7 +130,7 @@ test("a headless runtime's child offers Bash without mutates, and the write guar
   expect(interactive.bash.description).toContain(writeRoots);
   await interactive.dispose();
 
-  const headlessChild = await assembleBash({ surfaces: (surfaces) => deriveChildRuntimeSurfaces(completeRuntimeToolSurfaces(surfaces, { headless: true })) });
+  const headlessChild = await assembleBash({ surfaces: (surfaces) => deriveChildRuntimeSurfaces({ ...surfaces, headless: true }) });
   expect(headlessChild.bash.inputSchema.properties).not.toHaveProperty("mutates");
   expect(headlessChild.bash.description).not.toMatch(/mutat/);
   await headlessChild.dispose();

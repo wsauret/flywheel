@@ -40,6 +40,7 @@ import { roleCapture } from "../../../../helpers/role-capture.js"
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { createProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import { planEveryCapability } from "../../../../helpers/attempt-brief.js"
+import { processSettled } from "../../../../helpers/process-settled.js"
 
 const delegator: AgentDefinition = {
   kind: "persona",
@@ -326,7 +327,7 @@ export function heldRunner() {
     options.push(input)
     const done = Promise.withResolvers<AgentRunResult>()
     results.push(done)
-    return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+    return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
   }
   return { options, results, createAgent }
 }
@@ -340,7 +341,6 @@ export function completedRunner(calls: AgentOptions[]): (options: AgentOptions) 
         options.runtimeSurfaces?.handoff?.onContent({ summary: "completed" })
         done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }
@@ -363,11 +363,11 @@ export async function waitForSettled(harness: SubagentChildHarness, parentSessio
   const running = () => harness.backgroundTasks.processRecords().filter(
     (process) => process.status === "running" || process.status === "stopping",
   )
-  await Promise.all(running().map((process) => harness.backgroundTasks.waitProcess(process.id)))
+  await Promise.all(running().map((process) => processSettled(harness.backgroundTasks, process.id)))
   expect(running()).toEqual([])
   await reconcileChildSessionCompletions({
     parentSessionId,
-    reader: harness.reader,
+    reader: harness.reader, projectionReader: harness.reader,
     writer: harness.writer,
   })
 }

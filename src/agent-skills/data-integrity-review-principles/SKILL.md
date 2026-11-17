@@ -1,5 +1,6 @@
 ---
 description: Add durable-data lifecycle scrutiny to one active code or plan review.
+disable-model-invocation: true
 ---
 
 # Data Integrity Review Principles

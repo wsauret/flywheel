@@ -1,5 +1,6 @@
 ---
 description: Use when exercising a live user-facing surface outside-in through its public entry point.
+disable-model-invocation: true
 ---
 
 # User Acceptance Testing

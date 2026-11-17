@@ -94,7 +94,6 @@ describe("SessionManager catalog reads", () => {
     expect(activeSummary).toMatchObject({ kind: "workflow-agent", label: "fixture-step", workflowMembership: { workflowId } });
     expect(summaries.some(row => row.id === workflowId)).toBe(false);
     expect(idleSummary?.totalTokens).toBeUndefined();
-    expect(idleSummary?.workflowState).toBeUndefined();
 
     expect(await workflowRunReader(asAsyncEventReadSurface(store)).read(workflowId)).toMatchObject({ label: "Active" });
   });
@@ -123,7 +122,6 @@ describe("SessionManager catalog reads", () => {
       kind: "workflow-agent",
       lifecycleState: "inactive",
     });
-    expect(row?.workflowState).toBeUndefined();
     expect(row?.unavailableFields).toContain("metadata");
     expect(await mgr.read(id)).toMatchObject({ kind: "workflow-agent", lifecycleState: "inactive" });
   });

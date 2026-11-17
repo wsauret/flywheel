@@ -1,4 +1,4 @@
-import { BoxRenderable, type ScrollBoxRenderable } from "@opentui/core"
+import { BoxRenderable, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
 
 export interface ScrollBoxLayoutHookHandlers {
   /** Once per frame, after the frame's first layout and before the rows of
@@ -16,7 +16,7 @@ export interface ScrollBoxLayoutHookHandlers {
 
 /** Sets an own property over a method of `scroll`; the returned function puts
  *  back what was there, so patches stacked on one box unwind in turn. */
-function override(scroll: ScrollBoxRenderable, key: "onUpdate" | "add", value: unknown): () => void {
+function override(scroll: ScrollBoxRenderable, key: "onUpdate" | "add", value: ((deltaTime: number) => void) | ScrollBoxRenderable["add"]): () => void {
   const prior = Object.getOwnPropertyDescriptor(scroll, key)
   Reflect.set(scroll, key, value)
   return () => { if (prior) Object.defineProperty(scroll, key, prior); else Reflect.deleteProperty(scroll, key) }
@@ -56,7 +56,7 @@ export function patchScrollBoxLayoutHooks(scroll: ScrollBoxRenderable, handlers:
   // Solid appends a new child with an index-free add; it goes at the frame
   // hook's index, before the hook, so that the hook stays after every row.
   const baseAdd = scroll.add
-  const restoreAdd = override(scroll, "add", (child: unknown, index?: number) =>
+  const restoreAdd = override(scroll, "add", (child: Renderable, index?: number) =>
     baseAdd.call(scroll, child, index ?? (frameHook.parent === scroll ? scroll.getChildrenCount() - 1 : undefined)))
   scroll.add(frameHook)
   const onResize = handlers.onResize

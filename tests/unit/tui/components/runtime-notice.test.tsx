@@ -7,10 +7,11 @@ import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { tuiFaultNotice } from "../../../../src/tui/modules.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+import type { RGBA } from "@opentui/core"
 
 const theme = resolveTheme(flywheelTheme, "dark")
 
-interface RenderedSpan { readonly text: string; readonly fg: { equals(other: unknown): boolean } }
+interface RenderedSpan { readonly text: string; readonly fg: { equals(other: RGBA): boolean } }
 
 /** Renders the shell's runtime notice for one health, as the shell places it
  *  above the composer, and returns its styled spans. */

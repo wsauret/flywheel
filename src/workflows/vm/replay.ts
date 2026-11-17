@@ -10,6 +10,7 @@ import {
   DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID,
   DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID,
   DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID,
+  DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID,
   DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID,
   DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID,
@@ -36,6 +37,7 @@ import {
   withDefaultAdvisor,
   withFamilyRoleGrants,
   withoutExplorerModelClaim,
+  withLeanPersonaText,
   withoutRecordedTurnCaps,
   withoutRetiredLexiconText,
   withoutRetiredPromptSwitches,
@@ -43,6 +45,7 @@ import {
   withoutRetiredToolSteering,
   withUatScratchpadRule,
 } from "./persona-identity-proofs.js"
+import { leanPromptDroppedSkills, skillsBeforeLeanPrompt, withoutLeanPromptDependencies } from "./skill-identity-proofs.js"
 import type { WorkflowEvent } from "./events.js"
 import { recoverWorkflowControl } from "./recovery.js"
 import { WorkflowDriftEvidencePersistenceError, WorkflowMalformedStateError } from "./host-types.js"
@@ -168,6 +171,11 @@ function provenIdentityAdoptions(recorded: DefinitionIdentity, input: IdentityPr
   const { workflow, agents, options, current } = input
   const personas = options.personas ?? new Map()
   const view = retiredStepView(workflow)
+  const dropped = leanPromptDroppedSkills(workflow.id, dispatchingAgents(agents), options)
+  // A run recorded before the lean-prompt edit composed the skills that edit dropped, so the phase grammar proof reads
+  // the skills as they read then, and leaves the dependency change to the lean-prompt proof.
+  const phaseOptions = (identity: DefinitionIdentity): DefinitionIdentityOptions =>
+    withoutLeanPromptDependencies(identity, dropped) === identity ? options : { ...options, skills: skillsBeforeLeanPrompt(options.skills) }
   const migrations: readonly (readonly [DefinitionIdentityMigrationId, (identity: DefinitionIdentity) => DefinitionIdentity])[] = [
     [DEFINITION_IDENTITY_PERSONA_BUDGET_MIGRATION_ID, (identity) => withoutRecordedTurnCaps(identity, personas)],
     [DEFINITION_IDENTITY_RETIRED_STEP_SCOPE_MIGRATION_ID, (identity) => withoutRetiredStepScopes(identity, view)],
@@ -176,14 +184,19 @@ function provenIdentityAdoptions(recorded: DefinitionIdentity, input: IdentityPr
     [DEFINITION_IDENTITY_SCENARIO_BUDGET_MIGRATION_ID, (identity) => withoutRetiredScenarioBudget(identity, personas)],
     // The frozen identity of the retired grammar hashes the personas as that grammar read them, so the proof reads
     // the recorded personas through the lexicon proof that follows it, and leaves the lexicon change to that proof.
-    [DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID, (identity) => acrossRetiredLexicon(identity, personas, (lexical, retiredPersonas) =>
-      adoptPhaseGrammarIdentity(lexical, view === undefined ? undefined : retiredStepIdentity(view, workflow, agents, { ...options, personas: retiredPersonas }), current))],
+    [DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID, (identity) => {
+      const phase = phaseOptions(identity)
+      const phaseCurrent = phase === options ? current : buildDefinitionIdentity(workflow, agents, phase)
+      return acrossRetiredLexicon(identity, personas, (lexical, retiredPersonas) =>
+        adoptPhaseGrammarIdentity(lexical, view === undefined ? undefined : retiredStepIdentity(view, workflow, agents, { ...phase, personas: retiredPersonas }), phaseCurrent))
+    }],
     [DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, (identity) => withoutRetiredLexiconText(identity, personas)],
     [DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID, (identity) => withDefaultAdvisor(identity, workflow.id, options)],
     [DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID, (identity) => withUatScratchpadRule(identity, personas)],
     [DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, (identity) => withFamilyRoleGrants(identity, workflow.id, dispatchingAgents(agents), options)],
     [DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID, (identity) => withCapabilityMarkers(identity, personas)],
     [DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID, (identity) => withoutExplorerModelClaim(identity, personas)],
+    [DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID, (identity) => withoutLeanPromptDependencies(withLeanPersonaText(identity, personas), dropped)],
   ]
   const adoptions: IdentityAdoption[] = []
   let identity = recorded

@@ -26,6 +26,7 @@ import { createLoginObservations } from "../../../../src/orchestration/modules/p
  *  forever, which is exactly what it did. */
 
 import { account, provider, service, silentLog } from "./_auth-login-service-fixtures.js";
+import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js";
 
 describe("auth login instance selection", () => {
   test.each(["renewed", "failed", "cancelled"] as const)("claims one hidden-profile question and settles only after its flow: %s", async (outcome) => {
@@ -130,7 +131,7 @@ describe("auth login instance selection", () => {
     observations.recordRequest(target, "login-rejected");
     const nextWait = observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
     const nextId = observations.loginQuestions()[0]!.id;
-    await dispatchAuthMutation({ authLogin: login }, { type: "auth.login.decline", providerId: "anthropic_sub", loginQuestionId: nextId });
+    await dispatchAuthMutation({ ...authMutationDoubles(), authLogin: login }, { type: "auth.login.decline", providerId: "anthropic_sub", loginQuestionId: nextId });
     expect(await nextWait).toBe("declined");
     expect(await login.login({ providerId: "anthropic_sub", instanceId: "one", loginQuestionId: nextId })).toMatchObject({ kind: "ignored" });
     login.dispose();
@@ -512,7 +513,7 @@ describe("auth login flow registration", () => {
     };
 
     await dispatchAuthMutation(
-      { authLogin, authProfileSelection: authProfiles },
+      { ...authMutationDoubles(), authLogin, authProfileSelection: authProfiles },
       { type: "auth.profile.select", scope: { kind: "defaults" }, id: "work" },
     );
 

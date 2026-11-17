@@ -46,7 +46,7 @@ export interface ScreenStack {
 }
 
 /** The members of the element the screens fill that the swipe gesture reads. */
-export interface SwipeRoot extends Pick<HTMLElement, "clientWidth" | "addEventListener" | "removeEventListener"> {
+interface SwipeRoot extends Pick<HTMLElement, "clientWidth" | "addEventListener" | "removeEventListener"> {
   readonly ownerDocument: Pick<Document, "addEventListener" | "removeEventListener"> & {
     getSelection(): Pick<Selection, "isCollapsed"> | null
   }
@@ -82,6 +82,9 @@ function depthOf(state: unknown): number {
   return screenOf(state) === "chat" ? 1 : 0
 }
 
+/** The fields that the page writes to a browser history entry. */
+export type HistoryEntryState = { readonly [key: string]: unknown }
+
 /** `entry` with the depth it has when it is pushed over `below`, the
  *  current entry. */
 export function pushedOver<Entry extends object>(below: unknown, entry: Entry) {
@@ -102,8 +105,8 @@ export interface ScreenStackSelection {
 
 export interface ScreenStackNavigation {
   readonly state: unknown
-  replaceState(state: unknown): void
-  pushState(state: unknown): void
+  replaceState(state: HistoryEntryState): void
+  pushState(state: HistoryEntryState): void
   back(): void
   forward(): void
   go(delta: number): void

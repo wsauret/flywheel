@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto"
 
 import { createAgentHost } from "../runner/host.js"
 import type { AgentHostContextOptions, AgentHostTurnLease } from "../runner/types.js"
-import { createReconnectNoticeConnectionStateHandler, reportPersistenceWriteRefusal, resolveProviderNotices } from "../agent-runtime/agent-resilience.js"
+import { reportPersistenceWriteRefusal, resolveProviderNotices } from "../agent-runtime/agent-resilience.js"
 import { AgentTurnAborted } from "../runner/agent-turn-types.js"
 import type { ChatSessionState } from "./types.js"
 import type { ChatPorts } from "./host-ports.js"
@@ -26,7 +26,6 @@ import type { OutputSession } from "../runner/output-session.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
 import { completionWorkIds } from "../agent-runtime/background-work-notifications.js"
 import type { AskUserController } from "../runner/ask-user-controller.js"
-import type { ModuleChatObserver } from "../module-seams.js"
 import { createModuleChatObservers } from "./module-observers.js"
 import { readChatTurnEndEvidence } from "../session/chat-session-run-evidence.js"
 import { createChatWaitState } from "./runner-wait-state.js"
@@ -70,7 +69,6 @@ interface ChatRunnerLifecycleInput {
   askUser: AskUserController
   setConnectionState: (state: ConnectionState) => void
   awaitDurableFacts: () => Promise<void>
-  installModuleObserver?: (observer: ModuleChatObserver | undefined) => void
 }
 
 export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInput): ChatPorts {
@@ -78,10 +76,6 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   const emit = createEmit(lifecycleInput.eventBus)
   const host = createAgentHost({ createRunner: deps.createAgent })
   const { sessionId } = deps
-  const setRecoveredConnectionState = createReconnectNoticeConnectionStateHandler(
-    setConnectionState,
-    (operation) => { emit("agent.notice.changed", { sessionId, data: { operation } }) },
-  )
   // Chat input is purely next-turn: external arrivals (user messages,
   // subagent completion batches) defer to the next turn deterministically.
   // No current-turn channel exists today; see chat/turn-mailbox.ts.
@@ -115,8 +109,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     writer: deps.infra.sessionEventWriter,
     enqueueSilentSystem: (message) => { mailbox.enqueueSilentSystem(message) },
     showSystemMessage: (message) => { session.pushSystemMessage(message, Date.now()); session.flush() },
-  })
-  lifecycleInput.installModuleObserver?.(moduleObserver)
+  }, lifecycleInput.eventBus)
   background.addSettle(async () => { await moduleObserver.dispose() })
 
   const moduleHosts = createChatModuleHosts({ deps, state, emit, background, foregroundBashHold, mailbox, applyNestedStoredFact, hasActiveTurn })
@@ -169,7 +162,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   }
 
   function setCurrentTurnConnectionState(turn: RunningChatTurn, next: ConnectionState): void {
-    if (isLiveTurn(turn)) setRecoveredConnectionState(next)
+    if (isLiveTurn(turn)) setConnectionState(next)
   }
 
   async function buildRunnerContextOptions(
@@ -392,10 +385,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           createContextOptions: async ({ providerSessionKey }: RetryState) =>
             buildRunnerContextOptions(turn, providerSessionKey ?? providerConversationId, opts.purpose),
           onContextCreated: (ctx) => {
-            if (!isLiveTurn(turn)) {
-              ctx.end()
-              throw new AgentTurnAborted()
-            }
+            // The host aborts the context when this callback throws.
+            if (!isLiveTurn(turn)) throw new AgentTurnAborted()
             state.attachRunner(ctx)
             deps.treeWriter.beginTurn()
           },

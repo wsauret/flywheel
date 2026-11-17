@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import { createToolConcurrencyGate, type GateAdmission } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { preparedToolAdmission, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { writeDefinition } from "../../../../../src/orchestration/agent-runtime/tools/write.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 
@@ -107,13 +108,13 @@ describe("preparedToolAdmission", () => {
     try {
       const prepared = prepareToolCall(
         { id: "w1", name: "write", input: { path: "new.ts", content: "x" } },
-        tools,
+        tools, admitEveryTool,
       );
       // The file does not exist yet, so canonicalization keeps the resolved path.
       const admission = await preparedToolAdmission(prepared, { executionCwd: dir });
       expect(admission).toEqual(paths(canonicalMutationPath(join(dir, "new.ts"))));
 
-      const pathless = prepareToolCall({ id: "w2", name: "write", input: { content: "x" } }, tools);
+      const pathless = prepareToolCall({ id: "w2", name: "write", input: { content: "x" } }, tools, admitEveryTool);
       expect(await preparedToolAdmission(pathless, { executionCwd: dir })).toEqual({ kind: "exclusive" });
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -127,11 +128,11 @@ describe("preparedToolAdmission", () => {
       symlinkSync(join(dir, "real.ts"), join(dir, "alias.ts"));
 
       const direct = await preparedToolAdmission(
-        prepareToolCall({ id: "w1", name: "write", input: { path: "real.ts", content: "x" } }, tools),
+        prepareToolCall({ id: "w1", name: "write", input: { path: "real.ts", content: "x" } }, tools, admitEveryTool),
         { executionCwd: dir },
       );
       const viaSymlink = await preparedToolAdmission(
-        prepareToolCall({ id: "w2", name: "write", input: { path: "alias.ts", content: "x" } }, tools),
+        prepareToolCall({ id: "w2", name: "write", input: { path: "alias.ts", content: "x" } }, tools, admitEveryTool),
         { executionCwd: dir },
       );
       expect(direct).toEqual(viaSymlink);
@@ -151,7 +152,7 @@ describe("preparedToolAdmission", () => {
       execute: async () => ({ content: "done", outcome: "ok" }),
     };
     const namedCode = { ...outer, name: "code", gateAdmission: undefined };
-    expect(await preparedToolAdmission(prepareToolCall({ id: "outer", name: outer.name, input: {} }, new Map([[outer.name, outer]])), { executionCwd: process.cwd() })).toEqual({ kind: "none" });
-    expect(await preparedToolAdmission(prepareToolCall({ id: "named", name: namedCode.name, input: {} }, new Map([[namedCode.name, namedCode]])), { executionCwd: process.cwd() })).toEqual({ kind: "exclusive" });
+    expect(await preparedToolAdmission(prepareToolCall({ id: "outer", name: outer.name, input: {} }, new Map([[outer.name, outer]]), admitEveryTool), { executionCwd: process.cwd() })).toEqual({ kind: "none" });
+    expect(await preparedToolAdmission(prepareToolCall({ id: "named", name: namedCode.name, input: {} }, new Map([[namedCode.name, namedCode]]), admitEveryTool), { executionCwd: process.cwd() })).toEqual({ kind: "exclusive" });
   });
 });

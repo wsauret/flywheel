@@ -33,7 +33,6 @@ const definition = {
   id: "google_api",
   displayName: "Google API Key",
   shortName: "Google",
-  supportedFamilies: ["google"],
   defaultChatTransport: "google",
   configHints: ["flywheel auth login --google"],
   cli: { flag: "google", name: "Google" },
@@ -97,5 +96,5 @@ export const googleApiModule = {
     { domain: "providers", id: "google_api", value: { definition, createClient } },
     { domain: "settings", id: "provider-google-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Google models through an API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

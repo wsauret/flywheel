@@ -187,6 +187,14 @@ export interface RuntimeTool {
   /** Optional schema for dispatch coercion and validation before execution gates.
    *  Use when executable inputs include fields omitted from the provider-facing schema. */
   inputValidationSchema?: RuntimeToolInput;
+  /** Reference material that belongs to the tool's contract when the tree offers the tool in short form, such as the
+   *  dispatch tool's persona catalog (ARCH-CONTEXT-039). A full-form tool renders it elsewhere. */
+  contractReference?: () => string;
+  /** Set when the tree offers the tool in short form (`short-form.ts`). It stays on a refused short-form tool. */
+  shortForm?: true;
+  /** The full contract that a call with no arguments returns, and an invalid call returns after its problems
+   *  (ARCH-TOOLS-058). Present only on a short-form tool that the agent may call. */
+  contract?: () => string;
   /** Provider wire presentation when the tool is more than a JSON function, such as a grammar-constrained custom tool. */
   wire?: ToolWirePresentation;
   /** Script exposure is exclusive to a module's code-only tools, such as an external tool server's. Absence means provider-native only. */
@@ -377,7 +385,8 @@ export interface ToolContext {
   /** Generic live execution-output channel. Tools may report ephemeral,
    *  accumulated, tail-capped output here while work is still running. */
   onExecutionOutput?: (text: string) => void;
-  /** Execution-scoped nested dispatch factory. Present only while a foreground call owns the attempt gate. */
+  /** Execution-scoped nested dispatch factory. The turn dispatcher sets it on every call that it runs, in the
+   *  foreground and in the background, and a nested batch passes its context on to each nested call. */
   createNestedToolDispatchBatch?: (options: {
     readonly tools: ReadonlyMap<string, RuntimeTool>;
     readonly parentToolUseId: string;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { join } from "node:path";
 import { authDir } from "../../../../../src/infra/paths.js";
 import type { AccessProviderCandidate } from "../../../../../src/infra/llm/access-provider.js";
@@ -21,13 +21,12 @@ import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modul
 
 const noKeysAuth = { providers: authProviders(), credentialLineages: {}, droppedCredentials: [] };
 const directories = testDirectories("/scratch");
-const eligibility = {
-  modelUnavailableReason: () => undefined,
-  candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({
+const eligibility = testEligibility({
+  candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{
     candidate, wireModelId: model, dataUse: "standard" as const,
     resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-  }),
-};
+  }],
+});
 
 describe("client construction login recovery", () => {
   const temporaryDirectory = temporaryDirectories();

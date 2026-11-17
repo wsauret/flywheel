@@ -5,8 +5,7 @@ import { Schema } from "effect"
 import { AnyBlockSchema, type ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import type { ToolRun, ToolRunStatus } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
-import { presentTerminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
-import { foldTranscript } from "../../../../src/protocol/client/transcript-model.js"
+import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 
 const CWD = "/workspace"
 
@@ -111,12 +110,12 @@ async function renderToolRun(block: ToolRun, expandAtY?: number, width = 100, on
 
 describe("ToolRunBlock", () => {
   it("renders received message disclosures inside Ran with shell rows on both sides", async () => {
-    const transcript = presentTerminalTranscript(foldTranscript([
+    const transcript = terminalTranscript([
       exec("echo before"),
       { kind: "userMessage", id: "message", content: "Use main.ts", timestamp: 2, pending: false, injected: false,
         from: { sessionId: "sender", name: "Sender", relation: "sibling", personWords: "Keep tests green" } },
       exec("echo after"),
-    ], false))
+    ], false)
     expect(transcript.timelineBlocks).toHaveLength(1)
     const block = transcript.timelineBlocks[0]
     if (block?.kind !== "toolRun") throw new Error("expected a Ran group")
@@ -228,10 +227,10 @@ describe("ToolRunBlock", () => {
   })
 
   it("states how long a background command ran under Ran, not how long its launch took", async () => {
-    const transcript = presentTerminalTranscript(foldTranscript([
+    const transcript = terminalTranscript([
       exec("bun run test:perf", { timestamp: 1000, background: true, endedAt: 46_600 }),
       { kind: "text", id: "reply", content: "Started the perf run.", timestamp: 1865 },
-    ], false))
+    ], false)
     const block = transcript.timelineBlocks[0]
     if (block?.kind !== "toolRun") throw new Error("expected a Ran group")
     const frame = await renderToolRun(block)

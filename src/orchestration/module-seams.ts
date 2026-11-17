@@ -8,7 +8,8 @@ import type { ChildCut } from "./session/child-continuation.js"
 import type { ChildRunStatus } from "../protocol/app-service-types.js"
 import type { AgentFailureDisplay, AgentGroupBlock, PausedBy, WorkflowCard } from "../infra/output-blocks.js"
 import type { SkillRegistryRevision } from "../workflows/skill-schema.js"
-import type { AgentLifecycleCallbacks, AgentStreamEvent, ChildConversation } from "./agent-runtime/types.js"
+import type { AgentLifecycleCallbacks, ChildConversation } from "./agent-runtime/types.js"
+import type { ToolCallEventData } from "../infra/runtime-event-payload-types.js"
 import type { AskUserToolDeps } from "./agent-runtime/tools/ask-user.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { ExternalSkillChildGrant } from "./agent-runtime/tools/skill.js"
@@ -236,7 +237,9 @@ export interface ModuleChatObserverContext {
 }
 
 export interface ModuleChatObserver {
-  onEvent?(event: AgentStreamEvent): void
+  /** A completed tool input of the chat's own agent; nested calls are not
+   *  delivered. The chat subscribes to these only while an observer has this hook. */
+  onToolInput?(toolUse: ToolCallEventData["tool_use"]): void
   onTurnComplete?(reason: "turn_end"): Promise<void>
   onCompactionContinuation?(): Promise<void>
   dispose?(): void | Promise<void>

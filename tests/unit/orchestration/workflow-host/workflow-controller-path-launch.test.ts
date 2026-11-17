@@ -7,7 +7,7 @@ import { resolveSessionRoles } from "../../../../src/orchestration/config/sessio
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { modelWorkflowLaunchOrigin, workflowLaunchTargets, type WorkflowLaunchTarget } from "../../../../src/orchestration/workflow-host/launch-origin.js"
 import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
-import { loadDefinitionLineageFromEvents, workflowLaunchOf } from "../../../../src/workflows/definition-provenance-projection.js"
+import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
 import { cleanupProjectRoots, seedLaunchApproval, until, makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
@@ -99,11 +99,11 @@ describe("a model launch of a workflow file", () => {
     expect(lineage.definitions["workflow:survey-routes"]?.provenance).toEqual({ layer: "session", filePath: file, id: "survey-routes" })
     // The launch records what it reported, so the view and the card read it
     // from the run.
-    const launch: unknown = workflowLaunchOf(loadDefinitionLineageFromEvents(setup.store.read({ aggregateId: `workflow:${result.workflowId}`, types: ["definition.loaded", "workflow.compiled"] })))
-    expect(launch).toEqual({
-      source: { kind: "file", path: "scratch/workflows/survey.workflow.yaml" },
+    const compiled = loadDefinitionLineageFromEvents(setup.store.read({ aggregateId: `workflow:${result.workflowId}`, types: ["workflow.compiled"] })).compiledWorkflow
+    expect(compiled).toMatchObject({
       verification: result.workflowFile?.verification,
       worstCaseAttempts: result.workflowFile?.worstCaseAttempts,
+      warnings: [],
     })
     expect(await setup.manager.read(result.workflowId)).toBeNull()
     expect(await workflowRunReader(asAsyncEventReadSurface(setup.store)).read(result.workflowId)).toMatchObject({ workflowDefinitionId: "survey-routes" })
@@ -117,8 +117,8 @@ describe("a model launch of a workflow file", () => {
 
     if ("error" in result) throw new Error(result.error)
     expect(result.workflowFile?.warnings).toEqual(["development-only: this key is retired and does nothing; remove it"])
-    const launch = workflowLaunchOf(loadDefinitionLineageFromEvents(setup.store.read({ aggregateId: `workflow:${result.workflowId}`, types: ["definition.loaded", "workflow.compiled"] })))
-    expect(launch?.warnings).toEqual(["development-only: this key is retired and does nothing; remove it"])
+    const compiled = loadDefinitionLineageFromEvents(setup.store.read({ aggregateId: `workflow:${result.workflowId}`, types: ["workflow.compiled"] })).compiledWorkflow
+    expect(compiled && "warnings" in compiled ? compiled.warnings : undefined).toEqual(["development-only: this key is retired and does nothing; remove it"])
   })
 
   it("starts a new run with a new definition hash when an edited file launches again", async () => {
@@ -233,7 +233,11 @@ describe("a model launch of the content of a workflow file", () => {
   /** What a run recorded about its definition and its launch. */
   function recorded(setup: Awaited<ReturnType<typeof pathSetup>>, sessionId: string) {
     const lineage = loadDefinitionLineageFromEvents(setup.store.read({ aggregateId: `workflow:${sessionId}`, types: ["definition.loaded", "workflow.compiled"] }))
-    return { definitions: lineage.definitions, launch: workflowLaunchOf(lineage) }
+    const compiled = lineage.compiledWorkflow
+    const admission = compiled && "worstCaseAttempts" in compiled
+      ? { worstCaseAttempts: compiled.worstCaseAttempts, verification: compiled.verification, warnings: "warnings" in compiled ? compiled.warnings : [] }
+      : undefined
+    return { definitions: lineage.definitions, admission }
   }
 
   it("saves the content under the workflow id and launches the saved file as a path launch of that file does", async () => {
@@ -250,7 +254,7 @@ describe("a model launch of the content of a workflow file", () => {
     if ("error" in byPath) throw new Error(byPath.error)
     expect(launch.workflowFile).toEqual(byPath.workflowFile)
     expect(recorded(setup, launch.workflowId)).toEqual(recorded(setup, byPath.workflowId))
-    expect(recorded(setup, launch.workflowId).launch?.source).toEqual({ kind: "file", path: "scratch/workflows/survey-routes.workflow.yaml" })
+    expect(recorded(setup, launch.workflowId).definitions["workflow:survey-routes"]?.provenance).toMatchObject({ layer: "session", filePath: file })
   })
 
   it("keeps the content of a refused launch saved and names the saved file, so the agent can fix it", async () => {

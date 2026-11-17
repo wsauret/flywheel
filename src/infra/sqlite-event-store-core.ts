@@ -206,16 +206,14 @@ export function createSqliteEventInserter(db: Database): SqliteEventInserter {
     $actor: string
     $sessionId: string
     $runId: string | null
-    $parentEventId: string | null
-    $causedByEventId: string | null
     $payload: string
   }>(`
     insert into event (
       id, aggregate_id, seq, type, version, timestamp, actor, session_id,
-      run_id, parent_event_id, caused_by_event_id, payload
+      run_id, payload
     ) values (
       $id, $aggregateId, $seq, $type, $version, $timestamp, $actor, $sessionId,
-      $runId, $parentEventId, $causedByEventId, $payload
+      $runId, $payload
     ) returning position
   `)
 
@@ -296,8 +294,6 @@ export function createSqliteEventInserter(db: Database): SqliteEventInserter {
         $actor: event.actor,
         $sessionId: event.sessionId,
         $runId: event.runId ?? null,
-        $parentEventId: event.parentEventId ?? null,
-        $causedByEventId: event.causedByEventId ?? null,
         $payload: payload,
       })
       if (!inserted) {
@@ -341,6 +337,10 @@ export function buildMissingSessionTypeIndex(dbFile: string, onBuild: () => void
 function initializeSqliteEventStore(db: Database): void {
   db.exec("create table if not exists event_sequence (aggregate_id text primary key, seq integer not null)")
   createInFlightTable(db)
+  // parent_event_id and caused_by_event_id hold only the causal links that
+  // releases before 2026-11-15 wrote. No append sets them. Two readers keep
+  // them: the workflow ownership migration (event-owner-transfer.ts) and the
+  // row read (event-row.ts), which shows historical links in event search.
   db.exec(`
     create table if not exists event (
       position integer primary key autoincrement,

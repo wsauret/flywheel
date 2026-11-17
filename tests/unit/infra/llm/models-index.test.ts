@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createModelsClient, customProviderModelInfo } from "../../../../src/infra/llm/models.js";
 import { admitModelsDocument } from "../../../../src/infra/llm/models-document.js";
-import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { combinedModelsDevDocument, modelsDevDocument, type MutableModelsDevProviders } from "../../../helpers/model-catalog-fixtures.js";
 
 const originalFetch = globalThis.fetch;

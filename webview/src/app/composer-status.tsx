@@ -4,7 +4,7 @@ import { webModuleEnabled, type WebModule } from "../web-module.js"
 
 import { pageDomainReader } from "../client/module-domain-views.js"
 import { moduleComposerStatus } from "../../../src/protocol/modules.js"
-import { protocolModuleComposerStatus, type ModuleComposerStatus, type ProtocolModule } from "../../../src/protocol/protocol-module.js"
+import type { ModuleComposerStatus } from "../../../src/protocol/protocol-module.js"
 import { runtimeFaultCopy, type FaultReach } from "../../../src/protocol/client/runtime-fault-copy.js"
 import { useClient } from "./client-context.js"
 import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
@@ -32,13 +32,9 @@ export function RuntimeFaultNotice(props: { readonly reach?: FaultReach | undefi
 }
 
 /** The enabled modules' composer labels, as chips in the toolbar. */
-export function ComposerStatus(props: { readonly modules?: readonly ProtocolModule[] }) {
+export function ComposerStatus() {
   const client = useClient()
-  const labels = () => {
-    const read = pageDomainReader(client.state)
-    const enabled = client.state().settings?.moduleIds
-    return props.modules === undefined ? moduleComposerStatus(read, enabled, "webview") : protocolModuleComposerStatus(props.modules, read, enabled, "webview")
-  }
+  const labels = () => moduleComposerStatus(pageDomainReader(client.state), client.state().settings?.moduleIds, "webview")
   const run = (label: ModuleComposerStatus) => {
     if (label.action?.kind === "surface") client.openSurface(label.action.id)
     else if (label.action?.kind === "command") client.actions.invokeCommand(label.action.id)

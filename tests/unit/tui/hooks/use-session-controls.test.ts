@@ -3,10 +3,13 @@ import { RpcClientError } from "effect/rpc"
 import { Socket } from "effect/socket"
 import type { FrontendMutation, MutationResult, SessionRow } from "../../../../src/protocol/app-service-types.js"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
-import { useSessionControls, type ControlledSessionRow } from "../../../../src/tui/hooks/use-session-controls.js"
+import { useSessionControls } from "../../../../src/tui/hooks/use-session-controls.js"
 import { offeredSessionControls } from "../../../../src/protocol/client/session-controls.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import { statusView } from "../../../helpers/runtime-views.js"
+
+/** The row slice the controls read. */
+type ControlledSessionRow = NonNullable<ReturnType<Parameters<typeof useSessionControls>[0]["row"]>>
 
 /** The commands a session control dispatches. */
 type SessionControl = Extract<FrontendMutation, { readonly type: "chat.interrupt" | "subagent.interrupt" | "chat.resume" | "subagent.resume" | "background.terminate" }>

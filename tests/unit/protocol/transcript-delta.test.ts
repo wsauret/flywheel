@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
-import { applyOutputDelta, buildBlockIndex, mergeAgentGroupChildren, outputDeltaBytes, type MutableOutputView } from "../../../src/protocol/client/transcript-delta.js"
+import { applyOutputDelta, buildBlockIndex, type MutableOutputView } from "../../../src/protocol/client/transcript-delta.js"
 
 function child(id: string, status: "pending" | "streaming" | "completed" | "interrupted" = "completed"): FrontendToolEntry {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status, timestamp: 1 }
@@ -23,18 +23,6 @@ function agentGroup(children: FrontendToolEntry[], totalToolCount: number, statu
     : { ...base, status }
 }
 
-describe("mergeAgentGroupChildren", () => {
-  it("lets incoming children win on id match (they carry status updates)", () => {
-    const merged = mergeAgentGroupChildren([child("c0"), child("c1", "pending")], [child("c1", "completed"), child("c2")])
-    expect(merged.map((item) => item.id)).toEqual(["c0", "c1", "c2"])
-    expect(merged[1]?.status).toBe("completed")
-  })
-
-  it("returns the incoming tail as-is when nothing is resident", () => {
-    expect(mergeAgentGroupChildren([], [child("c0")]).map((item) => item.id)).toEqual(["c0"])
-  })
-})
-
 describe("applyOutputDelta agent-group upsert merge", () => {
   it("merges a bounded tail into the resident group instead of replacing its children", () => {
     const resident = agentGroup([child("c0"), child("c1", "pending")], 2)
@@ -50,6 +38,16 @@ describe("applyOutputDelta agent-group upsert merge", () => {
     expect(merged.children.map((item) => item.id)).toEqual(["c0", "c1", "c2"])
     expect(merged.children[1]?.status).toBe("completed")
     expect(merged.totalToolCount).toBe(3)
+  })
+
+  it("takes the incoming tail as-is when the resident group holds no children", () => {
+    const view: MutableOutputView = { blocks: [agentGroup([], 0)], streamingToolText: {} }
+    const ok = applyOutputDelta(view, { blocks: [{ kind: "upsert", index: 0, blockId: "tool:agent-1", block: agentGroup([child("c0")], 1) }] }, buildBlockIndex(view.blocks))
+
+    expect(ok).toBe(true)
+    const merged = view.blocks[0]
+    if (merged?.kind !== "agentGroup") throw new Error("expected agent group")
+    expect(merged.children.map((item) => item.id)).toEqual(["c0"])
   })
 
   it("splices a mid-list insert and re-homes displaced identities", () => {
@@ -181,10 +179,6 @@ describe("applyOutputDelta block edits", () => {
     expect(reason).toBe("edit-invalid-shape")
     expect(view.blocks).toEqual([streamingBash("ls")])
   })
-
-  it("accounts for an edit by the bytes it carries", () => {
-    expect(outputDeltaBytes({ blocks: [{ kind: "edit", index: 0, blockId: "tool:call-1", edits: [{ kind: "append", path: ["presentation", "detail"], offset: 0, text: "é😀" }] }] })).toBe(new TextEncoder().encode("é😀").byteLength)
-  })
 })
 
 describe("foldAgentGroupBlock straggler settlement", () => {
@@ -218,12 +212,6 @@ describe("foldAgentGroupBlock straggler settlement", () => {
 })
 
 describe("proposed file body deltas", () => {
-  it("accounts for preview-check text as exact UTF-8 bytes", () => {
-    const previewCheck = "Review é😀"
-    const delta = { blocks: [], streamingToolTextOps: [{ toolUseId: "edit", kind: "set" as const, entry: { previewCheck } }] }
-    expect(outputDeltaBytes(delta)).toBe(new TextEncoder().encode("edit").byteLength + new TextEncoder().encode(previewCheck).byteLength)
-  })
-
   it("extends a resident entry by an append edit and keeps untouched entries by identity", () => {
     const other = { content: "other" }
     const view: MutableOutputView = { blocks: [], streamingToolText: { w: { content: "ab", filetype: "ts" }, o: other } }
@@ -248,11 +236,6 @@ describe("proposed file body deltas", () => {
     expect(applyOutputDelta(absent, { blocks: [], streamingToolTextOps: [{ toolUseId: "w", kind: "edit" as const, edits: [{ kind: "append" as const, path: ["content"], offset: 0, text: "x" }] }] }, new Map())).toBe(false)
     const proposal: MutableOutputView = { blocks: [], streamingToolText: { w: { proposedDiff: { files: [], unavailable: "malformed" } } } }
     expect(applyOutputDelta(proposal, { blocks: [], streamingToolTextOps: [{ toolUseId: "w", kind: "edit" as const, edits: [{ kind: "append" as const, path: ["content"], offset: 0, text: "x" }] }] }, new Map())).toBe(false)
-  })
-
-  it("accounts for appended text as exact UTF-8 bytes", () => {
-    const delta = { blocks: [], streamingToolTextOps: [{ toolUseId: "edit", kind: "edit" as const, edits: [{ kind: "append" as const, path: ["content"], offset: 0, text: "é😀" }] }] }
-    expect(outputDeltaBytes(delta)).toBe(new TextEncoder().encode("edit").byteLength + new TextEncoder().encode("é😀").byteLength)
   })
 
 })

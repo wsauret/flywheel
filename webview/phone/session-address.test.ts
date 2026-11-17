@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 
 import { restoreSessionAddress, takeSessionAddress } from "./session-address.js"
+import type { HistoryEntryState } from "../src/app/screen-stack.js"
 
 function page(hash: string) {
   const replaced: { readonly state: unknown; readonly url: string | URL | null | undefined }[] = []
@@ -8,7 +9,7 @@ function page(hash: string) {
   return {
     replaced,
     location: { hash, pathname: "/" },
-    history: { state, replaceState: (next: unknown, _unused: string, url?: string | URL | null) => { replaced.push({ state: next, url }) } },
+    history: { state, replaceState: (next: HistoryEntryState, _unused: string, url?: string | URL | null) => { replaced.push({ state: next, url }) } },
   }
 }
 

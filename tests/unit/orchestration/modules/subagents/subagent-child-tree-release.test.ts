@@ -14,7 +14,6 @@ function completedRunner(): (options: AgentOptions) => Agent {
         options.runtimeSurfaces?.handoff?.onContent({ summary: "completed" })
         done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }

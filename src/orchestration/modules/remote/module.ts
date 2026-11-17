@@ -47,5 +47,5 @@ export const remoteModule = {
     { domain: "settings", id: "remote", value: { control: "binary", group: "Remote", label: "Remote access", description: "Access this machine from paired devices" } },
     { domain: "settings", id: "remote-keep-awake", value: { control: "config-boolean", section: remoteConfigSection.key, key: "keep_awake", defaultValue: true, group: "Remote", label: "Keep Awake For Phone", description: "Keep this machine awake while a phone uses a runtime it started?" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule

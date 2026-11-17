@@ -19,7 +19,7 @@ function selection(result: CapturedRoleSelection): { readonly model: string; rea
 export const MODELS_TOOL_DEFINITION: AdvertisedTool = {
   name: "models",
   action: "ui_meta",
-  description: "List the models this session can use now, with metadata, prices per million tokens, supported efforts, context windows, tier resolutions, and the Workflow Agent default. Read this before choosing a workflow agent's model or effort. This read-only call reflects current profile access and enabled models; it changes no settings.",
+  description: "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   isConcurrencySafe: true,
   // Truncation would corrupt the table; size is bounded by the account's model catalog.

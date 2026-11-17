@@ -35,7 +35,7 @@ interface UnknownFields {
   readonly [key: string]: unknown;
 }
 
-function record(value: unknown): value is UnknownFields {
+function isRecord(value: unknown): value is UnknownFields {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -44,7 +44,7 @@ function finiteNonNegative(value: unknown): number | undefined {
 }
 
 function remainingFrom(body: unknown): number | undefined {
-  if (!record(body) || !record(body.data)) return undefined;
+  if (!isRecord(body) || !isRecord(body.data)) return undefined;
   const limit = finiteNonNegative(body.data.limit);
   const remaining = finiteNonNegative(body.data.limit_remaining);
   return limit === undefined || remaining === undefined ? undefined : remaining;

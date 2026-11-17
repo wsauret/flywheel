@@ -95,7 +95,7 @@ interface GenerationRuntimeToolSurfaces {
  *  generation. Every runner-local surface passes through as the host set it,
  *  so a surface added later, such as a workflow attempt's child-skill grant,
  *  cannot be lost here; a generation authority replaces a local one. */
-export function completeRuntimeToolSurfaces(
+function completeRuntimeToolSurfaces(
   local: RuntimeToolSurfaces,
   generation: GenerationRuntimeToolSurfaces,
 ): RuntimeToolSurfaces {

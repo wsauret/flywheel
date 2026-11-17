@@ -312,6 +312,7 @@ export interface HostLaunch {
   readonly dispatcherPrompt: string;
   /** Decides each SendMessage call of the dispatcher from its input before the call runs: the reason that the model
    *  reads as the call's error, or undefined to let the call run unchanged. Returns at once. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the SendMessage tool input that the Claude engine reports, which the decision decodes
   readonly refuseDispatch: (input: unknown) => string | undefined;
   readonly onStderrLine: (line: string) => void;
 }

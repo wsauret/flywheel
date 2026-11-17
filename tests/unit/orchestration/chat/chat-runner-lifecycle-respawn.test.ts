@@ -404,7 +404,6 @@ describe("chat runner lifecycle stranded-input respawn", () => {
       }
       return {
         send() { void park() },
-        end() {},
         abort() {
           runAbort.abort()
           aborts.push(resolvers.length)

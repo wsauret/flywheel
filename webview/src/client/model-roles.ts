@@ -1,4 +1,4 @@
-import type { ModelAssignmentRow } from "../../../src/protocol/model-assignment-protocol-types.js"
+import type { ModelAssignmentExpected, ModelAssignmentRow } from "../../../src/protocol/model-assignment-protocol-types.js"
 
 /** The role browser's rows, as pure projections of what the runtime reports.
  *
@@ -26,6 +26,9 @@ export interface SeatRow {
   /** The model and effort in force, or "not assigned". */
   readonly value: string
   readonly savedModel?: string
+  /** The role's profile entry as the runtime read it, which a write of the
+   *  seat expects. A seat that the runtime sent no row for has none. */
+  readonly configured?: ModelAssignmentExpected
 }
 
 export interface SeatGroup {
@@ -62,6 +65,7 @@ export function roleGroups(roles: readonly RoleDescriptor[], assignments: readon
       roleId: role.id, label: role.label,
       detail: [role.description, assigned?.savedModel ? `Saved: ${assigned.savedModel}` : undefined].filter(Boolean).join(" · "),
       value: describeSeat(assigned), savedModel: assigned?.savedModel,
+      configured: assigned?.configured,
     }
     const last = groups[groups.length - 1]
     if (last !== undefined && last.title === title) groups[groups.length - 1] = { title, rows: [...last.rows, row] }

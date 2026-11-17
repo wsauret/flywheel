@@ -96,10 +96,7 @@ export function relayChannelStreams(ws: RelayChannelSocket, timing: HeartbeatTim
     ended.resolve(close)
   }
   ws.addEventListener("close", (event: CloseEvent) => end({ code: event.code, reason: event.reason, abrupt: event.code === NO_CLOSE_FRAME_CODE }), { once: true })
-  const stopHeartbeat = heartbeat(ws, () => {
-    ws.close(HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON)
-    end({ code: HEARTBEAT_CLOSE_CODE, reason: HEARTBEAT_CLOSE_REASON, abrupt: true })
-  }, timing, { handedBytes: () => handedBytes, carried: () => carried })
+  const stopHeartbeat = heartbeat(ws, () => end({ code: HEARTBEAT_CLOSE_CODE, reason: HEARTBEAT_CLOSE_REASON, abrupt: true }), timing, { handedBytes: () => handedBytes, carried: () => carried })
   ws.addEventListener("message", (event: MessageEvent) => {
     const data: unknown = event.data
     if (data instanceof ArrayBuffer) {
@@ -195,7 +192,7 @@ export interface HeartbeatTiming {
 /** The heartbeat's timer. It counts ticks, not elapsed time, so the timer
  *  is all it needs: `every` schedules future callbacks and returns their
  *  cancellation. */
-export interface HeartbeatClock {
+interface HeartbeatClock {
   readonly every: (intervalMs: number, callback: () => void) => () => void
 }
 
@@ -213,17 +210,18 @@ export const RELAY_HEARTBEAT: HeartbeatTiming = { intervalMs: RELAY_HEARTBEAT_IN
 export const HEARTBEAT_CLOSE_CODE = 4000
 export const HEARTBEAT_CLOSE_REASON = "heartbeat timeout"
 
-/** Pings the relay at once and then every interval, and calls `onSilent`
- *  once, with the heartbeat stopped, when pings have gone unanswered for the
- *  deadline. Any frame the relay sends answers every ping before it. The
- *  deadline is counted in ticks of the heartbeat, as the executor's is
- *  (ARCH-RUNTIME-020): each tick that finds a ping still unanswered counts one
- *  interval however late it fires, so a stalled event loop, a waking laptop,
- *  or a hidden browser tab whose timers run late never reads as silence. A
- *  tick at which the socket's own sending shows the link moving bytes counts
- *  nothing (`LaneTraffic`). A half-open socket never delivers its close
- *  event, so the caller ends what the socket carried itself. Returns the
- *  stop, which the caller runs when the socket closes. */
+/** Pings the relay at once and then every interval. When pings have gone
+ *  unanswered for the deadline, it stops, asks the socket to close with
+ *  `HEARTBEAT_CLOSE_CODE`, and calls `onSilent` once. Any frame the relay
+ *  sends answers every ping before it. The deadline is counted in ticks of
+ *  the heartbeat, as the executor's is (ARCH-RUNTIME-020): each tick that
+ *  finds a ping still unanswered counts one interval however late it fires,
+ *  so a stalled event loop, a waking laptop, or a hidden browser tab whose
+ *  timers run late never reads as silence. A tick at which the socket's own
+ *  sending shows the link moving bytes counts nothing (`LaneTraffic`). A
+ *  half-open socket never delivers its close event, so the caller ends what
+ *  the socket carried itself. Returns the stop, which the caller runs when
+ *  the socket closes. */
 export function heartbeat(ws: RelaySocket, onSilent: () => void, timing: HeartbeatTiming = RELAY_HEARTBEAT, traffic?: LaneTraffic): () => void {
   const clock = timing.clock ?? systemHeartbeatClock
   const allowedMisses = Math.ceil(timing.deadlineMs / timing.intervalMs)
@@ -251,6 +249,7 @@ export function heartbeat(ws: RelaySocket, onSilent: () => void, timing: Heartbe
     if (awaitingAnswer && !moving) missed += 1
     if (missed >= (traffic?.carried?.() === false ? 1 : allowedMisses)) {
       stop()
+      ws.close(HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON)
       onSilent()
       return
     }
@@ -263,25 +262,6 @@ export function heartbeat(ws: RelaySocket, onSilent: () => void, timing: Heartbe
   ws.addEventListener("message", heard)
   ping()
   return stop
-}
-
-/** A heartbeat for a socket whose caller only needs to know when it ends:
- *  settles when the socket closes, or when a ping goes unanswered for the
- *  deadline, after asking the socket to close. The caller treats a settled
- *  heartbeat as a closed socket and dials again. */
-export function keepAlive(ws: RelaySocket, timing: HeartbeatTiming = RELAY_HEARTBEAT): Promise<void> {
-  const settled = Promise.withResolvers<void>()
-  const settle = () => {
-    stop()
-    ws.removeEventListener("close", settle)
-    settled.resolve()
-  }
-  const stop = heartbeat(ws, () => {
-    ws.close(HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON)
-    settle()
-  }, timing)
-  ws.addEventListener("close", settle, { once: true })
-  return settled.promise
 }
 
 /** The relay said no. The reason is the relay's word, carried as data. */
@@ -413,7 +393,15 @@ export function watchPresence(relayUrl: string, runtimeId: string, device: Devic
         end("error")
       })
     })
-    await keepAlive(socket)
+    // A half-open socket never reports its close, so the watch also ends
+    // when the heartbeat gives up on it.
+    await new Promise<void>((resolve) => {
+      const stop = heartbeat(socket, resolve)
+      socket.addEventListener("close", () => {
+        stop()
+        resolve()
+      }, { once: true })
+    })
     end("closed")
   })()
   return {

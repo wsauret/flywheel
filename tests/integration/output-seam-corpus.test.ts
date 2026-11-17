@@ -4,11 +4,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreAppend } from "../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js"
-import { createSessionDetailProjection } from "../../src/orchestration/app-service/session-detail-projection.js"
 import { createConversationTree } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { readSessionMetadata } from "../../src/orchestration/session/session-metadata-store.js"
 import { appendOutputSeamCorpusFacts, assertCorpusSanitized, corruptPersistedCreation, parseOutputSeamCorpus, parseOutputSeamManifest, longestAgentOutput, openOutputSeamCorpus, refreshOutputSeamCorpus, SANITIZED_PROJECT_DIR, serializeOutputSeamCorpus, type CorpusCase } from "../../scripts/regenerate-output-seam-corpus.js"
 import { tolerantReprojectionFixtures } from "../fixtures/tolerant-reprojection-fixtures.js"
+import { testSessionDetailProjection } from "../helpers/session-detail-projection.js"
 
 type JsonScalar = string | number | boolean | null | undefined
 interface JsonObject { [key: string]: JsonValue }
@@ -89,7 +89,7 @@ describe("committed output seam corpus", () => {
           expect(outcomes.every((outcome) => outcome.kind === "success" && outcome.omittedMalformedDecoration === true && typeof outcome.decorationCount === "number")).toBe(true)
           continue
         }
-        const projection = createSessionDetailProjection({
+        const projection = testSessionDetailProjection({
           projectRoot: root,
           sessionStore: { get: () => undefined },
           manager: { read: async (id) => id === corpusCase.sessionId ? (corpusCase.source.kind === "inline" ? await readSessionMetadata(asAsyncEventReadSurface(store), id) : extractedMetadata(corpusCase, root)) : readSessionMetadata(asAsyncEventReadSurface(store), id) },
@@ -236,7 +236,7 @@ describe("sanitized historical edit replay", () => {
       assertCorpusSanitized(JSON.stringify(resultFact), { version: 2, source: "authored-sanitized-facts", cases: [] })
       store.append(resultFact)
 
-      const projection = createSessionDetailProjection({
+      const projection = testSessionDetailProjection({
         projectRoot: root,
         sessionStore: { get: () => undefined },
         manager: { read: async (id) => id === sessionId ? editSessionMetadata(conversationId, root) : null },

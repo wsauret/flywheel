@@ -18,7 +18,6 @@ const definition = {
   displayName: "DeepSeek API Key",
   shortName: "DeepSeek",
   billingUrl: "https://platform.deepseek.com",
-  supportedFamilies: ["openai"],
   defaultChatTransport: "openai-completions",
   configHints: ["flywheel auth login --deepseek"],
   cli: { flag: "deepseek", name: "DeepSeek" },
@@ -64,5 +63,5 @@ export const deepseekModule = {
     { domain: "providers", id: "deepseek", value: { definition, createClient, usageReader: createDeepSeekUsageReader() } },
     { domain: "settings", id: "provider-deepseek", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow DeepSeek models through an API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

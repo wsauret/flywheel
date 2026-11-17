@@ -5,15 +5,14 @@ import { accessProviderAccountKey, type AccessProviderCandidate } from "../../in
 import type { ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./provider-model-preference-service.js"
 import type { AuthFileAttention, AuthOperationNotice, AuthProviderStatus, RuntimeAuthStatusScope, RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { webAuthProviderDefinitions, type FirstPartyModuleComposition, type FirstPartyModuleSnapshot } from "../modules.js"
-import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"
-import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
+import { installedAccessProviderDefinitions, installedCredentialSlotClassifier } from "../credential-provider-modules.js"
+import { heldAuthStoreLoad } from "./held-auth-store-load.js"
 import type { SubscriptionSpendConsentView } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { createAuthConditionOwner, type AuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { accountSecretFile } from "../../infra/paths.js"
 import { lockedJsonStorePath } from "../../infra/auth/locked-json-store.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
-import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
 
 /** Reads the auth view. A reading has no effect beyond the condition owner's
  *  observation; the attention a view shows is stated by the auth attention
@@ -23,8 +22,9 @@ export interface AuthStatusProjection {
   readonly observedSessionIds: ReadonlySet<string>
   /** An admitted operation supplies its captured composition through its notice. */
   snapshot(scope?: RuntimeAuthStatusScope, notice?: AuthOperationNotice, composition?: FirstPartyModuleComposition): Promise<RuntimeAuthView>
-  /** The view of one already-resolved profile. It reads the profile's auth
-   *  files, so a caller publishing many scopes computes it once per profile. */
+  /** The view of one already-resolved profile. It reads the profile's held
+   *  auth load, which reads auth.json again only when the load is not held
+   *  (no confirmed watch lease, as on Windows) or was invalidated by a change. */
   view(profile: AuthProfileResolution, notice?: AuthOperationNotice, composition?: FirstPartyModuleComposition): RuntimeAuthView
   replace(profile: AuthProfileResolution): RuntimeAuthView
 }
@@ -80,8 +80,9 @@ export function createAuthStatusProjection(deps: AuthStatusProjectionDeps): Auth
     for (const definition of webAuthProviderDefinitions(composition)) {
       metadata.set(definition.id, { group: definition.group, loginMethod: "api-key", statusRank: 0 })
     }
-    const credentialSlot = credentialSlotClassifier(composition)
-    const load = loadAuthStoreWithDiagnostics(profile.directory, installedCredentialProviderIds(), credentialSlot, false)
+    // The installed classifier decoded the held load, so each provider's kind agrees with the shape its entry decoded to.
+    const credentialSlot = installedCredentialSlotClassifier()
+    const load = heldAuthStoreLoad(profile.directory)
     const status = getAuthStatusWithDiagnostics(profile.directory, load)
     conditions.observeLoad(profile.directory, load)
     const currentConditions = conditions.snapshot(profile.directory)

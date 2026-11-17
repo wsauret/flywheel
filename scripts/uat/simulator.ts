@@ -13,7 +13,7 @@ import { join } from "node:path"
 
 const AXE = join(import.meta.dir, "..", "..", "node_modules", "xcodebuildmcp", "bundled", "axe")
 
-async function run(command: string[]): Promise<string> {
+async function runSimulatorCommand(command: string[]): Promise<string> {
   const child = Bun.spawn(command, { stdout: "pipe", stderr: "pipe", windowsHide: true })
   const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
   if (exitCode !== 0) throw new Error(`${command.slice(0, 3).join(" ")} failed (${exitCode}): ${stderr.trim() || stdout.trim()}`)
@@ -31,7 +31,7 @@ export interface Simulator {
 /** The named device, or the first booted iPhone when none is named. */
 export async function connectSimulator(udid?: string): Promise<Simulator> {
   // `simctl list --json` states this shape.
-  const listing: { devices: { [runtime: string]: { udid: string; name: string }[] } } = JSON.parse(await run(["xcrun", "simctl", "list", "devices", "booted", "--json"]))
+  const listing: { devices: { [runtime: string]: { udid: string; name: string }[] } } = JSON.parse(await runSimulatorCommand(["xcrun", "simctl", "list", "devices", "booted", "--json"]))
   const booted = Object.values(listing.devices).flat()
   const device = udid === undefined ? booted.find((item) => item.name.startsWith("iPhone")) : booted.find((item) => item.udid === udid)
   if (!device) throw new Error(udid === undefined ? "no booted iPhone simulator" : `simulator ${udid} is not booted`)
@@ -41,10 +41,10 @@ export async function connectSimulator(udid?: string): Promise<Simulator> {
     async tap(x, y) {
       // A plain AXe tap reports success but reaches no installed web app on
       // iOS 27; a touch with an explicit down and up does.
-      await run([AXE, "touch", "-x", x.toFixed(1), "-y", y.toFixed(1), "--down", "--up", "--delay", "0.15", "--udid", id])
+      await runSimulatorCommand([AXE, "touch", "-x", x.toFixed(1), "-y", y.toFixed(1), "--down", "--up", "--delay", "0.15", "--udid", id])
     },
     async screenshot(path) {
-      await run(["xcrun", "simctl", "io", id, "screenshot", "--type=png", path])
+      await runSimulatorCommand(["xcrun", "simctl", "io", id, "screenshot", "--type=png", path])
     },
     async record(path) {
       const child = Bun.spawn(["xcrun", "simctl", "io", id, "recordVideo", "--codec=h264", "--force", path], { stdout: "ignore", stderr: "pipe", windowsHide: true })

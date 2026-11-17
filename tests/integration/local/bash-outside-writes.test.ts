@@ -7,6 +7,7 @@ import { createBashDefinition } from "../../../src/orchestration/agent-runtime/t
 import { executeDispatchedTool } from "../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { prepareToolCall } from "../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../helpers/request-tool-surface.js";
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
@@ -39,7 +40,7 @@ test("the real bash tool refuses an outside delete before any command runs", asy
     expect(ran.content).toContain("ready");
     const prefix = process.platform === "win32" ? "'ran' | Set-Content marker.txt; " : "echo ran > marker.txt; ";
     for (const flags of [{}, { mutates: true }, { background: true }, { background: true, persist_after_exit: true }]) {
-      const prepared = prepareToolCall({ id: "outside-delete", name: "bash", input: { ...flags, command: prefix + remove } }, new Map([["bash", tool]]), { ok: true });
+      const prepared = prepareToolCall({ id: "outside-delete", name: "bash", input: { ...flags, command: prefix + remove } }, new Map([["bash", tool]]), admitEveryTool);
       const result = await Effect.runPromise(executeDispatchedTool({ prepared, context, gate: createToolConcurrencyGate(1) }));
       expect(result.outcome).toBe("error");
       expect(result.content).toContain("outside");

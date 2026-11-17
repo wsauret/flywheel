@@ -1,14 +1,13 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import { subtreeUsage, worstCaseAttempts } from "../../../../src/workflows/vm/structural-admission.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { FINDINGS_FILES, mapSkills, VOTES_CHECKS, votesDefinition } from "./_map-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 describe("list votes compilation", () => {
   const compile = (checks: { readonly [key: string]: unknown } = {}) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(votesDefinition(checks));
+    const workflow = loadedWorkflow(votesDefinition(checks));
     return compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: mapSkills }, undefined, { files: FINDINGS_FILES });
   };
 
@@ -32,7 +31,7 @@ describe("list votes compilation", () => {
     ["one vote", { votes: 1 }, /votes/],
     ["more than ten votes", { votes: 11 }, /votes/],
   ] as const)("refuses %s when it decodes the file", (_name, checks, message) => {
-    expect(() => Schema.decodeUnknownSync(WorkflowDefinitionSchema)(votesDefinition(checks))).toThrow(message);
+    expect(() => loadedWorkflow(votesDefinition(checks))).toThrow(message);
   });
 
   it.each([
@@ -47,7 +46,7 @@ describe("list votes compilation", () => {
     const [, labeled, report] = votesDefinition().phases;
     if (labeled === undefined) throw new Error("the votes fixture has no labeled phase");
     const checks = Object.fromEntries(Object.entries(labeled).filter(([key]) => key !== "label"));
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "ballots",
       name: "Ballots",
       input: { fields: { claims: { type: "list", description: "The claims.", of: { type: "string" } } } },

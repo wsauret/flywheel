@@ -17,6 +17,7 @@ import type { WorkflowDefinition } from "../../../src/workflows/workflow-schema.
 import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/skill.js";
 import type { ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { fileTemporaryDirectory, testDirectories } from "../../helpers/directories.js";
+import { loadedWorkflow } from "../../helpers/workflow-files.js";
 
 // The fixture packages are installed under temp roots this suite's own
 // definition owner reads, so the assertions never depend on what the developer
@@ -62,11 +63,11 @@ beforeAll(() => {
 
 /** The workflow every case below compiles: one inline step that composes the
  *  fixture package, which declares `alpha` as its dependency. */
-const WORKFLOW: WorkflowDefinition = {
+const WORKFLOW = loadedWorkflow({
   id: "wf",
   name: "Workflow",
   phases: [{ phase: "fixture", brief: "Do the step work.", name: "fixture", dependencies: ["fixture"], writes: [] }, { phase: "solo", brief: "Do the solo work.", name: "solo", writes: [] }],
-};
+});
 
 function bound(workflow: WorkflowDefinition, stepId: string): ResolvedAgent {
   const step = resolveWorkflowAgents(workflow).get(stepId);
@@ -103,13 +104,19 @@ describe("canonical skill context", () => {
     expect(loaded.content).toBe(renderSkillContext(installed("alpha")));
   });
 
-  it("composes declared packages in declaration order, never sorted", () => {
+  it("composes declared packages in declaration order, never sorted, each under its name and source only", () => {
     const revision = owner().skills();
+    // A composed reader neither loads nor writes the package, so its section
+    // keeps the loaded header's name and source lines and none of its
+    // version, reach, ownership, or hash lines.
+    const composed = (id: string) => {
+      const [header = "", ...body] = renderSkillContext(installed(id)).split("\n\n");
+      return [header.split("\n").filter((line) => line.startsWith("# Skill: ") || line.startsWith("source: ")).join("\n"), ...body].join("\n\n");
+    };
 
-    expect(renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"', () => true).slice(1)).toEqual([
-      renderSkillContext(installed("beta")),
-      renderSkillContext(installed("alpha")),
-    ]);
+    const sections = renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"', () => true).slice(1);
+    expect(sections).toEqual([composed("beta"), composed("alpha")]);
+    expect(sections[0]?.startsWith("# Skill: beta\nsource: external package beta\n\n")).toBe(true);
     expect(renderSkillClosure(undefined, revision, 'Skill "consumer"', () => true)).toEqual([]);
   });
 
@@ -259,11 +266,11 @@ describe("definition identity", () => {
 });
 
 describe("definition identity for personas a step can dispatch", () => {
-  const workflow: WorkflowDefinition = {
+  const workflow = loadedWorkflow({
     id: "wf-personas",
     name: "Workflow",
     phases: [{ phase: "agented", brief: "Do the agented work.", name: "agented", dependencies: ["agented"], subagents: ["auditor"], writes: [] }],
-  };
+  });
   const auditor: AgentDefinition = {
     kind: "persona",
     name: "auditor",

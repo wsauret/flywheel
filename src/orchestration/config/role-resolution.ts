@@ -59,7 +59,7 @@ function configuredRole(
     ?? (parentId ? configuredRoles[parentId] : undefined);
 }
 
-export type RoleSetting = { readonly model?: string; readonly effort?: string; readonly fixedEffort?: string; readonly provider_options?: ResolvedRole["providerOptions"] };
+export type RoleSetting = { readonly model?: string; readonly effort?: string; readonly defaultEffort?: string; readonly provider_options?: ResolvedRole["providerOptions"] };
 
 /** A role preference that an agent's request passed over because its included quota is spent until `reset`. */
 export interface PassedPreference {
@@ -144,7 +144,7 @@ export function captureRoleCatalog(
     return plan;
   };
   const resolve = async (roleId: RoleId, setting: RoleSetting, standing?: ModelStandingReader): Promise<CapturedRoleSelection> => {
-    if (!hasModels(available)) return { kind: capture.eligibility?.accessPending?.(capture.allowTrainingRoutes) ? "access-pending" : "no-selection" };
+    if (!hasModels(available)) return { kind: capture.eligibility?.accessPending(capture.allowTrainingRoutes) ? "access-pending" : "no-selection" };
     const preferences = rolePreferences(roleId, setting, available, options);
     if (standing === undefined) {
       const first = await firstOf(preferences);
@@ -217,10 +217,10 @@ async function* rolePreferences(
   yield { model: (await resolveModelForTierAcrossFamilies(tier, available, options)).model, effort };
 }
 
-/** The resolved role of `selected`: a fixed effort wins, an authored effort applies when no model is saved, and the
+/** The resolved role of `selected`: a workflow's default effort wins, an authored effort applies when no model is saved, and the
  *  effort maps to the nearest one the model supports. */
 function finalizedRole(roleId: RoleId, configured: RoleSetting, selected: RolePreference, options: TierResolutionOptions): ResolvedRole {
-  const requestedEffort = configured.fixedEffort ?? (configured.model === undefined ? configured.effort ?? selected.effort : selected.effort);
+  const requestedEffort = configured.defaultEffort ?? (configured.model === undefined ? configured.effort ?? selected.effort : selected.effort);
   const canonicalEffort = EFFORT_VALUES.find((effort) => effort === requestedEffort);
   const effort = canonicalEffort === undefined ? requestedEffort : clampReasoningEffort(canonicalEffort, options.modelInfos?.get(selected.model) ?? null, ["low", "medium", "high"]);
   const providerOptions = mergeProviderOptions(configured.provider_options);

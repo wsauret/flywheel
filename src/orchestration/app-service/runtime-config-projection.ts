@@ -57,8 +57,9 @@ function projectModuleSettings(config: FlywheelConfig): RuntimeConfigValues["mod
   return sections
 }
 
-export function projectRuntimeConfig(snapshot: RuntimeConfigSnapshot, projectRoot: string, declaredProviderSettings: readonly ModuleProviderSetting[] = installedProviderSettings()): RuntimeConfigView {
+function projectRuntimeConfig(snapshot: RuntimeConfigSnapshot, projectRoot: string): RuntimeConfigView {
   const config = snapshot.config
+  const declaredProviderSettings = installedProviderSettings()
   const values: RuntimeConfigValues = {
     ...(config.theme === undefined ? {} : { theme: config.theme }),
     moduleSelection: config.modules,

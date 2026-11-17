@@ -542,12 +542,13 @@ describe("skill tool prompt guidance", () => {
       corePrompt: "core",
       tools: [toolFor(revisionOf(1, [skill("pdf")]))],
       promptKind: "workflow-agent",
+      purpose: { kind: "workflow-agent", briefScope: { briefId: "implement" }, workflowAttemptId: "implement:attempt:1" },
       unattended: true,
     })));
 
     expect(rendered).not.toContain("chat delivery sequence");
     expect(rendered).not.toContain("Err on the side of loading");
-    expect(rendered).toContain("You run one brief, as an agent of a workflow or as a subagent.");
+    expect(rendered).toContain("No person reads your messages while you work");
     expect(rendered).not.toContain("**Chat leads a change through delivery.**");
     expect(rendered).not.toContain("When a completed design is ready");
   });

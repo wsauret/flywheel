@@ -24,7 +24,7 @@ import { Schema } from "effect";
 import * as yaml from "js-yaml";
 import { parseFrontmatter } from "../../../../infra/frontmatter.js";
 import { isQualifiedSkillId } from "../../../../infra/skill-id.js";
-import { ContainedPathError } from "../../../../infra/descriptor-directory.js";
+import { ContainedPathError } from "../../../../infra/descriptor-directory-contract.js";
 import { readFileUnder, requireContainedDirectory } from "../../../../infra/write-file-under.js";
 import { SKILL_FILE } from "../../../../workflows/skill-schema.js";
 

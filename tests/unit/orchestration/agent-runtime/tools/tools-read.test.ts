@@ -10,7 +10,7 @@ import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-ru
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { AgentPurpose } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import { makeContext } from "./_fixtures.js";
@@ -30,7 +30,7 @@ describe("read tool", () => {
   });
 
   const dispatch = (input: RuntimeToolInput) => executePreparedTool(
-    prepareToolCall({ id: "read", name: "read", input }, new Map([["read", readDefinition]])),
+    prepareToolCall({ id: "read", name: "read", input }, new Map([["read", readDefinition]]), admitEveryTool),
     makeContext({ executionCwd: tmpDir, projectRoot: tmpDir }),
   );
 
@@ -64,7 +64,7 @@ describe("read tool", () => {
     fs.mkdirSync(cwd);
     for (const name of ["a.txt", "b.txt"]) fs.writeFileSync(path.join(cwd, name), "local");
     const refused = await executePreparedTool(
-      prepareToolCall({ id: "read", name: "read", input: { path: "a.txt b.txt" } }, new Map([["read", readDefinition]])),
+      prepareToolCall({ id: "read", name: "read", input: { path: "a.txt b.txt" } }, new Map([["read", readDefinition]]), admitEveryTool),
       makeContext({ executionCwd: cwd, projectRoot: tmpDir }),
     );
     expect(refused.outcome).toBe("error");

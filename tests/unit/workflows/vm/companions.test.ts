@@ -1,12 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
-import { Schema } from "effect";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js";
 import type { RequestAddendumMessage } from "../../../../src/workflows/context-bundle/context-facts.js";
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { initializeWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const workWrites = [{ id: "artifact", lifetime: "durable" as const, supersedes: [] }];
 const workSkill = testSkill("work", { name: "Work", body: "Work." });
@@ -14,7 +13,7 @@ const skills = testSkillRevision([workSkill]);
 
 const work = testResolvedAgent("work", workSkill, { writes: workWrites });
 
-const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const workflow = loadedWorkflow({
   id: "companions",
   name: "Companions",
   phases: [{ phase: "work", name: "Work", brief: "Work.", writes: workWrites }],
@@ -169,13 +168,14 @@ describe("workflow proposal companions", () => {
       status: "completed" as const,
     };
     const completed = initializeWorkflow(completedControl);
-    const proposal = transitionWorkflow(completed.state, {
+    // A follow-up run as a build before 2026-10-03 recorded it.
+    const proposal = transitionDecodedWorkflow(completed.state, {
       type: "FOLLOW_UP_REQUESTED",
       input: { text: "Explain" },
       identity: { kind: "identified", inputID: "input-1" },
       conversationId: "follow-up-1",
       requestSequence: 1,
-    });
+    }, 13);
     const composed = composeWorkflowCompanions(proposal, {
       queue: flattenWorkflowView(completedControl, testResolvedAgents([work])),
       resolvedAgents: testResolvedAgents([work]),
@@ -193,9 +193,7 @@ describe("workflow proposal companions", () => {
       proposalId: composed.command.proposal.proposalId,
       aggregateSeq: composed.state.context.pending?.proposedCommitted.aggregateSeq ?? 0,
     });
-    expect(acknowledged.command).toMatchObject({
-      kind: "run_follow_up",
-      input: { input: { text: "Explain" }, conversationId: "follow-up-1", requestSequence: 1 },
-    });
+    // Nothing runs the recorded request: its input belongs to the parent chat.
+    expect(acknowledged.command).toEqual({ kind: "none" });
   });
 });

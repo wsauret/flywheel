@@ -53,9 +53,9 @@ export type FileMutationAttemptResult =
   | { readonly status: "not_applied"; readonly error: Error }
   | { readonly status: "indeterminate"; readonly error: Error };
 
-export interface ContainedDirectoryContract {
-  openChild(name: string, options?: ContainedDirectoryOptions): ContainedDirectoryContract;
-  openExistingChild(name: string): ContainedDirectoryContract | undefined;
+export interface ContainedDirectory {
+  openChild(name: string, options?: ContainedDirectoryOptions): ContainedDirectory;
+  openExistingChild(name: string): ContainedDirectory | undefined;
   readFile(name: string, maxBytes: number): Buffer | undefined;
   readOwnedFile(name: string, maxBytes: number): ContainedOwnedFile | undefined;
   readFileSnapshot(name: string, maxBytes: number): ContainedFileSnapshot | undefined;
@@ -73,7 +73,7 @@ export interface ContainedDirectoryContract {
   /** The directory the link at `name` resolves to, whose `canonicalPath()` is
    *  that physical directory, or nothing when there is no link or it names
    *  nothing. */
-  openLinkedChild(name: string): ContainedDirectoryContract | undefined;
+  openLinkedChild(name: string): ContainedDirectory | undefined;
   createExclusive(name: string, content: string): boolean;
   writeStreamExclusive(
     name: string,
@@ -94,15 +94,15 @@ export interface ContainedDirectoryContract {
   admitPrivateFile(name: string): boolean;
   syncFile(name: string): void;
   syncDirectory(): void;
-  renameInto(name: string, target: ContainedDirectoryContract, targetName: string): void;
+  renameInto(name: string, target: ContainedDirectory, targetName: string): void;
   requireSamePathAs(dirPath: string): void;
   identity(): string;
   close(): void;
 }
 
 export interface ContainedDirectoryBackend {
-  open(baseDir: string, dirs: readonly string[], options: ContainedDirectoryOptions): ContainedDirectoryContract;
-  openExisting(baseDir: string, dirs: readonly string[], options: ContainedDirectoryOptions): ContainedDirectoryContract | undefined;
+  open(baseDir: string, dirs: readonly string[], options: ContainedDirectoryOptions): ContainedDirectory;
+  openExisting(baseDir: string, dirs: readonly string[], options: ContainedDirectoryOptions): ContainedDirectory | undefined;
 }
 
 /** The canonical error for a path that is not the entry the caller owns. */

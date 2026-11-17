@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { resolveWorkflowTargets, workflowAddresses, workflowAgentAddress, workflowAddressLines, workflowTargetRefusal } from "../../../../src/protocol/client/workflow-addresses.js"
+import { resolveWorkflowTargets, workflowAgentAddress, workflowAddressLines, workflowTargetRefusal, type WorkflowAddress } from "../../../../src/protocol/client/workflow-addresses.js"
 import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent.js"
 import type { LoadedWorkflowView, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { fourLaneControl, frontendView, interrupt, mapBindings, mapControl, phaseBindings, phaseControl, startNext, wideBindings } from "../../workflows/vm/_tree-fixtures.js"
@@ -27,6 +27,14 @@ function afterEarlierList(view: LoadedWorkflowView, finished = true): LoadedWork
   return { ...view, tree: { ...tree, nodes: [...earlier, ...tree.nodes] } }
 }
 
+/** Every address that takes a message, in the order the workflow shows
+ *  them: the list that a refusal offers the sender. */
+function openAddresses(view: LoadedWorkflowView): readonly WorkflowAddress[] {
+  const refusal = resolveWorkflowTargets(view, ["no-such-target"])
+  if (refusal.ok) throw new Error("an unknown target resolved")
+  return refusal.valid
+}
+
 /** The four items with a handoff summary of 240 characters on every agent,
  *  after every agent finished. */
 function finishedItems(view: LoadedWorkflowView): LoadedWorkflowView {
@@ -45,15 +53,16 @@ function finishedItems(view: LoadedWorkflowView): LoadedWorkflowView {
 describe("the addresses of a workflow", () => {
   it("lists one address per item with the agent that runs it now and its state, reaching its agent in every phase of its stream, and the agent of a phase of one agent by its record id", () => {
     const view = fourItems()
-    expect(workflowAddresses(view).map(({ target, kind, agent, state, finished }) => `${target} ${kind} ${agent} ${state}${finished ? " finished" : ""}`)).toEqual([
-      "t1 item Review done finished",
+    expect(openAddresses(view).map(({ target, kind, agent, state }) => `${target} ${kind} ${agent} ${state}`)).toEqual([
       "t2 item Implement running",
       "t3 item Implement queued",
       "t4 item Implement queued",
       "tail agent Tail queued",
     ])
-    expect(workflowAddresses(view)[1]).toMatchObject({ nodeId: `${WIDE_GROUP}:item:2`, groupId: WIDE_GROUP, agentNodeIds: [wideStage(2, 1), wideStage(2, 2)] })
-    expect(workflowAddresses(frontendView(phaseControl(false), phaseBindings(false))).map(({ target, kind }) => `${target} ${kind}`)).toEqual(["implement agent", "review agent", "tail agent"])
+    expect(resolveWorkflowTargets(view, ["t1"])).toMatchObject({ ok: false, reason: "finished", target: "t1" })
+    expect(workflowAddressLines(view)).toContain("- t1 | {\"id\":\"t1\",\"title\":\"Target 1 of the survey with a deliberat… | Review | done | \"done\"")
+    expect(resolveWorkflowTargets(view, ["t2"])).toMatchObject({ ok: true, addresses: [{ nodeId: `${WIDE_GROUP}:item:2`, groupId: WIDE_GROUP, agentNodeIds: [wideStage(2, 1), wideStage(2, 2)] }] })
+    expect(openAddresses(frontendView(phaseControl(false), phaseBindings(false))).map(({ target, kind }) => `${target} ${kind}`)).toEqual(["implement agent", "review agent", "tail agent"])
   })
 
   it("resolves two of four items and refuses a finished item or an unknown key with every key that takes a message and its state", () => {
@@ -105,7 +114,7 @@ describe("the addresses of a workflow", () => {
 
   it("addresses a named agent of a parallel phase by its record id, and an agent of control from before phases by its control node", () => {
     const view = frontendView(startNext(phaseControl(true)), phaseBindings(true))
-    expect(workflowAddresses(view).map(({ target, kind, state }) => `${target} ${kind} ${state}`)).toEqual(["implement agent running", "review agent queued", "tail agent queued"])
+    expect(openAddresses(view).map(({ target, kind, state }) => `${target} ${kind} ${state}`)).toEqual(["implement agent running", "review agent queued", "tail agent queued"])
     expect(resolveWorkflowTargets(view, ["review"])).toMatchObject({ ok: true, addresses: [{ target: "review", kind: "agent" }] })
     // The `debug` chain of a parallel phase from before phases runs both agents.
     const history: LoadedWorkflowView = {
@@ -117,10 +126,11 @@ describe("the addresses of a workflow", () => {
         { id: "debug:2", kind: "agent", definitionId: "fix", label: "Fix", parentId: "work", disposition: "pending", attempts: 0, nodeId: "debug" },
       ] },
     }
-    expect(workflowAddresses(history).map(({ target, nodeId, state, detail, finished }) => ({ target, nodeId, state, detail, finished }))).toEqual([
-      { target: "investigate", nodeId: "debug", state: "done", detail: '"No fix is needed"', finished: true },
-      { target: "fix", nodeId: "debug", state: "queued", detail: "queued", finished: false },
+    expect(openAddresses(history).map(({ target, nodeId, state, detail }) => ({ target, nodeId, state, detail }))).toEqual([
+      { target: "fix", nodeId: "debug", state: "queued", detail: "queued" },
     ])
+    expect(resolveWorkflowTargets(history, ["investigate"])).toMatchObject({ ok: false, reason: "finished", target: "investigate" })
+    expect(workflowAddressLines(history)).toEqual(["message targets (name these item keys or agent ids in targets for message_session and process interrupt/resume; omit targets only for the whole workflow):", "phase Work: 2 named agents, one line per agent", '- investigate | Investigate | done | "No fix is needed"', "- fix | Fix | queued | queued"])
     expect(resolveWorkflowTargets(history, ["fix"])).toMatchObject({ ok: true, addresses: [{ nodeId: "debug" }] })
   })
 

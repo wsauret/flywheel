@@ -1,13 +1,13 @@
 import { Result, Schema } from "effect";
 import { isDeepStrictEqual } from "node:util";
-import { ContainedPathError } from "../descriptor-directory.js";
+import { ContainedPathError } from "../descriptor-directory-contract.js";
 import { accountSecretFile } from "../paths.js";
 import { isRecord } from "../record.js";
 import { type AuthProfileAccess, openExistingAuthProfileDirectory } from "./auth-profile-store.js";
 import { credentialsEqual } from "./credential-comparison.js";
 import { lockedJsonRevision, lockedJsonStorePath } from "./locked-json-store.js";
 import { isCredentialCollection, PersistedAuthStoreSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialProviderId, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
-import { AUTH_STORE_FILE, decodeAuthStoreWithDiagnostics, loadAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
+import { AUTH_STORE_FILE, decodeAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
 
 const MAX_AUTH_STORE_BYTES = 16 * 1024 * 1024;
 
@@ -66,7 +66,7 @@ function withConditions(result: AuthStoreLoadResult, authDirectory: string, revi
   };
 }
 
-function loadAuthStoreFromAccess(access: AuthProfileAccess, classifySlot: CredentialSlotClassifier | undefined, installedIds?: readonly string[]): AuthStoreLoadResult {
+function loadAuthStoreFromAccess(access: AuthProfileAccess, classifySlot: CredentialSlotClassifier, installedIds?: readonly string[]): AuthStoreLoadResult {
   const { authDirectory } = access;
   const bytes = readAuthStoreBytesForMutation(access);
   if (bytes === undefined) return emptyAuthStoreLoadResult();
@@ -91,17 +91,16 @@ function loadAuthStoreFromAccess(access: AuthProfileAccess, classifySlot: Creden
 
 async function mutateAuthStoreAccess(
   access: AuthProfileAccess,
-  mutate: (store: AuthStore) => readonly CredentialProviderId[] | void,
-  classifySlot?: CredentialSlotClassifier,
+  mutate: (store: AuthStore) => void,
+  classifySlot: CredentialSlotClassifier,
   signal?: AbortSignal,
 ): Promise<void> {
   signal?.throwIfAborted();
   await access.withLock(() => {
     const { store, lineages } = loadMutableAuthStoreFromAccess(access, classifySlot);
     signal?.throwIfAborted();
-    const changedProviders = mutate(store);
-    const renewals = changedProviders === undefined ? new Set<CredentialProviderId>() : new Set(changedProviders);
-    writeAuthStoreAccess(access, store, lineages, renewals);
+    mutate(store);
+    writeAuthStoreAccess(access, store, lineages, new Set());
   });
 }
 
@@ -142,6 +141,7 @@ function persistedLoginReplacement(
 type PersistedAuthEntry = PersistedAuthStore[string];
 const STRICT_SCHEMA_OPTIONS = { onExcessProperty: "error" as const };
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: an entry of the auth store file, which another process can rewrite
 function decodePersistedAuthEntry(providerId: CredentialProviderId, value: unknown): PersistedAuthEntry | undefined {
   const decoded = Schema.decodeUnknownResult(PersistedAuthStoreSchema, STRICT_SCHEMA_OPTIONS)({ [providerId]: value });
   return Result.isSuccess(decoded) ? decoded.success[providerId] : undefined;
@@ -324,97 +324,9 @@ export async function ensureCredentialLineages(
 
 interface MutableAuthStore { readonly store: AuthStore; readonly lineages: CredentialLineages }
 
-function loadMutableAuthStoreFromAccess(access: AuthProfileAccess, classifySlot?: CredentialSlotClassifier): MutableAuthStore {
+function loadMutableAuthStoreFromAccess(access: AuthProfileAccess, classifySlot: CredentialSlotClassifier): MutableAuthStore {
   const { store, credentialLineages } = loadAuthStoreFromAccess(access, classifySlot);
   return { store, lineages: credentialLineages };
-}
-
-export async function setCredential(providerId: CredentialProviderId, credential: Credential, destination: string | AuthProfileAccess): Promise<void> {
-  const access = openMutationAccess(destination);
-  try {
-    await mutateAuthStoreAccess(access, (store) => { store[providerId] = credential; return [providerId]; });
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
-}
-
-/** Replaces one credential only if the store still contains the version the
- *  caller refreshed. A concurrent login wins instead of being overwritten by
- *  a slower refresh from the previous account. */
-export async function replaceCredential(
-  providerId: CredentialProviderId,
-  expected: Credential,
-  credential: Credential,
-  destination: string | AuthProfileAccess,
-  signal?: AbortSignal,
-): Promise<boolean> {
-  signal?.throwIfAborted();
-  let replaced = false;
-  const access = openMutationAccess(destination);
-  try {
-    await mutateAuthStoreAccess(access, (store) => {
-      const current = store[providerId];
-      if (isCredentialCollection(current) || !credentialsEqual(current, expected)) return;
-      store[providerId] = credential;
-      replaced = true;
-      return [providerId];
-    }, undefined, signal);
-    return replaced;
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
-}
-
-/** Restores or removes one metered credential only while the failed login's
- * exact credential is still current. A concurrent auth mutation always wins. */
-export async function rollbackMeteredCredential(
-  providerId: CredentialProviderId,
-  failed: Credential,
-  previous: Credential | undefined,
-  destination: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-): Promise<boolean> {
-  if (classifySlot(providerId) !== "metered") throw new Error(`Credential provider ${providerId} is not a metered slot`);
-  let rolledBack = false;
-  const access = openMutationAccess(destination);
-  try {
-    await mutateAuthStoreAccess(access, (store) => {
-      const current = store[providerId];
-      if (isCredentialCollection(current) || !credentialsEqual(current, failed)) return;
-      if (previous === undefined) Reflect.deleteProperty(store, providerId);
-      else store[providerId] = previous;
-      rolledBack = true;
-      return previous === undefined ? undefined : [providerId];
-    }, classifySlot);
-    return rolledBack;
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
-}
-
-export async function deleteCredential(providerId: CredentialProviderId, destination: string | AuthProfileAccess): Promise<void> {
-  const access = openMutationAccess(destination);
-  try {
-    if (readAuthStoreBytesForMutation(access) === undefined) return;
-    await mutateAuthStoreAccess(access, (store) => { Reflect.deleteProperty(store, providerId); });
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
-}
-
-export async function setMeteredCredential(
-  providerId: CredentialProviderId,
-  credential: Credential,
-  destination: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-): Promise<void> {
-  if (classifySlot(providerId) !== "metered") throw new Error(`Credential provider ${providerId} is not a metered slot`);
-  const access = openMutationAccess(destination);
-  try {
-    await mutateAuthStoreAccess(access, (store) => { store[providerId] = credential; return [providerId]; }, classifySlot);
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
 }
 
 export async function deleteProviderCredentials(
@@ -431,7 +343,6 @@ export async function deleteProviderCredentials(
   }
 }
 
-
 function requireSubscription(providerId: CredentialProviderId, classifySlot: CredentialSlotClassifier): void {
   if (classifySlot(providerId) !== "subscription") throw new Error(`Credential provider ${providerId} is not a subscription slot`);
 }
@@ -441,53 +352,6 @@ function collection(store: AuthStore, providerId: CredentialProviderId): Credent
   if (value === undefined) return [];
   if (isCredentialCollection(value)) return value;
   throw new Error(`Credential provider ${providerId} is not a collection`);
-}
-
-
-export async function appendCredentialInstance(
-  providerId: CredentialProviderId,
-  instance: CredentialInstance,
-  destination: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-  signal?: AbortSignal,
-): Promise<void> {
-  signal?.throwIfAborted();
-  await appendCredentialInstanceWithReceipt(providerId, instance, destination, classifySlot, signal);
-}
-
-/** Replaces a wholly rejected provider entry, never a damaged account collection. */
-export async function replaceRejectedProviderCredentials(
-  providerId: CredentialProviderId,
-  replacement: Credential | CredentialCollection,
-  destination: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-  signal?: AbortSignal,
-): Promise<boolean> {
-  signal?.throwIfAborted();
-  const access = openMutationAccess(destination);
-  try {
-    return await access.withLock(() => {
-      const bytes = readAuthStoreBytesForMutation(access);
-      if (bytes === undefined) return false;
-      const revision = lockedJsonRevision(bytes);
-      let raw: unknown;
-      try {
-        raw = JSON.parse(bytes.toString("utf8"));
-      } catch {
-        throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
-      }
-      if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
-      const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
-      if (!decoded.dropped.includes(providerId)) return false;
-      const encoded = JSON.stringify({ ...raw, [providerId]: persistedLoginReplacement(replacement, classifySlot(providerId)) });
-      if (Buffer.byteLength(encoded) > MAX_AUTH_STORE_BYTES) throw new RangeError(`auth.json exceeds ${MAX_AUTH_STORE_BYTES} bytes`);
-      signal?.throwIfAborted();
-      access.writeFile(AUTH_STORE_FILE, encoded);
-      return true;
-    });
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
 }
 
 /** Replaces a wholly rejected provider entry, never a damaged account collection.
@@ -552,70 +416,6 @@ export async function replaceCredentialInstance(
     return replaced;
   } finally {
     if (typeof destination === "string") access.close();
-  }
-}
-
-/** Removes one newly appended instance only while its exact credential is
- * unchanged. This cannot delete or overwrite a concurrent reconnect. */
-export async function rollbackAppendedCredentialInstance(
-  providerId: CredentialProviderId,
-  instanceId: string,
-  credential: Credential,
-  destination: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-): Promise<boolean> {
-  requireSubscription(providerId, classifySlot);
-  let rolledBack = false;
-  const access = openMutationAccess(destination);
-  try {
-    await mutateAuthStoreAccess(access, (store) => {
-      const current = collection(store, providerId);
-      const index = current.findIndex((instance) => instance.id === instanceId && credentialsEqual(instance.credential, credential));
-      if (index < 0) return;
-      store[providerId] = current.filter((_, currentIndex) => currentIndex !== index);
-      rolledBack = true;
-    }, classifySlot);
-    return rolledBack;
-  } finally {
-    if (typeof destination === "string") access.close();
-  }
-}
-
-export function credentialInstanceMatches(
-  providerId: CredentialProviderId,
-  instanceId: string,
-  expected: Credential,
-  source: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-): boolean {
-  requireSubscription(providerId, classifySlot);
-  const store = typeof source === "string"
-    ? loadAuthStoreWithDiagnostics(source, undefined, classifySlot).store
-    : loadAuthStoreFromAccess(source, classifySlot).store;
-  return collection(store, providerId).some((instance) => instance.id === instanceId && credentialsEqual(instance.credential, expected));
-}
-
-export async function withSoleCredentialInstanceMatch(
-  providerId: CredentialProviderId,
-  instanceId: string,
-  expected: Credential,
-  source: string | AuthProfileAccess,
-  classifySlot: CredentialSlotClassifier,
-  use: (access: AuthProfileAccess) => void,
-): Promise<boolean> {
-  requireSubscription(providerId, classifySlot);
-  const access = typeof source === "string" ? openExistingAuthProfileDirectory(source) : source;
-  try {
-    return await access.withLock(() => {
-      const store = loadAuthStoreFromAccess(access, classifySlot).store;
-      const accounts = collection(store, providerId);
-      const matches = accounts.length === 1 && accounts[0]?.id === instanceId && credentialsEqual(accounts[0].credential, expected);
-      if (!matches) return false;
-      use(access);
-      return true;
-    });
-  } finally {
-    if (typeof source === "string") access.close();
   }
 }
 

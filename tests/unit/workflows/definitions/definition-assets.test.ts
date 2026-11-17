@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,9 +9,9 @@ import {
   resolveAssetRef,
   type AssetLocation,
 } from "../../../../src/workflows/definition-assets.js";
-import { decodeAuthoredWorkflow, withLoadedContent } from "../../../../src/workflows/loader.js";
+import { withLoadedContent } from "../../../../src/workflows/loader.js";
+import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { parseWorkflowYaml } from "../../../../src/infra/workflow-yaml.js";
-import { workflowBriefs } from "../../../../src/workflows/brief.js";
 
 const PROJECT: AssetLocation = { root: { kind: "directory", dir: "/scratch/project/workflows" }, path: "nested/flow.yaml" };
 const CORE: AssetLocation = { root: { kind: "core" }, path: "debug.yaml" };
@@ -80,16 +81,16 @@ describe("createDefinitionAssetReader in manifest mode", () => {
   });
 
   it("loads a workflow with its inline brief and contract files from the manifest", () => {
-    const solo = withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(reader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
+    const solo = withLoadedContent(Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(parseWorkflowYaml(reader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
       reader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
     });
-    expect(solo?.provenance?.filePath).toBe("bundled:solo.yaml");
-    const work = solo && workflowBriefs(solo).get("work");
+    expect(solo.provenance.filePath).toBe("bundled:solo.yaml");
+    const work = solo.briefs.get("work");
     expect(work?.briefId).toBe("solo.work");
     expect(work?.output.fields.map(({ key }) => key)).toContain("result");
     // The input contract file resolves from the workflow file, once, with
     // the briefs.
-    expect(solo?.inputContract?.fields).toMatchObject([{ key: "targets", type: "list", max: 4, unique: "id" }]);
+    expect(solo.inputContract?.fields).toMatchObject([{ key: "targets", type: "list", max: 4, unique: "id" }]);
   });
 
   it("refuses an input contract that declares an output envelope key, and names the file", () => {
@@ -97,7 +98,7 @@ describe("createDefinitionAssetReader in manifest mode", () => {
       ...FAKE_MANIFEST,
       "workflows/contracts/targets.json": JSON.stringify({ summary: "Not an input key.", fields: {} }),
     }, join("/scratch", "no-core-tree"));
-    expect(() => withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(invalidReader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
+    expect(() => withLoadedContent(Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(parseWorkflowYaml(invalidReader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
       reader: invalidReader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
     })).toThrow(/Workflow "solo" input: bundled:contracts\/targets\.json: invalid input contract:\nsummary: /);
   });

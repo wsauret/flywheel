@@ -10,7 +10,7 @@ export async function readChildCompletionConversation(
   context: {
     readonly input: {
       readonly reader: AsyncEventStateReadSurface
-      readonly projectionReader?: AsyncEventStateReadSurface
+      readonly projectionReader: AsyncEventStateReadSurface
       readonly writer: AsyncEventWriter
     }
   },
@@ -21,7 +21,7 @@ export async function readChildCompletionConversation(
   const tree = await tryOpenConversationTree({
     conversationId,
     sessionId,
-    store: input.projectionReader ?? input.reader,
+    store: input.projectionReader,
     writer: input.writer,
   })
   if (!tree?.getStorage().openedState().degraded.unreadable) return tree

@@ -442,7 +442,7 @@ describe("tree -> output blocks re-projection", () => {
     expect(tool.resultAction).toBe("updated")
   })
 
-  it("names a message's recipient from its recorded result, as the live row does", () => {
+  it("names a message's recipient, its wait, or a read of its tool's contract from its recorded result, as the live row does", () => {
     const assistant = entry({
       kind: "assistant",
       content: [{ type: "tool_use", id: "toolu_msg", name: "message_session", input: { to: "3f2a-parent", text: "done" } }],
@@ -456,6 +456,7 @@ describe("tree -> output blocks re-projection", () => {
     expect(unnamed[0]).toMatchObject({ kind: "tool", presentation: { name: "Message to", detail: "3f2a-parent" } })
     // A held message states its outcome on the row, as the live row does.
     expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_msg", { targetName: "Plan the release", statusMessage: "Held: nothing runs it now." }]]) })[0]).toMatchObject({ kind: "tool", status: "blocked", statusMessage: "Held: nothing runs it now.", presentation: { detail: "Plan the release" } })
+    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_msg", { contractRead: true }]]) })[0]).toMatchObject({ presentation: { name: "Read", detail: "message_session tool contract" }, sentence: { name: "Read", detail: "message_session tool contract" }, action: "search" })
 
     // A loaded transcript folds without results and reads the meta of a row on demand.
     const lazy = new TreeBlockProjection({ executionCwd: CWD })
@@ -567,13 +568,13 @@ describe("tree -> output blocks re-projection", () => {
     }
   })
 
-  it("includes displayOnly entries and skips label/leaf bookkeeping entries", () => {
+  it("includes displayOnly entries and skips topology and leaf bookkeeping entries", () => {
     const diagnostic = entry({ kind: "system", content: "provider hiccup" }, { displayOnly: true })
     seq += 1
-    const label: ConversationEntry = { id: `e${seq}`, parentId: diagnostic.id, timestamp: T0, kind: "label", targetId: diagnostic.id, label: "x" }
+    const topology: ConversationEntry = { id: `e${seq}`, parentId: diagnostic.id, timestamp: T0, kind: "session_info" }
     seq += 1
-    const leaf: ConversationEntry = { id: `e${seq}`, parentId: label.id, timestamp: T0, kind: "leaf", targetId: diagnostic.id }
-    const blocks = project([diagnostic, label, leaf])
+    const leaf: ConversationEntry = { id: `e${seq}`, parentId: topology.id, timestamp: T0, kind: "leaf", targetId: diagnostic.id }
+    const blocks = project([diagnostic, topology, leaf])
 
     expect(blocks).toEqual([
       { kind: "system", id: diagnostic.id, message: "provider hiccup", timestamp: Date.parse(T0) },

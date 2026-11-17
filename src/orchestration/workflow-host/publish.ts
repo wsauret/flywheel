@@ -6,7 +6,6 @@ import { queueFactsForState } from "../../workflows/view/view-diff.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { agentRecords, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
 import type { WorkflowVerificationResult } from "../../workflows/vm/verify-types.js"
-import { workflowInputContract } from "../../workflows/brief.js"
 import { decodeWorkflowInput, type WorkflowInputValue } from "../../workflows/output-contract/compile.js"
 import { commandEvidenceRefusal } from "../../workflows/output-contract/envelope.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
@@ -63,7 +62,7 @@ export class WorkflowInputRejectedError extends Schema.TaggedError<WorkflowInput
  *  that passed none to a contract with a required field, such as a person's
  *  slash launch, is refused with words that say how an agent passes it. */
 function decodeLaunchInput(workflow: WorkflowDefinition, value: unknown): WorkflowInputValue | null {
-  const contract = workflowInputContract(workflow)
+  const contract = workflow.inputContract
   if (contract === null) {
     if (value === undefined) return null
     throw new WorkflowInputRejectedError({

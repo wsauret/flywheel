@@ -8,6 +8,7 @@
 import { existsSync } from "node:fs";
 import { dirname, relative, sep } from "node:path";
 
+import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
 import {
   existingParentInScope,
   existingPathList,
@@ -137,9 +138,18 @@ function globInPathInput(input: Readonly<RuntimeToolInput>, context: ToolAdmissi
  * left alone. A missing one is read as several paths or a path with a glob,
  * then healed when exactly one candidate exists, and last widened
  * to its nearest existing parent. Every repair leads the result with a notice,
- * so the model knows which root the search covered.
+ * so the model knows which root the search covered. The result declares the
+ * canonical search root as the call's reserved path, the execution directory
+ * when the call names no path.
  */
 export async function prepareSearchPathInput(input: Readonly<RuntimeToolInput>, context: ToolAdmissionContext): Promise<PathInputRepair> {
+  const prepared = await searchPathRepair(input, context);
+  const path = (prepared.repair?.input ?? input).path;
+  if (path !== undefined && typeof path !== "string") return prepared;
+  return { ...prepared, reservedPaths: [canonicalMutationPath(path === undefined ? context.executionCwd : resolveToolPath(context.executionCwd, path))] };
+}
+
+async function searchPathRepair(input: Readonly<RuntimeToolInput>, context: ToolAdmissionContext): Promise<PathInputRepair> {
   const rawPath = input.path;
   if (typeof rawPath !== "string") return {};
   if (rawPath.startsWith("~")) {

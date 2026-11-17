@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { usePaste, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { createContext, createEffect, For, Show, type ParentProps, untrack, useContext } from "solid-js"
+import { createContext, createEffect, For, Show, type JSX, type ParentProps, untrack, useContext } from "solid-js"
 import { createOverlayLayers, type ModalContext, type OverlayLayers } from "./modal-stack.js"
 import { useQuestionInput } from "./question-input.js"
 import { useCopySelection } from "../hooks/use-copy-selection.js"
@@ -63,11 +63,21 @@ function Backdrop(props: ParentProps<{ clipboard: Clipboard; anchor: (() => { le
   )
 }
 
-export function ModalProvider(props: ParentProps<{ clipboard: Clipboard }>) {
+/** Builds an entry's element outside the backdrop's tracked insert. A
+ *  builder that reads a signal while it builds must not subscribe its own
+ *  mount: the entry would remount on each change and lose its local state.
+ *  Values that change while the entry is open reach it as accessors. */
+function renderEntry(element: JSX.Element | (() => JSX.Element)): JSX.Element {
+  return typeof element === "function" ? untrack(element) : element
+}
+
+/** Holds the overlay state and the contexts that reach it. The layers render
+ *  in `OverlayHost`, which the shell mounts inside its own providers, so a
+ *  viewer or a dialog inherits every context the shell provides. */
+export function ModalProvider(props: ParentProps) {
   const overlay = createOverlayLayers()
   const questionInput = useQuestionInput()
   const renderer = useRenderer()
-  const openImage = (image: UserMessageImage, label: string) => openImageViewer(overlay.viewer, image, label)
 
   // Everything under an open modal is background: a highlight made before the
   // modal opened must not stay lit behind the scrim, so opening any modal
@@ -94,26 +104,35 @@ export function ModalProvider(props: ParentProps<{ clipboard: Clipboard }>) {
   return (
     <OverlayCtx.Provider value={overlay}>
       <ModalCtx.Provider value={overlay.dialog}>
-        <AttachmentImagesProvider value={{ visible: () => !overlay.isOpen(), open: openImage }}>
+        <AttachmentImagesProvider value={{ visible: () => !overlay.isOpen(), open: (image, label) => openImageViewer(overlay.viewer, image, label) }}>
           {props.children}
         </AttachmentImagesProvider>
-        <box position="absolute" zIndex={3000}>
-          <For each={overlay.viewer.stack}>{(entry) =>
-            <AttachmentImagesProvider value={{ visible: () => overlay.viewer.stack.at(-1) === entry && overlay.dialog.stack.length === 0, open: openImage }}>
-            <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.viewer.stack.at(-1) === entry) overlay.viewer.pop() }}>
-              {typeof entry.element === "function" ? entry.element() : entry.element}
-            </Backdrop>
-            </AttachmentImagesProvider>
-          }</For>
-          <Show when={overlay.dialog.stack.at(-1)} keyed>{(entry) =>
-            <AttachmentImagesProvider value={{ visible: () => true, open: openImage }}>
-            <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.dialog.stack.at(-1) === entry) overlay.dialog.pop() }}>
-              {typeof entry.element === "function" ? entry.element() : entry.element}
-            </Backdrop>
-            </AttachmentImagesProvider>
-          }</Show>
-        </box>
       </ModalCtx.Provider>
     </OverlayCtx.Provider>
+  )
+}
+
+/** Renders the viewer layer and the top dialog of the enclosing
+ *  `ModalProvider` above everything else on the screen. */
+export function OverlayHost(props: { clipboard: Clipboard }) {
+  const overlay = useOverlay()
+  const openImage = (image: UserMessageImage, label: string) => openImageViewer(overlay.viewer, image, label)
+  return (
+    <box position="absolute" zIndex={3000}>
+      <For each={overlay.viewer.stack}>{(entry) =>
+        <AttachmentImagesProvider value={{ visible: () => overlay.viewer.stack.at(-1) === entry && overlay.dialog.stack.length === 0, open: openImage }}>
+        <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.viewer.stack.at(-1) === entry) overlay.viewer.pop() }}>
+          {renderEntry(entry.element)}
+        </Backdrop>
+        </AttachmentImagesProvider>
+      }</For>
+      <Show when={overlay.dialog.stack.at(-1)} keyed>{(entry) =>
+        <AttachmentImagesProvider value={{ visible: () => true, open: openImage }}>
+        <Backdrop clipboard={props.clipboard} anchor={entry.anchor} onDismiss={() => { if (overlay.dialog.stack.at(-1) === entry) overlay.dialog.pop() }}>
+          {renderEntry(entry.element)}
+        </Backdrop>
+        </AttachmentImagesProvider>
+      }</Show>
+    </box>
   )
 }

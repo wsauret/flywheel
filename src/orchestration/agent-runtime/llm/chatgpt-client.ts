@@ -57,7 +57,7 @@ export function createChatGPTClient(options: {
     baseURL: CHATGPT_BACKEND_API_BASE,
     apiKey: "chatgpt-oauth",
     defaultHeaders: staticHeaders,
-    // withRetryStream owns retries; SDK retries would stack multiplicatively.
+    // The failover walk owns retries; SDK retries would stack multiplicatively.
     maxRetries: 0,
     fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
       const tokens = await tokenAccessor.fresh({ signal: init?.signal ?? undefined, caller: "model request" });

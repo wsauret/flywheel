@@ -106,6 +106,7 @@ describe("role model defaults", () => {
 
   it("prices a coded model from the bundled document when the admitted archive has no row for it", async () => {
     await withTempDir(async (userDataRoot) => {
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: each JSON value that JSON.parse visits
       const withoutLuna: unknown = JSON.parse(await Bun.file("src/infra/llm/models-bundled.txt").text(), (key, value: unknown) => key === "gpt-6-luna" ? undefined : value);
       await mkdir(dirname(modelsSnapshotFile(userDataRoot)), { recursive: true });
       await Bun.write(modelsSnapshotFile(userDataRoot), JSON.stringify(withoutLuna));

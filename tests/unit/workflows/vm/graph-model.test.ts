@@ -218,14 +218,12 @@ describe("workflow VM graph model", () => {
         },
       },
       { kind: "run_attempts", attempts: [] },
-      { kind: "run_follow_up", input: { workflowDefinitionId: "workflow", input: { text: "Continue" }, identity: { kind: "identified", inputID: "follow-up-input" }, conversationId: "follow-up", requestSequence: 1 } },
       { kind: "none" },
     ];
     expect(commands.map((command) => parseWorkflowCommand(command).kind)).toEqual([
       "commit",
       "prepare_attempt",
       "run_attempts",
-      "run_follow_up",
       "none",
     ]);
 
@@ -237,7 +235,6 @@ describe("workflow VM graph model", () => {
       { type: "PAUSE", reason: "operator" },
       { type: "RESUME", readers: {} },
       { type: "ABORT", reason: "operator" },
-      { type: "FOLLOW_UP_REQUESTED", input: { text: "Explain" }, identity: { kind: "identified", inputID: "follow-up-input" }, conversationId: "follow-up", requestSequence: 1 },
       {
         type: "REASSESSMENT_PROPOSED",
         proposal: {
@@ -255,6 +252,6 @@ describe("workflow VM graph model", () => {
       kind: "run_follow_up", input: { workflowDefinitionId: "workflow", prompt: "Continue", conversationId: null },
     })).toThrow();
     expect(() => parseWorkflowEvent({ type: "ATTEMPT_STARTED", attemptId: "a", conversationId: null })).toThrow();
-    expect(() => parseWorkflowEvent({ type: "FOLLOW_UP_REQUESTED", prompt: "Explain", conversationId: null })).toThrow();
+    expect(() => parseWorkflowEvent({ type: "FOLLOW_UP_REQUESTED", input: { text: "Explain" }, identity: { kind: "identified", inputID: "follow-up-input" }, conversationId: "follow-up", requestSequence: 1 })).toThrow();
   });
 });

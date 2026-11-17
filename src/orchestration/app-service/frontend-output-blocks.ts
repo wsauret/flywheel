@@ -1,7 +1,6 @@
 import type { AnyBlock, ToolEntry } from "../../infra/output-blocks.js"
 import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
 import { fileChangeDetail, isShellMutationEntry } from "../../protocol/client/file-change-body.js"
-import { newestCall } from "../../infra/output/newest-call.js"
 
 /** The largest live tool body a row carries inline. A larger body leaves the
  *  row with only its line count, and a client reads it through the
@@ -18,12 +17,9 @@ export function projectFrontendOutputBlock(block: AnyBlock): FrontendOutputBlock
     const { images, ...row } = block
     return { ...row, ...(images.length ? { imageCount: images.length } : {}) }
   }
-  if (block.kind === "agentGroup") {
-    // A workflow card draws its plan, never the tool calls inside it.
-    if (block.containerKind === "workflow") return { ...block, children: [] }
-    const activity = newestCall(block.children) ?? block.activity
-    return { ...block, children: [], ...(activity === undefined ? {} : { activity }) }
-  }
+  // A card shows its own activity, or a workflow card its plan, never the
+  // tool calls inside it.
+  if (block.kind === "agentGroup") return { ...block, children: [] }
   return block
 }
 

@@ -1,6 +1,6 @@
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 /**
- * Running token counter for agent runtime context management.
+ * Token estimation for agent runtime context management.
  *
  * Mapped models use local text tokenizers; other models retain the character
  * heuristic. Images remain estimated. Deliberation counts only where the request
@@ -9,7 +9,7 @@ import type { ModelFamily } from "../../../infra/llm/model-family.js";
  * Opaque reasoning counts by the tokens its provider reported, and only where
  * the request replays it and the model reads it: always in the current turn,
  * and in earlier turns only for a model that keeps them.
- * Provider usage calibrates complete request costs; this counter is not billing.
+ * Provider usage calibrates complete request costs; this estimate is not billing.
  *
  * Image parts in tool_result contribute a flat per-provider estimate so the
  * compaction planner and budget projection share one image cost source of
@@ -64,13 +64,6 @@ export interface TokenEstimationCache {
   readonly messages: WeakMap<ConversationMessage, Map<string, number>>;
 }
 
-interface TokenCounter {
-  addMessage(message: ConversationMessage): void;
-  addToolResult(content: LlmToolOutputPart[]): void;
-  resetFor(messages: ReadonlyArray<ConversationMessage>): void;
-  readonly total: number;
-}
-
 /** Per-image token heuristic. Provider-distinct but coarse: gpt-4o
  *  (default detail) is tile-based ≈765, Gemini charges 258 per image,
  *  Anthropic default-res ≈1568. Used to decide WHEN to summarize, not
@@ -82,7 +75,7 @@ export function imageTokensForModel(provider: ModelFamily): number {
     case "openai": return 765;
     case "google": return 258;
     // Estimator, not a hard invariant: an unknown provider falls back to a sane
-    // image-token estimate rather than crash the counter. The `never` binding
+    // image-token estimate rather than crash the estimate. The `never` binding
     // still forces a compile error if ModelFamily grows a member.
     default: {
       const _exhaustive: never = provider;
@@ -168,7 +161,7 @@ export function createTokenEstimationCache(): TokenEstimationCache {
 }
 
 // Image parts contribute imageTokens * 4 chars so the shared `chars / 4`
-// rounding in addMessage/resetFor lands on `imageTokens` per image.
+// rounding lands on `imageTokens` per image.
 function countToolOutputPartsChars(parts: ReadonlyArray<LlmToolOutputPart>, imageTokens: number): number {
   let chars = 0;
   for (const part of parts) {
@@ -239,8 +232,8 @@ function estimateContentTokens(content: string | ContentBlock[], policy: TokenCo
   return tokens;
 }
 
-/** Single source of truth for per-message token estimation, shared by the
- *  running counter and the compaction planner so trigger and plan agree. */
+/** Single source of truth for per-message heuristic token estimation, shared
+ *  by the request estimate and the compaction planner so trigger and plan agree. */
 export function estimateMessageTokens(message: ConversationMessage, imageTokens: number): number {
   const chars = message.kind === "toolResult"
     ? countToolOutputPartsChars(message.content, imageTokens)
@@ -315,29 +308,27 @@ function estimateVisibleTokens(message: ConversationMessage, policy: TokenCounti
   return tokens;
 }
 
-/** Estimates one prepared outbound message view without changing the running
- * canonical-history counter. */
+/** Estimates `messages` as one request under `policy`: each message's turn
+ *  position decides whether its reported reasoning counts. `cache` keeps each
+ *  message's count by object identity, so a recount after an append
+ *  estimates only the new messages. */
 export function estimateConversationTokens(
   messages: ReadonlyArray<ConversationMessage>,
-  providerOrPolicy: ModelFamily | TokenCountingPolicy,
+  policy: TokenCountingPolicy,
   cache?: TokenEstimationCache,
 ): number {
-  if (typeof providerOrPolicy === "string") {
-    const imageTokens = imageTokensForModel(providerOrPolicy);
-    return messages.reduce((total, message) => total + estimateMessageTokens(message, imageTokens), 0);
-  }
   const turnStart = currentTurnStart(messages);
-  const replays = replaysUnder(messages, providerOrPolicy);
+  const replays = replaysUnder(messages, policy);
   return messages.reduce((total, message, index) => {
     const position: TurnPosition = index >= turnStart ? "current" : "earlier";
     const replay = replays[index];
     const key = message.kind === "assistant"
-      ? `${providerOrPolicy.identity}:${replay ?? "unknown"}:${countsReportedReasoning(message, providerOrPolicy, position, replay) ? "counted" : "uncounted"}`
-      : providerOrPolicy.identity;
+      ? `${policy.identity}:${replay ?? "unknown"}:${countsReportedReasoning(message, policy, position, replay) ? "counted" : "uncounted"}`
+      : policy.identity;
     let identities = cache?.messages.get(message);
     const cached = identities?.get(key);
     if (cached !== undefined) return total + cached;
-    const tokens = estimateMessageTokensWithPolicy(message, providerOrPolicy, position, replay);
+    const tokens = estimateMessageTokensWithPolicy(message, policy, position, replay);
     if (cache) {
       identities ??= new Map();
       identities.set(key, tokens);
@@ -346,57 +337,3 @@ export function estimateConversationTokens(
     return total + tokens;
   }, 0);
 }
-
-export function createTokenCounter(options: {
-  provider: ModelFamily;
-  tokenPolicy?: TokenCountingPolicy;
-  cache?: TokenEstimationCache;
-}): TokenCounter {
-  const imageTokens = imageTokensForModel(options.provider);
-  // resetFor walks every message in the post-compaction history; cache the
-  // per-message token count so repeated walks (compaction unwind, idle
-  // recompute) don't re-scan content arrays. ConversationMessage objects are
-  // immutable in practice, so identity-keyed caching is safe.
-  const cache = new WeakMap<ConversationMessage, number>();
-  let totalTokens = 0;
-
-  function messageTokens(message: ConversationMessage): number {
-    if (options.tokenPolicy) {
-      return estimateConversationTokens([message], options.tokenPolicy, options.cache);
-    }
-    const cached = cache.get(message);
-    if (cached !== undefined) return cached;
-    const tokens = estimateMessageTokens(message, imageTokens);
-    cache.set(message, tokens);
-    return tokens;
-  }
-
-  return {
-    /** Counts `message` as the newest message of its request. */
-    addMessage(message) {
-      totalTokens += messageTokens(message);
-    },
-
-    addToolResult(content: LlmToolOutputPart[]) {
-      totalTokens += options.tokenPolicy
-        ? estimateMessageTokensWithPolicy({ kind: "toolResult", toolUseId: "", content }, options.tokenPolicy)
-        : Math.ceil(countToolOutputPartsChars(content, imageTokens) / 4);
-    },
-
-    /** Recounts `messages` as one request, so each message's turn position
-     *  decides whether its reported reasoning counts. */
-    resetFor(messages) {
-      if (options.tokenPolicy) {
-        totalTokens = estimateConversationTokens(messages, options.tokenPolicy, options.cache);
-        return;
-      }
-      totalTokens = 0;
-      for (const m of messages) totalTokens += messageTokens(m);
-    },
-
-    get total() {
-      return totalTokens;
-    },
-  };
-}
-

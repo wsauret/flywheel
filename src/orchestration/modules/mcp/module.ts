@@ -66,6 +66,5 @@ export const mcpModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

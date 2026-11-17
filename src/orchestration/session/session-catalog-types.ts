@@ -1,4 +1,3 @@
-import type { WorkflowView } from "../../workflows/view/types.js"
 import type { SessionDiffStats } from "../../protocol/app-service-types.js"
 import type { SessionForkRecord } from "./session-fork-projection.js"
 import type { SessionLifecycleState } from "./types.js"
@@ -70,7 +69,6 @@ interface DurableSessionCatalogMetadata {
   branch?: string
   conversationId?: string
   providerConversationId?: string
-  workflowState?: WorkflowView["status"]
   parentSessionId?: string
   childSessionIds?: readonly string[]
   launchedFrom?: SessionLaunchedFrom

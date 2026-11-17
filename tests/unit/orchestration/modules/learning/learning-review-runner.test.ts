@@ -89,7 +89,6 @@ function execution({
               if (options.conversation.kind === "ephemeral") options.conversation.append({ kind: "assistant", content: output });
               return {
                 send: (message) => { const last = prompts.at(-1); if (last) last.user = typeof message === "string" ? message : ""; },
-                end: () => undefined,
                 abort: () => undefined,
                 done: Promise.resolve(failChild === "transient-once" && children === 1
                   ? { servedRequests: 0, durationMs: 1, terminal: { kind: "transient_disconnect" as const, message: "disconnected" } }

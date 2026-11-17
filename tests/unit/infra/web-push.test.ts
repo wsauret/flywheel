@@ -1,7 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
 
-import { encryptWebPushPayload, fromBase64Url, importEncryptionMaterial, sendWebPush, toBase64Url, vapidAuthorization, type PushPost } from "../../../src/infra/web-push.js";
+import { encryptWebPushPayload, fromBase64Url, sendWebPush, toBase64Url, vapidAuthorization, type EncryptionMaterial, type PushPost } from "../../../src/infra/web-push.js";
+
+/** Imports the RFC's fixed ECDH P-256 pair and salt, which production never
+ *  uses: it generates fresh material for every notification. */
+async function importEncryptionMaterial(input: { readonly privateKey: string; readonly publicKey: string; readonly salt: string }): Promise<EncryptionMaterial> {
+  const publicBytes = fromBase64Url(input.publicKey);
+  const jwk: JsonWebKey = { kty: "EC", crv: "P-256", x: toBase64Url(publicBytes.subarray(1, 33)), y: toBase64Url(publicBytes.subarray(33, 65)), d: input.privateKey };
+  const privateKey = await crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const publicKey = await crypto.subtle.importKey("raw", publicBytes, { name: "ECDH", namedCurve: "P-256" }, true, []);
+  return { serverKeyPair: { privateKey, publicKey }, salt: fromBase64Url(input.salt) };
+}
 
 /** RFC 8291 Appendix A is the one published end-to-end example. Reproducing its
  *  ciphertext byte for byte proves the key agreement, the two HKDF steps, the

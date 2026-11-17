@@ -305,49 +305,6 @@ export function isLaneBreak(patch: RuntimeUiPatch): boolean {
   return isGlobalRuntimeInvalidation(patch) && isRuntimeInvalidationPayload(patch.payload) && patch.payload.reason === "reconnect_required"
 }
 
-/** Every live cursor this client holds, so one arriving patch reaches exactly
- *  one receiver and an unknown cursor is visibly unhandled rather than quietly
- *  dropped. */
-export interface IntakeRegistry {
-  register(intake: CursorIntake, cursor: RuntimeCursorIdentity): () => void
-  /** Returns false when no receiver is bound to the patch's cursor, which is a
-   *  client wiring defect rather than a runtime one. */
-  deliver(patch: RuntimeUiPatch): boolean
-  /** Drop resident state on every cursor, for a transport that was lost and
-   *  whose local positions can no longer be trusted. */
-  resetAll(): void
-  readonly size: number
-}
-
-export function createIntakeRegistry(): IntakeRegistry {
-  const receivers = new Map<string, CursorIntake>()
-  return {
-    get size() {
-      return receivers.size
-    },
-    register(intake, cursor) {
-      const key = cursorKey(cursor)
-      receivers.set(key, intake)
-      return () => {
-        if (receivers.get(key) === intake) receivers.delete(key)
-      }
-    },
-    deliver(patch) {
-      if (isGlobalRuntimeInvalidation(patch)) {
-        for (const receiver of receivers.values()) receiver.accept(patch)
-        return receivers.size > 0
-      }
-      const receiver = receivers.get(cursorKey(patch.cursor))
-      if (!receiver) return false
-      receiver.accept(patch)
-      return true
-    },
-    resetAll() {
-      for (const receiver of receivers.values()) receiver.reset()
-    },
-  }
-}
-
 /** Estimate retained plain protocol data without allocating a serialized copy.
  * Stop once the remaining budget is exceeded, including inside a large body. */
 function retainedBytes(value: unknown, budget: number): number {

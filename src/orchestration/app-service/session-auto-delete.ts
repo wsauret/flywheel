@@ -16,7 +16,7 @@ interface SessionAutoDeletePorts {
  * rejects; a deletion failure is recorded and leaves other candidates eligible.
  * Catalog rows only select candidates; admission rechecks the complete tree
  * against concurrent activation and launches. */
-export async function sweepUnusedSessions(ports: SessionAutoDeletePorts): Promise<number> {
+async function sweepUnusedSessions(ports: SessionAutoDeletePorts): Promise<number> {
   const days = ports.config.snapshot().config.auto_delete_session_days
   if (days === 0) return 0
   const now = (ports.now ?? Date.now)()

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 
 test("the phone worker routes notification taps with focus recovery and reports renewed subscriptions", async () => {
   const original = Object.getOwnPropertyDescriptor(globalThis, "self")
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the event that the service worker platform dispatches
   const handlers = new Map<string, (event: unknown) => void>()
   const navigated: string[] = []
   const opened: string[] = []
@@ -10,9 +11,11 @@ test("the phone worker routes notification taps with focus recovery and reports 
   let refuseFocus = false
   Object.defineProperty(globalThis, "self", { configurable: true, value: {
     location: { origin: "https://phone.test" },
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the event that the service worker platform dispatches
     addEventListener: (type: string, listener: (event: unknown) => void) => handlers.set(type, listener),
-    registration: { pushManager: { subscribe: async (options: unknown) => { renewed.push(options) } } },
+    registration: { pushManager: { subscribe: async (options: PushSubscriptionOptionsInit) => { renewed.push(options) } } },
     clients: {
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a structured-clone message posted to a window client
       matchAll: async () => [{ url: "https://phone.test/", focus: async () => { if (refuseFocus) throw new DOMException("not focused", "InvalidStateError") }, navigate: async (url: string) => { navigated.push(url) }, postMessage: (message: unknown) => { messages.push(message) } }],
       openWindow: async (url: string) => { opened.push(url) },
     },
@@ -35,7 +38,7 @@ test("the phone worker routes notification taps with focus recovery and reports 
     expect(new URL(opened[0]!).searchParams.get("notification")).toBeTruthy()
     expect(new URL(opened[0]!).search).not.toBe(destination.search)
     expect(new URL(opened[0]!).hash).toBe(destination.hash)
-    const renew = async (newSubscription?: unknown) => {
+    const renew = async (newSubscription?: Pick<PushSubscription, "endpoint">) => {
       let finished = Promise.resolve()
       handlers.get("pushsubscriptionchange")?.({ oldSubscription: { options: { applicationServerKey: "old-key", userVisibleOnly: true } }, newSubscription, waitUntil: (work: Promise<void>) => { finished = work } })
       await finished

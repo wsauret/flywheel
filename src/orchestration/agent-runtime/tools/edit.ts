@@ -12,17 +12,16 @@ import type { ToolInputRepair } from "../llm/types.js";
 const EDIT_INPUT_SCHEMA = {
   type: "object",
   properties: {
-    path: { type: "string", description: "Absolute or cwd-relative path of the existing file" },
+    path: { type: "string", description: "Absolute or cwd-relative path" },
     edits: {
       type: "array",
       minItems: 1,
-      description: "Replacements in this file, applied together",
       items: {
         type: "object",
         properties: {
-          old_string: { type: "string", description: "Exact text to replace, copied verbatim from file content shown earlier in this conversation" },
-          new_string: { type: "string", description: "Replacement text" },
-          replace_all: { type: "boolean", description: "Replace every match instead of requiring exactly one; use only when every exact occurrence must change" },
+          old_string: { type: "string", description: "Exact text to replace, copied from file content shown earlier" },
+          new_string: { type: "string" },
+          replace_all: { type: "boolean" },
         },
         required: ["old_string", "new_string"],
       },
@@ -60,7 +59,7 @@ export function createEditDefinition(): RuntimeTool {
   return {
     name: "edit",
     action: "file_edit",
-    description: "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap, and an entry cannot match text that another entry of the same call produces. All entries apply together or none do. The file is changed only if the captured content still matches at publication.",
+    description: "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
     inputSchema: EDIT_INPUT_SCHEMA,
     isConcurrencySafe: false,
     prepareAdmission: async (input, context) => {

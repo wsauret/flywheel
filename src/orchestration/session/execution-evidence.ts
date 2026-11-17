@@ -5,7 +5,7 @@ import { openReadonlyEventReader } from "../../infra/sqlite-event-store.js";
 import { usageEntriesFromFacts } from "./durable-usage.js";
 import { loadProviderRequestAuditFromEvents, PROVIDER_REQUEST_AUDIT_FACT_TYPES } from "./provider-request-audit-projection.js";
 import type { ProviderRequestAuditEntry } from "./provider-request-audit-types.js";
-import { createSessionMetadataProjection } from "./session-metadata-projection.js";
+import { createSessionMetadataProjection, readableSessions, sessionMetadataErrors, sessionMetadataStateOf } from "./session-metadata-projection.js";
 
 type SessionEvidence = ExecutionEvidence["sessions"][number];
 type RequestEvidence = SessionEvidence["requests"][number];
@@ -18,13 +18,15 @@ export async function readExecutionEvidence(projectRoot: string, rootSessionId: 
   const reader = openReadonlyEventReader(resolveEventStoreDbFile(projectRoot));
   try {
     const catalog = await createSessionMetadataProjection(asAsyncEventReadSurface(reader)).replay();
-    if (catalog.errors[rootSessionId]) throw new Error(`Session ${rootSessionId} has corrupt metadata`);
-    if (catalog.deleted[rootSessionId]) throw new Error(`Session ${rootSessionId} is deleted`);
-    if (!catalog.sessions[rootSessionId]) throw new Error(`Session ${rootSessionId} has no durable metadata`);
+    const metadataOf = (sessionId: string) => sessionMetadataStateOf(catalog, sessionId);
+    const root = metadataOf(rootSessionId);
+    if (root.errors[rootSessionId]) throw new Error(`Session ${rootSessionId} has corrupt metadata`);
+    if (root.deleted[rootSessionId]) throw new Error(`Session ${rootSessionId} is deleted`);
+    if (!root.sessions[rootSessionId]) throw new Error(`Session ${rootSessionId} has no durable metadata`);
 
-    const metadataGaps: MetadataGap[] = Object.keys(catalog.errors).map((sessionId) => ({ sessionId, kind: "corrupt", scope: "workspace" }));
+    const metadataGaps: MetadataGap[] = [...sessionMetadataErrors(catalog)].map(([sessionId]) => ({ sessionId, kind: "corrupt", scope: "workspace" }));
     const children = new Map<string, string[]>();
-    for (const [sessionId, session] of Object.entries(catalog.sessions)) {
+    for (const [sessionId, session] of readableSessions(catalog)) {
       const parent = session.launchedFrom?.parentSessionId;
       if (parent === undefined) continue;
       const ids = children.get(parent) ?? [];
@@ -34,11 +36,12 @@ export async function readExecutionEvidence(projectRoot: string, rootSessionId: 
     const sessionIds = new Set([rootSessionId]);
     const sessions: SessionEvidence[] = [];
     for (const sessionId of sessionIds) {
-      // SAFETY: the root is validated above; children come only from catalog.sessions entries.
-      const session = catalog.sessions[sessionId]!;
+      // SAFETY: the root is validated above; children come only from readable catalog sessions.
+      const session = metadataOf(sessionId).sessions[sessionId]!;
       for (const childId of children.get(sessionId) ?? []) sessionIds.add(childId);
       for (const childId of session.childSessionIds ?? []) {
-        if (!catalog.sessions[childId] && !catalog.deleted[childId] && !catalog.errors[childId]) {
+        const child = metadataOf(childId);
+        if (!child.sessions[childId] && !child.deleted[childId] && !child.errors[childId]) {
           metadataGaps.push({ sessionId: childId, kind: "missing", scope: "descendant" });
         }
       }

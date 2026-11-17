@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
-import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { staticOfferingMap } from "../../../../src/infra/llm/model-listing-rows.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";

@@ -8,39 +8,10 @@ import type {
   SubagentPauseInput,
   SubagentPromptInput,
   SubagentResumeInput,
-  SubagentRunCreateInput,
 } from "./subagent-run-types.js"
-
 
 export interface SubagentRunFactWriter {
   record(fact: SubagentRunFact): Promise<StoredFact | null>
-}
-
-export function recordSubagentCreated(
-  writer: SubagentRunFactWriter | null,
-  input: SubagentRunCreateInput,
-): void {
-  if (!writer) return
-  emit(writer, {
-    type: "child_run.created",
-    version: 1,
-    actor: "flywheel",
-    payload: {
-      childRunId: input.childRunId,
-      kind: "subagent",
-      ...(input.toolUseId ? { toolUseId: input.toolUseId } : {}),
-      ...(input.modelRequestId ? { modelRequestId: input.modelRequestId } : {}),
-      ...(input.conversationId ? { conversationId: input.conversationId } : {}),
-      agentType: input.agentType,
-      description: input.description,
-      model: input.model,
-      ...(input.effort ? { effort: input.effort } : {}),
-      ...(input.fork ? { fork: true } : {}),
-      maxTurns: input.maxTurns,
-      tools: [...input.tools],
-      executionCwd: input.executionCwd,
-    },
-  })
 }
 
 export function buildDurableSubagentCreated(input: DurableSubagentRunCreateInput): SubagentRunFact {
@@ -91,14 +62,6 @@ export function buildSubagentPrompted(input: SubagentPromptInput): SubagentRunFa
   })
 }
 
-export function recordSubagentPrompted(
-  writer: SubagentRunFactWriter | null,
-  input: SubagentPromptInput,
-): void {
-  if (!writer) return
-  emit(writer, buildSubagentPrompted(input))
-}
-
 export function buildSubagentCompleted(input: SubagentCompletionInput): SubagentRunFact {
   const result = contentEvidence(input.content)
   return parseSubagentRunFact({
@@ -127,20 +90,12 @@ export function buildSubagentCompleted(input: SubagentCompletionInput): Subagent
   })
 }
 
-export function recordSubagentCompleted(
-  writer: SubagentRunFactWriter | null,
-  input: SubagentCompletionInput,
-): void {
-  if (!writer) return
-  emit(writer, buildSubagentCompleted(input))
-}
-
 export function recordSubagentInterrupted(
   writer: SubagentRunFactWriter | null,
   input: SubagentInterruptionInput,
 ): void {
   if (!writer) return
-  emit(writer, {
+  void writer.record(parseSubagentRunFact({
     type: "subagent.interrupted",
     version: 1,
     actor: "flywheel",
@@ -149,7 +104,7 @@ export function recordSubagentInterrupted(
       reason: input.reason,
       recoveryId: input.recoveryId,
     },
-  })
+  }))
 }
 
 export function buildSubagentPaused(input: SubagentPauseInput): SubagentRunFact {
@@ -169,8 +124,3 @@ export function buildSubagentResumed(input: SubagentResumeInput): SubagentRunFac
     payload: input,
   })
 }
-
-function emit(writer: SubagentRunFactWriter, fact: SubagentRunFact): void {
-  void writer.record(parseSubagentRunFact(fact))
-}
-

@@ -33,7 +33,7 @@ export function mountModelsSheet(kind: "models" | "model" = "models", held: { au
     }> = []
     const pendingEfforts: Array<(value: readonly EffortOptionRow[]) => void> = []
     const confirmations: Array<(confirmed: boolean) => void> = []
-    const mutations: { readonly type: string; readonly scope?: unknown; readonly slot?: ModelSelectionSlot }[] = []
+    const mutations: { readonly type: string; readonly scope?: unknown; readonly slot?: ModelSelectionSlot; readonly expected?: unknown }[] = []
     const listeners = new Set<(event: FrontendEvent) => void>()
     const snapshots: Array<(revision: number) => void> = []
     const saves: Array<() => void> = []
@@ -61,6 +61,7 @@ export function mountModelsSheet(kind: "models" | "model" = "models", held: { au
           effort: "medium",
           modelSource: "explicit",
           matchesInheritedPair: false,
+          configured: { kind: "value", value: { model: "gpt-5", effort: "medium" } },
           ...(held.savedModel === undefined ? {} : { savedModel: held.savedModel }),
         }],
         modelOptions: () => new Promise((resolve, reject) => { pendingOptions.push({ resolve, reject }) }),

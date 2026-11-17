@@ -5,7 +5,7 @@ import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
 import { createRuntimeUiPatchSequencer, type RuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { sessionCursor, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { createFamilyIntake, type FamilyIntakeAcceptance } from "../../../../src/protocol/client/family-intake.js"
+import { createFamilyIntake, type FamilyIntakeOptions } from "../../../../src/protocol/client/family-intake.js"
 
 interface Snapshot {
   readonly snapshotPosition: RuntimePosition
@@ -38,7 +38,7 @@ function sessionUpdate(sequencer: RuntimeUiPatchSequencer<RuntimeUiPatch>, id: s
 }
 
 function receiverHarness(options: {
-  accept?: (patch: RuntimeUiPatch) => FamilyIntakeAcceptance<string> | null
+  accept?: FamilyIntakeOptions<string, Snapshot>["accept"]
   connectedScope?: () => string | null
   onInvalidate?: (scope: string, reason: string) => void
 } = {}) {

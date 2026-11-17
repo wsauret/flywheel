@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { RuntimeQuerySchema, runtimeQueryResultSchema, RUNTIME_READ_DOMAINS } from "../../../src/protocol/runtime-protocol-schemas.js"
 import { runtimeCallPolicies } from "../../../src/protocol/runtime-client-deadlines.js"
-import { queryExposure } from "../../../src/protocol/client/editor-protocol-coverage.js"
 import { OUTPUT_HISTORY_RPC_DEADLINE_MS } from "../../../src/infra/with-deadline.js"
 
 const hash = "a".repeat(64)
@@ -19,7 +18,6 @@ describe("public mutation evidence queries", () => {
     const query = Schema.decodeUnknownSync(RuntimeQuerySchema)(JSON.parse(JSON.stringify(input)))
     expect(query).toEqual(input)
     expect(Schema.encodeSync(RuntimeQuerySchema)(query)).toEqual(input)
-    expect(queryExposure(query)).toBe("exposed")
     expect(runtimeCallPolicies[query.type]).toEqual({ _tag: "BestEffort", deadlineMs: OUTPUT_HISTORY_RPC_DEADLINE_MS })
     expect(RUNTIME_READ_DOMAINS[query.type]).toEqual([])
   })

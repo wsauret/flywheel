@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest, mock } from "bun:test"
 import { createSignal } from "solid-js"
 import { createCommandDispatch } from "../../../src/tui/commands/command-dispatch.js"
-import { PROVIDER_SETUP_WAIT_MS, type ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
+import type { ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
+import { runtimeCallPolicies } from "../../../src/protocol/runtime-client-deadlines.js"
 import type { CommandDeps } from "../../../src/tui/hooks/use-commands.js"
 import { useCommands } from "../../../src/tui/hooks/use-commands.js"
 import type { SettingsDestination } from "../../../src/tui/settings-destination.js"
@@ -93,7 +94,7 @@ describe("chat input — auth guard", () => {
 
   it("sends a message made before the provider list is known once a provider is known", async () => {
     const [setup, setSetup] = createSignal<ProviderSetup>("loading")
-    const sendMessage = mock(async (_sessionId: string, _input: unknown) => {})
+    const sendMessage = mock(async (_sessionId: string) => {})
     const { handleComposerSubmit } = createHarness({ sendMessage, providerSetup: setup })
 
     const result = handleComposerSubmit("hello there")
@@ -109,12 +110,12 @@ describe("chat input — auth guard", () => {
   it("sends a message made before the provider list is known when the list does not arrive within the auth read deadline", async () => {
     jest.useFakeTimers()
     try {
-      const sendMessage = mock(async (_sessionId: string, _input: unknown) => {})
+      const sendMessage = mock(async (_sessionId: string) => {})
       const { handleComposerSubmit } = createHarness({ sendMessage, providerSetup: () => "loading" })
 
       const result = handleComposerSubmit("hello there")
       if (typeof result === "boolean") throw new Error("a send before the provider list is known must stay pending")
-      jest.advanceTimersByTime(PROVIDER_SETUP_WAIT_MS - 1)
+      jest.advanceTimersByTime(runtimeCallPolicies.authStatusSnapshot.deadlineMs - 1)
       await Promise.resolve()
       expect(sendMessage).not.toHaveBeenCalled()
 

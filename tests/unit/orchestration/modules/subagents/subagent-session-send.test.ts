@@ -153,7 +153,7 @@ describe("the registered Resume route", () => {
       const heldRunner = (opts: AgentOptions): Agent => {
         options.push(opts)
         const done = Promise.withResolvers<AgentRunResult>()
-        return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+        return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
       }
       const harness = childHarness(heldRunner)
       const root = await harness.manager.createChat({ name: "Root", authProfileId: "parent-profile" })

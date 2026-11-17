@@ -1,13 +1,7 @@
 import { RGBA, createTextAttributes } from "@opentui/core"
 import { describe, expect, it } from "bun:test"
 import { marked, type Token, type Tokens } from "marked"
-import {
-  buildTableModel,
-  CARDVIEW_LINE_THRESHOLD,
-  COLUMN_MIN_CONTENT_CAP,
-  MIN_COLUMN_WIDTH,
-  shouldUseCardView,
-} from "../../../../src/tui/output-blocks/markdown/markdown-table-helpers.js"
+import { buildTableModel, shouldUseCardView } from "../../../../src/tui/output-blocks/markdown/markdown-table-helpers.js"
 import type { MarkdownStyles } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
 import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/utils/text-attributes.js"
 
@@ -66,7 +60,8 @@ describe("buildTableModel", () => {
     )
 
     expect(model.columns[0]?.minContentWidth).toBe(190)
-    expect(model.columns[0]?.flex.minWidth).toBe(COLUMN_MIN_CONTENT_CAP + 1)
+    // Twelve protected content columns plus the one-column left border.
+    expect(model.columns[0]?.flex.minWidth).toBe(13)
     expect(model.columns[0]?.flex.minWidth).toBeLessThan(model.columns[0]!.minContentWidth)
     expect(model.columns[0]?.minContentWidth).toBeGreaterThanOrEqual(100)
   })
@@ -165,12 +160,15 @@ describe("shouldUseCardView", () => {
   })
 
   it("stays in grid mode at the card-view line threshold", () => {
-    const words = Array.from({ length: CARDVIEW_LINE_THRESHOLD }, (_, i) => `w${i}`).join(" ")
+    // Four wrapped lines in the narrowest three-column cell is the most a grid row holds.
+    const words = Array.from({ length: 4 }, (_, i) => `w${i}`).join(" ")
     const model = buildTableModel(
       table(`| A |\n| --- |\n| ${words} |\n`),
       styles,
     )
 
-    expect(shouldUseCardView(model, MIN_COLUMN_WIDTH)).toBe(false)
+    expect(shouldUseCardView(model, 3)).toBe(false)
+    const fiveWords = buildTableModel(table("| A |\n| --- |\n| w0 w1 w2 w3 w4 |\n"), styles)
+    expect(shouldUseCardView(fiveWords, 3)).toBe(true)
   })
 })

@@ -198,19 +198,6 @@ export function setAgentLinkBlock(
   return idx;
 }
 
-export function updateAgentLatestChildBlock(
-  state: OutputBuilderIndexes,
-  id: string,
-  childDisplay: string,
-): number | null {
-  const located = agentBlockAt(state, id);
-  if (!located) return null;
-  const { idx, agent } = located;
-  if (!isAgentInFlight(agent.status)) return null;
-  state.blocks[idx] = { ...agent, latestChild: childDisplay };
-  return idx;
-}
-
 /** Marks a dispatch that is waiting for a subagent slot; the dispatched
  *  transition follows automatically when the slot registry grants it. */
 export function queueAgentBlock(

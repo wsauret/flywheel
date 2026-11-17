@@ -5,7 +5,7 @@ import { closeFixtures, fixture as stateFixture } from "./_project-state-worker-
 import { claimProjectServing, projectServingPids } from "../../../../src/orchestration/app-service/project-serving-lane.js"
 import { createAccountProjectRegistry } from "../../../../src/orchestration/app-service/account-project-registry.js"
 import { createReplacementHandoffs } from "../../../../src/orchestration/app-service/replacement-handoffs.js"
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
+import { openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
 import { acquireLockSyncIn, releaseLockIn } from "../../../../src/infra/ownership-file-lock.js"
 import { executionAskerOf } from "../../../../src/orchestration/app-service/project-executor-generations.js"
 
@@ -589,7 +589,7 @@ describe("executor generations", () => {
       expect(f.writes).toEqual(["generation.close:1"])
       const successor = await claimProjectServing(root, "dev", 0)
       expect(successor.exclusive).toBe(false)
-      const directory = ContainedDirectory.openExisting(root, [".flywheel"])!
+      const directory = openExistingContainedDirectory(root, [".flywheel"])!
       const gate = acquireLockSyncIn(directory, "project-execution.lock")
       const finished = f.generations.finishClose()
       try {

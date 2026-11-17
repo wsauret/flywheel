@@ -1,6 +1,6 @@
 ---
 name: reviewer-mechanism
-description: "Use this agent to verify the BEHAVIORAL and RUNTIME claims a plan or review relies on - what survives a crash, what races what, what executes when, whether a code path is reachable, whether a write is durable - by tracing them to ground truth in the code instead of reasoning from plausibility. It runs as a second wave after the domain reviewers, on the premises they tagged UNVERIFIED plus any runtime claim the plan itself asserts. It has no severity opinions; it returns one verdict per claim using the reviewer protocol's verdict vocabulary, each with a file:line."
+description: "Verifies the runtime claims that a plan or review relies on, such as what survives a crash, what races, what runs when, whether a path is reachable, and whether a write is durable, by tracing each claim to the code. Runs after the domain reviewers, on the premises they tagged UNVERIFIED and the runtime claims of the plan, and returns one verdict with file:line per claim."
 role: reviewer-mechanism
 requiredSkills:
   - mechanism-verification

@@ -4,7 +4,7 @@ import { errorMessage } from "../infra/error-message.js"
 import { startHardExitClock } from "../infra/hard-exit-clock.js"
 import { listEventTypes, rowActor, rowTimestamp, rowType, searchEvents, type EventSearchQuery } from "../infra/event-search.js"
 import { analyzeStreamGaps, formatStreamGapReport } from "../orchestration/session/diagnostics/provider-stream-gaps.js"
-import { formatEventSearchMatch, formatEventTypeSummary } from "./event-search-format.js"
+import { formatEventSearchMatch, formatEventTypeSummary, formatReconstruction } from "./event-search-format.js"
 import { withEventStore } from "../infra/with-event-store.js"
 import { loadProviderRequestAuditFromEvents } from "../orchestration/session/provider-request-audit-projection.js"
 import {
@@ -203,7 +203,7 @@ function toSearchQuery(options: EventSearchOptions): EventSearchQuery {
 // back to the recorded leaf to recover the bytes the model saw. A workflow
 // member records its audit facts on `workflow:<id>`, so both aggregates feed
 // the fold in position order.
-export async function reconstructPromptForRequest(
+async function reconstructPromptForRequest(
   request: { projectRoot: string; sessionId: string; requestId: string },
 ): Promise<ProviderRequestPromptReconstruction> {
   return withEventStore(request.projectRoot, (store) => {
@@ -218,64 +218,4 @@ export async function reconstructPromptForRequest(
     }
     return reconstructProviderRequestPrompt({ entry, store, sessionEvents })
   })
-}
-
-export function formatReconstruction(
-  requestId: string,
-  result: ProviderRequestPromptReconstruction,
-  options: { json: boolean },
-): string {
-  if (options.json) return JSON.stringify({ requestId, ...result })
-  return result.kind === "reconstructed"
-    ? formatReconstructed(requestId, result)
-    : formatUnavailable(requestId, result)
-}
-
-// Reports exactly the evidence the substrate holds. A request without durable
-// message history is never dressed up as a reconstruction.
-function formatUnavailable(
-  requestId: string,
-  result: Extract<ProviderRequestPromptReconstruction, { kind: "unavailable" }>,
-): string {
-  return [
-    `request=${requestId} reconstruction=unavailable reason=${result.reason} sha256=${result.promptSha256}`,
-    result.detail,
-    "",
-    "systemPrompt:",
-    result.systemPrompt ?? "(not durably recorded)",
-    "",
-    `tools (${result.tools?.length ?? 0}):`,
-    result.tools ? JSON.stringify(result.tools, null, 2) : "(not durably recorded)",
-  ].join("\n")
-}
-
-function formatReconstructed(
-  requestId: string,
-  result: Extract<ProviderRequestPromptReconstruction, { kind: "reconstructed" }>,
-): string {
-  const lines = [
-    `request=${requestId} verified=${result.verified} sha256=${result.computedSha256}`,
-    "",
-    "systemPrompt:",
-    result.systemPrompt,
-    "",
-    `messages (${result.messages.length}):`,
-    JSON.stringify(result.messages, null, 2),
-    "",
-    `tools (${result.tools.length}):`,
-    JSON.stringify(result.tools, null, 2),
-  ]
-  // Mid-turn requests share the pre-turn leaf pointer because the durable leaf
-  // only advances at the turn-end save point, so their sha legitimately differs
-  // from the first-of-turn assembly. Flag it so a reader does not read drift.
-  if (!result.verified) {
-    lines.push(
-      "",
-      "Note: verified=false is expected for mid-turn requests (additional LLM",
-      "calls within a tool-using turn). The durable conversation leaf advances",
-      "only at the turn-end save point, so mid-turn requests reconstruct from",
-      "the pre-turn leaf rather than the exact bytes that were sent.",
-    )
-  }
-  return lines.join("\n")
 }

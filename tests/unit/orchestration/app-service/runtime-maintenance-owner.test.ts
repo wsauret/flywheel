@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import type { StartupDirectories } from "../../../../src/infra/directory-authorities.js"
 import { connectOwnedProcessBridge } from "../../../../src/infra/owned-process-bridge.js"
 import type { GuardianControl } from "../../../../src/infra/process-supervisor.js"
-import { createMaintenanceQueue, type ProjectMaintenanceJob } from "../../../../src/orchestration/app-service/runtime-maintenance-owner.js"
+import { createMaintenanceQueue, type MaintenanceQueue } from "../../../../src/orchestration/app-service/runtime-maintenance-owner.js"
 import type { RuntimeMaintenanceWorkerInit } from "../../../../src/orchestration/app-service/runtime-maintenance-worker.js"
 
 /** A guardian that declares a generation and proves it empty on close; no job
@@ -65,7 +65,7 @@ function directories(projectRoot: string): StartupDirectories {
 /** A project's job whose state channel records its serving. */
 function job(projectRoot: string) {
   const served = { opened: 0, stopped: 0 }
-  const spec: ProjectMaintenanceJob = {
+  const spec: Parameters<MaintenanceQueue["project"]>[0] = {
     directories: directories(projectRoot),
     serveState: () => {
       served.opened++

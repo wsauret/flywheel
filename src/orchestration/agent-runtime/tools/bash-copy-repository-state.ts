@@ -18,13 +18,23 @@ export interface RepositoryState {
   readonly index: StateDigest;
 }
 
+/** Runs one read-only Git inspection of `gitDir`. Output that did not finish completely throws. */
+async function inspect(gitDir: string, runGit: OwnedCommandRunner, args: readonly string[]): Promise<OwnedCommandResult> {
+  const result = await runGit(["git", "--no-optional-locks", `--git-dir=${gitDir}`, "-c", "core.fsmonitor=false", ...args], { timeoutMs: 30_000, maxOutputBytes: 64 * 1024 * 1024 });
+  if (result.timedOut || result.stdoutTruncated || result.exitCode === null) throw new Error("Git repository inspection did not finish completely");
+  return result;
+}
+
+/** Digests the index entries of `gitDir` on the private copy Worker: mode, object, stage, and path, never the stat cache. An incomplete enumeration throws. */
+export async function readIndexDigest(gitDir: string, runGit: OwnedCommandRunner): Promise<StateDigest> {
+  const index = await inspect(gitDir, runGit, ["ls-files", "--stage", "-z"]);
+  if (index.exitCode !== 0) throw new Error("Git could not enumerate the complete index");
+  return runPrivateCopyJob({ kind: "index", bytes: index.stdoutBytes });
+}
+
 /** Reads the final-state backstop through Git and no-follow metadata reads. Any incomplete enumeration throws, never equals an empty state. */
 export async function readCopyRepositoryState(gitDir: string, runGit: OwnedCommandRunner): Promise<RepositoryState> {
-  const execute = async (args: readonly string[]): Promise<OwnedCommandResult> => {
-    const result = await runGit(["git", "--no-optional-locks", `--git-dir=${gitDir}`, "-c", "core.fsmonitor=false", ...args], { timeoutMs: 30_000, maxOutputBytes: 64 * 1024 * 1024 });
-    if (result.timedOut || result.stdoutTruncated || result.exitCode === null) throw new Error("Git repository inspection did not finish completely");
-    return result;
-  };
+  const execute = (args: readonly string[]): Promise<OwnedCommandResult> => inspect(gitDir, runGit, args);
   const layout = await execute(["rev-parse", "--show-object-format", "--show-ref-format"]);
   const [objectFormat, refFormat] = layout.stdout.trim().split("\n");
   if (layout.exitCode !== 0 || !["sha1", "sha256"].includes(objectFormat ?? "") || !["files", "reftable"].includes(refFormat ?? "")) throw new Error("Git could not read repository formats");
@@ -41,9 +51,7 @@ export async function readCopyRepositoryState(gitDir: string, runGit: OwnedComma
     if (symbolic.exitCode !== 1 || object === null) throw new Error("Git could not inspect HEAD");
     head = { kind: "direct", object };
   }
-  const index = await execute(["ls-files", "--stage", "-z"]);
-  if (index.exitCode !== 0) throw new Error("Git could not enumerate the complete index");
-  const indexDigest = await runPrivateCopyJob({ kind: "index", bytes: index.stdoutBytes });
+  const indexDigest = await readIndexDigest(gitDir, runGit);
   if (refFormat === "reftable") {
     // Git's porcelain omits dangling symbolic refs. One immutable stack covers all refs and reflogs, even on Git 2.45.
     const stack = digestStateEntries((await readReftableStack(gitDir)).values());

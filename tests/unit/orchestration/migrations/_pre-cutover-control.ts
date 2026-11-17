@@ -13,9 +13,8 @@ import type { SkillRegistryRevision } from "../../../../src/workflows/skill-sche
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
 import { isLegacyDefinitionIdentity, type LegacyDefinitionIdentity } from "../../../../src/workflows/vm/definition-identity.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { testResolvedAgent, testResolvedAgents } from "../../../helpers/skill-fixtures.js"
-import { nonEmpty } from "../../../helpers/non-empty.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The canonical record a pre-cutover build snapshotted and hashed for one
  *  binding: the authored binding with its `writes` default filled, plus its
@@ -35,11 +34,11 @@ export function compilePreCutover(
 ): PreCutoverControl {
   const ids = Object.keys(bindings)
   if (ids.length === 0) throw new Error("Test fixture needs at least one binding")
-  const workflow: WorkflowDefinition = {
+  const workflow = loadedWorkflow({
     id: "flow",
     name: "Flow",
-    phases: nonEmpty(ids.map((id) => ({ phase: id, brief: `Do the ${id} work.`, name: id, writes: [] }))),
-  }
+    phases: ids.map((id) => ({ phase: id, brief: `Do the ${id} work.`, name: id, writes: [] })),
+  })
   const resolved = testResolvedAgents(Object.entries(bindings).map(([id, binding]) => {
     const skill = skills.skills.get(binding.skill)
     if (!skill) throw new Error(`Test fixture needs skill ${binding.skill}`)

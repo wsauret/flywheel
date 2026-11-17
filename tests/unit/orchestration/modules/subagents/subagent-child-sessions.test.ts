@@ -27,6 +27,7 @@ import { executeChildSessionDeletionPlan } from "../../../../../src/orchestratio
 import { createWorkflowRunReader } from "../../../../../src/orchestration/modules/workflows/run-record.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
 import { readConversationBackgroundNotifications } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
+import { quietOutputCollaborators } from "../../../../helpers/output-projection-deps.js"
 
 const createHarness = subagentChildHarnesses()
 
@@ -166,7 +167,7 @@ test.each([false, true])("settles child cleanup and joins parent publication (pu
     expect(reconciliationCalls).toBe(injectFailure ? 2 : 1)
     expect(notifications).toBe(1)
     await reconcileChildSessionCompletions({
-      parentSessionId: root.sessionId, reader: harness.reader, writer: harness.writer,
+      parentSessionId: root.sessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer,
       deliverNotification: async () => { notifications += 1; return true },
     })
     expect(notifications).toBe(2)
@@ -179,7 +180,7 @@ test.each([false, true])("settles child cleanup and joins parent publication (pu
         await conversation.commitBackgroundNotification(held)
       }
       await reconcileChildSessionCompletions({
-        parentSessionId: root.sessionId, reader: harness.reader, writer: harness.writer,
+        parentSessionId: root.sessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer,
         deliverNotification: async () => { notifications += 1; return true },
       })
       expect(notifications).toBe(2)
@@ -200,14 +201,13 @@ test("direct child publishes later output to its retained session subscription",
   const started = Promise.withResolvers<AgentOptions>()
   const harness = createHarness((options) => ({
     send() { started.resolve(options) },
-    end() {},
     abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
     done: done.promise,
   }))
   const patches: RuntimeUiPatch[] = []
   let onPublish = () => {}
   const sequencer = createRuntimeUiPatchSequencer()
-  const projection = createOutputProjection({
+  const projection = createOutputProjection({ ...quietOutputCollaborators(),
     sessionStore: harness.sessionStore,
     shipped: createShippedOutput({
       publish(input) {
@@ -392,7 +392,6 @@ describe("subagent child-session runtime", () => {
       runResults.push(done)
       return {
         send() {},
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }

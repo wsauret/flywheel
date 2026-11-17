@@ -16,7 +16,7 @@ import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } fro
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import { getSharedModelsClient } from "../config/llm-clients.js"
 import { resolveEnabledProviderModelCatalog } from "../config/model-assignment-providers.js"
-import type { WorkerProviderModelEligibility } from "../config/provider-model-eligibility.js"
+import type { AccessProviderModelEligibility } from "../../infra/llm/access-provider.js"
 import { capabilityAccessFor, type CapabilityAccess } from "../agent-runtime/tools/types.js"
 import type { ModulePolicy } from "../config/module-policy.js"
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js"
@@ -188,9 +188,9 @@ export interface PrepareWorkflowDepsInput extends AccountDirectories {
   /** Captures the active auth profile id before provider-sensitive preparation. */
   activeProfileId?: () => string
   /** Profile-keyed eligibility captured when each request plans its provider chain. */
-  providerModelEligibility?: () => WorkerProviderModelEligibility | undefined
+  providerModelEligibility?: () => AccessProviderModelEligibility | undefined
   /** Joins the existing eligibility readiness owner at every request boundary. */
-  captureModelAccess?: () => Promise<{ readonly worker: WorkerProviderModelEligibility; readonly auth?: AuthContext }>
+  captureModelAccess?: () => Promise<{ readonly worker: AccessProviderModelEligibility; readonly auth?: AuthContext }>
   /** Captures allowance and consent from one usage service at provider admission. */
   captureSubscriptionAdmission?: CaptureSubscriptionAdmission
   acquireUsageSettlementAuthority?: (profile: { readonly profileDir: string; readonly profileId: string }) => Promise<import("../agent-runtime/usage-settlement.js").UsageSettlementAuthorityLease>
