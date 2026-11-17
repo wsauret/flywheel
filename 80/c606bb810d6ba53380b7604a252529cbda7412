@@ -1,0 +1,48 @@
+src/orchestration/agent-runtime/request-config.ts
+  h_4b47e9e4a8b456 29-34,36-44
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 22,33,42,44,259-289,389-396,406,408,587,625-626,629-630,646,659,683,700,702
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 100-102,138,151-152
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 13-14,41-44,47,50-67,173-174,201-222,228-229,239-296,302,315,342-343,348,359-360,363-365,367,382-383
+src/orchestration/agent-runtime/turn-reminders.ts
+  h_4b47e9e4a8b456 38-39
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 123-131,135-162
+tests/helpers/request-tool-surface.ts
+  h_4b47e9e4a8b456 81,106,159-162
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 18,79,215,321,425
+tests/unit/orchestration/agent-runtime/agent-loop-steering.test.ts
+  h_4b47e9e4a8b456 9,22
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 14,471
+tests/unit/orchestration/agent-runtime/context/_loop-fixtures.ts
+  h_4b47e9e4a8b456 3,143
+tests/unit/orchestration/agent-runtime/context/loop-live-model.test.ts
+  h_4b47e9e4a8b456 7,39
+tests/unit/orchestration/agent-runtime/golden/three-hop-requests.json
+  h_4b47e9e4a8b456 1-1050
+tests/unit/orchestration/agent-runtime/request-config.test.ts
+  h_4b47e9e4a8b456 73-81,109-110
+tests/unit/orchestration/agent-runtime/request-golden.test.ts
+  h_4b47e9e4a8b456 1-229
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 8,40,163-164,173-174,176,182,196,206-253,614-616
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 142
+tests/unit/orchestration/config/session-role-resolver.test.ts
+  h_4b47e9e4a8b456 1,10,136-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "80c606bb810d6ba53380b7604a252529cbda7412",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
