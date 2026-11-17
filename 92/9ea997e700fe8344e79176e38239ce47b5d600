@@ -1,0 +1,94 @@
+src/protocol/modules/subscription-usage.ts
+  h_4b47e9e4a8b456 384
+src/protocol/modules/workflows.ts
+  h_4b47e9e4a8b456 84,91
+src/protocol/provider-model-preference-protocol-schemas.ts
+  h_4b47e9e4a8b456 14
+src/protocol/rpc-msgpack.ts
+  h_4b47e9e4a8b456 21-22,82
+src/protocol/runtime-client-diagnostics.ts
+  h_4b47e9e4a8b456 56
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 286
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 161,169,185,189,243,247,287
+src/protocol/setting-catalog.ts
+  h_4b47e9e4a8b456 173
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 190
+src/protocol/workflow-view-protocol-types.ts
+  h_4b47e9e4a8b456 15
+tests/helpers/runtime-msgpack.ts
+  h_4b47e9e4a8b456 1-7
+tests/helpers/runtime-ui-patch.ts
+  h_4b47e9e4a8b456 1-19
+tests/helpers/setting-catalog-rows.ts
+  h_4b47e9e4a8b456 1-18
+tests/integration/local/rpc-lane-pong-tolerance.test.ts
+  h_4b47e9e4a8b456 4-5,14,50,126
+tests/unit/infra/chat-input.test.ts
+  h_4b47e9e4a8b456 7-8,31
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 11,482-483,575
+tests/unit/orchestration/app-service/budget-protocol-projection.test.ts
+  h_4b47e9e4a8b456 5,57,116-118,120-124
+tests/unit/orchestration/app-service/mutation-evidence-service.test.ts
+  h_4b47e9e4a8b456 4-5,248-249
+tests/unit/orchestration/app-service/project-control-settlement.test.ts
+  h_4b47e9e4a8b456 14,161
+tests/unit/orchestration/app-service/protocol-contract.test.ts
+  h_4b47e9e4a8b456 4-5,7,121,123-126,165,169,197,228,232,244,301,369,534,537,539,566-567,578,582,585,608,610
+tests/unit/orchestration/app-service/question-protocol-projection.test.ts
+  h_4b47e9e4a8b456 8,197-199
+tests/unit/orchestration/app-service/rpc-protocol-mapping.test.ts
+  h_4b47e9e4a8b456 16-17,19,112-113,115,120,158,172,176,265-267,284,297
+tests/unit/orchestration/app-service/runtime-config-projection.test.ts
+  h_4b47e9e4a8b456 9-10,107,114,118,122,126,130,134
+tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+  h_4b47e9e4a8b456 10,444
+tests/unit/orchestration/app-service/runtime-protocol-socket-server.test.ts
+  h_4b47e9e4a8b456 4-5,111,131
+tests/unit/orchestration/app-service/runtime-session-contract.test.ts
+  h_4b47e9e4a8b456 3-4,193-194,197,203,205,207,222,224
+tests/unit/orchestration/app-service/runtime-ui-patch-contract.test.ts
+  h_4b47e9e4a8b456 2-3,21,44-45,47,49,66,77,90
+tests/unit/orchestration/app-service/session-change-summary.test.ts
+  h_4b47e9e4a8b456 8-9,38
+tests/unit/orchestration/app-service/status-projection.test.ts
+  h_4b47e9e4a8b456 10,68,219-226
+tests/unit/orchestration/app-service/subscription-spend-consent-protocol.test.ts
+  h_4b47e9e4a8b456 7-8,28,40,61
+tests/unit/orchestration/app-service/transcript-protocol.test.ts
+  h_4b47e9e4a8b456 12,151-152
+tests/unit/orchestration/modules/subscription-usage/usage-protocol.test.ts
+  h_4b47e9e4a8b456 7,91,169,204-205,226
+tests/unit/orchestration/modules/workflows/live-protocol.test.ts
+  h_4b47e9e4a8b456 15,49
+tests/unit/protocol/client/workflow-progress.test.ts
+  h_4b47e9e4a8b456 5-7
+tests/unit/protocol/module-protocol-registry.test.ts
+  h_4b47e9e4a8b456 45-46,222,226-230,269,288
+tests/unit/protocol/workflow-control-protocol.test.ts
+  h_4b47e9e4a8b456 3-4,33,35
+tests/unit/tui/modals/modal-copy-budgets.test.ts
+  h_4b47e9e4a8b456 4-5,57
+tests/unit/tui/modals/settings-modal.test.ts
+  h_4b47e9e4a8b456 3,5,69,72,74
+webview/src/app/command-panel-controls.test.ts
+  h_4b47e9e4a8b456 6-7,112
+webview/src/app/sheets/settings-sheet.test.ts
+  h_4b47e9e4a8b456 3-4,13,16
+webview/src/client/input-diagnostics.test.ts
+  h_4b47e9e4a8b456 3,154,220,365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "929ea997e700fe8344e79176e38239ce47b5d600",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
