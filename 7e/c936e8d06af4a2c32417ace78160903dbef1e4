@@ -1,0 +1,70 @@
+src/orchestration/agent-runtime/compaction/compaction-policy.ts
+  h_4b47e9e4a8b456 31,34
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 86,207,216,240
+src/orchestration/agent-runtime/compaction/token-counter.ts
+  h_4b47e9e4a8b456 249
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 123,692
+src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.ts
+  h_4b47e9e4a8b456 17,26
+src/orchestration/agent-runtime/llm/chatgpt-client.ts
+  h_4b47e9e4a8b456 23-24
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 50,245
+tests/unit/orchestration/agent-runtime/assistant-turn-stream.test.ts
+  h_4b47e9e4a8b456 2-4,11-12,187-214,216-228,233-240,243-246
+tests/unit/orchestration/agent-runtime/context/loop-token-counter.test.ts
+  h_4b47e9e4a8b456 10,60,136,161,163,165-166,168,170-171,175,229
+tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts
+  h_4b47e9e4a8b456 53-57,59-61,64-76,80,83,98,102-103,105-109,114,134,149,169,178,189,296,332,363,413-414,426
+tests/unit/orchestration/agent-runtime/context/turn-budget.test.ts
+  h_4b47e9e4a8b456 23-28
+tests/unit/orchestration/agent-runtime/llm/_wire-fixtures.ts
+  h_4b47e9e4a8b456 3-6,36-55
+tests/unit/orchestration/agent-runtime/llm/anthropic-usage-accounting.test.ts
+  h_4b47e9e4a8b456 19,30-32
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend-transport.test.ts
+  h_4b47e9e4a8b456 6,10-13
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/websocket-session.test.ts
+  h_4b47e9e4a8b456 4-8
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/websocket.test.ts
+  h_4b47e9e4a8b456 7-8,20-28,41,63-89,241-242,267-268,270,290-294,298,302,305,308,311,324-325,327,330,343-344,346,349,352,357,361,364,368,372,375,380,383,386,391,395,398,403,407,410,414,418,421,428
+tests/unit/orchestration/agent-runtime/llm/failover-client-auth.test.ts
+  h_4b47e9e4a8b456 6,184-185
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/agent-runtime/llm/image-limit.test.ts
+  h_4b47e9e4a8b456 4,14,89,98-99,102-103
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-account-affinity.test.ts
+  h_4b47e9e4a8b456 6-7,12-15
+tests/unit/orchestration/agent-runtime/llm/provider-failure.test.ts
+  h_4b47e9e4a8b456 10,78-79,128-130,141-142,147
+tests/unit/orchestration/agent-runtime/llm/request-descriptor.test.ts
+  h_4b47e9e4a8b456 6,155,159,163,167-171,173-176
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 5,148-150
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 9-10,15,178-198
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 12,44
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge-in-place.test.ts
+  h_4b47e9e4a8b456 3,6,18
+tests/unit/orchestration/modules/provider-claude-agent-sdk/cli-view.test.ts
+  h_4b47e9e4a8b456 4,91
+tests/unit/orchestration/session/conversation-tree-context.test.ts
+  h_4b47e9e4a8b456 8,76
+tests/unit/orchestration/session/provider-request-audit-reconstruction.test.ts
+  h_4b47e9e4a8b456 13,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7ec936e8d06af4a2c32417ace78160903dbef1e4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

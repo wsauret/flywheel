@@ -1,0 +1,48 @@
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 86,137
+src/infra/module-descriptor.ts
+  h_4b47e9e4a8b456 36-39,92,102,105,119-120
+src/orchestration/app-service/module-protocol-host.ts
+  h_4b47e9e4a8b456 163,171,211
+src/orchestration/credential-provider-modules.ts
+  h_4b47e9e4a8b456 51
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 460-461
+src/orchestration/modules/bug-reports/module.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/remote/module.ts
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 170,175
+tests/unit/infra/capability-module.test.ts
+  h_4b47e9e4a8b456 46-59
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 18,52,90,93,345,352
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 28-29,194,299
+tests/unit/orchestration/app-service/command-invoke-service.test.ts
+  h_4b47e9e4a8b456 146
+tests/unit/orchestration/chat/chat-module-host-lifetime.test.ts
+  h_4b47e9e4a8b456 15,43
+tests/unit/orchestration/module-diagnostics.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/orchestration/module-lifecycles.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/modules/side-question/protocol.test.ts
+  h_4b47e9e4a8b456 148
+tests/unit/orchestration/modules/synthetic-provider.test.ts
+  h_4b47e9e4a8b456 101-103
+tests/unit/orchestration/session/module-session-facts.test.ts
+  h_4b47e9e4a8b456 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "099ef4a2b3a01cef45d0855e7aaa0c96c5d5afa3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
