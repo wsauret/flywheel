@@ -1,0 +1,50 @@
+docs/architecture.md
+  h_4b47e9e4a8b456 499
+src/tui/app.tsx
+  h_4b47e9e4a8b456 147
+src/tui/commands/command-definitions.ts
+  h_4b47e9e4a8b456 8-9
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 21,79,92
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 5,100-101,162,286,288-289,338-339,347,451
+src/tui/hooks/create-settings-store.ts
+  h_4b47e9e4a8b456 9-10,76-87
+src/tui/hooks/late-binding.ts
+  h_4b47e9e4a8b456 1-20
+src/tui/hooks/session-activation.ts
+  h_4b47e9e4a8b456 1,32-34,37,40,52
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 3,14,19,51,55,70-82,145,149-153,238-244,248-259,420-433,445-446,453,483-487,677,680,683-684,728-729
+src/tui/hooks/use-release-notice.ts
+  h_4b47e9e4a8b456 4-5
+src/tui/hooks/use-tabs-hint.ts
+  h_4b47e9e4a8b456 3-4
+src/tui/hooks/use-theme-modal.ts
+  h_4b47e9e4a8b456 8-9
+src/tui/shell-composer.tsx
+  h_4b47e9e4a8b456 1-270
+src/tui/shell-header.tsx
+  h_4b47e9e4a8b456 1-56
+src/tui/shell-navigation.ts
+  h_4b47e9e4a8b456 1-212
+src/tui/shell-overlays.ts
+  h_4b47e9e4a8b456 1-140
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 2,5-7,15,18,20-22,24,29,31-41,43-47,57-58,60-91,102,104-126,128,133-134,138-146,164-165,168,185,188,190,198,201,211
+tests/unit/tui/hooks/runtime-config-cache.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/tui/hooks/shell-state-memos.test.ts
+  h_4b47e9e4a8b456 2,6-13,186-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "24513d5fd4074de039d5b371c10f9577d49409e3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
