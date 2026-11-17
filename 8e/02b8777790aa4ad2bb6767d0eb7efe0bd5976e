@@ -1,0 +1,50 @@
+src/tui/components/chat-pane.tsx
+  h_4b47e9e4a8b456 22,130,145,264,328-329,342-345,350-351
+src/tui/context/message-row.tsx
+  h_4b47e9e4a8b456 7-8,13
+src/tui/hooks/create-keyboard-handler.ts
+  h_4b47e9e4a8b456 18-19,24-27,31-39,215-216,246
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 58-59,106,173-174
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 21-22,24-25,66-71,82-83,145
+src/tui/modules/lead/list-model.ts
+  h_4b47e9e4a8b456 1,20-29,42-51,55,60-66,74,79-84
+src/tui/modules/lead/question-widget.tsx
+  h_4b47e9e4a8b456 3,44-45,62,65-69,79,82,86,98-102,132-133,138-149,163-165,183,185,195,210-221,223,228-231,251,253
+src/tui/modules/lead/strip.tsx
+  h_4b47e9e4a8b456 13,70-72,117,120
+src/tui/output-blocks/diff-preview.tsx
+  h_4b47e9e4a8b456 6,24,463
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 114,119-120
+src/tui/question-dock.tsx
+  h_4b47e9e4a8b456 10,250-251,253-254
+src/tui/utils/scroll-clip.ts
+  h_4b47e9e4a8b456 1-22
+tests/unit/tui/components/_chat-pane-fixtures.tsx
+  h_4b47e9e4a8b456 27-29
+tests/unit/tui/keyboard-handler.test.ts
+  h_4b47e9e4a8b456 72
+tests/unit/tui/modules/lead/_lead-fixtures.tsx
+  h_4b47e9e4a8b456 45-46,49,82-83,103-107,170
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 3,21-22,27,76-77,79,83,270-272,275-280,288-306,329-330,343
+tests/unit/tui/modules/lead/list-model.test.ts
+  h_4b47e9e4a8b456 5-6,10,14-34,36,41-43,47
+tests/unit/tui/modules/lead/question-widget.test.tsx
+  h_4b47e9e4a8b456 3-4,21,49,76,216,218,274-277,279-283,314-405
+tests/unit/tui/modules/lead/strip.test.tsx
+  h_4b47e9e4a8b456 41-66,141-142,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8e02b8777790aa4ad2bb6767d0eb7efe0bd5976e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
