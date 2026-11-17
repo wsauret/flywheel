@@ -16,7 +16,8 @@ interface LeadJournalState {
   /** The chats of the lead's list: each chat whose newest join no close or retirement followed (ARCH-SESSIONS-050).
    *  It can hold the lead chat itself, which joins at its creation before its designation lands, and a deleted chat. */
   readonly members: ReadonlySet<string>
-  /** The chats that joined at their creation while the lead showed (`lead.chat.joined`). */
+  /** The chats that joined at their creation while the lead showed (`lead.chat.joined`), and the chats that the lead
+   *  gave a request to (`lead.chat.briefed`). */
   readonly briefed: ReadonlySet<string>
   /** The chats whose newest list fact is a close, so the person closed them. */
   readonly closed: ReadonlySet<string>
@@ -120,6 +121,9 @@ function createLeadState() {
         closed.delete(fact.payload.sessionId)
         if (fact.payload.briefed) briefed.add(fact.payload.sessionId)
         return
+      case "lead.chat.briefed":
+        briefed.add(fact.payload.sessionId)
+        return
       case "lead.chat.closed":
         members.delete(fact.payload.sessionId)
         closed.add(fact.payload.sessionId)
@@ -152,6 +156,9 @@ function createLeadState() {
       }
       case "lead.chat.joined":
         return members.has(fact.payload.sessionId)
+      // A started chat's role outranks a briefing.
+      case "lead.chat.briefed":
+        return briefed.has(fact.payload.sessionId) || started.has(fact.payload.sessionId)
       case "lead.chat.closed":
       case "lead.chat.retired":
         return !members.has(fact.payload.sessionId)

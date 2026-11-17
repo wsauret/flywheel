@@ -1,5 +1,5 @@
 import type { PositionedEventProjection } from "../../../infra/event-projection.js"
-import type { AsyncEventReadSurface, StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, StoredFact } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import type { QuestionEntry } from "../../../infra/output-blocks.js"
 import { recordBackgroundFailure } from "../../../infra/operation-log.js"
@@ -9,7 +9,8 @@ import { resolveToolRowPresentation } from "../../../infra/tools/tool-display-re
 import type { LeadRow, LeadRowState, LeadSeenState } from "../../../protocol/modules/lead.js"
 import { AGENT_INPUT_FACT_TYPES } from "../../session/agent-input-facts.js"
 import { loadAgentInputProjection, type AgentInputEntry } from "../../session/agent-input-projection.js"
-import { isVisibleTurnEnd, type ChatTurnEnd } from "../../session/conversation/turn-end-record.js"
+import { isPlannedCut, isVisibleTurnEnd, type ChatTurnEnd } from "../../session/conversation/turn-end-record.js"
+import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../session/planned-session-continuation.js"
 import type { ModuleProcessServices } from "../../app-service/module-service-host.js"
 import type { SessionManager } from "../../session/manager.js"
 import { entryActivity } from "../../session-store/activity.js"
@@ -52,7 +53,8 @@ interface RowState {
 export type LeadRowChange = { readonly kind: "updated"; readonly row: LeadRow } | { readonly kind: "removed"; readonly sessionId: string }
 
 interface LeadRowsDeps {
-  readonly reader: AsyncEventReadSurface
+  /** The project's reader, which also keys the retirements of continuation rows. */
+  readonly reader: AsyncEventStateReadSurface
   readonly sessionManager: Pick<SessionManager, "read">
   readonly sessionStore: Pick<SessionStore, "get" | "onChange">
   readonly sessionRuntime: ReturnType<ModuleProcessServices["executionEnvironment"]>["sessionRuntime"]
@@ -108,6 +110,9 @@ interface Member {
   readonly release: readonly (() => void)[]
   /** The chat's pending questions, oldest first. */
   questions: readonly PendingEntry[]
+  /** Whether a successor owes the continuation of the chat's planned cut, read when the turn end changes and when
+   *  a continuation row retires. */
+  owed: boolean
   /** The chat's state and the time the chat entered it. */
   entered: { readonly state: ChatState; readonly at: number } | undefined
   row: LeadRow | undefined
@@ -115,10 +120,14 @@ interface Member {
 
 type PendingEntry = Extract<AgentInputEntry, { kind: "pending" }>
 
-async function pendingQuestions(reader: AsyncEventReadSurface, sessionId: string): Promise<readonly PendingEntry[]> {
+async function pendingQuestions(reader: AsyncEventStateReadSurface, sessionId: string): Promise<readonly PendingEntry[]> {
   const pending = [...(await loadAgentInputProjection(reader, sessionId)).values()].filter((entry): entry is PendingEntry => entry.kind === "pending")
   return pending.toSorted((left, right) => left.openedAt - right.openedAt)
 }
+
+/** The record of the planned cut that ends a fold's newest turn, or undefined for any other turn end. A message that
+ *  the cut turn's continuation adds keeps the record, so it reads no continuation row again. */
+const plannedCutOf = (fold: RowFold): string | null | undefined => isPlannedCut(fold.turnEnd?.reading.end) ? fold.turnEnd?.recordId ?? null : undefined
 
 /** The question that the row and the lead's reading show: the newest that waits. */
 const newestQuestion = (member: Pick<Member, "questions">): PendingEntry | undefined => member.questions.at(-1)
@@ -156,7 +165,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
   /** The state of a chat by the order of section 2.5 of the lead design. A chat at rest with nothing for the person,
    *  such as a read result or a failure or a cut that the person saw at the same entry, is done since its newest
    *  output. */
-  function stateOf(member: Pick<Member, "sessionId" | "questions">, fold: RowFold, live: "failed" | "working" | undefined): RowState {
+  function stateOf(member: Pick<Member, "sessionId" | "questions" | "owed">, fold: RowFold, live: "failed" | "working" | undefined): RowState {
     const question = newestQuestion(member)
     if (question) return { state: "question", at: question.openedAt }
     if (live === "working") return { state: "working", at: undefined }
@@ -172,9 +181,24 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     if (live === "failed") return ended("failed", undefined, newest)
     if (end?.reading.end.reason === "paused" && isVisibleTurnEnd(end.reading.end)) return ended("cut", end.at, end.recordId ?? newest)
     if (end?.reading.end.reason === "crash") return ended("failed", end.at, end.recordId ?? newest)
+    // A planned stop's successor continues the cut turn, so its newest message is no result until the turn answers.
+    // A continuation that no successor owes any more, such as one whose resume failed, leaves the turn cut, and the
+    // person resumes it as after any interrupt.
+    if (isPlannedCut(end?.reading.end)) {
+      if (member.owed || deps.sessionRuntime(member.sessionId)?.kind === "starting") return { state: "working", at: undefined }
+      return ended("cut", end?.at, end?.recordId ?? newest)
+    }
     if (fold.final && fold.final.entryId !== deps.readMark(member.sessionId)) return { state: "result", at: fold.final.at }
     return done
   }
+
+  /** Whether a successor owes the continuation of the planned cut that ends the fold's newest turn. Any other turn
+   *  end owes none, so only a planned cut reads the continuation row. */
+  const readOwed = async (sessionId: string, fold: RowFold): Promise<boolean> =>
+    isPlannedCut(fold.turnEnd?.reading.end) && await awaitsPlannedContinuation({ reader: deps.reader, projectionReader: deps.reader, manager: deps.sessionManager }, sessionId)
+
+  /** The chat's state as its row and the lead's reading of it decide it. */
+  const stateNow = (member: Pick<Member, "sessionId" | "questions" | "owed">, fold: RowFold): RowState => stateOf(member, fold, liveState(member.sessionId, fold))
 
   /** The row's one line, which the runtime derives from the chat's own output and no model writes. */
   function statusOf(member: Member, fold: RowFold, state: LeadRowState): string {
@@ -210,7 +234,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
    *  chat that comes to rest with nothing for the person loses its row and tells `onRest` once. */
   function compute(member: Member): void {
     const fold = member.fold.getState()
-    const next = stateOf(member, fold, liveState(member.sessionId, fold))
+    const next = stateNow(member, fold)
     const before = member.entered
     const entered = before?.state === next.state ? before : { state: next.state, at: next.at ?? now() }
     member.entered = entered
@@ -238,12 +262,12 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     const member: Member = {
       // The type admits a row written before sessions recorded a directory; such a row shows its paths whole.
       sessionId, conversation: `conversation:${session.conversationId}`, cwd: session.executionCwd ?? "", release,
-      fold: leadRowFold(deps.reader, sessionId, session.conversationId), questions: [], entered: undefined, row: undefined,
+      fold: leadRowFold(deps.reader, sessionId, session.conversationId), questions: [], owed: false, entered: undefined, row: undefined,
     }
     pinned.set(sessionId, member)
     byConversation.set(member.conversation, member)
     try {
-      await member.fold.replay()
+      member.owed = await readOwed(sessionId, await member.fold.replay())
       member.questions = await pendingQuestions(deps.reader, sessionId)
     } catch (error) {
       remove(sessionId)
@@ -271,7 +295,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     if (!member || members.get(sessionId) !== member) return undefined
     const fold = member.fold.getState()
     const question = newestQuestion(member)
-    return { row: member.row, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
+    return { row: member.row, working: stateNow(member, fold).state === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
   }
 
   const unsubscribeStore = deps.sessionStore.onChange((changed) => {
@@ -286,6 +310,15 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       if (member) compute(member)
     }
   }, "lead-rows")
+  // A retired row writes no fact, so a chat whose planned cut it owed reads its turn end again here.
+  const unsubscribeRetired = onPlannedContinuationRetired(deps.reader, (sessionId) => {
+    const member = members.get(sessionId)
+    if (!member || disposed) return
+    void readOwed(sessionId, member.fold.getState()).then((owed) => {
+      member.owed = owed
+      if (!disposed && members.get(sessionId) === member) compute(member)
+    }, (error: unknown) => { recordBackgroundFailure(log, "lead row continuation read", { sessionId }, error) })
+  })
 
   return {
     async add(sessionIds) {
@@ -322,7 +355,11 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       await Promise.all([...new Set([...batches.keys(), ...questions])].map(async (member) => {
         try {
           const batch = batches.get(member)
-          if (batch) await member.fold.apply(batch)
+          if (batch) {
+            const before = plannedCutOf(member.fold.getState())
+            const fold = await member.fold.apply(batch)
+            if (plannedCutOf(fold) !== before) member.owed = await readOwed(member.sessionId, fold)
+          }
           if (questions.has(member)) member.questions = await pendingQuestions(deps.reader, member.sessionId)
         } catch (error) {
           recordBackgroundFailure(log, "lead row update", { sessionId: member.sessionId }, error)
@@ -359,11 +396,13 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       const fold = await leadRowFold(deps.reader, sessionId, session.conversationId).replay()
       const questions = await pendingQuestions(deps.reader, sessionId)
       const question = newestQuestion({ questions })
-      return { row: undefined, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
+      const owed = await readOwed(sessionId, fold)
+      return { row: undefined, working: stateNow({ sessionId, questions, owed }, fold).state === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
     },
     async dispose() {
       disposed = true
       unsubscribeStore()
+      unsubscribeRetired()
       const running = [...builds.values()]
       builds.clear()
       for (const member of pinned.values()) for (const release of member.release) release()

@@ -63,6 +63,22 @@ test("a chat is a member from its join until its close, joins again after the cl
   expect(replayed.state().seeded).toBe(true)
 })
 
+test("a briefing makes a chat briefed once, also one that is not in the list, and a started chat records none", async () => {
+  const lead = journal()
+  await lead.append({ type: "lead.chat.joined", payload: { sessionId: "member", briefed: false } })
+  await lead.append({ type: "lead.chat.started", payload: { sessionId: "started", sourceEntryIds: ["e1"] } })
+  expect(await lead.append({ type: "lead.chat.briefed", payload: { sessionId: "member" } })).toBe(true)
+  expect(await lead.append({ type: "lead.chat.briefed", payload: { sessionId: "member" } })).toBe(false)
+  expect(await lead.append({ type: "lead.chat.briefed", payload: { sessionId: "outside" } })).toBe(true)
+  expect(await lead.append({ type: "lead.chat.briefed", payload: { sessionId: "started" } })).toBe(false)
+
+  const replayed = journal()
+  await replayed.reconcile()
+  expect([...replayed.state().briefed].toSorted()).toEqual(["member", "outside"])
+  // A briefing never changes the list.
+  expect([...replayed.state().members]).toEqual(["member"])
+})
+
 test("an append after another writer's commit lands at the next sequence, and a second journal replays both", async () => {
   const first = journal()
   const second = journal()

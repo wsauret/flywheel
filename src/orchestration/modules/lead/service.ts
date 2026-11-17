@@ -6,6 +6,7 @@ import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { EMPTY_LEAD_CHATS, leadChatsCursor, leadQuestionCall, leadReportCall, type LeadChatsView, type LeadQuestionOutcome, type LeadSeenState } from "../../../protocol/modules/lead.js"
 import { formatAgentInputAnswers } from "../../../protocol/question-protocol-types.js"
 import type { SessionEventKind } from "../../chat/runner-types.js"
+import type { DeliveryOutcome } from "../../session/live-session-control.js"
 import type { ModuleProcessServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import type { SessionOpenHold } from "../../app-service/runtime-supervisor-types.js"
 import { parseSessionMetadataFact } from "../../session/session-metadata-facts.js"
@@ -23,7 +24,7 @@ import { createLeadRows, type LeadRowChange, type LeadRows } from "./rows.js"
 const log = Log.create({ service: "lead" })
 
 /** What a chat is to the lead: the lead chat itself, a chat that the lead started, a chat that joined the list at its
- *  creation while the lead showed, or none of these. */
+ *  creation while the lead showed or that the lead gave a request to, or none of these. */
 export type LeadRole = "lead" | "started" | "briefed"
 
 /** The lead module's execution service: its fold of the `lead` aggregate, the
@@ -83,6 +84,21 @@ type MarkOutcome = { readonly ok: true } | { readonly ok: false; readonly error:
  *  report, and a question as the chat's question message, instead (PI-LEAD-005, PI-LEAD-006). */
 const NOTICE_KINDS: readonly SessionEventKind[] = ["failed", "cut"]
 
+/** One report or question of a listed chat that goes to the lead as a message from the chat. */
+interface LeadPost {
+  readonly kind: "report" | "question"
+  readonly from: string
+  readonly call: string
+  readonly text: string
+  /** The ids that name the post in its records. */
+  readonly ids: { readonly entryId: string } | { readonly toolUseId: string }
+}
+
+const POST_RECORDS = {
+  report: { posted: "lead posted a report", waits: "lead report waits for the lead's runner", failed: "lead could not post a report" },
+  question: { posted: "lead posted a question", waits: "lead question waits for the lead's runner", failed: "lead could not post a question" },
+} as const
+
 const joinedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.joined" ? [fact.payload.sessionId] : [])
 const closedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.closed" ? [fact.payload.sessionId] : [])
 const markedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.result.read" || fact.type === "lead.chat.seen" ? [fact.payload.sessionId] : [])
@@ -140,9 +156,15 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   let endings: Promise<unknown> = Promise.resolve()
   let unsubscribeClosed: (() => void) | undefined
   let unsubscribeReleased: (() => void) | undefined
-  // The questions that this process posted or posts, each as `<lead>:<toolUseId>`, so a row that publishes again posts
-  // nothing more. A restart posts each pending question again, and the delivery records nothing for one the lead holds.
-  const postedQuestions = new Set<string>()
+  // The reports and questions that this process posted, posts, or holds for the lead's runner, each as
+  // `<lead>:<call>`, so a row that publishes again posts nothing more: a send to a running lead queues a report
+  // uncommitted until its read mark lands. A restart posts each again, and the delivery records nothing for one that
+  // the lead holds.
+  const posted = new Set<string>()
+  // The posts that the lead's absent runner holds: the attach of its runner posts each again, once (PI-LEAD-006).
+  const waiting = new Set<string>()
+  // Whether the watched lead had a runner at the last change of its store entry.
+  let leadRunner = false
 
   const shownLead = (): string | null => {
     const state = journal.state()
@@ -164,6 +186,26 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     background = background.then(task).catch((error: unknown) => { failure(errorMessage(error)) })
   }
 
+  const hasRunner = (sessionId: string): boolean => {
+    const entry = services.sessionStore.get(sessionId)
+    return entry?.kind === "chat" && entry.runner !== null
+  }
+
+  /** A send that the lead's absent runner holds: no runner reads it until the lead's next turn, so it counts as not
+   *  shown, and the lead's next runner gets it again (PI-LEAD-006). */
+  const waitsForLeadRunner = (outcome: DeliveryOutcome): boolean => outcome.status === "held" && outcome.reason === "no_reader"
+
+  /** Posts every unread report and pending question of the listed rows to the shown lead, also each that waited for
+   *  the lead's runner. */
+  const postWaiting = (): void => {
+    for (const key of waiting) posted.delete(key)
+    waiting.clear()
+    for (const row of rows?.rows() ?? []) {
+      postReport(row.sessionId)
+      postQuestions(row.sessionId)
+    }
+  }
+
   const publishRow = (change: LeadRowChange): void => {
     services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
     if (change.kind === "updated") {
@@ -174,6 +216,35 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
   }
 
+  /** Sends one post to the shown lead in order with the others, and runs `delivered` once the lead holds it. A post
+   *  that the lead's absent runner holds waits for its attach and records its wait once; a refused or failed post can
+   *  post again at the next publish of its row. */
+  function post(lead: string, item: LeadPost, delivered?: () => Promise<void>): void {
+    const key = `${lead}:${item.call}`
+    if (posted.has(key)) return
+    posted.add(key)
+    const records = POST_RECORDS[item.kind]
+    const fields = { leadSessionId: lead, sessionId: item.from, ...item.ids }
+    posting = posting.then(async () => {
+      const outcome = await services.executionEnvironment().sendSessionMessage({ fromSessionId: item.from, toSessionId: lead, call: item.call, text: item.text })
+      if (outcome.status === "refused") {
+        posted.delete(key)
+        log.warn(records.failed, { ...fields, reason: outcome.reason })
+        return
+      }
+      if (waitsForLeadRunner(outcome)) {
+        waiting.add(key)
+        log.info(records.waits, fields)
+        return
+      }
+      log.info(records.posted, { ...fields, status: outcome.status, bytes: Buffer.byteLength(item.text) })
+      await delivered?.()
+    }).catch((error: unknown) => {
+      posted.delete(key)
+      log.warn(records.failed, { ...fields, error: errorMessage(error) })
+    })
+  }
+
   /** Posts each pending question of a chat to the shown lead, oldest first, as a message from the chat, which the
    *  lead's transcript shows as the question's widget at this point (PI-LEAD-005). The text holds the question word for
    *  word, so the lead can add a recommendation. Every question posts, also one of a chat that a client shows: the
@@ -182,32 +253,17 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     const lead = watched?.lead
     if (lead === undefined) return
     for (const question of rows?.questions(sessionId) ?? []) {
-      const key = `${lead}:${question.toolUseId}`
-      if (postedQuestions.has(key)) continue
-      postedQuestions.add(key)
-      const call = leadQuestionCall(question.toolUseId)
-      const text = questionText(question)
-      posting = posting.then(async () => {
-        const outcome = await services.executionEnvironment().sendSessionMessage({ fromSessionId: sessionId, toSessionId: lead, call, text })
-        if (outcome.status === "refused") {
-          postedQuestions.delete(key)
-          log.warn("lead could not post a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, reason: outcome.reason })
-          return
-        }
-        log.info("lead posted a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, status: outcome.status, bytes: Buffer.byteLength(text) })
-      }).catch((error: unknown) => {
-        postedQuestions.delete(key)
-        log.warn("lead could not post a question", { leadSessionId: lead, sessionId, toolUseId: question.toolUseId, error: errorMessage(error) })
-      })
+      post(lead, { kind: "question", from: sessionId, call: leadQuestionCall(question.toolUseId), text: questionText(question), ids: { toolUseId: question.toolUseId } })
     }
   }
 
   /** Posts a chat's unread result to the shown lead as its report: the chat's final message in full, as a message
-   *  from the chat, which the lead's transcript shows as one line that opens it. Posting it reads it. A result of a
-   *  chat that a client shows is read there, so it is marked read and posts nothing (PI-LEAD-006). A lead with no
-   *  runner holds the message until it runs. The report is the result as it stands now, so a later final message
-   *  never takes its place. The runtime's delivery records nothing for a report that the lead already holds, so a
-   *  repeat after a restart or a replayed batch posts it once. */
+   *  from the chat, which the lead's transcript shows as one line that opens it. A report that the lead's runner takes
+   *  reads it. A result of a chat that a client shows is read there, so it is marked read and posts nothing
+   *  (PI-LEAD-006). A lead with no runner shows nothing, so its report stays unread and posts again when the lead's
+   *  runner attaches. The report is the result as it stands now, so a later final message never takes its place. The
+   *  runtime's delivery records nothing for a report that the lead already holds as an entry, so a repeat after a
+   *  restart or a replayed batch posts it once. */
   function postReport(sessionId: string): void {
     const result = rows?.result(sessionId)
     if (result === undefined) return
@@ -222,16 +278,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
     const lead = watched?.lead
     if (lead === undefined) return
-    posting = posting.then(async () => {
-      const outcome = await environment.sendSessionMessage({ fromSessionId: sessionId, toSessionId: lead, call: leadReportCall(entryId), text })
-      if (outcome.status === "refused") {
-        log.warn("lead could not post a report", { leadSessionId: lead, sessionId, entryId, reason: outcome.reason })
-        return
-      }
-      log.info("lead posted a report", { leadSessionId: lead, sessionId, entryId, status: outcome.status, bytes: Buffer.byteLength(text) })
+    post(lead, { kind: "report", from: sessionId, call: leadReportCall(entryId), text, ids: { entryId } }, async () => {
       await appendMark(sessionId, { type: "lead.result.read", payload: { sessionId, entryId } })
-    }).catch((error: unknown) => {
-      log.warn("lead could not post a report", { leadSessionId: lead, sessionId, entryId, error: errorMessage(error) })
     })
   }
 
@@ -246,16 +294,15 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (watched) for (const chat of watched.chats) events.unwatch(watched.lead, chat)
       opened?.drop()
       watched = undefined
+      leadRunner = false
       if (lead === null) return
       // The new lead chat leaves its own row.
       rows?.remove(lead)
       watched = { lead, chats: new Set() }
+      leadRunner = hasRunner(lead)
       watch(listed())
       // The results and questions that waited while no lead showed go to the lead that shows now.
-      for (const row of rows?.rows() ?? []) {
-        postReport(row.sessionId)
-        postQuestions(row.sessionId)
-      }
+      postWaiting()
       return
     }
     if (!watched) return
@@ -435,6 +482,19 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       await rows?.observe(events)
     }, (error) => { log.warn("the lead journal could not fold a stored batch", { error }) })
   })
+  // A lead whose runner attaches reads what waited for it: each change of the lead's store entry costs one read of
+  // that entry, and only an attach posts, once per row (PI-LEAD-006).
+  const unsubscribeStore = services.sessionStore.onChange((changed) => {
+    const lead = watched?.lead
+    if (disposed || lead === undefined || (changed !== undefined && !changed.has(lead))) return
+    const attached = hasRunner(lead)
+    const before = leadRunner
+    leadRunner = attached
+    if (!attached || before) return
+    log.info("lead runner attached; posting what waited", { leadSessionId: lead, waiting: waiting.size })
+    // After the posts in flight settle: one that read the lead at rest before the attach answers that it waits.
+    posting = posting.then(postWaiting)
+  }, "lead-service")
   const unsubscribeSelection = services.onSelectionChanged(() => {
     follow()
     own(reconcileMembers, (error) => { log.warn("the lead list could not adopt the chats in use", { error }) })
@@ -540,6 +600,13 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       await reconcileJournal()
       const target = await routeTarget(input, forward)
       if ("refused" in target) return { ok: false, reason: target.refused }
+      // A chat that the lead gives a request to holds the lead's rules from then on (PI-LEAD-012). The briefing lands
+      // before the forward, so the turn that the forward starts already renders them. A forward that the kernel
+      // refuses leaves the chat briefed, which is accepted: the rules only shape its questions and reports, which the lead
+      // reads either way.
+      if (target.started === undefined && await journal.append({ type: "lead.chat.briefed", payload: { sessionId: target.sessionId } })) {
+        log.info("lead briefed a chat", { leadSessionId: input.leadSessionId, sessionId: target.sessionId })
+      }
       const forwarded = await environment.forwardPersonEntries({ sourceSessionId: input.leadSessionId, entryIds: sourceEntryIds, targetSessionId: target.sessionId, ...(parts === undefined ? {} : { passages: parts }) })
       if (!forwarded.ok) return forwarded
       // A chat that left the list joins it again (PI-LEAD-002), also when its activation records no lifecycle change.
@@ -586,7 +653,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         case "pending": return {
           state: "pending",
           question: { kind: "question", toolUseId, questions: [...entry.request], timestamp: entry.openedAt },
-          context: rows?.questions(sessionId).find((waiting) => waiting.toolUseId === toolUseId)?.context ?? null,
+          context: rows?.questions(sessionId).find((pending) => pending.toolUseId === toolUseId)?.context ?? null,
         }
         case "answered": return { state: "answered", answers: formatAgentInputAnswers(entry.answers) }
         case "cancelled": return { state: "skipped" }
@@ -597,6 +664,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     async dispose() {
       disposed = true
       unsubscribeStored()
+      unsubscribeStore()
       unsubscribeClosed?.()
       unsubscribeReleased?.()
       await unsubscribeSelection()

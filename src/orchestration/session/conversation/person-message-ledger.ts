@@ -44,8 +44,9 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
   return await workflowContextRecordsAddendum(reader, workflowId, key) ? "addendum" : undefined
 }
 
-/** Holds a person's message under `key` in a cell of `kind` only while no
- *  cell of that kind holds it, in one guarded write. Two copies that arrive
+/** Holds a message under `key` in a cell of `kind` only while no cell of
+ *  that kind holds it, in one guarded write: a person's message under its
+ *  submission, or a message from another session under its sending call. Two copies that arrive
  *  together so put one cell. A copy that a commit already recorded finds
  *  that record in `recorded`, which runs after the write. Every path records
  *  the message before it retires the cell: a chat or child commit records
@@ -63,7 +64,7 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
  *
  *  Answers `held`, the record that holds the message instead, or null when
  *  the store cannot hold in-flight state. */
-export async function holdPersonMessageOnce(
+export async function holdMessageOnce(
   writer: AsyncEventWriter,
   hold: { readonly sessionId: string; readonly kind: string; readonly key: string; readonly payload: unknown },
   recorded: () => Promise<PersonMessageRecord | undefined>,

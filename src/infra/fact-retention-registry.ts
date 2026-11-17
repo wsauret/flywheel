@@ -285,6 +285,7 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "lead.result.read": HISTORY,
     "lead.chat.seen": HISTORY,
     "lead.chat.joined": HISTORY,
+    "lead.chat.briefed": HISTORY,
     "lead.chat.closed": HISTORY,
     "lead.chat.retired": HISTORY,
     "lead.list.seeded": HISTORY,

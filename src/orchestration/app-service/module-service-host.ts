@@ -56,7 +56,8 @@ export interface ModuleExecutionEnvironment {
    *  `message_session` delivers one: the recipient holds it durably, shows it as a message from that chat, and reads
    *  it when it runs. `call` stands where a model's sending call would, so the message carries the sender's own id of
    *  the occasion. It never activates the recipient. A recipient that already holds the message of this sender and
-   *  call, as an entry or as a held cell, gets nothing again: the answer is a delivery that starts no turn. */
+   *  call as an entry gets nothing again: the answer is a delivery that starts no turn. A message that only waits in
+   *  its held cell is held again under the same key and reaches a runner that reads now, which commits it once. */
   readonly sendSessionMessage: (input: { readonly fromSessionId: string; readonly toSessionId: string; readonly call: string; readonly text: string }) => Promise<DeliveryOutcome>
   /** The runtime's view of a session's runner start, which the session store does not hold: `starting` from the
    *  start of a runner until it attached and took the input that waited for it, `failed` after a start that rejected

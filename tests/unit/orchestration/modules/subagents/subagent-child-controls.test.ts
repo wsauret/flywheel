@@ -137,17 +137,21 @@ describe("durable child controls", () => {
 
   test("refuses the parent's message and takes the hold back when the child settles after the hold", async () => {
     const base = asAsyncEventWriter(store);
+    const settle = () => store.append(prepareSessionFactAppend(childSessionId, buildSubagentCompleted({
+      childRunId: "run-1",
+      status: "completed",
+      isError: false,
+      content: "done",
+      durationMs: 1,
+    })));
+    // A message from a session holds once through a swap, so the child settles right after that write.
     const settling: AsyncEventWriter = {
       ...base,
-      async putInFlight(sessionId, kind, key, payload) {
-        await base.putInFlight?.(sessionId, kind, key, payload);
-        store.append(prepareSessionFactAppend(childSessionId, buildSubagentCompleted({
-          childRunId: "run-1",
-          status: "completed",
-          isError: false,
-          content: "done",
-          durationMs: 1,
-        })));
+      async swapInFlight(sessionId, kind, key, expectedRaw, payload) {
+        // SAFETY: the store's writer implements swapInFlight.
+        const swapped = await base.swapInFlight!(sessionId, kind, key, expectedRaw, payload);
+        settle();
+        return swapped;
       },
     };
 

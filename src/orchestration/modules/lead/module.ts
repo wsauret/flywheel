@@ -38,7 +38,8 @@ export const leadModule = {
     { domain: "tools", id: ROUTE_REQUEST_TOOL_NAME, value: { kind: "tool", name: ROUTE_REQUEST_TOOL_NAME, declaration: routeRequestDeclaration } },
     { domain: "tools", id: CHAT_PROGRESS_TOOL_NAME, value: { kind: "tool", name: CHAT_PROGRESS_TOOL_NAME, declaration: chatProgressDeclaration } },
     { domain: "tools", id: FIND_CHAT_TOOL_NAME, value: { kind: "tool", name: FIND_CHAT_TOOL_NAME, declaration: findChatDeclaration } },
-    // The role is fixed when the chat starts, so a chat's prompt never changes while it lives (PI-LEAD-012).
+    // The role is set when the chat starts, and a chat that the lead first gives a request to becomes briefed then, so a
+    // chat's prompt changes at most once while it lives (PI-LEAD-012).
     { domain: "promptFragments", id: "lead-started-chat", value: {
       order: 3,
       render: async ({ modules }) => {

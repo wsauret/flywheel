@@ -3,7 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, typ
 import type { ChatInput, SessionInputProducer } from "../../../../src/infra/chat-input"
 import { buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, readWorkflowBackgroundNotifications, readConversationBackgroundNotifications } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
-import { holdQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, readUnreadMessages } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
+import { decodeQueuedUserInput, holdQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, readUnreadMessages } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { registerLiveSessionControl, messageDisposition, type RecipientState, type DeliveryOutcome, type LiveRecipientState } from "../../../../src/orchestration/session/live-session-control"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
@@ -141,6 +141,50 @@ describe("deliverSessionInput", () => {
     const chat = await manager.createChat({ name: "Closed" })
     expect(await deliverSessionInput(delivery, chat, { text: "later", producer: fromSession("sender") })).toEqual({ status: "held", reason: "no_reader" })
     expect(cells(chat).map((row) => row.key)).toEqual(["msg:sender:call-1"])
+  })
+
+  test("a message from another session is held once: a send again keeps the held cell as it is, a live loop that reads it after a recovery committed it adds no second entry, and a send after the commit records nothing", async () => {
+    const { root, manager, reader, writer, delivery, cells } = await project()
+    const conversationId = "lead-conversation"
+    const chat = await manager.createChat({ name: "Lead", conversationId })
+    const opened = await tryOpenConversationTree({ conversationId, sessionId: chat, store: reader, writer })
+    await opened!.appendMessages([{ kind: "user", content: "hello", origin: "human" }])
+    opened!.getStorage().dispose()
+    const named = (name: string) => ({ text: "Report.", producer: { ...fromSession("sender", 0, "lead-report:final-1"), envelope: { name, relation: "other" as const, waits: false } } })
+    const key = "msg:sender:lead-report:final-1"
+    expect(await deliverSessionInput(delivery, chat, named("Login"))).toEqual({ status: "held", reason: "no_reader" })
+    const [held] = cells(chat)
+    // A runner attaches, and the sender's name changed before it sends again.
+    const received: ChatInput[] = []
+    const unregister = registerLiveSessionControl(reader, {
+      sessionId: chat, state: async () => "running", notify: async () => false,
+      deliver: async (input, decide) => { received.push(input); return decide("running") },
+    })
+    try {
+      expect(await deliverSessionInput(delivery, chat, named("Login page"))).toEqual({ status: "delivered", startsTurn: false })
+    } finally {
+      unregister()
+    }
+    expect(cells(chat)).toEqual([held!])
+    expect(received.map((input) => [input.producer?.kind === "session" ? input.producer.envelope?.name : undefined, input.dispatchIds])).toEqual([["Login", [key]]])
+    // An idle commit recovers the cell that it read before the loop drains the delivered message.
+    const recovering = await tryOpenConversationTree({ conversationId, sessionId: chat, store: reader, writer })
+    expect(await recovering!.commitQueuedUserInput(decodeQueuedUserInput(held!, chat, conversationId)!)).toBe("committed")
+    recovering!.getStorage().dispose()
+    const loop = createConversationTreeWriterController({ sessionId: chat, conversationId, projectRoot: root, store: reader, projectionReader: reader, writer })
+    await loop.buildContext()
+    loop.beginTurn()
+    await loop.recordCanonicalMessage({ kind: "user", content: "Report.", producer: received[0]!.producer!, dispatchIds: [key] })
+    await loop.recordCanonicalMessage({ kind: "assistant", content: "Noted." })
+    await loop.endTurn()
+    await loop.dispose()
+    expect(await deliverSessionInput(delivery, chat, named("Login page"))).toEqual({ status: "delivered", startsTurn: false })
+    expect(cells(chat)).toEqual([])
+    const tree = await tryOpenConversationTree({ conversationId, sessionId: chat, store: reader, writer })
+    const branch = await tree!.getBranch()
+    tree!.getStorage().dispose()
+    expect(branch.filter((entry) => entry.kind === "message" && entry.message.content === "Report.").map((entry) => entry.id)).toEqual([key])
+    expect(branch.at(-1)).toMatchObject({ message: { kind: "assistant", content: "Noted." } })
   })
 
   test("a live session decides from its own state and reads the message under its cell key", async () => {

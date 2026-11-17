@@ -1,5 +1,5 @@
 import { producerOrigin } from "../../infra/agent-loop-events.js"
-import { normalizeChatInput, type ChatInputLike } from "../../infra/chat-input.js"
+import { normalizeChatInput, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightWrite } from "../../infra/event-store-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
@@ -11,7 +11,9 @@ import { readChildSessionRunEvidence, type ChildSessionRunEvidence } from "./chi
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
 import { heldBackgroundNotification, heldBackgroundNotificationPut, type HeldNotificationDestination } from "./conversation/queued-background-notifications.js"
 import { ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, addressedWorkflowMessagePayload, holdAddressedWorkflowMessage, readUnreadSessionMessages, retireAddressedWorkflowMessages, WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "./conversation/addressed-workflow-messages.js"
+import { conversationHoldsEntries } from "./conversation/session-message-entries.js"
 import {
+  decodeHeldInput,
   dropQueuedUserInput,
   holdQueuedUserInput,
   personMessageKey,
@@ -21,7 +23,7 @@ import {
   type QueuedUserInputCell,
   type QueuedUserInputDestination,
 } from "./conversation/queued-user-inputs.js"
-import { conversationPersonMessage, holdPersonMessageOnce, recordPersonMessageReceipt, workflowPersonMessage, type PersonMessageRecord } from "./conversation/person-message-ledger.js"
+import { conversationPersonMessage, holdMessageOnce, recordPersonMessageReceipt, workflowPersonMessage, type PersonMessageRecord } from "./conversation/person-message-ledger.js"
 import { liveSessionControl, liveWorkflowControl, messageDisposition, type DeliveryOutcome, type RecipientState, type LiveSessionControl } from "./live-session-control.js"
 import { endReplyWaitsByMessage, observeSessionChanged } from "./reply-waits.js"
 import type { ReplayedSession } from "./schemas.js"
@@ -98,11 +100,17 @@ export async function deliverSessionInput(
   const holdAndDeliver = async (): Promise<DeliveryOutcome> => {
     const destination = destinationOf(recipient)
     let key: string | null
-    if (personKey !== undefined && place !== undefined) {
+    let delivered = input
+    if (producer && place !== undefined) {
+      const held = await holdSessionMessageOnce(deps, place, destination, input)
+      if (held === "entry") return { status: "delivered", startsTurn: false }
+      key = held.key
+      delivered = held.input
+    } else if (personKey !== undefined && place !== undefined) {
       // Two copies that arrive together hold one cell, and a copy whose
       // earlier copy a reader committed meanwhile finds that entry.
       const put = queuedUserInputPut(personKey, destination, input)
-      const held = await holdPersonMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: put.kind, key: personKey, payload: put.payload }, () => conversationPersonMessage(deps.projectionReader, place, personKey).then((found) => found === "cell" ? undefined : found))
+      const held = await holdMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: put.kind, key: personKey, payload: put.payload }, () => conversationPersonMessage(deps.projectionReader, place, personKey).then((found) => found === "cell" ? undefined : found))
       if (held !== null && held !== "held") return receipt(recipientSessionId, input, held)
       key = held === null ? null : personKey
     } else {
@@ -123,7 +131,7 @@ export async function deliverSessionInput(
     if (producer) await endReplyWaitsByMessage({ reader: deps.projectionReader, writer: deps.eventWriter }, producer.sessionId, recipientSessionId)
     const control = after === "live" ? liveSessionControl(deps.projectionReader, recipientSessionId) : undefined
     const outcome = control
-      ? await control.deliver({ ...input, dispatchIds: [...(input.dispatchIds ?? []), key] }, decide)
+      ? await control.deliver({ ...delivered, dispatchIds: [...(delivered.dispatchIds ?? []), key] }, decide)
       : decide(after === "live" ? "at_rest" : after)
     if (outcome.status === "refused") await drop()
     return outcome
@@ -200,10 +208,37 @@ export async function deliverWorkflowInput(deps: SessionInputDeliveryDeps, workf
 async function holdAddressed(deps: SessionInputDeliveryDeps, recipientSessionId: string, input: ReturnType<typeof normalizeChatInput>, address: WorkflowDeliveryAddress): Promise<{ readonly key: string | null; readonly address: WorkflowDeliveryAddress } | { readonly recorded: PersonMessageRecord }> {
   const key = queuedUserInputKey(input.producer, input.submissionIds)
   if (personMessageKey(input) === undefined) return { key: await holdAddressedWorkflowMessage(deps.eventWriter, recipientSessionId, key, input, address) ? key : null, address }
-  const held = await holdPersonMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key, payload: addressedWorkflowMessagePayload(input, address) },
+  const held = await holdMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key, payload: addressedWorkflowMessagePayload(input, address) },
     () => workflowPersonMessage(deps.projectionReader, recipientSessionId, key).then((found) => found === "cell" ? undefined : found))
   if (held === null) return { key: null, address }
   return held === "held" ? { key, address } : { recorded: held }
+}
+
+/** Holds a message from another session once, under the key of its sending
+ *  call. A send again, as after a restart, finds the message where it is:
+ *  an entry that a reader committed is a receipt that records nothing, and
+ *  a held cell stays as it is, so the live recipient reads the cell's own
+ *  message. A cell is never written twice: a reader that commits it swaps
+ *  the exact bytes that it read, and a second write would also put back a
+ *  cell that a commit retired meanwhile. */
+async function holdSessionMessageOnce(
+  deps: SessionInputDeliveryDeps,
+  place: { readonly sessionId: string; readonly conversationId: string },
+  destination: QueuedUserInputDestination,
+  input: ChatInput,
+): Promise<{ readonly key: string | null; readonly input: ChatInput } | "entry"> {
+  const put = queuedUserInputPut(queuedUserInputKey(input.producer, undefined), destination, input)
+  const { key } = put
+  const held = await holdMessageOnce(deps.eventWriter, { sessionId: place.sessionId, kind: put.kind, key, payload: put.payload },
+    async () => (await conversationHoldsEntries(deps.projectionReader, place.conversationId, [key])).has(key) ? "entry" : undefined)
+  if (held === null) return { key: null, input }
+  if (held === "held") return { key, input }
+  if (held !== "cell") return "entry"
+  const row = (await deps.projectionReader.readInFlight(place.sessionId, [put.kind], key)).find((candidate) => candidate.key === key)
+  // A cell that went since the write refused was committed by its reader.
+  if (!row) return "entry"
+  const cell = decodeHeldInput(row)
+  return { key, input: "unreadable" in cell ? input : { ...input, text: cell.text, ...(cell.producer ? { producer: cell.producer } : {}) } }
 }
 
 /** The answer to a person's message that the ledger already holds: its

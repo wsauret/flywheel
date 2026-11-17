@@ -50,12 +50,22 @@ const LeadRequestForwardedFactSchema = defineFact({
 
 /** A chat joined the lead's list (PI-LEAD-004): a root chat other than the lead became active while it was not in the
  *  list. `briefed` is true when the chat joined at its creation while the lead showed, so its prompt holds the
- *  lead's rules for its whole life (PI-LEAD-012). */
+ *  lead's rules for its whole life (PI-LEAD-012). A chat that joins otherwise gets the rules with
+ *  `lead.chat.briefed` once the lead gives it a request. */
 const LeadChatJoinedFactSchema = defineFact({
   type: "lead.chat.joined",
   version: 1,
   actor: Schema.Literal("system"),
   payload: Schema.Struct({ sessionId: Schema.NonEmptyString, briefed: Schema.Boolean }),
+})
+
+/** The lead gave a request to a chat that neither it started nor joined briefed, so the chat's prompt holds the
+ *  lead's rules from its next request on (PI-LEAD-012). The chat need not be in the list. */
+const LeadChatBriefedFactSchema = defineFact({
+  type: "lead.chat.briefed",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString }),
 })
 
 /** The person closed a chat of the lead's list, so it leaves the list until it becomes active again. A runtime stop
@@ -110,6 +120,7 @@ const LeadFactSchema = Schema.Union([
   LeadResultReadFactSchema,
   LeadChatSeenFactSchema,
   LeadChatJoinedFactSchema,
+  LeadChatBriefedFactSchema,
   LeadChatClosedFactSchema,
   LeadChatRetiredFactSchema,
   LeadListSeededFactSchema,

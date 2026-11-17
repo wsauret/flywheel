@@ -2,15 +2,14 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { AsyncLocalStorage } from "node:async_hooks"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
-import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
 import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
-import { leadChatsCursor, leadQuestionCall, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
+import { leadChatsCursor, leadQuestionCall } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 import { createUnstartedChild } from "../subagents/_subagent-child-fixtures.js"
-import { accountOpenChat, leadHarness } from "./_lead-harness.js"
+import { accountOpenChat, committedEntries, finalMessage, leadHarness, settle } from "./_lead-harness.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 import { createMessageSessionTool } from "../../../../../src/orchestration/agent-runtime/tools/message-session.js"
 import { milestoneMessageUse } from "../../../../../src/orchestration/modules/lead/prompt.js"
@@ -69,37 +68,6 @@ test("while the module is off a listed chat's failure gives no notice, and after
   expect(notices).toEqual([lead!])
 })
 
-test("a chat that the lead started posts its report to the lead once, as a message from the chat, instead of a turn-end notice; the report counts as read, and the chat at rest leaves the list and closes", async () => {
-  const { service, openLead, sessionEvents, notices, trace, reports } = harness()
-  const lead = await openLead()
-  if (lead === null) throw new Error("expected the lead to open")
-  await supervisor.ensureChatRunner(lead)
-  // A started chat that no client shows, with no runner.
-  const { sessionId: chat } = await accountOpenChat(ctx)({ name: "Login" })
-  await service.journal.append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: ["entry-1"] } })
-  await settle(() => service.journal.state().members.has(chat))
-  sessionEvents.report(chat, "turn_ended")
-  await Bun.sleep(1)
-  expect(notices).toEqual([])
-
-  const report = "The login page works now.\nThe sign-in form had two handlers."
-  const final = "final-1"
-  await (await finalMessage(chat, final, report))()
-  await settle(() => trace.some((line) => line.startsWith("report")))
-  expect(trace.filter((line) => line.startsWith("report"))).toEqual([`report ${chat} ${leadReportCall(final)}`])
-  await settle(() => !service.journal.state().members.has(chat))
-  expect((await service.view()).rows).toEqual([])
-  const facts = ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).map((fact) => ({ type: fact.type, payload: fact.payload }))
-  expect(facts.slice(-2)).toEqual([{ type: "lead.result.read", payload: { sessionId: chat, entryId: final } }, { type: "lead.chat.retired", payload: { sessionId: chat } }])
-  // The lead held the chat while it showed a row; at rest it closes as a closed tab does.
-  await settle(async () => (await ctx.manager.read(chat))?.lifecycleState === "inactive")
-  // The runtime's delivery took the whole report to the lead as a message from the chat.
-  expect(reports).toEqual([{ fromSessionId: chat, toSessionId: lead, call: leadReportCall(final), text: report, status: expect.stringMatching(/^(delivered|held)$/) }])
-  // Reading the rows again posts nothing more.
-  await Bun.sleep(20)
-  expect(trace.filter((line) => line.startsWith("report"))).toHaveLength(1)
-})
-
 test("a listed chat's question posts to the lead once, word for word, as a question message instead of a notice, and its query follows it to its answer", async () => {
   const lead = harness()
   const { leadId, chat } = await listedChat(lead)
@@ -118,7 +86,7 @@ test("a listed chat's question posts to the lead once, word for word, as a quest
   lead.sessionEvents.report(chat, "asked")
   await settle(() => lead.reports.some((report) => report.call === leadQuestionCall("ask-1")))
   expect(lead.reports.filter((report) => report.call === leadQuestionCall("ask-1"))).toEqual([{
-    fromSessionId: chat, toSessionId: leadId, call: leadQuestionCall("ask-1"), status: expect.stringMatching(/^(delivered|held)$/),
+    fromSessionId: chat, toSessionId: leadId, call: leadQuestionCall("ask-1"), status: "delivered",
     text: `Context:\n${context}\nQuestion (Form): Which form should change?\nOptions:\n- Sign-in form: The form on the start page (recommended)\n- Sign-up form`,
   }])
   // The message replaces the hidden notice of a question.
@@ -160,79 +128,6 @@ async function listedChat(lead: ReturnType<typeof harness>): Promise<{ readonly 
   await supervisor.ensureChatRunner(leadId)
   return { leadId, chat: await personChat(lead) }
 }
-
-/** The append of one final assistant message of `sessionId`, which the store broadcasts at once. */
-async function finalMessage(sessionId: string, id: string, text: string) {
-  const conversationId = await conversation.chatConversationId(sessionId)
-  return () => ctx.store.append({
-    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId,
-    payload: { conversationId, entries: [{ kind: "message", id, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }] } }] },
-  })
-}
-
-async function settle(until: () => boolean | Promise<boolean>): Promise<void> {
-  for (let attempt = 0; attempt < 200 && !await until(); attempt += 1) await Bun.sleep(5)
-}
-
-test("a report that the lead holds is not delivered again after a restart that lost its read mark", async () => {
-  // The first process sends the report and stops before its read mark lands.
-  const store = asAsyncEventWriter(ctx.store)
-  const appendGuarded: typeof store.appendGuarded = async (event) => {
-    if (event.type === "lead.result.read") throw new Error("the process stopped")
-    return await store.appendGuarded(event)
-  }
-  const first = harness()
-  const { leadId, chat } = await listedChat(first)
-  await first.dispose()
-  disposeAll = disposeAll.filter((dispose) => dispose !== first.dispose)
-  const before = leadHarness(ctx, { eventWriter: { ...store, appendGuarded } })
-  supervisor = before.supervisor
-  disposeAll.push(before.dispose)
-  await (await finalMessage(chat, "final-1", "The login page works now."))()
-  await settle(() => before.reports.length > 0)
-  await Bun.sleep(20)
-  expect(before.reports.map((report) => report.status)).toEqual([expect.stringMatching(/^(delivered|held)$/)])
-  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read")).toBe(false)
-  await before.dispose()
-  disposeAll = disposeAll.filter((dispose) => dispose !== before.dispose)
-
-  // The next process posts the unread result again, and the runtime's delivery finds the report the lead holds.
-  const key = `msg:${chat}:${leadReportCall("final-1")}`
-  const held = () => ctx.store.readInFlight(leadId, QUEUED_USER_INPUT_IN_FLIGHT_KIND, key).length
-  const heldBefore = held()
-  const after = harness()
-  await settle(async () => (await after.service.view()).rows.every((row) => row.state !== "result") && after.reports.length > 0)
-  expect(after.reports).toEqual([expect.objectContaining({ call: leadReportCall("final-1"), status: "delivered" })])
-  expect(held()).toBe(heldBefore)
-  await settle(() => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read"))
-  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.result.read").map((fact) => fact.payload)).toEqual([{ sessionId: chat, entryId: "final-1" }])
-})
-
-test("two finals of one chat that fold before their reports post each report with its own text", async () => {
-  // The store's broadcast, held while the test appends, then delivered one batch after another in one go.
-  const listeners = new Set<(events: readonly StoredFact[]) => void>()
-  let held: (readonly StoredFact[])[] | undefined
-  disposeAll.push(async () => { unsubscribe() })
-  const unsubscribe = ctx.store.onStored((events) => { if (held) held.push(events); else for (const listener of listeners) listener(events) })
-  const lead = harness(asAsyncEventReadSurface(ctx.store), (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } })
-  if (await lead.openLead() === null) throw new Error("expected the lead to open")
-  // A started chat with no runner, so each final message reads as a result at once.
-  const { sessionId: chat } = await accountOpenChat(ctx)({ name: "Login" })
-  // Appended through another connection, as the route of another process does, so the service follows it from the broadcast.
-  await createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store }).append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: ["entry-1"] } })
-  await settle(async () => (await lead.service.progress(chat)).kind !== "refused")
-  const first = await finalMessage(chat, "final-1", "First answer.")
-  const second = await finalMessage(chat, "final-2", "Second answer.")
-  // Both batches reach the service before its lane runs the first report.
-  held = []
-  await first()
-  await second()
-  const batches = held
-  held = undefined
-  for (const events of batches) for (const listener of listeners) listener(events)
-  await settle(() => lead.reports.length >= 2)
-  expect(lead.reports.map((report) => [report.call, report.text])).toEqual([[leadReportCall("final-1"), "First answer."], [leadReportCall("final-2"), "Second answer."]])
-})
 
 type Collection = readonly unknown[] | ReadonlyMap<unknown, unknown> | ReadonlySet<unknown>
 
@@ -527,7 +422,7 @@ test("a finished turn of a chat that a client shows posts no report and removes 
   const lead = harness()
   const { chat } = await listedChat(lead)
   await supervisor.activateSession(chat, { shown: true })
-  await (await finalMessage(chat, "final-1", "The login page works now."))()
+  await (await finalMessage(ctx, chat, "final-1", "The login page works now."))()
   await settle(async () => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read") && (await listed(lead)).length === 0)
   expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: "final-1" } })
   expect(lead.reports).toEqual([])
@@ -557,7 +452,7 @@ test("a finished turn of a chat that a client shows posts no report and removes 
 
 // PI-LEAD-006, PI-LEAD-012: the chat reaches the lead by the id that its message_session contract names, and the
 // production delivery takes the message with no rule of the lead's own. The wake of an idle recipient is the delivery's
-// own rule (session-messaging.test.ts); this harness's lead runner is at rest, so its message waits in its queue.
+// own rule (session-messaging.test.ts); this harness's lead runner commits the message as its entry.
 test("a listed chat's milestone message reaches the shown lead that its contract names, as a message from the chat", async () => {
   const lead = harness()
   const { leadId, chat } = await listedChat(lead)
@@ -572,8 +467,9 @@ test("a listed chat's milestone message reaches the shown lead that its contract
     sessionId: chat, conversationId: await conversation.chatConversationId(chat), toolUseId: "milestone-1", turnHop: () => 0, conversationHistory: () => [],
   })
   expect(sent.outcome).toBe("ok")
-  const queued = ctx.store.readInFlight(leadId, QUEUED_USER_INPUT_IN_FLIGHT_KIND, `msg:${chat}:milestone-1`).map((row) => decodeQueuedUserInputCell(row, leadId))
-  expect(queued).toEqual([expect.objectContaining({ text, producer: expect.objectContaining({ kind: "session", sessionId: chat, toolUseId: "milestone-1" }) })])
+  expect(await committedEntries(ctx, leadId, `msg:${chat}:milestone-1`)).toEqual([expect.objectContaining({
+    message: expect.objectContaining({ content: text, producer: expect.objectContaining({ kind: "session", sessionId: chat, toolUseId: "milestone-1" }) }),
+  })])
 })
 
 test("a chat that starts while the lead shows holds the lead's rules for its life, and one that starts while the lead is dismissed holds none", async () => {
@@ -614,7 +510,7 @@ test("the first run of a list joins every active root chat and each started chat
   await writer.append({ type: "lead.chat.started", payload: { sessionId: unread, sourceEntryIds: ["entry-1"] } })
   await writer.append({ type: "lead.chat.started", payload: { sessionId: done, sourceEntryIds: ["entry-2"] } })
   // The person read the done chat's result.
-  await (await finalMessage(done, "final-done", "Fixed."))()
+  await (await finalMessage(ctx, done, "final-done", "Fixed."))()
   await writer.append({ type: "lead.result.read", payload: { sessionId: done, entryId: "final-done" } })
 
   const lead = harness()
@@ -641,7 +537,7 @@ test("a result that finishes in a chat that a client shows while the lead is dis
   await lead.control.dismiss(leadId)
   await settle(() => lead.service.role(leadId) === undefined)
   await supervisor.activateSession(chat, { shown: true })
-  await (await finalMessage(chat, "final-1", "The login page works now."))()
+  await (await finalMessage(ctx, chat, "final-1", "The login page works now."))()
   await settle(() => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read"))
   await supervisor.releaseSession(chat)
 
@@ -695,7 +591,7 @@ test("a first run that stopped after its first join finishes at the next start",
 async function earlierMember(writer: ReturnType<typeof createLeadJournal>, final?: { readonly id: string; readonly read: boolean }): Promise<string> {
   const chat = await ctx.manager.createChat({ conversationId: ctx.manager.allocateId(), executionCwd: ctx.baseDir, initialState: "inactive" })
   await conversation.appendConversation(chat, [{ kind: "user", content: "Fix it", origin: "human" }])
-  if (final) await (await finalMessage(chat, final.id, "Fixed."))()
+  if (final) await (await finalMessage(ctx, chat, final.id, "Fixed."))()
   if (final?.read) await writer.append({ type: "lead.result.read", payload: { sessionId: chat, entryId: final.id } })
   await writer.append({ type: "lead.chat.joined", payload: { sessionId: chat, briefed: false } })
   return chat

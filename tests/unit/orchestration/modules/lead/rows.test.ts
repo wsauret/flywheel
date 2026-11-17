@@ -2,7 +2,9 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { heldProjection } from "../../../../../src/infra/projection-registry.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
+import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js"
 import { turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { authorizePlannedSessionContinuation, retirePlannedSessionContinuation } from "../../../../../src/orchestration/session/planned-session-continuation.js"
 import { leadNeedsPerson, type LeadRow } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { leadHarness } from "./_lead-harness.js"
@@ -168,6 +170,48 @@ test("a visible interrupt is cut, a crash record is failed with its entry, and a
   expect(await eventually(() => latest(cut), (row) => typeof row === "object")).toMatchObject({ state: "cut", status: "interrupted", ended: { entryId: interrupt } })
   expect(await eventually(() => latest(crashed), (row) => typeof row === "object")).toMatchObject({ state: "failed", status: "failed", ended: { entryId: crash } })
   expect(await eventually(() => latest(open), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", ended: { entryId: "u1" } })
+})
+
+test("a turn that a planned stop cut after a progress message reads working, not result, until its continuation answers", async () => {
+  const { lead, reader, latest, eventually, startChat, appendEntries, published } = rowsHarness()
+  const chat = await startChat()
+  const planned = turnEndEntryId({ reason: "paused", pausedBy: "runtime", planned: true }, "k1")
+  await authorizePlannedSessionContinuation({ reader, writer: ctx.store, continuation: { target: { kind: "chat", sessionId: chat }, handoffId: "handoff-1" } })
+  await appendEntries(chat, [
+    { kind: "message", id: "u1", message: { kind: "user", content: "Review the change", origin: "human" } },
+    { kind: "message", id: "a1", message: { kind: "assistant", content: [{ type: "text", text: "The reviewers run; I wait for them." }] } },
+    { kind: "message", id: planned, message: { kind: "user", content: "The runtime interrupted this turn before it finished, at a planned stop.", origin: "system" } },
+  ])
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "working" })
+  // The lead's reading of the chat says what its row says.
+  expect(await lead.service.progress(chat)).toMatchObject({ kind: "detail", chat: { activity: "starting", lastTurn: "was cut" } })
+  // The successor's continuation keeps the turn open; its answer ends the turn.
+  await appendEntries(chat, [{ kind: "message", id: "c1", message: { kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" } }])
+  await Bun.sleep(20)
+  expect(latest(chat)).toMatchObject({ state: "working" })
+  await appendEntries(chat, [{ kind: "message", id: "a2", message: { kind: "assistant", content: [{ type: "text", text: "Both reviews passed." }] } }])
+  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "result")).toMatchObject({ state: "result", result: { entryId: "a2" } })
+  expect(published(chat).flatMap((row) => row.result ? [row.result.entryId] : [])).not.toContain("a1")
+})
+
+test("a planned cut whose continuation is no longer owed and whose runtime does not start reads cut, so the person sees its Resume", async () => {
+  const { reader, latest, eventually, startChat, appendEntries } = rowsHarness()
+  const planned = turnEndEntryId({ reason: "paused", pausedBy: "runtime", planned: true }, "k1")
+  const cutTurn = [
+    { kind: "message", id: "u1", message: { kind: "user", content: "Review the change", origin: "human" } },
+    { kind: "message", id: planned, message: { kind: "user", content: "The runtime interrupted this turn before it finished, at a planned stop.", origin: "system" } },
+  ]
+  // The successor's continuation fails in this process: it retires the row and the chat stays interrupted.
+  const failed = await startChat()
+  await authorizePlannedSessionContinuation({ reader, writer: ctx.store, continuation: { target: { kind: "chat", sessionId: failed }, handoffId: "handoff-1" } })
+  await appendEntries(failed, cutTurn)
+  expect(await eventually(() => latest(failed), (row) => typeof row === "object")).toMatchObject({ state: "working" })
+  expect(await retirePlannedSessionContinuation({ reader, writer: ctx.store, sessionId: failed, handoffId: "handoff-1" })).toBe(true)
+  expect(await eventually(() => latest(failed), (row) => typeof row === "object" && row.state !== "working")).toMatchObject({ state: "cut", status: "interrupted", ended: { entryId: planned } })
+  // A list that a later process builds reads a planned cut with no continuation row as cut at once.
+  const later = await startChat()
+  await appendEntries(later, cutTurn)
+  expect(await eventually(() => latest(later), (row) => typeof row === "object")).toMatchObject({ state: "cut", ended: { entryId: planned } })
 })
 
 test("a failure that the person saw removes the row until the chat fails again at a later entry", async () => {

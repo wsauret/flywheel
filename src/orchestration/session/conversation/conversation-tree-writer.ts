@@ -133,7 +133,9 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
   // Ordered FIFO buffer of conversation-tree writes that arrived during an active
   // turn and must wait for a save point. Scoped to the single write kind
   // Flywheel currently emits.
-  const pending: { readonly message: ConversationMessage; readonly id: Promise<string> }[] = [];
+  // A null id marks a message from another session that a reader committed
+  // already under its key: the save point skips it (`enqueueMessage`).
+  const pending: { readonly message: ConversationMessage; readonly id: Promise<string | null> }[] = [];
   // Transcript commits that arrived while a turn was running (a review
   // notice, the interrupt marker). They are not the turn's output, so they
   // never split a tool exchange: a save point, idle or not, releases them
@@ -233,12 +235,19 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
       const key = message.kind === "user" ? heldEntryKey(message) : undefined;
       if (key !== undefined) {
         const existing = pending.map((record) => record.id);
-        if (!(await Promise.all(existing)).includes(key) && await tree.getEntry(key) === undefined) return key;
+        const committed = await tree.getEntry(key) !== undefined;
+        // A message from another session that an idle commit recovered from
+        // its cell after the live delivery read the cell is in history
+        // already, so a second entry would repeat it. A notification keeps
+        // its fresh id: it commits as the loop read it.
+        if (committed && message.kind === "user" && message.dispatchIds?.length === 1 && message.backgroundNotificationIds === undefined) return null;
+        if (!committed && !(await Promise.all(existing)).includes(key)) return key;
       }
       return tree.getStorage().allocateId();
     })() : Promise.resolve(id);
     pending.push({ message, id: reservedId });
-    await tree.holdPendingMessage(message, await reservedId);
+    const reserved = await reservedId;
+    if (reserved !== null) await tree.holdPendingMessage(message, reserved);
   }
 
   function suspendPending(): void {
@@ -249,7 +258,7 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     }
     // enqueueMessage owns any allocation failure; this follower only retires
     // allocations that succeeded after the turn was dropped.
-    for (const record of abandoned) void record.id.then((id) => tree.getStorage().releaseId(id), () => {});
+    for (const record of abandoned) void record.id.then((id) => { if (id !== null) tree.getStorage().releaseId(id) }, () => {});
     tree.releasePendingMessages();
     phase = "idle";
   }
@@ -286,10 +295,13 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
 
   async function drainSavePoint(drained: number, options: DrainOptions): Promise<void> {
     const owned = Math.min(drained, pending.length);
-    const records = pending.slice(0, owned);
+    const reservedIds = await Promise.all(pending.slice(0, owned).map(({ id }) => id));
+    const records = pending.slice(0, owned).flatMap(({ message }, index) => {
+      const id = reservedIds[index];
+      return id === null || id === undefined ? [] : [{ message, id }];
+    });
     const messages = records.map(({ message }) => message);
-    const reservedIds = await Promise.all(records.map(({ id }) => id));
-    const reservations = new Map(messages.map((message, index) => [message, reservedIds[index]]));
+    const reservations = new Map(records.map(({ message, id }) => [message, id]));
     const turnBatch = await repairSavePointExtension(tree, messages, options.protectedToolUseIds ?? new Set());
     // Idle is no exception: a question a stop left open is a tool call that
     // still awaits its result, and its answer must land right after it.
@@ -332,6 +344,8 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
           throw new Error(`Session tree batch was not committed: ${reason}`);
         }
       }
+    } else {
+      pending.splice(0, owned);
     }
     // Held work commits only once the turn releases: at its end, or while
     // the writer is idle. Its record settles the exchange it answers, so in

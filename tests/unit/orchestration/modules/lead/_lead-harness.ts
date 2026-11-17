@@ -1,16 +1,19 @@
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import { NO_MODULE_SERVICES } from "../../../../../src/infra/module-service.js"
+import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
 import { createSessionEventNotices } from "../../../../../src/orchestration/app-service/session-event-notices.js"
 import { moduleExecutionEnvironment } from "../../../../../src/orchestration/app-service/module-execution-environment.js"
 import type { ControlSessionPorts } from "../../../../../src/orchestration/app-service/module-service-host.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
 import { createTranscriptProjectionCache } from "../../../../../src/orchestration/app-service/transcript-projection-cache.js"
 import { createRuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { loadSessionView } from "../../../../../src/orchestration/session-store/view.js"
+import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
 import { createLeadControl } from "../../../../../src/orchestration/modules/lead/control.js"
 import { createLeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
-import { mockRunner, supervisorBaseDeps, testSessionAuthAdmission, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
+import { mockRunner, supervisorBaseDeps, supervisorConversationFixture, testSessionAuthAdmission, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { catalogRow } from "../../../../helpers/session-catalog.js"
 import { join } from "node:path"
 import { acquireConversationSearchIndex } from "../../../../../src/infra/conversation-fts.js"
@@ -38,14 +41,17 @@ export function accountOpenChat(ctx: SupervisorTestContext): ControlSessionPorts
  *  the store's broadcast, delivers stored batches to the service and to the default control connection. Each notice
  *  that a chat's runner receives is recorded by the chat's id, and `trace` records each watch and each forward in
  *  order. A runner starts once `runnerStartup` resolves, so every message that lands before then commits as the chat's
- *  entry. `eventWriter`, by default the store, is the service's own writer. `dispose` ends the service, the control part, the notices, and the supervisor. */
-export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly onStored?: ControlConnection["onStored"]; readonly runnerStartup?: Promise<void>; readonly eventWriter?: AsyncEventWriter; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
+ *  entry. `eventWriter`, by default the store, is the service's own writer. `answered`, when set, holds the answer of each
+ *  message that the service posts between sessions until it resolves. `dispose` ends the service, the control part, the notices, and the supervisor. */
+export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly onStored?: ControlConnection["onStored"]; readonly runnerStartup?: Promise<void>; readonly eventWriter?: AsyncEventWriter; readonly answered?: () => Promise<void>; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
   const projectionReader = setup.projectionReader ?? asAsyncEventReadSurface(ctx.store)
   const onStored = setup.onStored ?? ctx.store.onStored
   const notices: string[] = []
   // Each input that a chat's runner took while attached, as its turn starts on it.
   const inputs: { readonly sessionId: string; readonly message: unknown }[] = []
   const trace: string[] = []
+  // The target of each forward with the lead role that the service held for it as the forward began.
+  const forwardRoles: string[] = []
   // Each message that the service posted between sessions, with how the runtime's delivery answered it.
   const reports: { readonly fromSessionId: string; readonly toSessionId: string; readonly call: string; readonly text: string; readonly status: string }[] = []
   const patches: RuntimeUiPatchInput[] = []
@@ -58,6 +64,20 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       return mockRunner(deps.sessionId, {
         deliverSilentNotice: async () => { notices.push(deps.sessionId); return "delivered" },
         send: async (message) => { inputs.push({ sessionId: deps.sessionId, message }); return "accepted" },
+        // An idle runner commits a message from another session through its conversation's writer, under the key of
+        // its held cell, as a live runner does; it starts no turn here.
+        deliverHeldMessage: async (message, decide) => {
+          const outcome = decide("idle")
+          const session = await ctx.manager.read(deps.sessionId)
+          if (outcome.status === "refused" || session?.kind !== "chat") return outcome
+          const writer = createConversationTreeWriterController({ sessionId: deps.sessionId, conversationId: session.conversationId, projectRoot: ctx.baseDir, store: storeReader, projectionReader: storeReader, writer: ctx.store })
+          try {
+            await writer.commitHeldMessage(message)
+          } finally {
+            await writer.dispose()
+          }
+          return outcome
+        },
       })
     } }),
     sessionViewLoader: { load: (id) => loadSessionView(id, storeReader, storeReader) },
@@ -74,7 +94,8 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     recall: async () => { throw new Error("the lead service does not recall") },
     findChats: (request) => chatSearch.findChats(request),
     sessionEvents, sessionStore: ctx.sessionStore, transcriptCache, supervisor,
-    delivery: { manager: ctx.manager, projectionReader, eventWriter: ctx.store },
+    // The reader with which the supervisor registers each attached runner's live control, as production delivers with one reader.
+    delivery: { manager: ctx.manager, projectionReader: ctx.runtime.runSync(EventReaderService), eventWriter: ctx.store },
   })
   let enabled = true
   const selectionListeners = new Set<() => void | Promise<void>>()
@@ -98,7 +119,11 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
         unwatch: (watcher, watched) => { sessionEvents.unwatch(watcher, watched) },
       },
       personEntries: (sessionId, earlierTurns) => supervisor.personEntries(sessionId, earlierTurns),
-      forwardPersonEntries: (input) => { trace.push(`forward ${input.targetSessionId}`); return supervisor.forwardPersonEntries(input) },
+      forwardPersonEntries: (input) => {
+        trace.push(`forward ${input.targetSessionId}`)
+        forwardRoles.push(`${input.targetSessionId} ${service.role(input.targetSessionId) ?? "none"}`)
+        return supervisor.forwardPersonEntries(input)
+      },
       sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
       createOpenHold: () => supervisor.createOpenHold(),
       onChatClosed: (listener) => supervisor.onChatClosed(listener),
@@ -109,6 +134,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
         trace.push(`report ${input.fromSessionId} ${input.call}`)
         const outcome = await runtime.sendSessionMessage(input)
         reports.push({ ...input, status: outcome.status })
+        await setup.answered?.()
         return outcome
       },
     }),
@@ -134,7 +160,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
   /** Opens the lead chat through the control part and answers its id, or null while it opens none. */
   const openLead = async (reason: "launch" | "command" = "launch"): Promise<string | null> => (await control.open(reason))?.sessionId ?? null
   return {
-    service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, reports,
+    service, control, openLead, supervisor, sessionEvents, notices, inputs, patches, trace, forwardRoles, reports,
     /** A person's close that the control placement carries out while execution is paused: the chat turns inactive
      *  and the control placement tells its listeners. */
     async pausedClose(sessionId: string, tabClose: boolean) {
@@ -153,5 +179,31 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       await transcriptCache.dispose()
       await searchIndex.dispose()
     },
+  }
+}
+
+/** The append of one final assistant message of `sessionId`, which the store broadcasts at once. */
+export async function finalMessage(ctx: SupervisorTestContext, sessionId: string, id: string, text: string) {
+  const conversationId = await supervisorConversationFixture(() => ctx).chatConversationId(sessionId)
+  return () => ctx.store.append({
+    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId,
+    payload: { conversationId, entries: [{ kind: "message", id, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }] } }] },
+  })
+}
+
+/** Waits until `until` holds, for one second at most. */
+export async function settle(until: () => boolean | Promise<boolean>): Promise<void> {
+  for (let attempt = 0; attempt < 200 && !await until(); attempt += 1) await Bun.sleep(5)
+}
+
+/** The entries of a chat's conversation under `key`, as its branch holds them. */
+export async function committedEntries(ctx: SupervisorTestContext, sessionId: string, key: string): Promise<readonly unknown[]> {
+  const conversationId = await supervisorConversationFixture(() => ctx).chatConversationId(sessionId)
+  const tree = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
+  if (!tree) return []
+  try {
+    return (await tree.getBranch()).filter((entry) => entry.id === key)
+  } finally {
+    await tree.getStorage().dispose()
   }
 }

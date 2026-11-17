@@ -203,6 +203,46 @@ test("an existing route reaches any chat of the project, also one that the perso
   expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.closed", "lead.chat.closed", "lead.request.forwarded", "lead.request.forwarded"])
 })
 
+test("a chat that the lead gives a request to holds the lead's rules from then on, settled before the forward starts its turn; a started chat stays started", async () => {
+  const lead = await routingLead()
+  lead.startRunners()
+  /** A chat that ran a turn before the lead, so its activation joins it with no briefing. */
+  const earlierChat = async (): Promise<string> => {
+    const sessionId = await ctx.manager.createChat({ initialState: "inactive" })
+    await conversation.appendConversation(sessionId, [{ kind: "user", content: "Earlier work", origin: "human" }, { kind: "assistant", content: [{ type: "text", text: "Done." }] }])
+    return sessionId
+  }
+  const member = await earlierChat()
+  const outside = await earlierChat()
+  await ctx.manager.updateLifecycleState(member, "active")
+  await settled()
+  expect(joins()).toContainEqual({ sessionId: member, briefed: false })
+  expect(joins().map((join) => join.sessionId)).not.toContain(outside)
+  expect([lead.service.role(member), lead.service.role(outside)]).toEqual([undefined, undefined])
+
+  const briefings = () => ctx.store.read({ aggregateId: "lead" }).flatMap((fact) => fact.type === "lead.chat.briefed" ? [fact.payload] : [])
+  const routeTo = async (chat: string, content: string) => {
+    const result = await lead.route([{ kind: "user", content, origin: "human" }], { kind: "existing", chat })
+    expect(result.outcome).toBe("ok")
+    await conversation.appendConversation(lead.leadSessionId, [{ kind: "assistant", content: [{ type: "text", text: "Routed." }] }])
+  }
+  await routeTo(member, "Continue the member")
+  await routeTo(outside, "Continue the other")
+  // Each chat held its briefing as the forward began, so the request that the forward starts renders the lead's rules.
+  expect(lead.forwardRoles).toEqual([`${member} briefed`, `${outside} briefed`])
+  expect([await lead.service.settledRole(member), await lead.service.settledRole(outside)]).toEqual(["briefed", "briefed"])
+  expect(briefings()).toEqual([{ sessionId: member }, { sessionId: outside }])
+  await routeTo(member, "One more thing")
+  expect(briefings()).toHaveLength(2)
+
+  expect((await lead.route([{ kind: "user", content: "Start something", origin: "human" }], { kind: "new" })).outcome).toBe("ok")
+  await conversation.appendConversation(lead.leadSessionId, [{ kind: "assistant", content: [{ type: "text", text: "Started." }] }])
+  const started = startedChat()
+  await routeTo(started, "Continue the started chat")
+  expect(await lead.service.settledRole(started)).toBe("started")
+  expect(briefings()).toHaveLength(2)
+})
+
 test("find_chat answers the past chats that match, best first, marks the chats in the list, and never answers the lead, a deleted chat, or a subagent", async () => {
   const lead = await routingLead()
   const past = await lead.supervisor.openSessionRuntime()

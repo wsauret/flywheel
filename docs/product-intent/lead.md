@@ -48,7 +48,7 @@ The lead speaks as the person's assistant, and its own words lead its transcript
 
 ## PI-LEAD-012: Every chat reports in one shape
 
-While the lead is on, every new chat writes each question for a reader new to the chat, and ends each turn with a report in one shape. It states its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, open questions with a recommendation, and what it noticed. Every chat in the lead's list messages the lead mid-turn at each milestone, such as a PR opened. The lead's summary names what the chat found and presents its claims as the chat's.
+While the lead is on, every new chat, and an older chat once the lead gives it a request, writes each question for a reader new to the chat. It ends each turn with a report of its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, open questions with a recommendation, and what it noticed. Every listed chat messages the lead mid-turn at each milestone, such as a PR opened. The lead's summary presents the chat's findings as the chat's claims.
 
 ## PI-LEAD-013: The lead's tab shows only beside other tabs
 
