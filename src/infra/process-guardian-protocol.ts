@@ -31,7 +31,7 @@ const GUARDIAN_PROTOCOL_VERSION = 1
  *  process's memory, so the bound must be the quantity the peer actually sends.
  *  A JavaScript string length would let a multibyte frame occupy up to four
  *  times this many bytes. */
-export const GUARDIAN_MAX_FRAME_BYTES = 4_096
+const GUARDIAN_MAX_FRAME_BYTES = 4_096
 
 export const GUARDIAN_MAX_OWNED_CONTAINERS = 256
 export const GUARDIAN_MAX_GENERATIONS = 64

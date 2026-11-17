@@ -16,7 +16,7 @@ import type { LauncherScope } from "./process-supervisor.js"
 /** A credential is one short line. The smaller bound keeps a helper that prints
  *  a whole keyring from ever being held in memory, and output past it is
  *  refused rather than cut: half a credential is still a credential. */
-export const MAX_SECRET_BYTES = 64 * 1_024
+const MAX_SECRET_BYTES = 64 * 1_024
 
 const DEFAULT_TIMEOUT_MS = 10_000
 

@@ -5,10 +5,11 @@ import { join } from "node:path"
 
 import { platformGuardianLedger, type GuardianLedger } from "../../../src/infra/guardian-ledger.js"
 import { Log } from "../../../src/infra/log.js"
-import { createProcessHolders, processHolders, type HolderKernel } from "../../../src/infra/process-holder.js"
+import { processHolders } from "../../../src/infra/process-holder.js"
 import { privateTemporaryRoot } from "../../../src/infra/private-temporary-root.js"
 import type { BootIdentity, ProcessStart } from "../../../src/infra/process-container.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
+import { processHoldersOver } from "../../helpers/process-holders.js"
 
 const temporary = temporaryDirectories()
 
@@ -48,15 +49,14 @@ afterEach(() => {
 /** Makes the kernel, as the ledger's holder answers see it, say which pids
  *  run, with which start stamp, in which boot. This process always runs with
  *  start "1". */
-function kernel(starts: { readonly [pid: number]: string }, boot: string = BOOT): void {
-  const fake: HolderKernel = {
+async function kernel(starts: { readonly [pid: number]: string }, boot: string = BOOT): Promise<void> {
+  const holders = await processHoldersOver({
     start: (pid): ProcessStart => {
       const start = pid === process.pid ? "1" : starts[pid]
       return start === undefined ? { kind: "absent" } : { kind: "process", start }
     },
     boot: (): BootIdentity => ({ kind: "boot", id: boot }),
-  }
-  const holders = createProcessHolders(fake)
+  })
   restoreKernel()
   const own = spyOn(processHolders, "own").mockImplementation(() => holders.own())
   const state = spyOn(processHolders, "state").mockImplementation((holder) => holders.state(holder))
@@ -75,30 +75,30 @@ function recordOf(guardian: { readonly pid: number; readonly start: string; read
 describe.skipIf(platformGuardianLedger === undefined)("guardian ledger", () => {
   const ledger = (): GuardianLedger => platformGuardianLedger ?? expect.unreachable("this host keeps no guardian ledger")
 
-  test("answers a lease as abandoned once the guardian that recorded it is gone, and never while it runs", () => {
-    kernel({})
+  test("answers a lease as abandoned once the guardian that recorded it is gone, and never while it runs", async () => {
+    await kernel({})
     // The guardian that records the lease is this process.
     ledger().hold(lease)
     expect(ledger().abandoned()).toEqual([])
 
     // A later process that reads the same record after its guardian died.
     recordOf({ pid: DEAD_GUARDIAN, start: "7", boot: BOOT })
-    kernel({ [DEAD_GUARDIAN]: "8" })
+    await kernel({ [DEAD_GUARDIAN]: "8" })
     expect(ledger().abandoned()).toEqual([{ ...lease, guardianPid: DEAD_GUARDIAN, proof: "another-process" }])
-    kernel({ [DEAD_GUARDIAN]: "7" })
+    await kernel({ [DEAD_GUARDIAN]: "7" })
     expect(ledger().abandoned()).toEqual([])
   })
 
-  test("forgets a dropped lease, so nothing is answered for it later", () => {
-    kernel({})
+  test("forgets a dropped lease, so nothing is answered for it later", async () => {
+    await kernel({})
     ledger().hold(lease)
     ledger().drop(lease.token, process.pid)
 
     expect(readdirSync(ledgerRoot())).toEqual([])
   })
 
-  test("keeps each guardian's record of one token apart, so a guardian that drops its own leaves the adopting guardian's", () => {
-    kernel({ [ADOPTING_GUARDIAN]: "9" })
+  test("keeps each guardian's record of one token apart, so a guardian that drops its own leaves the adopting guardian's", async () => {
+    await kernel({ [ADOPTING_GUARDIAN]: "9" })
     // A handover leases one command under one token in two builds' guardians
     // at once: this process, and the adopting build's guardian.
     ledger().hold(lease)
@@ -107,22 +107,22 @@ describe.skipIf(platformGuardianLedger === undefined)("guardian ledger", () => {
 
     // The adopting guardian dies with every other owner, and its record is
     // what the next guardian finds.
-    kernel({ [ADOPTING_GUARDIAN]: "8" })
+    await kernel({ [ADOPTING_GUARDIAN]: "8" })
     expect(ledger().abandoned()).toEqual([{ ...lease, guardianPid: ADOPTING_GUARDIAN, proof: "another-process" }])
     ledger().drop(lease.token, ADOPTING_GUARDIAN)
     expect(readdirSync(ledgerRoot())).toEqual([])
   })
 
-  test("removes a record of another boot without answering it, since every process it names is gone", () => {
-    kernel({})
+  test("removes a record of another boot without answering it, since every process it names is gone", async () => {
+    await kernel({})
     const path = recordOf({ pid: DEAD_GUARDIAN, start: "7", boot: OTHER_BOOT })
 
     expect(ledger().abandoned()).toEqual([])
     expect(existsSync(path)).toBe(false)
   })
 
-  test("leaves each record it cannot read in place, and reports each one once", () => {
-    kernel({})
+  test("leaves each record it cannot read in place, and reports each one once", async () => {
+    await kernel({})
     const guardian = { v: 1, pid: DEAD_GUARDIAN, start: "7", boot: BOOT }
     // Another version, a key version 1 does not define, and a guardian pid
     // that names no process: each of a dead guardian, so a record this build
