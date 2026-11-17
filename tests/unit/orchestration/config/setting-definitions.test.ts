@@ -1,19 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import {
   PERSISTED_SETTING_DEFINITIONS,
-  RETAINED_CONFIG_SECTION_DEFINITIONS,
   settingDefinitions,
 } from "../../../../src/orchestration/config/setting-definitions.js";
-import { installedConfigSections } from "../../../../src/orchestration/module-catalog.js";
 
 describe("persisted setting definitions", () => {
   test("give each persisted root key exactly one owner", () => {
     const ownedKeys = [
       ...new Set(PERSISTED_SETTING_DEFINITIONS.map((definition) => definition.path[0])),
-      ...RETAINED_CONFIG_SECTION_DEFINITIONS.map((definition) => definition.key),
-      ...installedConfigSections().map((section) => section.key),
+      ...settingDefinitions().flatMap((definition) => definition.kind === "retained-section" ? [definition.key] : []),
     ];
 
     expect(new Set(ownedKeys).size).toBe(ownedKeys.length);
@@ -39,10 +36,10 @@ describe("persisted setting definitions", () => {
 
 
   test("owns the Copilot cap only in optional profile overlays", () => {
-    const defaults = Schema.decodeUnknownSync(FlywheelConfigSchema)({});
+    const defaults = Schema.decodeUnknownSync(installedConfigSchema())({});
     expect("providers" in defaults).toBe(false);
-    expect(Schema.decodeUnknownSync(FlywheelConfigSchema)({ profiles: { work: {} } }).profiles.work?.providers).toEqual({});
-    expect(Schema.decodeUnknownSync(FlywheelConfigSchema)({ profiles: { work: { providers: { github_copilot: { monthly_credit_cap: false } } } } }).profiles.work?.providers.github_copilot?.monthly_credit_cap).toBe(0);
-    expect(Schema.decodeUnknownSync(FlywheelConfigSchema)({ profiles: { work: { providers: { github_copilot: { monthly_credit_cap: 1200 } } } } }).profiles.work?.providers.github_copilot?.monthly_credit_cap).toBe(1200);
+    expect(Schema.decodeUnknownSync(installedConfigSchema())({ profiles: { work: {} } }).profiles.work?.providers).toEqual({});
+    expect(Schema.decodeUnknownSync(installedConfigSchema())({ profiles: { work: { providers: { github_copilot: { monthly_credit_cap: false } } } } }).profiles.work?.providers.github_copilot?.monthly_credit_cap).toBe(0);
+    expect(Schema.decodeUnknownSync(installedConfigSchema())({ profiles: { work: { providers: { github_copilot: { monthly_credit_cap: 1200 } } } } }).profiles.work?.providers.github_copilot?.monthly_credit_cap).toBe(1200);
   });
 });

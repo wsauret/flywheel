@@ -1,7 +1,7 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
 import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
@@ -12,7 +12,7 @@ import { testProviderSelection } from "../../../helpers/provider-authority.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 describe("model input costs", () => {
   test("keeps an unpriced runnable route unranked with no displayed zero cost", async () => {
-    const config = parseSchema(FlywheelConfigSchema, { profiles: { default: { roles: { "chat": { model: "gpt-new", effort: "medium" } } } } });
+    const config = parseSchema(installedConfigSchema(), { profiles: { default: { roles: { "chat": { model: "gpt-new", effort: "medium" } } } } });
     const base = fakeModelsClient.modelInfos.get("gpt-5.5")!;
     const unpriced = {
       ...base,
@@ -43,7 +43,7 @@ describe("model input costs", () => {
     expect(rows.find((row) => row.model === "gpt-new")).not.toHaveProperty("cost");
   });
   test("includes input cost for model assignment options", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: { default: { roles: { "chat": { model: "gpt-5.5", effort: "medium" } } } },
     });
 
@@ -89,7 +89,7 @@ describe("model input costs", () => {
   });
 
   test("derives grouped row metadata from the selected exact route once", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: { default: { roles: { "chat": { model: "gpt-5.5", effort: "medium" } } } },
     });
     const reads: string[] = [];
@@ -166,7 +166,7 @@ describe("model input costs", () => {
   });
 
   test("keeps direct Anthropic and OpenAI prices on selected routes", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: { default: { roles: { "chat": { model: "gpt-5.5", effort: "medium" } } } },
     });
     const selection = testProviderSelection();

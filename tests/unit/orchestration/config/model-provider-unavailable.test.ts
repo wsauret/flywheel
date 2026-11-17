@@ -8,7 +8,7 @@ import { detectModelFamily, type ModelFamily } from "../../../../src/infra/llm/m
 import type { ModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { canonicalModelId } from "../../../../src/infra/llm/model-id.js";
 import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
-import { FlywheelConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 import { testCapabilityModules } from "../../../helpers/provider-authority.js";
@@ -16,7 +16,7 @@ import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 const resolveKey = async () => undefined;
-const profileConfig = (roles: FlywheelConfig["profiles"][string]["roles"]) => parseSchema(FlywheelConfigSchema, { profiles: { personal: { roles } } });
+const profileConfig = (roles: FlywheelConfig["profiles"][string]["roles"]) => parseSchema(installedConfigSchema(), { profiles: { personal: { roles } } });
 
 const OPENAI_WITHOUT_COPILOT: AuthContext = {
   providers: authProviders({ apiKeys: { openai_api: "sk-test" } }),
@@ -260,7 +260,7 @@ describe("provider-unavailable model rows", () => {
       userDataRoot: USER_DATA_ROOT, moduleSelection: testCapabilityModules,
       authDirectory: () => NO_CREDENTIALS,
       resolveKey,
-      config: parseSchema(FlywheelConfigSchema, {}),
+      config: parseSchema(installedConfigSchema(), {}),
       providerModelCatalogs: () => catalogs,
       providerModelEligibility: () => new Map([["gpt-5.5", {
         explicitlyEnabled: false,

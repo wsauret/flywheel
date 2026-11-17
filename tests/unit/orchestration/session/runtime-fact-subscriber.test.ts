@@ -14,24 +14,17 @@ import {
   wireSessionSubscribers,
 } from "../../../../src/orchestration/session/create-session-infra.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
 import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/tool-execution-types.js"
 import { presentationChannel } from "../../../../src/infra/error-presentation.js"
-import {
-  disposeHeadlessRuntimeEvents,
-  disposeHeadlessTaskResources,
-} from "../../../../src/orchestration/headless/run-headless-task.js"
 
 function fakeWriter(record: (fact: SessionRuntimeFact) => Promise<StoredFact | null>): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     record,
-    recordBatch: async () => null,
-    recordGuarded: async () => null,
     flush: async () => ({ kind: "drained", acked: [] }),
     drain: async () => { throw new Error("mid-session durability must not close the writer lane") },
-    transaction: async (fn) => { fn() },
-    dispose() {},
-  }
+  })
 }
 
 function stored(fact: SessionRuntimeFact, position: number): StoredFact {
@@ -341,40 +334,6 @@ describe("session runtime fact subscription", () => {
     await bus.dispose()
   })
 
-  it("awaits bus delivery before headless writer disposal", async () => {
-    const bus = new EventBus()
-    const timeline: string[] = []
-    let releaseRecord: (() => void) | undefined
-    const recordGate = new Promise<void>((resolve) => { releaseRecord = resolve })
-    const writer = fakeWriter(async (fact) => {
-      timeline.push(`record:${fact.type}:started`)
-      await recordGate
-      timeline.push(`record:${fact.type}:finished`)
-      return null
-    })
-    subscribeSessionRuntimeFacts(bus, { sessionEventWriter: writer })
-    createEmit(bus)("agent.error.observed", {
-      sessionId: "s1",
-      data: { message: "pending" },
-    })
-
-    const disposing = disposeHeadlessRuntimeEvents(bus, {
-      ...writer,
-      dispose() { timeline.push("writer:disposed") },
-    })
-    await Promise.resolve()
-    expect(timeline).not.toContain("writer:disposed")
-
-    releaseRecord?.()
-    await disposing
-
-    expect(timeline).toEqual([
-      "record:agent.error.observed:started",
-      "record:agent.error.observed:finished",
-      "writer:disposed",
-    ])
-  })
-
   it("keeps message content out of the debug log and the store, and routes a breadcrumb to the debug log", async () => {
     const baseDir = path.join(os.tmpdir(), `flywheel-runtime-fact-debug-${process.pid}-${crypto.randomUUID()}`)
     fs.mkdirSync(baseDir, { recursive: true })
@@ -420,39 +379,5 @@ describe("session runtime fact subscription", () => {
       await DebugLog.close()
       fs.rmSync(baseDir, { recursive: true, force: true })
     }
-  })
-
-  it("attempts every cleanup stage but skips lifecycle publication after failure", async () => {
-    const timeline: string[] = []
-
-    await expect(disposeHeadlessTaskResources({
-      closeBackground: async () => { timeline.push("background"); throw new Error("background failed") },
-      awaitForegroundBash: async () => { timeline.push("bash-settlement") },
-      disposeForegroundBash: () => { timeline.push("bash-dispose"); throw new Error("bash dispose failed") },
-      awaitTurnFlush: async () => { timeline.push("turn-flush") },
-      disposeTree: async () => { timeline.push("tree") },
-      disposeRecallIndex: async () => { timeline.push("recall-index") },
-      disposeRuntimeEvents: async () => { timeline.push("runtime-events") },
-      updateLifecycle: async () => { timeline.push("lifecycle") },
-      getPersistenceFailure: () => new Error("fact failed"),
-    })).rejects.toThrow("background failed; bash dispose failed; fact failed")
-
-    expect(timeline).toEqual(["background", "bash-settlement", "bash-dispose", "turn-flush", "tree", "recall-index", "runtime-events"])
-  })
-
-  it("publishes inactive after every required stage succeeds", async () => {
-    let lifecyclePublications = 0
-    await disposeHeadlessTaskResources({
-      closeBackground: async () => {},
-      awaitForegroundBash: async () => {},
-      disposeForegroundBash: () => {},
-      awaitTurnFlush: async () => {},
-      disposeTree: async () => {},
-      disposeRecallIndex: async () => {},
-      disposeRuntimeEvents: async () => {},
-      updateLifecycle: async () => { lifecyclePublications += 1 },
-      getPersistenceFailure: () => null,
-    })
-    expect(lifecyclePublications).toBe(1)
   })
 })

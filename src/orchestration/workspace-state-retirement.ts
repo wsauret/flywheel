@@ -73,7 +73,7 @@ interface EpochDisposition {
  *  refused. Raising `WORKSPACE_STATE_EPOCH` therefore obliges its author to
  *  declare the edge the bump creates: the guard test over this table fails
  *  while any epoch below the current one is missing. */
-export const EPOCH_DISPOSITIONS: ReadonlyMap<number, EpochDisposition> = new Map<number, EpochDisposition>([
+const EPOCH_DISPOSITIONS: ReadonlyMap<number, EpochDisposition> = new Map<number, EpochDisposition>([
   [1, { transition: "retire", cleanup: "delete" }],
   [WORKSPACE_STATE_EPOCH, { transition: "current", cleanup: "keep" }],
 ])
@@ -125,29 +125,6 @@ const RetirementManifestSchema = Schema.Struct({
 })
 
 type RetirementManifest = typeof RetirementManifestSchema.Type
-
-/** One durable point of the sequence, named by what is on disk once it is
- *  reached. */
-export type RetirementCheckpoint =
-  | "manifest-published"
-  | "legacy-adopted"
-  | `member-staged:${string}`
-  | `member-discarded:${string}`
-  | `phase-recorded:${RetirementPhase}`
-
-let checkpointObserver: ((checkpoint: RetirementCheckpoint) => void) | undefined
-
-/** Watch the durable checkpoints of the retirement sequence. This is how an
- *  interruption fixture stops a real start at a real checkpoint, so resume is
- *  proven against the state production wrote rather than against a hand-staged
- *  imitation of it. Production registers no observer. */
-export function observeRetirementCheckpoints(observe: ((checkpoint: RetirementCheckpoint) => void) | undefined): void {
-  checkpointObserver = observe
-}
-
-function reached(checkpoint: RetirementCheckpoint): void {
-  checkpointObserver?.(checkpoint)
-}
 
 export interface WorkspaceGenerationOutcome {
   /** Whether the settled generation holds facts an upgrade pass must see. A
@@ -357,7 +334,6 @@ function retireGeneration(
   // The manifest is published before the staging target exists, so a staging
   // target no manifest names can never be this release's work.
   publishManifest(flywheel, manifest)
-  reached("manifest-published")
   runOperation(flywheel, flywheelDir, manifest)
 }
 
@@ -409,7 +385,6 @@ function runOperation(flywheel: ContainedDirectory, flywheelDir: string, initial
 function recordPhase(operation: RetirementOperation, current: RetirementPhase, next: RetirementPhase): RetirementPhase {
   if (current === next) return current
   recordManifest(operation.retiring, { ...operation.manifest, phase: next })
-  reached(`phase-recorded:${next}`)
   return next
 }
 
@@ -548,7 +523,6 @@ function stageMembers(operation: RetirementOperation): void {
       if (live === staged) throw new Error(`workspace retirement cannot prove the location of ${name}`)
       if (staged) continue
       operation.flywheel.renameInto(name, target, name)
-      reached(`member-staged:${name}`)
     }
   } finally {
     target.close()
@@ -613,7 +587,6 @@ function discardStagedMembers(operation: RetirementOperation): void {
       for (const name of operation.manifest.members) {
         if (!target.hasEntry(name)) continue
         target.removeTree(name)
-        reached(`member-discarded:${name}`)
       }
       // The epoch probes above and at adoption can have recreated the database
       // sidecars (see readUserVersion). Every manifest licenses the database
@@ -823,7 +796,6 @@ function cleanLegacyTargets(flywheel: ContainedDirectory, flywheelDir: string): 
       members: proven.members,
     }
     publishManifest(flywheel, manifest)
-    reached("legacy-adopted")
     runOperation(flywheel, flywheelDir, manifest)
   }
   removeEmptiedLegacyTree(flywheel)

@@ -22,7 +22,7 @@ import { isLaterRelease, parseReleaseVersion, type ReleaseVersion } from "../../
  *  byte, before the check is abandoned. A check nobody asked for must not
  *  hold a connection that stopped, but a slow one that still delivers always
  *  finishes. */
-export const UPDATE_METADATA_STALL_MS = 10_000;
+const UPDATE_METADATA_STALL_MS = 10_000;
 
 /** The one clock and timer source every update operation uses: the metadata
  *  bound below, the service's recurring background checks, and its lease renewal.
@@ -72,7 +72,7 @@ export interface UpdateCheckRequest {
 
 /** The channel's latest manifest, or the manifest of one named release. A
  *  release is published under the tag `v<version>`. */
-export function releaseManifestUrl(repository: RepositoryIdentity, release?: string): string {
+function releaseManifestUrl(repository: RepositoryIdentity, release?: string): string {
   const base = `https://github.com/${repository.owner}/${repository.repo}/releases`;
   return release === undefined ? `${base}/latest/download/release.json` : `${base}/download/v${encodeURIComponent(release)}/release.json`;
 }

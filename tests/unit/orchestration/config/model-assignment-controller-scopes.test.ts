@@ -6,7 +6,7 @@ import { ConfigStaleWriteError } from "../../../../src/orchestration/config/writ
 import type { ModelPickerConfigDeps } from "../../../../src/orchestration/config/model-assignment-types.js"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { FlywheelConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
+import { installedConfigSchema, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
 import { parseSchema } from "../../../helpers/schema-assertions.js"
 import { roleSlot, type AgentPersonaRoles } from "../../../../src/orchestration/config/role-selection.js"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
@@ -45,7 +45,7 @@ async function publishMember(manager: SessionManager, store: EventStore, opts: P
 }
 
 function controller(manager: SessionManager, sessionId: string | undefined, configPath: string, profileRoles: FlywheelConfig["profiles"][string]["roles"] = {}, available = models, catalog: Pick<ModelPickerConfigDeps, "modelInfos" | "selectedModelRoutes"> = {}, inheritedRoles?: RoleAssignmentSnapshot, personas: AgentPersonaRoles = new Map()) {
-  let config = parseSchema(FlywheelConfigSchema, { profiles: { default: { roles: profileRoles } } })
+  let config = parseSchema(installedConfigSchema(), { profiles: { default: { roles: profileRoles } } })
   const configDeps: ModelPickerConfigDeps & { authProfileId: () => string } = {
     configPath, userDataRoot: makeTmpDir(), authDirectory: () => "/scratch/auth", authProfileId: () => "default",
     resolveKey: async () => undefined, moduleSelection: () => composeFirstPartyModules(),
@@ -58,7 +58,7 @@ function controller(manager: SessionManager, sessionId: string | undefined, conf
   return createModelAssignmentController({
     scope: sessionId === undefined ? { kind: "defaults" } : inheritedRoles ? { kind: "workflow-agent", sessionId, roleCaptureStore: manager, inheritedRoles, personas } : { kind: "session", sessionId, roleCaptureStore: manager }, configDeps,
     afterGlobalConfigWrite: async () => {
-      config = parseSchema(FlywheelConfigSchema, Bun.TOML.parse(readFileSync(configPath, "utf8")))
+      config = parseSchema(installedConfigSchema(), Bun.TOML.parse(readFileSync(configPath, "utf8")))
       return config
     },
   })

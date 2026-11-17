@@ -13,7 +13,7 @@ import type { PreparedFileMutation } from "../session/file-mutation-fact-writers
 import { getSessionChangeReview } from "../session/session-change-review.js"
 import type { FileRow } from "../session/session-file-changes.js"
 import { createSessionFactWriter } from "../session/session-fact-writer.js"
-import { FileEditRefusal, publishFileEdits, type FileEditAuthority } from "./file-edit-operation.js"
+import { FileEditRefusal, publishFileEdits, type FileEditAuthority, type NotAppliedRefusal } from "./file-edit-operation.js"
 import { RetainedFileEditAuthority } from "./retained-file-edit-host.js"
 import { accessMetadata, reconstructOriginal, sameAccess, type Reconstruction } from "./session-file-restoration.js"
 
@@ -87,17 +87,17 @@ async function reconstruct(context: SessionUndoContext, file: FileRow, authority
 }
 
 /** The publisher outcome fields the user-facing result reads. */
-export type UndoPublicationOutcome =
+type UndoPublicationOutcome =
   | { readonly status: "completed" }
   | { readonly status: "uncertain"; readonly error: unknown }
-  | { readonly status: "not_applied"; readonly reason: "cancelled" | "preflight" | "publication"; readonly error?: unknown; readonly retirementError?: unknown }
+  | ({ readonly status: "not_applied"; readonly retirementError?: unknown } & NotAppliedRefusal)
 
 /** One publisher outcome becomes one user-facing result. `not_applied` wrote nothing. */
-export function undoResultOf(outcome: UndoPublicationOutcome): SessionChangesUndoResult {
+function undoResultOf(outcome: UndoPublicationOutcome): SessionChangesUndoResult {
   if (outcome.status === "completed") return { status: "completed" }
   if (outcome.status === "uncertain") return { status: "uncertain", message: safeError(outcome.error) }
   if (outcome.reason === "cancelled") return { status: "refused", message: "Undo was cancelled before it wrote" }
-  const message = outcome.error === undefined ? "Undo did not apply" : safeError(outcome.error)
+  const message = safeError(outcome.error)
   return { status: "refused", message: outcome.retirementError === undefined ? message : `${message}; retirement failed: ${safeError(outcome.retirementError)}` }
 }
 

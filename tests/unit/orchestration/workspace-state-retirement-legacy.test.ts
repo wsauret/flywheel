@@ -9,11 +9,8 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { resolveSessionsDir } from "../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
-import {
-  observeRetirementCheckpoints,
-  WORKSPACE_STATE_EPOCH,
-  type RetirementCheckpoint,
-} from "../../../src/orchestration/workspace-state-retirement.js"
+import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
+import { observeRetirementCheckpoints, type RetirementCheckpoint } from "../../helpers/retirement-checkpoints.js"
 import {
   cleanupRetirementWorkspaces,
   flywheelDir,

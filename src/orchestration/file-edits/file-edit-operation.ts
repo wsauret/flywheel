@@ -88,10 +88,16 @@ type PublicationPrefix<Plan extends PlannedFileEdit> = {
   readonly untouchedSuffix: readonly FileEditPublication<Plan>[]
 }
 
+/** Why an operation wrote nothing: cancellation carries no error, and every
+ *  preflight or publication refusal carries the error that refused it. */
+export type NotAppliedRefusal =
+  | { readonly reason: "cancelled" }
+  | { readonly reason: "preflight" | "publication"; readonly error: unknown }
+
 /** A failed settlement never makes applied bytes a proven refusal. Retirement errors preserve proof that no publication occurred. */
 type PublicationAttempt<Plan extends PlannedFileEdit> = PublicationPrefix<Plan> & (
   | { readonly status: "completed" }
-  | { readonly status: "not_applied"; readonly current: FileEditPublication<Plan>; readonly reason: "cancelled" | "preflight" | "publication"; readonly error?: unknown; readonly retirementError?: unknown }
+  | ({ readonly status: "not_applied"; readonly current: FileEditPublication<Plan>; readonly retirementError?: unknown } & NotAppliedRefusal)
   | { readonly status: "uncertain"; readonly current: FileEditPublication<Plan>; readonly stage: "publication" | "readback" | "settlement" | "observer"; readonly publication: "unknown" | "applied"; readonly settlement: "pending" | "committed"; readonly error: unknown }
 )
 
@@ -157,11 +163,11 @@ async function publishAdmitted<Plan extends PlannedFileEdit>(context: FileEditCo
   return await (options.withQueues ?? withMutationQueueKeys)(keys, async () => {
     // SAFETY: plans is nonempty above, and preparePublications preserves its length.
     const first = publications[0]!
-    if (context.signal?.aborted) return refuse(context, first, [], publications.slice(1), "cancelled")
+    if (context.signal?.aborted) return refuse(context, first, [], publications.slice(1), { reason: "cancelled" })
     try {
       if (options.preflight) await options.preflight(publications)
     } catch (error) {
-      return refuse(context, first, [], publications.slice(1), "preflight", error)
+      return refuse(context, first, [], publications.slice(1), { reason: "preflight", error })
     }
     return publishPrepared(context, options, publications, conflicted)
   })
@@ -197,8 +203,8 @@ async function preparePublications<Plan extends PlannedFileEdit>(context: FileEd
   }))
 }
 
-async function refuse<Plan extends PlannedFileEdit>(context: FileEditContext, current: FileEditPublication<Plan>, committedPrefix: readonly FileEditPublication<Plan>[], untouchedSuffix: readonly FileEditPublication<Plan>[], reason: "cancelled" | "preflight" | "publication", error?: unknown): Promise<PublicationAttempt<Plan>> {
-  const result = { status: "not_applied" as const, current, committedPrefix, untouchedSuffix, reason, error }
+async function refuse<Plan extends PlannedFileEdit>(context: FileEditContext, current: FileEditPublication<Plan>, committedPrefix: readonly FileEditPublication<Plan>[], untouchedSuffix: readonly FileEditPublication<Plan>[], refusal: NotAppliedRefusal): Promise<PublicationAttempt<Plan>> {
+  const result = { status: "not_applied" as const, current, committedPrefix, untouchedSuffix, ...refusal }
   try {
     if (current.mutation) await retireFileMutationNotApplied(context, current.mutation)
     return result
@@ -215,7 +221,7 @@ async function publishPrepared<Plan extends PlannedFileEdit>(context: FileEditCo
   const committedPrefix: FileEditPublication<Plan>[] = []
   for (const [index, current] of publications.entries()) {
     const untouchedSuffix = publications.slice(index + 1)
-    if (context.signal?.aborted) return refuse(context, current, committedPrefix, untouchedSuffix, "cancelled")
+    if (context.signal?.aborted) return refuse(context, current, committedPrefix, untouchedSuffix, { reason: "cancelled" })
     const { authority } = current.plan.admitted
     const metadata = current.plan.metadata ?? authority.snapshot?.metadata
     let attempt: FileMutationAttemptResult
@@ -229,7 +235,7 @@ async function publishPrepared<Plan extends PlannedFileEdit>(context: FileEditCo
       const expected = options.expected?.get(path)
       // Nothing was published, so a target that has left its expected state is a proven conflict: the
       // item is retired alone and the rest still publish. Any other refusal stops the operation.
-      if (!expected || sameObservedState(observeFileState(resolvedPath), expected)) return refuse(context, current, committedPrefix, untouchedSuffix, "publication", attempt.error)
+      if (!expected || sameObservedState(observeFileState(resolvedPath), expected)) return refuse(context, current, committedPrefix, untouchedSuffix, { reason: "publication", error: attempt.error })
       try {
         if (current.mutation) await retireFileMutationNotApplied(context, current.mutation, "item")
       } catch (retirementError) {

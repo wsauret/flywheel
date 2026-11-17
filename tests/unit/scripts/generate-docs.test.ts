@@ -7,7 +7,7 @@ import { constraintSummary, renderConfigurationDocs } from "../../../scripts/ren
 import { renderCliReference, renderCommandReference } from "../../../scripts/render-reference-docs.js";
 import { commandSyntax, rootHelp } from "../../../src/cli/root-help.js";
 import { configReference } from "../../../src/orchestration/config/config-reference.js";
-import { FlywheelConfigSchema } from "../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../src/orchestration/config/schema.js";
 import { SHIPPED_MODULES } from "../../../src/orchestration/modules.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { createKeymap } from "../../../src/tui/keymap/keymap.js";
@@ -63,11 +63,11 @@ describe("generated user documentation", () => {
       if (entry.ownership === "runtime-owned") expect(code.startsWith("# ")).toBe(true);
       else {
         expect(entry.example).toBe(code);
-        expect(() => Schema.decodeUnknownSync(FlywheelConfigSchema)(Bun.TOML.parse(code))).not.toThrow();
+        expect(() => Schema.decodeUnknownSync(installedConfigSchema())(Bun.TOML.parse(code))).not.toThrow();
       }
     }
     const keybindings = configReference().entries.find((entry) => entry.path.startsWith("keybindings"))?.example ?? "";
-    const overrides = Schema.decodeUnknownSync(FlywheelConfigSchema)(Bun.TOML.parse(keybindings)).keybindings;
+    const overrides = Schema.decodeUnknownSync(installedConfigSchema())(Bun.TOML.parse(keybindings)).keybindings;
     expect(Object.keys(overrides).length).toBeGreaterThan(0);
     expect(createKeymap(overrides).issues).toEqual([]);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { checkForUpdate, releaseManifestUrl, UPDATE_METADATA_STALL_MS, type UpdateScheduler } from "../../../../src/orchestration/update/update-check.js";
+import { checkForUpdate, type UpdateScheduler } from "../../../../src/orchestration/update/update-check.js";
 import { parseRepositoryIdentity } from "../../../../src/infra/update/release-manifest.js";
 import { parseReleaseVersion, type ReleaseVersion } from "../../../../src/infra/update/version-order.js";
 import { fakeFetch } from "../../../helpers/fake-fetch.js";
@@ -7,6 +7,8 @@ import { fakeFetch } from "../../../helpers/fake-fetch.js";
 const REPOSITORY = parseRepositoryIdentity("acme/flywheel");
 const ASSET = "flywheel-darwin-arm64.tar.gz";
 const SHA256 = "a".repeat(64);
+/** The default stall bound of a metadata request: ten seconds with no delivery. */
+const DEFAULT_STALL_MS = 10_000;
 
 function version(canonical: string): ReleaseVersion {
   const parsed = parseReleaseVersion(canonical);
@@ -131,8 +133,7 @@ describe("update metadata check", () => {
 
     await check(fetch);
 
-    expect(requested).toEqual([releaseManifestUrl(REPOSITORY)]);
-    expect(requested[0]).toBe("https://github.com/acme/flywheel/releases/latest/download/release.json");
+    expect(requested).toEqual(["https://github.com/acme/flywheel/releases/latest/download/release.json"]);
   });
 
   test("asks for one named release when the caller names it, and refuses a manifest of another", async () => {
@@ -198,10 +199,10 @@ describe("update metadata check", () => {
     }));
 
     const pending = check(fetch, "1.2.3", scheduler);
-    expect(timers.map((timer) => timer.delayMs)).toEqual([UPDATE_METADATA_STALL_MS]);
+    expect(timers.map((timer) => timer.delayMs)).toEqual([DEFAULT_STALL_MS]);
     fireAll();
 
-    expect(await pending).toEqual({ kind: "unavailable", reason: `the release metadata delivered nothing for ${UPDATE_METADATA_STALL_MS}ms` });
+    expect(await pending).toEqual({ kind: "unavailable", reason: `the release metadata delivered nothing for ${DEFAULT_STALL_MS}ms` });
   });
 
   test("a manifest that keeps delivering is read to its end however long it takes", async () => {
@@ -216,7 +217,7 @@ describe("update metadata check", () => {
           controller.close();
           return;
         }
-        clock.advance(UPDATE_METADATA_STALL_MS - 1);
+        clock.advance(DEFAULT_STALL_MS - 1);
         controller.enqueue(new TextEncoder().encode(text.slice(sent, sent + 1)));
         sent += 1;
       },
@@ -225,7 +226,7 @@ describe("update metadata check", () => {
     const result = await check(fetch, "1.2.3", clock.scheduler);
 
     expect(result.kind).toBe("candidate");
-    expect(clock.nowMs()).toBeGreaterThan(UPDATE_METADATA_STALL_MS * 100);
+    expect(clock.nowMs()).toBeGreaterThan(DEFAULT_STALL_MS * 100);
   });
 
   test("the caller's cancellation ends the check", async () => {
@@ -242,7 +243,7 @@ describe("update metadata check", () => {
 });
 
 describe("the redirects a metadata request follows", () => {
-  const MANIFEST_URL = releaseManifestUrl(REPOSITORY);
+  const MANIFEST_URL = "https://github.com/acme/flywheel/releases/latest/download/release.json";
   const TAGGED = "https://github.com/acme/flywheel/releases/download/v1.3.0/release.json";
   const MIRROR = "https://release-mirror.example.net/release.json?token=1";
 
@@ -262,7 +263,7 @@ describe("the redirects a metadata request follows", () => {
     // Every hop answers just inside one bound, so the whole chain takes
     // nearly three bounds of fake time before the first byte of the body.
     const fetch = fakeFetch(async (input, init) => {
-      clock.advance(UPDATE_METADATA_STALL_MS - 1);
+      clock.advance(DEFAULT_STALL_MS - 1);
       if (init?.signal?.aborted === true) throw new Error("The operation was aborted.");
       const url = String(input);
       if (url === MANIFEST_URL) return redirectTo(TAGGED);
@@ -271,7 +272,7 @@ describe("the redirects a metadata request follows", () => {
     });
 
     expect((await check(fetch, "1.2.3", clock.scheduler)).kind).toBe("candidate");
-    expect(clock.nowMs()).toBeGreaterThan(UPDATE_METADATA_STALL_MS * 2);
+    expect(clock.nowMs()).toBeGreaterThan(DEFAULT_STALL_MS * 2);
   });
 
   test("a hop to plain HTTP is unavailable, and is never requested", async () => {

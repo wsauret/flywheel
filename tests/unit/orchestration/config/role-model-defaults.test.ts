@@ -6,7 +6,7 @@ import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { reachableRoleModelDefaults, type RoleModelPreferences, selectRoleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { tierOptions, withTempDir } from "./_config-models-fixtures.js";
 
 const bothProviders = new Map<ModelFamily, ReadonlySet<string>>([
@@ -82,7 +82,7 @@ describe("role model defaults", () => {
   });
 
   it("resolveRoles falls back to each role's tier and effort", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {});
+    const config = parseSchema(installedConfigSchema(), {});
     const noCandidates = new Map<ModelFamily, ReadonlySet<string>>([
       ["openai", new Set(["gpt-5.5", "gpt-5.4", "gpt-5-mini"])],
     ]);
@@ -111,7 +111,7 @@ describe("role model defaults", () => {
       await mkdir(dirname(modelsSnapshotFile(userDataRoot)), { recursive: true });
       await Bun.write(modelsSnapshotFile(userDataRoot), JSON.stringify(withoutLuna));
 
-      const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), new Map<ModelFamily, ReadonlySet<string>>([
+      const roles = await resolveRoles(parseSchema(installedConfigSchema(), {}), new Map<ModelFamily, ReadonlySet<string>>([
         ["openai", new Set(["gpt-5.5", "gpt-5.4", "gpt-5-mini"])],
       ]), { ...tierOptions, userDataRoot });
       expect(roles.get("ship")).toMatchObject({ model: "gpt-5-mini", effort: "high" });
@@ -119,7 +119,7 @@ describe("role model defaults", () => {
   });
 
   it("uses reachable saved models, clamps unsupported effort, and skips an unreachable pair whole", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: { personal: { roles: {
         reviewer: { model: "claude-sonnet-4-6", effort: "max" },
         explorer: { effort: "low" },
@@ -135,7 +135,7 @@ describe("role model defaults", () => {
   });
 
   it("resolves a persona from a person's parent setting before the persona's shipped default", async () => {
-    const config = parseSchema(FlywheelConfigSchema, { profiles: { personal: { roles: { reviewer: { model: "claude-sonnet-4-6", effort: "low" } } } } });
+    const config = parseSchema(installedConfigSchema(), { profiles: { personal: { roles: { reviewer: { model: "claude-sonnet-4-6", effort: "low" } } } } });
     const roles = await resolveRoles(config, bothProviders, tierOptions, "personal");
 
     expect(roles.get("reviewer-quality")).toMatchObject({ model: "claude-sonnet-4.6", effort: "low" });

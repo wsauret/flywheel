@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js";
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js";
@@ -14,6 +14,7 @@ import { roleSlot } from "../../../../src/orchestration/config/role-selection.js
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { createPersonaRegistryOwner, type PersonaRegistryRevision } from "../../../../src/workflows/agents/registry.js";
 import { testDirectories } from "../../../helpers/directories.js";
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
@@ -29,11 +30,7 @@ async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   }
 }
 
-const UNUSED_EVENT_WRITER = {
-  append: async () => { throw new Error("unused event writer") },
-  appendBatch: async () => { throw new Error("unused event writer") },
-  pruneSupersededEvents: async () => { throw new Error("unused event writer") },
-} satisfies AsyncEventWriter;
+const UNUSED_EVENT_WRITER = refusingEventWriter();
 
 /** Opens the model picker's defaults of the `personal` profile over
  *  `configPath` while the project's persona registry is `personaRevision`.

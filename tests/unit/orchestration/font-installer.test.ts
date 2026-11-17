@@ -4,7 +4,6 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  FLYWHEEL_FONT_FAMILY,
   fontTipMessage,
   getFontStatus,
   installBundledFont,
@@ -92,7 +91,7 @@ describe("font installer", () => {
     await installBundledFont({ platform: "linux", ...account(accountHome), sourceDir, refreshSystemCache: false }, fakeOwnedCommandRunner());
 
     expect(fontTipMessage(false, { platform: "linux", ...account(accountHome), sourceDir })).toContain(
-      `Choose ${FLYWHEEL_FONT_FAMILY}`,
+      "Choose Monaspace Argon",
     );
   });
 });

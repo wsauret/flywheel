@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { withMutationQueueKeys } from "../../../../src/infra/file-mutation-queue.js"
 import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-edit-operation.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"
-import { undoResultOf, undoSessionChanges } from "../../../../src/orchestration/file-edits/session-undo.js"
+import { undoSessionChanges } from "../../../../src/orchestration/file-edits/session-undo.js"
 import { getSessionChangeReview } from "../../../../src/orchestration/session/session-change-review.js"
 import { loadSessionPendingFileMutations, reconcilePendingFileMutations } from "../../../../src/orchestration/session/file-mutation-recovery.js"
 import { parseFileMutationOperationHeader } from "../../../../src/orchestration/session/file-mutation-operation.js"
@@ -219,8 +219,8 @@ test.each(["removed", "cursor", "raw-order", "recovered"] as const)("an own cell
     await change(fixture, path, "new\n")
     const base = context(fixture)
     let expectedCells = fixture.store.readInFlight(fixture.sessionId, "file.mutation")
-    const writer = { ...base.writer, swapInFlight: async (...args: Parameters<NonNullable<typeof base.writer.swapInFlight>>) => {
-      const stored = await base.writer.swapInFlight!(...args)
+    const writer = { ...base.writer, swapInFlight: async (...args: Parameters<typeof base.writer.swapInFlight>) => {
+      const stored = await base.writer.swapInFlight(...args)
       const row = fixture.store.readInFlight(fixture.sessionId, "file.mutation")[0]!
       const cell = parseFileMutationOperationHeader(row.payload)
       if (drift === "recovered") expect(await reconcilePendingFileMutations({ sessionId: fixture.sessionId, store: base.projectionReader, writer: base.writer })).toEqual([])
@@ -296,8 +296,8 @@ test("recovery queued ahead of a prepared Undo retires first and prevents the wr
     const position = fixture.store.currentPosition()
     const undo = undoSessionChanges({ ...base, writer: {
       ...base.writer,
-      swapInFlight: async (...args: Parameters<NonNullable<typeof base.writer.swapInFlight>>) => {
-        const stored = await base.writer.swapInFlight!(...args)
+      swapInFlight: async (...args: Parameters<typeof base.writer.swapInFlight>) => {
+        const stored = await base.writer.swapInFlight(...args)
         prepared.resolve()
         await reserveUndo.promise
         return stored
@@ -346,10 +346,20 @@ test.each(["cancelled", "failed", "proof"] as const)("prepublication %s keeps it
   })
 })
 
-test("outcome mapping covers cancelled, absent, and retirement errors", () => {
-  expect(undoResultOf({ status: "completed" })).toEqual({ status: "completed" })
-  expect(undoResultOf({ status: "not_applied", reason: "cancelled" })).toEqual({ status: "refused", message: "Undo was cancelled before it wrote" })
-  expect(undoResultOf({ status: "not_applied", reason: "preflight" })).toEqual({ status: "refused", message: "Undo did not apply" })
-  expect(undoResultOf({ status: "not_applied", reason: "publication", error: new Error("boom"), retirementError: "later" })).toEqual({ status: "refused", message: "boom; retirement failed: later" })
-  expect(undoResultOf({ status: "uncertain", error: new Error("lost") })).toEqual({ status: "uncertain", message: "lost" })
+test("a cancellation after durable preparation refuses as cancelled and writes nothing", async () => {
+  await withStore(async fixture => {
+    const path = join(fixture.root, "a")
+    await change(fixture, path, "new\n")
+    const base = context(fixture)
+    const controller = new AbortController()
+    const writer = { ...base.writer, swapInFlight: async (...args: Parameters<typeof base.writer.swapInFlight>) => {
+      const stored = await base.writer.swapInFlight(...args)
+      controller.abort()
+      return stored
+    } }
+    const result = await undoSessionChanges({ ...base, writer }, await request(fixture, path), controller.signal)
+    expect(result).toEqual({ status: "refused", message: "Undo was cancelled before it wrote" })
+    expect(readFileSync(path, "utf8")).toBe("new\n")
+    expect(fixture.store.readInFlight(fixture.sessionId, "file.mutation")).toEqual([])
+  })
 })

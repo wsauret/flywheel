@@ -106,7 +106,7 @@ const log = Log.create({ service: "headless-task" })
 const SOURCE_ARCHIVE_SHA256_PATTERN = /^[a-f0-9]{64}$/
 
 /** Drains all bus subscribers before the session writer refuses new work. */
-export async function disposeHeadlessRuntimeEvents(bus: EventBus, sessionEventWriter: Pick<SessionFactWriter, "dispose">): Promise<void> {
+async function disposeHeadlessRuntimeEvents(bus: EventBus, sessionEventWriter: Pick<SessionFactWriter, "dispose">): Promise<void> {
   try {
     await bus.dispose()
   } finally {
@@ -115,7 +115,7 @@ export async function disposeHeadlessRuntimeEvents(bus: EventBus, sessionEventWr
 }
 
 /** Attempts every ordered headless cleanup stage before reporting their combined failure. */
-export async function disposeHeadlessTaskResources(options: {
+async function disposeHeadlessTaskResources(options: {
   closeBackground(): Promise<void>
   awaitForegroundBash(): Promise<void>
   disposeForegroundBash(): void
@@ -493,7 +493,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
 /** Token counts of one measured attempt. A null count is a detail the provider did not report, which adds nothing. */
 interface ReportedTokens { readonly input: number | null; readonly output: number | null; readonly cacheRead: number | null; readonly reasoning: number | null }
 
-export interface HeadlessRunTally {
+interface HeadlessRunTally {
   /** Wired as the run's `auditObserver`; sees every provider-request audit
    *  record the run and its subagents emit, in emission order. */
   observe(fact: ProviderRequestAuditFact): void
@@ -510,7 +510,7 @@ export interface HeadlessRunTally {
  *  `requests` counts every dispatched provider request, as the store's
  *  dispatch facts do, so a request that a deadline or an abort cut before it
  *  measured usage still counts. */
-export function createHeadlessRunTally(): HeadlessRunTally {
+function createHeadlessRunTally(): HeadlessRunTally {
   const usage: HeadlessTaskUsage = { requests: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, reasoningTokens: 0, costUsd: 0 }
   const dispatchedRequests = new Set<string>()
   const seenTokenEntries = new Set<string>()

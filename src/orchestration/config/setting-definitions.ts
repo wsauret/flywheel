@@ -195,7 +195,7 @@ const RETAINED_CONFIG_SECTIONS = {
   })).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed({})), Schema.annotate({ exampleKey: "acme" })), "Custom providers keyed by user-defined provider id."), "custom model providers", [{ mode: "replace-resource", path: [] }], "secret"),
 } as const;
 
-export const RETAINED_CONFIG_SECTION_DEFINITIONS = Object.values(RETAINED_CONFIG_SECTIONS);
+const RETAINED_CONFIG_SECTION_DEFINITIONS = Object.values(RETAINED_CONFIG_SECTIONS);
 
 export const RETAINED_CONFIG_SCHEMA_FIELDS = {
   cache_retention: RETAINED_CONFIG_SECTIONS.cache_retention.schema,

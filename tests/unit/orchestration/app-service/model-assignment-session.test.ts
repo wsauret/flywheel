@@ -1,13 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js"
-import { CONFIG_DEFAULTS, FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js"
+import { CONFIG_DEFAULTS, installedConfigSchema } from "../../../../src/orchestration/config/schema.js"
 import { parseSchema } from "../../../helpers/schema-assertions.js"
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js"
 import type { RoleAssignments } from "../../../../src/orchestration/session/schemas.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { chatEntry } from "./app-service-doubles.js"
 import { availabilityOwner, managerDouble, type ManagerDouble } from "./model-assignment-service-fixtures.js"
@@ -19,11 +20,7 @@ const DEFAULT_ROLES = {
 } satisfies RoleAssignments
 
 const FULL_AVAILABILITY = await availabilityOwner(["workflows", "skills", "subagents", "learning", "background-commands"])
-const EVENT_WRITER = {
-  append: async () => { throw new Error("unused event writer") },
-  appendBatch: async () => { throw new Error("unused event writer") },
-  pruneSupersededEvents: async () => { throw new Error("unused event writer") },
-} satisfies AsyncEventWriter
+const EVENT_WRITER = refusingEventWriter()
 
 function modelAssignmentService(manager: ManagerDouble, defaults: RoleAssignments = DEFAULT_ROLES, availability = FULL_AVAILABILITY) {
   return createRuntimeModelAssignmentService({
@@ -34,7 +31,7 @@ function modelAssignmentService(manager: ManagerDouble, defaults: RoleAssignment
     eventWriter: EVENT_WRITER,
     availability,
     moduleSelection: () => composeFirstPartyModules(),
-    config: () => parseSchema(FlywheelConfigSchema, { profiles: { default: { roles: Object.fromEntries(Object.entries(defaults).map(([role, value]) => [role, { model: value.model, effort: value.effort }])) } } }),
+    config: () => parseSchema(installedConfigSchema(), { profiles: { default: { roles: Object.fromEntries(Object.entries(defaults).map(([role, value]) => [role, { model: value.model, effort: value.effort }])) } } }),
     refreshConfig: async () => CONFIG_DEFAULTS,
     materializeDefaults: async () => defaults,
     configDepsForScope: () => ({

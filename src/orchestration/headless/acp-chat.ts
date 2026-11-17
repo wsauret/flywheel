@@ -14,7 +14,7 @@ import { blockIdentity } from "../../protocol/block-identity.js"
 import { isBudgetPayload } from "../../protocol/budget-protocol-types.js"
 import { createTranscriptStore, type TranscriptStore } from "../../protocol/client/transcript-store.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
-import type { HeadlessChatChannel, HeadlessChatFraming } from "./run-headless-chat.js"
+import type { HeadlessChatChannel, HeadlessChatFraming } from "./headless-chat-channel.js"
 
 /** One read of the output a recovered window skipped over. */
 const GAP_PAGE = { maxBlocks: 200, maxBytes: 4 * 1024 * 1024, includeThinkingContent: true } as const

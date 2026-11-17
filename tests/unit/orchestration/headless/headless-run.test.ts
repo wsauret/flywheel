@@ -4,6 +4,8 @@ import { join } from "node:path"
 import { Database } from "bun:sqlite"
 import * as treeSitter from "../../../../src/infra/tree-sitter-parser.js"
 import * as abort from "../../../../src/infra/abort.js"
+import * as backgroundOwner from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
+import { createEmit } from "../../../../src/infra/event-bus.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { availabilityAuthorityDbFile, resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
@@ -156,6 +158,85 @@ describe("runHeadlessTask ownership", () => {
     try {
       if (!result?.sessionId) throw new Error("task did not publish a session")
       expect(await readSessionMetadata(asAsyncEventReadSurface(store), result.sessionId)).toMatchObject({ kind: "chat", lifecycleState: "inactive" })
+    } finally {
+      store.close()
+    }
+  })
+
+  test("drains runtime events delivered during disposal before the session writer closes", async () => {
+    const projectRoot = directory("headless-dispose-order-")
+    const result = await runHeadlessTask("work", {
+      modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false,
+      prepareWorkflowDeps: async () => makeWorkflowDeps(completedAgent),
+      connectEventBus: (bus) => {
+        const dispose = bus.dispose.bind(bus)
+        bus.dispose = async () => {
+          createEmit(bus)("agent.error.observed", { sessionId: "late", data: { message: "delivered during disposal" } })
+          await dispose()
+        }
+      },
+    })
+    expect(result.error).toBeUndefined()
+    expect(result.completed).toBe(true)
+    const store = createSqliteEventStore(resolveEventStoreDbFile(testDirectories(projectRoot).projectRoot))
+    try {
+      if (!result.sessionId) throw new Error("task did not publish a session")
+      expect(store.read({ sessionId: result.sessionId, types: ["agent.error.observed"] }).map((fact) => fact.payload)).toEqual([{ data: { message: "delivered during disposal" } }])
+      expect(await readSessionMetadata(asAsyncEventReadSurface(store), result.sessionId)).toMatchObject({ lifecycleState: "inactive" })
+    } finally {
+      store.close()
+    }
+  })
+
+  test("a failed cleanup stage does not stop the later stages, leaves the session active, closes the store, and reports every failure", async () => {
+    const projectRoot = directory("headless-dispose-failure-")
+    const dbFile = resolveEventStoreDbFile(testDirectories(projectRoot).projectRoot)
+    const order: string[] = []
+    const createOwner = backgroundOwner.createBackgroundExecutionOwner
+    // Background close is the first cleanup stage, so every later stage runs after a failure.
+    const owner = spyOn(backgroundOwner, "createBackgroundExecutionOwner").mockImplementation((...args) => {
+      const created = createOwner(...args)
+      const close = created.close.bind(created)
+      created.close = async () => {
+        await close()
+        throw new Error("background close failed")
+      }
+      return created
+    })
+    const databaseClose = Database.prototype.close
+    const closing = spyOn(Database.prototype, "close").mockImplementation(function (this: Database) {
+      if (this.filename === dbFile) order.push("event store closed")
+      databaseClose.call(this)
+    })
+    let result
+    try {
+      result = await runHeadlessTask("work", {
+        modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false,
+        prepareWorkflowDeps: async () => makeWorkflowDeps(completedAgent),
+        connectEventBus: (bus) => {
+          const dispose = bus.dispose.bind(bus)
+          bus.dispose = async () => {
+            createEmit(bus)("agent.error.observed", { sessionId: "late", data: { message: "delivered after a failed stage" } })
+            await dispose()
+            order.push("bus disposed")
+            throw new Error("bus dispose failed")
+          }
+        },
+      })
+    } finally {
+      closing.mockRestore()
+      owner.mockRestore()
+    }
+    expect(result.completed).toBe(false)
+    expect(result.error).toContain("Headless task cleanup failed: background close failed; bus dispose failed")
+    expect(order.lastIndexOf("event store closed")).toBeGreaterThan(order.indexOf("bus disposed"))
+    expect(order.indexOf("bus disposed")).toBeGreaterThan(-1)
+    expect(generationHolders(projectRoot)).toEqual([])
+    const store = createSqliteEventStore(dbFile)
+    try {
+      if (!result.sessionId) throw new Error("task did not publish a session")
+      expect(store.read({ sessionId: result.sessionId, types: ["agent.error.observed"] }).map((fact) => fact.payload)).toEqual([{ data: { message: "delivered after a failed stage" } }])
+      expect(await readSessionMetadata(asAsyncEventReadSurface(store), result.sessionId)).toMatchObject({ lifecycleState: "active" })
     } finally {
       store.close()
     }

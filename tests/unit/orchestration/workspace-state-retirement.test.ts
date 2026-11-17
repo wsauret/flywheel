@@ -12,11 +12,12 @@
  *  process, is proven in tests/integration/workspace-state-concurrency. */
 
 import { afterEach, describe, expect, it } from "bun:test"
+import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { resolveEventStoreDbFile, resolveSessionsDir } from "../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
-import { EPOCH_DISPOSITIONS, WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
+import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
 import {
   cleanupRetirementWorkspaces,
   expectStagedDatabase,
@@ -45,17 +46,27 @@ afterEach(() => {
 })
 
 describe("the epoch transition table", () => {
-  it("declares an explicit disposition for the current epoch and every epoch below it", () => {
-    const declared = [...EPOCH_DISPOSITIONS.keys()].toSorted((left, right) => left - right)
-
+  it("retires a generation of every epoch below the current one and keeps the current one", () => {
     // Epoch 0 is the absence of a stamp, so the table starts at 1. A raised
     // current epoch whose predecessor edge was not declared fails here rather
     // than at a user's project.
-    expect(declared).toEqual(Array.from({ length: WORKSPACE_STATE_EPOCH }, (_unused, index) => index + 1))
-    for (const retired of declared.filter((epoch) => epoch !== WORKSPACE_STATE_EPOCH)) {
-      expect(EPOCH_DISPOSITIONS.get(retired)).toEqual({ transition: "retire", cleanup: "delete" })
+    for (let epoch = 1; epoch <= WORKSPACE_STATE_EPOCH; epoch++) {
+      const { directories, baseDir } = makeWorkspaceFixture()
+      const dbFile = resolveEventStoreDbFile(baseDir)
+      stampEpoch(dbFile, epoch)
+      const stamped = new Database(dbFile)
+      stamped.exec("CREATE TABLE generation_marker (epoch INTEGER)")
+      stamped.close()
+
+      prepareAndRelease(directories)
+
+      expect(readEpoch(dbFile)).toBe(WORKSPACE_STATE_EPOCH)
+      const settled = new Database(dbFile, { readonly: true })
+      const kept = settled.query("SELECT name FROM sqlite_master WHERE name = 'generation_marker'").get() !== null
+      settled.close()
+      expect(kept).toBe(epoch === WORKSPACE_STATE_EPOCH)
+      expect(stateEntries(baseDir)).toEqual(["flywheel.sqlite"])
     }
-    expect(EPOCH_DISPOSITIONS.get(WORKSPACE_STATE_EPOCH)).toEqual({ transition: "current", cleanup: "keep" })
   })
 })
 

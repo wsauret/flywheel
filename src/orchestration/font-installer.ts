@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { sourceCheckout } from "../infra/cli-subprocess.js";
 import type { OwnedCommandRunner } from "../infra/owned-command.js";
 
-export const FLYWHEEL_FONT_FAMILY = "Monaspace Argon";
+const FLYWHEEL_FONT_FAMILY = "Monaspace Argon";
 
 const FONT_FILES = [
   "MonaspaceArgon-Regular.otf",

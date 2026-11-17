@@ -71,7 +71,7 @@ interface HeadlessBootstrapOptions {
   readonly eventWriter?: AsyncEventWriter
 }
 
-export async function disposeHeadlessBootstrapResources(options: {
+async function disposeHeadlessBootstrapResources(options: {
   readonly settleRunOwned?: () => Promise<void>
   readonly disposeModuleServices?: () => Promise<void>
   readonly closeConfig?: () => Promise<void>

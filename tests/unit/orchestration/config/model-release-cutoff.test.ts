@@ -1,7 +1,7 @@
 import { parseSchema } from "../../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
 import { listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { makeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
 import { USER_DATA_ROOT, NO_CREDENTIALS } from "./_config-models-fixtures.js";
@@ -14,7 +14,7 @@ describe("model release metadata", () => {
       "claude-opus-4-6": modelInfo("anthropic", "claude-opus-4-6", "claude-opus", 5, 25, "2026-02-04"),
       "claude-opus-4-5": modelInfo("anthropic", "claude-opus-4-5", "claude-opus", 5, 25, "2026-02-03"),
     });
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: { personal: { roles: { chat: { model: "claude-opus-4-5", effort: "high" } } } },
     });
 

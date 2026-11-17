@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { parseSchema } from "../../../helpers/schema-assertions.js";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import {
   listModelAssignments,
   listModelOptionsForSlot,
@@ -39,7 +39,7 @@ function deps(roles: { [roleId: string]: { model?: string; effort?: string } } =
     userDataRoot: USER_DATA_ROOT,
     authDirectory: () => NO_CREDENTIALS,
     authProfileId: () => "personal",
-    config: parseSchema(FlywheelConfigSchema, { profiles: { personal: { roles } } }),
+    config: parseSchema(installedConfigSchema(), { profiles: { personal: { roles } } }),
     availableModels,
     modelInfos,
     modelsClient: fakeModelsClient,
@@ -112,7 +112,7 @@ describe("default-pin normalization", () => {
   });
 
   it("compares a profile assignment pair with its coded default", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: {
         work: {
           roles: {
@@ -139,7 +139,7 @@ describe("default-pin normalization", () => {
       ...deps({ "step-worker": { model: "gpt-6.1-sol", effort: "high" } }),
       slots: [roleSlot("workflow-agent")],
     });
-    const profileConfig = parseSchema(FlywheelConfigSchema, {
+    const profileConfig = parseSchema(installedConfigSchema(), {
       profiles: {
         work: {
           roles: {

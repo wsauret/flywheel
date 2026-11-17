@@ -15,7 +15,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import type { AgentToolInput } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
 import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
-import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/run-headless-chat.js"
+import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/headless-chat-channel.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { tailWindow } from "../../../helpers/runtime-views.js"
 

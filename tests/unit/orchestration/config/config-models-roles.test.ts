@@ -8,7 +8,7 @@ import { defaultRoleSlots, resolveWorkflowAgentRole, resolveSubagentRole, roleSl
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js";
 import { roleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles as resolveProfileRoles } from "../../../../src/orchestration/config/role-resolution.js";
-import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { fakeModelInfos, fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { step, tierOptions as baseTierOptions, USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";
@@ -20,7 +20,7 @@ import { repoDefinitions } from "../../../helpers/project-definitions.js";
 const tierOptions = { ...baseTierOptions, authDirectory: () => NO_CREDENTIALS, moduleSelection: () => composeFirstPartyModules() };
 const resolveRoles = (config: Parameters<typeof resolveProfileRoles>[0], models: Parameters<typeof resolveProfileRoles>[1], options: Parameters<typeof resolveProfileRoles>[2], profileId = "personal", additional: Iterable<string> = []) =>
   resolveProfileRoles(config, models, options, profileId, additional);
-const profileConfig = (roles: Parameters<typeof resolveProfileRoles>[0]["profiles"][string]["roles"]) => parseSchema(FlywheelConfigSchema, { profiles: { personal: { roles } } });
+const profileConfig = (roles: Parameters<typeof resolveProfileRoles>[0]["profiles"][string]["roles"]) => parseSchema(installedConfigSchema(), { profiles: { personal: { roles } } });
 describe("roles config parsing and resolution", () => {
   it("resolves unlisted project persona roles and brief seats through their coded parent policy", async () => {
     await withTempDir(async (dir) => {
@@ -31,14 +31,14 @@ describe("roles config parsing and resolution", () => {
       expect(personaRoles).toEqual(expect.arrayContaining(["custom-auditor", "reviewer-custom"]));
       const additional = [...personaRoles, "brief.custom-step", "brief.custom-step.persona.reviewer-custom"];
       const available = new Map([["openai", new Set(["gpt-6.1-sol", "gpt-6-astra"])] as const]);
-      const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions, undefined, additional);
+      const roles = await resolveRoles(parseSchema(installedConfigSchema(), {}), available, tierOptions, undefined, additional);
       expect(roles.get("custom-auditor")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step.persona.reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
 
-      const tierFallback = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), tierAvailableModels, tierOptions, undefined, additional);
+      const tierFallback = await resolveRoles(parseSchema(installedConfigSchema(), {}), tierAvailableModels, tierOptions, undefined, additional);
       expect(tierFallback.get("custom-auditor")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
       expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     });
@@ -46,7 +46,7 @@ describe("roles config parsing and resolution", () => {
   it("defaults every unassigned role to an eligible custom provider model that carries no catalog metadata", async () => {
     const available = new Map([["openai", new Set(["fixture-model", "fixture-model-small"])] as const]);
 
-    const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
+    const roles = await resolveRoles(parseSchema(installedConfigSchema(), {}), available, tierOptions);
 
     for (const roleId of Object.keys(DEFAULT_ROLES)) expect(roles.get(roleId)?.model).toBe("fixture-model");
     expect(roles.get("advisor")?.effort).toBe(roleModelDefault("advisor").preferences[0].effort);
@@ -55,8 +55,8 @@ describe("roles config parsing and resolution", () => {
   it("keeps tiered catalog models ahead of custom provider models without metadata", async () => {
     const available = new Map([["openai", new Set(["fixture-model", ...tierAvailableModels.get("openai")!])] as const]);
 
-    const withCustom = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
-    const catalogOnly = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), new Map([["openai", tierAvailableModels.get("openai")!]] as const), tierOptions);
+    const withCustom = await resolveRoles(parseSchema(installedConfigSchema(), {}), available, tierOptions);
+    const catalogOnly = await resolveRoles(parseSchema(installedConfigSchema(), {}), new Map([["openai", tierAvailableModels.get("openai")!]] as const), tierOptions);
 
     for (const roleId of Object.keys(DEFAULT_ROLES)) expect(withCustom.get(roleId)?.model).toBe(catalogOnly.get(roleId)?.model);
   });
@@ -99,7 +99,7 @@ describe("roles config parsing and resolution", () => {
   });
 
   it("selects only the active profile's role pair", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {
+    const config = parseSchema(installedConfigSchema(), {
       profiles: {
         personal: { roles: { chat: { model: "gpt-5-mini", effort: "low" }, advisor: { model: "gpt-5.4", effort: "medium" } } },
         work: {
@@ -262,7 +262,7 @@ describe("roles config parsing and resolution", () => {
   });
 
   it("shows the persona policy for a brief seat without an authored setting", async () => {
-    const config = parseSchema(FlywheelConfigSchema, {});
+    const config = parseSchema(installedConfigSchema(), {});
     const availableModels = new Map(tierAvailableModels);
     availableModels.set("openai", new Set([
       ...(availableModels.get("openai") ?? []),

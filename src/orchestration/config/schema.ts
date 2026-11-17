@@ -6,7 +6,7 @@ import { DEFINITION_OWNED_SCHEMA_FIELDS, RETAINED_CONFIG_SCHEMA_FIELDS } from ".
 /** The kernel's own configuration: every root key the kernel owns. A module
  *  section rides beside these under its own key, decoded by the section's
  *  schema and read through `configSection`. */
-export const FlywheelConfigSchema = Schema.Struct({
+const FlywheelConfigSchema = Schema.Struct({
   ...DEFINITION_OWNED_SCHEMA_FIELDS,
   ...RETAINED_CONFIG_SCHEMA_FIELDS,
 });

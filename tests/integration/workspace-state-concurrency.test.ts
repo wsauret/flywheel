@@ -23,7 +23,8 @@ import type { ProjectDirectories } from "../../src/infra/directory-authorities.j
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js";
 import { openWorkspaceState, prepareWorkspaceState } from "../../src/orchestration/workspace-state.js";
 import { EVENT_STORE_MEMBER } from "../../src/orchestration/workspace-state-generation-members.js";
-import { WORKSPACE_STATE_EPOCH, type RetirementCheckpoint } from "../../src/orchestration/workspace-state-retirement.js";
+import { WORKSPACE_STATE_EPOCH } from "../../src/orchestration/workspace-state-retirement.js";
+import type { RetirementCheckpoint } from "../helpers/retirement-checkpoints.js";
 import { interruptRetirementAt, requireRetiredWorkspace } from "../fixtures/create-retired-workspace.js";
 import { testDirectories } from "../helpers/directories.js";
 import { WORKSPACE_DATABASE_MEMBERS } from "../helpers/workspace-retirement.js";
@@ -52,7 +53,7 @@ prepared.generation.release();
 const STARTER = `
 import { existsSync } from "node:fs";
 import { prepareWorkspaceState } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state.js")).href)};
-import { observeRetirementCheckpoints } from ${JSON.stringify(pathToFileURL(join(REPO, "src/orchestration/workspace-state-retirement.js")).href)};
+import { observeRetirementCheckpoints } from ${JSON.stringify(pathToFileURL(join(REPO, "tests/helpers/retirement-checkpoints.ts")).href)};
 
 let retired = false;
 observeRetirementCheckpoints((checkpoint) => { if (checkpoint === "manifest-published") retired = true; });
