@@ -90,6 +90,10 @@
     "lint:webview": "bun run scripts/lint-webview.ts",
     "lint:relay": "bun run scripts/lint-relay.ts",
     "lint:licenses": "bun run licenses:check",
+    "lint:slop": "NAPI_RS_NATIVE_LIBRARY_PATH= bun run scripts/anti-slop-llm/lint-changed.ts --config oxlint.slop.config.ts",
+    "lint:slop:full": "NAPI_RS_NATIVE_LIBRARY_PATH= JEV_CHANGED_ONLY=0 bunx --bun oxlint --config oxlint.slop.config.ts src/",
+    "lint:slop:diff": "bun run scripts/anti-slop-llm/diff-rules/run.ts",
+    "hooks:install": "git config core.hooksPath .githooks",
     "check:boundaries": "bun run scripts/check-boundaries.ts",
     "check:commits": "bun run scripts/commit-contract.ts check",
     "check:claude-engine": "bun run scripts/claude-engine-release.ts",
@@ -137,13 +141,17 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@ai-sdk/openai": "4.0.118",
+    "@ai-sdk/typesafe-ai": "3.0.40",
     "@oxlint/plugins": "1.91.0",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "@types/qrcode": "^1.5.6",
+    "ai": "7.0.173",
     "eslint-plugin-solid": "^0.18.1",
     "knip": "6.44.1",
     "oxlint": "^1.90.0",
+    "synckit": "0.11.13",
     "typescript": "7.0.2",
     "ultracite": "^8.1.0",
     "xcodebuildmcp": "2.7.0"
