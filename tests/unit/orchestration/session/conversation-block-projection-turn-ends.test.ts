@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { resolve } from "node:path"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import { contextResetRecordId, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
 
@@ -15,7 +15,7 @@ function entry(message: MessageEntry["message"], overrides: Partial<MessageEntry
 }
 
 function project(entries: ConversationEntry[]) {
-  return projectBlocksFromEntries(entries, { executionCwd: CWD })
+  return branchBlocks(entries, { executionCwd: CWD })
 }
 
 describe("turn-end records in the transcript", () => {

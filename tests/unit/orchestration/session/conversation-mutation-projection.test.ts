@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence"
 import { readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence"
 import { readSessionContentRange } from "../../../../src/infra/session-content"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { sessionContentFixture } from "../../../helpers/session-content"
 
@@ -25,7 +25,7 @@ test("attaches the recorded mutation artifact to a resumed durable-write tool", 
   })
   const result = entry("result", { kind: "toolResult", toolUseId: "toolu_mem", content: [{ type: "text", text: "{\"success\":true}" }] }, assistant.id)
   const mutationEvidence = await buildMutationDiffEvidence(mutation, "toolu_mem", stage)
-  const blocks = projectBlocksFromEntries([assistant, result], {
+  const blocks = branchBlocks([assistant, result], {
     executionCwd: cwd,
     toolResultMeta: new Map([["toolu_mem", { mutationEvidence }]]),
   })

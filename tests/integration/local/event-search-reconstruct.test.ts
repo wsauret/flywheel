@@ -43,7 +43,7 @@ async function seedRequest(): Promise<string> {
   const treeLeafEntryId = await tree.getLeafId();
   const { messages } = buildSessionContext(await tree.getBranch());
   await tree.getStorage().dispose();
-  const requestId = appendProviderRequestFacts(store, SESSION_ID, {
+  const requestId = await appendProviderRequestFacts(store, SESSION_ID, {
     identity: { providerSessionKey: CONVERSATION_ID, conversationId: CONVERSATION_ID }, turn: 1, promptKind: "chat",
     systemPrompt: "be helpful",
     messages,

@@ -6,7 +6,7 @@ import { createAskUserController } from "../../../../src/orchestration/runner/as
 import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input-projection.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { SessionStore, SessionEntry } from "../../../../src/orchestration/session-store/types.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
@@ -184,7 +184,7 @@ test.each(["answer", "dismiss"] as const)("close during recovered question %s ad
         },
       },
     }),
-    sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+    sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
   })
   const activation = supervisor.activateSession(sessionId)
   void activation.catch(() => {})

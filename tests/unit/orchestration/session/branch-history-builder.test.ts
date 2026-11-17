@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { MessageEntry, ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { buildBranchHistoryFromEntries, buildBranchHistoryTailFromEntries, BranchHistoryBuilder } from "../../../../src/orchestration/session/conversation/branch-history-builder"
+import { BranchHistoryBuilder } from "../../../../src/orchestration/session/conversation/branch-history-builder"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
 import { buildMutationDiffEntries } from "../../../../src/infra/mutation-diff-evidence"
 import { buildMutationEvidence, readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence"
@@ -31,7 +32,7 @@ describe("BranchHistoryBuilder", () => {
 
     const builder = new BranchHistoryBuilder({ executionCwd: CWD })
     for (const entry of entries) builder.add(entry)
-    const history = builder.finish()
+    const history = builder.snapshot()
 
     expect(history.tipEntryId).toBe("c1")
     expect(history.consistencyToken).toBe("chat-tree:v1:c1")
@@ -63,10 +64,11 @@ describe("BranchHistoryBuilder", () => {
     const builder = new BranchHistoryBuilder({ executionCwd: CWD })
     expect(builder.snapshot()).toEqual({ blocks: [], consistencyToken: "chat-tree:v1:root", tipEntryId: null })
 
-    for (const entry of entries) {
+    for (const [index, entry] of entries.entries()) {
       builder.add(entry)
-      const prefix = entries.slice(0, entries.indexOf(entry) + 1)
-      expect(builder.snapshot()).toEqual(buildBranchHistoryFromEntries(prefix, { executionCwd: CWD }))
+      const batch = new BranchHistoryBuilder({ executionCwd: CWD })
+      for (const prior of entries.slice(0, index + 1)) batch.add(prior)
+      expect(builder.snapshot()).toEqual(batch.snapshot())
     }
   })
 
@@ -82,10 +84,10 @@ describe("BranchHistoryBuilder", () => {
       message("s1", null, { kind: "system", content: "Created skill: `new-package`.", mutationEvidence }),
     ]
 
-    const history = buildBranchHistoryFromEntries(entries, { executionCwd: CWD })
-    const block = history.blocks[0]
+    const blocks = branchBlocks(entries, { executionCwd: CWD })
+    const block = blocks[0]
     if (block?.kind !== "system") throw new Error("expected system block")
-    expect(history.blocks).toHaveLength(1)
+    expect(blocks).toHaveLength(1)
     expect(block.mutationEvidence).toEqual(mutationEvidence)
     const page = await readMutationEvidenceFiles(block.mutationEvidence!, 0, 10, read)
     expect(page).toMatchObject({
@@ -102,8 +104,6 @@ describe("BranchHistoryBuilder", () => {
       expect(range.nextOffset).toBeNull()
       expect(Buffer.from(range.base64, "base64").toString()).toBe(mutation.files[0]!.unifiedDiff)
     }
-    // Grouping is unchanged: the counting mirror still sees exactly one block.
-    expect(buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 10)).toEqual({ blocks: history.blocks, blockCount: 1 })
   })
 
   it("pairs tools across snapshots and keeps prior snapshots immutable", () => {
@@ -132,7 +132,7 @@ describe("BranchHistoryBuilder", () => {
     const builder = new BranchHistoryBuilder({ executionCwd: CWD })
     for (const entry of entries) builder.add(entry)
 
-    expect(builder.snapshot()).toEqual(buildBranchHistoryFromEntries(entries, { executionCwd: CWD }))
+    expect(builder.snapshot().blocks).toEqual(branchBlocks(entries, { executionCwd: CWD }))
     expect(builder.snapshot().blocks.map((block) => "id" in block ? block.id : undefined)).toEqual(["toolu_dup", "toolu_dup#2"])
   })
 
@@ -157,7 +157,7 @@ describe("BranchHistoryBuilder", () => {
     builder.updateToolResultMeta("toolu_meta", meta)
     builder.updateToolSummary(run)
 
-    expect(builder.snapshot()).toEqual(buildBranchHistoryFromEntries(entries, {
+    expect(builder.snapshot().blocks).toEqual(branchBlocks(entries, {
       executionCwd: CWD,
       toolResultMeta: new Map([["toolu_meta", meta]]),
       toolSummaries: new Map([["toolu_agent", run]]),
@@ -167,27 +167,27 @@ describe("BranchHistoryBuilder", () => {
   })
 
   it("does not coalesce assistant turns across user boundaries", () => {
-    const history = buildBranchHistoryFromEntries([
+    const blocks = branchBlocks([
       message("u1", null, { kind: "user", content: "first prompt" }),
       message("a1", "u1", { kind: "assistant", content: "first answer" }),
       message("u2", "a1", { kind: "user", content: "second prompt" }),
       message("a2", "u2", { kind: "assistant", content: "second answer" }),
     ], { executionCwd: CWD })
 
-    expect(history.blocks.map((block) => block.kind)).toEqual(["userMessage", "text", "userMessage", "text"])
-    expect(history.blocks.filter((block) => block.kind === "text").map((block) => block.content)).toEqual(["first answer", "second answer"])
+    expect(blocks.map((block) => block.kind)).toEqual(["userMessage", "text", "userMessage", "text"])
+    expect(blocks.filter((block) => block.kind === "text").map((block) => block.content)).toEqual(["first answer", "second answer"])
   })
 
   it("throws on malformed Flywheel-owned tree entries", () => {
-    expect(() => buildBranchHistoryFromEntries([
+    expect(() => branchBlocks([
       JSON.parse(`{"id":"bad","parentId":null,"timestamp":"${T0}","kind":"message","message":{"kind":"assistant","content":[{"type":"bogus"}]}}`),
     ], { executionCwd: CWD })).toThrow(/Malformed persisted content part type/)
 
-    expect(() => buildBranchHistoryFromEntries([
+    expect(() => branchBlocks([
       JSON.parse(`{"id":"bad","parentId":null,"timestamp":"${T0}","kind":"unknown"}`),
     ], { executionCwd: CWD })).toThrow(/Malformed session tree entry kind/)
 
-    expect(() => buildBranchHistoryFromEntries([
+    expect(() => branchBlocks([
       message("bad-result", null, { kind: "toolResult", toolUseId: "missing_tool", content: [{ type: "text", text: "orphan" }] }),
     ], { executionCwd: CWD })).toThrow(/Malformed session tree toolResult bad-result: missing\/mismatched toolUseId missing_tool/)
   })
@@ -200,129 +200,26 @@ describe("BranchHistoryBuilder", () => {
       message("a2", "u2", { kind: "assistant", content: "four" }),
     ]
 
-    const first = buildBranchHistoryFromEntries(entries, { executionCwd: CWD })
-    const second = buildBranchHistoryFromEntries(entries, { executionCwd: CWD })
+    const first = branchBlocks(entries, { executionCwd: CWD })
+    const second = branchBlocks(entries, { executionCwd: CWD })
 
     expect(second).toEqual(first)
-    expect(first.blocks.map((block) => "id" in block ? block.id : undefined)).toEqual(["u1", "a1", "u2", "a2"])
+    expect(first.map((block) => "id" in block ? block.id : undefined)).toEqual(["u1", "a1", "u2", "a2"])
   })
 
-  it("builds a bounded tail equivalent to the full fold", () => {
-    const entries = Array.from({ length: 100 }, (_, index) =>
-      message(`u${index}`, index === 0 ? null : `u${index - 1}`, { kind: "user", content: `message ${index}` }))
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
-
-    expect(tail.blockCount).toBe(full.length)
-    expect(tail.blocks).toEqual(full.slice(-64))
-  })
-
-  it("preserves a boundary that falls inside one multi-block entry", () => {
-    const content = Array.from({ length: 70 }, (_, index) => ({ type: "image" as const, mediaType: "image/png", data: String(index) }))
-    const entries = [message("a1", null, { kind: "assistant", content })]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
-
-    expect(tail.blockCount).toBe(70)
-    expect(tail.blocks).toEqual(full.slice(-64))
-  })
-
-  it("expands the tail boundary to cover a tool_use referenced by a toolResult inside the tail", () => {
-    const leading = Array.from({ length: 10 }, (_, index) =>
-      message(`u${index}`, index === 0 ? null : `u${index - 1}`, { kind: "user", content: `leading ${index}` }))
-    const trailing = Array.from({ length: 64 }, (_, index) =>
-      message(`v${index}`, index === 0 ? "r1" : `v${index - 1}`, { kind: "user", content: `trailing ${index}` }))
-    const entries = [
-      ...leading,
-      message("a1", "u9", {
-        kind: "assistant",
-        content: [
-          { type: "text", text: "dispatching" },
-          { type: "tool_use", id: "toolu_1", name: "bash", input: { command: "echo ok" } },
-        ],
-      }),
-      message("m1", "a1", { kind: "user", content: "interjected" }),
-      message("r1", "m1", { kind: "toolResult", toolUseId: "toolu_1", content: [{ type: "text", text: "ok" }] }),
-      ...trailing,
-    ]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
-
-    expect(tail.blockCount).toBe(full.length)
-    expect(tail.blocks).toEqual(full.slice(-64))
-  })
-
-  it("counts blocked notices and duplicate tool pairing exactly in bounded tails", () => {
-    const blockedEntries = [
-      message("a-blocked", null, { kind: "assistant", content: [{ type: "tool_use", id: "toolu_blocked", name: "handoff", input: {} }] }),
-      message("r-blocked", "a-blocked", {
-        kind: "toolResult", toolUseId: "toolu_blocked", blocked: true, isError: true,
-        content: [{ type: "text", text: "Review before completion" }],
-      }),
-    ]
-    const blockedFull = buildBranchHistoryFromEntries(blockedEntries, { executionCwd: CWD }).blocks
-    expect(buildBranchHistoryTailFromEntries(blockedEntries, { executionCwd: CWD }, 1)).toEqual({
-      blocks: blockedFull.slice(-1),
-      blockCount: blockedFull.length,
-    })
-
-    const middle = Array.from({ length: 70 }, (_, index) =>
-      message(`u-middle-${index}`, index === 0 ? "a-first" : `u-middle-${index - 1}`, { kind: "user", content: `middle ${index}` }))
-    const duplicateEntries = [
-      message("a-first", null, { kind: "assistant", content: [{ type: "tool_use", id: "toolu_tail_dup", name: "bash", input: { command: "one" } }] }),
-      ...middle.slice(0, 10),
-      message("r-first", "u-middle-9", { kind: "toolResult", toolUseId: "toolu_tail_dup", content: [{ type: "text", text: "one" }] }),
-      ...middle.slice(10),
-      message("a-copy", "u-middle-69", { kind: "assistant", content: [{ type: "tool_use", id: "toolu_tail_dup", name: "bash", input: { command: "two" } }] }),
-      message("r-copy", "a-copy", { kind: "toolResult", toolUseId: "toolu_tail_dup", content: [{ type: "text", text: "two" }] }),
-    ]
-    const duplicateFull = buildBranchHistoryFromEntries(duplicateEntries, { executionCwd: CWD }).blocks
-    const duplicateTail = buildBranchHistoryTailFromEntries(duplicateEntries, { executionCwd: CWD }, 64)
-    expect(duplicateTail.blockCount).toBe(duplicateFull.length)
-    expect(duplicateTail.blocks).toEqual(duplicateFull.slice(-64))
-  })
-
-  it("counts an always-hidden background call as no block in bounded tails", () => {
-    const leading = Array.from({ length: 70 }, (_, index) =>
-      message(`u${index}`, index === 0 ? null : `u${index - 1}`, { kind: "user", content: `leading ${index}` }))
-    const entries = [
-      ...leading,
-      message("a1", "u69", {
-        kind: "assistant",
-        content: [{ type: "tool_use", id: "background_1", name: "background", input: { action: "list" } }],
-      }),
-      message("r1", "a1", { kind: "toolResult", toolUseId: "background_1", content: [{ type: "text", text: "Active background tasks" }] }),
-      message("a2", "r1", { kind: "assistant", content: "done" }),
-    ]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
-
-    expect(full.some((block) => "id" in block && block.id === "background_1")).toBe(false)
-    expect(tail.blockCount).toBe(full.length)
-    expect(tail.blocks).toEqual(full.slice(-64))
-  })
-
-  it("counts current and historical process-management calls as no blocks", () => {
+  it("projects current and historical process-management calls as no blocks", () => {
     for (const name of ["process", "background"]) {
       const entries = [
         message(`${name}-use`, null, { kind: "assistant", content: [{ type: "tool_use", id: `${name}-1`, name, input: { action: "list" } }] }),
         message(`${name}-result`, `${name}-use`, { kind: "toolResult", toolUseId: `${name}-1`, content: [{ type: "text", text: "none" }] }),
       ]
-      expect(buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks).toEqual([])
-      expect(buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)).toEqual({ blocks: [], blockCount: 0 })
+      expect(branchBlocks(entries, { executionCwd: CWD })).toEqual([])
     }
   })
 
-  it("counts a blocked always-hidden background call as no block or notice", () => {
-    const leading = Array.from({ length: 70 }, (_, index) =>
-      message(`blocked-u${index}`, index === 0 ? null : `blocked-u${index - 1}`, { kind: "user", content: `leading ${index}` }))
+  it("projects a blocked always-hidden background call as no block or notice", () => {
     const entries = [
-      ...leading,
-      message("blocked-a1", "blocked-u69", {
+      message("blocked-a1", null, {
         kind: "assistant",
         content: [{ type: "tool_use", id: "background_blocked", name: "background", input: { action: "list" } }],
       }),
@@ -335,16 +232,13 @@ describe("BranchHistoryBuilder", () => {
       }),
       message("blocked-a2", "blocked-r1", { kind: "assistant", content: "done" }),
     ]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
+    const full = branchBlocks(entries, { executionCwd: CWD })
 
     expect(full.some((block) => "id" in block && block.id === "background_blocked")).toBe(false)
     expect(full.some((block) => block.kind === "userMessage" && block.content === "Background task is not ready")).toBe(false)
-    expect(tail.blockCount).toBe(full.length)
-    expect(tail.blocks).toEqual(full.slice(-64))
   })
 
-  it("counts a tool_use with leading text as two blocks in bounded tails", () => {
+  it("projects a tool_use with leading text as two blocks", () => {
     const entries = [
       message("a1", null, {
         kind: "assistant",
@@ -352,23 +246,8 @@ describe("BranchHistoryBuilder", () => {
       }),
       message("r1", "a1", { kind: "toolResult", toolUseId: "toolu_ask", content: [{ type: "text", text: "User cancelled the question." }] }),
     ]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
+    const full = branchBlocks(entries, { executionCwd: CWD })
 
     expect(full.map((block) => "id" in block ? block.id : undefined)).toEqual(["a1:0:lead", "toolu_ask"])
-    expect(tail.blockCount).toBe(full.length)
-    expect(tail.blocks).toEqual(full)
-  })
-
-  it("returns the full fold when the branch is shorter than the bound", () => {
-    const entries = [
-      message("u1", null, { kind: "user", content: "hello" }),
-      message("a1", "u1", { kind: "assistant", content: "world" }),
-    ]
-    const full = buildBranchHistoryFromEntries(entries, { executionCwd: CWD }).blocks
-
-    const tail = buildBranchHistoryTailFromEntries(entries, { executionCwd: CWD }, 64)
-
-    expect(tail).toEqual({ blocks: full, blockCount: 2 })
   })
 })

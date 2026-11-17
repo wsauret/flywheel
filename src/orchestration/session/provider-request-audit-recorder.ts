@@ -29,7 +29,7 @@ export interface ConversationDedup {
   toolSurfaceHash?: string
 }
 
-export interface ProviderRequestFacts {
+interface ProviderRequestFacts {
   requestId: string
   facts: ProviderRequestAuditFact[]
   /** Dedup fields the caller commits after the facts are recorded. */
@@ -46,9 +46,8 @@ function hasPresentationAudit(tool: ProviderRequestAuditRequestInput["tools"][nu
 }
 
 /** Builds the audit evidence facts for one provider request: the prompt, any
- *  first-seen tool surface, and the model request. Pure construction so the
- *  live recorder and historical test fixtures share one shape. */
-export function buildProviderRequestFacts(
+ *  first-seen tool surface, and the model request. */
+function buildProviderRequestFacts(
   input: ProviderRequestAuditRequestInput,
   dedup: ConversationDedup,
 ): ProviderRequestFacts {

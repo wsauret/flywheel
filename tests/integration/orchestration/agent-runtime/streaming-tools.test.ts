@@ -22,7 +22,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+import { branchBlocks } from "../../../helpers/branch-blocks.js";
 import {
   createEagerToolVisibilityProvider,
   EAGER_INPUT_PREFIX,
@@ -178,7 +178,7 @@ describe("deterministic provider streaming and recovery", () => {
     emitAssistant(transientOnly.dispatchRuntimeEvent, [{ type: "tool_use", id: "lost", name: "write", input: {} }]);
     emitToolInputDelta(transientOnly.dispatchRuntimeEvent, "lost", '{"path":"lost.ts","content":"must not survive');
     transientOnly.dispose();
-    expect(projectBlocksFromEntries(await tree.getBranch(), { executionCwd: root }).some((block) => block.kind === "tool" && block.id === "lost")).toBe(false);
+    expect(branchBlocks(await tree.getBranch(), { executionCwd: root }).some((block) => block.kind === "tool" && block.id === "lost")).toBe(false);
 
     const canonicalInput = { path: "kept.ts", content: "canonical\n" };
     writer.enqueueMessage({ kind: "assistant", content: [{ type: "tool_use", id: "kept", name: "write", input: canonicalInput }] });
@@ -189,7 +189,7 @@ describe("deterministic provider streaming and recovery", () => {
     const reopenedStore = createSqliteEventStore(resolveEventStoreDbFile(root));
     const reopened = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(reopenedStore), writer: asAsyncEventWriter(reopenedStore) });
     if (!reopened) throw new Error("missing reopened proposal recovery tree");
-    const reconstructed = toolBlock(projectBlocksFromEntries(await reopened.getBranch(), { executionCwd: root }), "kept");
+    const reconstructed = toolBlock(branchBlocks(await reopened.getBranch(), { executionCwd: root }), "kept");
     expect(reconstructed).toMatchObject({
       status: "interrupted",
       fileChangeKind: "create",

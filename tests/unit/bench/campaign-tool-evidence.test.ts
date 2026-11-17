@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { campaignToolExclusionEvidence } from "../../../bench/chat-ab/campaign-tool-evidence.js";
-import { buildProviderRequestFacts } from "../../../src/orchestration/session/provider-request-audit-recorder.js";
+import { providerRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures.js";
 import type { ExecutionEvidence } from "../../../src/protocol/execution-evidence.js";
 
 const evidence: ExecutionEvidence = {
@@ -15,8 +15,8 @@ const evidence: ExecutionEvidence = {
   accounting: { usage: "available", price: "estimate", providerInvoicedCost: "unavailable" },
 };
 
-function audit(registrationId: string): string {
-  const { facts } = buildProviderRequestFacts({
+async function audit(registrationId: string): Promise<string> {
+  const facts = await providerRequestFacts({
     requestId: "request", identity: { providerSessionKey: "root", conversationId: "root" }, turn: 1,
     promptKind: "chat", systemPrompt: "test", messages: [], messageCount: 0, estimatedContextTokens: 0, attemptStaticTokens: 0, contextWindow: 100,
     tools: [{ name: registrationId, registrationId, executableId: registrationId, description: "", input_schema: { type: "object" } }],
@@ -27,15 +27,16 @@ function audit(registrationId: string): string {
   })).join("\n");
 }
 
-test("checks every offered registration against its canonical tool owner", () => {
-  expect(campaignToolExclusionEvidence(audit("bash"), evidence, ["bash"])).toMatchObject({
+test("checks every offered registration against its canonical tool owner", async () => {
+  expect(campaignToolExclusionEvidence(await audit("bash"), evidence, ["bash"])).toMatchObject({
     requests: [{ sessionId: "root", requestId: "request", tools: ["bash"] }],
     violations: [{ sessionId: "root", requestId: "request", tool: "bash" }],
   });
-  expect(campaignToolExclusionEvidence(audit("read"), evidence, ["bash"]).violations).toEqual([]);
-  expect(campaignToolExclusionEvidence(audit("benchmark"), evidence, ["subagent"]).violations).toEqual([]);
+  expect(campaignToolExclusionEvidence(await audit("read"), evidence, ["bash"]).violations).toEqual([]);
+  expect(campaignToolExclusionEvidence(await audit("benchmark"), evidence, ["subagent"]).violations).toEqual([]);
 });
 
-test("refuses exclusion proof when an offered registration cannot be resolved", () => {
-  expect(() => campaignToolExclusionEvidence(audit("unknown-registration"), evidence, ["bash"])).toThrow("Tool registration evidence is unavailable");
+test("refuses exclusion proof when an offered registration cannot be resolved", async () => {
+  const unknown = await audit("unknown-registration");
+  expect(() => campaignToolExclusionEvidence(unknown, evidence, ["bash"])).toThrow("Tool registration evidence is unavailable");
 });

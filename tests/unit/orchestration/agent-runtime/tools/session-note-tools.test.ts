@@ -5,7 +5,7 @@ import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { createConversationCheckpointOwner, emptyConversationCheckpoint, readConversationCheckpoint, renderApprovedCheckpointIntent } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
+import { createConversationCheckpointOwner, emptyConversationCheckpoint, readConversationCheckpoint, readInheritedCheckpointIntent } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/checkpoint-note-conversion.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
@@ -65,11 +65,10 @@ describe("conversation checkpoint tools", () => {
     expect((await run("checkpoint_replace", { section: "designIntent", value: { text: "Changed.", approved: true, by: "agent" } })).outcome).toBe("error");
     expect((await run("checkpoint_replace", { section: "nextStep", value: "changed", conversationId: "other" })).outcome).toBe("error");
     expect(await owner.read()).toEqual(saved);
-    expect(renderApprovedCheckpointIntent(saved!)).toContain("Use the exact words.");
-    expect(renderApprovedCheckpointIntent({ ...saved!, designIntent: { text: "draft", approved: false } })).toBeUndefined();
+    expect(await readInheritedCheckpointIntent(reader, "session", "conversation")).toContain("Use the exact words.");
   });
   it("saves a design intent without an approval as a draft that no child inherits", async () => {
-    const { root, owner, plan } = fixture();
+    const { root, owner, reader, plan } = fixture();
     const tools = (await plan()).tools;
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: model-written tool input, in several shapes on purpose
     const run = (value: unknown) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input: { section: "designIntent", value } }, tools, admitEveryTool), makeContext({ executionCwd: root }));
@@ -79,7 +78,7 @@ describe("conversation checkpoint tools", () => {
       expect(await run(value)).toMatchObject({ outcome: "ok", content: expect.stringMatching(/Checkpoint saved\.$/) });
       const saved = await owner.read();
       expect(saved?.designIntent).toEqual({ text: "Draft the plan.", approved: false });
-      expect(renderApprovedCheckpointIntent(saved!)).toBeUndefined();
+      expect(await readInheritedCheckpointIntent(reader, "session", "conversation")).toBeUndefined();
     }
   });
   it("reads a structured section sent as JSON text and keeps JSON-looking text sections as written", async () => {

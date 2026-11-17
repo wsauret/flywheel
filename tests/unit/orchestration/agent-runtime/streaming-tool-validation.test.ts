@@ -13,7 +13,7 @@ import { applyPatchDefinition } from "../../../../src/orchestration/agent-runtim
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../helpers/request-tool-surface.js";
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js";
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+import { branchBlocks } from "../../../helpers/branch-blocks.js";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
@@ -88,7 +88,7 @@ describe("streaming tool validation and failure", () => {
       const reopenedStore = createSqliteEventStore(resolveEventStoreDbFile(root));
       const reopened = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(reopenedStore) });
       if (!reopened) throw new Error("missing reopened canonical history tree");
-      const blocks = projectBlocksFromEntries(await reopened.getBranch(), { executionCwd: root });
+      const blocks = branchBlocks(await reopened.getBranch(), { executionCwd: root });
       expect(toolBlock(blocks, "success")).toMatchObject({ status: "completed" });
       expect(toolBlock(blocks, "error")).toMatchObject({ status: "error", errorMessage: "No match" });
       expect(JSON.stringify(blocks)).not.toContain("live advisory");

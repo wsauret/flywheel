@@ -22,8 +22,6 @@ import { parseSessionIntentInheritedFact } from "./conversation-checkpoint-facts
 const MAX_SUBAGENT_DEPTH = 3
 const log = Log.create({ service: "child-session-publication" })
 
-export class SubagentDepthLimitError extends Error {}
-
 /** A workflow publication whose binding names no chat conversation: the
  *  parent is missing, is not a chat, or holds another conversation. The
  *  message is the refusal a launch reports. */
@@ -327,7 +325,7 @@ export function createChildSessionPublication(ports: ChildSessionPublicationPort
     let ancestor = await metadata.readOrThrow(parentSessionId)
     while (ancestor.kind === "subagent") {
       depth += 1
-      if (depth > MAX_SUBAGENT_DEPTH) throw new SubagentDepthLimitError(`Subagent depth ${depth} exceeds the maximum depth ${MAX_SUBAGENT_DEPTH}`)
+      if (depth > MAX_SUBAGENT_DEPTH) throw new Error(`Subagent depth ${depth} exceeds the maximum depth ${MAX_SUBAGENT_DEPTH}`)
       ancestor = await metadata.readOrThrow(ancestor.launchedFrom.parentSessionId)
     }
     return depth

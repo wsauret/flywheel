@@ -6,11 +6,13 @@ import { tryOpenConversationTree } from "../../../../../src/orchestration/sessio
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { publishTestSubagent } from "../../session/_session-manager-fixtures.js"
 import { recoverStaleSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-recovery.js"
-import { COMPOSER_RETURN_KIND } from "../../../../../src/orchestration/session/composer-returns.js"
 import { removeOwnerPid } from "../../../../../src/orchestration/session/pid-lock.js"
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { liveSessionControl } from "../../../../../src/orchestration/session/live-session-control.js"
 import { processSettled } from "../../../../helpers/process-settled.js"
+
+/** The durable in-flight kind that holds composer input returned to a parent. */
+const COMPOSER_RETURN_KIND = "chat.composer_return"
 
 const createHarness = subagentChildHarnesses()
 describe("subagent private input at handoff", () => {

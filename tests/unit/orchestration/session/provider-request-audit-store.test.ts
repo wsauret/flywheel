@@ -9,7 +9,6 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane"
 import {
-  buildProviderRequestFacts,
   type ConversationDedup,
   recordProviderRequest,
   recordProviderResponse,
@@ -23,6 +22,7 @@ import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestratio
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/provider-request-audit-hash"
 import { createProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit"
+import { providerRequestFacts } from "./_provider-request-audit-fixtures"
 
 const roots = new Set<string>()
 
@@ -82,7 +82,7 @@ describe("provider request audit recorder", () => {
     })
     const writer = createSessionFactWriter({ sessionId: "atomic-audit", writer: lane, lane: lane.lease({ kind: "session", sessionId: "atomic-audit" }) })
     const input = { ...requestBase, turn: 1, messages: [] }
-    const expected = buildProviderRequestFacts(input, {}).facts.map((fact) => fact.type)
+    const expected = ["prompt.assembled", "tool_surface.selected", "model.requested"]
     const observed: string[] = []
     try {
       await recordProviderRequest({ writer, observe: (fact) => {
@@ -136,7 +136,7 @@ describe("provider request audit recorder", () => {
 
       failing = false
       await recordProviderRequest(audit, input, dedup)
-      expect(observed.map((fact) => fact.type)).toEqual(buildProviderRequestFacts(input, {}).facts.map((fact) => fact.type))
+      expect(observed.map((fact) => fact.type)).toEqual(["prompt.assembled", "tool_surface.selected", "model.requested"])
       expect(dedup.systemPromptHash).toBe(hashSystemPrompt(input.systemPrompt))
     } finally {
       await lane.dispose()
@@ -358,15 +358,15 @@ describe("provider request audit recorder", () => {
     store.close()
   })
 
-test("records exact candidate attribution for bundled and static catalogs", () => {
+test("records exact candidate attribution for bundled and static catalogs", async () => {
   for (const [turn, catalogProvenance] of [[1, "bundled"], [2, "static"]] as const) {
-    const facts = buildProviderRequestFacts({
+    const facts = await providerRequestFacts({
       ...requestBase,
       turn,
       messages: [{ role: "user", content: "x" }],
       accessProviderCandidate: { kind: "subscription", providerId: "chatgpt", instanceId: `account-${turn}`, spendMode: "included" },
       catalogProvenance,
-    }, {}).facts;
+    });
     expect(facts.find((fact) => fact.type === "model.requested")).toMatchObject({
       version: 6,
       payload: {
@@ -384,11 +384,11 @@ test("parses historical model.requested versions one through three", () => {
   expect(parseProviderRequestAuditFact({ type: "model.requested", version: 3, actor: "flywheel", payload: { ...base, interactionProfileId: "default" } }).version).toBe(3);
 });
 
-test("reads the retired gpt-6-luna profile ids that earlier builds recorded, and writes the default profile", () => {
+test("reads the retired gpt-6-luna profile ids that earlier builds recorded, and writes the default profile", async () => {
   const retiredGeneration = [5, 6].join(".")
-  const facts = buildProviderRequestFacts({
+  const facts = await providerRequestFacts({
     ...requestBase, turn: 1, model: "gpt-6-luna", interactionProfileId: "default", messages: [],
-  }, {}).facts
+  })
   const written = facts.find((fact) => fact.type === "model.requested")
   if (!written || written.type !== "model.requested") throw new Error("Expected request evidence")
   expect(written).toMatchObject({ version: 6, payload: { interactionProfileId: "default" } })

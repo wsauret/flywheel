@@ -6,7 +6,7 @@ import type { SessionNoticeOperation } from "../../infra/session-notice.js"
 const log = Log.create({ service: "child-session-reconciliation" })
 
 /** The one notice of a parent whose finished children cannot report back. */
-export const CHILD_RESULTS_NOTICE_SCOPE = "child-results"
+const CHILD_RESULTS_NOTICE_SCOPE = "child-results"
 
 /** Takes a session notice for the session it names. */
 export type ChildResultNoticeSink = (parentSessionId: string, operation: SessionNoticeOperation) => void

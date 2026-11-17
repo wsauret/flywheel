@@ -6,7 +6,7 @@ import { chatSessionActions, readChatTurnEnd } from "../../src/orchestration/ses
 import type { SessionManager } from "../../src/orchestration/session/manager.js"
 import { removeOwnerPid } from "../../src/orchestration/session/pid-lock.js"
 import type { WorkflowLaunchBinding } from "../../src/orchestration/session/child-session-publication.js"
-import { projectBlocksFromEntries } from "../../src/orchestration/session/conversation/conversation-block-projection.js"
+import { branchBlocks } from "./branch-blocks.js"
 import { buildSessionContext } from "../../src/orchestration/session/conversation/conversation-tree-context.js"
 import { readTranscript } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { turnEndOfEntry } from "../../src/orchestration/session/conversation/turn-end-record.js"
@@ -67,7 +67,7 @@ export async function expectSettledLaunchParent(input: {
   const context = buildSessionContext(branch, { allowAssistantTail: true }).messages
   expect(context.filter((message) => message.kind === "toolResult" && launchCalls.has(message.toolUseId))).toEqual([])
   expect(context.flatMap((message) => message.kind === "assistant" && Array.isArray(message.content) ? message.content.filter((block) => block.type === "tool_use" && launchCalls.has(block.id)) : [])).toEqual([])
-  const rows = projectBlocksFromEntries(branch, { executionCwd: input.directories.projectRoot })
+  const rows = branchBlocks(branch, { executionCwd: input.directories.projectRoot })
   for (const record of records) {
     expect(rows).toContainEqual(record.origin === "system"
       ? expect.objectContaining({ kind: "system", message: record.content })

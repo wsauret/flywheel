@@ -9,8 +9,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths"
 import { resolveDebugLogDirectory } from "../../../src/infra/debug-log"
-import { buildProviderRequestFacts } from "../../../src/orchestration/session/provider-request-audit-recorder"
-import { appendProviderRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures"
+import { appendProviderRequestFacts, providerRequestFacts } from "../orchestration/session/_provider-request-audit-fixtures"
 import { buildSessionContext } from "../../../src/orchestration/session/conversation/conversation-tree-context"
 import { createConversationTree } from "../../../src/orchestration/session/conversation/conversation-tree-handle"
 
@@ -63,7 +62,7 @@ async function recordFirstOfTurnRequest(
   const auditStore: Pick<typeof store, "append"> = {
     append: (fact) => store.append({ ...fact, aggregateId: `${auditAggregate}:${sessionId}` }),
   }
-  const requestId = appendProviderRequestFacts(auditStore, sessionId, {
+  const requestId = await appendProviderRequestFacts(auditStore, sessionId, {
     requestId: crypto.randomUUID(),
     identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
     systemPrompt: "be helpful",
@@ -91,8 +90,9 @@ async function recordFirstOfTurnRequestInDebugLog(sessionId: string, conversatio
   await tree.getStorage().dispose()
   store.close()
 
-  const built = buildProviderRequestFacts({
-    requestId: crypto.randomUUID(),
+  const requestId = crypto.randomUUID()
+  const facts = await providerRequestFacts({
+    requestId,
     identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
     systemPrompt: "be helpful",
     messages: context.messages,
@@ -107,7 +107,7 @@ async function recordFirstOfTurnRequestInDebugLog(sessionId: string, conversatio
   mkdirSync(logDir, { recursive: true })
   writeFileSync(
     join(logDir, "2026-01-01T000000000Z-1-test.jsonl"),
-    built.facts.map((fact, index) => `${JSON.stringify({
+    facts.map((fact, index) => `${JSON.stringify({
       ts: 1000 + index,
       sessionId,
       type: fact.type,
@@ -115,7 +115,7 @@ async function recordFirstOfTurnRequestInDebugLog(sessionId: string, conversatio
       payload: fact.payload,
     })}\n`).join(""),
   )
-  return built.requestId
+  return requestId
 }
 
 describe("events:search --reconstruct", () => {

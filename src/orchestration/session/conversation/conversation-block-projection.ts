@@ -444,13 +444,6 @@ export class TreeBlockProjection {
   }
 }
 
-/** Semantic re-projection of chat-tree entries into coalesced output blocks. */
-export function projectBlocksFromEntries(entries: readonly ConversationTreeTranscriptEntry[], opts: TreeBlockProjectionOptions): AnyBlock[] {
-  const projection = new TreeBlockProjection(opts);
-  for (const entry of entries) projection.add(entry);
-  return projection.snapshot();
-}
-
 /** One selected tool occurrence of the base fold. */
 export interface ToolBlockReader {
   /** The run summary the row states, as the fold read it. */

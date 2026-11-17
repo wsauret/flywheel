@@ -21,7 +21,7 @@ import { createConversationTreeProjection } from "../../../../src/orchestration/
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { loadToolExecutionTimelineFromEvents } from "../../../../src/orchestration/session/tool-execution-projection.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
@@ -200,7 +200,7 @@ function createSupervisor(
         })
       },
     }),
-    sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(cycle.store), asAsyncEventReadSurface(cycle.store)) },
+    sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(cycle.store), projectionReader: asAsyncEventReadSurface(cycle.store) }),
   })
   return { sessionStore, supervisor, turns: harness.turns, reconciliationPasses: () => reconciliationPasses }
 }

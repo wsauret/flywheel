@@ -4,7 +4,7 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
-import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 
 function reader() {

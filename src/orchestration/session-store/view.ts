@@ -94,7 +94,7 @@ export function toSessionView(id: string, entry: SessionEntry, lifecycleState: S
   return entry.kind === "workflow-agent" ? { ...conversation, kind: entry.kind, workflowMembership: workflowMembership! } : { ...conversation, kind: entry.kind }
 }
 
-export async function loadSessionView(sessionId: string, reader: AsyncEventStateReadSurface, projectionReader: AsyncEventStateReadSurface, writer?: AsyncEventWriter): Promise<SessionView | null> {
+async function loadSessionView(sessionId: string, reader: AsyncEventStateReadSurface, projectionReader: AsyncEventStateReadSurface, writer?: AsyncEventWriter): Promise<SessionView | null> {
   const session = await readSessionMetadata(projectionReader, sessionId)
   if (!session || session.kind === "workflow") return null
 

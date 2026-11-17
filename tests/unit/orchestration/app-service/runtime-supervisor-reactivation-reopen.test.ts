@@ -17,7 +17,7 @@ import { SessionTranscriptProjection } from "../../../../src/orchestration/sessi
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
 import { createWorkflowHosts } from "../../../../src/orchestration/modules/workflows/host-collection.js"
 import { childSessionProjectionAttachment } from "../../../../src/orchestration/session-store/child-session-projection.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { mockRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 const createRuntimeSupervisor = createRuntimeSupervisorBase
@@ -43,7 +43,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
       const workflowHosts = createWorkflowHosts({ runtime, projectionReader: runtime.runSync(EventReaderService), attachChildProjection: childSessionProjectionAttachment(sessionStore) })
       const supervisor = createRuntimeSupervisor({
         ...supervisorBaseDeps({ baseDir, runtime, store, manager, sessionStore, workflowHosts, continuationLanes: createContinuationLanes() }, sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId) }),
-        sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(store), asAsyncEventReadSurface(store)) },
+        sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) }),
       })
       return { runtime, store, manager, sessionStore, supervisor }
     }
@@ -142,7 +142,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
           return { reconciledCount: 1, workflowAggregateReads: 0 }
         },
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(store), asAsyncEventReadSurface(store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) }),
     })
 
     try {
@@ -194,7 +194,7 @@ describe("RuntimeSupervisor re-activation across SQLite reopen cycles", () => {
       ...supervisorBaseDeps({ baseDir, runtime, store, manager, sessionStore, workflowHosts, continuationLanes: createContinuationLanes() }, sessionStore, {
         createRunner: async (deps) => mockRunner(deps.sessionId, { seedDisplayBlocks: (blocks) => { runnerBlocks = [...blocks] } }),
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(store), asAsyncEventReadSurface(store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) }),
     })
     const shown = () => (sessionStore.get(sessionId)?.outputBlocks() ?? [])
       .flatMap((block) => block.kind === "text" || block.kind === "userMessage" ? [block.content] : [])

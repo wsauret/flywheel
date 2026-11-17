@@ -9,10 +9,13 @@ import { createSessionManager, type SessionManager } from "../../../../src/orche
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
 import { deliverSessionInput, settleUnreadMessages } from "../../../../src/orchestration/session/session-input-delivery"
 import { cleanupTmpRoot, finalizeTestSessionDeletion, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
-import { returnUnreadHumanInput, claimComposerReturns, COMPOSER_RETURN_KIND } from "../../../../src/orchestration/session/composer-returns"
+import { returnUnreadHumanInput, claimComposerReturns } from "../../../../src/orchestration/session/composer-returns"
 import { conversationPersonMessage } from "../../../../src/orchestration/session/conversation/person-message-ledger"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
+
+/** The durable in-flight kind that holds composer input returned to a parent. */
+const COMPOSER_RETURN_KIND = "chat.composer_return"
 
 afterEach(() => {
   cleanupTmpRoot()

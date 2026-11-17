@@ -24,8 +24,9 @@ import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnIn
 import { authorizePlannedSessionContinuation, awaitsPlannedContinuation, createContinuationLanes, interruptChildForReplacement, readPlannedSessionContinuationAsync, recordOwedPersonInterrupt } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
-import type { ChatSessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { createSupervisorTestContext, mockRunner, mockWorkflowRunner, supervisorBaseDeps, testSessionAuthAdmission, resumeDispatch, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
@@ -226,7 +227,7 @@ async function predecessorChat(ctx: SupervisorTestContext, writer: AsyncEventWri
   const admission = admissionStreamingFrom(model.client)
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: (deps) => createChatRunner({ ...deps, authAdmission: admission }) }),
-    sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+    sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     replacementHandoff: () => HANDOFF,
   })
   return { sessionId, conversationId, model, supervisor }
@@ -444,7 +445,7 @@ describe("a person's interrupt of a session a successor owes its continuation", 
   test("in the predecessor, a chat whose runner the cut left idle records the person's interrupt through that runner and shows it, and the successor resumes nothing", async () => {
     await withProject(async (ctx, writer) => {
       const chat = await cutChat(ctx, writer)
-      const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) } })
+      const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }) })
       expect(await supervisor.activateSession(chat.sessionId)).toBe(true)
       await supervisor.ensureChatRunner(chat.sessionId)
 

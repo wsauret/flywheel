@@ -24,7 +24,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { makeContext } from "../tools/_fixtures.js";
 import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/checkpoint-note-conversion.js";
-import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+import { branchBlocks } from "../../../../helpers/branch-blocks.js";
 import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 test("reset records reject summary payloads and historical summaries remain readable", () => {
@@ -138,7 +138,7 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
       expect(opening).toMatchObject({ kind: "user", origin: "system" });
       if (opening?.kind !== "user" || typeof opening.content !== "string") throw new Error("missing checkpoint opening");
       expect(visibleMessages).not.toContain(opening.content);
-      const blocks = projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot });
+      const blocks = branchBlocks(await tree.getBranch(), { executionCwd: projectRoot });
       expect(blocks.filter((block) => block.kind === "system" && block.message === opening.content)).toHaveLength(0);
       if (checkpointState === "present") {
         expect(opening.content).toStartWith("# Design intent (approved)\n\nKeep the exact approved intent.");
@@ -192,6 +192,6 @@ test("reset replay excludes old user messages and summaries", () => {
   ] satisfies Parameters<typeof buildSessionContext>[0];
   const context = buildSessionContext(branch);
   expect(context.messages).toEqual([{ kind: "user", origin: "system", content: "Read session notes." }]);
-  expect(projectBlocksFromEntries(branch, { executionCwd: "/scratch" }).map((block) => block.kind === "system" ? block.message : block.kind))
+  expect(branchBlocks(branch, { executionCwd: "/scratch" }).map((block) => block.kind === "system" ? block.message : block.kind))
     .toEqual(["userMessage", "Context compacted: 100 → 0 tokens"]);
 });

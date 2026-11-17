@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 let ctx: SupervisorTestContext
@@ -31,7 +31,7 @@ describe("RuntimeSupervisor recovered chat handling", () => {
           }
         },
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     await expect(supervisor.sendChat(sessionId, "continue")).resolves.toEqual({ ok: true })

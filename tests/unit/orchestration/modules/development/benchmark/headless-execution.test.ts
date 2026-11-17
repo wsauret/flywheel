@@ -14,7 +14,8 @@ import * as sourceTreatment from "../../../../../../bench/chat-ab/source-treatme
 import { resolveCampaignSubject } from "../../../../../../bench/chat-ab/campaign-subject.js";
 import { chatLedger, type ChatCampaign } from "../../../../../../bench/chat-ab/chat-store.js";
 import { campaignHeadlessOutcome } from "../../../../../../bench/chat-ab/campaign-execution.js";
-import { buildProviderRequestFacts, type ConversationDedup } from "../../../../../../src/orchestration/session/provider-request-audit-recorder.js";
+import type { ConversationDedup } from "../../../../../../src/orchestration/session/provider-request-audit-recorder.js";
+import { providerRequestFacts } from "../../../session/_provider-request-audit-fixtures.js";
 
 const temporary = temporaryDirectories();
 const plan: RuntimeSessionModelPlanResult = {
@@ -48,25 +49,27 @@ const evidence = {
 };
 const roles = { "workflow-agent": { model: "step-model", effort: "high" }, "brief.debug.investigate": { model: "investigate-model", effort: "medium" } };
 
-function toolAudit(offeredSession?: string) {
-  let position = 0;
-  return evidence.sessions.flatMap(session => {
-    let dedup: ConversationDedup = {};
-    return session.requests.flatMap(row => {
+async function toolAudit(offeredSession?: string): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  for (const session of evidence.sessions) {
+    const dedup: ConversationDedup = {};
+    for (const row of session.requests) {
       const tools = (session.sessionId === offeredSession ? ["read", "subagent"] : ["read"]).map(name => ({
         name: `mcp__runtime__${name}`, executableId: name, registrationId: name, description: "", input_schema: { type: "object" },
       }));
-      const built = buildProviderRequestFacts({
+      const facts = await providerRequestFacts({
         requestId: row.requestId, identity: row.identity, turn: 1, promptKind: "chat",
         systemPrompt: "system", messages: [], messageCount: 0, estimatedContextTokens: 0, attemptStaticTokens: 0, contextWindow: 100000,
         tools, omittedTools: [], model: "claude-sonnet-5.5", accessProvider: "anthropic_api", modelFamily: "anthropic", interactionProfileId: "default",
       }, dedup);
-      dedup = built.dedupAdvance;
-      return built.facts.filter(fact => fact.type !== "model.requested").map(fact => ({
-        source: "store", id: `fact-${++position}`, aggregateId: `session:${session.sessionId}`, sessionId: session.sessionId, position, seq: position, timestamp: position, ...fact,
-      }));
-    });
-  });
+      for (const fact of facts) {
+        if (fact.type === "model.requested") continue;
+        const position = rows.length + 1;
+        rows.push({ source: "store", id: `fact-${position}`, aggregateId: `session:${session.sessionId}`, sessionId: session.sessionId, position, seq: position, timestamp: position, ...fact });
+      }
+    }
+  }
+  return rows;
 }
 
 function subject(options: {
@@ -280,7 +283,7 @@ test("prepares once, resumes after an inherited role edit, and retains each cell
     expect(preflight.launches[0]?.command).toContain("--disable-tool");
     expect(preflight.launches.some(launch => launch.command.includes("search"))).toBe(false);
     for (const offered of ["none", "root", "child", "missing"]) {
-      const checked = subject({ toolAudit: offered === "missing" ? [] : toolAudit(offered),
+      const checked = subject({ toolAudit: offered === "missing" ? [] : await toolAudit(offered),
         evidence: { ...evidence, sessions: evidence.sessions.map(session => session.sessionId === "child" ? { ...session, kind: "workflow-agent" } : session) } });
       const executions: HeadlessBenchmarkExecution[] = [];
       const result = await disabled.execute({

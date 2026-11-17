@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { asAsyncEventReadSurface, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { chatEntriesAppendedVersion } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
+import { chatEntriesFacts } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
+import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../src/protocol/client/session-controls.js"
@@ -21,15 +22,15 @@ function detail(reader: EventStoreReadSurface, live: boolean) {
 const timestamp = "2026-10-04T00:00:00.000Z"
 
 /** One entry batch of chat-1's conversation at `position`. */
-function batch(position: number, entries: Parameters<typeof chatEntriesAppendedVersion>[0]): StoredFact {
+function batch(position: number, entries: readonly ConversationEntry[]): StoredFact {
   return {
-    id: `c-${position}`, position, seq: position - 1, aggregateId: "conversation:conv-1", sessionId: "chat-1", timestamp: position, actor: "flywheel",
-    type: "chat.entries.appended", version: chatEntriesAppendedVersion(entries), payload: { conversationId: "conv-1", entries },
+    ...chatEntriesFacts("conv-1", entries)[0],
+    id: `c-${position}`, position, seq: position - 1, aggregateId: "conversation:conv-1", sessionId: "chat-1", timestamp: position,
   }
 }
 
 /** A person's message and the interrupt `by` that cut its turn. */
-function interruptedBy(by: TurnInterruption) {
+function interruptedBy(by: TurnInterruption): ConversationEntry[] {
   const end = interruptedTurnEnd(by)
   return [
     { kind: "message", id: "u-1", parentId: null, timestamp, message: { kind: "user", content: "sleep 60", origin: "human" } },
@@ -42,7 +43,7 @@ describe("session messaging in a session's detail", () => {
     const end = interruptedTurnEnd("person")
     const interrupted = interruptedBy("person")
     // Each held message commits its own batch.
-    const held = (call: number) => [{ kind: "message", id: `msg:sender:call-${call}`, parentId: call === 1 ? turnEndEntryId(end, "k") : `msg:sender:call-${call - 1}`, timestamp, message: { kind: "user", content: "PING", producer: { kind: "session", sessionId: "sender", conversationId: "sender-conv", toolUseId: `call-${call}`, hop: 0, envelope: { name: "Sender", relation: "other", waits: false } } } }]
+    const held = (call: number): ConversationEntry[] => [{ kind: "message", id: `msg:sender:call-${call}`, parentId: call === 1 ? turnEndEntryId(end, "k") : `msg:sender:call-${call - 1}`, timestamp, message: { kind: "user", content: "PING", producer: { kind: "session", sessionId: "sender", conversationId: "sender-conv", toolUseId: `call-${call}`, hop: 0, envelope: { name: "Sender", relation: "other", waits: false } } } }]
     const reader = inMemoryEventReader([batch(1, interrupted), ...[1, 2, 3].map((call) => batch(call + 1, held(call)))])
     for (const live of [false, true]) {
       const history = detail(reader, live)

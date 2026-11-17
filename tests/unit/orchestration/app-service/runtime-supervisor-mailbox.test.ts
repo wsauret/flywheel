@@ -10,7 +10,7 @@ import { createChatRunnerLoader } from "../../../../src/orchestration/app-servic
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import type { SessionStore } from "../../../../src/orchestration/session-store/types.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorWithRunner, testSessionAuthAdmission, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 let ctx: SupervisorTestContext
@@ -623,7 +623,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
 async function savedChat(createRunner: (deps: ChatRunnerDeps) => Promise<ChatRunner>) {
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner }),
-    sessionViewLoader: { load: (sessionId) => loadSessionView(sessionId, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+    sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
   })
   const id = "s"
   await ctx.manager.createChat({ id, conversationId: "conversation:s", name: "Saved chat", initialState: "inactive" })

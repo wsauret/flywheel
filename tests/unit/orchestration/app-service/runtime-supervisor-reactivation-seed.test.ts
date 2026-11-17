@@ -23,7 +23,7 @@ async function openExistingTree(options: Parameters<typeof tryOpenConversationTr
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
 }
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { mockRunner, supervisorBaseDeps, createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
 const createRuntimeSupervisor = createRuntimeSupervisorBase
@@ -90,7 +90,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -143,7 +143,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -174,7 +174,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     ))
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -215,7 +215,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     }
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { reader: asAsyncEventReadSurface(reader) }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(reader), projectionReader: asAsyncEventReadSurface(reader) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -251,7 +251,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
           return swept
         },
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, projectionReader, projectionReader) },
+      sessionViewLoader: createSessionViewLoader({ reader: projectionReader, projectionReader }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -268,7 +268,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
         reconcileChildSessionCompletions: (parentSessionId, options) =>
           reconcileChildSessionCompletions({ parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer: asAsyncEventWriter(ctx.store), ...options }),
       }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, counter.reader, counter.reader) },
+      sessionViewLoader: createSessionViewLoader({ reader: counter.reader, projectionReader: counter.reader }),
     })
     const reactivation = async (children: number, firstChild: number) => {
       const sessionId = `resident-parent-${children}`
@@ -312,7 +312,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId, {
         resumeCommitted: () => { resumes += 1; return true },
       }) }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -343,7 +343,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId, {
         resumeCommitted: () => { resumes += 1; return true },
       }) }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -408,7 +408,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId, {
         resumeCommitted: () => { resumes += 1; return true },
       }) }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -542,7 +542,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -603,7 +603,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
     }
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, countingStore),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     // Both racing entry points (picker open + a cold send's auto-activation)
@@ -628,7 +628,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -653,7 +653,7 @@ describe("RuntimeSupervisor re-activation seeds prior history into the shell", (
 
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)

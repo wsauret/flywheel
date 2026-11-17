@@ -50,7 +50,7 @@ export async function readConversationCheckpoint(reader: AsyncEventReadSurface, 
 }
 
 /** Renders exactly the approved intent and decisions for a child, or nothing for a draft. */
-export function renderApprovedCheckpointIntent(checkpoint: ConversationCheckpoint): string | undefined {
+function renderApprovedCheckpointIntent(checkpoint: ConversationCheckpoint): string | undefined {
   if (!checkpoint.designIntent.approved) return undefined;
   return `# Design intent (approved)\n\n${checkpoint.designIntent.text}\n\n${renderDecisions(checkpoint.decisions)}`;
 }

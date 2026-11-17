@@ -142,7 +142,7 @@ interface ConversationSessionEntryBase extends SessionEntryBase {
   seedContext?: string
 }
 
-export interface ChatSessionEntry extends ConversationSessionEntryBase {
+interface ChatSessionEntry extends ConversationSessionEntryBase {
   readonly kind: "chat"
 }
 

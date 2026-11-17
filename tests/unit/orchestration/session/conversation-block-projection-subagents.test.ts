@@ -2,7 +2,8 @@ import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-f
 import { describe, expect, it } from "bun:test"
 
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { projectBlocksFromEntries, TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/validate-input"
 import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
 
@@ -19,7 +20,7 @@ describe("subagent conversation block reconstruction", () => {
   it.each(["completed", "partial"] as const)("replays a %s dispatch's selected handoff summary", (status) => {
     const assistant = entry({ kind: "assistant", content: [{ type: "tool_use", id: "dispatch", name: "subagent", input: { persona: "explorer", description: "Trace" } }] })
     const result = entry({ kind: "toolResult", toolUseId: "dispatch", content: [{ type: "text", text: JSON.stringify({ summary: "**Fixed** the issue. Tests pass." }) }] })
-    const [block] = projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolSummaries: new Map([["dispatch", {
+    const [block] = branchBlocks([assistant, result], { executionCwd: CWD, toolSummaries: new Map([["dispatch", {
       toolUseId: "dispatch", status, ownsSettlement: true, totalToolCount: 1, summary: "Fixed the issue",
     }]]) })
     expect(block).toMatchObject({ kind: "agentGroup", status, summary: "Fixed the issue" })
@@ -36,7 +37,7 @@ describe("subagent conversation block reconstruction", () => {
       }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_steer", content: [{ type: "text", text: "{\"status\":\"accepted\"}" }] })
-    const [block] = projectBlocksFromEntries([assistant, result], {
+    const [block] = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolSummaries: new Map([["toolu_dispatch", {
         toolUseId: "toolu_dispatch",
@@ -107,7 +108,7 @@ describe("subagent conversation block reconstruction", () => {
       }],
     })
     const launch = entry({ kind: "toolResult", toolUseId: "toolu_retry", content: [{ type: "text", text: "{\"status\":\"running\"}" }] })
-    const [block] = projectBlocksFromEntries([assistant, launch], {
+    const [block] = branchBlocks([assistant, launch], {
       executionCwd: CWD,
       toolSummaries: new Map<string, ToolHistorySummary>([
         ["toolu_dispatch", {
@@ -216,7 +217,7 @@ describe("subagent conversation block reconstruction", () => {
   })
 
   it("shows a rejected retry's own error without owning the previous run", () => {
-    const blocks = projectBlocksFromEntries([
+    const blocks = branchBlocks([
       entry({ kind: "assistant", content: [{ type: "tool_use", id: "retry", name: "subagent", input: { kind: "retry", session_id: "missing", display_goal: "Invented" } }] }),
       entry({ kind: "toolResult", toolUseId: "retry", isError: true, content: [{ type: "text", text: "Subagent session was not found" }] }),
     ], { executionCwd: CWD })
@@ -234,7 +235,7 @@ describe("subagent conversation block reconstruction", () => {
       }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_subagent", content: [{ type: "text", text: "done" }] })
-    const blocks = projectBlocksFromEntries([assistant, result], {
+    const blocks = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolSummaries: new Map([["toolu_subagent", {
         toolUseId: "toolu_subagent",
@@ -283,7 +284,7 @@ describe("subagent conversation block reconstruction", () => {
       "You requested up to 128000 tokens, but can only afford 124062. To increase, visit https://openrouter.ai/settings/credits and add more credits. " +
       "The runner exited before producing a result; either retry with a tighter scope, do the work directly."
     const result = entry({ kind: "toolResult", toolUseId: "toolu_failed_subagent", content: [{ type: "text", text: failureText }], isError: true })
-    const [block] = projectBlocksFromEntries([assistant, result], {
+    const [block] = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolSummaries: new Map([["toolu_failed_subagent", {
         toolUseId: "toolu_failed_subagent",
@@ -322,7 +323,7 @@ describe("subagent conversation block reconstruction", () => {
       detail: "The stream stopped for 120 seconds.",
       action: { label: "Switch models", command: "/model" },
     }
-    const [block] = projectBlocksFromEntries([assistant, result], {
+    const [block] = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolResultMeta: new Map([[toolUseId, { agentFailure: failure }]]),
       toolSummaries: new Map([[toolUseId, {
@@ -350,7 +351,7 @@ describe("subagent conversation block reconstruction", () => {
       content: [{ type: "text", text: formatToolInputProblems("subagent", ["The required parameter `kind` is missing"]) }],
       isError: true,
     })
-    const [block] = projectBlocksFromEntries([assistant, result], {
+    const [block] = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolResultMeta: new Map([[toolUseId, {
         agentFailure: {
@@ -389,7 +390,7 @@ describe("subagent conversation block reconstruction", () => {
       toolUseId: "toolu_interrupted",
       content: [{ type: "text", text: '{"status":"running","result_available":false}' }],
     })
-    const blocks = projectBlocksFromEntries([assistant, launchAck], {
+    const blocks = branchBlocks([assistant, launchAck], {
       executionCwd: CWD,
       toolSummaries: new Map([["toolu_interrupted", {
         toolUseId: "toolu_interrupted",

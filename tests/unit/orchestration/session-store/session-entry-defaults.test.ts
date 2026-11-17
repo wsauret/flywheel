@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 
 import { entryRuntimeDefaults, foldStreamingEpisode } from "../../../../src/orchestration/session-store/entry-defaults.js"
-import type { ChatSessionEntry, SessionEntryBasePatch } from "../../../../src/orchestration/session-store/types.js"
+import type { SessionEntryBasePatch } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 
 function entry(overrides: Partial<ChatSessionEntry>): ChatSessionEntry {
   return {

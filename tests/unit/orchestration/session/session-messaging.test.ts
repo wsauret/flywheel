@@ -14,7 +14,7 @@ import { createSessionMessaging } from "../../../../src/orchestration/session/se
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import { lowerProviderHistory } from "../../../../src/orchestration/agent-runtime/llm/provider-history"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
@@ -397,7 +397,7 @@ describe("addressed messages", () => {
     expect(text).toContain(`using target \\"session\\" and to \\"${member}\\"`)
     expect(text).toContain("The historical sender session cannot be resolved. No exact reply target is available.")
     expect(text).not.toContain(`Reply with message_session using target \\"session\\" and to \\"${workflow}\\"`)
-    const blocks = projectBlocksFromEntries(await tree.getBranch(), { executionCwd: "/scratch" })
+    const blocks = branchBlocks(await tree.getBranch(), { executionCwd: "/scratch" })
     expect(blocks).toMatchObject([{ kind: "userMessage", from: { sessionId: member } }, { kind: "system", message: expect.stringContaining("No exact reply target is available.") }])
     expect(JSON.stringify(store.read({ aggregateId: `conversation:${identity.conversationId}` })) ).toBe(before)
     tree.getStorage().dispose()

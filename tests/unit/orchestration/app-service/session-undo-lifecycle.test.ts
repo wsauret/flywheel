@@ -4,7 +4,7 @@ import type { SessionChangesUndoResult } from "../../../../src/protocol/session-
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
@@ -77,7 +77,7 @@ test.each(["close", "delete"] as const)("%s cannot be undone by a queued cold-se
   let tornDown = false
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async deps => { runners++; return mockRunner(deps.sessionId) } }),
-    sessionViewLoader: { load: id => { loads++; return loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) } },
+    sessionViewLoader: { load: id => { loads++; return createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }).load(id) } },
     undoChanges: async (_request, signal) => { calls++; started.resolve(signal); return settle.promise },
   })
   try {
@@ -255,7 +255,7 @@ test("Undo on a cold workflow agent does not load, resume, or start agent work",
     ...supervisorBaseDeps(ctx, ctx.sessionStore, {
       createRunner: async () => { runners++; throw new Error("No agent allowed") },
     }),
-    sessionViewLoader: { load: id => { loads++; return loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) } },
+    sessionViewLoader: { load: id => { loads++; return createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }).load(id) } },
     undoChanges: async () => { calls++; return completed },
   })
   try {

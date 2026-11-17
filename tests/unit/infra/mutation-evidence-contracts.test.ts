@@ -6,7 +6,7 @@ import { ToolExecutionOutputRecordedDataV2Schema } from "../../../src/infra/runt
 import { parseSessionRuntimeFact, parseStoredSessionRuntimeFact } from "../../../src/infra/runtime-fact-parser.js"
 import { extractToolContentFact } from "../../../src/infra/tool-content-extraction.js"
 import { hydrateToolContentFact } from "../../../src/infra/tool-content-hydration.js"
-import { parseConversationTreeFact, chatEntriesAppendedVersion } from "../../../src/orchestration/session/conversation/conversation-facts.js"
+import { parseConversationTreeFact, chatEntriesFacts } from "../../../src/orchestration/session/conversation/conversation-facts.js"
 import { extractTreeFactContent } from "../../../src/orchestration/session/conversation/conversation-tree-content-extraction.js"
 
 const evidence = {
@@ -116,11 +116,10 @@ describe("reference-backed mutation evidence contracts", () => {
     const message = { kind: "system" as const, content: "Skills updated", mutationEvidence: evidence }
     const current = fact("chat.entries.appended", 7, { conversationId: "conversation", entries: [entry(message)] })
     expect(parseConversationTreeFact(current)).toEqual(current)
-    expect(chatEntriesAppendedVersion([entry(message)])).toBe(7)
+    expect(chatEntriesFacts("conversation", [entry(message)])).toEqual([current])
     const previous = entry({ kind: "system", content: "Skills updated", reviewMutations: [{ name: "skill", action: "patched", reach: "project", mutation: inline }] })
     const historical = fact("chat.entries.appended", 6, { conversationId: "conversation", entries: [previous] })
     expect<unknown>(parseConversationTreeFact(historical)).toEqual(historical)
-    expect(chatEntriesAppendedVersion([previous])).toBe(3)
     expect(() => parseConversationTreeFact({ ...current, payload: { ...current.payload, entries: [previous] } })).toThrow()
     expect(() => parseConversationTreeFact({ ...historical, payload: current.payload })).toThrow()
     for (const mutationEvidence of [inline, [evidence], { ...evidence, files: inline.files }]) {

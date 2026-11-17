@@ -1,7 +1,8 @@
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
-import type { ChatSessionEntry, SessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { SessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { ViewedSessionStore } from "../../../../src/orchestration/app-service/session-view-projection.js"
 
 export const flush = () => Bun.sleep(0)

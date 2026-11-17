@@ -21,7 +21,7 @@ import { recordChildWorkflowStop } from "../../../../src/orchestration/session/c
 import { PERSON_STOP_INSTRUCTION } from "../../../../src/infra/tool-outcome"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions"
-import { CHILD_RESULTS_NOTICE_SCOPE, routeChildResultNotices } from "../../../../src/orchestration/session/child-reconciliation-fault"
+import { routeChildResultNotices } from "../../../../src/orchestration/session/child-reconciliation-fault"
 
 let tmpDir: string
 let stores: LocalSqliteEventStore[]
@@ -662,7 +662,7 @@ describe("child workflow completion reconciliation", () => {
 
     expect((await reconcile(writer)).durableTerminalChildSessionIds).toContain("child")
     expect(notices).toEqual([
-      { sessionId: parentSessionId, type: "upsert", notice: expect.objectContaining({ scope: CHILD_RESULTS_NOTICE_SCOPE, presentation: "session.child_results_blocked", message: expect.stringContaining("Cause: injected publication failure.") }) },
-      { sessionId: parentSessionId, type: "resolve", id: CHILD_RESULTS_NOTICE_SCOPE }])
+      { sessionId: parentSessionId, type: "upsert", notice: expect.objectContaining({ scope: "child-results", presentation: "session.child_results_blocked", message: expect.stringContaining("Cause: injected publication failure.") }) },
+      { sessionId: parentSessionId, type: "resolve", id: "child-results" }])
   })
 })

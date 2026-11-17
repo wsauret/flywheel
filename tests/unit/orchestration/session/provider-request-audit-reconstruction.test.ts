@@ -46,7 +46,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const wireMessages = contextAtRequest.messages.map((message) => namespaced && message.kind === "assistant"
       ? { ...message, content: [{ type: "tool_use" as const, id: "toolu_read", name: "mcp__flywheel__read", input: { path: "a.ts" } }] }
       : message)
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 2, promptKind: "chat",
       systemPrompt: "sys",
       messages: wireMessages,
@@ -106,7 +106,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const masked = createStaleToolResultMasker({ cutoffIndex: 3, zone: 0 }).mask(context.messages, 0.3)
     expect(masked).not.toBeNull()
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys",
       messages: masked!.messages,
@@ -157,7 +157,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     await tree.getStorage().dispose()
     const projected = lowerToolHistoryById(context.messages, ["patch-1"])
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys", messages: projected, messageCount: projected.length,
       estimatedContextTokens: 10, contextWindow: 200_000, tools, omittedTools: [],
@@ -201,7 +201,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     expect(edits.map(({ reason }) => reason)).toEqual(["agent-host-framing", "foreign-deliberation", "progress-as-text"])
     const sent = applyHistoryLowering(context.messages, edits)
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys", messages: sent, messageCount: sent.length,
       estimatedContextTokens: 10, contextWindow: 200_000, tools, omittedTools: [],
@@ -250,7 +250,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
       { kind: "system", content: withholdNote, contentRepair: { kind: "withhold", toolUseId: "shot", partIndex: 1, partKind: "image" } },
       { kind: "user", origin: "system", content: removeNote },
     ] as const
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys", messages: [...sent], messageCount: sent.length,
       estimatedContextTokens: 10, contextWindow: 200_000, tools, omittedTools: [],
@@ -287,7 +287,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const read = buildSessionContext(await tree.getBranch()).messages
     await tree.getStorage().dispose()
     expect(read.map((message) => message.kind === "user" ? message.framing : undefined)).toEqual([undefined, "claude", "agent-host", "agent-host", "agent-host"])
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys", messages: [...sent], messageCount: sent.length,
       estimatedContextTokens: 10, contextWindow: 200_000, tools, omittedTools: [],
@@ -315,7 +315,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const context = buildSessionContext(await tree.getBranch())
     await tree.getStorage().dispose()
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys",
       // Record a sha for messages that do NOT match the tree (simulating drift
@@ -343,7 +343,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const conversationId = "conv-recon-subagent"
 
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "subagent",
       systemPrompt: "assembled subagent system prompt",
       messages: [{ kind: "user", content: "do the thing" }],
@@ -374,7 +374,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const sessionId = "recon-subagent-doctored"
     const conversationId = "conv-recon-subagent-doctored"
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "subagent",
       systemPrompt: "authentic system prompt",
       messages: [{ kind: "user", content: "do the thing" }],
@@ -407,7 +407,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const context = buildSessionContext(await tree.getBranch())
     await tree.getStorage().dispose()
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "sys",
       messages: context.messages,
@@ -462,7 +462,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const context = buildSessionContext(await tree.getBranch())
     await tree.getStorage().dispose()
 
-    appendProviderRequestFacts(store, sessionId, {
+    await appendProviderRequestFacts(store, sessionId, {
       identity: { providerSessionKey: conversationId, conversationId }, turn: 1, promptKind: "chat",
       systemPrompt: "be helpful",
       messages: context.messages,

@@ -8,7 +8,7 @@ import { createConversationMessageEntry } from "./conversation/conversation-tree
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputPayload, type QueuedUserInputCell } from "./conversation/queued-user-inputs.js"
 import { liveSessionControl } from "./live-session-control.js"
 
-export const COMPOSER_RETURN_KIND = "chat.composer_return"
+const COMPOSER_RETURN_KIND = "chat.composer_return"
 const CellSchema = Schema.Struct({ version: Schema.Literal(1), conversationId: Schema.NonEmptyString, ...ComposerReturnSchema.fields })
 const decode = Schema.decodeUnknownSync(CellSchema)
 const log = Log.create({ service: "composer-returns" })

@@ -192,7 +192,7 @@ export function chatEntriesFacts(conversationId: string, entries: readonly (type
  *  other batch. A content-repair decision requires 8; otherwise reference-backed
  *  review evidence requires 7, a launch producer requires 6, a session producer
  *  requires 5, and other entries use 3. */
-export function chatEntriesAppendedVersion(entries: readonly { readonly kind: string; readonly message?: { readonly kind: string; readonly contentRepair?: unknown; readonly mutationEvidence?: unknown; readonly producer?: { readonly kind: string } } }[]): 3 | 5 | 6 | 7 | 8 {
+function chatEntriesAppendedVersion(entries: readonly { readonly kind: string; readonly message?: { readonly kind: string; readonly contentRepair?: unknown; readonly mutationEvidence?: unknown; readonly producer?: { readonly kind: string } } }[]): 3 | 5 | 6 | 7 | 8 {
   if (entries.some(entry => entry.kind === "message" && entry.message?.kind === "system" && entry.message.contentRepair !== undefined)) return 8
   if (entries.some(entry => entry.kind === "message" && entry.message?.kind === "system" && entry.message.mutationEvidence !== undefined)) return 7
   const producers = new Set(entries.flatMap((entry) => entry.kind === "message" && entry.message?.kind === "user" && entry.message.producer ? [entry.message.producer.kind] : []))

@@ -12,7 +12,7 @@ import { createFrontendProjection } from "../../../../src/orchestration/app-serv
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { fakeProjections } from "./app-service-doubles.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 
 type AutoDeletePorts = Parameters<typeof createSessionAutoDelete>[0]
 
@@ -163,7 +163,7 @@ describe("automatic session deletion", () => {
     const ctx = createSupervisorTestContext()
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => mockRunner(deps.sessionId) }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
     const entered = Promise.withResolvers<void>()
     const resume = Promise.withResolvers<void>()

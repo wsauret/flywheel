@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { FrontendOutputBlockSchema, HydratedOutputBlockBodySchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js"
+import { branchBlocks } from "../../../helpers/branch-blocks.js"
 import { extractDisplayMeta } from "../../../../src/infra/output/structured-event-tool-results.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
 import { SessionChangesQuerySchema } from "../../../../src/protocol/session-changes-protocol-types.js"
@@ -51,7 +51,7 @@ describe("mutation transcript protocol", () => {
       expect(Schema.decodeUnknownSync(FrontendOutputBlockSchema)(
         Schema.encodeUnknownSync(FrontendOutputBlockSchema)(row))).toEqual(row)
     }
-    const replayed = projectBlocksFromEntries([
+    const replayed = branchBlocks([
       {
         kind: "message", id: "call", parentId: null, timestamp: "2026-10-16T00:00:00.000Z",
         message: { kind: "assistant", content: [{ type: "tool_use", id: "edit-evidence", name: "edit", input: {} }] },

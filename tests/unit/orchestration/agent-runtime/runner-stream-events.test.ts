@@ -9,7 +9,7 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runt
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
 import { RequestToolMap } from "../../../helpers/request-tool-surface.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+import { branchBlocks } from "../../../helpers/branch-blocks.js";
 
 function streamEventContext(onEvent: (event: RuntimeEvent) => void): Parameters<typeof emitAgentStreamEvent>[1] {
   return {
@@ -64,7 +64,7 @@ describe("provider progress presentation", () => {
     if (event.kind !== "tool_use") throw new Error("expected canonical tool event");
     emitAgentStreamEvent(event, context);
     const live = projector.getBlocks().filter(block => block.kind === "text");
-    const durable = projectBlocksFromEntries([{
+    const durable = branchBlocks([{
       id: "entry", parentId: null, kind: "message", timestamp: new Date(1000).toISOString(),
       message: { kind: "assistant", content: turn.assistantContent },
     }], { executionCwd: "/workspace" }).filter(block => block.kind === "text");

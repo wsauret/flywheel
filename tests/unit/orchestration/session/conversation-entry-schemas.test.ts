@@ -14,7 +14,7 @@ import {
 } from "../../../../src/orchestration/session/conversation/conversation-entry-schemas";
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
 import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork";
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection";
+import { branchBlocks } from "../../../helpers/branch-blocks";
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
 
 const temporaryDirectory = temporaryDirectories();
@@ -397,7 +397,7 @@ describe("entry shapes that no current build writes", () => {
       ]);
       expect(branch.every((entry) => !("followUpRequestSequence" in entry) && !("name" in entry))).toBe(true);
 
-      expect(projectBlocksFromEntries(branch, { executionCwd: "/workspace" }).map((block) => [block.kind, "id" in block ? block.id : undefined])).toEqual([
+      expect(branchBlocks(branch, { executionCwd: "/workspace" }).map((block) => [block.kind, "id" in block ? block.id : undefined])).toEqual([
         ["userMessage", "ask"], ["text", "answer"], ["system", "compact"], ["userMessage", "follow-up"],
       ]);
       expect(buildSessionContext(branch).messages).toEqual([

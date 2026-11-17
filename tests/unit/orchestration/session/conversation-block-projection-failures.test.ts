@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "bun:test"
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-formatter"
 import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
@@ -47,7 +47,7 @@ describe("tree -> output blocks failed file changes", () => {
       before: { kind: "text", text: "old" },
       after: { kind: "text", text: "new" },
     }]), "mutation", createRecordingFileMutationStore().writer.stageSessionContentNodes)
-    const [block] = projectBlocksFromEntries([assistant, result], {
+    const [block] = branchBlocks([assistant, result], {
       executionCwd: CWD,
       toolResultMeta: new Map([["failed-write", {
         mutationEvidence,
@@ -80,7 +80,7 @@ describe("tree -> output blocks failed workflow runs", () => {
     const assistant = entry({ kind: "assistant", content: [{ type: "tool_use", id: "workflow-1", name: "workflow", input: { workflow_definition_id: "implement", description: "Do it" } }] })
     const acknowledgement = entry({ kind: "toolResult", toolUseId: "workflow-1", content: [{ type: "text", text: "Workflow started; the terminal result will update this row." }] })
     const base = { toolUseId: "workflow-1", ownsSettlement: false, totalToolCount: 3, duration: 5000 }
-    const settledAs = (summary: ToolHistorySummary) => projectBlocksFromEntries([assistant, acknowledgement], {
+    const settledAs = (summary: ToolHistorySummary) => branchBlocks([assistant, acknowledgement], {
       executionCwd: CWD,
       toolResultMeta: new Map([["workflow-1", { terminalOutcome: "ok", displayContent: "Workflow failed." }]]),
       toolSummaries: new Map([["workflow-1", summary]]),

@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
-import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { mockRunner, supervisorBaseDeps, createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"
 
@@ -32,7 +32,7 @@ describe("RuntimeSupervisor re-activation execution directory fallback", () => {
     const runnerCwds: string[] = []
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => { runnerCwds.push(deps.executionCwd); return mockRunner(deps.sessionId) } }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession("legacy-reactivate-1")).toBe(true)
@@ -54,7 +54,7 @@ describe("RuntimeSupervisor re-activation execution directory fallback", () => {
     let runnerCwd: string | undefined
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => { runnerCwd = deps.executionCwd; return mockRunner(deps.sessionId) } }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
 
     expect(await supervisor.activateSession(sessionId)).toBe(true)
@@ -77,7 +77,7 @@ describe("RuntimeSupervisor re-activation execution directory fallback", () => {
     let created = 0
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps({ ...ctx, manager }, ctx.sessionStore, { createRunner: async (deps) => { created += 1; return mockRunner(deps.sessionId) } }),
-      sessionViewLoader: { load: (id) => loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+      sessionViewLoader: createSessionViewLoader({ reader: asAsyncEventReadSurface(ctx.store), projectionReader: asAsyncEventReadSurface(ctx.store) }),
     })
     const message = `session execution directory does not exist: ${executionCwd}. Restore the directory to continue.`
 

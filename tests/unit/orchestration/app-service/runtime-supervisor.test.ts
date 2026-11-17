@@ -619,7 +619,7 @@ async function durableUserCount(sessionId: string, conversationId: string): Prom
   }
 }
 
-/** A loaded chat with no runner activity, as `loadSessionView` reads an inactive one. */
+/** A loaded chat with no runner activity, as the session view loader reads an inactive one. */
 function chatView(fields: Pick<ChatSessionView, "id" | "description" | "lifecycleState" | "conversationId"> & Partial<ChatSessionView>): ChatSessionView {
   return {
     kind: "chat",

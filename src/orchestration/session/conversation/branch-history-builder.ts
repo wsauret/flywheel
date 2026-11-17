@@ -76,11 +76,6 @@ export function indexOutputBlocks(blocks: readonly AnyBlock[]): Omit<IndexedBloc
   }
 }
 
-export interface BranchHistoryTail {
-  readonly blocks: readonly AnyBlock[]
-  readonly blockCount: number
-}
-
 export type BranchHistoryBuilderOptions = TreeBlockProjectionOptions & {
   readonly runtimeInvocations?: ReadonlyMap<string, readonly ToolExecutionEntry[]>
 }
@@ -124,35 +119,7 @@ export class BranchHistoryBuilder {
       tipEntryId: this.tipEntryId,
     }
   }
-
-  finish(): BranchHistory {
-    return this.snapshot()
-  }
 }
-
-export function buildBranchHistoryFromEntries(
-  entries: readonly ConversationTreeTranscriptEntry[],
-  options: BranchHistoryBuilderOptions,
-): BranchHistory {
-  const builder = new BranchHistoryBuilder(options)
-  for (const entry of entries) builder.add(entry)
-  return builder.finish()
-}
-
-/** Fold the branch once and slice the display tail. blockCount is the length
- * of the same fold the durable read path projects, so the reactivation seed's
- * absolute coordinate (blockCount - blocks.length) can never drift from the
- * durable transcript. */
-export function buildBranchHistoryTailFromEntries(
-  entries: readonly ConversationTreeTranscriptEntry[],
-  options: BranchHistoryBuilderOptions,
-  limit: number,
-): BranchHistoryTail {
-  const boundedLimit = Math.max(0, Math.floor(limit))
-  const blocks = buildBranchHistoryFromEntries(entries, options).blocks
-  return { blocks: blocks.slice(Math.max(0, blocks.length - boundedLimit)), blockCount: blocks.length }
-}
-
 
 function branchHistoryConsistencyToken(tipEntryId: string | null): string {
   return `chat-tree:v1:${tipEntryId ?? "root"}`

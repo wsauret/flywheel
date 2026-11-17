@@ -31,7 +31,7 @@ import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
 import { createWorkflowViewProtocolReader } from "../../../../src/orchestration/modules/workflows/view-protocol.js"
 import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modules/workflows/migrations/workflow-agent-sessions.js"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js"
+import { branchBlocks } from "../../../helpers/branch-blocks.js"
 import { deferredAgentMeta } from "../../../../src/infra/output/deferred-agent-meta.js"
 import { acceptOlderFollowUp, adoptionCard, adoptionFixture, adoptionWarnings, branch, chat, described, launchCard, launchedWorkflow, launchingParent, owner, parentTurn, recordCompletedRun, previousWorkflowCreatedFact } from "./_workflow-adoption.js"
 
@@ -426,7 +426,7 @@ test.each([
     const entries = branch(store, adopter.conversationId)
     expect(entries.slice(0, parent === "answered live" ? 2 : 0).map((entry) => entry.id)).toEqual(parent === "answered live" ? ["u1", "a1"] : [])
     // A person sees the notice as a launch acknowledgement reads. The card states the result, so the completion shows no row.
-    expect(projectBlocksFromEntries(entries, { executionCwd: f.root }).flatMap((block) => block.kind === "system" ? [block.message] : [])).toEqual(["Adopted the test workflow into this chat: session"])
+    expect(branchBlocks(entries, { executionCwd: f.root }).flatMap((block) => block.kind === "system" ? [block.message] : [])).toEqual(["Adopted the test workflow into this chat: session"])
     const result = loadToolExecutionTimelineFromEvents(store.read({ aggregateId: `session:${binding.parentSessionId}`, types: TOOL_EXECUTION_FACT_TYPES }))
       .find((entry) => entry.toolUseId === binding.toolUseId)
     const completions = entries.filter((entry) => entry.id.includes("workflow-completion:"))
