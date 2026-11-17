@@ -14,7 +14,7 @@ interface UnknownFields {
   readonly [key: string]: unknown;
 }
 
-function record(value: unknown): value is UnknownFields {
+function isRecord(value: unknown): value is UnknownFields {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -32,9 +32,9 @@ function positiveSafeInteger(value: unknown): number | undefined {
 
 /** Normalizes the OpenRouter-owned fields used by admission and transmission. */
 export function normalizeOpenRouterModelMetadata(row: unknown): CatalogJsonValue {
-  if (!record(row)) return null;
+  if (!isRecord(row)) return null;
   let pricing: CatalogJsonValue | undefined;
-  if (record(row.pricing)) {
+  if (isRecord(row.pricing)) {
     const prompt = finiteNonNegative(row.pricing.prompt);
     const completion = finiteNonNegative(row.pricing.completion);
     if (prompt !== undefined && completion !== undefined) {
@@ -48,14 +48,14 @@ export function normalizeOpenRouterModelMetadata(row: unknown): CatalogJsonValue
       };
     }
   }
-  const maxCompletionTokens = record(row.top_provider)
+  const maxCompletionTokens = isRecord(row.top_provider)
     ? positiveSafeInteger(row.top_provider.max_completion_tokens)
     : undefined;
   const contextLength = positiveSafeInteger(row.context_length);
-  const architecture = record(row.architecture) ? row.architecture : undefined;
+  const architecture = isRecord(row.architecture) ? row.architecture : undefined;
   const inputModalities = stringArray(architecture?.input_modalities);
   const outputModalities = stringArray(architecture?.output_modalities);
-  const efforts = record(row.reasoning) ? reasoningEfforts(row.reasoning.supported_efforts) : undefined;
+  const efforts = isRecord(row.reasoning) ? reasoningEfforts(row.reasoning.supported_efforts) : undefined;
   if (pricing === undefined && maxCompletionTokens === undefined && contextLength === undefined && inputModalities === undefined && outputModalities === undefined && efforts === undefined) return null;
   return {
     ...(pricing === undefined ? {} : { pricing }),
@@ -88,13 +88,13 @@ function reasoningEfforts(value: unknown): readonly ProviderReasoningEffort[] | 
 
 /** Reads the live top-provider output limit without requiring price evidence. */
 export function openRouterModelOutputCap(metadata: CatalogJsonValue | undefined): number | undefined {
-  if (!record(metadata) || !record(metadata.top_provider)) return undefined;
+  if (!isRecord(metadata) || !isRecord(metadata.top_provider)) return undefined;
   return positiveSafeInteger(metadata.top_provider.max_completion_tokens);
 }
 
 /** Reads a complete normalized live OpenRouter rate card. */
 export function openRouterModelPricing(metadata: CatalogJsonValue | undefined): OpenRouterModelPricing | undefined {
-  if (!record(metadata) || !record(metadata.pricing)) return undefined;
+  if (!isRecord(metadata) || !isRecord(metadata.pricing)) return undefined;
   const pricing = metadata.pricing;
   const prompt = finiteNonNegative(pricing.prompt);
   const completion = finiteNonNegative(pricing.completion);
@@ -118,17 +118,17 @@ function perMillion(perToken: number): number {
 
 /** Normalizes first-party OpenRouter metadata. */
 export function canonicalizeOpenRouterCatalogRow(row: unknown): CatalogSourceRow | undefined {
-  if (!record(row) || typeof row.id !== "string" || row.id.length === 0) return undefined;
+  if (!isRecord(row) || typeof row.id !== "string" || row.id.length === 0) return undefined;
   const identity = canonicalizeOpenRouterWireId(row.id);
   if (identity === undefined) return undefined;
   const metadata = normalizeOpenRouterModelMetadata(row);
   const livePricing = openRouterModelPricing(metadata);
   const outputLimit = openRouterModelOutputCap(metadata);
-  const contextLimit = record(metadata) ? positiveSafeInteger(metadata.context_length) : undefined;
-  const architecture = record(metadata) && record(metadata.architecture) ? metadata.architecture : undefined;
+  const contextLimit = isRecord(metadata) ? positiveSafeInteger(metadata.context_length) : undefined;
+  const architecture = isRecord(metadata) && isRecord(metadata.architecture) ? metadata.architecture : undefined;
   const inputModalities = stringArray(architecture?.input_modalities);
   const outputModalities = stringArray(architecture?.output_modalities);
-  const efforts = record(metadata) && record(metadata.reasoning) ? reasoningEfforts(metadata.reasoning.supported_efforts) : undefined;
+  const efforts = isRecord(metadata) && isRecord(metadata.reasoning) ? reasoningEfforts(metadata.reasoning.supported_efforts) : undefined;
   // OpenRouter states tool support per model; a model without it is recorded as such so listing removes it.
   const callsTools = Array.isArray(row.supported_parameters) && row.supported_parameters.includes("tools");
   return {

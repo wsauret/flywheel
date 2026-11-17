@@ -11,6 +11,7 @@ import { emitAssistant, emitToolInputComplete, emitToolInputDelta, emitToolResul
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createApplyPatchDefinition } from "../../../../src/orchestration/agent-runtime/tools/apply-patch.js";
 import { executePreparedTool, prepareToolCall, preparedToolAdmission } from "../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../helpers/request-tool-surface.js";
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js";
 import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
@@ -113,14 +114,13 @@ describe("streaming tool validation and failure", () => {
       output.applyProjectionEvent({ type: "tool-input-delta", toolUseId: "grouped", partialJson: '{"path":"private.ts","old_string":"before","new_string":"after', parentToolUseId: "agent" });
       output.applyProjectionEvent({ type: "tool-preview-check", toolUseId: "grouped", operation: { type: "set", advice: "private advisory" } });
       output.applyProjectionEvent({ type: "tool-result", toolUseId: "grouped", outcome: "error", content: [{ type: "text", text: "private failure" }], timestamp: 2, parentToolUseId: "agent" });
+      // A child's own calls never become rows of the parent: its card shows only its summary.
       const group = output.getBlocks().find(block => block.kind === "agentGroup");
-      expect(group?.kind === "agentGroup" ? group.children : []).toEqual([
-        expect.objectContaining({ id: "grouped", status: "error", errorMessage: "Private failure" }),
-      ]);
-      const grouped = group?.kind === "agentGroup" ? group.children[0] : undefined;
-      expect(grouped).not.toHaveProperty("content");
-      expect(grouped).not.toHaveProperty("proposedDiff");
-      expect(JSON.stringify(grouped)).not.toContain("private advisory");
+      expect(group).toMatchObject({ kind: "agentGroup", children: [] });
+      expect(toolBlock(output.getBlocks(), "grouped")).toBeUndefined();
+      expect(JSON.stringify(output.getBlocks())).not.toMatch(/private/i);
+      output.flush();
+      expect(streamingToolText).not.toHaveProperty("grouped");
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: "standalone", name: "edit", input: {} }]);
       emitToolInputDelta(output.dispatchRuntimeEvent, "standalone", '{"path":"visible.ts","old_string":"before","new_string":"after');
       output.applyProjectionEvent({ type: "tool-preview-check", toolUseId: "standalone", operation: { type: "set", advice: "visible advisory" } });
@@ -154,7 +154,7 @@ describe("streaming tool validation and failure", () => {
     const patch = "*** Begin Patch\n*** Update File: first.txt\n@@\n-before first\n+after first\n*** Update File: second.txt\n@@\n-before second\n+after second\n*** End Patch\n";
     const tool = createApplyPatchDefinition();
     const call: ToolCall = { id: "partial-patch", name: "apply_patch", input: { input: patch }, modelRequestId: "partial-request" };
-    const prepared = prepareToolCall(call, new Map([[tool.name, tool]]));
+    const prepared = prepareToolCall(call, new Map([[tool.name, tool]]), admitEveryTool);
     try {
       expect(await preparedToolAdmission(prepared, { executionCwd: root })).toMatchObject({ kind: "paths" });
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: call.id, name: call.name, input: {} }]);

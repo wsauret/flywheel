@@ -30,6 +30,7 @@ interface TestComposer {
 const browserFixture = new URL("../../../webview/src/app/composer-submission-loader-fixture.ts", import.meta.url).href
 const { mountComposerSubmission }: { mountComposerSubmission(options?: { question: FrontendQuestionBlock }): TestComposer } = await import(browserFixture)
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the arguments that VS Code passes to a registered command
 const callbacks = new Map<string, (path?: unknown) => Promise<void>>()
 const diagnostics: string[] = []
 const IDENTITY = "ab".repeat(32)
@@ -68,6 +69,7 @@ mock.module("vscode", () => ({
   Uri: { file: (path: string) => ({ path }), joinPath: (base: { path: string }, ...parts: string[]) => ({ path: [base.path, ...parts].join("/") }) },
   ViewColumn: { Active: -1 },
   commands: {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the arguments that VS Code passes to a registered command
     registerCommand(id: string, run: (path?: unknown) => Promise<void>) { callbacks.set(id, run); return { dispose() { callbacks.delete(id) } } },
     getCommands: async () => [...callbacks.keys()],
     executeCommand: async (...args: unknown[]) => { executed.push(args) },
@@ -76,7 +78,7 @@ mock.module("vscode", () => ({
   window: {
     createWebviewPanel() { const view = panel(); panels.push(view); return view },
     // The sidebar view is resolved by VS Code once the provider is registered.
-    registerWebviewViewProvider(_viewType: string, provider: { resolveWebviewView(view: unknown): void }) {
+    registerWebviewViewProvider(_viewType: string, provider: { resolveWebviewView(view: ReturnType<typeof panel>): void }) {
       const view = panel()
       sidebars.push(view)
       provider.resolveWebviewView(view)

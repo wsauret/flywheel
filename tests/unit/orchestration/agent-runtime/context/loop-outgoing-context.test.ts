@@ -18,7 +18,7 @@ const NAMESPACED: ToolPresentation = Object.freeze({ ...FUNCTION_TOOL_PRESENTATI
 const prefix = (request: StreamOptions, presentation: ToolPresentation = FUNCTION_TOOL_PRESENTATION) =>
   Math.ceil((renderSystemPrompt(request.systemPrompt).length
     + JSON.stringify(request.tools.map((tool) => ({ ...tool, name: presentation.wireName?.(tool.name) ?? tool.name }))).length) / 4);
-const tokens = (messages: readonly ConversationMessage[]) => estimateConversationTokens(messages, "anthropic");
+const tokens = (messages: readonly ConversationMessage[]) => estimateConversationTokens(messages, tokenCountingPolicy("unmapped-model", "anthropic"));
 
 test("the first restored request cycle retains its recorded mask through provider preparation", async () => {
   const { client } = makeCaptureClient([]);
@@ -158,30 +158,29 @@ test("provider variants and appends do not recount unchanged presented history",
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
   const context = createActiveRequestContext({ messages: () => history, attempt: () => attempt, onEvent: () => {} });
   context.select(surface, attempt, undefined);
-  const count = spyOn(context.tokenPolicy(), "countText");
-  try {
-    expect(presentToolHistory(history, NAMESPACED)[0]).toBe(history[0]);
-    expect(presentToolHistory(history, { ...FUNCTION_TOOL_PRESENTATION, wireName: (name) => name })[1]).toBe(history[1]);
-    context.active();
-    expect(count).toHaveBeenCalledTimes(3);
-    count.mockClear();
-    const prepared = context.prepare(attempt);
-    for (let i = 0; i < 20; i++) context.variant(prepared);
-    expect(count).toHaveBeenCalledTimes(0);
-    context.prepare({ ...attempt, toolPresentation: FUNCTION_TOOL_PRESENTATION });
-    context.active();
-    expect(count).toHaveBeenCalledTimes(1);
-    count.mockClear();
-    context.prepare(attempt);
-    context.active();
-    expect(count).toHaveBeenCalledTimes(0);
-    history.push({ kind: "assistant", content: [{ type: "text", text: "new answer" }] });
-    context.active();
-    expect(count).toHaveBeenCalledTimes(1);
-    expect(history[1]).toMatchObject({ content: [{ name: "read" }] });
-  } finally {
-    count.mockRestore();
-  }
+  // A prepare that changes the presentation builds a new policy object, so each
+  // count reads the countText calls of the policy that is current at that time.
+  const counted = (step: () => void): number => {
+    const count = spyOn(context.tokenPolicy(), "countText");
+    try {
+      step();
+      return count.mock.calls.length;
+    } finally {
+      count.mockRestore();
+    }
+  };
+  expect(presentToolHistory(history, NAMESPACED)[0]).toBe(history[0]);
+  expect(presentToolHistory(history, { ...FUNCTION_TOOL_PRESENTATION, wireName: (name) => name })[1]).toBe(history[1]);
+  expect(counted(() => context.active())).toBe(3);
+  const prepared = context.prepare(attempt);
+  expect(counted(() => { for (let i = 0; i < 20; i++) context.variant(prepared); })).toBe(0);
+  context.prepare({ ...attempt, toolPresentation: FUNCTION_TOOL_PRESENTATION });
+  expect(counted(() => context.active())).toBe(1);
+  context.prepare(attempt);
+  expect(counted(() => context.active())).toBe(0);
+  history.push({ kind: "assistant", content: [{ type: "text", text: "new answer" }] });
+  expect(counted(() => context.active())).toBe(1);
+  expect(history[1]).toMatchObject({ content: [{ name: "read" }] });
 });
 
 test("candidate model switches select their own prepared token policy", async () => {
@@ -210,7 +209,7 @@ test("candidate model switches select their own prepared token policy", async ()
   attempt = { ...base, model: "unmapped-model" };
   context.select(surface, attempt, undefined);
   expect(context.tokenPolicy().identity).toBe("heuristic:anthropic");
-  expect(context.active().snapshot.messageTokens).toBe(estimateConversationTokens(history, "anthropic"));
+  expect(context.active().snapshot.messageTokens).toBe(estimateConversationTokens(history, tokenCountingPolicy(attempt.model, attempt.modelFamily)));
 });
 
 for (const priorMasked of [false, true]) for (const measurement of ["before", "after"] as const) {

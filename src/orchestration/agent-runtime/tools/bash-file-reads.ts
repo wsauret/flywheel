@@ -12,11 +12,10 @@
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import type { Node } from "web-tree-sitter";
 
 import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
+import type { ResolvedShellCommands } from "./bash-command-policy.js";
 import { shownUncompressed } from "./bash-compressor.js";
-import { bashCommandNodes, loadBashParser } from "./bash-parser.js";
 import type { LineRange } from "./file-read-ledger.js";
 import type { ToolContext } from "./types.js";
 
@@ -37,7 +36,6 @@ const MAX_FILE_BYTES = 256 * 1024;
 const DEFAULT_HEAD_TAIL_LINES = 10;
 // `cat -n` and `nl` print a number of up to this many ASCII bytes before each line.
 const LINE_NUMBER_BYTES = 8;
-const CANDIDATE = /\b(?:cat|nl|bat|batcat|head|tail|sed)\b/;
 const NO_OP_COMMANDS = new Set(["echo", "printf", "true", ":"]);
 const CAT_FLAGS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
   ["cat", new Set(["-n", "--number"])],
@@ -46,13 +44,13 @@ const CAT_FLAGS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
   ["batcat", new Set(["-n", "--number", "-p", "--plain"])],
 ]);
 const SED_RANGE = /^(\d+)(?:,(\d+))?p$/;
-const GLOB = /[*?[]/;
 
-/** Records each file `command` printed whole in `context.readLedger`, when the command exited 0. */
-export async function recordShellFileReads(command: string, exitCode: number | undefined, context: ToolContext): Promise<void> {
+/** Records in `context.readLedger` each file that a command printed whole, when the command exited 0. `resolved` is
+ *  the command policy's parse of the command; without one, nothing is recorded. */
+export async function recordShellFileReads(resolved: ResolvedShellCommands | undefined, exitCode: number | undefined, context: ToolContext): Promise<void> {
   const ledger = context.readLedger;
-  if (!ledger || exitCode !== 0 || !CANDIDATE.test(command)) return;
-  const reads = await shellFileReads(command);
+  if (!ledger || !resolved || exitCode !== 0) return;
+  const reads = shellFileReads(resolved);
   if (reads.length === 0) return;
   const projectRoot = canonicalMutationPath(context.projectRoot);
   const position = await context.projectionReader?.capturePosition() ?? 0;
@@ -111,43 +109,19 @@ function printedCoverage(lines: PrintedLines, bytes: Uint8Array): "full" | reado
   return start === 1 && end === total ? "full" : [{ start, end }];
 }
 
-/** The file reads that make up all of `command`, or none when any part of it is something else. */
-async function shellFileReads(command: string): Promise<ShellFileRead[]> {
-  const parser = await loadBashParser().catch(() => undefined);
-  const tree = parser?.parse(command);
-  if (!tree) return [];
-  try {
-    if (tree.rootNode.hasError) return [];
-    const reads: ShellFileRead[] = [];
-    for (const node of bashCommandNodes(tree.rootNode)) {
-      if (node.parent?.type !== "program" && node.parent?.type !== "list") return [];
-      const words = commandWords(node);
-      if (words === undefined) return [];
-      const [name = "", ...args] = words;
-      if (NO_OP_COMMANDS.has(name)) continue;
-      const read = fileRead(name, args);
-      if (read === undefined) return [];
-      reads.push(read);
-    }
-    return reads;
-  } finally {
-    tree.delete();
+/** The file reads that make up all of a command, or none when any part of it is something else. */
+function shellFileReads({ hasError, commands }: ResolvedShellCommands): ShellFileRead[] {
+  if (hasError) return [];
+  const reads: ShellFileRead[] = [];
+  for (const { literalWords } of commands) {
+    if (literalWords === undefined) return [];
+    const [name = "", ...args] = literalWords;
+    if (NO_OP_COMMANDS.has(name)) continue;
+    const read = fileRead(name, args);
+    if (read === undefined) return [];
+    reads.push(read);
   }
-}
-
-/** The literal words of a simple command, or undefined when any word needs the shell to expand it. */
-function commandWords(node: Node): string[] | undefined {
-  const words: string[] = [];
-  for (const child of node.children) {
-    if (!child) return undefined;
-    const part = child.type === "command_name" ? child.firstChild : child;
-    if (!part) return undefined;
-    if (part.type === "raw_string") words.push(part.text.slice(1, -1));
-    else if (part.type === "string" && part.namedChildCount === 0) words.push(part.text.slice(1, -1).replace(/\\(["\\$`])/g, "$1"));
-    else if ((part.type === "word" || part.type === "number") && !GLOB.test(part.text) && !part.text.startsWith("~")) words.push(part.text.replace(/\\(.)/g, "$1"));
-    else return undefined;
-  }
-  return words;
+  return reads;
 }
 
 function fileRead(name: string, args: readonly string[]): ShellFileRead | undefined {

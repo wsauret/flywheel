@@ -95,13 +95,11 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     scheduleNotify()
   }
 
+  // Every writer mints its changes in absolute coordinates, so a batch
+  // queues as it arrives (ARCH-PROTOCOL-054).
   function queueOutputChanges(sessionId: string, changeBatch: OutputChangeBatch): void {
-    const sequenceStart = entries.get(sessionId)?.outputSequenceStart ?? 0
-    const absoluteBatch = sequenceStart === 0 || changeBatch.fullResync
-      ? changeBatch
-      : { ...changeBatch, changes: changeBatch.changes.map((change) => ({ ...change, index: change.index + sequenceStart })) }
     const queued = outputChangeQueues.get(sessionId)
-    outputChangeQueues.set(sessionId, queued ? mergeOutputChangeBatches(queued, absoluteBatch) : absoluteBatch)
+    outputChangeQueues.set(sessionId, queued ? mergeOutputChangeBatches(queued, changeBatch) : changeBatch)
   }
 
   function drainOutputChanges(sessionId: string): OutputChangeBatch {
@@ -173,7 +171,7 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     // builder is seeded with exactly the blocks the shell holds right now, so a
     // pre-runner append can never fall between an earlier startup snapshot and
     // the runner's first sync (which replaces the store's array wholesale).
-    runner.seedDisplayBlocks(entry.outputBlocks())
+    runner.seedDisplayBlocks(entry.outputBlocks(), entry.outputSequenceStart)
     entries.set(sessionId, { ...entry, runner, runnerState: "idle", activityStartedAt: Date.now() })
     notifyChange(sessionId)
     return true
@@ -208,7 +206,7 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
       outputBlocks: [...blocks, block],
       visibleMessageCountSuffix: entry.visibleMessageCountSuffix + (isVisibleMessageBlock(block) ? 1 : 0),
       outputChanges: {
-        changes: [{ kind: "upsert", index: blocks.length, block }],
+        changes: [{ kind: "upsert", index: entry.outputSequenceStart + blocks.length, block }],
         fullResync: false,
         changedTools: NO_CHANGED_TOOLS,
       },
@@ -231,7 +229,7 @@ export function createSessionStore(runtime: EventStoreRuntime, projectionReader:
     updateChatEntry(sessionId, {
       outputBlocks: blocks.toSpliced(index, 1, block),
       visibleMessageCountSuffix: entry.visibleMessageCountSuffix,
-      outputChanges: { changes: [{ kind: "upsert", index, block }], fullResync: false, changedTools: NO_CHANGED_TOOLS },
+      outputChanges: { changes: [{ kind: "upsert", index: entry.outputSequenceStart + index, block }], fullResync: false, changedTools: NO_CHANGED_TOOLS },
     })
     return true
   }

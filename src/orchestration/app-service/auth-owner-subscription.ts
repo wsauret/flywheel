@@ -1,13 +1,20 @@
+import type { StoredFact } from "../../infra/event-store-types.js"
 import type { RuntimeAuthStatusScope } from "../../protocol/auth-status-protocol-types.js"
 import type { SessionManager } from "../session/manager.js"
+import type { WorkflowRunReader } from "../workflow-host/run-record.js"
 import type { WatchedCatalogSession } from "./auth-profile-watcher-owner.js"
 
-/** Observes durable owner changes without inventing session scopes for aggregate IDs. */
+/** Observes durable owner changes without inventing session scopes for aggregate IDs.
+ *  A session change touches no workflow run: a workflow reconciles only when
+ *  a committed batch changes its own run. */
 export function subscribeAuthOwners(input: {
   readonly manager: Pick<SessionManager, "subscribe"> & {
     listForIds(ids: readonly string[]): Promise<{ readonly sessions: readonly WatchedCatalogSession[] }>
   }
-  readonly reconcileWorkflows: () => Promise<void>
+  /** The store's post-commit broadcast. */
+  readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void
+  readonly runs: Pick<WorkflowRunReader, "changedRuns">
+  readonly reconcileWorkflow: (workflowId: string) => Promise<void>
   /** Lists every active session: a deletion is rare, and only a full list
    *  can tell that no other session needs the deleted session's profile. */
   readonly reconcileWatchers: () => Promise<void>
@@ -24,8 +31,7 @@ export function subscribeAuthOwners(input: {
     input.publish(scopes)
     input.reconcileSessions(scopes)
   }
-  return input.manager.subscribe((change) => {
-    void input.reconcileWorkflows().catch(input.onError)
+  const unsubscribeSessions = input.manager.subscribe((change) => {
     if (change.kind === "changed") {
       void changed(change.sessionIds).catch(input.onError)
     } else {
@@ -33,4 +39,11 @@ export function subscribeAuthOwners(input: {
       input.reconcileSessions([{ kind: "session", sessionId: change.sessionId }])
     }
   })
+  const unsubscribeRuns = input.onStored((events) => {
+    for (const workflowId of input.runs.changedRuns(events)) void input.reconcileWorkflow(workflowId).catch(input.onError)
+  })
+  return () => {
+    unsubscribeSessions()
+    unsubscribeRuns()
+  }
 }

@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { ApiOverloaded } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { FUNCTION_TOOL_PRESENTATION, type ContentBlock, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
@@ -437,10 +438,10 @@ describe("provider failure settlement", () => {
   }
 
   test("a recoverable provider failure settles the observed call once, then re-raises", async () => {
-    const turn = runTurn(dyingClient(toolCallTurn, new ApiOverloaded({ message: "overloaded" })));
+    const turn = runTurn(dyingClient(toolCallTurn, fromStreamError(new LlmStreamError("overloaded", "overload"))));
     const failure = await turn.failure;
 
-    expect(failure instanceof ApiOverloaded ? failure._tag : undefined).toBe("ApiOverloaded");
+    expect(failure).toMatchObject({ _tag: "ApiOverloaded" });
     const assistants = turn.canonical.filter((message) => message.kind === "assistant");
     expect(assistants).toHaveLength(1);
     expect(assistants[0]?.kind === "assistant" && assistants[0].incomplete).toBe(true);
@@ -468,7 +469,7 @@ describe("provider failure settlement", () => {
   });
 
   test("a failed turn publishes no terminal projection of its own", async () => {
-    const turn = runTurn(dyingClient(toolCallTurn, new ApiOverloaded({ message: "overloaded" })));
+    const turn = runTurn(dyingClient(toolCallTurn, fromStreamError(new LlmStreamError("overloaded", "overload"))));
     await turn.failure;
 
     expect(turn.events.filter((event) => event.kind === "done")).toHaveLength(0);
@@ -545,7 +546,7 @@ describe("canonical acknowledgement gating", () => {
     let settlement: "pending" | "raised" = "pending";
     const failure = runAgentLoop({
       ...loopIdentity,
-      client: dyingClient([{ kind: "text_delta", text: "Partial.", blockKey: "text" }], new ApiOverloaded({ message: "overloaded" })),
+      client: dyingClient([{ kind: "text_delta", text: "Partial.", blockKey: "text" }], fromStreamError(new LlmStreamError("overloaded", "overload"))),
       tools: new RequestToolMap(),
       systemPrompt: stableSystemPrompt("test"),
       instruction: "reply once",
@@ -561,6 +562,6 @@ describe("canonical acknowledgement gating", () => {
 
     ack.release();
     const raised = await failure;
-    expect(raised instanceof ApiOverloaded ? raised._tag : undefined).toBe("ApiOverloaded");
+    expect(raised).toMatchObject({ _tag: "ApiOverloaded" });
   });
 });

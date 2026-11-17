@@ -4,8 +4,10 @@ import { listDefinition } from "../agent-runtime/tools/list.js"
 import { searchDefinition } from "../agent-runtime/tools/search.js"
 import type { FirstPartyModule } from "../modules.js"
 
-function declaration(tool: RuntimeTool, order: number): ToolDeclaration {
+/** `summary` gives the tool a short form on an unattended tree, whose agents rarely call it (ARCH-CONTEXT-038). */
+function declaration(tool: RuntimeTool, order: number, summary?: string): ToolDeclaration {
   return {
+    ...summary === undefined ? {} : { shortForm: { trees: "unattended", summary } },
     category: "core",
     action: tool.action,
     cloneInheritance: "inherit",
@@ -23,11 +25,10 @@ export const discoveryModule = {
   dependencies: [],
   availability: { kind: "available" },
   contributions: [
-    { domain: "tools", id: "list", value: { kind: "tool", name: "list", declaration: declaration(listDefinition, 2) } },
-    { domain: "tools", id: "search", value: { kind: "tool", name: "search", declaration: declaration(searchDefinition, 5) } },
+    { domain: "tools", id: "list", value: { kind: "tool", name: "list", declaration: declaration(listDefinition, 2, "List file and directory paths, shallow or by glob pattern.") } },
+    { domain: "tools", id: "search", value: { kind: "tool", name: "search", declaration: declaration(searchDefinition, 5, "Search file contents with ripgrep regex or literal patterns.") } },
     { domain: "settings", id: "discovery", value: { control: "binary", group: "Tools", label: "Discovery", description: "Allow agents to search file contents and list paths" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

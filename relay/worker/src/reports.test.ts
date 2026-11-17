@@ -22,6 +22,7 @@ const report: BugReport = {
   diagnostics: { tui: [{ ts: 123, type: "log.error", payload: { kind: "failed", bytes: 42 } }], executor: [], account: [] },
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the JSON body that a client posts, malformed on purpose in some tests
 function request(body: unknown = report, headers: HeadersInit = {}): Request {
   return new Request("https://relay.flywl.sh/reports", {
     method: "POST",

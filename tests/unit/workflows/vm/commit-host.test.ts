@@ -1,12 +1,10 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
-import { Schema } from "effect"
-import { asAsyncEventReadSurface, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, requireGuardedEventAppender, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event-read-surface.js"
 import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { createWorkflowCommitHost, WorkflowCommitConflictError, WorkflowCommitStorageError } from "../../../../src/workflows/vm/commit-host.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
@@ -21,8 +19,9 @@ import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.j
 import { createLiveWorkflowView, loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { WorkflowMalformedStateError } from "../../../../src/workflows/vm/host-types.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
-const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const workflow = loadedWorkflow({
   id: "workflow",
   name: "Workflow",
   phases: [{ phase: "work", brief: "Do the work work.", name: "work", writes: [] }],
@@ -84,6 +83,7 @@ function host(eventWriter: AsyncEventWriter, events: readonly StoredFact[] | Eve
   return createWorkflowCommitHost({
     sessionId: "session",
     writer: eventWriter,
+    commitBatch: (appends) => requireGuardedEventAppender(eventWriter, "A test commit host appends through guarded batches").appendBatchGuarded(appends),
     reader: asAsyncEventReadSurface("read" in events ? events : reader(events, onRead)),
     definitionRevision: Object.freeze({
       ...captured,

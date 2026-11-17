@@ -1,5 +1,6 @@
 ---
 description: Add realistic workload and resource-cost scrutiny to one active code or plan review.
+disable-model-invocation: true
 ---
 
 # Performance Review Principles

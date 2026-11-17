@@ -7,7 +7,7 @@ export function createXaiOpenAIClient(accessor: XaiTokenAccessor): OpenAI {
   return new OpenAI({
     baseURL: XAI_SUBSCRIPTION_BASE_URL,
     apiKey: "supergrok-oauth",
-    // withRetryStream owns retries; SDK retries would stack multiplicatively.
+    // The failover walk owns retries; SDK retries would stack multiplicatively.
     maxRetries: 0,
     fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
       const tokens = await accessor.fresh();

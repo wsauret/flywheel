@@ -15,7 +15,6 @@
  *  Remove after 2027-04-30. */
 import { Array as Arr, Schema } from "effect";
 import type { ResolvedAgent } from "../agent-resolution.js";
-import { workflowInputContract } from "../brief.js";
 import { hashDefinition } from "../definition-hash.js";
 import { canonicalStepPolicy, canonicalStepWorkflowRecord } from "../retired-step-grammar/records.js";
 import { walkFlow, type StepGrammarWorkflow, type WorkflowFlowEntry } from "../retired-step-grammar/schema.js";
@@ -44,7 +43,7 @@ const WORKFLOW_VM_VERSION = "2";
  *  Undefined for a definition first written in the phase grammar. */
 export function retiredStepView(workflow: WorkflowDefinition): StepGrammarWorkflow | undefined {
   return workflow.retiredStepGrammar?.workflow
-    ?? (workflow.provenance?.layer === "bundled" ? retiredBuiltInDefinition(workflow.id) : undefined);
+    ?? (workflow.provenance.layer === "bundled" ? retiredBuiltInDefinition(workflow.id) : undefined);
 }
 
 /** One flow list with each phase container reduced to its id and `after`.
@@ -81,7 +80,7 @@ export function retiredStepIdentity(
   options: DefinitionIdentityOptions,
 ): StepDefinitionIdentity {
   const record = canonicalStepWorkflowRecord(view);
-  const contract = workflowInputContract(workflow);
+  const contract = workflow.inputContract;
   const flow = shallowFlow(record.flow);
   const phases = phaseIdentities(record.flow);
   const stepAgents = Object.keys(record.steps).sort().flatMap((stepId) => {

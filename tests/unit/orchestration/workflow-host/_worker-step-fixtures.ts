@@ -1,4 +1,3 @@
-import { Schema } from "effect"
 import { createEmit, EventBus, type EmitFn } from "../../../../src/infra/event-bus"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
@@ -14,7 +13,6 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/s
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/agent-callback"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution"
 import type { AttemptRow } from "../../../../src/workflows/view/types"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema"
 import { planEveryCapability } from "../../../helpers/attempt-brief"
 import { testAuthContext } from "../../../helpers/auth-context"
 import { testDirectories } from "../../../helpers/directories"
@@ -22,6 +20,7 @@ import { fixedAvailability, repoDefinitions } from "../../../helpers/project-def
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { publishWorkerAttempt } from "./_workflow-host-fixtures"
 import { makeWorkflowDeps } from "./_workflow-controller-fixtures"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 export const WORKFLOW = "workflow-1"
 export const CONVERSATION = "agent-step-1"
@@ -35,7 +34,7 @@ export async function publishStep(dir: string) {
 }
 
 /** A member worker built with the executor's command handover. */
-export function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover: CommandHandoverAuthority, emit: EmitFn = createEmit(new EventBus()), inputs = workflowAgentInputs(commandHandover.projectionReader, WORKFLOW), resolvedAgents: ReadonlyMap<string, ResolvedAgent> = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover: CommandHandoverAuthority, emit: EmitFn = createEmit(new EventBus()), inputs = workflowAgentInputs(commandHandover.projectionReader, WORKFLOW), resolvedAgents: ReadonlyMap<string, ResolvedAgent> = resolveWorkflowAgents(loadedWorkflow({
   id: "wf", name: "Workflow", phases: [{ phase: "work", brief: "Do the work.", name: "Work" }],
 })), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW, overrides: Partial<Pick<Parameters<typeof createWorkerCallback>[0], "attachChildProjection" | "planCapabilities" | "capabilityAccess">> = {}) {
   const { accountHome, userDataRoot } = testDirectories(dir)

@@ -8,7 +8,7 @@ import {
   type LaunchableWorkflowToolDeps,
   type ModelWorkflowLaunch,
 } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
-import { CANONICAL_WORKFLOW_FILE, createWorkflowTool } from "../../../../../src/orchestration/agent-runtime/tools/workflow.js";
+import { createWorkflowTool } from "../../../../../src/orchestration/agent-runtime/tools/workflow.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import {
   WORKFLOW_LAUNCH_RETRY_INSTRUCTION,
@@ -18,6 +18,7 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext as makeToolContext } from "./_fixtures.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
@@ -345,14 +346,9 @@ describe("createWorkflowTool", () => {
     expect(toolDescription).toContain('Launch a workflow file that you write in one call: workflow({ source: { kind: "content", content }, summary, description, input }). Flywheel saves the content as scratch/workflows/<id>.workflow.yaml in this session\'s directory, replacing a file of that name, and launches the saved file. Name a saved file with { kind: "path", path } to launch it again or after you edit it.');
     expect(toolDescription).toContain("The launch decodes, admits, and verifies the file before any agent starts; a refused launch starts nothing, keeps the saved file, and lists each problem.");
     expect(toolDescription).toContain("Before you write a workflow file, load the `workflow-authoring` skill.");
-    // The prompt shows one canonical file. The grammar, the reducers, the
-    // limits, and the method live in the skill, which a chat loads only when
-    // it writes a file.
-    expect(toolDescription).toContain(CANONICAL_WORKFLOW_FILE);
-    expect(toolDescription.split("\nphases:\n")).toHaveLength(2);
-    // The description field states how to write the description, so the
-    // prompt does not repeat it.
-    expect(toolDescription.trimEnd().endsWith(`${CANONICAL_WORKFLOW_FILE.split("\n").at(-1)}`)).toBe(true);
+    // The canonical file, the grammar, the reducers, the limits, and the
+    // method live in the skill, which a chat loads only when it writes a file.
+    expect(toolDescription).not.toContain("\nphases:\n");
     for (const reference of ["coverage", "quorum", "while:", "repeat:", "max_attempts", "Effective descriptions", "There are three tiers of execution", "Default to in-process work"]) {
       expect(toolDescription).not.toContain(reference);
     }
@@ -402,7 +398,7 @@ describe("createWorkflowTool", () => {
 
     const input = { source: SOURCE, summary: "s", description: "d", confirmation_id: "q-7" };
     const refused = await executePreparedTool(
-      prepareToolCall({ id: "tc_wf_1", name: "workflow", input }, new Map([[tool.name, tool]])),
+      prepareToolCall({ id: "tc_wf_1", name: "workflow", input }, new Map([[tool.name, tool]]), admitEveryTool),
       makeToolContext({ toolUseId: "tc_wf_1", modelRequestId: "req-wf-1", conversationId: "conv-1", capabilityAccess: capabilityAccessHolding(["workflows"]) }),
     );
 
@@ -416,7 +412,7 @@ describe("createWorkflowTool", () => {
   it("names this session's workflow directory by its place in the scratchpad, so every session shares the guideline bytes", () => {
     const guidelines = (sessionDir?: string) => createWorkflowToolCore(makeDeps({ sessionDir })).promptGuidelines.join("\n");
 
-    expect(guidelines("/home/a/.flywheel/sessions/s1")).toContain("This session's workflow directory is `workflows` inside its scratchpad directory, where a content launch saves its file. Edit a saved file by its absolute path, because a relative scratch/ path reaches this directory only when the project has no scratch entry of its own, and launch it by that same path.");
+    expect(guidelines("/home/a/.flywheel/sessions/s1")).toContain("This session's workflow directory is `workflows` inside its scratchpad directory, where a content launch saves its file. Edit and relaunch a saved file by its absolute path, never by a relative scratch/ path.");
     // Guidelines render in the stable tier, which every session of the role reads from the prompt cache.
     expect(guidelines("/home/a/.flywheel/sessions/s1")).toBe(guidelines("/home/b/.flywheel/sessions/s2"));
     // A session without a scratch directory launches no file.
@@ -495,12 +491,8 @@ describe("createWorkflowTool", () => {
     ];
 
     for (const prompt of prompts) expect(prompt.match(/\*\*Every change is a first draft\.\*\*/g)).toHaveLength(1);
-    for (const prompt of [prompts[0]!, prompts[2]!]) {
-      expect(prompt.match(/a workflow handoff carries them in its declared output/g)).toHaveLength(1);
-    }
-    // Without a delegation tool the chat has no delegated result to read deviations from.
-    expect(prompts[1]).toContain("Record your own deviations from that intent as you work.");
-    expect(prompts[1]).not.toContain("a workflow handoff carries them");
+    // Each route's own result contract carries the deviations, so the commitment names no carrier.
+    for (const prompt of prompts) expect(prompt).toContain("Record your own deviations from that intent as you work. After");
     expect(workflow.promptGuidelines?.join("\n")).not.toContain("first draft");
     expect(workflow.description).not.toContain("first draft");
   });

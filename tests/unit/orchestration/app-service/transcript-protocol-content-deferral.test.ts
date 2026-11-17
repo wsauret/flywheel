@@ -6,11 +6,11 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import type { MutationDiff } from "../../../../src/infra/mutation-diff.js"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 async function openExistingTree(options: Parameters<typeof tryOpenConversationTree>[0]) {
   const tree = await tryOpenConversationTree(options)
@@ -347,7 +347,7 @@ describe("bounded output history content deferral", () => {
         content: "durable execution tail",
       })
 
-      const recreated = createSessionDetailProjection({
+      const recreated = testSessionDetailProjection({
         projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => undefined },
         manager: { read: async () => durableSession() }, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
       })
@@ -480,7 +480,7 @@ function appendSubagentHistory(store: ReturnType<typeof createSqliteEventStore>)
 
 async function withDerivedChatHistory(
   messages: readonly ConversationMessage[],
-  run: (projection: ReturnType<typeof createSessionDetailProjection>, store: ReturnType<typeof createSqliteEventStore>) => Promise<void>,
+  run: (projection: ReturnType<typeof testSessionDetailProjection>, store: ReturnType<typeof createSqliteEventStore>) => Promise<void>,
 ): Promise<void> {
   const tmpDir = mkdtempSync(join(tmpdir(), "flywheel-output-history-deferral-"))
   const store = createSqliteEventStore(join(tmpDir, "flywheel.sqlite"))
@@ -491,7 +491,7 @@ async function withDerivedChatHistory(
     if (appended.kind !== "committed") throw new Error(`tree append failed: ${appended.kind}`)
 
     const recovered = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader
-    const projection = createSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD,
+    const projection = testSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD,
       sessionStore: { get: () => undefined },
       manager: { read: async () => durableSession() },
       reader: recovered,

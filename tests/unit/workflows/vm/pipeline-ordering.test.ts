@@ -21,11 +21,13 @@ import { workflowTree } from "../../../../src/workflows/vm/view-tree.js";
 import { renderAgentOutput } from "../../../../src/workflows/output-contract/render.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
+import { quietHostDeps } from "./host-test-support.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const REQUEST = "SQLite VM acceptance";
 /** Decodes a workflow the way a project file is loaded, so the fixtures state
  *  only the keys an author writes. */
-const authoredWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema);
+const authoredWorkflow = loadedWorkflow;
 const drivers: SqliteVmDriver[] = [];
 
 afterEach(() => {
@@ -98,6 +100,7 @@ async function run(
     },
   });
   const host = (startMode: WorkflowVmStartMode) => createWorkflowVmHost({
+    ...quietHostDeps(asAsyncEventWriter(vm.store)),
     servedConversations: async () => new Set(),
     requestAddenda: async () => [],
     startMode,

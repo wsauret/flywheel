@@ -1,7 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import {
   type AgentRuntimeError,
-  ContentRefused,
   fromStreamError,
   StreamStalled,
   toFailureReason,
@@ -32,8 +31,7 @@ describe("content refusal on the runtime channel", () => {
 
     const typed = fromStreamError(refused)
 
-    expect(typed).toBeInstanceOf(ContentRefused)
-    if (!(typed instanceof ContentRefused)) return
+    if (typed._tag !== "ContentRefused") throw new Error(`expected ContentRefused, got ${typed._tag}`)
     expect(typed.message).toBe(original)
     expect(typed.reason).toBe(refused.reason)
     expect(typed.part).toEqual(part)

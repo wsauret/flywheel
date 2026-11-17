@@ -23,7 +23,7 @@ export type ExternalUrlOpener = (url: string) => Promise<boolean>
  *  testable on a host that is not Windows. */
 type ShellExecute = (url: string) => boolean
 
-export interface ExternalUrlOpenerOptions {
+interface ExternalUrlOpenerOptions {
   readonly platform?: NodeJS.Platform
   readonly shellExecute?: ShellExecute
 }

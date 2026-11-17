@@ -5,7 +5,6 @@ import { dirname, join } from "node:path"
 import { authorizeHubMutation, createHubMutationCredential, isServedOrigin } from "../../../../src/orchestration/app-service/web-serving/origin-check"
 import {
   authorizeToken,
-  generateToken,
   loadOrCreateToken,
 } from "../../../../src/orchestration/app-service/web-serving/token-auth"
 import { temporaryDirectories } from "../../../helpers/directories"
@@ -55,15 +54,6 @@ describe("local browser origin admission", () => {
 describe("local browser token authorization", () => {
   const temporaryDirectory = temporaryDirectories()
 
-  test("generates a per-process 192-bit hex token", () => {
-    const first = generateToken()
-    const second = generateToken()
-
-    expect(first).toMatch(/^[0-9a-f]{48}$/)
-    expect(second).toMatch(/^[0-9a-f]{48}$/)
-    expect(second).not.toBe(first)
-  })
-
   test("accepts only the exact token, never an absent or empty one", () => {
     const expected = "a".repeat(48)
 
@@ -76,7 +66,7 @@ describe("local browser token authorization", () => {
 
   test("token acquisition remains pending without blocking its caller while the file read is pending", async () => {
     const file = join(temporaryDirectory("fw-web-token-pending-"), "p.web-token")
-    const expected = generateToken()
+    const expected = "1".repeat(48)
     writeFileSync(file, `${expected}\n`)
     const release = Promise.withResolvers<string>()
     const read = spyOn(asyncFs, "readFile").mockReturnValueOnce(release.promise)
@@ -113,7 +103,7 @@ describe("local browser token authorization", () => {
 
   test("a token another start published first is adopted, and no staging file is left", async () => {
     const file = join(temporaryDirectory("fw-web-token-"), "p.web-token")
-    const other = generateToken()
+    const other = "2".repeat(48)
     writeFileSync(file, `${other}\n`)
     expect(await loadOrCreateToken(file)).toBe(other)
     expect(readdirSync(dirname(file))).toEqual(["p.web-token"])
@@ -155,9 +145,9 @@ describe("local browser token authorization", () => {
     const directory = temporaryDirectory("fw-web-token-")
     const file = join(directory, "p.web-token")
     writeFileSync(file, "not a token\n")
-    writeFileSync(`${file}.${crypto.randomUUID()}.tmp`, `${generateToken()}\n`)
+    writeFileSync(`${file}.${crypto.randomUUID()}.tmp`, `${"3".repeat(48)}\n`)
     const otherStaging = `q.web-token.${crypto.randomUUID()}.tmp`
-    writeFileSync(join(directory, otherStaging), `${generateToken()}\n`)
+    writeFileSync(join(directory, otherStaging), `${"4".repeat(48)}\n`)
     const token = await loadOrCreateToken(file)
     expect(readFileSync(file, "utf8")).toBe(`${token}\n`)
     expect(readdirSync(directory).sort()).toEqual(["p.web-token", otherStaging])

@@ -23,7 +23,8 @@ import { createProcessorGovernor } from "../../../src/orchestration/app-service/
 import { servingAccountService } from "../../helpers/account-service-state.js"
 import { idleAccountUpdates } from "../../helpers/account-updates.js"
 import { createAccountProjectRegistry } from "../../../src/orchestration/app-service/account-project-registry.js"
-import { bunSocketClientLayer, bunSocketServerLayer } from "../../../src/orchestration/app-service/bun-socket-rpc.js"
+import { bunSocketClientLayer } from "../../../src/orchestration/app-service/bun-socket-rpc.js"
+import { socketRpcServerLayer } from "../../helpers/socket-rpc-server.js"
 import { runtimeHandlers } from "../../../src/orchestration/app-service/runtime-protocol-handlers.js"
 import { createProcessBackgroundClient } from "../../../src/orchestration/app-service/worker-background-client.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
@@ -190,7 +191,7 @@ test("a locked transcript index leaves public control and executor admission res
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
       Layer.provide(layerMsgPack),
-      Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
+      Layer.provide(socketRpcServerLayer({ path: "public.sock" })),
     ),
   )
   await bounded("public RPC server startup", server.context())
@@ -327,7 +328,7 @@ test("a stalled executor start ends on its own wedge proof, every account record
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-startup-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
       Layer.provide(layerMsgPack),
-      Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
+      Layer.provide(socketRpcServerLayer({ path: "public.sock" })),
     ),
   )
   await bounded("stalled-start public server", server.context())
@@ -518,7 +519,7 @@ test("provider-issued recall stays in the executor background Worker while accou
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-recall-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
       Layer.provide(layerMsgPack),
-      Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
+      Layer.provide(socketRpcServerLayer({ path: "public.sock" })),
     ),
     )
     defer("recall server", () => bounded("recall server cleanup", server.dispose()))

@@ -27,6 +27,13 @@ describe("toolRunCategoryFor", () => {
   it("lets the execute override and the script carrier win over the action", () => {
     expect(toolRunCategoryFor({ name: "read", action: "file_read", runCategoryOverride: "execute" })).toBe("execute")
     expect(toolRunCategoryFor({ name: "code" })).toBe("execute")
+    expect(toolRunCategoryFor({ name: "code", action: "shell_exec" })).toBe("execute")
+  })
+
+  // PI-AGENT-131: a read of a short-form tool's contract runs nothing, so it explores whatever its tool is.
+  it("folds a contract read under explore, also for the code tool and a bookkeeping tool", () => {
+    expect(toolRunCategoryFor({ name: "code", action: "search" })).toBe("explore")
+    expect(toolRunCategoryFor({ name: "memory", action: "search" })).toBe("explore")
   })
 })
 

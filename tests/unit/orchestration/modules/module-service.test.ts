@@ -16,6 +16,8 @@ import { remoteModule } from "../../../../src/orchestration/modules/remote/modul
 import { remoteConfigSection } from "../../../../src/orchestration/modules/remote/config.js"
 import { kernelPorts } from "../../../helpers/module-kernel.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
+import type { Schema } from "effect"
+import type { AccountModuleRequest } from "../../../../src/protocol/account-attach.js"
 
 interface ProbeService {
   readonly received: NotificationEpisodeInput[]
@@ -39,7 +41,6 @@ const greeterModule = {
   service: { handle: greeterService, create: () => { constructions.push("greeter"); return { greeting: "hello", dispose() {} } } },
   contributions: [],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -56,7 +57,6 @@ const probeModule = {
   },
   contributions: [],
   observers: [{ seam: "notify", observer: (episode, modules) => { modules.get(probeService)?.received.push(episode) } }],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -223,7 +223,7 @@ it("retries a failed activation without rebuilding a successful dependency", asy
 })
 
 it("contains an account-lifetime service that throws as it starts to its own module, starts the others, and serves a module attach only through a live service", async () => {
-  const started = { dispose: async () => {}, serveRequest: async (request: unknown, answer: (payload: unknown) => Promise<void>) => { await answer({ echoed: request }) } }
+  const started = { dispose: async () => {}, serveRequest: async (request: AccountModuleRequest, answer: (payload: Schema.Json) => Promise<void>) => { await answer({ echoed: JSON.parse(JSON.stringify(request)) }) } }
   const accountModule = (id: string, create: () => typeof started) => ({ ...greeterModule, id, service: undefined, contributions: [{ domain: "accountServices" as const, id, value: { configuration: () => null, create } }] }) satisfies FirstPartyModule
   const modules: readonly FirstPartyModule[] = [
     accountModule("failing", () => { throw new Error("the pairing store cannot be watched") }),

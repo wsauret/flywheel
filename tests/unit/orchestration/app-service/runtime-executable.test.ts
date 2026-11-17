@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 
 import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js"
-import { checkoutProtocolVersion, installedBuildId, installedExecutable, readRunningBuild, runningBuildId, runningDisplayBuildId, sourceBuildId } from "../../../../src/orchestration/app-service/runtime-executable.js"
+import { executableBuild } from "../../../../src/infra/update/live-builds.js"
+import { installedBuild, installedBuildId, installedExecutable, processRunningBuild, runningBuildId, runningDisplayBuildId, type RunningBuild } from "../../../../src/orchestration/app-service/runtime-executable.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js"
@@ -13,11 +14,22 @@ import { snapshotFixture } from "../../../helpers/source-snapshot-fixture.js"
 
 const temporaryDirectory = temporaryDirectories()
 
+/** The build an executable at `execPath` says it runs, as the process that
+ *  runs it reads at its start. */
+function startedFrom(execPath: string): RunningBuild {
+  const build = executableBuild(execPath)
+  return build === undefined ? { kind: "unknown" } : { kind: "installed", ...build }
+}
+
+function sourceDirectories(root: string) {
+  return { userDataRoot: join(root, ".flywheel"), accountHome: root, projectRoot: root, executionCwd: root }
+}
+
 describe("a source checkout's build identity", () => {
   test("is the protocol version the checkout's source declares", () => {
-    expect(checkoutProtocolVersion()).toBe(RUNTIME_PROTOCOL_VERSION)
-    expect(sourceBuildId(RUNTIME_PROTOCOL_VERSION)).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
-    expect(sourceBuildId(RUNTIME_PROTOCOL_VERSION)).not.toBe(sourceBuildId(RUNTIME_PROTOCOL_VERSION + 1))
+    const directories = sourceDirectories(temporaryDirectory("flywheel-source-build-"))
+    expect(installedBuild(directories, { execPath: process.execPath })).toEqual({ buildId: `source:protocol-${RUNTIME_PROTOCOL_VERSION}`, version: "source" })
+    expect(runningBuildId({ kind: "source" }, directories)).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
   })
 
   test("is read from the checkout, not from the snapshot a dev service runs", async () => {
@@ -26,7 +38,9 @@ describe("a source checkout's build identity", () => {
     writeFileSync(join(fixture.checkout, "src", "protocol", "runtime-liveness.ts"), `export const RUNTIME_PROTOCOL_VERSION = ${RUNTIME_PROTOCOL_VERSION + 1}\n`)
     const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/runtime-executable.js")>("src/orchestration/app-service/runtime-executable.ts")
 
-    expect(snapshotted.checkoutProtocolVersion()).toBe(RUNTIME_PROTOCOL_VERSION + 1)
+    const directories = sourceDirectories(temporaryDirectory("flywheel-snapshot-protocol-account-"))
+    expect(snapshotted.installedBuildId(directories, { execPath: process.execPath })).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION + 1}`)
+    expect(snapshotted.runningBuildId({ kind: "source" }, directories)).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
   })
 
   test("is displayed as the snapshot digest it runs from, and as unknown from a live checkout", async () => {
@@ -103,7 +117,7 @@ describe("the running build identity", () => {
       const newer = build("1.1.0", "b".repeat(64))
       const host = { platform: process.platform, execPath: join(running, executableName) }
       activate(running)
-      const started = readRunningBuild(host)
+      const started = startedFrom(host.execPath)
       expect(runningBuildId(started, directories)).toBe("a".repeat(64))
       expect(runningDisplayBuildId(started)).toBe("a".repeat(64))
       // An install activates the newer build after this process started.
@@ -114,7 +128,7 @@ describe("the running build identity", () => {
       expect(runningDisplayBuildId(started)).toBe("a".repeat(64))
       expect(runningDisplayBuildId({ kind: "unknown" })).toBeNull()
       // A build of another account's versions home is not this account's.
-      expect(runningBuildId(readRunningBuild(host), { userDataRoot: join(root, "elsewhere") })).toBeUndefined()
+      expect(runningBuildId(startedFrom(host.execPath), { userDataRoot: join(root, "elsewhere") })).toBeUndefined()
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
@@ -122,10 +136,10 @@ describe("the running build identity", () => {
 
   test("is the protocol this source run was loaded with, and on Windows the build directory of the executable", () => {
     const root = temporaryDirectory("flywheel-running-build-")
-    const userDataRoot = join(root, ".flywheel")
-    const directories = { userDataRoot, accountHome: root, projectRoot: root, executionCwd: root }
-    expect(runningBuildId(readRunningBuild({ execPath: process.execPath }), directories)).toBe(sourceBuildId(RUNTIME_PROTOCOL_VERSION))
-    const started = readRunningBuild({ execPath: placeBuild(userDataRoot, "0.0.9", "f".repeat(64), "win32") })
+    const directories = sourceDirectories(root)
+    const { userDataRoot } = directories
+    expect(runningBuildId(processRunningBuild(), directories)).toBe(`source:protocol-${RUNTIME_PROTOCOL_VERSION}`)
+    const started = startedFrom(placeBuild(userDataRoot, "0.0.9", "f".repeat(64), "win32"))
     // An update activates another build by its pointer; the build this
     // process runs is the directory it started from.
     placeBuild(userDataRoot, "0.1.0", "e".repeat(64), "win32")

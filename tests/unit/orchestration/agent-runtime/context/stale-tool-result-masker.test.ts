@@ -15,12 +15,19 @@ import { ConversationTreeStorage } from "../../../../../src/orchestration/sessio
 import { readStaleMaskSeed } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { countStateRequests } from "../../../../helpers/state-requests.js";
+import { shortFormTool } from "../../../../../src/orchestration/agent-runtime/tools/short-form.js";
+import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 
 interface UnknownRecord {
   [key: string]: unknown;
 }
 
 const BIG = "x".repeat(500);
+const webTool: RuntimeTool = {
+  name: "web", action: "web_search", description: "Research the public web.", isConcurrencySafe: true,
+  inputSchema: { type: "object", properties: { search_query: { type: "array" } } },
+  execute: async () => ({ content: "", outcome: "ok" }),
+};
 const temporaryDirectory = temporaryDirectories();
 
 function toolTurn(
@@ -73,11 +80,6 @@ describe("decideCutoff (static, frozen between zone advances)", () => {
     expect(decision.zoneAdvanced).toBe(true);
     expect(decision.cutoffIndex).toBe(160);
   });
-
-  test("stale cutoff is clamped to the current message count", () => {
-    const decision = decideCutoff(10, 0.1, { previousCutoff: 60, zoneEntered: 0 });
-    expect(decision.cutoffIndex).toBe(10);
-  });
 });
 
 describe("maskStaleToolResults", () => {
@@ -116,7 +118,7 @@ describe("maskStaleToolResults", () => {
     expect(result!.messages.slice(3)).toEqual(messages.slice(3));
   });
 
-  test("reference reads, loaded skill instructions, and the person's answers are never masked", () => {
+  test("reference reads, loaded skill instructions, short-form tool contracts, and the person's answers are never masked", () => {
     const messages: ConversationMessage[] = [
       { kind: "user", content: "q" },
       ...toolTurn("tu-ref", "read", { path: "/repo/AGENTS.md" }, BIG),
@@ -127,11 +129,13 @@ describe("maskStaleToolResults", () => {
       ...toolTurn("tu-skill", "skill", { action: "load", skill_id: "implementation" }, BIG),
       ...toolTurn("tu-answer", "ask_user", { question: "Which option?" }, BIG),
       ...toolTurn("tu-resource", "skill", { action: "resource", skill_id: "implementation", path: "references/a.md" }, BIG),
+      ...toolTurn("tu-contract", "web", {}, `${shortFormTool(webTool, "Research the web.").contract?.()}\n${BIG}`),
+      ...toolTurn("tu-web", "web", { search_query: [{ q: "x" }] }, BIG),
       ...toolTurn("tu-src", "read", { path: "src/index.ts" }, BIG),
     ];
     const result = maskStaleToolResults(messages, messages.length);
-    expect(result!.maskedToolUseIds).toEqual(["tu-resource", "tu-src"]);
-    const placeholder = result!.messages[18];
+    expect(result!.maskedToolUseIds).toEqual(["tu-resource", "tu-web", "tu-src"]);
+    const placeholder = result!.messages[22];
     expect(placeholder?.kind === "toolResult" && placeholder.content[0]?.type === "text" ? placeholder.content[0].text : "")
       .toContain("path=src/index.ts");
   });

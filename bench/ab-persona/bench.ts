@@ -189,12 +189,12 @@ export async function main(
     return;
   }
   if (args.regrade) {
-    const [{ createLauncherScope, createProcessSupervisor }, { ownedCommandRunner }, { regradeRecords }] = await Promise.all([
+    const [{ createLauncherScope, createProcessSupervisor, guardianCommand }, { ownedCommandRunner }, { regradeRecords }] = await Promise.all([
       import("../../src/infra/process-supervisor.js"),
       import("../../src/infra/owned-command.js"),
       import("../../src/orchestration/modules/development/benchmark/regrade.js"),
     ]);
-    const supervisor = createProcessSupervisor();
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const scope = createLauncherScope(supervisor);
     try {
       const { graded, current, skipped } = await regradeRecords(catalog, ownedCommandRunner(scope));

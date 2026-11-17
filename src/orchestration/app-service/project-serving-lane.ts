@@ -1,7 +1,8 @@
 import * as fs from "node:fs"
 
 import type { ServeLane } from "../../infra/cli-subprocess.js"
-import { ContainedDirectory } from "../../infra/descriptor-directory.js"
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../infra/directory-authorities.js"
 import { Log } from "../../infra/log.js"
 import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn, withLockIn, type SharedHold } from "../../infra/ownership-file-lock.js"
@@ -22,7 +23,7 @@ function openFlywheelDirectory(projectRoot: string): ContainedDirectory {
   // opened for the first time keeps the user's own mode on its root, and
   // everything Flywheel owns below it is private.
   fs.mkdirSync(projectRoot, { recursive: true })
-  return ContainedDirectory.open(projectRoot, [FLYWHEEL_DIR_NAME], { privateDirectories: true })
+  return openContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME], { privateDirectories: true })
 }
 
 /** The live processes of `lane` that serve the project now. A read only: a
@@ -30,7 +31,7 @@ function openFlywheelDirectory(projectRoot: string): ContainedDirectory {
  *  the read creates neither, so asking about a project the person deleted
  *  never brings it back. */
 export function projectServingPids(projectRoot: string, lane: ServeLane): readonly number[] {
-  const flywheel = ContainedDirectory.openExisting(projectRoot, [FLYWHEEL_DIR_NAME])
+  const flywheel = openExistingContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME])
   if (flywheel === undefined) return []
   try {
     return sharedHoldersIn(flywheel, servingGate(lane)).pids

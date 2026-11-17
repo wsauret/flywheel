@@ -66,7 +66,6 @@ function deps(calls: AgentOptions[], allowedSubagentTypes?: ReadonlySet<string>)
       const { promise, resolve } = Promise.withResolvers<AgentRunResult>();
       return {
         send() { resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "mock", terminal: { kind: "completed" } }); },
-        end() {},
         abort() {},
         done: promise,
       };
@@ -105,7 +104,7 @@ describe("subagent scope enforcement", () => {
       availableTools: new Set(["read", "search", "list", "bash", "write", "edit", "subagent"]),
     };
 
-    const roster = renderSubagentRoster(scopedAgentRegistry(deps(calls).agentRegistry, new Set(["explorer"])), () => true);
+    const roster = renderSubagentRoster(scopedAgentRegistry(deps(calls).agentRegistry, new Set(["explorer"])), () => true, false);
     expect(roster).toContain("explorer");
     expect(roster).not.toContain("implementer");
 

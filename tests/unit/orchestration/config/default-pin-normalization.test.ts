@@ -101,7 +101,7 @@ describe("default-pin normalization", () => {
     const rows = await listModelAssignments({
       ...deps({
         reviewer: { model: "gpt-6.1-sol", effort: "medium" },
-        implementer: { model: "gpt-6-astra", effort: "low" },
+        implementer: { model: "gpt-6.1-sol", effort: "medium" },
       }),
       slots: [roleSlot("reviewer"), roleSlot("implementer"), roleSlot("explorer")],
     });
@@ -117,7 +117,7 @@ describe("default-pin normalization", () => {
         work: {
           roles: {
             reviewer: { model: "gpt-6.1-sol", effort: "high" },
-            implementer: { model: "gpt-6-astra", effort: "low" },
+            implementer: { model: "gpt-6.1-sol", effort: "medium" },
           },
         },
       },
@@ -187,15 +187,15 @@ describe("default-pin normalization", () => {
       const controller = createModelAssignmentController({
         configDeps,
       });
-      await controller.saveEffort(roleSlot("reviewer"), "gpt-6-luna", "xhigh");
+      await controller.saveEffort(roleSlot("reviewer"), "gpt-6-luna", "xhigh", { kind: "value", value: { model: "lost-model", effort: "low" } });
       expect(await readFile(configPath, "utf8")).toContain('model = "gpt-6-luna"');
-      await controller.saveEffort(roleSlot("reviewer"), "gpt-6.1-sol", "high");
+      await controller.saveEffort(roleSlot("reviewer"), "gpt-6.1-sol", "high", { kind: "value", value: { model: "gpt-6-luna", effort: "xhigh" } });
       const saved = loadConfig(configPath, {}).config;
       expect(saved.profiles.personal?.roles.reviewer).toEqual({ model: "gpt-6.1-sol", effort: "high" });
       const changedDefaults = new Map<ModelFamily, ReadonlySet<string>>([["openai", new Set(["gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra"])]]);
       const rows = await listModelAssignments({ ...configDeps, config: saved, availableModels: changedDefaults, slots: [roleSlot("reviewer")] });
       expect(rows[0]).toMatchObject({ model: "gpt-6.1-sol", effort: "high", modelSource: "explicit" });
-      await saveModelAssignment(roleSlot("reviewer"), { model: null, effort: null }, configDeps);
+      await saveModelAssignment(roleSlot("reviewer"), { model: null, effort: null }, rows[0]!.configured, configDeps);
       const reset = loadConfig(configPath, {}).config;
       expect(reset.profiles.personal?.roles.reviewer).toBeUndefined();
       expect(reset.profiles.other?.roles.chat).toEqual({ model: "gpt-6-luna", effort: "low" });

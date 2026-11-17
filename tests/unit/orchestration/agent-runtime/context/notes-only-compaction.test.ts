@@ -10,7 +10,7 @@ import { createConversationTreeWriterController } from "../../../../../src/orche
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type StreamOptions, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";
+import { assemblyPinned, RequestToolMap, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { asModelClient } from "../_model-client.js";
 import { ContextLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
@@ -83,13 +83,13 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
           ["checkpoint_replace", { section: "references", value: ["durable-request-id"] }],
           ["checkpoint_replace", { section: "workingNotes", value: "Exact working notes.\r\n" }],
         ] as const) {
-          expect((await executePreparedTool(prepareToolCall({ id: name, name, input }, noteTools), context)).outcome).toBe("ok");
+          expect((await executePreparedTool(prepareToolCall({ id: name, name, input }, noteTools, admitEveryTool), context)).outcome).toBe("ok");
         }
-        expect(await executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input: {} }, noteTools), context))
+        expect(await executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input: {} }, noteTools, admitEveryTool), context))
           .toMatchObject({ outcome: "ok", content: expect.stringContaining("Goal\n") });
         expect((await executePreparedTool(prepareToolCall({
           id: "outside", name: "checkpoint_replace", input: { section: "nextStep", value: "no", conversationId: "outside" },
-        }, noteTools), context)).outcome).toBe("error");
+        }, noteTools, admitEveryTool), context)).outcome).toBe("error");
       }
       const beforeCompaction = await checkpoint.read();
       const client = asModelClient({

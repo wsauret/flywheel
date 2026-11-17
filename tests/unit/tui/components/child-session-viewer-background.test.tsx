@@ -36,7 +36,7 @@ test("follows the subagent's background index while open, opens it from the chip
       sessionIntro={{ runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
         branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}
-      showThinking={false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
+      showThinking={() => false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
       roleView={() => undefined} childStatus={() => ({ waitingOn: undefined })} ensureChildViews={() => {}}
       modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={onOpenBackground} followBackground={followBackground} compactionThreshold={() => 40_000} />
   </TickPoolProvider></ThemeProvider>, { width: 100, height: 32 })

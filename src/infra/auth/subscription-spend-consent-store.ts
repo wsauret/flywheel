@@ -20,7 +20,7 @@ export type SubscriptionSpendConsentRevision =
   | { readonly kind: "missing" }
   | { readonly kind: "content"; readonly digest: string };
 
-export interface SubscriptionSpendConsentSnapshot {
+interface SubscriptionSpendConsentSnapshot {
   readonly profileId: string;
   readonly incarnation: string;
   readonly revision: number;
@@ -152,7 +152,7 @@ function withAuthority<T>(access: AuthProfileAccess, profileId: string, persist:
   const bytes = access.readFile(SUBSCRIPTION_SPEND_CONSENT_FILE, MAX_BYTES);
   const db = bytes === undefined ? new Database(":memory:") : deserializeAuthority(bytes);
   try {
-    if (bytes === undefined) initialize(db, profileId);
+    if (bytes === undefined) createAuthorityTable(db, profileId);
     const authority = readAuthority(db, profileId);
     const result = use(db, authority);
     if (bytes === undefined || persist) access.writeFile(SUBSCRIPTION_SPEND_CONSENT_FILE, Buffer.from(db.serialize()).toString("base64"));
@@ -165,7 +165,7 @@ function withAuthority<T>(access: AuthProfileAccess, profileId: string, persist:
   }
 }
 
-function initialize(db: Database, profileId: string): void {
+function createAuthorityTable(db: Database, profileId: string): void {
   db.exec("create table authority (singleton integer primary key check (singleton = 1), protocol_version integer not null, profile_id text not null, incarnation text not null, revision integer not null check (revision >= 0)); create table decisions (envelope_id text primary key, provider_id text not null, instance_id text not null, subject_digest text not null, mode text not null check (mode in ('prepaid', 'automatic')), decision text not null check (decision in ('accepted', 'declined')))");
   db.query("insert into authority values (1, $protocol, $profile, $incarnation, 0)").run({ $protocol: PROTOCOL_VERSION, $profile: profileId, $incarnation: randomUUID() });
 }

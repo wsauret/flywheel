@@ -2,8 +2,9 @@ import { errorMessage } from "../../infra/error-message.js"
 import type { ChildSessionRow, RuntimeClient, SessionCatalogRow, SessionRow } from "../app-service-types.js"
 import type { RuntimeUiPatch } from "../runtime-ui-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../session-detail-protocol-types.js"
+import { createReadRetry, type ReadTimers } from "./background-reads.js"
 import { lostWithLane } from "./connection-failures.js"
-import { createCursorIntake } from "./cursor-intake.js"
+import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
 import { releaseAfterLastRead } from "./held-read-release.js"
 
 /** What holding one session's detail came to. `missing` is the runtime's own
@@ -53,8 +54,11 @@ export async function resolveSessionRoute(
  *  follows its own `session_detail` cursor from the snapshot that seeded it,
  *  so a rename, an admission change, or a deletion reaches the held view in
  *  order, and a session nobody holds costs no read. The owner routes every
- *  patch through `accept` and calls `refresh` when a new lane opens or the
- *  runtime invalidates every cursor; a break alone reads nothing. */
+ *  patch through `accept`, a lane break among them, and calls `refresh` when
+ *  a new lane opens or the runtime invalidates every cursor; a break alone
+ *  reads nothing. A read that fails counts toward the shared background-read
+ *  notice and reads again by itself after a backoff (ARCH-PROTOCOL-019); a
+ *  lane break or `dispose` cancels the pending retry. */
 export interface HeldSessionDetails {
   /** The held rows that are children, never a chat (ARCH-PROTOCOL-049). */
   readonly rows: readonly ChildSessionRow[]
@@ -102,7 +106,8 @@ export interface HeldSessionDetailsOptions {
   /** Called with the held session whose view or read state changed, so a
    *  binding can wake only that session's readers. */
   readonly onChange: (sessionId: string) => void
-  readonly onDiagnostic?: (message: string, detail?: unknown) => void
+  /** The clock the read retry waits on. */
+  readonly timers?: ReadTimers
 }
 
 /** The view with a newer row of the same session. Undefined when the view
@@ -118,6 +123,14 @@ function withRow(view: RuntimeSessionDetailView | undefined, row: SessionRow): R
 export function createHeldSessionDetails(options: HeldSessionDetailsOptions): HeldSessionDetails {
   const readings = new Map<string, ReturnType<typeof createReading>>()
   let disposed = false
+  /** The held sessions whose last read failed, which the retry reads again. */
+  const failed = new Set<string>()
+  const makeRetry = () => createReadRetry(options.client, "session detail", () => { refreshReadings([...failed]) }, undefined, options.timers)
+  let retry = makeRetry()
+  function settled(sessionId: string): void {
+    failed.delete(sessionId)
+    if (failed.size === 0) retry.succeeded()
+  }
 
   function createReading(sessionId: string) {
     let view: RuntimeSessionDetailView | undefined
@@ -174,6 +187,7 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
           replaceView(snapshot.views.find((entry) => entry.sessionId === sessionId)?.view ?? undefined)
           loaded = true
           failure = undefined
+          settled(sessionId)
           intake.seed(snapshot.snapshotPosition)
           options.onChange(sessionId)
           return view === undefined ? { kind: "missing" } : HELD
@@ -186,7 +200,8 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
           const newer = superseded()
           if (newer) return await newer
           intake.abandonRead()
-          options.onDiagnostic?.("session detail read failed", cause)
+          failed.add(sessionId)
+          retry.failed(cause)
           failure = errorMessage(cause)
           options.onChange(sessionId)
           return { kind: "failed", cause }
@@ -238,10 +253,14 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
     if (!reading) return
     reading.dispose()
     readings.delete(sessionId)
+    settled(sessionId)
     reading.release(() => !readings.has(sessionId))
     if (!disposed) options.onChange(sessionId)
   }
   const rowOf = (sessionId: string): SessionRow | undefined => readings.get(sessionId)?.view?.row
+  function refreshReadings(sessionIds: Iterable<string> = readings.keys()): void {
+    for (const id of sessionIds) void readings.get(id)?.refresh()
+  }
   return {
     get rows() { return [...readings.values()].flatMap(({ view }) => view && view.row.kind !== "chat" ? [view.row] : []) },
     get(sessionId) { const row = rowOf(sessionId); return row?.kind === "chat" ? undefined : row },
@@ -275,10 +294,17 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
       }
       for (const id of readings.keys()) if (!retained.has(id)) forget(id)
     },
-    refresh(sessionIds = readings.keys()) { for (const id of sessionIds) void readings.get(id)?.refresh() },
+    refresh: refreshReadings,
     accept(patch) {
+      if (isLaneBreak(patch)) {
+        // A retry now would only fail with the lane; the next lane reads
+        // every held session again.
+        retry.dispose()
+        retry = makeRetry()
+        return
+      }
       if (patch.cursor.scope === "session" && patch.cursor.domain === "session_detail") readings.get(patch.cursor.sessionId)?.accept(patch)
     },
-    dispose() { disposed = true; for (const id of readings.keys()) forget(id) },
+    dispose() { disposed = true; retry.dispose(); for (const id of readings.keys()) forget(id) },
   }
 }

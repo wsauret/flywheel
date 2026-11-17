@@ -12,9 +12,9 @@ import type {
   TableModel,
 } from "./markdown-table-types.js"
 
-export const MIN_COLUMN_WIDTH = 3
-export const CARDVIEW_LINE_THRESHOLD = 4
-export const COLUMN_MIN_CONTENT_CAP = 12
+const MIN_COLUMN_WIDTH = 3
+const CARDVIEW_LINE_THRESHOLD = 4
+const COLUMN_MIN_CONTENT_CAP = 12
 export type TableRuleKind = "top" | "middle" | "bottom"
 export type TableRulePosition = number | "rightEdge"
 

@@ -23,12 +23,12 @@ export function createPapercutsProtocol(services: ModuleProtocolServices): Modul
   }
 }
 
-export interface PapercutCountProjection {
+interface PapercutCountProjection {
   snapshot(): Promise<RuntimePapercutCountView>
   dispose(): void
 }
 
-export interface PapercutCountProjectionDeps {
+interface PapercutCountProjectionDeps {
   readonly reader: AsyncEventReadSurface
   readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void
   readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch | undefined
@@ -38,7 +38,7 @@ export interface PapercutCountProjectionDeps {
  * Construction subscribes before replay. Only a commit that carries a papercut
  * fact reaches the backlog, so other commits read nothing. Snapshot reconciles
  * commits made by other SQLite connections before returning its complete count view. */
-export function createPapercutCountProjection(deps: PapercutCountProjectionDeps): PapercutCountProjection {
+function createPapercutCountProjection(deps: PapercutCountProjectionDeps): PapercutCountProjection {
   let projection: ReturnType<typeof createPapercutBacklogProjection> | undefined
   let queued: StoredFact[] = []
   let publishedCount = 0

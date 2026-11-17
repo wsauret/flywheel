@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { createSubscriptionAccountIdentity } from "../../../../src/infra/llm/subscription-account-identity.js";
 import type { SubscriptionUsageReader } from "../../../../src/infra/llm/subscription-usage.js";
 import { createSubscriptionSpendEnvelope } from "../../../../src/infra/auth/subscription-spend-consent.js";
-import { SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentSnapshot, type SubscriptionSpendConsentStore } from "../../../../src/infra/auth/subscription-spend-consent-store.js";
+import { SubscriptionSpendConsentStaleError, type SubscriptionSpendConsentStore } from "../../../../src/infra/auth/subscription-spend-consent-store.js";
 import { createSubscriptionSpendConsentService as createService } from "../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { createSubscriptionUsageService, type SubscriptionUsagePublishedSnapshot } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js";
@@ -64,7 +64,7 @@ interface ConsentDecisions {
 
 function consentStore(decisions: ConsentDecisions = {}): SubscriptionSpendConsentStore {
   return {
-    read: async (envelopes): Promise<SubscriptionSpendConsentSnapshot> => ({
+    read: async (envelopes) => ({
       profileId: "work",
       incarnation: "authority-incarnation",
       revision: 3,

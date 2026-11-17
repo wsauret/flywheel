@@ -7,21 +7,23 @@ import type { SubscriptionUsagePublishedSnapshot } from "./subscription-usage-se
 const log = Log.create({ service: "usage-availability-fold" })
 
 /**
- * Feeds each published ChatGPT Usage report to the availability owner as that
- * account's window observation. Applying a banked reset, a window rolling over,
- * or a reset redeemed in another ChatGPT client all surface here as fresh evidence
- * that reopens the account, so routing never waits on a suppression the provider
- * has already lifted. Best effort: a fold that cannot reach the authority leaves
- * the publication itself untouched.
+ * Feeds each published Usage report to the availability owner as that
+ * account's quota observation. A reset that the provider grants, a banked reset
+ * that a person applies, a window rolling over, or a reset redeemed in another
+ * client all surface here as fresh evidence that reopens the account, so
+ * routing never waits on a suppression the provider has already lifted. Every
+ * publication folds: the first read of a runtime and each refresh from Usage.
+ * Best effort: a fold that cannot reach the authority leaves the publication
+ * itself untouched.
  */
 export function foldSubscriptionUsageIntoAvailability(owner: ProviderAvailabilityOwner, snapshot: SubscriptionUsagePublishedSnapshot): void {
   for (const state of snapshot.accounts) {
-    if (state.kind !== "supported" || state.account.providerId !== "chatgpt") continue
-    const candidate: AccessProviderCandidate = { kind: "subscription", providerId: "chatgpt", instanceId: state.account.instanceId, spendMode: "included" }
+    if (state.kind !== "supported") continue
+    const candidate: AccessProviderCandidate = { kind: "subscription", providerId: state.account.providerId, instanceId: state.account.instanceId, spendMode: "included" }
     try {
-      owner.forCandidates(snapshot.profileId, [candidate]).observeChatGptUsage(candidate, state.snapshot.metrics, state.snapshot.observedAtMs)
+      owner.forCandidates(snapshot.profileId, [candidate]).observeUsage(candidate, state.snapshot.metrics, state.snapshot.observedAtMs)
     } catch (error) {
-      log.warn("a ChatGPT usage report could not reach the availability authority", { instanceId: state.account.instanceId, error: errorMessage(error) })
+      log.warn("a usage report could not reach the availability authority", { providerId: state.account.providerId, instanceId: state.account.instanceId, error: errorMessage(error) })
     }
   }
 }

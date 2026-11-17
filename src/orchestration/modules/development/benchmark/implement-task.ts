@@ -1,8 +1,9 @@
 import { Result, Schema } from "effect";
 import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
-import { ContainedDirectory } from "../../../../infra/descriptor-directory.js";
+import { join, posix, relative } from "node:path";
+import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { containsSecret } from "../../../../infra/redact-secrets.js";
 import { describeOutputIssues, schemaIssues } from "../../../../workflows/output-contract/accept.js";
@@ -16,6 +17,7 @@ import {
   runCheckedSandboxCommand,
   runSandboxCommand,
   SANDBOX_HOME_DIR,
+  type SandboxCommandOptions,
 } from "./sandbox-command.js";
 import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./task-schema.js";
 import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./implement-evidence.js";
@@ -244,7 +246,7 @@ type BenchmarkSandboxTask = {
 );
 
 function openSandboxAuthority(dir: string): ContainedDirectory {
-  const authority = ContainedDirectory.openExisting(dir, [], { noFollowBase: true });
+  const authority = openExistingContainedDirectory(dir, [], { noFollowBase: true });
   if (!authority) throw new Error(`Benchmark sandbox is unavailable: ${dir}`);
   return authority;
 }
@@ -355,23 +357,31 @@ function parseAcceptance(output: string, exitCode: number): AcceptanceResult {
  * binary diffs, which would fail the grade of a correct change. */
 const PYTHON_BYTECODE_CACHES = "**/__pycache__/**";
 
+/** The folders of the candidate tree that a build tool tagged as caches, such as the `target/` folder of cargo.
+ * They leak for the same reason as bytecode caches. A tag file (https://bford.info/cachedir/) marks them precisely,
+ * where a name rule would also drop a real source folder named `target`. Read after `git add -A`, the index
+ * holds every tag that the candidate committed or left untracked, and none that its ignore rules hide. */
+async function taggedCacheFolders(sandbox: SandboxCommandOptions, run: OwnedCommandRunner): Promise<string[]> {
+  const tags = await runCheckedSandboxCommand(run, ["git", "ls-files", "-z", "--", ":(glob)**/CACHEDIR.TAG"], sandbox);
+  return tags.split("\0").filter(Boolean).map(tag => posix.dirname(tag));
+}
+
 /** Capture all candidate changes against the baseline, including candidate commits.
  * Plan fixtures run restored acceptance tests; native adapters grade the patch
  * in a separate fresh workspace. Infrastructure failures throw instead of scoring.
  * Optional evidence retains native command failures without changing their outcome. */
 export async function captureImplementation(task: ImplementTaskSpec, sandboxDir: string, run: OwnedCommandRunner, evidence?: ImplementEvidence): Promise<CapturedImplementation> {
   const harnessPaths = task.kind === "native" ? [".flywheel", SANDBOX_HOME_DIR] : [".flywheel", PLAN_FILE, SANDBOX_HOME_DIR, "acceptance"];
-  const excludes = [...harnessPaths, PYTHON_BYTECODE_CACHES];
-  const pathspec = [
-    "--",
-    ".",
-    ...excludes.map(path => `:(exclude,glob)${path}`),
-  ];
   const sandbox = { cwd: sandboxDir, sandboxDir } as const;
   await runCheckedSandboxCommand(run, ["git", "add", "-A"], sandbox);
+  const excludes = [
+    ...[...harnessPaths, PYTHON_BYTECODE_CACHES].map(path => ({ magic: "glob", path })),
+    ...(await taggedCacheFolders(sandbox, run)).map(path => ({ magic: "literal", path })),
+  ];
+  const pathspec = ["--", ".", ...excludes.map(({ magic, path }) => `:(exclude,${magic})${path}`)];
   await runCheckedSandboxCommand(run, [
     "git", "reset", "--quiet", "HEAD", "--",
-    ...excludes.map(path => `:(glob)${path}`),
+    ...excludes.map(({ magic, path }) => `:(${magic})${path}`),
   ], sandbox);
   const artifacts = await mkdtemp(join(tmpdir(), "flywheel-bench-capture-"));
   let diff: string;

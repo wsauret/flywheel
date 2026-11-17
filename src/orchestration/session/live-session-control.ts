@@ -153,6 +153,8 @@ export interface LiveSessionControl {
   readonly backgroundTasks?: BackgroundWorkTracking
   readonly child?: LiveChildRun
   readonly member?: {
+    /** The workflow that runs this agent. */
+    readonly workflowId: string
     modules(): Promise<ModuleRuntimes | undefined>
     readonly backgroundTasks: BackgroundWorkTracking
     compact(): Promise<boolean>
@@ -221,28 +223,33 @@ interface WorkflowWorkProgress {
 /** A control that carries a subagent run binding. */
 export type LiveChildControl = LiveSessionControl & { readonly child: LiveChildRun }
 
-const controlsByStore = new WeakMap<AsyncEventStateReadSurface, Map<string, LiveSessionControl | LiveWorkflowControl>>()
+/** The key of one live session or workflow: the key its control registers
+ *  under and the key a change of its live work names. */
+export type LiveWorkKey = `session:${string}` | `workflow:${string}`
+
+const controlsByStore = new WeakMap<AsyncEventStateReadSurface, Map<LiveWorkKey, LiveSessionControl | LiveWorkflowControl>>()
 const waitersByStore = new WeakMap<AsyncEventStateReadSurface, Map<string, Set<() => void>>>()
 const removalListenersByStore = new WeakMap<AsyncEventStateReadSurface, Set<(sessionId: string) => void>>()
-const workListenersByStore = new WeakMap<AsyncEventStateReadSurface, Set<() => void>>()
+const workListenersByStore = new WeakMap<AsyncEventStateReadSurface, Set<(key: LiveWorkKey) => void>>()
 
-/** Publishes a workflow frontier or member-state change to parked reply waits. */
-export function notifyLiveWorkChanged(store: AsyncEventStateReadSurface): void {
-  for (const listener of workListenersByStore.get(store) ?? []) listener()
+/** Publishes a change of the live work that `key` names: its registration or
+ *  removal, a workflow frontier, or a member state. */
+export function notifyLiveWorkChanged(store: AsyncEventStateReadSurface, key: LiveWorkKey): void {
+  for (const listener of workListenersByStore.get(store) ?? []) listener(key)
 }
 
 /** Observes live ownership and workflow progress, not steady-state snapshots. */
-export function onLiveWorkChanged(store: AsyncEventStateReadSurface, listener: () => void): () => void {
-  const listeners = workListenersByStore.get(store) ?? new Set<() => void>()
+export function onLiveWorkChanged(store: AsyncEventStateReadSurface, listener: (key: LiveWorkKey) => void): () => void {
+  const listeners = workListenersByStore.get(store) ?? new Set<(key: LiveWorkKey) => void>()
   workListenersByStore.set(store, listeners)
   listeners.add(listener)
   return () => { listeners.delete(listener) }
 }
 
-function controls(store: AsyncEventStateReadSurface): Map<string, LiveSessionControl | LiveWorkflowControl> {
+function controls(store: AsyncEventStateReadSurface): Map<LiveWorkKey, LiveSessionControl | LiveWorkflowControl> {
   const existing = controlsByStore.get(store)
   if (existing) return existing
-  const created = new Map<string, LiveSessionControl | LiveWorkflowControl>()
+  const created = new Map<LiveWorkKey, LiveSessionControl | LiveWorkflowControl>()
   controlsByStore.set(store, created)
   return created
 }
@@ -299,10 +306,16 @@ export async function runningChildSessionIds(store: AsyncEventStateReadSurface):
 /** Registers one live session until its owner ends. It creates no recovery state. */
 export function registerLiveSessionControl(store: AsyncEventStateReadSurface, control: LiveSessionControl): () => void {
   const registered = controls(store)
-  const key = `session:${control.sessionId}`
+  const key: LiveWorkKey = `session:${control.sessionId}`
   if (registered.has(key)) throw new Error(`Session is already live: ${control.sessionId}`)
   registered.set(key, control)
-  notifyLiveWorkChanged(store)
+  // A member that joins or leaves changes its workflow's live work too, also
+  // for a reader that has not read this member yet.
+  const changed = (): void => {
+    notifyLiveWorkChanged(store, key)
+    if (control.member) notifyLiveWorkChanged(store, `workflow:${control.member.workflowId}`)
+  }
+  changed()
   if (isChildControl(control)) {
     const waiters = waitersByStore.get(store)?.get(control.sessionId)
     waitersByStore.get(store)?.delete(control.sessionId)
@@ -311,7 +324,7 @@ export function registerLiveSessionControl(store: AsyncEventStateReadSurface, co
   return () => {
     if (registered.get(key) !== control) return
     registered.delete(key)
-    notifyLiveWorkChanged(store)
+    changed()
     for (const listener of removalListenersByStore.get(store) ?? []) listener(control.sessionId)
   }
 }
@@ -319,14 +332,14 @@ export function registerLiveSessionControl(store: AsyncEventStateReadSurface, co
 /** Registers aggregate work, including zero-member runs, until durable acknowledgement. */
 export function registerLiveWorkflowControl(store: AsyncEventStateReadSurface, control: LiveWorkflowControl): () => void {
   const registered = controls(store)
-  const key = `workflow:${control.workflowId}`
+  const key: LiveWorkKey = `workflow:${control.workflowId}`
   if (registered.has(key)) throw new Error(`Workflow is already live: ${control.workflowId}`)
   registered.set(key, control)
-  notifyLiveWorkChanged(store)
+  notifyLiveWorkChanged(store, key)
   return () => {
     if (registered.get(key) !== control) return
     registered.delete(key)
-    notifyLiveWorkChanged(store)
+    notifyLiveWorkChanged(store, key)
   }
 }
 

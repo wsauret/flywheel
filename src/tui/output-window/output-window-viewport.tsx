@@ -20,6 +20,7 @@ import { useRowWidth } from "../context/row-width.js"
 import { RowGeometryProvider, type RowGeometryChannel } from "../context/row-geometry.js"
 import { MutationEvidenceProvider } from "../context/mutation-evidence.js"
 import { createRowChurnMonitor, type RowChurnHandle } from "./output-window-scroll-anomalies.js"
+import { widenTowards } from "./mount-range.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 
 const log = Log.create({ service: "output-window-viewport" })
@@ -360,49 +361,6 @@ function viewportRange(indices: readonly number[], index: HeightIndex, viewport:
   const start = clamp(lowerBound(indices, firstBlock), 0, Math.max(0, indices.length - 1))
   const end = clamp(Math.max(start + 1, upperBound(indices, lastBlock)), start + 1, indices.length)
   return { start, end }
-}
-
-interface WidenTowardsInput {
-  readonly prev: { readonly start: number; readonly end: number } | undefined
-  readonly goal: { readonly start: number; readonly end: number }
-  readonly must: { readonly start: number; readonly end: number }
-  readonly budget: number
-  readonly upFirst: boolean
-}
-
-/** One budgeted step from `prev` toward `goal`. Shrinks (edges past the goal)
- *  apply immediately: dropping rows is cheap and keeps residency bounded.
- *  Growth spends at most `budget` new blocks, the edge in the scroll direction
- *  first. The result always covers `must`, whatever the budget - viewport
- *  coverage is never deferred. With no prior range, or after a jump that left
- *  the previous range disjoint from the goal, growth restarts from the
- *  viewport cover itself, so even the first emission spends only one budget
- *  beyond the viewport.
- *  Exported for direct unit testing. */
-export function widenTowards(input: WidenTowardsInput): { readonly start: number; readonly end: number } {
-  const { goal, must, budget, upFirst } = input
-  const cover = (r: { start: number; end: number }) => ({ start: Math.min(r.start, must.start), end: Math.max(r.end, must.end) })
-  const prev = input.prev ?? must
-  let start = Math.max(prev.start, goal.start)
-  let end = Math.min(prev.end, goal.end)
-  if (end <= start) {
-    // Disjoint jump: restart growth from the viewport cover clamped into the goal.
-    start = Math.max(goal.start, Math.min(must.start, goal.end - 1))
-    end = Math.min(goal.end, Math.max(must.end, goal.start + 1))
-  }
-  let remaining = budget
-  const growUp = () => {
-    const spend = Math.min(remaining, start - goal.start)
-    start -= spend
-    remaining -= spend
-  }
-  const growDown = () => {
-    const spend = Math.min(remaining, goal.end - end)
-    end += spend
-    remaining -= spend
-  }
-  if (upFirst) { growUp(); growDown() } else { growDown(); growUp() }
-  return cover({ start, end })
 }
 
 function lowerBound(values: readonly number[], target: number): number {

@@ -11,12 +11,10 @@ import {
   decodeRelayControlFrame,
   decodeRelayDeviceFrame,
   deviceAttachSigningBytes,
-  RELAY_MIN_STATED_HEARTBEAT_MS,
-  RELAY_MISSED_HEARTBEATS,
   RELAY_PING,
 } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import { startLocalRelay } from "./local-relay.js"
-import { attachRuntime, openChannel, relayIdentity, textFrames } from "./relay-sockets.js"
+import { attachRuntime, openChannel, relayIdentity, statedHeartbeat, textFrames } from "./relay-sockets.js"
 
 test("the relay answers client close frames, including one without a status code", async () => {
   const relay = await startLocalRelay()
@@ -190,10 +188,9 @@ test("a data channel that states its heartbeat and stops pinging is closed, and 
     const device = await relayIdentity()
     const placementId = "p".repeat(43)
     const control = await attachRuntime(relay.url, runtime, device, placementId)
-    const heartbeatMs = RELAY_MIN_STATED_HEARTBEAT_MS
-    const deadlineMs = heartbeatMs * RELAY_MISSED_HEARTBEATS
-    const silent = await openChannel(relay.url, runtime, device, placementId, control, `?heartbeatMs=${heartbeatMs}`)
-    const pinging = await openChannel(relay.url, runtime, device, placementId, control, `?heartbeatMs=${heartbeatMs}`)
+    const { heartbeatMs, deadlineMs, query } = statedHeartbeat()
+    const silent = await openChannel(relay.url, runtime, device, placementId, control, query)
+    const pinging = await openChannel(relay.url, runtime, device, placementId, control, query)
     // A runtime released before channels stated a heartbeat is held to the
     // rule it was built for: its channel lasts while its device does.
     const unstated = await openChannel(relay.url, runtime, device, placementId, control, "")
@@ -227,9 +224,8 @@ test("a stated socket that keeps sending frames is live though its pings wait be
     const device = await relayIdentity()
     const placementId = "p".repeat(43)
     const control = await attachRuntime(relay.url, runtime, device, placementId)
-    const heartbeatMs = RELAY_MIN_STATED_HEARTBEAT_MS
-    const deadlineMs = heartbeatMs * RELAY_MISSED_HEARTBEATS
-    const busy = await openChannel(relay.url, runtime, device, placementId, control, `?heartbeatMs=${heartbeatMs}`)
+    const { heartbeatMs, deadlineMs, query } = statedHeartbeat()
+    const busy = await openChannel(relay.url, runtime, device, placementId, control, query)
     let received = 0
     busy.deviceWs.addEventListener("message", (event) => {
       if (typeof event.data !== "string") received += 1

@@ -102,7 +102,7 @@ export type RequestInputsUse =
  *  A send's loop reads them (`AgentLoopOptions`), and so does a pre-start (`prepareRequest`). */
 export type RequestInputs = Pick<AgentLoopOptions,
   | "client" | "initialPlannedAttempt" | "initialInteractionProfile" | "tools" | "systemPrompt" | "turnReminders"
-  | "literalSystemPrompt" | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
+  | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
   | "providerOptions" | "cacheRetention" | "providerSessionKey" | "promptCacheKey" | "sessionId" | "conversationId"
   | "sessionEventStore" | "sessionEventReader">;
 
@@ -244,7 +244,7 @@ const PLANNED_CHILD_RECALL: RecallPort = () => Promise.reject(new Error("A capab
 
 /** The options that the first request of a child that `options` start plans from: this run's options with the
  *  child's purpose and grant, and the runtime surfaces that a child gets (`deriveChildRuntimeSurfaces`). */
-export function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
+function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
   const { toolNames: _names, toolActions: _actions, toolProfile: _profile, toolGrant: _grant, withheldTools: _withheld, readOnly: _readOnly, allowedSubagentTypes: _types, ...run } = options;
   const surfaces = options.runtimeSurfaces;
   return {
@@ -457,7 +457,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
     const standing = passesSpentPreferences(options) ? capture?.standing : undefined;
     const resolved = capture && options.requestSelection
       ? await resolveCapturedRole(authored.roleId ?? "chat", {
-        model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, fixedEffort: authored.setting?.fixedEffort,
+        model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, defaultEffort: authored.setting?.defaultEffort,
       }, { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes }, options.userDataRoot,
       standing)
       : undefined;
@@ -677,7 +677,6 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
             ...turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities),
             ...narrowingStatements(narrowingOf(messages)),
           ],
-          ...(headlessPrompt?.kind === "literal" ? { literalSystemPrompt: true } : {}),
           ...(initialRequestContext !== undefined ? { initialRequestContext } : {}),
           executionCwd: options.executionCwd,
           seed,

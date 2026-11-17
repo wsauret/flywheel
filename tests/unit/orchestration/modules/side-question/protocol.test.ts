@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { Schema } from "effect"
 import { createSideQuestionHost, sideQuestionHost, type SideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
 import { createSideQuestionProtocol } from "../../../../../src/orchestration/modules/side-question/protocol.js"
-import { sideQuestionCursor, sideQuestionDomain, sideQuestionRequestCursor, sideQuestionRequestDomain, readSideQuestionView } from "../../../../../src/protocol/modules/side-question.js"
+import { readSideQuestionView, sideQuestionCursor, sideQuestionProtocol, sideQuestionRequestCursor } from "../../../../../src/protocol/modules/side-question.js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -20,6 +20,8 @@ import type { FirstPartyModule } from "../../../../../src/orchestration/modules.
 import { makeLifecycle } from "../../chat/_chat-runner-lifecycle-fixtures.js"
 
 type Runner = { readonly chatModuleHosts: ReturnType<typeof composeModuleRuntimes> }
+
+const [sideQuestionDomain, sideQuestionRequestDomain] = sideQuestionProtocol.domains
 
 /** A session store holding resident sessions; `attach` notifies like the real store. */
 function residentStore(sessions: { readonly [sessionId: string]: ConversationSessionEntry["kind"] }) {
@@ -145,7 +147,7 @@ test("session snapshot and whole patches share history, keep captured context, a
   const module = {
     id: "side-question", dependencies: [], availability: { kind: "available" },
     contributions: [{ domain: "chatHosts", id: "side-question", value: contribution }],
-    observers: [], transformers: [], gates: [],
+    observers: [], gates: [],
   } as const satisfies FirstPartyModule
   // The real chat lifecycle owns the hosts and retires one whose module the selection no longer includes.
   const { lifecycle } = makeLifecycle({ moduleSelection: () => composeModules([module], { disabledModuleIds: enabled ? [] : ["side-question"] }) })
@@ -217,6 +219,55 @@ test("session snapshot and whole patches share history, keep captured context, a
   enabled = true
   expect((await runtime.serve.sideQuestionSnapshot({ type: "sideQuestionSnapshot", sessionId: "parent" })).view).toEqual({ revision: 0, exchanges: [] })
   expect(constructed).toHaveLength(2)
+  await lifecycle.terminateBackgroundWorks()
+  runtime.dispose()
+})
+
+test("a running answer ships appended text, and a snapshot folded with the later patches rebuilds the answer the host holds", async () => {
+  const { lifecycle, runnerOptions, resolvers } = makeLifecycle()
+  const { chatModuleHosts } = lifecycle
+  const host = chatModuleHosts.get(sideQuestionHost)!
+  const store = residentStore({ parent: "chat" })
+  store.attach("parent", { chatModuleHosts })
+  const patches: RuntimeUiPatchInput[] = []
+  const runtime = createSideQuestionProtocol({
+    enabled: () => true,
+    sessionStore: store,
+    publish: (patch) => { patches.push(patch); return undefined },
+    snapshotPosition: () => 0,
+    manager: { read: async () => null, createChatFromContext: async () => "unused" },
+  })
+  await host.ask("question")
+  for (let turn = 0; turn < 100 && runnerOptions.length === 0; turn++) await Bun.sleep(0)
+  const side = runnerOptions[0]!
+  const snapshot = await runtime.serve.sideQuestionRequestSnapshot({ type: "sideQuestionRequestSnapshot", sessionId: "parent" })
+  const after = patches.length
+  const delta = (blockKey: string, text: string) => side.onEvent({ type: "model.content.delta", data: { block_key: blockKey, delta: { type: "text_delta", text } } })
+  /** The client's view: the snapshot folded with every request patch after it. */
+  const folded = () => patches.slice(after).filter((patch) => patch.cursor.domain === sideQuestionRequestDomain.domain).reduce(
+    (view, patch) => sideQuestionRequestDomain.view.patch(Schema.decodeUnknownSync(sideQuestionRequestDomain.patch)(patch.payload), view ?? undefined),
+    snapshot.view,
+  )?.current?.answer
+
+  for (const text of ["a", "b", "c"]) delta("first", text)
+  expect(patches.slice(after).map((patch) => patch.payload)).toEqual([
+    { kind: "side-question-request.appended", text: "a" },
+    { kind: "side-question-request.appended", text: "b" },
+    { kind: "side-question-request.appended", text: "c" },
+  ])
+  expect(folded()).toBe("abc")
+  // A second text block joins with a blank line, as the answer always has.
+  delta("second", "x")
+  delta("second", "y")
+  expect(folded()).toBe("abc\n\nxy")
+  side.onEvent({ type: "model.text.reconciled", data: { block_key: "first", content: "settled" } })
+  expect(folded()).toBe("settled\n\nxy")
+  expect(host.snapshot().current?.answer).toBe("settled\n\nxy")
+
+  resolvers[0]!({ servedRequests: 1, durationMs: 0, terminal: { kind: "completed" } })
+  await host.settled()
+  expect(folded()).toBe("settled\n\nxy")
+  expect(host.snapshot().exchanges.at(-1)?.answer).toBe("settled\n\nxy")
   await lifecycle.terminateBackgroundWorks()
   runtime.dispose()
 })

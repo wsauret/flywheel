@@ -1,6 +1,6 @@
 import { chmodSync, cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { ContainedDirectory } from "../../src/infra/descriptor-directory.js";
+import { openExistingContainedDirectory } from "../../src/infra/descriptor-directory.js";
 import { versionsDir } from "../../src/infra/paths.js";
 import { openActiveBuild, publishActivation } from "../../src/infra/update/active-build.js";
 import { assertInstallLocation, buildInstallDir, BUILD_METADATA_FILE, buildExecutable, type BuildRef, buildIdentityBeside, decodeBuildMetadata, versionLine } from "../../src/infra/update/build-identity.js";
@@ -32,7 +32,7 @@ export function placeBuild(userDataRoot: string, build: BuildRef): string {
 
 /** Activate an already placed fixture build through the host's activation writer. */
 export function activatePlacedBuild(userDataRoot: string, build: BuildRef): void {
-  const accountRoot = ContainedDirectory.openExisting(dirname(userDataRoot), [basename(userDataRoot)]);
+  const accountRoot = openExistingContainedDirectory(dirname(userDataRoot), [basename(userDataRoot)]);
   if (!accountRoot) throw new Error("fixture account root does not exist");
   try {
     publishActivation(accountRoot, userDataRoot, build);
@@ -46,7 +46,7 @@ export function activatePlacedBuild(userDataRoot: string, build: BuildRef): void
  * No account configuration, credentials, or caches cross this boundary. */
 export function copyActiveBuild(sourceHome: string, targetHome: string, legacyBaseline: boolean): void {
   const sourceRoot = join(sourceHome, ".flywheel");
-  const account = ContainedDirectory.openExisting(sourceHome, [".flywheel"]);
+  const account = openExistingContainedDirectory(sourceHome, [".flywheel"]);
   let active: ReturnType<typeof openActiveBuild>;
   try {
     active = account ? openActiveBuild(account, sourceRoot) : undefined;

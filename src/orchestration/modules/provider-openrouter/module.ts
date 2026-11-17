@@ -21,7 +21,7 @@ const definition = {
   id: "openrouter",
   displayName: "OpenRouter API Key",
   shortName: "OpenRouter",
-  supportedFamilies: ["anthropic", "openai", "google"],
+ 
   defaultChatTransport: "openai-completions",
   configHints: ["flywheel auth login --openrouter"],
   cli: { flag: "openrouter", name: "OpenRouter" },
@@ -87,5 +87,5 @@ export const openrouterModule = {
     { domain: "providers", id: "openrouter", value: { definition, createClient, affordability: createAffordability } },
     { domain: "settings", id: "provider-openrouter", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow models through an OpenRouter API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

@@ -1,5 +1,4 @@
 import type { EventStoreAppend } from "../../../../src/infra/event-store-types.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
@@ -8,12 +7,13 @@ import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/v
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
-const workflow: WorkflowDefinition = {
+const workflow = loadedWorkflow({
   id: "fixture-workflow",
   name: "Fixture workflow",
   phases: [{ phase: "fixture-step", brief: "Do the fixture-step work.", name: "fixture-step", writes: [] }],
-}
+})
 const skill = testSkill("fixture-step", { name: "Fixture step" })
 const bindings = testResolvedAgents([testResolvedAgent("fixture-step", skill, { name: "Fixture step" })])
 const control = compileWorkflowControl(workflow, bindings, { skills: testSkillRevision([skill]) })

@@ -21,7 +21,7 @@ import {
 import { getGitHubCopilotBaseUrl, rebaseToCopilotHost } from "./base-url.js";
 import { refreshGitHubCopilotToken } from "./token-refresh.js";
 import { Log } from "../../../infra/log.js";
-import { createResettableTimingFetch, type ResettableTimingFetch } from "../../agent-runtime/llm/request-timing.js";
+import { timingFetch } from "../../agent-runtime/llm/request-timing.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
 
 const log = Log.create({ service: "llm-copilot" });
@@ -33,7 +33,6 @@ interface CopilotTokenAccessor {
 interface CopilotClients {
   anthropic: Anthropic;
   openai: OpenAI;
-  resetIdleConnections: ResettableTimingFetch["resetIdleConnections"];
 }
 
 const connectionAccessors = new WeakMap<ProviderConnection, Map<string, CopilotTokenAccessor>>();
@@ -79,10 +78,7 @@ function createCopilotTokenAccessor(
 
 type FetchLike = (url: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-function createCopilotFetch(
-  accessor: CopilotTokenAccessor,
-  transport: ResettableTimingFetch,
-): FetchLike {
+function createCopilotFetch(accessor: CopilotTokenAccessor): FetchLike {
   return async (url, init) => {
     const tokens = await accessor.ensureFresh(init?.signal ?? undefined);
     // The `proxy-ep=` routing metadata inside the token can move on refresh,
@@ -92,7 +88,8 @@ function createCopilotFetch(
     const headers = new Headers(init?.headers);
     // Provider-call adapter: the token is unwrapped only into the header.
     headers.set("Authorization", `Bearer ${Redacted.value(tokens.copilotToken)}`);
-    return transport.fetch(target, { ...init, headers });
+    // The Anthropic adapter folds the timing stamps into its request timing; the OpenAI adapters read none.
+    return timingFetch(target, { ...init, headers });
   };
 }
 
@@ -122,8 +119,7 @@ export function buildCopilotClients(
     accessor = createCopilotTokenAccessor(tokens, connection.oauthPersistence, compareAndSet);
     byCandidate.set(candidate.instanceId, accessor);
   }
-  const transport = createResettableTimingFetch();
-  const fetch = createCopilotFetch(accessor, transport);
+  const fetch = createCopilotFetch(accessor);
   const baseURL = getGitHubCopilotBaseUrl(tokens.copilotToken, tokens.enterpriseDomain);
 
   // `authToken` + `apiKey: null` makes the Anthropic SDK send
@@ -138,7 +134,7 @@ export function buildCopilotClients(
     authToken: "copilot-oauth",
     baseURL,
     defaultHeaders: { ...COPILOT_STATIC_HEADERS },
-    // withRetryStream owns retries; SDK retries would stack multiplicatively.
+    // The failover walk owns retries; SDK retries would stack multiplicatively.
     maxRetries: 0,
     fetch,
   });
@@ -147,14 +143,10 @@ export function buildCopilotClients(
     apiKey: "copilot",
     baseURL,
     defaultHeaders: { ...COPILOT_STATIC_HEADERS },
-    // withRetryStream owns retries; SDK retries would stack multiplicatively.
+    // The failover walk owns retries; SDK retries would stack multiplicatively.
     maxRetries: 0,
     fetch,
   });
 
-  return {
-    anthropic,
-    openai,
-    resetIdleConnections: transport.resetIdleConnections,
-  };
+  return { anthropic, openai };
 }

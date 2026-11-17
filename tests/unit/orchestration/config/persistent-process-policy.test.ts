@@ -7,7 +7,7 @@ import { createPersistentProcessManager } from "../../../../src/infra/persistent
 import type { PersistentSubprocess } from "../../../../src/infra/persistent-subprocess.js";
 import { persistentProcessPolicy } from "../../../../src/orchestration/config/persistent-process-policy.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
-import { updateAllowPersistentProcesses } from "../../../../src/orchestration/config/writer.js";
+import { updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
 
 async function withConfig(source: string, run: (path: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-persistent-process-policy-"));
@@ -80,9 +80,9 @@ describe("persistent process policy", () => {
       const forced = serve(true);
       try {
         await expect(bridged.client.launch(["off"])).rejects.toThrow("persistent process launch is not authorized");
-        expect(updateAllowPersistentProcesses(true, { configPath }).ok).toBe(true);
+        expect(updateDefinedSetting("allowPersistentProcesses", true, { configPath }).ok).toBe(true);
         await expect(bridged.client.launch(["on"])).resolves.toMatchObject({ command: ["on"] });
-        expect(updateAllowPersistentProcesses(false, { configPath }).ok).toBe(true);
+        expect(updateDefinedSetting("allowPersistentProcesses", false, { configPath }).ok).toBe(true);
         await expect(bridged.client.launch(["off-again"])).rejects.toThrow("persistent process launch is not authorized");
         await expect(forced.client.launch(["forced"])).resolves.toMatchObject({ command: ["forced"] });
       } finally {
@@ -100,7 +100,7 @@ describe("persistent process policy", () => {
     { source: 'allow_persistent_processes = false\ndisabled_modules = ["nope"]\n', valid: false },
   ])("writes only a valid document through config ownership: $valid", async ({ source, valid }) => {
     await withConfig(source, async (configPath) => {
-      const write = updateAllowPersistentProcesses(true, { configPath });
+      const write = updateDefinedSetting("allowPersistentProcesses", true, { configPath });
       expect(write.ok).toBe(valid);
       if (!valid) expect(await readFile(configPath, "utf8")).toBe(source);
       await expect(persistentProcessPolicy({ configPath, forcedByCli: false })).resolves.toEqual({

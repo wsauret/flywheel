@@ -4,22 +4,18 @@ import { existsSync, mkdirSync, readFileSync, statSync, symlinkSync, unlinkSync,
 import { join } from "node:path";
 import {
   AuthStoreMutationError,
-  appendCredentialInstance,
   appendCredentialInstanceWithReceipt,
-  deleteCredential,
   deleteCredentialInstance,
+  deleteProviderCredentials,
   ensureCredentialLineages,
   renameCredentialInstance,
   replaceCredentialInstanceWithReceipt,
   rollbackAuthStoreMutation,
-  replaceCredential,
   replaceCredentialInstance,
-  setCredential,
-  setMeteredCredential,
   setMeteredCredentialWithReceipt,
 } from "../../../../src/infra/auth/auth-store-mutations.js";
-import { getCredential, loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
-import type { Credential } from "../../../../src/infra/auth/auth-store-types.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
+import { isCredentialCollection, type Credential } from "../../../../src/infra/auth/auth-store-types.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
@@ -58,7 +54,7 @@ describe("strict auth mutation", () => {
     const access = openExistingAuthProfileDirectory(dir);
 
     try {
-      const malformedFailure = await setCredential("openai_api", { type: "api_key", key: "new-secret" }, access).catch((error) => error);
+      const malformedFailure = await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "new-secret" }, access, slots).catch((error) => error);
       expect(malformedFailure).toBeInstanceOf(AuthStoreMutationError);
       expect(malformedFailure.conditions).toEqual([{
         kind: "malformed",
@@ -72,7 +68,7 @@ describe("strict auth mutation", () => {
 
       writeAuthJson(dir, { anthropic_api: { type: "api_key" } });
       const partial = readFileSync(authJsonPath(dir), "utf-8");
-      const partialFailure = await setCredential("google_api", { type: "api_key", key: "new-secret" }, access).catch((error) => error);
+      const partialFailure = await setMeteredCredentialWithReceipt("google_api", { type: "api_key", key: "new-secret" }, access, slots).catch((error) => error);
       expect(partialFailure).toBeInstanceOf(AuthStoreMutationError);
       expect(partialFailure.conditions).toEqual([{
         kind: "malformed",
@@ -84,7 +80,7 @@ describe("strict auth mutation", () => {
       expect(readFileSync(authJsonPath(dir), "utf-8")).toBe(partial);
 
       writeFileSync(authJsonPath(dir), Buffer.alloc(16 * 1024 * 1024 + 1, 97));
-      const oversizedFailure = await setCredential("google_api", { type: "api_key", key: "new-secret" }, access).catch((error) => error);
+      const oversizedFailure = await setMeteredCredentialWithReceipt("google_api", { type: "api_key", key: "new-secret" }, access, slots).catch((error) => error);
       expect(oversizedFailure).toBeInstanceOf(AuthStoreMutationError);
       expect(oversizedFailure.conditions).toEqual([{
         kind: "refused",
@@ -105,14 +101,14 @@ describe("strict auth mutation", () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(authJsonPath(dir), malformed);
 
-    const failure = await setCredential("openai_api", { type: "api_key", key: "new-secret" }, dir).catch((error) => error);
+    const failure = await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "new-secret" }, dir, slots).catch((error) => error);
 
     expect(failure).toBeInstanceOf(AuthStoreMutationError);
     expect(failure.conditions).toEqual([{ kind: "malformed", scope: "file", authDirectory: dir, path: authJsonPath(dir), revision: expect.any(String) }]);
     expect(JSON.stringify(failure)).not.toContain("do-not-report");
     expect(readFileSync(authJsonPath(dir), "utf-8")).toBe(malformed);
     unlinkSync(authJsonPath(dir));
-    await expect(setCredential("openai_api", { type: "api_key", key: "recovered" }, dir)).resolves.toBeUndefined();
+    await expect(setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "recovered" }, dir, slots)).resolves.toMatchObject({ providerId: "openai_api" });
   });
 
   test("rejects an unsafe path with a secret-free typed condition", async () => {
@@ -121,7 +117,7 @@ describe("strict auth mutation", () => {
     const dir = join(root, "profile");
     mkdirSync(outside);
     symlinkSync(outside, dir);
-    const failure = await setCredential("openai_api", { type: "api_key", key: "new-secret" }, dir).catch((error) => error);
+    const failure = await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "new-secret" }, dir, slots).catch((error) => error);
     expect(failure).toBeInstanceOf(AuthStoreMutationError);
     expect(failure.conditions).toEqual([{
       kind: "refused",
@@ -181,7 +177,7 @@ describe("subscription credential collections", () => {
 
   test("restores the exact metered entry after a failed replacement", async () => {
     const dir = makeTmpDir();
-    await setMeteredCredential("anthropic_api", { type: "oauth", access: "old", refresh: "old-refresh", expires: 1, accountId: "old-account" }, dir, slots);
+    await setMeteredCredentialWithReceipt("anthropic_api", { type: "oauth", access: "old", refresh: "old-refresh", expires: 1, accountId: "old-account" }, dir, slots);
     const before = JSON.parse(readFileSync(authJsonPath(dir), "utf8")).anthropic_api;
     const receipt = await setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "replacement" }, dir, slots);
 
@@ -228,7 +224,7 @@ describe("subscription credential collections", () => {
     ] });
     writeFileSync(authJsonPath(dir), invalid);
 
-    await expect(appendCredentialInstance("chatgpt", {
+    await expect(appendCredentialInstanceWithReceipt("chatgpt", {
       id: "new", identity: "new@example.com", credential: { type: "oauth", access: "new", expires: 2 },
     }, dir, slots)).rejects.toThrow();
     expect(readFileSync(authJsonPath(dir), "utf8")).toBe(invalid);
@@ -237,9 +233,9 @@ describe("subscription credential collections", () => {
   test("mutates exact credential instances without clearing profile-wide catalog files", async () => {
     const dir = makeTmpDir();
     const original = { type: "oauth" as const, access: "a", expires: 1 };
-    await appendCredentialInstance("chatgpt", { id: "b", identity: "b@example.com", credential: original }, dir, slots);
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "b", identity: "b@example.com", credential: original }, dir, slots);
     writeFileSync(join(dir, "provider-model-catalogs.json"), "unrelated-candidate-catalogs");
-    await appendCredentialInstance("chatgpt", { id: "a", identity: "a@example.com", credential: original }, dir, slots);
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "a", identity: "a@example.com", credential: original }, dir, slots);
     expect(readFileSync(join(dir, "provider-model-catalogs.json"), "utf8")).toBe("unrelated-candidate-catalogs");
     expect(JSON.parse(readFileSync(authJsonPath(dir), "utf8")).chatgpt.map((item: { id: string }) => item.id)).toEqual(["a", "b"]);
     await renameCredentialInstance("chatgpt", "a", "Primary", dir, slots);
@@ -262,7 +258,7 @@ describe("subscription credential collections", () => {
   test("replaces an account identity in the same credential CAS", async () => {
     const dir = makeTmpDir();
     const original = { type: "oauth" as const, access: "old", expires: 1 };
-    await appendCredentialInstance("chatgpt", { id: "account", identity: "ChatGPT account", credential: original }, dir, slots);
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "account", identity: "ChatGPT account", credential: original }, dir, slots);
 
     expect(await replaceCredentialInstance("chatgpt", "account", original, { type: "oauth", access: "new", expires: 2 }, dir, slots, undefined, "alice")).toBe(true);
     expect(loadAuthStoreWithDiagnostics(dir, undefined, slots).store.chatgpt).toEqual([{
@@ -273,8 +269,8 @@ describe("subscription credential collections", () => {
   test("rejects an identity collision without changing the collection", async () => {
     const dir = makeTmpDir();
     const original = { type: "oauth" as const, access: "old", expires: 1 };
-    await appendCredentialInstance("chatgpt", { id: "a", identity: "a@example.com", credential: original }, dir, slots);
-    await appendCredentialInstance("chatgpt", { id: "b", identity: "b@example.com", credential: original }, dir, slots);
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "a", identity: "a@example.com", credential: original }, dir, slots);
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "b", identity: "b@example.com", credential: original }, dir, slots);
 
     await expect(replaceCredentialInstance("chatgpt", "a", original, { type: "oauth", access: "new", expires: 2 }, dir, slots, undefined, "b@example.com")).rejects.toThrow("already exists");
     expect(loadAuthStoreWithDiagnostics(dir, undefined, slots).store.chatgpt).toEqual([
@@ -323,7 +319,7 @@ describe("legacy credential instance reset", () => {
     writeAuthJson(dir, { chatgpt: [
       { id: "legacy", identity: "legacy", credential: { type: "oauth", access: "old", expires: 1 } },
     ] });
-    await appendCredentialInstance("chatgpt", {
+    await appendCredentialInstanceWithReceipt("chatgpt", {
       id: "account", identity: "a@example.com", credential: { type: "oauth", access: "a", expires: 2 },
     }, dir, slots);
     expect(JSON.parse(readFileSync(authJsonPath(dir), "utf8")).chatgpt).toEqual([
@@ -332,11 +328,11 @@ describe("legacy credential instance reset", () => {
   });
 });
 
-describe("setCredential", () => {
+describe("metered credential writes", () => {
   test("creates auth.json with 0600 permissions when it does not exist", async () => {
     const dir = makeTmpDir();
     const cred: Credential = { type: "api_key", key: "sk-test" };
-    await setCredential("anthropic_api", cred, dir);
+    await setMeteredCredentialWithReceipt("anthropic_api", cred, dir, slots);
     const filePath = authJsonPath(dir);
     expect(existsSync(filePath)).toBe(true);
     const mode = statSync(filePath).mode & 0o777;
@@ -346,7 +342,7 @@ describe("setCredential", () => {
   test("refuses to create a missing auth profile directory", async () => {
     const dir = join(makeTmpDir(), "nested", "auth");
     const cred: Credential = { type: "api_key", key: "[redacted secret]" };
-    await expect(setCredential("anthropic_api", cred, dir)).rejects.toBeInstanceOf(AuthProfileDirectoryNotFoundError);
+    await expect(setMeteredCredentialWithReceipt("anthropic_api", cred, dir, slots)).rejects.toBeInstanceOf(AuthProfileDirectoryNotFoundError);
     expect(existsSync(dir)).toBe(false);
   });
 
@@ -354,7 +350,7 @@ describe("setCredential", () => {
     const dir = makeTmpDir();
     writeAuthJson(dir, { anthropic_api: { type: "api_key", key: "sk-ant" } });
     const cred: Credential = { type: "api_key", key: "sk-oai" };
-    await setCredential("openai_api", cred, dir);
+    await setMeteredCredentialWithReceipt("openai_api", cred, dir, slots);
     const store = loadAuthStoreWithDiagnostics(dir).store;
     expect(store.anthropic_api).toEqual({ type: "api_key", key: "sk-ant" });
     expect(store.openai_api).toEqual({ type: "api_key", key: "sk-oai" });
@@ -366,7 +362,7 @@ describe("setCredential", () => {
     const invalid = JSON.stringify({ chatgpt, junk: { type: "unknown" } });
     writeFileSync(authJsonPath(dir), invalid);
 
-    await expect(setCredential("anthropic_api", { type: "api_key", key: "replacement" }, dir)).rejects.toThrow();
+    await expect(setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "replacement" }, dir, slots)).rejects.toThrow();
     expect(readFileSync(authJsonPath(dir), "utf8")).toBe(invalid);
   });
 
@@ -378,7 +374,7 @@ describe("setCredential", () => {
     }).slice(0, -1);
     writeFileSync(authJsonPath(dir), malformed);
 
-    await expect(setCredential("exa", { type: "api_key", key: "replacement" }, dir)).rejects.toThrow();
+    await expect(setMeteredCredentialWithReceipt("exa", { type: "api_key", key: "replacement" }, dir, slots)).rejects.toThrow();
     expect(readFileSync(authJsonPath(dir), "utf8")).toBe(malformed);
   });
 
@@ -387,7 +383,7 @@ describe("setCredential", () => {
     const oversized = "x".repeat(16 * 1024 * 1024 + 1);
     writeFileSync(authJsonPath(dir), oversized);
 
-    await expect(setCredential("anthropic_api", { type: "api_key", key: "replacement" }, dir)).rejects.toThrow();
+    await expect(setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: "replacement" }, dir, slots)).rejects.toThrow();
     expect(readFileSync(authJsonPath(dir), "utf8")).toBe(oversized);
   });
 
@@ -399,7 +395,7 @@ describe("setCredential", () => {
     });
     writeFileSync(authJsonPath(dir), invalid);
 
-    await expect(setCredential("exa", { type: "api_key", key: "replacement" }, dir)).rejects.toThrow();
+    await expect(setMeteredCredentialWithReceipt("exa", { type: "api_key", key: "replacement" }, dir, slots)).rejects.toThrow();
     expect(readFileSync(authJsonPath(dir), "utf8")).toBe(invalid);
   });
 });
@@ -420,7 +416,7 @@ describe("metered credential lineages", () => {
       openai_api: nested,
     });
 
-    await setMeteredCredential("exa", { type: "api_key", key: "new-secret" }, dir, slots);
+    await setMeteredCredentialWithReceipt("exa", { type: "api_key", key: "new-secret" }, dir, slots);
     const normalized = JSON.parse(readFileSync(authJsonPath(dir), "utf8"));
     expect(normalized.anthropic_api).toEqual({ ...direct, lineageId: expect.any(String) });
     expect(normalized.openai_api).toEqual({ ...nested, lineageId: nestedLineage });
@@ -429,56 +425,24 @@ describe("metered credential lineages", () => {
 
   test("mints a lineage on every credential replacement", async () => {
     const dir = makeTmpDir();
-    await setMeteredCredential("openai_api", { type: "api_key", key: "first" }, dir, slots);
+    await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "first" }, dir, slots);
     const first = JSON.parse(readFileSync(authJsonPath(dir), "utf8")).openai_api;
 
-    await setMeteredCredential("openai_api", { type: "api_key", key: "second" }, dir, slots);
+    await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "second" }, dir, slots);
     const second = JSON.parse(readFileSync(authJsonPath(dir), "utf8")).openai_api;
     expect(second.lineageId).not.toBe(first.lineageId);
     expect(second).toEqual({ type: "api_key", key: "second", lineageId: expect.any(String) });
   });
 });
 
-describe("replaceCredential", () => {
-  test("replaces only the credential version the caller refreshed", async () => {
-    const dir = makeTmpDir();
-    const original: Credential = { type: "oauth", access: "access-a", refresh: "refresh-a", expires: 1 };
-    const refreshed: Credential = { type: "oauth", access: "access-a2", refresh: "refresh-a2", expires: 2 };
-    const otherAccount: Credential = { type: "oauth", access: "access-b", refresh: "refresh-b", expires: 3 };
-    await setCredential("chatgpt", original, dir);
-
-    expect(await replaceCredential("chatgpt", original, refreshed, dir)).toBe(true);
-    expect(getCredential("chatgpt", dir)).toEqual(refreshed);
-
-    await setCredential("chatgpt", otherAccount, dir);
-    expect(await replaceCredential("chatgpt", refreshed, original, dir)).toBe(false);
-    expect(getCredential("chatgpt", dir)).toEqual(otherAccount);
-  });
-});
-
-describe("getCredential", () => {
-  test("returns credential for existing provider", () => {
-    const dir = makeTmpDir();
-    const cred = { type: "api_key" as const, key: "sk-x" };
-    writeAuthJson(dir, { anthropic_api: metered(cred) });
-    expect(getCredential("anthropic_api", dir)).toEqual(cred);
-  });
-
-  test("returns undefined for missing provider", () => {
-    const dir = makeTmpDir();
-    writeAuthJson(dir, {});
-    expect(getCredential("anthropic_api", dir)).toBeUndefined();
-  });
-});
-
-describe("deleteCredential", () => {
+describe("deleteProviderCredentials", () => {
   test("removes a provider and preserves others", async () => {
     const dir = makeTmpDir();
     writeAuthJson(dir, {
       anthropic_api: { type: "api_key", key: "sk-ant" },
       openai_api: { type: "api_key", key: "sk-oai" },
     });
-    await deleteCredential("anthropic_api", dir);
+    await deleteProviderCredentials("anthropic_api", dir, slots);
     const store = loadAuthStoreWithDiagnostics(dir).store;
     expect(store.anthropic_api).toBeUndefined();
     expect(store.openai_api).toEqual({ type: "api_key", key: "sk-oai" });
@@ -487,28 +451,27 @@ describe("deleteCredential", () => {
   test("is a no-op when provider is not in store", async () => {
     const dir = makeTmpDir();
     writeAuthJson(dir, { anthropic_api: { type: "api_key", key: "sk-ant" } });
-    await deleteCredential("openai_api", dir);
+    await deleteProviderCredentials("openai_api", dir, slots);
     const store = loadAuthStoreWithDiagnostics(dir).store;
     expect(store.anthropic_api).toEqual({ type: "api_key", key: "sk-ant" });
   });
 
   test("reports a missing profile directory without creating it", async () => {
     const dir = join(makeTmpDir(), "missing", "auth");
-    await expect(deleteCredential("openai_api", dir)).rejects.toBeInstanceOf(AuthProfileDirectoryNotFoundError);
+    await expect(deleteProviderCredentials("openai_api", dir, slots)).rejects.toBeInstanceOf(AuthProfileDirectoryNotFoundError);
     expect(existsSync(dir)).toBe(false);
   });
 });
 
 describe("concurrent writes", () => {
-  test("concurrent setCredential calls do not corrupt the store", async () => {
+  test("concurrent metered credential writes do not corrupt the store", async () => {
     const dir = makeTmpDir();
     const writes = Array.from({ length: 5 }, (_, i) =>
-      setCredential("anthropic_api", { type: "api_key", key: `sk-${i}` }, dir),
+      setMeteredCredentialWithReceipt("anthropic_api", { type: "api_key", key: `sk-${i}` }, dir, slots),
     );
     await Promise.all(writes);
-    const credential = getCredential("anthropic_api", dir);
-    expect(credential?.type).toBe("api_key");
-    if (credential?.type !== "api_key") throw new Error("Expected an API key credential");
+    const credential = loadAuthStoreWithDiagnostics(dir).store.anthropic_api;
+    if (isCredentialCollection(credential) || credential?.type !== "api_key") throw new Error("Expected an API key credential");
     expect(credential.key).toMatch(/^sk-\d$/);
   });
 });

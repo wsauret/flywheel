@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { HostMessage } from "../../../../../src/orchestration/modules/code-mode/invocation-protocol.js";
 import type { InvocationWorker } from "../../../../../src/orchestration/modules/code-mode/worker-pool.js";
@@ -288,7 +289,7 @@ describe("code tool interruption", () => {
     });
     // As in the agent loop, the batch publishes nested progress through the
     // context the dispatcher received, not the one it wraps for the program.
-    const prepared = prepareToolCall({ id: "outer", name: "code", input: { source: "return (await tools.slow({})).content" } }, new Map([["code", run.tool]]), { ok: true });
+    const prepared = prepareToolCall({ id: "outer", name: "code", input: { source: "return (await tools.slow({})).content" } }, new Map([["code", run.tool]]), admitEveryTool);
     const result = await executePreparedTool(prepared, run.context, { watchdogMs: 30 });
     expect(result).toEqual({ outcome: "ok", content: "finished" });
   });

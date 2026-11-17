@@ -5,7 +5,7 @@ import { parseFrontmatter } from "../../src/infra/frontmatter.js";
 import { loadBriefs, loadWorkflowInputContract, type LoadedBrief } from "../../src/workflows/brief.js";
 import { definitionAssets, resolveAssetRef, type AssetLocation } from "../../src/workflows/definition-assets.js";
 import { decodeWorkflowFile } from "../../src/workflows/workflow-file.js";
-import { agentRecords, isRepeat, type WorkflowDefinition, type WorkflowPhase } from "../../src/workflows/workflow-schema.js";
+import { agentRecords, isRepeat, type AuthoredWorkflow, type WorkflowDefinition, type WorkflowPhase } from "../../src/workflows/workflow-schema.js";
 import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
 import { nonEmpty } from "./non-empty.js";
 
@@ -25,7 +25,7 @@ export function retiredFixtureWorkflow(revision: Pick<ProjectDefinitionRegistryR
   const file = join(dir, `${id}.yaml`);
   const decoded = decodeWorkflowFile({ file, content: readFileSync(file, "utf8"), skills: revision.skills });
   if (!decoded.ok) throw new Error(JSON.stringify(decoded.diagnostics));
-  const workflow: WorkflowDefinition = {
+  const workflow: AuthoredWorkflow & Pick<WorkflowDefinition, "provenance"> = {
     ...decoded.definition,
     provenance: { layer: "project", id, filePath: file },
     ...(decoded.stepGrammar ? { retiredStepGrammar: decoded.stepGrammar.view } : {}),
@@ -61,7 +61,7 @@ export function retiredFixtureWorkflow(revision: Pick<ProjectDefinitionRegistryR
       ...(declared === undefined ? {} : { output: declared }),
     };
   };
-  const temporary: WorkflowDefinition = {
+  const temporary: AuthoredWorkflow & Pick<WorkflowDefinition, "provenance"> = {
     ...workflow,
     phases: nonEmpty(workflow.phases.map((entry) => isRepeat(entry) ? { ...entry, phases: nonEmpty(entry.phases.map(inline)) } : inline(entry))),
   };

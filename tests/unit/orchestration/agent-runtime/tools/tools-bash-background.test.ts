@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { classifyShellDetachment, loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
+import { hasShellBackgroundJob, loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
 
@@ -12,7 +12,7 @@ const bashDefinition = createBashDefinition();
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createModulePolicy } from "../../../../../src/orchestration/config/module-policy.js";
 import type { PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";
-import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
+import { dispatchTool, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js";
 
 /** Detached execution is capability-owned, so every case below that backgrounds
@@ -530,16 +530,10 @@ describe("bash tool: background commands under capability policy", () => {
   });
 });
 
-describe("bash detachment classifier", () => {
+describe("bash background-job check", () => {
   it("matches shell operators without treating redirection or arithmetic as jobs", () => {
-    expect(classifyShellDetachment("echo hi &", false)).toBe("ambiguous");
-    expect(classifyShellDetachment("echo hi &", true)).toBe("service_detach");
-    expect(classifyShellDetachment("nohup server &", false)).toBe("service_detach");
-    expect(classifyShellDetachment("echo hi 2>&1", false)).toBe("none");
-    expect(classifyShellDetachment("value=$((1 & 2))", false)).toBe("none");
-    expect(classifyShellDetachment("echo '&'", false)).toBe("none");
-    expect(classifyShellDetachment("cat <<'EOF'\nignored &\nEOF\necho done", false)).toBe("none");
-    expect(classifyShellDetachment("echo $(server &)", false)).toBe("ambiguous");
+    for (const command of ["echo hi &", "nohup server &", "echo $(server &)"]) expect(hasShellBackgroundJob(command)).toBe(true);
+    for (const command of ["echo hi 2>&1", "value=$((1 & 2))", "echo '&'", "cat <<'EOF'\nignored &\nEOF\necho done"]) expect(hasShellBackgroundJob(command)).toBe(false);
   });
 });
 
@@ -556,7 +550,6 @@ describe("bash persistent execution admission", () => {
   };
 
   it.each([
-    [{ command: "server", persist_after_exit: "yes" }, "'persist_after_exit' must be a boolean"],
     [{ command: "server", background: false, persist_after_exit: true }, "requires 'background=true'"],
     [{ command: "server", mutates: true, persist_after_exit: true }, "'mutates=true' cannot be combined"],
     [{ command: "server", background: true, persist_after_exit: true, timeout: 1 }, "cannot be combined with 'timeout'"],
@@ -618,7 +611,7 @@ describe("bash persistent execution admission", () => {
     expect(effects).toEqual(["admit"]);
 
     context.admitPersistentProcess = () => { effects.push("admit"); return true; };
-    const admitted = await definition.execute({ command: "server", persist_after_exit: true }, context);
+    const admitted = await dispatchTool(definition, { command: "server", persist_after_exit: true }, context);
     expect(admitted.content).toContain("persistent:test");
     expect(String(admitted.content)).toStartWith("Note: persist_after_exit=true implies a background launch.\n");
     expect(effects).toEqual(["admit", "admit", "scratch", "launch"]);

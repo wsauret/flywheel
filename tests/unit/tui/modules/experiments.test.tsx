@@ -18,7 +18,6 @@ import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
 import { TickPoolProvider } from "../../../../src/tui/context/tick-pool-context.js"
 import { createModuleDomainIntakes } from "../../../../src/tui/hooks/create-module-domain-intakes.js"
-import { BASELINE_PENDING_COPY, CONFIDENCE_PENDING_COPY } from "../../../../src/tui/modules/experiments/dashboard-lines.js"
 import { ExperimentDashboardModal } from "../../../../src/tui/modules/experiments/dashboard-modal.js"
 import { experimentsTui } from "../../../../src/tui/modules/experiments/index.js"
 import { ExperimentStrip } from "../../../../src/tui/modules/experiments/strip.js"
@@ -204,8 +203,8 @@ describe("ExperimentStrip", () => {
     const pending = await renderStrip(() => zeroRun)
     try {
       const frame = pending.captureCharFrame()
-      expect(frame).toContain(BASELINE_PENDING_COPY)
-      expect(frame).toContain(CONFIDENCE_PENDING_COPY)
+      expect(frame).toContain("baseline pending")
+      expect(frame).toContain("confidence pending")
     } finally {
       pending.renderer.destroy()
     }

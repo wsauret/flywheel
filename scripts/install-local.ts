@@ -16,7 +16,7 @@ const architecture = (() => {
   throw new Error(`Unsupported local install architecture: ${process.arch}`)
 })()
 
-function run(command: string[], cwd: string): void {
+function runInstallCommand(command: string[], cwd: string): void {
   const result = Bun.spawnSync(command, {
     cwd,
     stdin: "inherit",
@@ -31,10 +31,10 @@ function run(command: string[], cwd: string): void {
 // the build then fails on missing modules. Syncing first makes the checkout
 // match its lockfile; --frozen-lockfile refuses to rewrite the lockfile.
 console.log("Syncing dependencies...")
-run([process.execPath, "install", "--frozen-lockfile"], ROOT)
+runInstallCommand([process.execPath, "install", "--frozen-lockfile"], ROOT)
 
 console.log("Building binary...")
-run([process.execPath, "run", "build:binary"], ROOT)
+runInstallCommand([process.execPath, "run", "build:binary"], ROOT)
 
 const staging = join(ROOT, "dist", `flywheel-${platform}-${architecture}`)
 const installer = join(staging, platform === "win32" ? "install.ps1" : "install.sh")
@@ -43,7 +43,7 @@ if (!existsSync(installer)) {
 }
 
 if (platform === "win32") {
-  run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installer], staging)
+  runInstallCommand(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", installer], staging)
 } else {
-  run([installer], staging)
+  runInstallCommand([installer], staging)
 }

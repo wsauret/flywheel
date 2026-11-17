@@ -1,5 +1,5 @@
 import { escapeXml, formatRuntimeNotification } from "./runtime-notifications.js"
-import type { BackgroundWorkMeta, BackgroundWorkResult } from "./background-work.js"
+import type { BackgroundWorkResult } from "./background-work.js"
 
 interface NotificationReceipt {
   readonly promise: Promise<void>
@@ -53,16 +53,6 @@ export function createBackgroundNotificationDelivery(
       for (const entry of delivering.values()) clearTimeout(entry.timer)
     },
   }
-}
-
-/** Retires only the settled durable child runs covered by this receipt.
- * The caller retains ownership of the array and of interrupted live runs. */
-export function retireCompletedSubagents<T extends { readonly meta: BackgroundWorkMeta }>(completed: T[], runIds?: readonly string[]): T[] {
-  const delivered = runIds ? new Set(runIds) : null
-  const covered = (entry: T): boolean => entry.meta.settlementOwner === "child_session" && (!delivered || delivered.has(entry.meta.id))
-  const batch = completed.filter(covered)
-  completed.splice(0, completed.length, ...completed.filter((entry) => !covered(entry)))
-  return batch
 }
 
 export interface BackgroundNotificationEntry {

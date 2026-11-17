@@ -5,6 +5,7 @@ import * as path from "node:path";
 
 import { listDefinition } from "../../../../../src/orchestration/agent-runtime/tools/list.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { makeContext, pathLines } from "./_fixtures.js";
 
 describe("list tool", () => {
@@ -24,7 +25,7 @@ describe("list tool", () => {
       fs.writeFileSync(path.join(tmpDir, name, "a.ts"), name);
     }
     const dispatch = (target: string) => executePreparedTool(
-      prepareToolCall({ id: "list", name: "list", input: { path: target } }, new Map([["list", listDefinition]])),
+      prepareToolCall({ id: "list", name: "list", input: { path: target } }, new Map([["list", listDefinition]]), admitEveryTool),
       makeContext({ executionCwd: tmpDir, projectRoot: tmpDir }),
     );
     expect((await dispatch("src tests")).content).toBe("src tests/a.ts");
@@ -101,7 +102,7 @@ describe("list tool", () => {
     expect(pathLines(files.content)).toEqual(["file.txt"]);
     expect(pathLines(directories.content)).toEqual(["dir/"]);
     for (const include of ["directories,files", "files directories", "directories, files"]) {
-      const call = prepareToolCall({ id: "list", name: "list", input: { path: ".", include } }, new Map([["list", listDefinition]]));
+      const call = prepareToolCall({ id: "list", name: "list", input: { path: ".", include } }, new Map([["list", listDefinition]]), admitEveryTool);
       const result = await executePreparedTool(call, ctx);
       expect(result.outcome).toBe("ok");
       expect(result.content).toBe(`Note: include '${include}' was read as 'all'.\ndir/\nfile.txt`);

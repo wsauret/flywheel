@@ -33,7 +33,7 @@ describe("role model defaults", () => {
     expect(selectRoleModelDefault("reviewer-quality", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
     expect(selectRoleModelDefault("reviewer-elegance", bothProviders)).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
     expect(selectRoleModelDefault("reviewer-mechanism", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
-    expect(selectRoleModelDefault("implementer", bothProviders)).toMatchObject({ model: "gpt-6-astra", effort: "low" });
+    expect(selectRoleModelDefault("implementer", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
     expect(selectRoleModelDefault("ship", bothProviders)).toMatchObject({ model: "gpt-6-luna", effort: "high" });
     expect(selectRoleModelDefault("reviewer-design", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
     expect(selectRoleModelDefault("workflow-agent", bothProviders)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
@@ -106,6 +106,7 @@ describe("role model defaults", () => {
 
   it("prices a coded model from the bundled document when the admitted archive has no row for it", async () => {
     await withTempDir(async (userDataRoot) => {
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: each JSON value that JSON.parse visits
       const withoutLuna: unknown = JSON.parse(await Bun.file("src/infra/llm/models-bundled.txt").text(), (key, value: unknown) => key === "gpt-6-luna" ? undefined : value);
       await mkdir(dirname(modelsSnapshotFile(userDataRoot)), { recursive: true });
       await Bun.write(modelsSnapshotFile(userDataRoot), JSON.stringify(withoutLuna));

@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
-import { appendCampaignRecords, loadCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { appendCampaignRecords, loadAllCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import { createBenchmarkCatalog, type ImplementTask } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
 import { regradeRecords } from "../../../src/orchestration/modules/development/benchmark/regrade.js";
@@ -80,7 +80,7 @@ describe("benchmark regrade", () => {
     expect(await regradeRecords(catalog, run)).toEqual({ graded: 2, current: 1, skipped: 1 });
     expect(graded).toEqual([SOURCE_SECTION]);
     expect(applied).toEqual([SOURCE_SECTION]);
-    const records = await loadCampaignRecords(file);
+    const records = (await loadAllCampaignRecords(catalog.recordsRoot)).find((campaign) => campaign.file === file);
     expect(records?.scores).toEqual([trap]);
     expect(records?.grades).toEqual([
       { kind: "grade", graderIdentity: native!.graderIdentity, variant: "model-a@high", task: "native-task", repeat: 0, passed: 3, failed: 0, total: 3 },

@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { PersistenceWriteRefused } from "../../../infra/event-store-types.js";
 import { join, sep } from "node:path";
-import type { ContainedFileMetadata } from "../../../infra/descriptor-directory.js";
+import type { ContainedFileMetadata } from "../../../infra/descriptor-directory-contract.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
@@ -36,7 +36,7 @@ import type { SessionFolderSnapshot } from "./bash-session-observation.js";
 import type { RuntimePlatform } from "./bash-script.js";
 import { detectCopyChanges, discardPrivateCopy, inspectPrivateCopyTopology, NoContainingWorkTreeError, pathInCopy, readPrivateProjectCopy, rewriteProjectRoot, takePrivateProjectCopy, type CopyRefresh, type LandableCopy, type LandableCopyRead, type PrivateProjectCopy } from "./bash-private-copy.js";
 import type { CopyRelease, LaunchStamp, PrivateCopyPool } from "./bash-private-copy-pool.js";
-import type { CopyChange, CopyChanges, RemovedDirectory, UnsupportedChange } from "./bash-private-copy-tree.js";
+import type { CopyChange, CopyChanges, CopyTreeState, RemovedDirectory, UnsupportedChange } from "./bash-private-copy-tree.js";
 import { boundedMutationReport, publicationEvidence, publishToolFileEditOutcome, settledMutationEvidence } from "./file-edit-tool-adapter.js";
 import { publishFileMutationAttribution } from "./file-mutation-artifact.js";
 import type { ShellEnvironment } from "./shell-environment.js";
@@ -150,7 +150,7 @@ export async function runInPrivateCopy(input: {
   let launch: LaunchStamp | undefined;
   let withheld = false;
   const land: PrivateCopy["land"] = (settlement) => {
-    landing ??= landPrivateCopy(context, copy, settlement, runCommand, { refresh: copy.refresh, release: pool && (() => withheld ? "handover" : pool.release(copy.reuse, launch)) });
+    landing ??= landPrivateCopy(context, copy, settlement, runCommand, { refresh: copy.refresh, state: copy.reuse.state, release: pool && (state => withheld ? "handover" : pool.release({ ...copy.reuse, state }, launch)) });
     return landing;
   };
   try {
@@ -228,11 +228,14 @@ async function landRecordedCopy(input: Parameters<typeof handedOverPrivateCopy>[
 }
 
 /** A copy this build took for a live command: whether the take refreshed an
- *  idle copy, and the step that gives it back to its session's pool, absent
- *  without a pool. A copy a previous build handed over has neither. */
+ *  idle copy, what the take's mirrors left (`state`), and the step that gives
+ *  it back to its session's pool with that state and the copy's listings its
+ *  change scan read, absent without a pool. A copy a previous build handed
+ *  over has none of these. */
 interface TakenCopy {
   readonly refresh: CopyRefresh | undefined;
-  readonly release: (() => "pooled" | CopyRetirement) | undefined;
+  readonly state: CopyTreeState;
+  readonly release: ((state: CopyTreeState) => "pooled" | CopyRetirement) | undefined;
 }
 
 /** Why a copy that could have gone back to its pool was discarded: the pool
@@ -245,6 +248,7 @@ type CopyRetirement = Exclude<CopyRelease, "pooled"> | "handover";
 async function landPrivateCopy(context: MutationLandingContext, copy: LandableCopy, settlement: ProjectMutationSettlement, runGit: OwnedCommandRunner, taken?: TakenCopy): Promise<ProjectMutationLanding> {
   let retainCopy = false;
   let landed = false;
+  let listings: CopyChanges["listings"] | undefined;
   const startedAt = performance.now();
   let summary = emptyFilesSummary("error");
   const settle = (landing: ProjectMutationLanding, entries: readonly MutationEvidenceEntry[] = []) =>
@@ -280,8 +284,9 @@ async function landPrivateCopy(context: MutationLandingContext, copy: LandableCo
         return await settle(unlandableCopy(context, copy.home, { kind: rejection }));
       }
     }
-    const files = await publishCopyChanges({ ...context, signal: settlement.signal }, copy, runGit);
+    const files = await publishCopyChanges({ ...context, signal: settlement.signal }, copy, runGit, taken?.state.base.listings);
     summary = files.summary;
+    listings = files.listings;
     const landing = await settle(files.landing, files.entries);
     landed = true;
     return landing;
@@ -290,7 +295,10 @@ async function landPrivateCopy(context: MutationLandingContext, copy: LandableCo
     if (error instanceof PersistenceWriteRefused) summary = emptyFilesSummary("persistence_refused");
     throw error;
   } finally {
-    const release = landed && (summary.status === "completed" || summary.status === "unchanged") ? taken?.release?.() : undefined;
+    // A completed or unchanged landing scanned the copy, so `listings` holds what that scan read.
+    const release = taken && landed && listings && (summary.status === "completed" || summary.status === "unchanged")
+      ? taken.release?.({ ...taken.state, tree: { ...taken.state.tree, listings } })
+      : undefined;
     recordMutation(context, { ...summary, guard: copy.guard, startedAt }, {
       ...(taken ? { copy: taken.refresh ? "refreshed" : "taken", ...taken.refresh } : {}),
       fate: retainCopy ? "retained" : release === "pooled" ? "pooled" : "discarded",
@@ -351,10 +359,11 @@ function emptyFilesSummary(status: string): FilesSummary {
   return { files: 0, rebased: 0, conflictMarkers: 0, notApplied: 0, unsupported: 0, status };
 }
 
-async function publishCopyChanges(context: MutationLandingContext & Pick<ToolContext, "signal">, copy: LandableCopy, runGit: OwnedCommandRunner): Promise<{ readonly landing: ProjectMutationLanding; readonly summary: FilesSummary; readonly entries: readonly MutationEvidenceEntry[] }> {
+/** Lands what the command changed in its copy. Answers the copy's listings that the change scan read, absent when the scan failed. */
+async function publishCopyChanges(context: MutationLandingContext & Pick<ToolContext, "signal">, copy: LandableCopy, runGit: OwnedCommandRunner, baseListings: CopyChanges["listings"] | undefined): Promise<{ readonly landing: ProjectMutationLanding; readonly summary: FilesSummary; readonly entries: readonly MutationEvidenceEntry[]; readonly listings?: CopyChanges["listings"] }> {
   let scanned: CopyChanges;
   try {
-    scanned = await detectCopyChanges(copy);
+    scanned = await detectCopyChanges(copy, baseListings);
   } catch (error) {
     return {
       landing: { report: `No project file changes were applied: could not read the private copy: ${errorMessage(error)}` },
@@ -362,13 +371,14 @@ async function publishCopyChanges(context: MutationLandingContext & Pick<ToolCon
       entries: [],
     };
   }
-  const { changes, unsupported, removedDirectories } = scanned;
+  const { changes, unsupported, removedDirectories, listings } = scanned;
   const unsupportedLine = unsupportedLines(unsupported);
   if (changes.length === 0 && unsupported.length === 0 && removedDirectories.length === 0) {
     return {
       landing: { report: "No project files changed." },
       summary: { files: 0, rebased: 0, conflictMarkers: 0, notApplied: 0, unsupported: unsupported.length, status: "unchanged" },
       entries: [],
+      listings,
     };
   }
   const commandChanges = new Map(changes.map(change => [change.path, change]));
@@ -454,7 +464,7 @@ async function publishCopyChanges(context: MutationLandingContext & Pick<ToolCon
     report: boundedMutationReport(lines.join("\n")),
     ...(notApplied.length > 0 ? { notAppliedSummary: refusalSummary } : {}),
   };
-  return { landing, summary, entries };
+  return { landing, summary, entries, listings };
 }
 
 /** Removes each directory the command removed once publication emptied it. Only an empty
@@ -538,13 +548,15 @@ interface MutationSummary {
 }
 
 /** What became of a landed copy. `copy` and the refresh counts describe a copy
- *  this build took; `retire` names why an otherwise reusable copy was discarded,
- *  so the rate of each retirement can be measured. */
+ *  this build took, and `reseeded` whether its refresh seeded its private Git
+ *  directory again; `retire` names why an otherwise reusable copy was
+ *  discarded, so the rate of each retirement can be measured. */
 interface CopyFate {
   readonly copy?: "taken" | "refreshed";
   readonly recloned?: number;
   readonly removed?: number;
   readonly refreshMs?: number;
+  readonly reseeded?: boolean;
   readonly fate: "pooled" | "discarded" | "retained";
   readonly retire?: CopyRetirement;
 }

@@ -10,9 +10,12 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { RequestToolMap, testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { PromptPrefixHold } from "../../../../../src/orchestration/agent-runtime/prompt-prefix-hold.js";
+import type { StreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js";
 
 describe("implicit todo prompting", () => {
-  test("emits context_update immediately after proactive compaction", async () => {
+  /** One compacting run over a large resumed history, then a short answer. */
+  async function runCompactingTurn(hidesContextUsage: boolean): Promise<StreamEvent[]> {
     const events: StreamEvent[] = [];
     const { client } = makeCaptureClient(
       [
@@ -47,8 +50,14 @@ describe("implicit todo prompting", () => {
           { kind: "user", content: "work" },
         ],
       },
+      ...(hidesContextUsage ? { hidesContextUsage } : {}),
       onEvent: (event) => events.push(event),
     });
+    return events;
+  }
+
+  test("emits context_update immediately after proactive compaction", async () => {
+    const events = await runCompactingTurn(false);
 
     const doneIndex = events.findIndex((event) => event.kind === "compaction_done" && event.success);
     const contextIndex = events.findIndex((event, index) => index > doneIndex && event.kind === "context_update");
@@ -68,6 +77,68 @@ describe("implicit todo prompting", () => {
     expect(update.promptTokens).toBeLessThan(100_000);
   });
 
+  test("a run that hides its context usage publishes no context_update and every other event", async () => {
+    const events = await runCompactingTurn(true);
+
+    expect(events.some((event) => event.kind === "context_update")).toBe(false);
+    expect(events.some((event) => event.kind === "compaction_done" && event.success)).toBe(true);
+    expect(events.some((event) => event.kind === "text_delta" && event.text === "Done.")).toBe(true);
+  });
+
+});
+
+describe("stream publication", () => {
+  test("a streamed delta reaches the run's sink through the attempt and the loop's one publisher only, also under a prefix hold, and a streamed edit reaches its validation", async () => {
+    const validated: string[] = [];
+    const streamingEditValidation = {
+      openTurn: () => ({
+        start: (input) => { validated.push(`start:${input.tool}`); },
+        append: (input) => { validated.push(`append:${input.suffix}`); },
+        retire: () => {}, reset: () => {},
+      }),
+      dispose: async () => {},
+    } satisfies StreamingEditValidationService;
+    const { client } = makeCaptureClient([{ events: [
+      { kind: "tool_input_start", toolUseId: "edit-1", name: "edit" },
+      { kind: "tool_input_delta", toolUseId: "edit-1", partialJson: "{\"path\"" },
+      { kind: "text_delta", text: "Done.", blockKey: "text" },
+      { kind: "done", stopReason: "end_turn" },
+    ] }]);
+    let deltaStack: string | undefined;
+    let holdsEntered = 0;
+    class EnteredHold extends PromptPrefixHold {
+      override enter(...args: Parameters<PromptPrefixHold["enter"]>): ReturnType<PromptPrefixHold["enter"]> {
+        holdsEntered += 1;
+        return super.enter(...args);
+      }
+    }
+
+    await runAgentLoop({
+      client,
+      ...withSessionNotes(),
+      systemPrompt: stableSystemPrompt("test"),
+      promptPrefixHold: new EnteredHold(),
+      streamingEditValidation,
+      instruction: "work",
+      executionCwd: "/scratch",
+      userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      providerSessionKey: "publication", promptCacheKey: "publication", artifactScopeId: "publication", retrievalSessionId: "publication",
+      persistence: { history: { append: () => {} } },
+      seed: { kind: "fresh" },
+      onEvent: (event) => { if (event.kind === "text_delta") deltaStack = new Error("delta").stack; },
+    });
+
+    expect(holdsEntered).toBe(1);
+    expect(validated).toEqual(["start:edit", "append:{\"path\""]);
+    // The frames between the run's sink and the attempt that publishes the delta: each one is a per-chunk handler
+    // that works after it forwards, such as a wrapper that adds an observer. The loop's publisher forwards a delta
+    // in tail position, which JavaScriptCore drops from the stack, so none is expected.
+    const frames = (deltaStack ?? "").split("\n").filter((line) => line.trim().startsWith("at "));
+    const attemptFrame = frames.findIndex((line) => line.includes("assistant-turn-attempt.ts"));
+    const handlerFiles = frames.slice(1, attemptFrame).map((line) => /([\w.-]+\.ts):\d+/.exec(line)?.[1]);
+    expect(attemptFrame).toBeGreaterThan(0);
+    expect(handlerFiles).toEqual([]);
+  });
 });
 
 describe("terminate flag on tool result", () => {

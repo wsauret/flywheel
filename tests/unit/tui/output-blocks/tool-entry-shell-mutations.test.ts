@@ -9,9 +9,10 @@ import { renderToolEntry as renderEntry, type RenderToolEntryOptions } from "./_
 import type { MutationDiff } from "../../../../src/infra/mutation-diff.js"
 import { RGBA } from "@opentui/core"
 import { getWriteSyntaxColors } from "../../../../src/protocol/write-syntax-theme.js"
-import { SHELL_MUTATION_RUNNING } from "../../../../src/protocol/client/file-change-body.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
 import { processStatus } from "../../../helpers/runtime-views.js"
+
+const SHELL_MUTATION_RUNNING = "bash command is running…"
 
 const theme = resolveTheme(flywheelThemeJson, "dark")
 

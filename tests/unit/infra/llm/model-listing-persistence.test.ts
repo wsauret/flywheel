@@ -3,7 +3,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthProfileStore, openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js";
-import { MODEL_REFUSAL_LIFETIME_MS, readSavedProviderModels, recordProviderModelRefusal, writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
+import { readSavedProviderModels, recordProviderModelRefusal, writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { normalizeResolvedCatalogRows } from "../../../../src/infra/llm/model-catalog-resolution.js";
@@ -15,6 +15,9 @@ import { combinedModelsDevProviders, modelsDevDocument, TEST_CATALOG_LIMITS } fr
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
+
+/** A saved model refusal applies for one day. */
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const ACCOUNT = { kind: "singleton", providerId: "delayed" } as const;
 const ACCOUNT_CANDIDATE = { ...ACCOUNT, spendMode: "direct_api" } as const;
@@ -34,7 +37,6 @@ function provider(fetch: NonNullable<AccessProviderDefinition["dynamicCatalog"]>
     displayName: "Delayed",
     shortName: "Delayed",
     rank: 1,
-    supportedFamilies: ["openai"],
     configHints: [],
     catalogId: undefined,
     dynamicCatalog: {
@@ -302,7 +304,7 @@ test.each(["cached-first", "fresh", "refresh"] as const)("a %s listing hides a r
   const access = await new AuthProfileStore(root).create("default");
   const authDir = access.authDirectory;
   seedCredential(authDir);
-  const at = 10 * MODEL_REFUSAL_LIFETIME_MS;
+  const at = 10 * ONE_DAY_MS;
   const { rows, client } = refusalFixture();
   await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, rows, TEST_CATALOG_LIMITS);
   await recordProviderModelRefusal(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, "refused", { kind: "model", at }, TEST_CATALOG_LIMITS);
@@ -316,10 +318,10 @@ test.each(["cached-first", "fresh", "refresh"] as const)("a %s listing hides a r
       expect(catalogs.providers.get("delayed")).toEqual(new Set(candidate?.models?.keys()));
       return { ids: candidate?.models?.keys().toArray().sort(), window: (id: string) => candidate?.models?.get(id)?.[0]?.resolvedMetadata?.contextLimit };
     };
-    const refused = await listed(at + MODEL_REFUSAL_LIFETIME_MS - 1);
+    const refused = await listed(at + ONE_DAY_MS - 1);
     expect(refused.ids).toEqual(["narrowed", "whole"]);
     expect([refused.window("narrowed"), refused.window("whole")]).toEqual([200_000, 1_000_000]);
-    const ended = await listed(at + MODEL_REFUSAL_LIFETIME_MS);
+    const ended = await listed(at + ONE_DAY_MS);
     expect(ended.ids).toEqual(["narrowed", "refused", "whole"]);
     expect(ended.window("narrowed")).toBe(1_000_000);
   } finally {
@@ -335,7 +337,7 @@ test("a refusal saved through the listing client reaches its next listing, and a
   const { rows, client: makeClient } = refusalFixture();
   await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, rows, TEST_CATALOG_LIMITS);
   access.close();
-  const now = 10 * MODEL_REFUSAL_LIFETIME_MS;
+  const now = 10 * ONE_DAY_MS;
   const client = makeClient(authDir, now);
   try {
     const listed = async () => (await client.getModelCatalogs(auth(), { mode: "cached-first" })).candidates.get(accessProviderAccountKey(ACCOUNT))?.models?.keys().toArray().sort();

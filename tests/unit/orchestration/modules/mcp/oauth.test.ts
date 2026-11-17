@@ -4,17 +4,12 @@ import { Redacted } from "effect";
 import {
   authorizeMcpServer,
   createSilentMcpOAuth,
-  fromSdkClientInformation,
-  fromSdkTokens,
-  toSdkClientInformation,
-  toSdkTokens,
 } from "../../../../../src/orchestration/modules/mcp/oauth.js";
 import type {
   McpCredential,
   McpCredentialStore,
 } from "../../../../../src/orchestration/modules/mcp/credentials.js";
 import { McpOAuthNeedsAuthError, McpRegistrationRefusedError } from "../../../../../src/orchestration/modules/mcp/errors.js";
-import { mcpSignInFailure } from "../../../../../src/orchestration/modules/mcp/protocol.js";
 
 function memoryCredentialStore(initial?: McpCredential): McpCredentialStore & { saves(): number } {
   let credential = initial;
@@ -62,22 +57,20 @@ describe("MCP OAuth", () => {
     ]);
   });
 
-  it("converts only at the SDK boundary", () => {
-    const tokens = fromSdkTokens({
-      access_token: "access",
-      refresh_token: "refresh",
-      token_type: "Bearer",
-      expires_in: 60,
-      scope: "tools",
-      issuer: "https://auth.example",
-    });
-    const client = fromSdkClientInformation({ client_id: "client", client_secret: "secret", issuer: "https://auth.example" });
+  it("converts only at the SDK boundary", async () => {
+    const store = memoryCredentialStore();
+    const oauth = createSilentMcpOAuth("test", "https://example.test/mcp", store, undefined, undefined);
 
-    expect(toSdkTokens(tokens).access_token).toBe("access");
-    expect(toSdkTokens(tokens).issuer).toBe("https://auth.example");
-    expect(toSdkClientInformation(client)).toEqual({ client_id: "client", client_secret: "secret", issuer: "https://auth.example" });
-    expect(String(tokens.accessToken)).not.toContain("access");
-    expect(String(client.clientSecret)).not.toContain("secret");
+    await oauth.provider.saveTokens({ access_token: "access", refresh_token: "refresh", token_type: "Bearer", expires_in: 60, scope: "tools", issuer: "https://auth.example" });
+    await oauth.provider.saveClientInformation?.({ client_id: "client", client_secret: "secret", issuer: "https://auth.example" });
+
+    const tokens = await oauth.provider.tokens();
+    expect(tokens?.access_token).toBe("access");
+    expect(tokens?.issuer).toBe("https://auth.example");
+    expect(await oauth.provider.clientInformation()).toEqual({ client_id: "client", client_secret: "secret", issuer: "https://auth.example" });
+    const stored = store.get("test", "https://example.test/mcp");
+    expect(String(stored?.tokens?.accessToken)).not.toContain("access");
+    expect(String(stored?.clientInformation?.clientSecret)).not.toContain("secret");
   });
 
 });
@@ -224,7 +217,6 @@ describe("MCP OAuth client registration", () => {
       try {
         const failed = authorizeMcpServer({ server: "slack", url: `${fixture.baseUrl}/mcp`, credentialStore: memoryCredentialStore(), client: undefined });
         await expect(failed).rejects.toBeInstanceOf(McpRegistrationRefusedError);
-        expect(mcpSignInFailure(await failed.catch((error: unknown) => error))).toBe("MCP authentication failed. This server may accept only approved apps. You can try Use Claude as client.");
       } finally {
         await fixture.close();
       }
@@ -239,7 +231,6 @@ describe("MCP OAuth client registration", () => {
     }
     const unreachable = authorizeMcpServer({ server: "gone", url: "http://127.0.0.1:1/mcp", credentialStore: memoryCredentialStore(), client: undefined });
     await expect(unreachable).rejects.not.toBeInstanceOf(McpRegistrationRefusedError);
-    expect(mcpSignInFailure(await unreachable.catch((error: unknown) => error))).toBe("MCP authentication failed. Try again.");
   });
 });
 

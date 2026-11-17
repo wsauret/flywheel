@@ -1,24 +1,20 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, noSkills, workflowIn } from "../../../helpers/project-definitions.js";
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import {
-  MAX_ATTEMPTS_CEILING,
-  WorkflowDefinitionSchema,
-  type WorkflowDefinition,
-} from "../../../../src/workflows/workflow-schema.js";
+import { MAX_ATTEMPTS_CEILING, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 import { launchVerificationWarnings, parseWorkflowVerificationReport } from "../../../../src/workflows/vm/verify-types.js";
 import { authoredGuardrailLimits, authoredStructureFindings, compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import { verifyAuthoredWorkflow, verifyInstantiatedWorkflow } from "../../../../src/workflows/vm/verify.js";
 import { DRY_LOOP, dryWorkflow, mapSkills } from "./_map-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision([]);
 
 /** A workflow of these phases and repeats. */
 function workflow(phases: readonly unknown[], keys: { readonly [key: string]: unknown } = {}): WorkflowDefinition {
-  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: "verified", name: "Verified", ...keys, phases });
+  return loadedWorkflow({ id: "verified", name: "Verified", ...keys, phases });
 }
 
 /** One phase with an inline brief and these keys. */
@@ -122,6 +118,7 @@ describe("authored workflow verification", () => {
     // runs; a quorum that needs two valid votes over the kept list passes.
     const findings = { type: "list", description: "The findings.", max: 3, unique: "site", of: { type: "object", fields: { site: { type: "string", description: "The site." }, score: { type: "number", description: "The score." } } } };
     const vote = { type: "enum", values: ["valid", "refuted", "abstain"], description: "The vote." };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: an authored join, invalid on purpose
     const named = (join: unknown) => ({ phase: "review", agents: ["a", "b"].map((agent) => ({ agent, ...phase(agent), output: { fields: { findings, vote } } })), join });
     const input = { input: listOutput("areas").output };
     const finds = phase("finds", { over: "input.areas", output: { fields: { findings } }, join: { reducer: "dedupe", with: { items: "findings", by: "site" } } });

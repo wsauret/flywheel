@@ -3,7 +3,7 @@ import { test } from "node:test"
 import { createRoot, createSignal } from "solid-js"
 
 import type { SessionLink } from "../client/session-navigation.js"
-import { createScreenStack, type ScreenStackNavigation, type SwipeRoot } from "./screen-stack.js"
+import { createScreenStack, type ScreenStackNavigation } from "./screen-stack.js"
 import { createWorkflowNavigation } from "../modules/workflows/navigation.js"
 import { plainAgentTree } from "../../../tests/helpers/workflow-view.js"
 import type { FrontendAttempt } from "../../../src/protocol/workflow-view-protocol-types.js"
@@ -39,7 +39,7 @@ function memoryNavigation(options: { readonly deferred?: boolean; readonly entri
   return { navigation, entries: () => [...entries], left: () => left, settle: () => { while (queue.length > 0) traverse(queue.shift()!) } }
 }
 
-class TouchRoot extends EventTarget implements SwipeRoot {
+class TouchRoot extends EventTarget {
   readonly clientWidth = 400
   readonly selection = { isCollapsed: true }
   readonly ownerDocument = Object.assign(new EventTarget(), { getSelection: () => this.selection })

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { installCustomProviders } from "../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../helpers/custom-providers.js"
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { SHIPPED_MODULES, composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../src/orchestration/modules.js"
 import { installedModules } from "../../../src/orchestration/module-catalog.js"

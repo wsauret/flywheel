@@ -54,21 +54,27 @@ function describeTarget(target: Element) {
   const control = target.closest(controlSelector)
   const hit = control ?? target
   const editable = hit.matches('input, textarea, [contenteditable="true"]')
-  const kind: InputDiagnosticSample["control"] = hit.closest(".toolbar-back") ? "back"
-    : hit.closest(".rail-list") ? "session"
-    : editable ? "editable"
-    : hit.closest(".question-panel") ? "question"
-    : hit.closest(".disclosure") ? "disclosure"
-    : hit.closest(".selection-grip") ? "selection"
-    : hit.matches("button, [role='button']") ? "button"
-    : hit.matches("a") ? "link" : "other"
-  const area: InputDiagnosticSample["area"] = target.closest(".question-panel") ? "question"
-    : target.closest(".rail, .screen-sessions, .rail-list") ? "sessions"
-    : target.closest(".composer") ? "composer"
-    : target.closest(".toolbar") ? "toolbar"
-    : target.closest('[role="dialog"]') ? "dialog"
-    : target.closest(".transcript, .selection-grip") ? "transcript" : "other"
-  return { control, editable, kind, area }
+  return { control, editable, kind: hitControlKind(hit, editable), area: targetArea(target) }
+}
+
+function hitControlKind(hit: Element, editable: boolean): InputDiagnosticSample["control"] {
+  if (hit.closest(".toolbar-back")) return "back"
+  if (hit.closest(".rail-list")) return "session"
+  if (editable) return "editable"
+  if (hit.closest(".question-panel")) return "question"
+  if (hit.closest(".disclosure")) return "disclosure"
+  if (hit.closest(".selection-grip")) return "selection"
+  if (hit.matches("button, [role='button']")) return "button"
+  return hit.matches("a") ? "link" : "other"
+}
+
+function targetArea(target: Element): InputDiagnosticSample["area"] {
+  if (target.closest(".question-panel")) return "question"
+  if (target.closest(".rail, .screen-sessions, .rail-list")) return "sessions"
+  if (target.closest(".composer")) return "composer"
+  if (target.closest(".toolbar")) return "toolbar"
+  if (target.closest('[role="dialog"]')) return "dialog"
+  return target.closest(".transcript, .selection-grip") ? "transcript" : "other"
 }
 
 /** Observes a connected, visible mount without changing event behavior.

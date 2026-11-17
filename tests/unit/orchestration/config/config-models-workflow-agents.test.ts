@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { slotLabel, roleSlot } from "../../../../src/orchestration/config/role-selection.js";
-import { parseBriefRoleId, briefPersonaRoleId, briefFixedRoleId } from "../../../../src/protocol/brief-role-id.js";
+import { parseBriefRoleId, briefPersonaRoleId, briefDefaultRoleId } from "../../../../src/protocol/brief-role-id.js";
 
 // ---------------------------------------------------------------------------
 // Brief seats of the agents of a workflow
@@ -11,9 +11,11 @@ describe("brief seats", () => {
     expect(parseBriefRoleId("brief.implement")).toEqual({ briefId: "implement" });
     expect(parseBriefRoleId("brief.fly.spec-create")).toEqual({ briefId: "fly.spec-create" });
     expect(parseBriefRoleId("brief.workflow.review_a")).toEqual({ briefId: "workflow.review_a" });
-    for (const fixed of ["both", "model", "effort"] as const) {
-      expect(parseBriefRoleId(briefFixedRoleId("workflow.review_a", "review_a", fixed)))
-        .toEqual({ briefId: "workflow.review_a", definitionId: "review_a", fixed });
+    // Runs store these default seat ids, so their spelling never changes.
+    for (const [defaultFields, stored] of [["both", ""], ["model", ".model"], ["effort", ".effort"]] as const) {
+      const roleId = briefDefaultRoleId("workflow.review_a", "review_a", defaultFields);
+      expect(roleId).toBe(`brief.workflow.review_a.at.review_a${stored}`);
+      expect(parseBriefRoleId(roleId)).toEqual({ briefId: "workflow.review_a", definitionId: "review_a", defaultFields });
     }
   });
 

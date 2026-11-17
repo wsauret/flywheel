@@ -12,7 +12,7 @@ import { createModelsClient } from "../../../../../src/infra/llm/models.js";
 import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { createAdmittedClient } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { testDirectories } from "../../../../helpers/directories.js";
-import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { fakeAvailability, requestEvents } from "./_provider-chain-harness.js";
 
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
@@ -56,9 +56,8 @@ async function capturedRequests(model: string): Promise<Array<{ url: string; hea
     : model === "grok-4.5"
       ? "openai-responses" as const
       : "openai-completions" as const;
-  const eligibility = {
-    modelUnavailableReason: () => undefined,
-    candidateOffering: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate) => ({
+  const eligibility = testEligibility({
+    candidateOfferings: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate) => [{
       candidate,
       wireModelId: model,
       dataUse: "standard" as const,
@@ -73,8 +72,8 @@ async function capturedRequests(model: string): Promise<Array<{ url: string; hea
         },
       },
       resolvedModelMetadata: modelInfo(transport === "anthropic-messages" ? "anthropic" : "openai", model, "test", 1, 4, "2026-01-01"),
-    }),
-  };
+    }],
+  });
   const plan = providers.selection.plan(model, connection, eligibility);
   const { availability } = fakeAvailability({});
   const client = await createAdmittedClient(

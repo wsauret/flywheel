@@ -4,9 +4,7 @@ import type { FieldMap } from "./grammar.js";
  *  section 2.2). The handoff tool, the postamble, the generic renderer, and
  *  artifact context import this one definition. */
 
-const COMMAND_RUNS_DESCRIPTION = "The Bash commands whose results prove this handoff's claims. Cite the ones that matter, not every command you ran. Each completed foreground Bash result ends with its model-visible [toolUseId: ...] citation. Copy that id into toolUseId. The runtime records the command and its exit code from the cited call. observation is your trusted concise account of the output; ground it in what the command returned.";
-
-export const COMMAND_EVIDENCE_RULE = "**Command execution is recorded from the calls you cite; result descriptions are trusted reports.** Cite the Bash commands that prove your claims by their exact toolUseId; the runtime records each command and its exit code from the cited call. Never improve, infer, or fabricate evidence. A later agent re-runs commands only when its brief explicitly requires fresh verification.";
+const COMMAND_RUNS_DESCRIPTION = "The Bash calls whose results prove your claims; cite the ones that matter, not every call. The runtime records each command and exit code. Never improve, infer, or fabricate evidence: later agents trust it.";
 
 /** Why an agent whose contract sets `commands.min` cannot run where Bash is
  *  off: no call it makes can be cited. A launch refuses it, and an attempt
@@ -33,9 +31,9 @@ export const envelope = {
     of: {
       type: "object",
       fields: {
-        toolUseId: { type: "string", description: "The id from the [toolUseId: ...] line that ends the cited Bash result." },
+        toolUseId: { type: "string", description: "The id from the [toolUseId: ...] line that ends the Bash result." },
         exitCode: { type: "number", description: "The exit code of the cited call. The runtime records it from the cited call." },
-        observation: { type: "string", description: "A concise account of what the command returned." },
+        observation: { type: "string", description: "A concise, true account of what the command returned." },
         command: { type: "string", description: "The command that ran. The runtime records it from the cited call." },
         // `cwd` and `changedAfter` are optional only for outputs stored before
         // 2026-10-26, which lack both keys; the writer always sets them.

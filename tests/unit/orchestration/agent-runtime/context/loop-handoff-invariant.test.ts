@@ -71,7 +71,7 @@ describe("agent-loop handoff invariant", () => {
     const queue = new WorkflowInjectionQueue();
     const done = Promise.withResolvers<BackgroundWorkResult>();
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: (text) => { queue.enqueue(text, { silent: true }); } }));
-    background.tasks.track({ done: done.promise, meta: { id: "review", type: "subagent", description: "Nested review", settlementOwner: "child_session" } });
+    background.tasks.track({ done: done.promise, meta: { id: "review", type: "subagent", description: "Nested review" } });
     let closed = 0;
     const writes: string[] = [];
     const { client, capturedMessages } = makeCaptureClient([
@@ -155,6 +155,8 @@ describe("agent-loop handoff invariant", () => {
     while (capturedMessages.length < 3) await Bun.sleep(1);
     await Bun.sleep(5);
     expect(sealed).toEqual([]);
+    // The child's completion reaches its parent through reconciliation.
+    void finish.promise.then(() => { background.tasks.deliverDurableSubagentNotification({ text: "owned work result", key: "subagent-completions:owned-work", completionRunIds: ["owned-work"] }); });
     finish.resolve({ status: "completed", content: "owned work result" });
     const result = await running;
     expect(result.kind).toBe("completed");
@@ -449,6 +451,8 @@ describe("agent-loop handoff invariant", () => {
     // before the first request, so a fixed tick count is not a boundary.
     await Bun.sleep(0);
     expect(capturedMessages).toHaveLength(1);
+    // The child's completion reaches its parent through reconciliation.
+    void promise.then(() => { backgroundTasks.deliverDurableSubagentNotification({ text: "review passed", key: "subagent-completions:reviewer-1", completionRunIds: ["reviewer-1"] }); });
     resolve({ status: "completed", content: "review passed" });
 
     await expect(run).resolves.toEqual({ kind: "completed" });

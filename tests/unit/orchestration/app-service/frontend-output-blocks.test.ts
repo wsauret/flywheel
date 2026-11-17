@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
+import type { AgentGroupBlock, AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { compactGroupChild, projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
-import { rowPresentation, SHELL_MUTATION_RUNNING } from "../../../../src/protocol/client/file-change-body.js"
+import { rowPresentation } from "../../../../src/protocol/client/file-change-body.js"
 import type { MutationEvidence } from "../../../../src/infra/mutation-evidence.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 
@@ -11,7 +11,7 @@ function child(id: string): ToolEntry {
   return { kind: "tool", id, name: "read", presentation: { name: "Read", detail: `${id}.ts` }, status: "completed", timestamp: 1 }
 }
 
-function agentGroup(children: ToolEntry[], totalToolCount: number, containerKind: "subagent" | "workflow" = "subagent"): AnyBlock {
+function agentGroup(children: ToolEntry[], totalToolCount: number, containerKind: "subagent" | "workflow" = "subagent"): AgentGroupBlock {
   return {
     kind: "agentGroup",
     containerKind,
@@ -70,10 +70,9 @@ describe("projectFrontendOutputBlock", () => {
       ...plain, imageCount: 1,
     })
   })
-  it("ships the newest call instead of child rows while preserving the true count", () => {
+  it("ships the card's own activity instead of child rows while preserving the true count", () => {
     const children = Array.from({ length: 12 }, (_, i) => child(`c${i}`))
-    children[11] = { ...children[11]!, sentence: { name: "Read", detail: "c11.ts" } }
-    const wire = projectFrontendOutputBlock(agentGroup(children, 12))
+    const wire = projectFrontendOutputBlock({ ...agentGroup(children, 12), activity: { name: "Read", detail: "c11.ts" } })
     if (wire.kind !== "agentGroup") throw new Error("expected agent group")
     expect(wire.children).toEqual([])
     expect(wire).toMatchObject({ activity: { name: "Read", detail: "c11.ts" } })
@@ -96,9 +95,9 @@ describe("projectFrontendOutputBlock", () => {
     expect(wire.children).toEqual([])
   })
 
-  it("does not inspect children older than the newest call", () => {
+  it("reads none of a card's children", () => {
     const children = Array.from({ length: 500 }, (_, i) => child(`c${i}`))
-    for (let index = 0; index < children.length - 1; index++) {
+    for (let index = 0; index < children.length; index++) {
       Object.defineProperty(children, index, { get: () => { throw new Error("read an undisclosed child") } })
     }
     const wire = projectFrontendOutputBlock(agentGroup(children, 500))
@@ -135,7 +134,7 @@ describe("projectFrontendOutputBlock", () => {
     const running: ToolEntry = { ...child("c3"), name: "bash", presentation: { name: "Bash", detail: "python3 reshape.py" }, status: "pending", declaresMutation: true }
     const row = compactGroupChild(running)
     expect(row.presentation).toEqual({ name: "Bash", detail: "python3 reshape.py" })
-    expect(rowPresentation(row, false)).toEqual({ name: "Edit", detail: SHELL_MUTATION_RUNNING })
+    expect(rowPresentation(row, false)).toEqual({ name: "Edit", detail: "bash command is running…" })
     // A row the card stops resending settles on the client, which still holds the command.
     expect(rowPresentation({ ...row, status: "completed" }, false)).toEqual({ name: "Bash", detail: "python3 reshape.py" })
   })

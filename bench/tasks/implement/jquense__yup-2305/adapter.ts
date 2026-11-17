@@ -1,7 +1,7 @@
 import { chmod, mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 interface PublicInput { file: string; url: string; bytes: number; sha256: string }
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     YARN_ENABLE_GLOBAL_CACHE: "false", YARN_CACHE_FOLDER: join(home, "cache/packages"),
     YARN_GLOBAL_FOLDER: join(home, "cache/global"), YARN_INSTALL_STATE_PATH: join(home, "install-state.gz"),
   };
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

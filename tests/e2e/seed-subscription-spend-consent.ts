@@ -2,7 +2,7 @@ import { dirname } from "node:path"
 import { AuthProfileStore } from "../../src/infra/auth/auth-profile-store.js"
 import { createSubscriptionSpendConsentStore } from "../../src/infra/auth/subscription-spend-consent-store.js"
 import { createSubscriptionSpendEnvelope, type SubscriptionSpendMode } from "../../src/infra/auth/subscription-spend-consent.js"
-import { appendCredentialInstance } from "../../src/infra/auth/auth-store-mutations.js"
+import { appendCredentialInstanceWithReceipt } from "../../src/infra/auth/auth-store-mutations.js"
 import { createUsageAuthority } from "../../src/infra/llm/usage-authority.js"
 import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionAccountIdentity } from "../../src/infra/llm/subscription-account-identity.js"
@@ -25,9 +25,9 @@ const profileExists = (await profiles.list()).some((profile) => profile.id === p
 if (!profileExists) {
   const access = await profiles.create(profileId, "Subscription Spend Consent")
   access.close()
-  await appendCredentialInstance("supergrok", oauth("Exact"), profileDir, classifyCredentialSlot)
+  await appendCredentialInstanceWithReceipt("supergrok", oauth("Exact"), profileDir, classifyCredentialSlot)
 }
-if (has("append-sibling")) await appendCredentialInstance("supergrok", oauth("Sibling"), profileDir, classifyCredentialSlot)
+if (has("append-sibling")) await appendCredentialInstanceWithReceipt("supergrok", oauth("Sibling"), profileDir, classifyCredentialSlot)
 await profiles.writeStickyProfile(profileId)
 
 const accounts = has("append-sibling") ? ["Exact", "Sibling"] : ["Exact"]

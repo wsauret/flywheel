@@ -14,7 +14,6 @@ test("a parent message and a person message to a running child render queued in 
   const started = Promise.withResolvers<AgentOptions>()
   const harness = createHarness((options) => ({
     send() { started.resolve(options) },
-    end() {},
     abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
     done: done.promise,
   }))
@@ -76,7 +75,7 @@ test("a person message that resumes an interrupted child renders queued in the r
   const harness = createHarness((options) => {
     const done = Promise.withResolvers<AgentRunResult>()
     runs.push({ options, done })
-    return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+    return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
   })
   try {
     const parentSessionId = await harness.manager.createChat({ id: "root", conversationId: "root-conversation", name: "root" })

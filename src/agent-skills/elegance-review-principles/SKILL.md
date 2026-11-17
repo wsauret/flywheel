@@ -1,5 +1,6 @@
 ---
 description: Govern a code or plan review with feature-complete simplicity and structural elegance.
+disable-model-invocation: true
 ---
 
 # Elegance Review Principles

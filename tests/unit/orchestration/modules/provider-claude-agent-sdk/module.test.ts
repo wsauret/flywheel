@@ -6,7 +6,7 @@ import type { LauncherScope } from "../../../../../src/infra/process-supervisor.
 import { isExternalLoginDefinition } from "../../../../../src/infra/llm/access-provider.js";
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
-import { usageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
+import { processUsageReadings } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/account-usage.js";
 import type { CliUsage } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { updateModuleMember } from "../../../../../src/orchestration/config/module-selection-writer.js";
 import { composeFirstPartyModules, moduleProtocolRows, moduleSelectionFromConfig, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
@@ -598,7 +598,8 @@ function recoveryFixture() {
  *  starts no process. */
 function usageFixture(initial: CliUsage | Error = { loggedIn: true, reply: { rate_limits_available: false, rate_limits: null } }) {
   const home = temporaryDirectory("claude-sdk-usage-");
-  const readings = usageReadings();
+  // Each fixture reads its own login directory, so the readings of this process hold its readings apart.
+  const readings = processUsageReadings;
   const asked: string[] = [];
   /** Each scope that a read opened from the runtime's launch authority: its policy, the CLIs it ran, and whether the
    *  read closed it. */
@@ -616,7 +617,7 @@ function usageFixture(initial: CliUsage | Error = { loggedIn: true, reply: { rat
   };
   let answer: CliUsage | Error = initial;
   const [provider] = createClaudeAgentSdkModule({
-    account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude", usageReadings: readings, observations: createLoginObservations(),
+    account: () => ({ home, user: "tester" }), enginePath: "/scratch/bin/claude", observations: createLoginObservations(),
     readUsage: async (config) => {
       asked.push(config.configDir);
       const record = opened.get(config.launcher);

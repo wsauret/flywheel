@@ -12,7 +12,7 @@ const ArtifactSchema = Schema.Struct({
 /** Versioned benchmark execution evidence. A handoff is acceptance evidence, not grader proof.
  * Preflight submits no work. Missing usage and missing prices remain unavailable.
  * `incomplete` is the subject's own settlement without a handoff. */
-export const HeadlessBenchmarkExecutionSchema = Schema.Struct({
+const HeadlessBenchmarkExecutionSchema = Schema.Struct({
   version: Schema.Literal(1),
   outcome: Schema.Literals(["preflight", "complete", "input_required", "incomplete", "failed"]),
   exitCode: Schema.NullOr(Schema.Number),

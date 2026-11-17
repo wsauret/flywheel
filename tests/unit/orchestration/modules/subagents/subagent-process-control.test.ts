@@ -52,7 +52,7 @@ function heldRunner() {
   const createAgent = (input: AgentOptions) => {
     options.push(input)
     const done = Promise.withResolvers<AgentRunResult>()
-    return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+    return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
   }
   return { options, createAgent }
 }
@@ -82,7 +82,7 @@ async function parentWithChildren(harness: SubagentChildHarness, createAgent: Re
       const run = await workflowRunReader(harness.reader).read(sessionId)
       if (!run) throw new Error("Expected the launched workflow")
       await recordChildWorkflowStop({
-        reader: harness.reader, writer: harness.writer, childSessionId: sessionId,
+        reader: harness.reader, projectionReader: harness.reader, writer: harness.writer, childSessionId: sessionId,
         parentSessionId: run.launchedFrom.parentSessionId, toolUseId: run.launchedFrom.toolUseId,
         workflowDefinitionId: run.workflowDefinitionId, stoppedBy: by,
       })

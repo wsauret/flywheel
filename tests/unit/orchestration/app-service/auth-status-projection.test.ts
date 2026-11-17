@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import { Redacted, Schema } from "effect"
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -9,17 +9,23 @@ import { RuntimeAuthStatusSnapshotResultSchema } from "../../../../src/protocol/
 import { disconnectProviderInstance, loginWithApiKey, logoutProvider, renameProviderInstance } from "../../../../src/orchestration/auth/auth-actions.js"
 import { plainApiKey } from "../../../helpers/auth-context.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
-import { installCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js"
-import { customProviderRejections, installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js"
+import { publishCustomProvidersFromConfig } from "../../../../src/orchestration/config/custom-providers.js"
+import { customProviderRejections } from "../../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../../helpers/custom-providers.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import { processLoginObservations } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js"
 import type { NotificationEpisodeInput, NotificationOccurrence } from "../../../../src/infra/notification-episode.js"
 import type { RuntimeAuthView } from "../../../../src/protocol/auth-status-protocol-types.js"
 import { LOGIN_ACCOUNTS_DIRECTORY, LOGIN_PROGRAM_LABEL } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
-import { appendCredentialInstance } from "../../../../src/infra/auth/auth-store-mutations.js"
+import { appendCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js"
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
 import { installedCredentialSlotClassifier } from "../../../../src/orchestration/credential-provider-modules.js"
 import { createProviderModelPreferenceService, type ProviderModelInventoryCandidate } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
+import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
+import { openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
+import { authDir } from "../../../../src/infra/paths.js"
+import { capturedIntervals, HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 
 const completeModuleSelection = () => composeFirstPartyModules()
 const emptyConsent = (profileId: string) => ({ kind: "available", profileId, authorityIncarnation: "test-authority", authorityRevision: 0, usageGeneration: 0, accounts: [] }) as const
@@ -40,7 +46,7 @@ describe("auth status projection", () => {
     const profile = { id: "default", displayName: "Default", source: "default" as const, directory, availableProfiles: [], persistedId: "default", projectBinding: undefined, retirements: {} }
     await loginWithApiKey("openai_api", "dummy-key-059", directory, async (key) => Redacted.make(key), undefined, async () => {})
     try {
-      installCustomProvidersFromConfig({ openai_api: { base_url: "http://127.0.0.1:9/v1", models: ["shadow2"] } }, [])
+      publishCustomProvidersFromConfig({ openai_api: { base_url: "http://127.0.0.1:9/v1", models: ["shadow2"] } })
       const view = await createAuthStatusProjection({ initialProfile: profile, moduleSelection: completeModuleSelection, subscriptionSpendConsent: emptyConsent }).snapshot()
       const firstParty = view.providers.filter((provider) => provider.providerId === "openai_api")
       const rejected = view.providers.find((provider) => provider.source === "misconfigured")
@@ -287,9 +293,9 @@ describe("auth status projection", () => {
     const directory = join(temporaryDirectory("fw-auth-free-plan-"), "auth")
     mkdirSync(directory)
     const credential = { type: "oauth" as const, access: "at", refresh: "rt", expires: Date.now() + 60_000 }
-    await appendCredentialInstance("chatgpt", { id: "11111111-0000-4000-8000-00000000000a", identity: "paid@example.com", credential }, directory, installedCredentialSlotClassifier())
-    await appendCredentialInstance("chatgpt", { id: "11111111-0000-4000-8000-00000000000b", identity: "free@example.com", credential }, directory, installedCredentialSlotClassifier())
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "11111111-0000-4000-8000-00000000000a", identity: "paid@example.com", credential }, directory, installedCredentialSlotClassifier())
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "11111111-0000-4000-8000-00000000000b", identity: "free@example.com", credential }, directory, installedCredentialSlotClassifier())
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const candidate = (instanceId: string) => ({ kind: "subscription", providerId: "chatgpt", instanceId, spendMode: "included" }) as const
     const entry = (instanceId: string, idle: boolean): [string, ProviderModelInventoryCandidate] => [accessProviderAccountKey(candidate(instanceId)), {
       candidate: candidate(instanceId), configured: true, currentConnection: true, enabledOfferings: new Map(), inventoryOfferings: new Map(),
@@ -508,5 +514,64 @@ describe("auth status projection", () => {
       processLoginObservations.clearRequest(account)
       await waiting
     }
+  })
+  /** A profile whose auth.json watch this case drives: `emit` reports a change, and nothing revalidates in the background. */
+  async function watchedProfile() {
+    const root = temporaryDirectory("fw-auth-status-held-")
+    const store = new AuthProfileStore(root)
+    const access = await store.create("work", "Work")
+    access.writeFile("auth.json", "{}")
+    access.close()
+    const directory = authDir(root, "work")
+    const profile = { id: "work", displayName: "Work", source: "default" as const, directory, availableProfiles: [{ id: "work", displayName: "Work" }], persistedId: "work", projectBinding: undefined, retirements: {} }
+    let emit: (name?: string) => void = () => { throw new Error("the watch did not arm") }
+    const intervals = capturedIntervals()
+    // A long debounce keeps the watch's own revalidation read out of the counted reads.
+    const watcher = (() => {
+      try {
+        return store.watchAuthFile(directory, () => {}, { debounceMs: 60_000, watchDirectory: (_directory, onChanged) => { emit = onChanged; return { close: () => {} } } })
+      } finally { intervals.restore() }
+    })()
+    // The first revalidation after the watch armed confirms its hold.
+    intervals.revalidate()
+    // Every directory of this platform's backend shares one class, so its prototype counts each read of auth.json.
+    const held = openExistingContainedDirectory(directory, [])
+    if (held === undefined) throw new Error("the profile directory is missing")
+    const backendClass: { readFile(name: string, maxBytes: number): Buffer | undefined } = Object.getPrototypeOf(held)
+    held.close()
+    const reads = spyOn(backendClass, "readFile")
+    return {
+      profile,
+      emit: (name: string) => { emit(name) },
+      authFileReads: () => reads.mock.calls.filter(([name]) => name === "auth.json").length,
+      dispose: () => { reads.mockRestore(); watcher.dispose() },
+    }
+  }
+
+  test.each([1, 100])("%p publishes with no file change read auth.json only for the first load", async (publishes) => {
+    const watched = await watchedProfile()
+    try {
+      const projection = createAuthStatusProjection({ initialProfile: watched.profile, moduleSelection: completeModuleSelection, subscriptionSpendConsent: emptyConsent })
+      await projection.snapshot()
+      expect(watched.authFileReads()).toBe(1)
+      for (let publish = 0; publish < publishes; publish += 1) projection.view(watched.profile)
+      expect(watched.authFileReads()).toBe(1 + (HOLDS_DIRECTORY_VALUES ? 0 : publishes))
+    } finally { watched.dispose() }
+  })
+
+  test("a watched change of auth.json costs one read, and the next status shows it", async () => {
+    const watched = await watchedProfile()
+    try {
+      const projection = createAuthStatusProjection({ initialProfile: watched.profile, moduleSelection: completeModuleSelection, subscriptionSpendConsent: emptyConsent })
+      const openaiSource = (view: RuntimeAuthView) => view.providers.find((provider) => provider.providerId === "openai_api")?.source
+      expect(openaiSource(await projection.snapshot())).toBe("unconfigured")
+      // Another process writes the file; only the watch event can report it.
+      writeFileSync(join(watched.profile.directory, "auth.json"), JSON.stringify({ openai_api: { type: "api_key", key: "sk-written-elsewhere" } }))
+      const before = watched.authFileReads()
+      watched.emit("auth.json")
+      expect(openaiSource(await projection.snapshot())).toBe("stored_key")
+      expect(openaiSource(await projection.snapshot())).toBe("stored_key")
+      expect(watched.authFileReads() - before).toBe(HOLDS_DIRECTORY_VALUES ? 1 : 2)
+    } finally { watched.dispose() }
   })
 })

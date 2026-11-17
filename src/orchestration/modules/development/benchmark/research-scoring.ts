@@ -62,7 +62,7 @@ function citedFiles(path: string, lines: SnapshotLines): readonly string[] {
 /** Check every distinct `path:line` citation of `text` against the pinned
  *  snapshot. A citation is valid when its path names exactly one snapshot file
  *  and its line range `start-end` satisfies 1 <= start <= end <= the file's line count. */
-export function checkCitations(text: string, lines: SnapshotLines): CitationCheck {
+function checkCitations(text: string, lines: SnapshotLines): CitationCheck {
   const citations = new Map<string, boolean>();
   for (const match of text.matchAll(CITATION)) {
     const [, quoted, drive, plain, start, end] = match;

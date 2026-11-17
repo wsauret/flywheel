@@ -3,7 +3,7 @@ import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createSessionMetadataProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { createSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { buildSessionRolesSnapshottedFact, parseSessionMetadataFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
 import { SessionSchema, type RoleAssignments, type Session } from "../../../../src/orchestration/session/schemas.js"
 import { RoleSettingEntrySchema } from "../../../../src/infra/role-settings.js"
@@ -54,7 +54,7 @@ describe("authored session settings", () => {
     created(store, "authored")
     const roles = { defaults: { "brief.build.at.worker.effort": { effort: "high" } }, overrides: { chat: { model: "saved-model" } } }
     append(store, "authored", "session.roles.snapshotted", { roles, lastUpdated: T2 }, 4)
-    expect((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions.authored?.roleAssignments).toEqual(roles)
+    expect(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "authored").sessions.authored?.roleAssignments).toEqual(roles)
   })
 
   it.each([1, 2])("converts flat version %s entries into saved overrides, including a tier setting", async (version) => {
@@ -63,7 +63,7 @@ describe("authored session settings", () => {
     const roles = version === 1 ? { chat: { model: "mid", effort: "low", provider: "old" } } : { chat: { model: "mid", effort: "low" } }
     append(store, "history", "session.roles.snapshotted", { roles, lastUpdated: T2 }, version)
     const projection = createSessionMetadataProjection(asAsyncEventReadSurface(store))
-    expect((await projection.replay()).sessions.history?.roleAssignments).toEqual({ defaults: {}, overrides: { chat: { model: "mid", effort: "low" } } })
+    expect(sessionMetadataStateOf(await projection.replay(), "history").sessions.history?.roleAssignments).toEqual({ defaults: {}, overrides: { chat: { model: "mid", effort: "low" } } })
     expect(store.countByAggregate("session:history")).toBe(2)
   })
 
@@ -81,15 +81,16 @@ describe("authored session settings", () => {
     append(store, "history", "session.created", { ...minimalSession(), roleAssignments: historical }, 4)
     created(store, "snapshot")
     append(store, "snapshot", "session.roles.snapshotted", { roles: historical, lastUpdated: T2 }, 3)
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
-    expect(state.sessions.history?.roleAssignments).toEqual({
+    const catalog = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const sessionOf = (id: string) => sessionMetadataStateOf(catalog, id).sessions[id]
+    expect(sessionOf("history")?.roleAssignments).toEqual({
       defaults: {
         "brief.build.at.worker.effort": { effort: "high" },
         "brief.build.at.writer.model": { model: "mid" },
         "brief.build.at.judge": { model: "mid", effort: "high" },
       }, overrides: { "workflow-agent": changed },
     })
-    expect(state.sessions.snapshot?.roleAssignments).toEqual(state.sessions.history?.roleAssignments)
+    expect(sessionOf("snapshot")?.roleAssignments).toEqual(sessionOf("history")?.roleAssignments)
     expect(store.countByAggregate("session:snapshot")).toBe(2)
   })
 
@@ -100,14 +101,14 @@ describe("authored session settings", () => {
     created(store, "legacy")
     append(store, "legacy", "session.roles.snapshotted", { roles: settings, lastUpdated: T1 }, 2)
     append(store, "legacy", legacy.type, legacy.payload, legacy.version)
-    expect((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions.legacy?.roleAssignments?.overrides.chat).toEqual(chat)
+    expect(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "legacy").sessions.legacy?.roleAssignments?.overrides.chat).toEqual(chat)
   })
 
   it("canonicalizes old role keys and model spelling without repair facts", async () => {
     const store = openStore()
     created(store, "normalized")
     append(store, "normalized", "session.roles.snapshotted", { roles: { "step.build": { model: "claude-opus-5-5", effort: "high" } }, lastUpdated: T2 }, 2)
-    expect((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions.normalized?.roleAssignments?.overrides["brief.build"]?.model).toBe("claude-opus-5.5")
+    expect(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "normalized").sessions.normalized?.roleAssignments?.overrides["brief.build"]?.model).toBe("claude-opus-5.5")
     expect(store.countByAggregate("session:normalized")).toBe(2)
   })
 })
@@ -154,7 +155,7 @@ describe("session settings publication", () => {
     created(store, "deleted")
     append(store, "deleted", "session.deleted", { lastUpdated: T2 }, 1)
     append(store, "deleted", "session.roles.updated", { roleId: "chat", assignment: changed, lastUpdated: T3 }, 4)
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "deleted")
     expect(state.sessions.deleted).toBeUndefined()
     expect(state.deleted.deleted).toBe(true)
   })

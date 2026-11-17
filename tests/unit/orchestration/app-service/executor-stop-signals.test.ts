@@ -78,7 +78,7 @@ const reactions = (): Promise<void> => new Promise((resolve) => { setImmediate(r
 function listen(platform: NodeJS.Platform = "darwin") {
   const signals = signalProcess()
   const records: { readonly level: string; readonly message: string; readonly fields: unknown }[] = []
-  const record = (level: string) => (message: string, fields?: unknown): void => { records.push({ level, message, fields }) }
+  const record = (level: string) => (message: string, fields?: { readonly [key: string]: unknown }): void => { records.push({ level, message, fields }) }
   const listener = listenForExecutorStopSignals({
     platform,
     log: { warn: record("warn"), info: record("info"), debug: record("debug") },

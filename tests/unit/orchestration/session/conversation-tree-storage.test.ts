@@ -374,23 +374,6 @@ describe("appendEntries", () => {
     initial.dispose()
   })
 
-  it("validates follow-up identity across the committed index and the pending overlay", async () => {
-    const storage = await createStorage()
-    const request: ConversationEntry = {
-      kind: "message", id: "request", parentId: null, timestamp: nextTimestamp(),
-      message: { kind: "user", content: "question" }, followUpRequestSequence: 1,
-    }
-    const duplicate: ConversationEntry = { ...request, id: "duplicate", parentId: "request" }
-    await expect(storage.prepareEntriesAppend(async () => [request, duplicate])).rejects.toThrow(/duplicate follow-up/)
-    expect(await storage.getEntry("request")).toBeUndefined()
-    await storage.appendEntry(request)
-    const before = await storage.getState()
-    await expect(storage.prepareEntriesAppend(async () => [makeMessageEntry("request", "pending"), duplicate])).rejects.toThrow(/duplicate follow-up/)
-    expect(await storage.getEntry("pending")).toBeUndefined()
-    expect(await storage.getState()).toBe(before)
-    storage.dispose()
-  })
-
   it("commits a save-point batch as one SQLite fact and advances the active leaf", async () => {
     const storage = await createStorage()
     const first = makeMessageEntry(null, "a0000001")
@@ -467,49 +450,6 @@ describe("appendEntries", () => {
       uuid.mockRestore()
       storage.dispose()
     }
-  })
-})
-
-// Builds before 2026-10-03 ran workflow follow-up turns in the workflow's own
-// conversation and closed each one with a `chat.follow_up_turn.completed`
-// marker. No current path writes the marker, but stored conversations hold it,
-// and strict replay must keep reading it.
-describe("historical follow-up turn markers", () => {
-  type HistoricalFact =
-    | { readonly type: "chat.entries.appended"; readonly entries: readonly ConversationEntry[] }
-    | { readonly type: "chat.follow_up_turn.completed"; readonly requestSequence: number }
-
-  function appendHistorical({ type, ...payload }: HistoricalFact): void {
-    store.append({ aggregateId: `conversation:${conversationId}`, sessionId, type, version: 1, actor: "flywheel", timestamp: 125, payload: { conversationId, ...payload } })
-  }
-
-  async function seedFollowUpTurn(): Promise<void> {
-    const storage = await createStorage()
-    await storage.appendEntry(makeMessageEntry(null, "a0000001"))
-    storage.dispose()
-    const request: ConversationEntry = {
-      kind: "message", id: "a0000002", parentId: "a0000001", timestamp: nextTimestamp(),
-      message: { kind: "user", content: "follow-up question" }, followUpRequestSequence: 1,
-    }
-    appendHistorical({ type: "chat.entries.appended", entries: [request] })
-    appendHistorical({ type: "chat.follow_up_turn.completed", requestSequence: 1 })
-  }
-
-  it("replays a completed follow-up turn", async () => {
-    await seedFollowUpTurn()
-    const reopened = await ConversationTreeStorage.open({ conversationId, sessionId, store: reader })
-    try {
-      expect((await reopened.getState()).completedFollowUpRequestSequences).toEqual([1])
-      expect((await reopened.getPathToRoot(await reopened.getLeafId())).map((entry) => entry.id)).toEqual(["a0000001", "a0000002"])
-    } finally {
-      reopened.dispose()
-    }
-  })
-
-  it("rejects a repeated completion marker", async () => {
-    await seedFollowUpTurn()
-    appendHistorical({ type: "chat.follow_up_turn.completed", requestSequence: 1 })
-    await expect(ConversationTreeStorage.open({ conversationId, sessionId, store: reader })).rejects.toThrow(/already completed/)
   })
 })
 

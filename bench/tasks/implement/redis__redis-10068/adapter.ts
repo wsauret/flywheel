@@ -1,7 +1,7 @@
 import { chmod, mkdir, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 interface PublicInput { file: string; url: string; bytes: number; sha256: string }
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
   const workspace = resolve(workspaceArg);
   const home = join(workspace, ".bench-home");
   for (const path of ["inputs", "bin", "tmp"]) await mkdir(join(home, path), { recursive: true });
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   let evaluationWriter: ReturnType<ReturnType<typeof Bun.file>["writer"]> | undefined;
   const evaluationOutput = {

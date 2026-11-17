@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
 import {
-  getTreeSitterParser,
   loadTreeSitterParser,
   treeSitterWasmFile,
 } from "../../../src/infra/tree-sitter-parser.js";
@@ -17,7 +16,6 @@ describe("tree-sitter parser registry", () => {
         const first = await loadTreeSitterParser(language);
         const second = await loadTreeSitterParser(language);
         expect(second).toBe(first);
-        expect(getTreeSitterParser(language)).toBe(first);
       }
     } finally {
       if (inherited === undefined) delete process.env.FLYWHEEL_NATIVE_DIR;

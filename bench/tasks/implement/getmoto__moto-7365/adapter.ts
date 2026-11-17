@@ -1,7 +1,7 @@
 import { mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 interface PublicInput {
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     PIP_CONFIG_FILE: "/dev/null", PIP_NO_CACHE_DIR: "1", PIP_DISABLE_PIP_VERSION_CHECK: "1",
     MOTO_TEST_ALLOW_AWS_REQUEST: "false", TEST_SERVER_MODE: "false", AWS_EC2_METADATA_DISABLED: "true",
   };
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

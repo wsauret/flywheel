@@ -8,7 +8,6 @@
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
-import { logFileWriter, type LogFileWriter } from "../../../src/infra/debug-log.js"
 
 export interface UnknownFieldsRecord {
   [key: string]: unknown
@@ -19,11 +18,15 @@ export interface DebugLogRecord {
   type: string
   sessionId?: string
   payload?: UnknownFieldsRecord
-  /** The process and thread that wrote the record, from its file name. One
-   *  log directory holds every process of a project, so this is how a
-   *  scenario tells the executor's records from the account service's. */
-  writer?: LogFileWriter
+  /** The process that wrote the record, from its file name. One log
+   *  directory holds every process of a project, so this is how a scenario
+   *  tells the executor's records from the account service's. */
+  pid?: string
 }
+
+/** A file name starts `<timestamp>-<pid>-`, and the timestamp keeps its date
+ *  dashes, so the pid is the run of digits after the timestamp's `Z`. */
+const WRITER_PID = /^\d{4}-\d{2}-\d{2}T\d+Z-(\d+)-/
 
 function asUnknownFields(value: unknown): UnknownFieldsRecord | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined
@@ -42,7 +45,7 @@ export function readDebugLogRecords(workDir: string): DebugLogRecord[] {
   }
   const records: DebugLogRecord[] = []
   for (const file of files.sort()) {
-    const writer = logFileWriter(file)
+    const pid = WRITER_PID.exec(file)?.[1]
     for (const line of readFileSync(join(logDir, file), "utf8").split("\n")) {
       if (line === "") continue
       let parsed: unknown
@@ -59,7 +62,7 @@ export function readDebugLogRecords(workDir: string): DebugLogRecord[] {
         type: record.type,
         ...(typeof record.sessionId === "string" ? { sessionId: record.sessionId } : {}),
         ...(payload ? { payload } : {}),
-        ...(writer ? { writer } : {}),
+        ...(pid === undefined ? {} : { pid }),
       })
     }
   }

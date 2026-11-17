@@ -14,54 +14,20 @@ interface FetchTimings {
 
 const fetchTimings = new AsyncLocalStorage<FetchTimings>();
 
-export interface ResettableTimingFetch {
-  fetch: FetchLike;
-  resetIdleConnections: () => void;
-}
-
-/** Wraps `fetch` to stamp connection-send and header-receipt times into the
- *  ambient FetchTimings store. Pass to provider SDKs as their `fetch`.
- *  Splits the dead-zone window into [our prep] + [connect + send + server think]. */
-export function createResettableTimingFetch(): ResettableTimingFetch {
-  let closeNextRequest = false;
-  return {
-    fetch: (url, init) => {
-      const effectiveInit = closeNextRequest ? connectionCloseInit(init) : init;
-      closeNextRequest = false;
-      const store = fetchTimings.getStore();
-      if (!store) return fetch(url, effectiveInit);
-      store.fetchInvokedAt = performance.now();
-      return fetch(url, effectiveInit).then((response) => {
-        store.headersAt = performance.now();
-        return response;
-      });
-    },
-    resetIdleConnections: () => {
-      closeNextRequest = true;
-    },
-  };
-}
-
-function connectionCloseInit(init: RequestInit | undefined): RequestInit {
-  const headers = new Headers(init?.headers);
-  headers.set("Connection", "close");
-  return { ...init, headers, keepalive: false };
-}
-
-/** Adapter transport wiring for SDK clients that may be injected pre-built.
- *  Resolution order for withRetryStream's resetIdleConnections hook: an
- *  explicit override wins; otherwise the timing fetch's reset applies only
- *  when the adapter built its own client - an injected client never routed
- *  through our fetch, so we have no idle sockets to close on its behalf. */
-export function resolveAdapterTransport(
-  overrides: { client?: unknown; resetIdleConnections?: () => void | Promise<void> } | undefined,
-) {
-  const timingFetch = createResettableTimingFetch();
-  return {
-    fetch: timingFetch.fetch,
-    resetIdleConnections: overrides?.resetIdleConnections ?? (overrides?.client ? undefined : timingFetch.resetIdleConnections),
-  };
-}
+/** Stamps connection-send and header-receipt times into the ambient
+ *  FetchTimings store that `sendStreamingRequest` opens. Pass it to a provider
+ *  SDK whose requests go through `sendStreamingRequest`; outside that store it
+ *  is a plain `fetch`. Splits the dead-zone window into [our prep] +
+ *  [connect + send + server think]. */
+export const timingFetch: FetchLike = (url, init) => {
+  const store = fetchTimings.getStore();
+  if (!store) return fetch(url, init);
+  store.fetchInvokedAt = performance.now();
+  return fetch(url, init).then((response) => {
+    store.headersAt = performance.now();
+    return response;
+  });
+};
 
 interface StreamSendContext {
   telemetry: StreamTelemetrySink | undefined;
@@ -85,11 +51,11 @@ interface StreamSendResult<T> {
  *  (source "request", kind "timing"). The caller invokes `endInFlight` once the
  *  stream is fully consumed.
  *
- *  Anthropic-only by design: this exists for the Opus TTFB dead-zone investigation.
- *  The other adapters still wrap their fetch with `createResettableTimingFetch` (so
- *  connect/header times are stamped), but only Anthropic folds them into a timing
- *  fact. Thread this through another provider only when that provider needs the same
- *  dead-zone breakdown. */
+ *  Anthropic-only by design: this exists for the Opus TTFB dead-zone investigation,
+ *  so only Anthropic-protocol requests open the timing store. A client that sends
+ *  through `timingFetch` on another path, such as the shared Copilot fetch for its
+ *  OpenAI route, gets a plain fetch. Thread this through another provider only when
+ *  that provider needs the same dead-zone breakdown. */
 export async function sendStreamingRequest<T>(
   create: () => Promise<{ data: T; response: Response }>,
   ctx: StreamSendContext,

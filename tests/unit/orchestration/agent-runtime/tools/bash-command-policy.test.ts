@@ -231,6 +231,60 @@ describe("interceptBashCommand (direct)", () => {
     expect(await interceptBashCommand("printf worktree", unloaded)).toBeNull();
   });
 
+  describe("sees through every supported wrapper", () => {
+    const unloaded = { effectiveBundledSkillIds: new Set<string>() };
+    const refusal = async (command: string) => (await interceptBashCommand(command, unloaded))?.message;
+
+    it("refuses a wrapped command with the same message as its unwrapped form", async () => {
+      for (const [wrapped, unwrapped] of [
+        ["timeout 60 git stash pop", "git stash pop"],
+        ["nice git reset --hard HEAD~1", "git reset --hard HEAD~1"],
+        ["env GIT_DIR=.git git clean -fd", "git clean -fd"],
+        ["command git push origin abc123:main", "git push origin abc123:main"],
+        ["nohup sleep 60", "sleep 60"],
+        ["time sleep 45", "sleep 45"],
+        ["sudo vim f", "vim f"],
+        ["time less f", "less f"],
+        ["timeout 5 top", "top"],
+        ["nice man ls", "man ls"],
+        ["env python3", "python3"],
+        ["command telnet host", "telnet host"],
+        ["nohup nc -l 8080", "nc -l 8080"],
+        ["timeout 30 git worktree add ../x", "git worktree add ../x"],
+        ["nice git worktree remove x", "git worktree remove x"],
+        ["xargs git worktree add", "git worktree add"],
+        ["env -u FOO git worktree add x", "git worktree add x"],
+        ["env -C /scratch git worktree add x", "git worktree add x"],
+      ] as const) {
+        const message = await refusal(unwrapped);
+        expect(message).toBeString();
+        expect({ wrapped, message: await refusal(wrapped) }).toEqual({ wrapped, message });
+      }
+    });
+
+    it("applies the same wrapper grammar as the write rule to each wrapper and its options", async () => {
+      const message = await refusal("git stash");
+      for (const wrapper of ["env", "env -i", "env -u FOO", "env --unset FOO", "env -C /scratch", "env --chdir /scratch", "sudo -u root", "doas", "command", "builtin", "exec -a name", "nice -n 5", "nohup", "time -p", "timeout -s KILL 5", "stdbuf -o0", "ionice -c3", "chrt -o 0", "setsid", "busybox", "xargs -0", "nice timeout 5 env"]) {
+        expect({ wrapper, message: await refusal(`${wrapper} git stash`) }).toEqual({ wrapper, message });
+      }
+    });
+
+    it("still runs a wrapped command that no rule refuses", async () => {
+      for (const command of ["timeout 60 git status", "nice ls", "sudo -u root git worktree list"]) {
+        expect(await refusal(command)).toBeUndefined();
+      }
+    });
+
+    it("keeps today's rules for a wrapper that cannot be resolved", async () => {
+      // An unknown wrapper option or an `env -S` split string: the worktree rule matches the text, and the other
+      // rules the written name.
+      expect(await refusal("sudo -X git worktree add x")).toContain('skill_id:"worktree-lifecycle"');
+      expect(await refusal("sudo -X git stash")).toBeUndefined();
+      expect(await refusal("env -S 'git stash' x")).toBeUndefined();
+      expect(await refusal("bash -c 'git worktree add x'")).toContain('skill_id:"worktree-lifecycle"');
+    });
+  });
+
   it("gates worktree changes only while the worktree-lifecycle skill is available to the agent (D3)", async () => {
     const availableNotLoaded = { effectiveBundledSkillIds: new Set<string>(), capabilities: () => true };
     const unavailable = { effectiveBundledSkillIds: new Set<string>(), capabilities: (term: string) => term !== "skill:worktree-lifecycle" };
@@ -438,6 +492,7 @@ describe("interceptBashCommand when parser analysis is unavailable", () => {
   it("still applies independently recognized restrictions", async () => {
     spyOn(Parser.prototype, "parse").mockReturnValue(null);
     expect(await interceptBashCommand("git stash")).not.toBeNull();
+    expect(await interceptBashCommand("timeout 5 git reset --hard")).not.toBeNull();
     // Without a parse, the text cannot tell a read-only subcommand from a change.
     expect(await interceptBashCommand("git stash list")).not.toBeNull();
     expect(await interceptBashCommand("sleep 240")).not.toBeNull();

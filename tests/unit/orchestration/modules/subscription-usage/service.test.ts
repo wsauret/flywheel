@@ -4,7 +4,7 @@ import { subscriptionUsageConfigSection } from "../../../../../src/orchestration
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { decodeCanonicalConfigText } from "../../../../../src/orchestration/config/loader.js"
 import type { RuntimeConfigOwner, RuntimeConfigSnapshot } from "../../../../../src/orchestration/config/runtime-config-owner.js"
-import { projectRuntimeConfig } from "../../../../../src/orchestration/app-service/runtime-config-projection.js"
+import { runtimeConfigView } from "../../../../helpers/runtime-config-view.js"
 
 function fixture(options: { readonly accountingUnavailable?: boolean } = {}) {
   let enabled = true
@@ -29,7 +29,7 @@ function fixture(options: { readonly accountingUnavailable?: boolean } = {}) {
     },
   }
   const service = createSubscriptionUsageService({
-    config: owner, enabled: () => enabled, configView: () => projectRuntimeConfig(snapshot(), "/scratch/project"),
+    config: owner, enabled: () => enabled, configView: () => runtimeConfigView(snapshot(), "/scratch/project"),
     moduleSelection: () => composeFirstPartyModules([]),
     onSelectionChanged: (listener) => { selectionListeners.add(listener); return () => { selectionListeners.delete(listener) } },
     notify: async () => {}, interactive: true, directories: { projectRoot: "/scratch/usage-service-test" },

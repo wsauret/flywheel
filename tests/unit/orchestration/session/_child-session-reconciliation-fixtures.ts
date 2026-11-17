@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { Schema } from "effect"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
@@ -128,7 +128,7 @@ async function publishHistory(manager: SessionManager, store: LocalSqliteEventSt
 }
 
 export async function reconcileChatLaunchedWorkflowCompletions(
-  input: Omit<Parameters<typeof reconcileChildSessionCompletions>[0], "reader"> & { reader: EventStoreReadSurface },
+  input: Omit<Parameters<typeof reconcileChildSessionCompletions>[0], "reader" | "projectionReader"> & { reader: EventStoreReadSurface; projectionReader?: AsyncEventStateReadSurface },
 ) {
   const projectionReader = input.projectionReader ?? asAsyncEventReadSurface(input.reader)
   return reconcileChildSessionCompletions({

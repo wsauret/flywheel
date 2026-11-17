@@ -4,7 +4,6 @@ import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestrat
 import { createChatRunnerLifecycle } from "../../../../../src/orchestration/chat/runner-lifecycle.js"
 import { ChatSessionState } from "../../../../../src/orchestration/chat/types.js"
 import { sideQuestionHost } from "../../../../../src/orchestration/modules/side-question/host.js"
-import { SIDE_QUESTION_PENDING_RESULT } from "../../../../../src/orchestration/modules/side-question/context.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { askUserStub, createTestChatSessionDeps, outputSessionStub } from "../../chat/_chat-session-agent-runtime-fixtures.js"
 import { createChatSession } from "../../../../../src/orchestration/chat/session.js"
@@ -25,7 +24,7 @@ test("an attached side host outlives turns, streams through the shared fold, and
       runners.push({ options, finish: done.resolve })
       options.lifecycle.signal?.addEventListener("abort", () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), { once: true })
       started[runners.length - 1]?.resolve()
-      return { send() {}, end() {}, abort: () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), done: done.promise }
+      return { send() {}, abort: () => done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }), done: done.promise }
     },
   })
   const bus = new EventBus()
@@ -159,7 +158,7 @@ test.each(["answer", "unsolicited", "refusal", "no-provider"] as const)("the rea
   expect(block.text).toContain('"id":"live-call"')
   expect(block.text).toContain('"name":"bash"')
   expect(block.text).toContain('"command":"parent command"')
-  expect(JSON.stringify(calls[0]!.messages)).toContain(SIDE_QUESTION_PENDING_RESULT)
+  expect(JSON.stringify(calls[0]!.messages)).toContain("The main conversation has not received the result of this call yet, so a side question cannot read it.")
   expect(calls[0]!.messages.some((message) => message.kind === "toolResult")).toBe(false)
   if (scenario === "refusal") {
     expect(host.snapshot().exchanges).toEqual([])

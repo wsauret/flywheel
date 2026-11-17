@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
 import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
-import { createSocketProcessEndpoint, type SocketConnection } from "../../../../src/infra/internal-process-channel.js"
 import {
   connectProjectExecutionChannel,
   PROJECT_EXECUTION_MAX_OUTSTANDING_CALLS,
@@ -17,6 +16,7 @@ import type {
 import { runtimeUiPatchFixtures } from "../../protocol/runtime-ui-patch-fixtures.js"
 import { deferred, endpointPair, markerEvent, markerPosition, requestFrame, responseFrame, runtimeHarness } from "./project-execution-channel-fixtures.js"
 import { recordedDispatch, recordedQuery, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+import { connectScriptedSocket, type ScriptedSocketConnection } from "../../../helpers/scripted-process-socket.js"
 
 describe("project execution channel", () => {
   test("delivers every canonical patch leaf once with exact cursor and positions", async () => {
@@ -215,11 +215,13 @@ describe("project execution channel", () => {
       slot: { kind: "role", roleId: "chat" },
       model: "claude",
       effort: "high",
+      expected: { kind: "absent" },
     })).toEqual({ label: "Saved effort" })
     expect(await client.dispatch({
       type: "model.reset_assignments",
       scope: { kind: "defaults" },
       slots: [{ kind: "role", roleId: "chat" }],
+      expected: { chat: { kind: "absent" } },
     })).toEqual({ rows: [] })
     const target = { kind: "singleton" as const, providerId: "anthropic" }
     expect(await client.dispatch({
@@ -362,7 +364,7 @@ describe("project execution channel", () => {
     await stop()
   })
 
-  test("skips an additive private patch before strict known-frame validation", async () => {
+  test("skips an additive private patch or event type before strict known-frame validation", async () => {
     const [peer, clientEndpoint] = endpointPair()
     const client = connectProjectExecutionChannel(clientEndpoint)
     const events: FrontendEvent[] = []
@@ -384,6 +386,7 @@ describe("project execution channel", () => {
             payload: { kind: "status.future", private: true },
           },
         }),
+        pack({ type: "runtime.future", private: true }),
         // A lane frame is the client lane's own and never crosses this channel.
         pack({ type: "runtime.connected" }),
         pack(markerEvent(1)),
@@ -535,16 +538,18 @@ describe("project execution channel", () => {
     // as an executor busy with a large message does.
     let held = true
     const limits = { decode: (value: unknown) => value, maxFrameBytes: 1024 * 1024, maxMessageBytes: 1024 * 1024, maxQueuedBytes: 4096 }
-    const writer = (peer: () => SocketConnection<unknown, unknown>, holds: boolean) => ({
+    const connections = new Map<"account" | "executor", ScriptedSocketConnection<unknown, unknown>>()
+    const wire = (peer: "account" | "executor", holds: boolean) => ({
       write(bytes: Uint8Array) {
         if (holds && held) return 0
-        peer().receive(bytes.slice())
+        connections.get(peer)?.receive(bytes.slice())
         return bytes.byteLength
       },
-      end() { peer().lost("peer closed") },
+      end() { connections.get(peer)?.lost() },
     })
-    const account: SocketConnection<unknown, unknown> = createSocketProcessEndpoint({ socket: writer(() => executor, true), ...limits })
-    const executor: SocketConnection<unknown, unknown> = createSocketProcessEndpoint({ socket: writer(() => account, false), ...limits })
+    const account = await connectScriptedSocket({ wire: wire("executor", true), ...limits })
+    const executor = await connectScriptedSocket({ wire: wire("account", false), ...limits })
+    connections.set("account", account).set("executor", executor)
     const harness = runtimeHarness()
     const order: string[] = []
     const stop = serveProjectExecutionChannel({

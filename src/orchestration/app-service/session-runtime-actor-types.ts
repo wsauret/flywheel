@@ -86,25 +86,23 @@ export interface SessionRuntimeActorContext {
   readonly transcriptCache: TranscriptProjectionCache
   readonly sessionStore: SessionStore
   readonly manager: SessionManager
-  readonly eventStore: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter
   /** Runs admitted kind settlement and target finalization outside the actor mailbox. */
   readonly executeChildSessionDeletion: (plan: ChildSessionDeletionPlan) => Promise<void>
   /** The auth profile a new chat records at creation: the one that serves it. */
   readonly authProfileId: () => string
-  readonly sessionViewLoader?: SessionViewLoader
+  readonly sessionViewLoader: SessionViewLoader
   /** Directory authorities every runner this session starts resolves paths from. */
   readonly directories: ProjectDirectories
   readonly runtime: EventStoreRuntime
   readonly runnerCapabilities: () => Promise<RuntimeRunnerCapabilities>
-  readonly onRunnerDone?: (id: string) => void
-  readonly onRunnerError?: (id: string, message: string) => void
+  readonly onRunnerError: (id: string, message: string) => void
   /** Resumes a workflow after the person settles a question that an agent of
    *  a workflow of an earlier build left open (PI-AGENT-024). Remove after 2027-04-03. */
-  readonly resumeWorkflow?: WorkflowController["resumeWorkflow"]
-  readonly retainedOperations?: readonly ModuleRetainedOperationAuthority[]
-  readonly reconcileChildSessionCompletions?: (
+  readonly resumeWorkflow: WorkflowController["resumeWorkflow"]
+  readonly retainedOperations: readonly ModuleRetainedOperationAuthority[]
+  readonly reconcileChildSessionCompletions: (
     parentSessionId: string,
     options?: ChildSessionReconciliationOptions,
   ) => Promise<ChildSessionReconciliation>

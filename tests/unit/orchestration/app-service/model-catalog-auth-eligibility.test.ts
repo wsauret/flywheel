@@ -33,6 +33,8 @@ import { accessProviderRegistry } from "../../../../src/orchestration/agent-runt
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js";
 const SECRET = "phase-7-access-token";
 const temporaryDirectory = temporaryDirectories();
 
@@ -178,7 +180,7 @@ describe("catalog auth eligibility", () => {
     const resolveKey = createKeyResolver(async () => { helpers++; return { tag: "captured", value: Redacted.make("healthy") } })
     const warnings = spyOn(Log.create({ service: "auth-store" }), "warn").mockImplementation(() => {})
     const refusals = spyOn(Log.create({ service: "auth-conditions" }), "warn").mockImplementation(() => {})
-    const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const modes: string[] = []
     const capturedKeys: string[] = []
     let metadataRefreshes = 0
@@ -371,7 +373,7 @@ describe("catalog auth eligibility", () => {
       providers: chatgptCatalogSelection(definitions, async () => freshResult),
       modelsClient: eligibilityModelsClient,
     });
-    const service = createProviderModelPreferenceService({ displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" });
+    const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" });
     let revision = 0;
     const account = { kind: "subscription", providerId: "chatgpt", instanceId: "account" } as const;
     const refreshedPublished = Promise.withResolvers<void>();
@@ -381,7 +383,7 @@ describe("catalog auth eligibility", () => {
       allowTrainingRoutes: () => false,
       userDataRoot: fixture.userDataRoot,
       resolveKey: async () => undefined,
-      moduleSelection: () => fixture.modules,
+      moduleSelection: () => fixture.modules, observeAuth: diskAuthObservation(() => fixture.modules),
       prepare: service.prepare,
       publish: (state) => {
         service.publish(state);
@@ -465,7 +467,7 @@ describe("catalog auth eligibility", () => {
         transport: { npm: "@ai-sdk/openai" },
       })) : [],
     };
-    const published = createProviderModelPreferenceService({ displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "preference-revision-next", persistAllDeselected: async () => "preference-revision-next" });
+    const published = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "preference-revision-next", persistAllDeselected: async () => "preference-revision-next" });
 
     const auth = await loginWithOAuth(chatgptDefinition(), {
       authDir,
@@ -575,7 +577,7 @@ describe("catalog auth eligibility", () => {
     if (plan.kind !== "admitted") throw new Error(plan.reason);
     expect(plan.candidates).toEqual(candidates);
     const expectedAttributions = candidates.map((entry) => {
-      const offering = decision.worker.candidateOffering?.(entry, fallbackModel, false);
+      const offering = decision.worker.candidateOfferings(entry, fallbackModel, false)[0];
       if (offering === undefined) throw new Error(`Missing wire model for ${accessProviderCandidateKey(entry)}`);
       return { ...offering, candidate: entry, eligibilityProfileId: profileId, eligibilityRevision: state.revision };
     });

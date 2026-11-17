@@ -247,7 +247,7 @@ export async function modelCall(ctx: SupervisorTestContext, composition: ReturnT
   return launch
 }
 export const quietAgent: AgentFactory = () => ({
-  send() {}, end() {}, abort() {},
+  send() {}, abort() {},
   done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "api_error", message: "no model request", recovery: { kind: "none" } } }),
 })
 

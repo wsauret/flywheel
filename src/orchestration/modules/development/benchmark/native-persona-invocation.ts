@@ -146,15 +146,15 @@ export async function createNativePersonaInvocation(
         if (result && exit.exitCode === 0 && !exit.timedOut && !controller.signal.aborted && !request.signal?.aborted) {
           return { ...result, handoff: result.handoff ?? undefined };
         }
-        const terminal = request.signal?.aborted
-          ? { kind: "cancelled" as const }
-          : startupExpired
-            ? { kind: "failed" as const, message: "Native startup deadline exceeded" }
-          : result?.kind === "completed" && (exit.timedOut || controller.signal.aborted)
-            ? { kind: "failed" as const, message: "Native settlement deadline exceeded" }
-          : exit.timedOut || controller.signal.aborted
-            ? { kind: "timed-out" as const, timeoutMs: request.timeoutMs ?? NATIVE_CANDIDATE_TIMEOUT_MS }
-            : { kind: "failed" as const, message: `Native launcher exited with code ${exit.exitCode}` };
+        const unsettledTerminal = () => {
+          if (request.signal?.aborted) return { kind: "cancelled" as const };
+          if (startupExpired) return { kind: "failed" as const, message: "Native startup deadline exceeded" };
+          const deadlineReached = exit.timedOut || controller.signal.aborted;
+          if (result?.kind === "completed" && deadlineReached) return { kind: "failed" as const, message: "Native settlement deadline exceeded" };
+          if (deadlineReached) return { kind: "timed-out" as const, timeoutMs: request.timeoutMs ?? NATIVE_CANDIDATE_TIMEOUT_MS };
+          return { kind: "failed" as const, message: `Native launcher exited with code ${exit.exitCode}` };
+        };
+        const terminal = unsettledTerminal();
         throw new PersonaTaskFailure(terminal, result ?? {
           durationMs: Math.round(performance.now() - startedAt),
           accounting: unavailableBenchmarkAccounting("the native worker settled without recoverable accounting"),

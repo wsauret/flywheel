@@ -3,7 +3,7 @@ import type { RGBA } from "@opentui/core"
 import type { FrontendExperimentRun, FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
 import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
-import { BASELINE_PENDING_COPY, CONFIDENCE_PENDING_COPY, NO_RUNS_COPY, renderDashboardLines, type DashboardLine } from "../../../../src/tui/modules/experiments/dashboard-lines.js"
+import { renderDashboardLines, type DashboardLine } from "../../../../src/tui/modules/experiments/dashboard-lines.js"
 import { chunkDisplayWidth } from "../../../../src/tui/output-blocks/tool-row-wrap.js"
 
 const theme = resolveTheme(flywheelTheme, "dark")
@@ -61,7 +61,7 @@ const history = [
 describe("renderDashboardLines", () => {
   it("renders the empty state when there are no runs", () => {
     const lines = renderDashboardLines(view(), 80, theme)
-    expect(lines.map(text)).toEqual([`  ${NO_RUNS_COPY}`])
+    expect(lines.map(text)).toEqual(["  No experiments yet."])
   })
 
   it("preserves column order and kept-commit display for current and old rows", () => {
@@ -101,10 +101,10 @@ describe("renderDashboardLines", () => {
     expect(colorOf(at(2.0), "conf:").equals(theme.success)).toBe(true)
     expect(colorOf(at(1.9), "conf:").equals(theme.warning)).toBe(true)
     expect(colorOf(at(0.9), "conf:").equals(theme.error)).toBe(true)
-    expect(text(at(null))).toContain(`(${CONFIDENCE_PENDING_COPY})`)
+    expect(text(at(null))).toContain("(confidence pending)")
 
     const pendingBaseline = renderDashboardLines(view({ runs: [run({ run: 1, segment: 0 })], baseline: null }), 100, theme)
-    expect(text(lineWith(pendingBaseline, "Baseline:"))).toBe(`  Baseline: ${BASELINE_PENDING_COPY}`)
+    expect(text(lineWith(pendingBaseline, "Baseline:"))).toBe("  Baseline: baseline pending")
   })
 
   it("drops secondary columns from the right when the width is narrow", () => {

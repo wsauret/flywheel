@@ -136,6 +136,7 @@ test.each(["durable-tree", "replay"] as const)("only the durable owner recovers 
       lifecycle: { kind: "one-shot" },
       conversation: { kind: "stateless" },
       sessionEventStore: asAsyncEventReadSurface(reader),
+      sessionEventReader: asAsyncEventReadSurface(reader),
       sessionEventWriter: writer,
       usageProfile: {
         profileId: "profile-1",
@@ -430,6 +431,7 @@ test("assembled subagent retains the parent runtime's captured Usage authority",
     lifecycle: { kind: "one-shot" },
     conversation: { kind: "stateless" },
     sessionEventStore: asAsyncEventReadSurface(reader),
+    sessionEventReader: asAsyncEventReadSurface(reader),
     sessionEventWriter: writer,
     subagentSessions: makeSubagentDeps().subagentSessions,
     usageProfile,
@@ -481,7 +483,6 @@ test("assembled subagent retains the parent runtime's captured Usage authority",
         childCreated.resolve()
         return {
           send() {},
-          end() {},
           abort() {},
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "child", terminal: { kind: "completed" } }),
         }

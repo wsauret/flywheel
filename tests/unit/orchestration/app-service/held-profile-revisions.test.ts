@@ -2,13 +2,14 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { appendFileSync, chmodSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { AuthProfileStore, openExistingAuthProfileDirectory, type ActiveProfileWatcher, type ActiveProfileWatcherOptions } from "../../../../src/infra/auth/auth-profile-store.js"
-import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../../helpers/custom-providers.js"
 import { heldAuthStoreLoad } from "../../../../src/orchestration/app-service/held-auth-store-load.js"
 import { authStoreObservedRevision } from "../../../../src/infra/auth/auth-store.js"
 import { createSubscriptionSpendConsentStore } from "../../../../src/infra/auth/subscription-spend-consent-store.js"
 import { createSubscriptionSpendEnvelope } from "../../../../src/infra/auth/subscription-spend-consent.js"
 import { createSubscriptionAccountIdentity } from "../../../../src/infra/llm/subscription-account-identity.js"
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
+import * as containedDirectories from "../../../../src/infra/descriptor-directory.js"
+import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { authProfileEligibilityInputRevision } from "../../../../src/orchestration/app-service/eligibility-preparation.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
@@ -17,7 +18,7 @@ import { captureSubscriptionAdmission } from "../../../../src/orchestration/subs
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../src/orchestration/subscription-spend-consent/capture-cache.js"
 import type { SubscriptionSpendConsentCapture } from "../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
-import { HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js"
+import { capturedIntervals, HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js"
 import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js"
 import { definition, registry, writeAccounts } from "../auth/provider-observations/_service-fixtures.js"
 
@@ -37,7 +38,7 @@ async function workProfile() {
 
 /** Counts reads of the files the eligibility revision derives from, whichever descriptor reads them. */
 function profileFileReads() {
-  const reads = spyOn(ContainedDirectory.prototype, "readFile")
+  const reads = spyOn(heldDirectoryPrototype(), "readFile")
   return {
     count: () => reads.mock.calls.filter(([name]) => PROFILE_FILES.has(name)).length,
     restore: () => { reads.mockRestore() },
@@ -67,24 +68,6 @@ async function confirmedWatch(store: AuthProfileStore, directory: string, option
 function expectHeld<T>(actual: T, held: T): void {
   if (HOLDS_DIRECTORY_VALUES) expect(actual).toBe(held)
   else expect(actual).toEqual(held)
-}
-
-/** Captures the periodic callbacks that watches schedule, so a case runs each revalidation itself. */
-function capturedIntervals() {
-  const revalidations: Array<Parameters<typeof setInterval>[0]> = []
-  // A real handle, already cleared, stands in for each captured interval, so a watch still unrefs and clears it.
-  const inert = setInterval(() => {}, 1_000_000)
-  clearInterval(inert)
-  const spy = spyOn(globalThis, "setInterval").mockImplementation(new Proxy(globalThis.setInterval, {
-    apply(_target, _receiver, [revalidation]: Parameters<typeof setInterval>) {
-      revalidations.push(revalidation)
-      return inert
-    },
-  }))
-  return {
-    revalidate: () => { for (const revalidation of revalidations) if (typeof revalidation === "function") revalidation() },
-    restore: () => { spy.mockRestore() },
-  }
 }
 
 function refused(load: ReturnType<typeof heldAuthStoreLoad>): boolean {
@@ -306,8 +289,8 @@ describe("subscription consent revision held by the profile watch", () => {
       const first = await admit()
       const consentFile = join(profile.directory, "subscription-spend-consent-v1.sqlite")
       const firstBytes = readFileSync(consentFile)
-      const reads = spyOn(ContainedDirectory.prototype, "readFile")
-      const opens = spyOn(ContainedDirectory, "openExisting")
+      const reads = spyOn(heldDirectoryPrototype(), "readFile")
+      const opens = spyOn(containedDirectories, "openExistingContainedDirectory")
       try {
         for (let request = 0; request < 20; request += 1) expect((await admit()).consent).toBe(first.consent)
         const consentReads = reads.mock.calls.filter(([name]) => name === "subscription-spend-consent-v1.sqlite").length

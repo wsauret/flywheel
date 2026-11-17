@@ -1,18 +1,17 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import { verifyAuthoredWorkflow, verifyInstantiatedWorkflow } from "../../../../src/workflows/vm/verify.js";
 import { DRY_LOOP, dryRound, dryWorkflow, INPUT_GROUP, inputMapWorkflow, mapSkills, mapWorkflow, VOTES_CHECKS, votesWorkflow } from "./_map-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision([]);
 const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id });
 
 function compiled(phases: readonly unknown[]): CommittedWorkflowControl {
-  const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: "instantiated", name: "Instantiated", phases });
+  const definition = loadedWorkflow({ id: "instantiated", name: "Instantiated", phases });
   return compileWorkflowControl(definition, resolveWorkflowAgents(definition), { skills });
 }
 

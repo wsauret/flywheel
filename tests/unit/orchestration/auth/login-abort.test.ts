@@ -3,7 +3,7 @@ import { Redacted } from "effect";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { appendCredentialInstance } from "../../../../src/infra/auth/auth-store-mutations.js";
+import { appendCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
 import { isCredentialCollection } from "../../../../src/infra/auth/auth-store-types.js";
 import type { AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
@@ -142,7 +142,7 @@ describe("OAuth reconnect identity", () => {
 
   it("replaces the selected account's credential and the identity the flow reports", async () => {
     const authDir = makeAuthDir();
-    await appendCredentialInstance("github_copilot", { id, identity: "old-account", credential: original }, authDir, slots);
+    await appendCredentialInstanceWithReceipt("github_copilot", { id, identity: "old-account", credential: original }, authDir, slots);
 
     const replaced = await reconnectWithOAuth(copilot, id, { authDir, profileId: "work", resolveKey, openBrowser, settle: async () => {}, launcher: refusingLauncher }, { start: async () => ({ ...copilotResult, identity: "alice" }), resolve });
     const credentials = loadAuthStoreWithDiagnostics(authDir, undefined, slots).store.github_copilot;
@@ -154,7 +154,7 @@ describe("OAuth reconnect identity", () => {
 
   it("keeps the stored identity when the flow reports none", async () => {
     const authDir = makeAuthDir();
-    await appendCredentialInstance("github_copilot", { id, identity: "alice", credential: original }, authDir, slots);
+    await appendCredentialInstanceWithReceipt("github_copilot", { id, identity: "alice", credential: original }, authDir, slots);
 
     const replaced = await reconnectWithOAuth(copilot, id, { authDir, profileId: "work", resolveKey, openBrowser, settle: async () => {}, launcher: refusingLauncher }, { start: async () => ({ credential: copilotResult.credential }), resolve });
     const credentials = loadAuthStoreWithDiagnostics(authDir, undefined, slots).store.github_copilot;
@@ -166,7 +166,7 @@ describe("OAuth reconnect identity", () => {
 
   it("hands the previous credential to the flow so a reconnect keeps its enterprise domain", async () => {
     const authDir = makeAuthDir();
-    await appendCredentialInstance("github_copilot", { id, identity: "alice", credential: { ...original, enterpriseDomain: "company.ghe.com" } }, authDir, slots);
+    await appendCredentialInstanceWithReceipt("github_copilot", { id, identity: "alice", credential: { ...original, enterpriseDomain: "company.ghe.com" } }, authDir, slots);
     let previousDomain: string | undefined;
 
     await reconnectWithOAuth(copilot, id, { authDir, profileId: "work", resolveKey, openBrowser, settle: async () => {}, launcher: refusingLauncher }, {
@@ -179,7 +179,7 @@ describe("OAuth reconnect identity", () => {
 
   it("restores the old OAuth identity, label, and credential when settlement rejects", async () => {
     const authDir = makeAuthDir();
-    await appendCredentialInstance("github_copilot", { id, identity: "old-account", label: "Work", credential: original }, authDir, slots);
+    await appendCredentialInstanceWithReceipt("github_copilot", { id, identity: "old-account", label: "Work", credential: original }, authDir, slots);
     const before = loadAuthStoreWithDiagnostics(authDir, undefined, slots).store.github_copilot;
     const previous = isCredentialCollection(before) ? before[0] : undefined;
 
@@ -205,7 +205,7 @@ describe("free-plan sign-in (PI-MODEL-069)", () => {
     return dir;
   };
   const storeCredential = (authDir: string, id: string, identity: string) =>
-    appendCredentialInstance("chatgpt", { id, identity, credential: { type: "oauth", access: "at_stored", refresh: "rt_stored", expires: Date.now() + 60_000 } }, authDir, installedCredentialSlotClassifier());
+    appendCredentialInstanceWithReceipt("chatgpt", { id, identity, credential: { type: "oauth", access: "at_stored", refresh: "rt_stored", expires: Date.now() + 60_000 } }, authDir, installedCredentialSlotClassifier());
   const withAuthority = <T>(authDir: string, use: (authority: ReturnType<typeof createUsageAuthority>) => T): T => {
     const authority = createUsageAuthority({ profileDir: authDir, profileId: "work" });
     try { return use(authority); } finally { authority.dispose(); }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { AgentGroupBlock, WorkflowCard } from "../../../../src/infra/output-blocks.js"
-import { workflowCard, workflowCardBar, workflowCardDisplayState, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, workflowViewCardStatus, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
+import { workflowCard, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, workflowViewCardStatus, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { FANOUT, FANOUT_COMPLETED, FANOUT_FAILED, fanoutView, REVIEW_KEYS, type FanoutFixture } from "./_workflow-card-fixtures.js"
@@ -29,6 +29,19 @@ const lines = (outline: WorkflowCard, status: Status = "active", options: { read
   workflowCardLines(outline, { status, live: [], ...(options.choices === undefined ? {} : { choices: options.choices }) }).map(lineText)
 
 const fanout = (fixture: FanoutFixture, options: Parameters<typeof card>[1] = {}) => card(fanoutView(fixture), options)
+
+/** The plan bar that ends the card's lines. */
+function bar(outline: WorkflowCard, status: Status): Extract<WorkflowCardLine, { readonly kind: "bar" }> {
+  const line = workflowCardLines(outline, { status, live: [] }).at(-1)
+  if (line?.kind !== "bar") throw new Error("the card's lines end without a bar")
+  return line
+}
+
+/** The state of one agent's line on the card, with the live values `live`. */
+function agentState(outline: WorkflowCard, status: Status, agentNodeId: string, live: readonly WorkflowAgentLive[] = []): string | undefined {
+  const line = workflowCardLines(outline, { status, live }).find((candidate) => candidate.kind === "agent" && candidate.agentNodeId === agentNodeId)
+  return line?.kind === "agent" ? line.state : undefined
+}
 
 /** A plan of `count` single phases, the phase at `runningAt` running. */
 function phasesView(count: number, runningAt: number): LoadedWorkflowView {
@@ -129,12 +142,12 @@ describe("the workflow card", () => {
       `  ├ running ${REVIEW_KEYS[8]} | Working`,
       "  └ +8 more · 3 done · 5 running",
     ])
-    const bar = workflowCardBar(outline, "active")
-    expect(bar.label.map(({ text }) => text)).toEqual(["10/24 done", "11 running"])
+    const plan = bar(outline, "active")
+    expect(plan.label.map(({ text }) => text)).toEqual(["10/24 done", "11 running"])
     // A narrow bar drops only the word `done`, so its words never mix short
     // and full forms.
-    expect(bar.label.map(({ short }) => short)).toEqual(["10/24", "11 running"])
-    expect(bar.counts).toEqual({ done: 10, failed: 0, running: 11, parked: 0, total: 24 })
+    expect(plan.label.map(({ short }) => short)).toEqual(["10/24", "11 running"])
+    expect(plan.counts).toEqual({ done: 10, failed: 0, running: 11, parked: 0, total: 24 })
   })
 
   it("shows at most ten agent lines in all, taking one from the phase with the most, the later on a tie, and never fewer than two", () => {
@@ -153,24 +166,26 @@ describe("the workflow card", () => {
     const interrupted = fanout(FANOUT.reviews, { cut: "interrupted" })
     expect(lines(interrupted, "paused").slice(3, 5)).toEqual([`parked review | 3/14 | ${REVIEW_KEYS.join(" · ")}`, `  ├ parked ${REVIEW_KEYS[3]} | interrupted`])
     expect(lines(interrupted, "paused")[10]).toBe("  └ +8 more · 3 done · 5 interrupted")
-    expect(workflowCardBar(interrupted, "paused").label.map(({ text }) => text)).toEqual(["10/24 done", "11 interrupted"])
+    expect(bar(interrupted, "paused").label.map(({ text }) => text)).toEqual(["10/24 done", "11 interrupted"])
     // Once the cut settles, every agent it cut still reads parked.
     const settledCut = fanout(FANOUT.reviewsCut, { cut: "interrupted" })
     expect(lines(settledCut, "paused")[4]).toBe(`  ├ parked ${REVIEW_KEYS[3]} | interrupted`)
     // A resumed run reads running before its durable status catches up.
     expect(lines(interrupted, "active")[4]).toBe(`  ├ running ${REVIEW_KEYS[3]} | Working`)
-    expect(workflowCardBar(interrupted, "active").counts).toMatchObject({ running: 11, parked: 0 })
+    expect(bar(interrupted, "active").counts).toMatchObject({ running: 11, parked: 0 })
     // In a run that goes on, an agent that its own interrupt holds counts
     // as interrupted on the bar, as on its phase line and in the agent
     // view's band, and the rest count as running.
     const held = { ...fanout(FANOUT.reviews), running: 10, parked: 1 }
-    expect(workflowCardBar(held, "active").counts).toMatchObject({ running: 10, parked: 1 })
-    expect(workflowCardBar(held, "active").label.map(({ text }) => text)).toEqual(["10/24 done", "10 running", "1 interrupted"])
-    expect(workflowCardDisplayState("running", "paused")).toBe("parked")
-    expect(workflowCardDisplayState("running", "active")).toBe("running")
-    expect(workflowCardDisplayState("parked", "active")).toBe("running")
+    expect(bar(held, "active").counts).toMatchObject({ running: 10, parked: 1 })
+    expect(bar(held, "active").label.map(({ text }) => text)).toEqual(["10/24 done", "10 running", "1 interrupted"])
+    const review = "reviews:4:review"
+    expect(agentState(fanout(FANOUT.reviews), "paused", review)).toBe("parked")
+    expect(agentState(fanout(FANOUT.reviews), "active", review)).toBe("running")
+    expect(agentState(interrupted, "active", review)).toBe("running")
     // An agent that its own interrupt holds stays parked in a running card.
-    expect(workflowCardDisplayState("parked", "active", true)).toBe("parked")
+    const own: WorkflowAgentLive = { attemptId: `${review}-1`, sessionId: "review-session", duration: 0, revision: 1, interruptedAt: 1 }
+    expect(agentState(interrupted, "active", review, [own])).toBe("parked")
   })
 
   it("reads a run that a planned replacement paused as running while its successor owes the continuation, with every agent that the cut returned to pending running", () => {
@@ -210,7 +225,7 @@ describe("the workflow card", () => {
       "bar 23/24 done · 1 failed",
     ])
     // A failed agent is finished but not done, so the bar counts it failed.
-    expect(workflowCardBar(failed, "error").counts).toEqual({ done: 23, failed: 1, running: 0, parked: 0, total: 24 })
+    expect(bar(failed, "error").counts).toEqual({ done: 23, failed: 1, running: 0, parked: 0, total: 24 })
     expect(lines(fanout(FANOUT_COMPLETED, { settled: true }), "completed").slice(4, 6)).toEqual(["done gates | 2/2 | lint · typecheck", "done report | The report gate file exists, so the wait exited 0"])
   })
 
@@ -222,9 +237,10 @@ describe("the workflow card", () => {
     const reviews = REVIEW_KEYS.map((key, index) => key === "db.ts" ? { disposition: "failed" as const, startedAt: 500, completedAt: 560, reason: "Type check failed" }
       : index < 9 ? { disposition: "completed" as const, startedAt: 500, completedAt: 569 } : { disposition: "running" as const, startedAt: 507 })
     expect(lines(fanout({ ...FANOUT.reviews, reviews }, { settled: true, cut: "stopped" }), "stopped").slice(3, 5)).toEqual(["skipped review | 8/14 | 5 stopped", "  └ failed db.ts | Type check failed"])
-    expect(workflowCardDisplayState("running", "stopped")).toBe("skipped")
-    expect(workflowCardDisplayState("waiting", "cancelled")).toBe("skipped")
-    expect(workflowCardDisplayState("done", "stopped")).toBe("done")
+    // Lane 1 probes while its check waits for it; lane 2 probed.
+    expect(agentState(fanout(FANOUT.lanes), "stopped", "lanes:1:probe")).toBe("skipped")
+    expect(agentState(fanout(FANOUT.lanes), "cancelled", "lanes:1:check")).toBe("skipped")
+    expect(agentState(fanout(FANOUT.lanes), "stopped", "lanes:2:probe")).toBe("done")
   })
 
   it("holds a person's choice across progress, and lists an expanded settled phase in item order", () => {

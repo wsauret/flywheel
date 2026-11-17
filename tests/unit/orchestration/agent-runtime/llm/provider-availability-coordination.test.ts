@@ -145,9 +145,6 @@ function recordingAudit() {
       return { requestId: `request-${requests.length}`, turn: input.turn };
     },
     recordResponse(_handle, input) { outcomes.push(input.outcome) },
-    // An abandoned attempt settles through its own entry point, and the strict
-    // path refuses a writer that has none.
-    recordAbandonedResponse(_handle, input) { outcomes.push(input.outcome) },
     recordUsage() {},
     recordStreamStarted() {},
     recordStreamEvent() {},
@@ -186,7 +183,6 @@ describe("terminal quota across two owners", () => {
       auditStarted.resolve();
       await auditGate.promise;
     };
-    audit.requestAudit.recordAbandonedResponse = audit.requestAudit.recordResponse;
 
     const pending = streamAssistantTurn({
       client: a.client,

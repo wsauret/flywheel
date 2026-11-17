@@ -39,7 +39,7 @@ export function createRoleAssignmentReader(deps: {
     const personas = await deps.personas(session.workflowMembership.workflowId)
     const roles = await resolveSessionRoles(session.roleAssignments ?? { defaults: {}, overrides: {} },
       await deps.capture(sessionId), deps.userDataRoot,
-      [...personas.values()].flatMap((persona) => persona.roles), inherited)
+      [...personas.values()].flatMap((persona) => persona.roles), inherited, personas)
     const seat = await deps.workflowSeat(session.workflowMembership)
     const assignments = projectWorkflowRoleAssignments(roles, personas)
     if (seat === undefined) return { assignments }

@@ -3,9 +3,12 @@ import { describe, test } from "node:test"
 
 import type { FrontendEvent, FrontendMutation } from "../../../src/protocol/app-service-types.js"
 import type { RuntimeAuthStatusSnapshotResult } from "../../../src/protocol/auth-status-protocol-types.js"
-import type { NotificationActionView, ProjectNotificationEpisode, RuntimeProjectNotificationSnapshotResult } from "../../../src/protocol/modules/project-notifications.js"
+import type { ProtocolDomainSnapshot } from "../../../src/protocol/protocol-module.js"
+import type { NotificationActionView, ProjectNotificationEpisode, projectNotificationsDomain } from "../../../src/protocol/modules/project-notifications.js"
 import { runtimeDispatch, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
 import { createAuthNotificationCoordinator, notificationToast, type AuthNotificationCoordinatorDeps, type NotificationToast } from "./auth-notification-coordinator.js"
+
+type NotificationSnapshot = ProtocolDomainSnapshot<typeof projectNotificationsDomain>
 
 const authSnapshot = (position: number, operationId?: string): RuntimeAuthStatusSnapshotResult => ({
   snapshotPosition: position,
@@ -40,7 +43,7 @@ function scriptedConnection(handlers: {
   readonly onLane: (listener: (lane: number) => void) => () => void
   readonly subscribe: (listener: (event: FrontendEvent) => void) => () => void
   readonly authStatus: () => Promise<RuntimeAuthStatusSnapshotResult>
-  readonly notifications: () => Promise<RuntimeProjectNotificationSnapshotResult>
+  readonly notifications: () => Promise<NotificationSnapshot>
   readonly dismiss?: (mutation: Extract<FrontendMutation, { type: "project_notifications.dismiss" }>) => void
 }): AuthNotificationCoordinatorDeps["connection"] {
   const query = runtimeQuery({ authStatusSnapshot: handlers.authStatus, projectNotificationSnapshot: handlers.notifications })
@@ -63,7 +66,7 @@ function episode(id: string, action: ProjectNotificationEpisode["action"], creat
 
 function harness(
   initialAuth = authSnapshot(10),
-  initialNotifications: RuntimeProjectNotificationSnapshotResult = { snapshotPosition: 20, notifications: [] },
+  initialNotifications: NotificationSnapshot = { snapshotPosition: 20, notifications: [] },
   answer: (toast: NotificationToast) => Promise<boolean> = async () => true,
 ) {
   let listener: ((event: FrontendEvent) => void) | undefined
@@ -73,7 +76,7 @@ function harness(
   const opened: NotificationActionView["open"][] = []
   const toasts: NotificationToast[] = []
   const authSnapshots = [initialAuth]
-  const notificationSnapshots: RuntimeProjectNotificationSnapshotResult[] = [initialNotifications]
+  const notificationSnapshots: NotificationSnapshot[] = [initialNotifications]
   const coordinator = createAuthNotificationCoordinator({
     connection: scriptedConnection({
       onLane: lanes.onLane,

@@ -27,20 +27,37 @@ const flywheelSourceRules = {
   "flywheel/require-suppression-reason": "error",
 } as const;
 
-// Vendored from dmmulroy/anti-slop (scripts/oxlint-plugin-anti-slop). Rules
-// that reject low-evidence TypeScript patterns; enabled set is clean today.
+// Vendored from K-Mistele/anti-slop, a fork of dmmulroy/anti-slop
+// (scripts/oxlint-plugin-anti-slop). Rules that reject low-evidence TypeScript
+// patterns, with the fork's Effect architecture rules and its Fowler
+// Mysterious Name smell; enabled set is clean today. The fork also adopts
+// oxc/no-accumulating-spread, so it is part of this set.
 const antiSlopRules = {
+  "oxc/no-accumulating-spread": "error",
+  "anti-slop/max-ternary-depth": ["error", { maxDepth: 3 }],
   "anti-slop/no-chained-type-assertions": "error",
+  "anti-slop/no-conditional-spread": "error",
   "anti-slop/no-known-value-widening": "error",
   "anti-slop/no-module-mocking": "error",
   "anti-slop/no-object-parameters": "error",
+  "anti-slop/no-reduce-accumulator-copy": "error",
   "anti-slop/no-reflect-apply": "error",
   "anti-slop/no-reflect-get": "error",
+  "anti-slop/no-reprovide-ambient-service": "error",
   "anti-slop/no-shape-in-symbol-names": "error",
+  "anti-slop/no-unknown-parameters": "error",
   "anti-slop/no-unknown-returns": "error",
   "anti-slop/no-unknown-type-aliases": "error",
   "anti-slop/no-widen-then-assert": "error",
-} as const;
+  "anti-slop-effect/no-manual-effect-error-tag": "error",
+  "anti-slop-effect/no-ordie-in-service-construction": "error",
+  "anti-slop-effect/no-service-parameters": "error",
+  "anti-slop-effect/no-test-code-in-src": "error",
+  "anti-slop-effect/prefer-tagged-error-handling": "error",
+  "anti-slop-effect/prefer-yield-service": "error",
+  "anti-slop-effect/require-cause-when-narrowing": "error",
+  "anti-slop-martinfowler/mysterious-name": "error",
+} satisfies DummyRuleMap;
 
 const antiSlopDisabledRules = Object.fromEntries(
   Object.keys(antiSlopRules).map((rule) => [rule, "off"] as const),
@@ -179,6 +196,8 @@ export default defineConfig({
     "eslint-plugin-solid",
     { name: "flywheel", specifier: "./scripts/oxlint-plugin-flywheel.js" },
     { name: "anti-slop", specifier: "./scripts/oxlint-plugin-anti-slop/index.ts" },
+    { name: "anti-slop-effect", specifier: "./scripts/oxlint-plugin-anti-slop/effect/index.ts" },
+    { name: "anti-slop-martinfowler", specifier: "./scripts/oxlint-plugin-anti-slop/martinfowler/index.ts" },
   ],
   rules: {
     ...flywheelSourceRules,
@@ -309,6 +328,12 @@ export default defineConfig({
         // The editor shell under webview/editor/ is the acquireVsCodeApi side.
         "unicorn/require-post-message-target-origin": "off",
       },
+    },
+    {
+      // The client workspaces keep each test beside the module it tests, under
+      // their src/ folders, by design. That convention wins over this rule.
+      files: ["webview/**/*.{ts,tsx}", "vscode/**/*.{ts,tsx}", "relay/**/*.{ts,tsx}"],
+      rules: { "anti-slop-effect/no-test-code-in-src": "off" },
     },
     {
       files: ["src/orchestration/agent-runtime/agent-loop.ts"],

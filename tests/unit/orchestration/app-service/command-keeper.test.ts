@@ -291,11 +291,14 @@ describe("the executor's keeper of handed-over commands", () => {
         Object.assign(entry, patch)
         if (outputBlocks) entry.outputBlocks = () => outputBlocks
       },
-      priorBlocks: [{
-        kind: "tool", id: "toolu_previous", name: "bash",
-        presentation: { name: "Bash", detail: "serve" },
-        status: "completed", timestamp: 1, content: "old seeded body",
-      }],
+      prior: {
+        blocks: [{
+          kind: "tool", id: "toolu_previous", name: "bash",
+          presentation: { name: "Bash", detail: "serve" },
+          status: "completed", timestamp: 1, content: "old seeded body",
+        }],
+        sequenceStart: 0,
+      },
     })
     closing.push(async () => { output.dispose() })
     output.flush()

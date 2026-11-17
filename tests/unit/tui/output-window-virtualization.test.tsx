@@ -11,7 +11,7 @@ import { makeView, mutationTranscriptFixture, renderScheduledFrame, renderWindow
 import { createBlockDisclosureChannel } from "../../../src/tui/context/block-disclosure.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
-import { LINE_WHEEL } from "../../../src/tui/output-window/output-window-wheel.js"
+import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 
 /** The hidden-growth transcript: the tab measured its first blocks, then EDITS edits arrived
@@ -26,7 +26,7 @@ describe("OutputWindow virtualization", () => {
     const blocks = Array.from({ length: 40 }, (_, block) => textBlock(`b${block}`, Array.from({ length: 50 }, (_word, word) => `w${block}_${word}`).join(" ")))
     const publish = () => snapshot({ blocks, window: windowOf({ endBlockIndex: 39 }) })
     const { view, set } = makeView(publish())
-    const { scrollbox, result, slot, setShowThinking } = await renderWindow(view, 20, 60, "chat", false, undefined, LINE_WHEEL)
+    const { scrollbox, result, slot, setShowThinking } = await renderWindow(view, 20, 60, "chat", false, undefined, wheelProfileFor("darwin", {}))
     try {
       for (let frame = 0; frame < 10; frame += 1) await result.renderOnce()
       for (let up = 0; up < 12; up += 1) {
@@ -221,13 +221,13 @@ describe("OutputWindow virtualization", () => {
       }
     }
     const firstClock = new ManualClock()
-    const first = await renderWindow(viewOf(blocks.slice(0, SHOWN_BLOCKS)), 24, 80, "chat", false, firstClock, LINE_WHEEL, slot)
+    const first = await renderWindow(viewOf(blocks.slice(0, SHOWN_BLOCKS)), 24, 80, "chat", false, firstClock, wheelProfileFor("darwin", {}), slot)
     await paint(first, firstClock, 40)
     first.result.renderer.destroy()
     expect(slot.heightIndex?.eagerCompleted).toBe(true)
     const clock = new ManualClock()
     const records = spyOn(DebugLog, "record").mockImplementation(() => {})
-    const second = await renderWindow(viewOf(blocks), 24, 80, "chat", false, clock, LINE_WHEEL, slot)
+    const second = await renderWindow(viewOf(blocks), 24, 80, "chat", false, clock, wheelProfileFor("darwin", {}), slot)
     const { result, scrollbox } = second
     try {
       await paint(second, clock, 12)

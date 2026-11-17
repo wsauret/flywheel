@@ -7,12 +7,9 @@ import { createBenchmarkCatalog } from "../../../src/orchestration/modules/devel
 import { benchmarkTaskIdentity, structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { admitBenchmark } from "../../../src/orchestration/modules/development/benchmark/admission.js";
 import { dryRunBenchmarkAdmission, dryRunBenchmarkRuntime } from "../../helpers/benchmark-admission.js";
-import { appendJsonLine } from "../../../src/orchestration/modules/development/benchmark/json-lines.js";
-import {
-  createRunStore,
-  type ImplementRunRecord,
-  type RunConfig,
-} from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
+import type { ImplementRunRecord, RunConfig, ScoreRecord } from "../../../src/orchestration/modules/development/benchmark/run-store.js";
+import { writeSplitLedger } from "../../helpers/split-ledger.js";
 import {
   createCrossComparisonV2Store,
   type CrossComparisonV2Config,
@@ -96,7 +93,8 @@ async function writeSource(
     judgeIdentity: "9".repeat(64),
     scoringVersion: "persona-v2",
   };
-  const store = await createRunStore({ resultsRoot: fixtureRoot, directory: join(fixtureRoot, directory) }, config);
+  const runs: ImplementRunRecord[] = [];
+  const scores: ScoreRecord[] = [];
   for (const task of tasks) {
     for (let repeat = 0; repeat < repeats; repeat++) {
       const run: ImplementRunRecord = {
@@ -119,8 +117,8 @@ async function writeSource(
         acceptanceFailed: 0,
         acceptanceTotal: 1,
       };
-      await store.appendRun(run);
-      await store.appendScore({
+      runs.push(run);
+      scores.push({
         kind: "trap-score",
         mode: "implement",
         persona: "implementer",
@@ -134,6 +132,7 @@ async function writeSource(
       });
     }
   }
+  await writeSplitLedger(join(fixtureRoot, directory), config, { runs, scores });
 }
 
 async function assertTrapIdsRejected(mutate: (ids: readonly string[]) => readonly string[]): Promise<void> {
@@ -491,7 +490,7 @@ describe("cross-run comparison store", () => {
     const currentTaskIdentity = benchmarkTaskIdentity(tasks);
     await writeSource("source-a", tasks, currentTaskIdentity);
     await writeSource("source-b", tasks, currentTaskIdentity);
-    await appendJsonLine(join(root, "source-a", "judge-attempts.jsonl"), { malformed: true });
+    await appendFixtureLine(join(root, "source-a", "judge-attempts.jsonl"), { malformed: true });
     let judgeCalls = 0;
 
     await expect(compareRuns([

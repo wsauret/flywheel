@@ -1,8 +1,12 @@
 import { describe, expect, it } from "bun:test"
+import { testRender } from "@opentui/solid"
+import { createSignal } from "solid-js"
+import { createComponent } from "solid-js/web"
 import { plainOf } from "../../../../src/tui/output-blocks/markdown/format-token.js"
 import type { MarkdownStyles, StyleSpec } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
 import { renderToLineModel, TEXT_SEGMENT_LINES, type MarkdownSegment } from "../../../../src/tui/output-blocks/markdown/line-model.js"
-import { assistantDisplayContent } from "../../../../src/tui/output-blocks/text-block.js"
+import { TextBlock } from "../../../../src/tui/output-blocks/text-block.js"
+import { ThemeProvider } from "../../../../src/tui/context/theme.js"
 
 const style: StyleSpec = { attr: 0 }
 const styles: MarkdownStyles = {
@@ -56,11 +60,6 @@ function fullPlain(source: string): string[] {
 }
 
 describe("renderToLineModel source spacing", () => {
-  it("shows internal blank lines but no trailing rows for assistant progress", () => {
-    const source = "First paragraph.\n\nSecond paragraph.\n\n"
-    expect(fullPlain(assistantDisplayContent(source))).toEqual(["First paragraph.", "", "Second paragraph."])
-  })
-
   it("preserves 3+ blank lines between paragraphs", () => {
     expect(fullPlain("a\n\n\n\nb")).toEqual(["a", "", "", "", "b"])
   })
@@ -160,5 +159,46 @@ describe("renderToLineModel segmentation", () => {
     const model = renderToLineModel("```\na\n\n\n", styles)
     expect(model.map((s) => s.kind)).toEqual(["code"])
     expect(model[0]?.kind === "code" ? model[0].text : null).toBe("a\n\n")
+  })
+})
+
+/** Renders an assistant text block followed by a marker block, and answers
+ *  the visible rows each time the content changes. The marker shows where the
+ *  block ends, so a trailing blank row of the block is visible. */
+async function renderAssistantBlock(settled: boolean, sources: readonly string[]): Promise<string[][]> {
+  const [content, setContent] = createSignal(sources[0] ?? "")
+  const result = await testRender(() => createComponent(ThemeProvider, {
+    mode: "dark",
+    get children() {
+      return [
+        createComponent(TextBlock, { get block() { return { kind: "text" as const, id: "reply", content: content(), timestamp: 1 } }, settled }),
+        createComponent(TextBlock, { block: { kind: "text", id: "end", content: "END", timestamp: 2 }, settled: true }),
+      ]
+    },
+  }), { width: 40, height: 10 })
+  try {
+    const frames: string[][] = []
+    for (const source of sources) {
+      setContent(source)
+      await result.renderOnce()
+      const rows = result.captureCharFrame().split("\n").map((row) => row.trimEnd())
+      frames.push(rows.slice(0, rows.findIndex((row) => row.includes("END")) + 1))
+    }
+    return frames
+  } finally {
+    result.renderer.destroy()
+  }
+}
+
+describe("TextBlock assistant progress", () => {
+  const compact = ["\u2022 First paragraph.", "", "  Second paragraph.", "\u2022 END"]
+
+  it("shows internal blank lines but no trailing rows", async () => {
+    expect(await renderAssistantBlock(true, ["First paragraph.\n\nSecond paragraph.\n\n"])).toEqual([compact])
+  })
+
+  it("stays compact as streaming text grows past trailing newlines", async () => {
+    const frames = await renderAssistantBlock(false, ["First paragraph.\n", "First paragraph.\n\n", "First paragraph.\n\nSecond paragraph.\n\n"])
+    expect(frames).toEqual([["\u2022 First paragraph.", "\u2022 END"], ["\u2022 First paragraph.", "\u2022 END"], compact])
   })
 })

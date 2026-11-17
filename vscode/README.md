@@ -34,7 +34,7 @@ Open a workflow from its card in the chat. A running workflow shows its phases a
 
 ## Every model you pay for. No lock-in.
 
-Sign in with **Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go**. Add API keys for **Anthropic, OpenAI, Google, DeepSeek, OpenRouter**, or any OpenAI-compatible endpoint. Choose a model for each role: the chat, workflow agents, and background work.
+Sign in with **Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go**. Add API keys for **Anthropic, OpenAI, Google, DeepSeek, Baseten, OpenRouter**, or any OpenAI-compatible endpoint. Choose a model for each role: the chat, workflow agents, and background work.
 
 - Subscriptions serve first. API keys serve only when no subscription can.
 - Failover happens inside the turn. You never retry by hand.

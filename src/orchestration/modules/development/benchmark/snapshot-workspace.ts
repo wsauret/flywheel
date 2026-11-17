@@ -1,7 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedDirectory } from "../../../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../infra/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../../../infra/descriptor-directory.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { runCheckedSandboxCommand, SANDBOX_HOME_DIR } from "./sandbox-command.js";
 import type { CommitSnapshot } from "./task-schema.js";
@@ -21,7 +22,7 @@ export async function materializeCommitSnapshot(projectRoot: string, snapshot: C
   } finally {
     await rm(archivePath, { force: true });
   }
-  const authority = ContainedDirectory.openExisting(dir, [], { noFollowBase: true });
+  const authority = openExistingContainedDirectory(dir, [], { noFollowBase: true });
   if (!authority) throw new Error(`Benchmark sandbox is unavailable: ${dir}`);
   try {
     rejectUnsafeArchiveEntries(authority);

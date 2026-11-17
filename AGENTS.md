@@ -47,9 +47,6 @@ When adopting prompts from other sources, copy the source verbatim and then make
 | Behavior change that needs tests | `test-driven-development` |
 | Something is broken and the cause is unproven | `systematic-debugging` |
 | Judging a diff or plan and reporting findings | `code-review` |
-| Performance review principles | `performance-review-principles` |
-| Data-integrity review principles | `data-integrity-review-principles` |
-| Security review principles | `security-review-principles` |
 | Writing TypeScript here: Bun APIs, strict types, extraction | `typescript-bun` |
 | TUI state: stores, signals, memos, effects | `solid-reactivity` |
 | Async lifecycle: Effect services, typed errors, fibers, disposal | `effect-lifecycle` |

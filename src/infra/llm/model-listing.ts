@@ -11,7 +11,7 @@ import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
 import { customProviderById } from "./custom-provider-registry.js";
 import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure, type CatalogDiscoveryDiagnostics } from "./model-catalog-diagnostics.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
 import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { settleTasks } from "./model-listing-settlement.js";
 import type { ModelsClient } from "./models.js";
@@ -65,7 +65,7 @@ export async function fetchPaginatedCatalog(
   headers: RequestHeaders,
   contribution: Pick<ModelCatalogContribution, "limits" | "extractRows">,
   signal: AbortSignal,
-  nextPage: (body: unknown, currentUrl: string) => string | undefined,
+  nextPage: (body: CatalogJsonValue, currentUrl: string) => string | undefined,
 ): Promise<CatalogDiscovery> {
   const rows: unknown[] = [];
   const visited = new Set<string>();
@@ -230,7 +230,7 @@ export interface ModelListingClientOptions {
 }
 
 /** One conclusive probe result, reported after its durable commit. `remaining` counts the probes still due. */
-export interface AccessAuditProgress {
+interface AccessAuditProgress {
   readonly account: AccessProviderAccountIdentity;
   readonly remaining: number;
   readonly modelId: string;

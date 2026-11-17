@@ -102,4 +102,18 @@ describe("useSessionModal open warning", () => {
     ])
   })
 
+  it("warns nothing when only another session has degraded list details", async () => {
+    expect(await openSessionAndCollectToasts(() => [{ sessionId: "other-session", scope: "budget", reason: "bad event" }])).toEqual([])
+  })
+
+  it("warns once without naming scopes when the opened session has several degraded details", async () => {
+    const toasts = await openSessionAndCollectToasts((sessionId) => [
+      { sessionId, scope: "budget", reason: "bad event" },
+      { sessionId, scope: "budget", reason: "bad event" },
+      { sessionId, scope: "metadata", reason: "bad event" },
+    ])
+    expect(toasts).toEqual([
+      { message: "Some details for this session couldn't be loaded", variant: "warning" },
+    ])
+  })
 })

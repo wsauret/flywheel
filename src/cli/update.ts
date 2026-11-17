@@ -49,12 +49,12 @@ export type UpdateRunResult = Awaited<ReturnType<UpdateService["run"]>>;
 
 /** One line for the operator, and whether the command failed. Kept apart from
  *  the wiring so every outcome's wording is decided in one readable place. */
-export interface UpdateReport {
+interface UpdateReport {
   readonly message: string;
   readonly failed: boolean;
 }
 
-export function updateReport(result: UpdateRunResult, currentVersion: string): UpdateReport {
+function updateReport(result: UpdateRunResult, currentVersion: string): UpdateReport {
   switch (result.kind) {
     case "installed":
       return { message: `Flywheel ${result.version} is installed. Restart Flywheel to use it.`, failed: false };

@@ -1,20 +1,18 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { fileURLToPath } from "node:url"
 
 import { FFIType } from "bun:ffi"
 
 import { readOutcomeRecord, type OutcomeRecordRead } from "../../../src/infra/command-handover.js"
 import { bindLibc } from "../../../src/infra/libc.js"
 import { accountServeDir } from "../../../src/infra/paths.js"
-import { createLauncherScope, createProcessSupervisor, type ProcessSupervisor } from "../../../src/infra/process-supervisor.js"
+import { createLauncherScope, createProcessSupervisor, guardianCommand, type ProcessSupervisor } from "../../../src/infra/process-supervisor.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
 
 const SUPERVISOR_MODULE = new URL("../../../src/infra/process-supervisor.ts", import.meta.url).href
 const HANDOVER_MODULE = new URL("../../../src/infra/command-handover.ts", import.meta.url).href
-const GUARDIAN_MODULE = fileURLToPath(new URL("../../../src/infra/process-guardian.ts", import.meta.url))
 
 /** The account whose service directory holds each handed-over command's
  *  channel. A Unix socket path is bounded (104 bytes on macOS), and the
@@ -58,9 +56,9 @@ async function handOverFromAnotherProcess(scratch: RealProcessFixture, payload: 
   const recordPath = scratch.file("command.outcome.json")
   const report = scratch.file("handed-over.json")
   const source = [
-    `import { createProcessSupervisor } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
+    `import { createProcessSupervisor, guardianCommand } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
     `import { handoverChannelAddress } from ${JSON.stringify(HANDOVER_MODULE)}`,
-    `const supervisor = createProcessSupervisor({ guardianCommand: [${JSON.stringify(process.execPath)}, ${JSON.stringify(GUARDIAN_MODULE)}, ${JSON.stringify(scratch.dir)}] })`,
+    `const supervisor = createProcessSupervisor({ guardianCommand: [...guardianCommand(), ${JSON.stringify(scratch.dir)}] })`,
     `const owned = await supervisor.spawnOwned(${JSON.stringify(payload)}, { handover: true })`,
     `const channel = handoverChannelAddress({ userDataRoot: ${JSON.stringify(USER_DATA_ROOT)}, lane: "dev", token: owned.token })`,
     `const answer = await owned.handOver({ channel, recordPath: ${JSON.stringify(recordPath)}, userDataRoot: ${JSON.stringify(USER_DATA_ROOT)} })`,
@@ -81,7 +79,7 @@ async function handOverFromAnotherProcess(scratch: RealProcessFixture, payload: 
 }
 
 function ownerB(scratch: RealProcessFixture): ProcessSupervisor {
-  return createProcessSupervisor({ guardianCommand: [process.execPath, GUARDIAN_MODULE, scratch.dir] })
+  return createProcessSupervisor({ guardianCommand: [...guardianCommand(), scratch.dir] })
 }
 
 const libc = bindLibc({ getsid: { args: [FFIType.i32], returns: FFIType.i32 } })

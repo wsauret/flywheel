@@ -33,7 +33,7 @@ import { canonicalAccountHome, FLYWHEEL_DIR_NAME } from "../src/infra/directory-
 import { keychainUnlocked } from "../src/infra/macos-keychain.js";
 import { ownedCommandRunner } from "../src/infra/owned-command.js";
 import { osAccount } from "../src/infra/os-account.js";
-import { createLauncherScope, createProcessSupervisor } from "../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../src/infra/process-supervisor.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
@@ -180,7 +180,7 @@ async function main(args: readonly string[]): Promise<number> {
   const refuse = (reason: string) => { console.error(reason); return 1; };
   if (mode === "--status" && home !== undefined && args.length === 2) {
     if (profile === undefined) return refuse(LIVE_AUTH_PROFILE_UNSET);
-    const supervisor = createProcessSupervisor();
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const launcher = createLauncherScope(supervisor);
     try {
       const token = await releaseLoginStatus(home, root, { platform: process.platform, account: osAccount(), run: ownedCommandRunner(launcher), keychainUnlocked }, profile);

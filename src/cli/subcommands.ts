@@ -20,7 +20,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { ProjectStateStandby } from "../orchestration/app-service/project-state-standby.js"
 import type { FirstPartyModule, FirstPartyModuleComposition, InstalledCliNoun } from "../orchestration/modules.js"
 import type { CliVerbSummary, CommandProcessResources } from "../orchestration/cli-contribution.js"
-import type { AccountModuleRequest } from "../protocol/account-attach.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
 
 export type SubcommandDispatch = (args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, resources: CommandProcessResources) => void | Promise<void>
 
@@ -214,10 +214,11 @@ export const SUBCOMMANDS: KernelNouns = {
 }
 
 /** The project's module selection, read the way the runtime reads it at
- *  start: the account config through the module policy, composed into the
- *  catalog snapshot the verb receives. A config the policy cannot act on
- *  selects nothing, and its reason is the line before the refusal. */
-async function projectModuleSelection(directories: StartupDirectories): Promise<FirstPartyModuleComposition> {
+ *  start: the account config through the module policy, composed over
+ *  `modules` into the catalog snapshot the verb receives. A config the policy
+ *  cannot act on selects nothing, and its reason is the line before the
+ *  refusal. */
+async function projectModuleSelection(directories: StartupDirectories, modules: readonly FirstPartyModule[] | undefined): Promise<FirstPartyModuleComposition> {
   const { startModulePolicy } = await import("../orchestration/config/module-policy.js")
   const { composeRealmModuleSnapshot } = await import("../orchestration/modules.js")
   const started = await startModulePolicy({ userDataRoot: directories.userDataRoot })
@@ -225,18 +226,18 @@ async function projectModuleSelection(directories: StartupDirectories): Promise<
     if (started.notice) console.error(started.notice)
     const state = started.policy.state()
     if (state.error) console.error(state.error)
-    return composeRealmModuleSnapshot(state)
+    return composeRealmModuleSnapshot(state, modules)
   } finally {
     await started.dispose()
   }
 }
 
-/** `flywheel <noun>` for a module noun: the project's selection decides once
- *  per invocation whether the owner is on, then the verb runs with the
- *  command context. A test binds a selection of its own. */
-export function moduleNounDispatch(noun: InstalledCliNoun, selection: (directories: StartupDirectories) => Promise<FirstPartyModuleComposition> = projectModuleSelection): SubcommandDispatch {
+/** `flywheel <noun>` for a module noun of the catalog `catalog`: the
+ *  project's selection decides once per invocation whether the owner is on,
+ *  then the verb runs with the command context. */
+function moduleNounDispatch(noun: InstalledCliNoun, catalog: readonly FirstPartyModule[] | undefined): SubcommandDispatch {
   return async (args, directories, launcher, resources) => {
-    const modules = await selection(directories)
+    const modules = await projectModuleSelection(directories, catalog)
     const [verb, ...rest] = args
     const dispatch = verb !== undefined && Object.hasOwn(noun.verbs, verb) ? noun.verbs[verb] : undefined
     if (!modules.enabledModuleIds.includes(noun.module) && dispatch?.runsWhileOff !== true) {
@@ -249,7 +250,7 @@ export function moduleNounDispatch(noun: InstalledCliNoun, selection: (directori
       process.exitCode = 2
       return
     }
-    const accountRequest = async (request: AccountModuleRequest, onAnswer: (answer: unknown) => void): Promise<void> => {
+    const accountRequest = async (request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler): Promise<void> => {
       const { createAccountRuntimeAttach } = await import("./runtime-attach.js")
       const attach = createAccountRuntimeAttach({ ...directories, allowPersistentProcesses: resources.allowPersistentProcesses })
       try {
@@ -272,7 +273,7 @@ export async function subcommandDispatch(name: string, modules?: readonly FirstP
   if (name.startsWith("-")) return undefined
   const { installedCliNouns } = await import("../orchestration/modules.js")
   const noun = installedCliNouns(modules).get(name)
-  return noun && moduleNounDispatch(noun)
+  return noun && moduleNounDispatch(noun, modules)
 }
 
 export async function isSubcommand(name: string, modules?: readonly FirstPartyModule[]): Promise<boolean> {

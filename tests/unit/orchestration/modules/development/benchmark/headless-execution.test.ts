@@ -3,14 +3,13 @@ import type { FileSink } from "bun";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { Schema } from "effect";
 import type { OwnedProcess, OwnedProcessExit } from "../../../../../../src/infra/owned-subprocess.js";
 import type { LauncherScope } from "../../../../../../src/infra/process-supervisor.js";
 import type { FrontendMutation } from "../../../../../../src/protocol/app-service-types.js";
 import type { RuntimeSessionModelPlanResult } from "../../../../../../src/protocol/model-assignment-protocol-types.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { executeHeadlessBenchmark } from "../../../../../../src/orchestration/modules/development/benchmark/headless-execution.js";
-import { HeadlessBenchmarkExecutionSchema, type HeadlessBenchmarkExecution } from "../../../../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import type { HeadlessBenchmarkExecution } from "../../../../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
 import * as sourceTreatment from "../../../../../../bench/chat-ab/source-treatment.js";
 import { resolveCampaignSubject } from "../../../../../../bench/chat-ab/campaign-subject.js";
 import { chatLedger, type ChatCampaign } from "../../../../../../bench/chat-ab/chat-store.js";
@@ -61,7 +60,6 @@ function toolAudit(offeredSession?: string) {
         requestId: row.requestId, identity: row.identity, turn: 1, promptKind: "chat",
         systemPrompt: "system", messages: [], messageCount: 0, estimatedContextTokens: 0, attemptStaticTokens: 0, contextWindow: 100000,
         tools, omittedTools: [], model: "claude-sonnet-5.5", accessProvider: "anthropic_api", modelFamily: "anthropic", interactionProfileId: "default",
-        contextApplication: { identity: `context-${session.sessionId}`, applications: [{ applicationId: `application-${session.sessionId}`, transformerId: "transformer", seam: "modelContext", order: 1, outcome: "applied", inputHash: "a".repeat(64), outputHash: "b".repeat(64) }] },
       }, dedup);
       dedup = built.dedupAdvance;
       return built.facts.filter(fact => fact.type !== "model.requested").map(fact => ({
@@ -199,7 +197,7 @@ test("accepts a completed execution only after verified settings and an accepted
   const result = await executeHeadlessBenchmark({ ...fixture.input, message: "task" });
   expect(result.outcome).toBe("complete");
   expect(fixture.commands.slice(0, 3)).toMatchObject([
-    { id: "settings", command: { type: "model.save_effort", scope: { kind: "session", sessionId: "root" }, model: "claude-sonnet-5.5", effort: "medium" } },
+    { id: "settings", command: { type: "model.save_effort", scope: { kind: "session", sessionId: "root" }, model: "claude-sonnet-5.5", effort: "medium", expected: { kind: "absent" } } },
     { id: "plan", query: { type: "sessionModelPlan", sessionId: "root" } },
     { id: "task", command: { type: "session.send", sessionId: "root", input: "task" } },
   ]);
@@ -213,7 +211,6 @@ test("accepts a completed execution only after verified settings and an accepted
     { command: ["subject", "events", "evidence", "--session", "root", "--project-root", "/scratch/project"], env: { HOME: "/scratch/home", FLYWHEEL_AUTH_PROFILE: "Personal" } },
   ]);
   expect(fixture.closed()).toBe(1);
-  Schema.decodeUnknownSync(HeadlessBenchmarkExecutionSchema, { onExcessProperty: "error" })(result);
   for (const artifact of Object.values(result.artifacts)) {
     const bytes = await readFile(artifact.path);
     expect(artifact.bytes).toBe(bytes.length);
@@ -402,7 +399,6 @@ test.each([
   expect("requestCount" in result.evidence).toBe(false);
   expect("childSessionCount" in result.evidence).toBe(false);
   expect(JSON.parse(await readFile(result.artifacts.evidence!.path, "utf8"))).toEqual(partial);
-  Schema.decodeUnknownSync(HeadlessBenchmarkExecutionSchema, { onExcessProperty: "error" })(result);
 });
 
 test("unavailable evidence does not invent zero accounting or request counts", async () => {

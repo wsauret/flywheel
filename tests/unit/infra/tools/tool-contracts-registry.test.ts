@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { getToolDisplay, getToolDisplayName, resolvePresentationIfReady, resolveToolPresentation, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
+import { getToolDisplay, resolveToolPresentation, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
 import { normalizeSkillId } from "../../../../src/infra/skill-id.js";
 import { testBaseTools, testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
@@ -33,7 +33,7 @@ describe("base tool display names", () => {
 
   for (const [name, expected] of expectations) {
     it(`${name} -> ${expected}`, () => {
-      expect(getToolDisplayName(name)).toBe(expected);
+      expect(getToolDisplay(name).displayName).toBe(expected);
     });
   }
 });
@@ -105,8 +105,8 @@ describe("base tool getDetail", () => {
     expect(resolveToolPresentation("edit", { path: "/home/user/project/src/app.ts" }, executionCwd)).toEqual({ name: "Edit", detail: "src/app.ts" });
   });
 
-  it("edit: waits for a path", () => {
-    expect(resolvePresentationIfReady("edit", {}, executionCwd)).toBeNull();
+  it("edit: names the family until a path arrives", () => {
+    expect(resolveToolRowPresentation("edit", {}, executionCwd).presentation).toEqual({ name: "Edit", detail: "" });
   });
 
   it("bash: shortened command", () => {
@@ -214,14 +214,14 @@ describe("fallback for unknown tools", () => {
   });
 
   it("handles MCP prefixed tools", () => {
-    expect(getToolDisplayName("mcp__github__create_issue")).toBe("MCP github");
+    expect(resolveToolRowPresentation("mcp__github__create_issue", {}, "/workspace").presentation.name).toBe("MCP github");
   });
 
   // The fallback names a row by its raw identifier and presents it as a
   // command, so a shipped tool that reached it would group and read wrong.
   it("is never what a tool Flywheel ships gets", () => {
     const shipped = [...createToolRegistry([...SHIPPED_MODULES, ...DEVELOPMENT_MODULES]).values()].map(({ tool }) => tool);
-    expect(shipped.filter((name) => getToolDisplayName(name) === name)).toEqual([]);
+    expect(shipped.filter((name) => getToolDisplay(name).displayName === name)).toEqual([]);
   });
 });
 
@@ -372,19 +372,19 @@ describe("resolveToolPresentation", () => {
 describe("presentation readiness", () => {
   const executionCwd = "/home/user/project";
 
-  it("reports not ready only while the input names no operation, for both resolver consumers", () => {
-    // Streaming materialization waits on this; the final projection falls back
-    // to the neutral family name for exactly the same inputs.
-    expect(resolvePresentationIfReady("skill", {}, executionCwd)).toBeNull();
-    expect(resolvePresentationIfReady("skill", { action: "lo" }, executionCwd)).toBeNull();
-    expect(resolvePresentationIfReady("skill_manage", { name: "example-skill" }, executionCwd)).toBeNull();
-    expect(resolvePresentationIfReady("skill", { action: "load" }, executionCwd)).toEqual({ name: "Load Skill", detail: "" });
-    expect(resolvePresentationIfReady("skill_manage", { action: "save", name: "example-skill" }, executionCwd)).toEqual({ name: "Save Skill", detail: "example-skill" });
-    // Memory names one operation family, so a call is always ready.
-    expect(resolvePresentationIfReady("memory", {}, executionCwd)).toEqual({ name: "Change Memory", detail: "" });
-    // Legacy detail displays stay ready exactly when they have a detail.
-    expect(resolvePresentationIfReady("read", {}, executionCwd)).toBeNull();
-    expect(resolvePresentationIfReady("read", { path: "/home/user/project/src/index.ts" }, executionCwd)).toEqual({ name: "Read", detail: "src/index.ts" });
+  it("names the neutral family only while the input names no operation", () => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a model-written tool input, which resolveToolRowPresentation reads as unknown
+    const row = (toolName: string, input: unknown) => resolveToolRowPresentation(toolName, input, executionCwd).presentation;
+    expect(row("skill", {})).toEqual({ name: "Read Skill", detail: "" });
+    expect(row("skill", { action: "lo" })).toEqual({ name: "Read Skill", detail: "" });
+    expect(row("skill_manage", { name: "example-skill" })).toEqual({ name: "Manage Skill", detail: "" });
+    expect(row("skill", { action: "load" })).toEqual({ name: "Load Skill", detail: "" });
+    expect(row("skill_manage", { action: "save", name: "example-skill" })).toEqual({ name: "Save Skill", detail: "example-skill" });
+    // Memory names one operation family, so a call names it at once.
+    expect(row("memory", {})).toEqual({ name: "Change Memory", detail: "" });
+    // Legacy detail displays name the family until they have a detail.
+    expect(row("read", {})).toEqual({ name: "Read", detail: "" });
+    expect(row("read", { path: "/home/user/project/src/index.ts" })).toEqual({ name: "Read", detail: "src/index.ts" });
   });
 
 });

@@ -3,8 +3,9 @@ import { Database } from "bun:sqlite"
 import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { advanceWorkflowMemberTotals, readHeldWorkflowMemberTotals, readWorkflowMemberTotals, readWorkflowUsage } from "../../../../src/orchestration/workflow-host/member-totals.js"
+import { advanceWorkflowMemberTotals, readHeldWorkflowMemberTotals, readWorkflowMemberEvidence, readWorkflowMemberTotals, readWorkflowUsage } from "../../../../src/orchestration/workflow-host/member-totals.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
+import { countStateRequests } from "../../../helpers/state-requests.js"
 import { createdFact, memberCreated, usageV4Fact } from "../../../fixtures/session-summary-history.js"
 
 const temporary = temporaryDirectories()
@@ -61,7 +62,7 @@ describe("readWorkflowUsage", () => {
     expect(await coldReads(20)).toBe(await coldReads(2))
   })
 
-  it("shares one filtered catch-up across held workflows without loading tool content", async () => {
+  it("reads each committed fact once across held workflows without loading tool content", async () => {
     const rowsPerChange = async (workflows: number) => {
       const store = workflowWithMembers(1)
       try {
@@ -75,10 +76,8 @@ describe("readWorkflowUsage", () => {
         counted.contentModes.length = 0
         append(store, usageV4Fact(0, "m0", "unrelated"))
         for (let index = 0; index < workflows; index++) await readWorkflowUsage(counted.reader, `wf-${index}`)
-        expect(counted.rows).toHaveLength(0)
         store.append({ aggregateId: "session:m0", sessionId: "m0", type: "model.requested", version: 1, actor: "agent", timestamp: 1000, payload: {} })
         for (let index = 0; index < workflows; index++) await readWorkflowUsage(counted.reader, `wf-${index}`)
-        expect(counted.rows).toHaveLength(0)
         append(store, usageV4Fact(0, "held-0", "changed"))
         for (let index = 0; index < workflows; index++) {
           const usage = await readWorkflowUsage(counted.reader, `wf-${index}`)
@@ -88,8 +87,10 @@ describe("readWorkflowUsage", () => {
         return counted.rows.length
       } finally { store.close() }
     }
-    expect(await rowsPerChange(2)).toBe(1)
-    expect(await rowsPerChange(20)).toBe(1)
+    // The three facts committed after the seed, each read once whatever the
+    // number of held workflows, including the two that no held workflow owns.
+    expect(await rowsPerChange(2)).toBe(3)
+    expect(await rowsPerChange(20)).toBe(3)
   })
   it("reads no store fact while it holds no workflow, and a later first read still counts every member", async () => {
     const store = workflowWithMembers(3)
@@ -153,28 +154,60 @@ describe("readWorkflowUsage", () => {
       await expect(readWorkflowUsage(counted.reader, "wf-damaged")).rejects.toThrow()
     } finally { store.close() }
   })
-  it("reads only what changed after each usage entry, whatever the member count", async () => {
-    const readsPerChange = async (members: number) => {
+  it("issues the same state requests per advance whatever the number of member owners", async () => {
+    const requestsPerAdvance = async (members: number) => {
       const store = workflowWithMembers(members)
       try {
-        const { reads, reader } = countingReader(asAsyncEventReadSurface(store))
-        await readWorkflowUsage(reader, "wf")
-        const perChange: number[] = []
+        const counter = countStateRequests(asAsyncEventReadSurface(store))
+        await readWorkflowUsage(counter.reader, "wf")
+        counter.take()
+        const perAdvance: unknown[] = []
         for (let change = 0; change < 10; change++) {
           append(store, usageV4Fact(0, `m${change % members}`, `change-${change}`))
-          reads.length = 0
-          const usage = await readWorkflowUsage(reader, "wf")
-          perChange.push(reads.length)
+          const usage = await readWorkflowUsage(counter.reader, "wf")
+          perAdvance.push(counter.take().map(({ method, query, facts }) => ({ method, query, facts })))
           expect(usage.display.totalCost).toBe((members + change + 1) * 2)
           expect(usage.policy.totalInputTokens).toBe((members + change + 1) * 100)
         }
-        return perChange
+        return perAdvance
       } finally {
         store.close()
       }
     }
-    // Eighty members exceeds the sixty-four projections the registry holds per family.
-    expect(await readsPerChange(80)).toEqual(await readsPerChange(4))
+    // Two hundred members exceeds the sixty-four projections the registry holds per family.
+    expect(await requestsPerAdvance(200)).toEqual(await requestsPerAdvance(2))
+  })
+
+  it("advances to the totals that a full fold reads after interleaved facts of three members", async () => {
+    const store = workflowWithMembers(3)
+    try {
+      append(store, createdFact(0, "outsider", "subagent", "chat"))
+      const call = (sessionId: string, toolUseId: string) => store.append({
+        aggregateId: `session:${sessionId}`, sessionId, type: "tool.input.completed", version: 1, actor: "agent", timestamp: 2,
+        payload: { toolUseId, toolName: "read", input: {}, inputBytes: 2, inputSha256: "sha", inputPreview: "{}", executionMode: "foreground", traceKind: "tool", childHasOwnViewport: false },
+      })
+      const duration = (sessionId: string, accumulatedActiveMs: number) => store.append({ aggregateId: `session:${sessionId}`, sessionId, type: "session.duration.recorded", version: 1, actor: "flywheel", timestamp: 3, payload: { accumulatedActiveMs } })
+      const advanced = asAsyncEventReadSurface(store)
+      await readWorkflowMemberTotals(advanced, "wf")
+      const steps = [
+        () => { call("m0", "a"); append(store, usageV4Fact(0, "outsider", "o1", 11)); call("m2", "b") },
+        () => { append(store, usageV4Fact(0, "m1", "u1", 5)); call("outsider", "c"); duration("m0", 1_000) },
+        () => { duration("m2", 2_000); append(store, usageV4Fact(0, "m0", "u2", 3)); call("m1", "d"); duration("outsider", 9_000) },
+      ]
+      for (const step of steps) {
+        step()
+        await readWorkflowMemberTotals(advanced, "wf")
+      }
+      const figures = async (reader: typeof advanced) => {
+        const totals = await readWorkflowMemberTotals(reader, "wf")
+        return { policy: totals.policy, display: totals.display, toolCount: totals.toolCount, durations: [...totals.durations.bySession].sort(), evidence: await readWorkflowMemberEvidence(reader, "wf") }
+      }
+      const full = await figures(asAsyncEventReadSurface(store))
+      expect(full).toMatchObject({ policy: { totalCost: 14 }, toolCount: 3, durations: [["m0", 1_000], ["m2", 2_000]] })
+      expect(await figures(advanced)).toEqual(full)
+    } finally {
+      store.close()
+    }
   })
 
   it("counts an agent that joins after the first read, and its usage", async () => {

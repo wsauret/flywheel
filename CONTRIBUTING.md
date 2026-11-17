@@ -82,6 +82,34 @@ Unit tests must not make network calls, spawn real processes, or write into the 
 
 A change to the source of a native crate under `crates/` follows the policy in [crates/README.md](crates/README.md#change-the-source-of-a-crate). If you do not have the toolchain of the crate, you can open the pull request with the source change only, even though the unit suite fails on the native assets of that crate. The maintainer then rebuilds every committed binary from its source and commits the rebuilt binaries and manifests to the pull request, and merges only after CI passes. The maintainer never merges a binary that a contributor built without that rebuild and comparison.
 
+## Find slop with a decision model
+
+Three optional scripts ask a decision model plain-English review questions about the code, with the vendored anti-slop question presets (`scripts/anti-slop-llm/`) on the vendored Oxlint plugin (`scripts/oxlint-plugin-jev/`). Each uncached answer is a paid request, so no gate runs them: `bun run lint` and CI do not include them.
+
+```bash
+bun run lint:slop        # files under src/ changed against the merge base with origin/main; functions only on changed lines
+bun run lint:slop:full   # every file under src/
+bun run lint:slop:diff   # whole-branch rules (shotgun surgery, divergent change, duplicated code, scope creep)
+```
+
+The Effect questions report errors and the Martin Fowler smell questions report warnings. Answers are cached under `node_modules/.cache/`, so a second run over unchanged code makes no request.
+
+The credentials come only from environment variables:
+
+- `TYPESAFE_API_KEY` selects TypeSafe Jev (`jev-latest`).
+- `OPENAI_API_KEY` selects OpenAI Decisions (`gpt-6-luna`). A ChatGPT subscription cannot use this API.
+- `ANTI_SLOP_DECISION_MODEL` selects the backend and model explicitly, as `typesafe:<model>` or `openai:<model>`, for example `openai:gpt-6-luna`. Without it, TypeSafe is used when its key is set, then OpenAI.
+
+When the selected backend has no key, the scripts print a warning and check nothing, also when `CI` is set. `lint:slop:diff --backend command --command "<shell command>"` sends the prompt to a command on stdin instead.
+
+To review each push, turn on the optional pre-push hook once per clone:
+
+```bash
+bun run hooks:install   # git config core.hooksPath .githooks
+```
+
+On `git push`, `.githooks/pre-push` runs the changed-code questions and the diff rules on the commits being pushed: those after the remote branch, or, for a new branch, those after its merge base with `origin/main`. It prints what they find and never stops the push. Without a decision model key it prints nothing. After one minute it ends its checks and prints `skipped: timed out`. Oxlint reads your working tree, so the hook judges only a pushed branch that is checked out, and the changed-code questions also read uncommitted and untracked files under `src/`. To turn the hook off, run `git config --unset core.hooksPath`.
+
 ## Verify a user-visible change
 
 A change that a user can see in the terminal UI needs a live check of the installed binary. The `flywheel-uat` skill (`src/orchestration/modules/development/definitions/skills/flywheel-uat/SKILL.md`) gives the method, and `bun run uat:tui --help` shows the driver. You need these:

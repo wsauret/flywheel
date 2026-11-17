@@ -63,7 +63,6 @@ function makeLifecycle(seedContext?: string) {
     ;(runners.length === 1 ? chatStarted : reviewStarted).resolve()
     return {
       send() {},
-      end() {},
       abort() {},
       done,
     }

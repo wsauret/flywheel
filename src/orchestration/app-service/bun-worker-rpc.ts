@@ -26,6 +26,7 @@ export function bunWorkerClientLayers(
         Scope.addFinalizer(scope, Effect.promise(() => terminateWorker(worker))),
         {
           worker,
+          // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the structured-clone value that the Effect worker platform posts
           postMessage(message: unknown, transfers: Transferable[] = []) {
             worker.postMessage(message, transfers)
           },
@@ -87,6 +88,7 @@ export function bunWorkerClientLayers(
 export interface WorkerSelf {
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void
   removeEventListener(type: "message", listener: (event: MessageEvent) => void): void
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: mirrors the worker global's `postMessage`, which takes any structured-clone value
   postMessage(message: unknown, transfer?: readonly unknown[]): void
 }
 

@@ -6,7 +6,7 @@ import { selectStartupDirectories } from "../../../src/infra/directory-authoriti
 import { Log } from "../../../src/infra/log.js"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { runMaintain } from "../../../src/cli/event-maintain.js"
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js"
+import { openExistingContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { registerSharedHolderIn, releaseSharedHolderIn } from "../../../src/infra/ownership-file-lock.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 
@@ -106,7 +106,7 @@ describe("flywheel maintain and a live runtime", () => {
     const store = createSqliteEventStore(resolveEventStoreDbFile(root))
     store.close()
     // The shared hold a running project's runtime keeps on its generation.
-    const flywheel = ContainedDirectory.openExisting(root, [".flywheel"])
+    const flywheel = openExistingContainedDirectory(root, [".flywheel"])
     if (!flywheel) throw new Error("expected the .flywheel directory")
     const hold = registerSharedHolderIn(flywheel, "project-generation.lock")
     return { root, release: () => { releaseSharedHolderIn(flywheel, hold); flywheel.close() } }

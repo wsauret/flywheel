@@ -3,7 +3,7 @@ import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import { authDir } from "../../infra/paths.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import type { AsyncEventWriter, AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js"
 import type { ModulePolicy } from "../config/module-policy.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
@@ -82,6 +82,8 @@ export interface AuthRuntimeOptions {
   readonly workflowHosts: Pick<WorkflowHosts, "refreshDeps">
   readonly eventReader: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter
+  /** The store's post-commit broadcast. */
+  readonly onStored: (listener: (events: readonly StoredFact[]) => void) => () => void
   readonly availability: Pick<DefinitionAvailabilityOwner, "snapshot">
   /** The notify seam (ARCH-STRUCTURE-034), contained: a failure is logged by the seam's owner. */
   readonly notify: (episode: NotificationEpisodeInput) => void
@@ -142,12 +144,11 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
   let currentProfile = initialProfile
   const workflowRuns = workflowRunReader(options.eventReader)
   const workflowAuth = createWorkflowAuthOwner({
-    reader: workflowRuns,
-    writer: workflowRunWriter(options.eventReader, options.manager.commitWorkflow),
+    reader: workflowRuns, writer: workflowRunWriter(options.eventReader, options.manager.commitWorkflow),
     profiles: profileManager, userDataRoot: options.userDataRoot,
-    onSelected: async () => {
+    onSelected: async (workflowId) => {
       await reconcileAuthFileWatchers()
-      await residentScopes.reconcileWorkflows(await workflowAuth.list())
+      await residentScopes.reconcileWorkflow(workflowId)
       await refreshAllDeps()
       await publishAuthStatus()
     },
@@ -215,13 +216,13 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     ...(launcher === undefined ? {} : { launcher }),
   })
   const residentScopes = createResidentAuthScopes({
-    manager: options.manager, runs: workflowRuns, userDataRoot: options.userDataRoot, resolveProfile: (scope) => resolveScopedProfile(scope, currentProfile),
+    manager: options.manager, runs: workflowRuns, workflows: workflowAuth, userDataRoot: options.userDataRoot, resolveProfile: (scope) => resolveScopedProfile(scope, currentProfile),
     currentProfile: () => currentProfile, disposed: () => disposed, pool: subscriptionUsagePool,
   })
   const { leases: residentLeases, subscriptionUsage, reconcile: reconcileResidentScope, enqueue: enqueueResidentReconciliation } = residentScopes
   await reconcileResidentScope({ kind: "defaults" })
   for (const row of (await options.manager.listActive()).sessions) await reconcileResidentScope({ kind: "session", sessionId: row.id }, row)
-  await residentScopes.reconcileWorkflows(await workflowAuth.list())
+  await residentScopes.reconcileWorkflows()
   const publishedDefaults = createAuthPublicationBaseline()
 
   publishAuthStatus = createAuthStatusPublisher({
@@ -564,7 +565,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
       await refreshCoordinator.refresh(profile.id, undefined, "observe")
     },
     refreshCatalog: async () => {
-      await residentScopes.reconcileWorkflows(await workflowAuth.list())
+      await residentScopes.reconcileWorkflows()
       await publishAuthStatus()
       const rows = (await options.manager.listActive()).sessions
       enqueueResidentReconciliation([{ kind: "defaults" }, ...rows.map((row) => ({ kind: "session" as const, sessionId: row.id }))])
@@ -580,7 +581,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     publishExternalAuthStatus()
   }), (unsubscribe) => { unsubscribe() })
   options.own("auth-session-subscription", subscribeAuthOwners({
-    manager: options.manager, reconcileWorkflows: async () => residentScopes.reconcileWorkflows(await workflowAuth.list()),
+    manager: options.manager, onStored: options.onStored, runs: workflowRuns, reconcileWorkflow: residentScopes.reconcileWorkflow,
     reconcileWatchers: authFileWatchers.reconcile, watchSessions: authFileWatchers.watchSessions, publish: publishExternalAuthStatus, reconcileSessions: enqueueResidentReconciliation,
     onError: (error) => { log.warn("auth owner reconciliation failed", { error: errorMessage(error) }) },
   }), (unsubscribe) => { unsubscribe() })

@@ -5,6 +5,7 @@ import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import { appendChange, batch, deltas, insertChange, outputProjectionRuntime, sink, textBlock, upsertChange } from "./_output-projection-fixtures.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const runtime = outputProjectionRuntime()
 
@@ -13,7 +14,7 @@ describe("output projection watches", () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let projected = 0
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped, projectBlock: async (_sessionId, block) => { projected++; return block } })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped, projectBlock: async (_sessionId, block) => { projected++; return block } })
     try {
       projection.watch(["other"])
       store.openSessionRuntime({ sessionId: "unwatched", conversationId: "conv-unwatched" })
@@ -33,7 +34,7 @@ describe("output projection watches", () => {
   test("a session watched again ships its next change whole over the read its watcher made", async () => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
-    const projection = createOutputProjection({ sessionStore: store, shipped: s.shipped })
+    const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: s.shipped })
     try {
       projection.watch(["chat"])
       store.openSessionRuntime({ sessionId: "chat", conversationId: "conv-chat" })
@@ -62,7 +63,7 @@ describe("output projection watches", () => {
     const s = sink()
     let childTools = 0
     let stored: (events: readonly StoredFact[]) => void = () => {}
-    const projection = createOutputProjection({
+    const projection = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: store, shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
       projectBlock: async (sessionId, block) => sessionId !== "parent" || block.kind !== "tool" ? block

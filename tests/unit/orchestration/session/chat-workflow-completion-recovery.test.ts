@@ -194,6 +194,7 @@ function createSupervisor(
         return reconcileChildSessionCompletions({
           parentSessionId,
           reader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
+          projectionReader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
           writer: {
             append: async (event) => cycle.store.append(event),
             appendBatch: async (events) => cycle.store.appendBatch(events),
@@ -320,7 +321,7 @@ describe("fresh-store chat workflow completion recovery", () => {
     registry.track({
       done: runEnded.promise,
       hostClose: "detach",
-      meta: { id: "child-of-parked", type: "workflow", description: "Recover completion", toolUseId: launch.toolUseId, settlementOwner: "child_session" },
+      meta: { id: "child-of-parked", type: "workflow", description: "Recover completion", toolUseId: launch.toolUseId },
     })
     expect(registry.awaitedTaskCount()).toBe(1)
 

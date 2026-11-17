@@ -9,7 +9,6 @@ import type { ConversationEntry, MessageEntry } from "./conversation-entry-types
 import { TURN_END_ID_PREFIX } from "./turn-end-record.js"
 import { admitEntries, chatTreeViolation, entryLink, type AdmissionFrontier, type EntryLink } from "./conversation-entry-admission.js"
 import { salvageConversationTreeFact, type ConversationTreeFact, type DegradedEntrySource, type ConversationTreeSalvageResult, type InlineConversationTreeFact, type SalvagedConversationEntry } from "./conversation-facts.js"
-import { walkBranchFromLeaf } from "./conversation-tree-context.js"
 import { sessionMessageSources, sessionMessageSourcesSync, recoverSessionMessageProducer, type SessionMessageSources } from "../session-message-sources.js"
 import { ConversationContextIdentities } from "./conversation-context-identities.js"
 import { subagentCompletionRunIds } from "../../agent-runtime/background-work-notifications.js"
@@ -98,7 +97,6 @@ export type ConversationTreeProjectionState = {
    *  first record's id, find it present, and go unreported. */
   assistantWatermark: number
   degraded: DegradedTranscriptSequence
-  completedFollowUpRequestSequences: number[]
 }
 
 export function branchVisibleTranscriptEntries(
@@ -142,10 +140,12 @@ export function* branchVisibleTranscriptWork(
 
 // Historical stores also hold "chat.entry.provisional" and
 // "chat.provisionals.discarded", written when an unfinished turn was recorded
-// fragment by fragment. Their absence here is the whole compatibility story:
-// the fold selects by type, so an unlisted type is never read and an old
-// conversation opens as the committed turns it always was.
-export const CHAT_TREE_FACT_TYPES = ["chat.tree.created", "chat.entries.appended", "chat.follow_up_turn.completed", "chat.reasoning.reported"] as const
+// fragment by fragment, and "chat.follow_up_turn.completed", written at the
+// end of a user turn that followed a finished workflow. Their absence here is
+// the whole compatibility story: the fold selects by type, so an unlisted type
+// is never read and an old conversation opens as the committed turns it
+// always was.
+export const CHAT_TREE_FACT_TYPES = ["chat.tree.created", "chat.entries.appended", "chat.reasoning.reported"] as const
 
 function conversationTreeKey(conversationId: string): string {
   return `conversation-tree:${conversationId}`
@@ -180,7 +180,7 @@ export function releaseConversationTreeProjection(reader: AsyncEventReadSurface,
 }
 
 function initialState(): ConversationTreeProjectionState {
-  return { created: false, entriesById: {}, entrySourcesById: {}, contextIdentities: new ConversationContextIdentities(), completedNotificationRunIds: new Set(), leafId: null, createdPosition: -1, assistantWatermark: -1, degraded: new DegradedTranscriptSequence(), completedFollowUpRequestSequences: [] }
+  return { created: false, entriesById: {}, entrySourcesById: {}, contextIdentities: new ConversationContextIdentities(), completedNotificationRunIds: new Set(), leafId: null, createdPosition: -1, assistantWatermark: -1, degraded: new DegradedTranscriptSequence() }
 }
 
 /** Synchronous startup recovery uses the same historical fold before async owners exist.
@@ -274,22 +274,10 @@ function reduceConversationTreeEvent(
   switch (fact.type) {
     case "chat.entries.appended":
       return appendEntries(state, event, fact.payload.entries, sources)
-    case "chat.follow_up_turn.completed": {
-      if (state.conversationId !== fact.payload.conversationId) throw chatTreeViolation(event, "orphan-event", `follow-up marker targets ${fact.payload.conversationId}`)
-      if (state.completedFollowUpRequestSequences.includes(fact.payload.requestSequence)) {
-        throw chatTreeViolation(event, "duplicate-event", `follow-up request ${fact.payload.requestSequence} already completed`)
-      }
-      const branch = walkBranchFromLeaf(state.entriesById, state.leafId, () => {
-        throw chatTreeViolation(event, "missing-producer-event", `follow-up request ${fact.payload.requestSequence} has an incomplete active branch`)
-      })
-      const matches = branch.filter(
-        (entry) => entry.kind === "message" && entry.followUpRequestSequence === fact.payload.requestSequence,
-      )
-      if (matches.length !== 1 || state.completedFollowUpRequestSequences.length + 1 !== fact.payload.requestSequence) {
-        throw chatTreeViolation(event, "missing-producer-event", `follow-up request ${fact.payload.requestSequence} has no matching correlated user turn`)
-      }
-      return { ...state, completedFollowUpRequestSequences: [...state.completedFollowUpRequestSequences, fact.payload.requestSequence] }
-    }
+    // The decoded chat union still holds this historical type, but
+    // `CHAT_TREE_FACT_TYPES` never selects it.
+    case "chat.follow_up_turn.completed":
+      return state
     case "chat.reasoning.reported": {
       const counted: StringMap<ConversationEntry> = {}
       for (const { entryId, reasoningTokens } of fact.payload.counts) {
@@ -342,7 +330,6 @@ function appendEntries(
       const producer = recoverSessionMessageProducer(entry.message.producer, sources)
       if (producer !== entry.message.producer) entry = { ...entry, message: { ...entry.message, producer } }
     }
-    validateFollowUpEntry(entry, entriesById, event)
     entriesById[entry.id] = entry
     entrySourcesById[entry.id] = Object.freeze({ position: event.position, eventId: event.id, entryOrdinal: admission.ordinal })
     contextUpdates.push(entry)
@@ -513,27 +500,6 @@ function hydrateConversationEntry(entry: StoredConversationEntry, event: StoredF
     })),
   }
   return { ...entry, message: hydrated }
-}
-
-function validateFollowUpEntry(entry: ConversationEntry, entriesById: StringMap<ConversationEntry>, event: StoredFact): void {
-  if (entry.kind === "message" && entry.followUpRequestSequence !== undefined) {
-    if (entry.message.kind !== "user") {
-      throw chatTreeViolation(event, "orphan-event", `follow-up request ${entry.followUpRequestSequence} is not a user turn`)
-    }
-    // oxlint-disable-next-line eslint/guard-for-in -- batch overlays must include committed entries for cross-batch identity validation.
-    for (const id in entriesById) {
-      const existing = entriesById[id]
-      if (existing?.kind === "message" && existing.followUpRequestSequence === entry.followUpRequestSequence) {
-        throw chatTreeViolation(event, "duplicate-event", `duplicate follow-up request ${entry.followUpRequestSequence}`)
-      }
-    }
-    const priorRequests = walkBranchFromLeaf(entriesById, entry.parentId, () => {
-      throw chatTreeViolation(event, "missing-producer-event", `follow-up request ${entry.followUpRequestSequence} has an incomplete parent branch`)
-    }).filter((existing) => existing.kind === "message" && existing.followUpRequestSequence !== undefined)
-    if (entry.followUpRequestSequence !== priorRequests.length + 1) {
-      throw chatTreeViolation(event, "orphan-event", `follow-up request ${entry.followUpRequestSequence} is not contiguous`)
-    }
-  }
 }
 
 interface StringMap<T> { [key: string]: T }

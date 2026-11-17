@@ -37,7 +37,8 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
-import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { WINDOWS_LAUNCHER_EXECUTABLE, WINDOWS_SERVICE_LAUNCHER_EXECUTABLE } from "../../infra/native-assets.js";
@@ -414,7 +415,7 @@ export function windowsLauncherCollectionPending(wrapperDir: string): boolean {
 }
 
 function withLauncherDirectory<T>(wrapperDir: string, use: (directory: ContainedDirectory) => T): T | undefined {
-  const directory = ContainedDirectory.openExisting(path.dirname(wrapperDir), [path.basename(wrapperDir)], { noFollowBase: true });
+  const directory = openExistingContainedDirectory(path.dirname(wrapperDir), [path.basename(wrapperDir)], { noFollowBase: true });
   if (directory === undefined) return undefined;
   try {
     return use(directory);

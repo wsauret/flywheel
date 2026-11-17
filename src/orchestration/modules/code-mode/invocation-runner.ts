@@ -6,7 +6,6 @@ import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-sche
 import { redactSecretEntries, redactSecrets } from "../../../infra/redact-secrets.js"
 import type { NestedToolDispatchBatch } from "../../agent-runtime/tools/nested-tool-dispatch.js"
 import { boundedStringCodeModeOutput, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js"
-import { repairToolName } from "../../agent-runtime/tools/tool-dispatch.js"
 import type { CodeModeToolSet } from "./descriptors.js"
 import { GuestMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
 import type { CodeModeLimits } from "./limits.js"
@@ -127,11 +126,13 @@ function createLogMirror(context: ToolContext, limits: CodeModeLimits) {
 
 type LogMirror = ReturnType<typeof createLogMirror>
 
-/** Answers the guest's calls against this invocation's exact callable map
- *  and accounts their results. Only names in that map reach dispatch. An
- *  abort of `signal` ends the invocation like any other ending, so the result
- *  still names the nested calls that it leaves running. */
-function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined, tools: CodeModeToolSet, batch: NestedToolDispatchBatch, logs: LogMirror, limits: CodeModeLimits, end: (ended: Ended) => void) {
+/** Answers the guest's calls through the nested batch and accounts their
+ *  results. The bridge encodes what the batch's dispatcher resolved and never
+ *  resolves a name itself: a name that resolved to no tool of this
+ *  invocation's callable map is `unresolved`. An abort of `signal` ends the
+ *  invocation like any other ending, so the result still names the nested
+ *  calls that it leaves running. */
+function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined, batch: NestedToolDispatchBatch, logs: LogMirror, limits: CodeModeLimits, end: (ended: Ended) => void) {
   let closed = false
   let callIndex = 0
   let acceptedBytes = 0
@@ -143,12 +144,12 @@ function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined,
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: Bun Worker.postMessage has no target origin
     probeLoopUnit("code-mode", "call-result-post", () => worker.postMessage({ type: "call-result", id, reply: answer } satisfies HostMessage))
   }
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
   const call = (id: number, name: string, input: unknown): void => {
     const index = callIndex++
-    void Effect.runPromise(batch.execute(name, input)).then((result) => {
+    void Effect.runPromise(batch.execute(name, input)).then(({ result, tool }) => {
       if (closed) return
-      const tool = tools.callable.get(name) ?? tools.callable.get(repairToolName(name, tools.callable) ?? "")
-      if (tool === undefined) return reply(id, { kind: "refused", message: boundedStringCodeModeOutput.encode(result).content })
+      if (tool === undefined) return reply(id, { kind: "unresolved" })
       const encoded = (tool.codeModeOutput ?? boundedStringCodeModeOutput).encode(result)
       const images = typeof result.content === "string" ? [] : result.content.flatMap((part) => part.type === "image" ? [part] : [])
       const bytes = Buffer.byteLength(encoded.content, "utf8") + images.reduce((total, image) => total + Buffer.byteLength(image.data, "utf8"), 0)
@@ -229,7 +230,7 @@ export function runInvocation(invocation: CodeModeInvocation, context: ToolConte
     const finished = Promise.withResolvers<Ending>()
     const end = (ended: Ended): void => finished.resolve({ ended, running: batch.unsettled() })
     const bridge = yield* Effect.acquireRelease(
-      Effect.sync(() => attachBridge(worker, context.signal, invocation.tools, batch, logs, limits, end)),
+      Effect.sync(() => attachBridge(worker, context.signal, batch, logs, limits, end)),
       (attached) => Effect.sync(() => attached.detach()),
     )
     const { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } = limits

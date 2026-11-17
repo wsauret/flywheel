@@ -2,7 +2,7 @@ import { roleCovers, type AgentDefinition } from "../../../../infra/agent-defini
 import type { HandoffToolSchema } from "../../../workflow-host/handoff-tool-schema.js";
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
 import { formatToolInputProblems } from "../../../agent-runtime/tools/validate-input.js";
-import { gitDisciplineRule } from "../../../agent-runtime/persona-tool-rules.js";
+import { gitDisciplineRule, isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 
 interface DispatchInput {
@@ -12,42 +12,35 @@ interface DispatchInput {
 /** The subagent catalog: which agent types in `agents` this session may dispatch and when to use them. It varies
  *  with the `subagents` of a brief and a child's granted roles, so it renders in the session tier and the dispatch
  *  tool's own bytes stay the same for every agent that shares the prompt cache. A use case that needs a capability
- *  that the tree check `has` refuses is left out: Ship publishes only through Bash. Each line names an agent type
- *  only by the name that dispatch accepts, never by its role, which several types can share. */
-export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck): string {
+ *  that the tree check `has` refuses is left out: Ship publishes only through Bash. An unattended tree has no
+ *  person who asks for publication, so it gets no publication use case (PI-AGENT-121). Each line names an agent
+ *  type only by the name that dispatch accepts, never by its role, which several types can share, and marks a
+ *  persona that can change no file (ARCH-TOOLS-011). */
+export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck, unattendedTree: boolean): string {
   if (agents.size === 0) return "# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.";
   const agentList = Array.from(agents.values())
-    .map((a) => a.kind === "general"
-      ? `- ${a.name}: ${a.description}${routing(a, has)}\n  Tools: registry-approved tools derived from your current surface, plus child handoff and granted nested-role tools`
-      : `- ${a.name}: ${a.description}${routing(a, has)}\n  Tools: ${a.tools.join(", ")}`)
+    .map((a) => `- ${a.name}${isReadOnlyPersona(a) ? " (read-only)" : ""}: ${a.description}${routing(a, has)}`)
     .join("\n");
   const personas = Array.from(agents.values()).filter((agent) => agent.kind === "persona");
   const offers = (role: string) => personas.some((agent) => roleCovers(role, agent.role));
   const useCases: string[] = [];
-  if (offers("ship") && has("bash")) {
-    useCases.push(`- Repository publication: use the Ship agent after the parent has completed implementation, review, and verification.${has("type:general") ? " Do not use fork." : ""} Send only the files you changed and a short summary of user intent and implemented design. Use your tracked file list. Do not run Git analysis or prepare a commit message for this handoff. Do not send verification evidence or ask Ship to evaluate it. Ship inspects the selected diffs, writes the commit message, commits complete selected files, including concurrent edits, and pushes. Do not ask Ship to separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; that account is the one exception to the evidence rule, and Ship puts it in the pull request description as written, without assessing it. Ship returns publication evidence, or a summary of the one precise condition that stopped publication. After a successful publication, your reply gives the three things that your instructions define.`);
-  }
-  if (offers("reviewer")) {
-    useCases.push("- Review/analysis: use a reviewer agent for code review or plan evaluation.");
+  if (offers("ship") && has("bash") && !unattendedTree) {
+    useCases.push("- Repository publication: after you complete implementation, review, and verification, use the Ship agent. Send only the files you changed, from your own tracked list, and a short summary of user intent and implemented design. Do not run Git analysis, prepare a commit message, or send verification evidence, and do not ask Ship to verify, separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; Ship puts it in the pull request description as written, without assessing it.");
   }
   if (offers("advisor")) {
-    useCases.push(`- Advisor consultation: use the advisor when two materially different approaches remain plausible and project evidence does not decide between them; a consequential decision depends on an uncertain assumption; a focused attempt failed and the next diagnostic or implementation move is unclear; or an independent second opinion is needed before an expensive, risky, or difficult-to-reverse action. Do not use Advisor for factual lookup, keyword search, or repository discovery; an obvious or reversible local choice; implementation; or routine review of a finished diff or plan. A user-selected pre-approval design review is the narrow exception to the finished-plan restriction. Send a concise decision packet with the exact decision, relevant context and project authority, plausible alternatives, evidence that supports or weakens each alternative, prior attempts and what they ruled out, and the uncertainty that warrants consultation.${has("type:general") ? " Use fork: true only when accumulated conversation context is material evidence." : ""} Advisor returns private, read-only guidance; the parent owns the final decision, execution, verification, and user communication. Advisor failure or unavailability must not block the parent: continue with available evidence and do not retry or respawn solely for consultation.`);
+    useCases.push(`- Advisor consultation: use the advisor when two materially different approaches remain plausible and evidence does not decide between them, a consequential decision depends on an uncertain assumption, a focused attempt failed and the next move is unclear, or an independent second opinion is needed before an expensive, risky, or difficult-to-reverse action. Do not use it for factual lookup, keyword search, or repository discovery, an obvious or reversible local choice, implementation, or routine review of a finished diff or plan; a user-selected pre-approval design review is allowed. Send a concise decision packet: the exact decision, relevant context and project authority, plausible alternatives with the evidence for and against each, prior attempts and what they ruled out, and the uncertainty.${has("type:general") ? " Use fork: true only when accumulated conversation context is material evidence." : ""} Its guidance is private; you own the decision, execution, verification, and user communication. If it fails or is unavailable, continue with the evidence you have; do not retry or respawn it only for consultation.`);
   }
 
   return `# Subagents
 
-Available agent types:
-
 ${agentList}${useCases.length > 0 ? `\n\nWhen to use:\n${useCases.join("\n")}` : ""}`;
 }
 
-/** The sentence after one agent type's description that routes work to another type: a description states only its
- *  own type, and the roster names the other type only while the tree check `has` offers it (ARCH-CONTEXT-033). */
+/** The sentence after the general agent's description that routes work to the other types: a description states only
+ *  its own type, and the roster names another type only while the tree check `has` offers it (ARCH-CONTEXT-033). */
 function routing(agent: AgentDefinition, has: CapabilityCheck): string {
-  if (agent.kind === "general") return has("type:explorer") ? " Prefer explorer for cheap read-only searches and a persona agent for a named specialty." : " Prefer a persona agent for a named specialty.";
-  if (agent.role === "explorer" && has("type:general")) return " For investigation that needs your full intelligence, dispatch general instead.";
-  if (agent.role === "implementer" && has("type:general")) return " For open-ended work that needs your own judgment and conversation context, dispatch general instead.";
-  return "";
+  if (agent.kind !== "general") return "";
+  return has("type:explorer") ? " Prefer explorer for cheap read-only searches and a persona agent for a named specialty." : " Prefer a persona agent for a named specialty.";
 }
 
 /** The fewest characters of trimmed `rationale` that a dispatch accepts. The
@@ -56,31 +49,24 @@ function routing(agent: AgentDefinition, has: CapabilityCheck): string {
 export const MIN_DISPATCH_RATIONALE_LENGTH = 30;
 
 /** The dispatch tool's description for the tree check `has`, so every agent of a tree reads the same bytes. The
- *  catalog it names renders in the session tier (`renderSubagentRoster`). The general agent and a fork, which copies
- *  the dispatcher as the general agent does, are named only while `has` offers the general agent. An unattended chat
- *  has no person who watches a child stream (PI-AGENT-121). */
-export const subagentDescription = (has: CapabilityCheck, unattendedChat: boolean): string => `Launch a specialized subagent to handle a focused subtask autonomously in an isolated context. Persona agent types have their declared tools and system prompt.${has("type:general") ? " The general agent uses your model and system instructions with a child tool surface derived by the runtime registry." : ""}
+ *  catalog it names renders in the session tier (`renderSubagentRoster`). A fork, which copies the dispatcher as the
+ *  general agent does, is named only while `has` offers the general agent. An unattended chat has no person who
+ *  watches a child stream (PI-AGENT-121). */
+export const subagentDescription = (has: CapabilityCheck, unattendedChat: boolean): string => `Launch a subagent for a focused subtask in an isolated context.
 
-Selecting the agent (required): every dispatch MUST pass \`persona\` as the FIRST field; persona names which agent runs and has no default. Use a persona name from the Subagents catalog in your system prompt. If none fits the task, do the work directly instead of dispatching.
+Each dispatch returns at once; the result comes to you, not to the user, in a later runtime notification.
 
-Each dispatch returns immediately. Results come to you, not to the user: the finished subagent arrives in a hidden <subagent_notifications> runtime message, not a message from the human user, reporting the current <remaining_active> count and a <handling> field to follow. Subagents that settle in the same event-loop turn share one batch.
+Steer a running child with message_session; it replies only to a question. Check, interrupt, or resume it with process by its session_id. A child that you or the runtime interrupted never blocks your handoff: do its work yourself, leave it, or continue it.
 
-Steering a running child: use message_session to revise its instructions. You can also ask it a question that blocks your work, or answer a question that it asked you. The child replies only when you ask it a question. Address its session_id; it reads the message at its next step. Controlling a child: the process tool lists your children by session_id and gives each child's state and progress. process(action='interrupt') cuts a running child so that its work can continue later. process(action='resume') continues your interrupted child from its saved conversation, or starts a new attempt of a child whose run failed. A message to your interrupted child also continues it. A child that a person interrupted continues only when a person continues it, and it stays your active work until it ends. A child that you or the runtime interrupted never blocks your handoff: do its work yourself, leave it, or continue it.
-
-Writing the prompt:
-The subagent has not seen your conversation. Give it the goal, relevant file paths, constraints, and the output format you want; a well-scoped task needs only a few sentences. State a length only when your own context budget demands one; by default the subagent sizes its report to what it finds.
+Writing the prompt: ${has("type:general") ? "unless you fork, " : ""}the child has not seen your conversation. Give it the goal, file paths, constraints, and the output you want; a scoped task needs only a few sentences. Set a report length only when your context budget needs one.
 
 The runtime records your approved checkpoint Design intent and Decisions in the child's conversation, read-only. Keep your checkpoint current before dispatch; do not copy its intent into the brief. Everything else in an implementation brief is implementation design the subagent may revise and must report.
 
-Scope one dispatch to one phase, fix, or question; split multi-phase work into sequential dispatches sized to a subagent run. When the child must prove its own work, name the narrowest verification command; it runs once before handoff, and suite-level or project-wide gates are yours to run after you collect the result.
+Give one dispatch one phase, fix, or question; run multi-phase work as sequential dispatches. To have the child prove its work, name the narrowest check; suite-level or project-wide gates are yours to run after you collect the result.
 
-${has("type:general") ? `The exception is a dispatch with fork: true (any agent type): the child starts from a copy of your conversation, so its prompt is a directive - what to do - not a re-explanation of the situation.
+Never delegate understanding: name the files, lines, and change, never "based on your findings, fix the bug."${unattendedChat ? "" : `
 
-` : ""}Never delegate understanding. Do not write "based on your findings, fix the bug" or "based on the research, implement it." Prompts that prove you understood (specific file paths, line numbers, what to change) produce better work.
-
-Rationale: explain why delegation is worthwhile (minimum ${MIN_DISPATCH_RATIONALE_LENGTH} characters); follow the parameter guidance.${unattendedChat ? "" : `
-
-The subagent's streaming output (text, tool calls) is visible to the user in real time.`}`;
+The user sees the subagent's output as it streams.`}`;
 
 /** Closure and turn-budget preamble. A function because the budget is the
  *  dispatched agent definition's maxTurns, not a constant of the template,
@@ -89,28 +75,24 @@ The subagent's streaming output (text, tool calls) is visible to the user in rea
 function subagentClosure(maxTurns: number, shell: boolean): string {
   return `# Delegated Subtask
 
-You are executing a scoped subtask. Your parent agent dispatched you with a specific assignment.
-
 ## Closure
 
-No planning, no TODO tracking, no progress updates, no meta-commentary. Execute the work, then call \`handoff\` to submit your result and terminate.
+No planning, no TODO tracking, no progress updates, no meta-commentary.
 
 Your parent verifies your work after collecting your result.${shell ? " While working, run the narrowest check that proves each change: one test file, not a suite. Run a suite-level or project-wide gate at most once, immediately before handoff, and only when your assignment names that gate; otherwise leave final verification to your parent." : ""}
 
 Before submitting: verify all requested deliverables are present, every claim is grounded in tool output, and no material lookup was skipped.
 
-Stay within your assignment. Your parent may be running sibling subagents on adjacent work; if you notice something outside your scope, note it in your handoff rather than pursuing it.${shell ? `
-
-Never re-run a failing test or command without changing code first. If a test fails and you cannot identify a fix, report the failure in your handoff rather than retrying with identical input.` : ""}
+Stay within your assignment; note anything outside it in your handoff instead of pursuing it.
 
 ## Turn Economy
 
-Every model turn is a paid round-trip, and this run has a hard budget: at most ${maxTurns} turns, then it is cut off and unreported work is lost. Reserve the last turn for the handoff, and finish in the fewest turns honest work allows: each turn carries every independent read, edit, and check you already know you need, and fixes are batched before one narrow re-verification.${shell ? " A bash call that is only one `cat`, `grep`, or `ls` is rejected; bash is for scripts, pipelines, and multi-command chains." : ""}`;
+This run stops after at most ${maxTurns} turns, and unreported work is then lost. Keep the last turn for the handoff. Put every independent read, edit, and check that you already know you need in one turn; fixes are batched before one narrow re-verification.`;
 }
 
 const SUBAGENT_HANDOFF_CONTRACT = `## Handoff
 
-When finished, you MUST call \`handoff\` exactly once with your structured result. This is your only way to return data to the parent. Do not put your result in plain text; the parent reads the handoff JSON, not your conversation. Pass these fields as top-level keys: \`summary\` (required), what you accomplished or found, with the conclusions first, because a handoff over budget is cut field by field to its head and tail and the full handoff goes to a file; and \`files_modified\`, the files you created or changed, empty for read-only work.
+Call \`handoff\` exactly once. The parent reads only the handoff, not your conversation.
 
 Your handoff is the result, not a replay of the run. For exploration, analysis, and review assignments, the report is the deliverable: include every material finding the assignment requested, with one claim per line and its \`file:line\` evidence. For implementation assignments, submit a concise completion record with the outcome, changed files, exact verification results, every material deviation from the assignment's stated approach (what it said, what you did instead, why, and the evidence), any work that is not done, and any parent action still required. Do not paste command output or replay the work log. In every handoff, omit preamble, process narration, repeated points, and restatement of the assignment.
 

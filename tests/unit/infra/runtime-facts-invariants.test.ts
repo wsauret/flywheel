@@ -322,16 +322,18 @@ describe("mapToolCall execution metadata", () => {
 })
 
 describe("model.context.measured producer contract", () => {
-  test("the writer gate rejects a payload missing context fields", () => {
-    expect(() => createRuntimeEvent("model.context.measured", malformed(contextData(), { context_prompt_tokens: undefined, context_window: undefined }))).toThrow(
-      /Invalid model\.context\.measured event payload/,
-    )
+  // A runtime event is typed at construction and not decoded, so the durable
+  // fact parse that every session fact write runs is the gate.
+  const writtenFact = (data: RuntimeEventData<"model.context.measured">) =>
+    parseSessionRuntimeFact(mapRuntimeEventToSessionRuntimeFacts(createRuntimeEvent("model.context.measured", data))[0])
+  const promptTokensSchemaError = /Expected number\s+at \["payload"\]\["promptTokens"\]/
+
+  test("the durable write gate rejects a payload missing context fields", () => {
+    expect(() => writtenFact(malformed(contextData(), { context_prompt_tokens: undefined, context_window: undefined }))).toThrow(promptTokensSchemaError)
   })
 
-  test("the writer gate rejects non-numeric context_prompt_tokens", () => {
-    expect(() =>
-      createRuntimeEvent("model.context.measured", malformed(contextData(), { context_prompt_tokens: "abc" }))
-    ).toThrow(/Invalid model\.context\.measured event payload/)
+  test("the durable write gate rejects non-numeric context_prompt_tokens", () => {
+    expect(() => writtenFact(malformed(contextData(), { context_prompt_tokens: "abc" }))).toThrow(promptTokensSchemaError)
   })
 
   test("a valid event maps to a model.context.measured fact with both fields", () => {

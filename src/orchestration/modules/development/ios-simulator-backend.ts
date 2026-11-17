@@ -27,7 +27,7 @@ export interface IosSimulatorBackend {
   onClose(callback: () => void): void
 }
 
-export interface IosSimulatorBackendConnectionInput {
+interface IosSimulatorBackendConnectionInput {
   readonly command: string
   readonly args: readonly string[]
   readonly cwd: string

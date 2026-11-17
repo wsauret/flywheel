@@ -37,7 +37,7 @@ const MAX_WIRE_ERROR_LEN = 1024
  *  seconds until the versions agree, which can take hours. */
 const PROTOCOL_REFUSAL_WINDOW_MS = 60 * 60_000
 
-export function truncateWireError(message: string): string {
+function truncateWireError(message: string): string {
   if (message.length <= MAX_WIRE_ERROR_LEN) return message
   return `${message.slice(0, MAX_WIRE_ERROR_LEN)}… [truncated ${message.length - MAX_WIRE_ERROR_LEN} chars]`
 }

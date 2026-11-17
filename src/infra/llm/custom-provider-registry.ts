@@ -35,7 +35,7 @@ export interface CustomProviderDefinition {
 }
 
 /** The installed definition that declares `modelId`, or undefined. */
-export function customProviderOwning(modelId: string): CustomProviderDefinition | undefined {
+function customProviderOwning(modelId: string): CustomProviderDefinition | undefined {
   const canonical = canonicalCatalogModelId(modelId).modelId;
   for (const definition of installed.values()) {
     if ([...definition.modelIds].some((candidate) => authoredCatalogModelId(candidate).modelId === canonical)) return definition;
@@ -91,10 +91,6 @@ export function publishCustomProviderSlice(candidate: CustomProviderSlice): void
   fingerprint = nextFingerprint;
   generation += 1;
   for (const retire of retirementListeners) retire(previousGeneration);
-}
-
-export function installCustomProviders(definitions: readonly CustomProviderDefinition[], rejections: readonly CustomProviderRejection[] = []): void {
-  publishCustomProviderSlice(buildCustomProviderSlice(definitions, rejections));
 }
 
 /** Registers a runtime cache that must drop runtimes from a replaced provider slice. */

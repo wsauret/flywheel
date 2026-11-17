@@ -67,7 +67,7 @@ export const RELAY_PROJECT_START_TIMEOUT_MS = 90_000
 /** The range of intervals the relay honors. A shorter one would wake the
  *  runtime's object more often than a heartbeat is worth; a longer one gains
  *  nothing over stating none. */
-export const RELAY_MIN_STATED_HEARTBEAT_MS = 1_000
+const RELAY_MIN_STATED_HEARTBEAT_MS = 1_000
 const RELAY_MAX_STATED_HEARTBEAT_MS = RELAY_SILENCE_DEADLINE_MS / RELAY_MISSED_HEARTBEATS
 export const RELAY_PING = JSON.stringify({ type: "ping" })
 export const RELAY_PONG = JSON.stringify({ type: "pong" })

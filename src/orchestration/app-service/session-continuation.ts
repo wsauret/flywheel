@@ -55,7 +55,7 @@ export function createSessionContinuation(
 
   /** The module work this chat holds in cells, from every installed kind. */
   async function readRetained(conversationId: string): Promise<readonly HeldRetainedOperation[]> {
-    return (await Promise.all((ctx.retainedOperations ?? []).map((authority) => authority.read({ sessionId, conversationId })))).flat()
+    return (await Promise.all(ctx.retainedOperations.map((authority) => authority.read({ sessionId, conversationId })))).flat()
   }
 
   /** Startup and admission finish outside the mailbox. A lifecycle command
@@ -101,7 +101,7 @@ export function createSessionContinuation(
     if (!isResumableTurnEnd(turnEnd)) return refused("Nothing to resume: the last turn finished, or the person ended it")
     await owner.backgroundNotifications.drainHeld(entry)
     if (activation.status !== "opened") {
-      await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.eventStore, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
+      await reconcileAgentInput({ conversationId: entry.conversationId, sessionId, store: ctx.projectionReader, projectionReader: ctx.projectionReader, writer: ctx.eventWriter })
     }
     const started = continueCommitted((runner) => runner.resume({ announce: isVisibleTurnEnd(turnEnd) }))
     return async () => await started() ? { ok: true } : { ok: false, reason: "The runner did not resume the turn" }
@@ -112,7 +112,7 @@ export function createSessionContinuation(
     if (!ctx.sessionStore.has(sessionId) && (await activateDurableChat(ctx, sessionId)).status === "unavailable") return ready(false)
     const entry = ctx.sessionStore.get(sessionId)
     if (entry?.kind !== "chat") return ready(false)
-    const authority = ctx.retainedOperations?.find((candidate) => candidate.kind === operation.kind)
+    const authority = ctx.retainedOperations.find((candidate) => candidate.kind === operation.kind)
     if (!authority) return ready(false)
     const held = await authority.accept({ sessionId, conversationId: entry.conversationId, operation })
     return async () => {

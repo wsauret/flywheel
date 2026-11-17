@@ -57,18 +57,30 @@ function envSplitPayload(text: string, state: ShellState): string | null {
   return words.map(value => `'${value.replaceAll("'", "'\\''")}'`).join(" ");
 }
 
-export interface UnwrappedShellCommand {
-  readonly command: ShellWriteCommand;
-  readonly state: ShellState;
-  readonly stdinTargets: boolean;
-  readonly payload?: string | null;
-  readonly exhausted?: boolean;
+/** What an `env` wrapper does to the environment of the program it runs, in argument order. */
+interface WrapperEnvironment {
+  clear(): void;
+  unset(name: string): void;
+  chdir(raw: string): void;
+  assign(raw: string): void;
 }
 
-/** Remove supported wrappers option by option, retaining local environment
- * and cwd changes. Payloads and stdin-fed operands remain explicit effects. */
-export function unwrapShellCommand(command: ShellWriteCommand, initial: ShellState, dialect: ShellDialect, expansion = initial): UnwrappedShellCommand {
-  const state = initial.copy();
+/** The program that one command runs once its wrappers are removed.
+ * `command`: the effective executable, its raw arguments, and whether an
+ * `xargs` adds operands from stdin; `command -v` runs nothing, so its name is
+ * empty. `split`: `env -S` replaces the command with its raw split string and
+ * the arguments after it. `exhausted`: a wrapper option that the grammar does
+ * not know. `too_deep`: wrappers nest past the depth budget. */
+type WrapperResolution =
+  | { readonly kind: "command"; readonly name: string; readonly rawArgs: readonly string[]; readonly stdinTargets: boolean }
+  | { readonly kind: "split"; readonly raw: string; readonly rest: readonly string[] }
+  | { readonly kind: "exhausted" }
+  | { readonly kind: "too_deep" };
+
+/** The one wrapper grammar of every shell rule (ARCH-TOOLS-010): removes the
+ * supported wrappers option by option and reports each `env` change to
+ * `environment`. */
+export function resolveShellWrappers(command: Pick<ShellWriteCommand, "name" | "rawArgs">, dialect: ShellDialect, environment?: WrapperEnvironment): WrapperResolution {
   const literal = (raw: string): string => expandShellWord(raw, () => undefined, dialect)?.value ?? raw;
   let name = shellExecutable(literal(command.name));
   const args = [...command.rawArgs];
@@ -78,40 +90,76 @@ export function unwrapShellCommand(command: ShellWriteCommand, initial: ShellSta
       while (args.length > 0) {
         const arg = literal(args[0] ?? "");
         if (arg === "--") { args.shift(); break; }
-        if (arg === "-i" || arg === "--ignore-environment" || arg === "-") { state.clearEnvironment(); args.shift(); }
-        else if (arg === "-u" || arg === "--unset") { args.shift(); state.setVariable(literal(args.shift() ?? ""), undefined); }
-        else if (arg.startsWith("-u") && !arg.startsWith("--")) { state.setVariable(arg.slice(2), undefined); args.shift(); }
-        else if (arg.startsWith("--unset=")) { state.setVariable(arg.slice(8), undefined); args.shift(); }
+        if (arg === "-i" || arg === "--ignore-environment" || arg === "-") { environment?.clear(); args.shift(); }
+        else if (arg === "-u" || arg === "--unset") {
+          args.shift();
+          const unset = literal(args.shift() ?? "");
+          environment?.unset(unset);
+        }
+        else if (arg.startsWith("-u") && !arg.startsWith("--")) { environment?.unset(arg.slice(2)); args.shift(); }
+        else if (arg.startsWith("--unset=")) { environment?.unset(arg.slice(8)); args.shift(); }
         else if (arg === "-C" || arg.startsWith("-C") || arg === "--chdir" || arg.startsWith("--chdir=")) {
           args.shift();
-          const raw = arg.startsWith("--chdir=") ? arg.slice(8) : arg.length > 2 && arg.startsWith("-C") ? arg.slice(2) : args.shift() ?? "";
-          const word = expandShellWord(raw, key => expansion.lookup(key), dialect);
-          state.relocate(word ? placeShellPath(word, state.cwd, dialect) : null);
+          // Consume a separate DIR operand also when no environment observes it.
+          const directory = arg.startsWith("--chdir=") ? arg.slice(8) : arg.length > 2 && arg.startsWith("-C") ? arg.slice(2) : args.shift() ?? "";
+          environment?.chdir(directory);
         } else if (arg.startsWith("-S") || arg === "--split-string" || arg.startsWith("--split-string=")) {
           args.shift();
           const raw = arg.startsWith("--split-string=") ? arg.slice(15) : arg.length > 2 && arg.startsWith("-S") ? arg.slice(2) : args.shift() ?? "";
-          const payload = expandShellWord(raw, key => expansion.lookup(key), dialect)?.value;
-          const decoded = payload === undefined ? null : envSplitPayload(payload, state);
-          return { command, state, stdinTargets, payload: decoded === null ? null : [decoded, ...args].join(" ") };
-        } else if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) { state.assign(arg, dialect, expansion); args.shift(); }
-        else if (arg.startsWith("-")) return { command, state, stdinTargets, exhausted: true };
+          return { kind: "split", raw, rest: args };
+        } else if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(arg)) { environment?.assign(arg); args.shift(); }
+        else if (arg.startsWith("-")) return { kind: "exhausted" };
         else break;
       }
     } else {
       const values = WRAPPER_VALUES.get(name);
-      if (!values) return { command: { ...command, name, rawArgs: args, args: args.map(raw => expandShellWord(raw, key => expansion.lookup(key), dialect)?.value ?? raw) }, state, stdinTargets };
+      if (!values) return { kind: "command", name, rawArgs: args, stdinTargets };
       stdinTargets ||= name === "xargs";
       while (literal(args[0] ?? "").startsWith("-")) {
         const option = literal(args.shift() ?? "");
         if (option === "--") break;
-        if (name === "command" && ["-v", "-V"].includes(option)) return { command: { ...command, name: "", args: [], rawArgs: [] }, state, stdinTargets };
-        if (values.includes(option)) { if (args.shift() === undefined) return { command, state, stdinTargets, exhausted: true }; }
+        if (name === "command" && ["-v", "-V"].includes(option)) return { kind: "command", name: "", rawArgs: [], stdinTargets };
+        if (values.includes(option)) { if (args.shift() === undefined) return { kind: "exhausted" }; }
         else if (values.some(value => option.startsWith(`${value}=`) || (value.length === 2 && option.startsWith(value) && option.length > 2))) continue;
-        else if (!WRAPPER_FLAGS.get(name)?.includes(option)) return { command, state, stdinTargets, exhausted: true };
+        else if (!WRAPPER_FLAGS.get(name)?.includes(option)) return { kind: "exhausted" };
       }
       if (name === "timeout" || name === "chrt") args.shift();
     }
     name = shellExecutable(literal(args.shift() ?? ""));
   }
-  throw new Error("shell wrapper depth budget exhausted");
+  return { kind: "too_deep" };
+}
+
+export interface UnwrappedShellCommand {
+  readonly command: ShellWriteCommand;
+  readonly state: ShellState;
+  readonly stdinTargets: boolean;
+  readonly payload?: string | null;
+  readonly exhausted?: boolean;
+}
+
+/** Remove supported wrappers, retaining local environment and cwd changes.
+ * Payloads and stdin-fed operands remain explicit effects. */
+export function unwrapShellCommand(command: ShellWriteCommand, initial: ShellState, dialect: ShellDialect, expansion = initial): UnwrappedShellCommand {
+  const state = initial.copy();
+  const expand = (raw: string) => expandShellWord(raw, key => expansion.lookup(key), dialect);
+  const resolution = resolveShellWrappers(command, dialect, {
+    clear: () => state.clearEnvironment(),
+    unset: name => state.setVariable(name, undefined),
+    chdir: (raw) => {
+      const word = expand(raw);
+      state.relocate(word ? placeShellPath(word, state.cwd, dialect) : null);
+    },
+    assign: raw => state.assign(raw, dialect, expansion),
+  });
+  // Analysis that cannot complete fails open at the analyzer's boundary.
+  if (resolution.kind === "too_deep") throw new Error("shell wrapper depth budget exhausted");
+  if (resolution.kind === "exhausted") return { command, state, stdinTargets: false, exhausted: true };
+  if (resolution.kind === "split") {
+    const payload = expand(resolution.raw)?.value;
+    const decoded = payload === undefined ? null : envSplitPayload(payload, state);
+    return { command, state, stdinTargets: false, payload: decoded === null ? null : [decoded, ...resolution.rest].join(" ") };
+  }
+  const { name, rawArgs, stdinTargets } = resolution;
+  return { command: { ...command, name, rawArgs, args: rawArgs.map(raw => expand(raw)?.value ?? raw) }, state, stdinTargets };
 }

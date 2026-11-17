@@ -33,7 +33,6 @@ type ConversationTreeErrorCode =
   | "missing_parent"
   | "self_parent"
   | "unknown_target"
-  | "invalid_follow_up"
 export class ConversationTreeError extends Error {
   override readonly name = "ConversationTreeError"
   constructor(
@@ -621,17 +620,17 @@ function* validateEntriesWork(
   const working: StringMap<ConversationEntry> = Object.create(committed)
   for (const entry of entries) {
     yield
-    yield* validateEntry(conversationId, entry, working)
+    validateEntry(conversationId, entry, working)
     working[entry.id] = entry
   }
   return working
 }
 
-function* validateEntry(
+function validateEntry(
   conversationId: string,
   entry: ConversationEntry,
   entriesById: StringMap<ConversationEntry>,
-): Generator<void, void> {
+): void {
   if (entriesById[entry.id]) throw new ConversationTreeError("duplicate_id", `Chat tree ${conversationId} has duplicate entry id ${entry.id}`)
   if (entry.parentId === entry.id) {
     throw new ConversationTreeError("self_parent", `Chat tree ${conversationId} entry ${entry.id} cannot be its own parent`)
@@ -641,27 +640,6 @@ function* validateEntry(
   }
   if (entry.kind === "leaf" && entry.targetId !== null && !entriesById[entry.targetId]) {
     throw new ConversationTreeError("unknown_target", `Chat tree ${conversationId} leaf entry ${entry.id} targets unknown entry ${entry.targetId}`)
-  }
-  if (entry.kind === "message" && entry.followUpRequestSequence !== undefined) {
-    if (entry.message.kind !== "user") {
-      throw new ConversationTreeError("invalid_follow_up", `Chat tree ${conversationId} follow-up request ${entry.followUpRequestSequence} is not a user turn`)
-    }
-    // oxlint-disable-next-line eslint/guard-for-in -- batch overlays must include committed entries for cross-batch identity validation.
-    for (const id in entriesById) {
-      yield
-      const existing = entriesById[id]
-      if (existing?.kind === "message" && existing.followUpRequestSequence === entry.followUpRequestSequence) {
-        throw new ConversationTreeError("invalid_follow_up", `Chat tree ${conversationId} has duplicate follow-up request ${entry.followUpRequestSequence}`)
-      }
-    }
-    const branch = yield* walkBranchWork(entriesById, entry.parentId, () => {
-      throw new ConversationTreeError("invalid_follow_up", `Chat tree ${conversationId} follow-up request ${entry.followUpRequestSequence} has an incomplete parent branch`)
-    })
-    let priorRequests = 0
-    for (const existing of branch) { yield; if (existing.kind === "message" && existing.followUpRequestSequence !== undefined) priorRequests += 1 }
-    if (entry.followUpRequestSequence !== priorRequests + 1) {
-      throw new ConversationTreeError("invalid_follow_up", `Chat tree ${conversationId} follow-up request ${entry.followUpRequestSequence} is not contiguous`)
-    }
   }
 }
 interface StringMap<T> { [key: string]: T }

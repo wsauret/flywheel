@@ -1,5 +1,4 @@
 import { resolveWorkflowAgents, type ArtifactContracts, type ResolvedAgent } from "./agent-resolution.js";
-import { workflowInputContract } from "./brief.js";
 import type { DefinitionError } from "./definition-provenance.js";
 import { parseFieldRef } from "./field-ref.js";
 import { referenceIssues } from "./phase-references.js";
@@ -160,7 +159,7 @@ const CONTENT_KEYS = ["output", "dependencies", "subagents"] as const;
  *  workflow file that a chat launches by path chooses a model or an effort
  *  (refer to "agent record" in docs/terminology.md). */
 function validateRecordKeys(workflow: WorkflowDefinition, report: (message: string) => void): void {
-  const session = workflow.provenance?.layer === "session";
+  const session = workflow.provenance.layer === "session";
   for (const record of agentRecords(workflow).values()) {
     const where = `Workflow "${workflow.id}": ${recordLabel(record)}`;
     const { keys } = record;
@@ -268,7 +267,7 @@ function validateReassessSources(workflow: WorkflowDefinition, agents: ReadonlyM
     if (!isRepeat(entry) || isWhileRepeat(entry.repeat) || entry.repeat.reassess === undefined) continue;
     const { source, field } = parseFieldRef(entry.repeat.each);
     const fields = source === WORKFLOW_INPUT_SOURCE_ID
-      ? workflowInputContract(workflow)?.fields
+      ? workflow.inputContract?.fields
       : agents.get(source)?.output.fields;
     const list = fields?.find(({ key }) => key === field);
     if (list === undefined) continue;
@@ -284,14 +283,11 @@ function agentMessage(agent: ResolvedAgent, message: string): string {
 }
 
 function workflowError(workflow: WorkflowDefinition, message: string): DefinitionError {
-  // Workflow provenance is optional (runtime-synthesized workflows exist);
-  // loaded definitions always carry it, so the fallback only labels
-  // synthetic ones.
   return {
-    file: workflow.provenance?.filePath ?? `workflow:${workflow.id}`,
-    layer: workflow.provenance?.layer,
+    file: workflow.provenance.filePath,
+    layer: workflow.provenance.layer,
     id: workflow.id,
-    shadowedSource: workflow.provenance?.shadowedSource,
+    shadowedSource: workflow.provenance.shadowedSource,
     message,
   };
 }

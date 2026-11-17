@@ -9,7 +9,7 @@ import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/d
 import { planPersonaBenchmark, runPersonaBenchmark, type BenchmarkEvent } from "../../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
 import { createPersonaStore as createRunStore } from "../../../src/orchestration/modules/development/benchmark/persona-store.js";
 import { parseVariant } from "../../../src/orchestration/modules/development/benchmark/variant.js";
-import { loadCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { loadAllCampaignRecords } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import { PersonaTaskFailure, runPersonaTask, type PersonaTaskRequest } from "../../../src/orchestration/modules/development/benchmark/persona-run.js";
 import { createNativePersonaInvocation } from "../../../src/orchestration/modules/development/benchmark/native-persona-invocation.js";
 import { decodeNativePersonaRequest, decodeNativePersonaResult, nativePersonaPath, nativePersonaStartupFailure, writeNativePersonaResult } from "../../../src/orchestration/modules/development/benchmark/native-persona-codec.js";
@@ -192,7 +192,7 @@ Implement and hand off.
     };
     const plan = await planPersonaBenchmark({ persona: "implementer", variants: [parseVariant("model-a:medium")], repeats: 1, operation: "run" }, catalog);
     expect((await runPersonaBenchmark(plan, dependencies)).status).toBe("completed");
-    const records = await loadCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp));
+    const records = (await loadAllCampaignRecords(catalog.recordsRoot)).find(({ file }) => file === catalog.recordsFile(plan.persona, plan.stamp));
     expect(records?.cells.map((cell) => cell.output.kind)).toEqual(["timed-out"]);
     expect(records?.failures).toEqual([]);
     const events: BenchmarkEvent[] = [];

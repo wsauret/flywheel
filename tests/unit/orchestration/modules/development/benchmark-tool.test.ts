@@ -19,6 +19,7 @@ import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surfa
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import { makeContext } from "../../agent-runtime/tools/_fixtures.js";
+import { processSettled } from "../../../../helpers/process-settled.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -206,7 +207,7 @@ describe("benchmark tool admission", () => {
       captureProviderConnection: async () => ({ ...captured, admit: () => ({ createAgent: () => { throw new Error("unused"); }, createLLMClient: () => { throw new Error("unused"); } }) }),
     }, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "low" }, { role: "judge" }]);
     expect(admission.providerPlans).toEqual([
-      { role: "candidate", model: "claude-haiku-4.5", effort: "high", profileId: "default", providers: ["anthropic_api"] },
+      { role: "candidate", model: "claude-haiku-4.5", effort: "medium", profileId: "default", providers: ["anthropic_api"] },
       { role: "judge", model: "claude-opus-5.5", effort: "high", profileId: "default", providers: ["anthropic_api"] },
     ]);
   });
@@ -436,7 +437,7 @@ describe("benchmark tool launch", () => {
     expect(resumedLaunch.resultId).toBe(launch.resultId);
     expect(resumedLaunch.taskId).not.toBe(launch.taskId);
     expect(tasks.processRecord(String(resumedLaunch.taskId))?.kind).toBe("benchmark");
-    expect(await tasks.waitProcess(String(resumedLaunch.taskId))).toBe(true);
+    expect(await processSettled(tasks, String(resumedLaunch.taskId))).toBe(true);
   });
 
   it("refuses a dry-run resume of a results directory that does not exist, and creates nothing", async () => {

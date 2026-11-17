@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, expect, test } from "bun:test"
 import { join } from "node:path"
 
-import { decodeRelayControlFrame, decodeRelayDeviceFrame, encodeAssetChunk, RELAY_HEARTBEAT_INTERVAL_MS, RELAY_MIN_STATED_HEARTBEAT_MS, RELAY_MISSED_HEARTBEATS, RELAY_PONG } from "../../../src/protocol/modules/remote/relay-protocol.js"
+import { decodeRelayControlFrame, decodeRelayDeviceFrame, encodeAssetChunk, RELAY_HEARTBEAT_INTERVAL_MS, RELAY_PONG } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import { startLocalRelay, type LocalRelay } from "./local-relay.js"
-import { attachRuntime, deviceSocket, openChannel, pinging, relayIdentity, testRoute, textFrames, type Announced, type Identity } from "./relay-sockets.js"
+import { attachRuntime, deviceSocket, openChannel, pinging, relayIdentity, statedHeartbeat, testRoute, textFrames, type Announced, type Identity } from "./relay-sockets.js"
 
 /** The relay's object hibernates in every state it can sit in. Cloudflare
  *  bills a Durable Object for each second it runs or sits in memory unable
@@ -28,8 +28,7 @@ const IDLE_MS = 12_000
 const TIMEOUT_MS = 30_000
 const PLACEMENT = "p".repeat(43)
 const CLIENT_IDENTITY = "c".repeat(64)
-const SWEEP_HEARTBEAT_MS = RELAY_MIN_STATED_HEARTBEAT_MS
-const SWEEP_STATED = `?heartbeatMs=${SWEEP_HEARTBEAT_MS}`
+const SWEEP = statedHeartbeat()
 
 let relay: LocalRelay
 
@@ -158,16 +157,16 @@ test.concurrent("a sweep run leaves the object free to hibernate", async () => {
   using held = sockets()
   const runtime = await relayIdentity()
   const device = await relayIdentity()
-  const machine = held.hold(await attachMachine(runtime, device, {}, SWEEP_STATED), SWEEP_HEARTBEAT_MS / 2)
-  const phone = held.hold(await deviceSocket(relay.url, runtime, device, { type: "presence" }, SWEEP_STATED), SWEEP_HEARTBEAT_MS / 2)
+  const machine = held.hold(await attachMachine(runtime, device, {}, SWEEP.query), SWEEP.heartbeatMs / 2)
+  const phone = held.hold(await deviceSocket(relay.url, runtime, device, { type: "presence" }, SWEEP.query), SWEEP.heartbeatMs / 2)
   expect(decodeRelayDeviceFrame(JSON.parse(await phone.frames.next())).type).toBe("presence")
   const sweepAfter = async () => (await testRoute(relay, runtime, "alarm")).alarm
   const armed = await sweepAfter()
   expect(armed).toBeNumber()
-  await Bun.sleep(SWEEP_HEARTBEAT_MS * RELAY_MISSED_HEARTBEATS + 1_000)
+  await Bun.sleep(SWEEP.deadlineMs + 1_000)
   expect(await sweepAfter()).toBeGreaterThan(armed!)
   phone.ws.close(1000)
-  await Bun.sleep(SWEEP_HEARTBEAT_MS * RELAY_MISSED_HEARTBEATS + 1_000)
+  await Bun.sleep(SWEEP.deadlineMs + 1_000)
   expect(await sweepAfter()).toBeNull()
   await expectHibernates(runtime, () => answersPing(machine.ws))
 }, TIMEOUT_MS)

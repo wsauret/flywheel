@@ -6,7 +6,7 @@ import type { ModelFamily } from "../../infra/llm/model-family.js";
 import { offeringTransportFamily } from "../../infra/llm/model-catalog-resolution.js";
 import type { ResolvedProviderModels } from "../../infra/llm/provider-model-preferences.js";
 import { resolveEnabledProviderModelCatalog } from "./model-assignment-providers.js";
-import type { EffortOptionRow, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../protocol/model-assignment-protocol-types.js";
+import type { EffortOptionRow, ModelAssignmentExpected, ModelAssignmentPatch, ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort, ModelSelectionSlot, ModelTier } from "../../protocol/model-assignment-protocol-types.js";
 import type { ModelConfigDeps, ModelPickerConfigDeps } from "./model-assignment-types.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import {
@@ -26,18 +26,26 @@ import type { RoleResolutionOptions } from "./role-resolution.js";
 import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../protocol/brief-role-id.js";
 import type { FlywheelConfig } from "./schema.js";
 import { createRuntimeConfigOwner } from "./runtime-config-owner.js";
-import { pruneStaleConfig, updateModelAssignments } from "./writer.js";
+import { configuredRoleAssignment, pruneStaleConfig, updateModelAssignments } from "./writer.js";
 import { clampReasoningEffort, effortOptionsForMetadata } from "../agent-runtime/llm/model-compat.js";
 
-/** Clears the profile's assignment of each default role that `resets` names, so it resolves to its detected default.
- *  A role that `resets` does not name keeps its saved value. The prune reads only the complete installed registry,
- *  `deps.configValidity`, so a saved custom persona role outlives a reset that leaves it out (ARCH-RUNTIME-069);
- *  without that registry it prunes nothing. */
-export async function resetRoleAssignmentsToDetectedDefaults(deps: ModelConfigDeps & { readonly authProfileId: () => string }, resets: (roleId: string) => boolean): Promise<void> {
+/** Clears the profile's assignment of each default role that `slots` names, so it resolves to its detected default.
+ *  A role that `slots` does not name keeps its saved value. Each cleared role must still hold its `expected` entry,
+ *  and a role that `expected` does not name must hold none, or the reset writes nothing and throws
+ *  `ConfigStaleWriteError`. The prune reads only the complete installed registry, `deps.configValidity`, so a saved
+ *  custom persona role outlives a reset that leaves it out (ARCH-RUNTIME-069); without that registry it prunes nothing. */
+export async function resetRoleAssignmentsToDetectedDefaults(
+  deps: ModelConfigDeps & { readonly authProfileId: () => string },
+  slots: readonly ModelSelectionSlot[],
+  expected: { readonly [roleId: string]: ModelAssignmentExpected },
+): Promise<void> {
+  const named = new Set(slots.map((slot) => slot.roleId));
   const owner = await createRuntimeConfigOwner({ userDataRoot: deps.userDataRoot, configPath: deps.configPath, watch: false });
   try {
     updateModelAssignments({
-      mutations: defaultRoleSlots().filter((slot) => resets(slot.roleId)).map((slot) => ({ slot, patch: { model: null, effort: null } })),
+      mutations: defaultRoleSlots().filter((slot) => named.has(slot.roleId)).map((slot) => ({
+        slot, patch: { model: null, effort: null }, expected: expected[slot.roleId] ?? { kind: "absent" },
+      })),
       validity: deps.configValidity ?? {},
     }, { userDataRoot: deps.userDataRoot, configPath: deps.configPath, authProfileId: deps.authProfileId });
     await owner.refresh();
@@ -77,6 +85,7 @@ export async function listModelAssignments(deps: ModelConfigDeps): Promise<Model
         isBriefSlot(slot),
       ),
       ...(savedModel && !isModelTierReference(savedModel) && !sameModelId(savedModel, resolved.model) ? { savedModel } : {}),
+      configured: configuredRoleAssignment(deps.config, deps.authProfileId?.() ?? "", slot.roleId),
       matchesInheritedPair: sameModelId(resolved.model, inherited.model)
         && coerceEffort(resolved.effort) === coerceEffort(inherited.effort),
     });
@@ -168,7 +177,7 @@ export async function listModelOptionsForSlot(
       selectable: true,
       current: isCurrentModel && !isInheriting,
       efforts,
-      effort: effectiveOptionEffort(efforts, current.setting?.fixedEffort ?? current.effort),
+      effort: effectiveOptionEffort(efforts, current.setting?.defaultEffort ?? current.effort),
       providers: selectedRoute?.providers ?? [],
       ...(eligibility?.catalog?.kind === "available" ? { catalogProvenance: eligibility.catalog.provenance } : {}),
     });
@@ -306,12 +315,12 @@ function assignmentSettings(deps: ModelConfigDeps) {
   const profile = profileRoleSettings(deps.config.profiles[deps.authProfileId?.() ?? ""]?.roles, deps.roleEnvironment);
   return effectiveRoleAssignments(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, Object.fromEntries(Object.entries(profile).map(([id, role]) => [id, {
     model: role.model, effort: role.effort, providerOptions: role.provider_options,
-  }])));
+  }])), deps.agentPersonas);
 }
 
 function assignmentRoles(deps: ModelConfigDeps, available: ReadonlyMap<ModelFamily, ReadonlySet<string>>, options: TierResolutionOptions, requested: ReadonlySet<string>) {
   const profile = profileRoleSettings(deps.config.profiles[deps.authProfileId?.() ?? ""]?.roles, deps.roleEnvironment);
-  return previewSessionRoles(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, profile, available, options, requested);
+  return previewSessionRoles(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, profile, available, options, requested, deps.agentPersonas);
 }
 
 async function effortOptionsForModel(model: string, options: TierResolutionOptions): Promise<readonly ModelSelectionEffort[]> {

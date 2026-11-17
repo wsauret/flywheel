@@ -3,7 +3,7 @@ import { mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "nod
 import path, { join, relative, resolve } from "node:path"
 
 import {
-  nearestProjectRoot,
+  accountProjectDirectories,
   resolveExecutionDirectoryInput,
   selectInteractiveStartupDirectories,
   selectStartupDirectories,
@@ -30,14 +30,19 @@ function repository(): string {
 const REDIRECTED_HOME = resolve("/home/redirected")
 const SOME_HOME = resolve("/home/someone")
 
-describe("nearestProjectRoot", () => {
-  test("a repository root is the project root of every directory under it", () => {
+/** The repository an account service gives a project opened at `projectRoot`. */
+function repositoryOf(projectRoot: string): string | undefined {
+  return accountProjectDirectories({ userDataRoot: join(SOME_HOME, ".flywheel"), accountHome: SOME_HOME }, projectRoot).canonicalRepositoryRoot
+}
+
+describe("the repository that contains a project", () => {
+  test("a repository root is the repository of every directory under it", () => {
     const root = repository()
     const nested = join(root, "packages", "cli", "src")
     mkdirSync(nested, { recursive: true })
 
-    expect(nearestProjectRoot(nested)).toBe(root)
-    expect(nearestProjectRoot(root)).toBe(root)
+    expect(repositoryOf(nested)).toBe(root)
+    expect(repositoryOf(root)).toBe(root)
   })
 
   test("a `.git` file marks the root, so a worktree or submodule resolves like a repository", () => {
@@ -46,29 +51,29 @@ describe("nearestProjectRoot", () => {
     const nested = join(root, "src")
     mkdirSync(nested)
 
-    expect(nearestProjectRoot(nested)).toBe(root)
+    expect(repositoryOf(nested)).toBe(root)
   })
 
   test("the nearest repository wins over an outer one", () => {
     const outer = repository()
     const inner = join(outer, "vendor", "inner")
-    mkdirSync(inner, { recursive: true })
+    mkdirSync(join(inner, "src"), { recursive: true })
     mkdirSync(join(inner, ".git"))
 
-    expect(nearestProjectRoot(join(inner, "src"))).toBe(inner)
+    expect(repositoryOf(join(inner, "src"))).toBe(inner)
   })
 
-  test("a directory with no repository above it is its own project root", () => {
+  test("a directory with no repository above it has none", () => {
     const nested = join(tempDir(), "a", "b")
     mkdirSync(nested, { recursive: true })
 
-    expect(nearestProjectRoot(nested)).toBe(nested)
+    expect(repositoryOf(nested)).toBeUndefined()
   })
 
-  test("a relative starting directory resolves to an absolute root", () => {
-    const relativeCwd = relative(process.cwd(), tempDir())
+  test("a relative directory resolves to an absolute repository root", () => {
+    const root = repository()
 
-    expect(nearestProjectRoot(relativeCwd)).toBe(resolve(relativeCwd))
+    expect(repositoryOf(relative(process.cwd(), root))).toBe(root)
   })
 })
 

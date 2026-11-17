@@ -25,7 +25,7 @@ import {
   AvailabilityTransientError,
 } from "../../../infra/llm/availability-store.js";
 import { QUOTA_CODES, QuotaCoordinationError } from "./errors.js";
-import { STREAM_TTFT_TIMEOUT_MS } from "./stream-watchdog.js";
+import { STREAM_TTFT_TIMEOUT_MS } from "./stream-liveness.js";
 import { startProbeLeaseRenewal } from "./probe-lease-renewal.js";
 import { bridgeExternalPromise } from "../external-promise-bridge.js";
 import type {
@@ -505,9 +505,17 @@ export function createProviderAvailability(deps: ProviderAvailabilityDeps = {}):
         }
       },
 
-      observeChatGptUsage(candidate, metrics, observedAtMs) {
+      observeUsage(candidate, metrics, observedAtMs) {
         if (candidate.spendMode !== "included") return;
         sync();
+        if (candidateProviderId(candidate) !== "chatgpt") {
+          const key = accountKey(candidate, GENERIC_QUOTA_WINDOW);
+          const known = rows.get(rowKey(key));
+          if (known?.state !== "exhausted" || known.source !== "terminal-quota-error" || known.observedAtMs >= observedAtMs) return;
+          if (metrics.length === 0 || metrics.some((metric) => metric.usedFraction === undefined || metric.usedFraction >= 1)) return;
+          observeBestEffort(key, { observedAtMs, source: "usage-report", state: "live" });
+          return;
+        }
         for (const window of CHATGPT_WINDOWS) {
           const metric = metrics.find((entry) => entry.scope.kind === "account" && entry.metricKey === `${window}_window`);
           if (metric?.usedFraction === undefined) continue;

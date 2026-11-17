@@ -38,7 +38,7 @@ interface ConsumeLoopInputOptions {
 }
 
 /** What the model does when its process wait expires: the handling of the wait-expired notice. */
-export const WAIT_EXPIRED_HANDLING = "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Estimate all managed work. Do not send status chatter.";
+const WAIT_EXPIRED_HANDLING = "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Estimate all managed work. Do not send status chatter.";
 
 /** A park's consumption: whether the input starts a new turn of the session
  *  (the park's turn was answered, or a person resumed an interrupted one)
@@ -121,7 +121,7 @@ interface LoopInputWaiter {
   /** Ends the loop's open wait at its expiry. */
   closeWait?(): void;
   /** The run's background tasks: what a park delivers and what it waits on. */
-  readonly backgroundTasks?: Pick<BackgroundWorkRegistry, "flushSettledNotifications" | "awaitedTaskCount"> & Partial<Pick<BackgroundWorkRegistry, "processRecords">>;
+  readonly backgroundTasks?: Pick<BackgroundWorkRegistry, "awaitedTaskCount"> & Partial<Pick<BackgroundWorkRegistry, "processRecords">>;
   onTurnParked?(context: TurnParkedContext): void | Promise<void>;
   onTurnResumed?(): void;
   /** Gives the person the turn, which ends the open wait, and, when
@@ -179,13 +179,6 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
     if (interrupted) await takeTurnBack(true);
     try {
     while (true) {
-      // Deliver what has already settled before parking on it. The registry
-      // batches settled subagents on a timer, and whether that timer has fired
-      // yet must not decide what the model sees: the park below consumes a
-      // notification without starting a logical turn, so a result already in
-      // hand rides into the turn the user's next message starts instead of
-      // arriving after it as a turn of its own.
-      input.backgroundTasks?.flushSettledNotifications();
       const state = input.state();
       // While the turn is the person's only the run's own end cuts the wait:
       // another interrupt has nothing left to cut and records nothing.

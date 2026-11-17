@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightWrite } from "../../../infra/event-store-types.js"
 import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js"
 import { chatInputContent, normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike, type ChatInvocation, type SessionMessageEnvelope, type UserInputProducer } from "../../../infra/chat-input.js"
 import { Log } from "../../../infra/log.js"
@@ -90,7 +90,7 @@ function personKey(submissionIds: readonly string[] | undefined): string | undef
 
 /** The in-flight write that holds one accepted message under `key`, for a
  *  caller that commits it beside other writes in one append. */
-export function queuedUserInputPut(key: string, destination: QueuedUserInputDestination, input: ChatInputLike): Extract<InFlightWrite, { op: "put" }> {
+export function queuedUserInputPut(key: string, destination: QueuedUserInputDestination, input: ChatInputLike): InFlightPut {
   const place = destination.target === "workflow" ? { target: "workflow" as const } : { conversationId: destination.conversationId }
   return { op: "put", kind: QUEUED_USER_INPUT_IN_FLIGHT_KIND, key, payload: { ...place, ...queuedInputPayload(input) } }
 }

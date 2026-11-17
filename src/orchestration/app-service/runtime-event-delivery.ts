@@ -1,7 +1,6 @@
-import { Effect, Fiber, Queue, Schema, Stream } from "effect"
+import { Effect, Fiber, Queue, Stream } from "effect"
 import type { OperationLogger } from "../../infra/operation-log.js"
 import type { RuntimeEventFrame } from "../../protocol/app-service-types.js"
-import { RuntimeEventFrameSchema } from "../../protocol/runtime-protocol-schemas.js"
 import type { RuntimeLivenessPolicy } from "../../protocol/runtime-liveness.js"
 import type { FlywheelAppService } from "./app-service.js"
 
@@ -21,7 +20,8 @@ const QUEUE_PRESSURE_THRESHOLDS = [1000, 1500] as const
  *  A client that falls behind keeps its lane. A dropped cursor's final patch
  *  has no successor to expose a gap, so an overflowed batch ends with an
  *  explicit invalidation, outside the sliding queue that could drop it too.
- *  Frames use the existing wire codec; invalid frames fail as schema defects.
+ *  Frames pass through undecoded: a runtime-built frame is typed where it is
+ *  built, and an executor frame was decoded once at the channel intake.
  *  An optional drain effect stops subscription and heartbeat admission, then
  *  completes after the retained batch and overflow invalidation are consumed.
  *  Interruption still cancels delivery immediately.
@@ -37,7 +37,6 @@ export function runtimeEventDelivery(
   options: { readonly drain?: Effect.Effect<void>; readonly watches?: (sessionId: string) => boolean } = {},
 ): Stream.Stream<RuntimeEventFrame> {
   const { drain, watches } = options
-  const decodeFrame = Schema.decodeUnknownSync(RuntimeEventFrameSchema)
   return Stream.unwrap(Effect.gen(function*() {
     const end = Symbol("runtime-event-drained")
     let draining = false
@@ -141,7 +140,6 @@ export function runtimeEventDelivery(
         return draining ? [...frames, invalidation, end] as const : [...frames, invalidation] as const
       }),
       Stream.takeWhile((frame): frame is RuntimeEventFrame => frame !== end),
-      Stream.map((frame) => decodeFrame(frame)),
     )
   }))
 }

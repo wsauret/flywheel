@@ -88,7 +88,6 @@ function makeCapturingFactory(captured: CapturedRun[], assistantText: string): A
         conversationOf(options).append({ kind: "assistant", content: [{ type: "text", text: assistantText }] })
         options.lifecycle.onTurnEnded?.({ handoffWritten: true, turnCount: 1 })
       },
-      end() {},
       abort() {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: conversationOf(options).providerSessionKey, terminal: { kind: "completed" } }),
     }
@@ -146,7 +145,7 @@ describe("worker conversation tree", () => {
         expect(options.lifecycle.inputSource?.drainPending()).toBeNull()
         gated = true
       },
-      end() {}, abort() {},
+      abort() {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
     })
     await makeWorker(factory, sessionId, asAsyncEventWriter(store), inputs)(makeStep(), attemptBrief("work", "task"), undefined, "conv-handoff-gate")
@@ -175,7 +174,7 @@ describe("worker conversation tree", () => {
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
           })().catch(done.reject)
         },
-        end() {}, abort() {}, done: done.promise,
+        abort() {}, done: done.promise,
       }
     })
     await worker(makeStep(), attemptBrief("work"), undefined, "flush-checkpoint")
@@ -202,7 +201,6 @@ describe("worker conversation tree", () => {
         options.runtimeSurfaces?.background?.tasks.deliverDurableSubagentNotification?.({ text: "finished command" })
         options.runtimeSurfaces?.background?.tasks.deliverDurableSubagentNotification?.({ text: "later command" })
       },
-      end() {},
       abort() { done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }), sessionId, writer)
@@ -252,7 +250,6 @@ describe("worker conversation tree", () => {
           sends += 1
           if (sends === 2) for (const complete of completions) complete()
         },
-        end() {},
         abort() {},
         done,
       }

@@ -1,11 +1,10 @@
-import { createSignal, untrack, type Accessor } from "solid-js"
+import { createSignal, onCleanup, type Accessor } from "solid-js"
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
-import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding, type ModuleDomainSnapshot } from "../../protocol/client/module-domain.js"
+import { MODULE_DOMAIN_BINDINGS, moduleDomainReader, type ModuleDomainBinding } from "../../protocol/client/module-domain.js"
 import { PROTOCOL_MODULE_DOMAINS, PROTOCOL_MODULE_SESSION_DOMAINS, type ProtocolModuleDomainName, type ProtocolModuleEntry, type ProtocolModuleSessionDomain, type ProtocolModuleView, type ProtocolModuleWorkspaceDomain } from "../../protocol/modules.js"
 import { protocolDomainTable, type DomainReader } from "../../protocol/protocol-module.js"
-import { sessionDomainCursor, workspaceDomainCursor, type RuntimeUiPatch, type RuntimeUiPatchPayload } from "../../protocol/runtime-ui-protocol-types.js"
-import { runtimeSnapshotScopeKey } from "../../protocol/client/family-intake.js"
-import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
+import { sessionDomainCursor, workspaceDomainCursor, type RuntimeUiPatchPayload } from "../../protocol/runtime-ui-protocol-types.js"
+import { createHeldView } from "../../protocol/client/held-view.js"
 import { createPerSessionCache, type PerSessionCache } from "./create-per-session-cache.js"
 import { createWorkflowDomainIntake, type WorkflowDomainIntake } from "./create-workflow-domain-intake.js"
 
@@ -99,26 +98,18 @@ function createWorkspaceDomainIntake(
   appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane">,
 ): WorkspaceDomainIntake<unknown> {
   const [view, setView] = createSignal<unknown>()
-  const cursor = workspaceDomainCursor(binding.domain)
-  const scope = { kind: "cursor", cursor } as const
-  createOrderedPatchReceiver<typeof scope, ModuleDomainSnapshot<unknown>, RuntimeUiPatch & { payload: RuntimeUiPatchPayload }>({
+  const held = createHeldView<unknown>({
     client: appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== binding.domain) return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return binding.isPayload(patch.payload) ? { cursor, scope, patch: { ...patch, payload: patch.payload } } : null
+    cursor: workspaceDomainCursor(binding.domain),
+    read: async () => {
+      const snapshot = await binding.read(appService)
+      return { view: snapshot.view, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => binding.read(appService),
-    applySnapshot(snapshot) {
-      setView(() => snapshot.view ?? undefined)
-      return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] }
-    },
-    applyPayload(patch) {
-      const folded = binding.payloadView(patch.payload, untrack(view))
-      setView(() => folded ?? undefined)
-    },
+    // A binding's fold reads an absent view as undefined, never null.
+    adopt: (payload, _position, current) => (binding.isPayload(payload) ? binding.payloadView(payload, current ?? undefined) : undefined),
+    changed: (next) => setView(() => next ?? undefined),
+    label: binding.domain,
   })
+  onCleanup(held.dispose)
   return { scope: "workspace", view }
 }

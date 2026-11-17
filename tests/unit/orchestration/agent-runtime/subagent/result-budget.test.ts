@@ -4,17 +4,18 @@ import { join } from "node:path";
 import { agentResultSummary } from "../../../../../src/infra/output/structured-event-tool-results.js";
 import {
   boundHandoff,
-  MAX_RESULT_CHARS,
   resultCharBudget,
   type ResultBudget,
 } from "../../../../../src/orchestration/modules/subagents/execution/result-budget.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
+// The static per-result ceiling, in characters.
+const CEILING = 24_000;
 
 describe("resultCharBudget", () => {
   it("falls back to the static ceiling when the parent has no admission budget", () => {
-    expect(resultCharBudget(undefined, 3)).toBe(MAX_RESULT_CHARS);
+    expect(resultCharBudget(undefined, 3)).toBe(CEILING);
   });
 
   it("gives only the floor when the parent's admission budget is spent", () => {
@@ -27,7 +28,7 @@ describe("resultCharBudget", () => {
     // A larger batch shrinks each slice below the ceiling.
     expect(resultCharBudget(400_000, 20)).toBe(10_000);
     // A small batch is still capped by the static ceiling.
-    expect(resultCharBudget(400_000, 1)).toBe(MAX_RESULT_CHARS);
+    expect(resultCharBudget(400_000, 1)).toBe(CEILING);
   });
 
   it("never drops below the floor even for huge batches", () => {
@@ -78,7 +79,7 @@ describe("boundHandoff", () => {
   it.each([
     ["30 fields at the floor", 2_000, 30, true],
     ["100 fields at the floor", 2_000, 100, false],
-    ["400 fields at the ceiling", MAX_RESULT_CHARS, 400, true],
+    ["400 fields at the ceiling", CEILING, 400, true],
   ])("keeps the summary's head and tail within the cap when %s cannot each keep a note", async (_case, cap, count, named) => {
     const dir = temporaryDirectory("flywheel-result-budget-");
     const fields = Array.from({ length: count }, (_, i) => [`finding_${i}`, "z".repeat(1_000)]);
@@ -99,16 +100,16 @@ describe("boundHandoff", () => {
     const dir = temporaryDirectory("flywheel-result-budget-");
     const handoff = { summary: "S".repeat(30_000), findings: Array.from({ length: 3_000 }, (_, i) => ({ site: `a.ts:${i}` })) };
 
-    const bounded = JSON.parse(await boundHandoff(handoff, budget(dir, MAX_RESULT_CHARS)));
+    const bounded = JSON.parse(await boundHandoff(handoff, budget(dir, CEILING)));
 
     expect(bounded.findings).toStartWith("[omitted:");
-    expect(bounded.summary.length).toBeGreaterThan(MAX_RESULT_CHARS - 500);
+    expect(bounded.summary.length).toBeGreaterThan(CEILING - 500);
     expect(bounded.truncated.fields).toEqual(["summary", "findings"]);
   });
 
   it("names a child field called truncated as cut, so the marker cannot hide it", async () => {
     const dir = temporaryDirectory("flywheel-result-budget-");
-    const bounded = JSON.parse(await boundHandoff({ summary: "q".repeat(30_000), truncated: "child value" }, budget(dir, MAX_RESULT_CHARS)));
+    const bounded = JSON.parse(await boundHandoff({ summary: "q".repeat(30_000), truncated: "child value" }, budget(dir, CEILING)));
     expect(bounded.truncated.fields).toEqual(["truncated", "summary"]);
   });
 

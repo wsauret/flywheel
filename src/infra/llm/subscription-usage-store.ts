@@ -44,10 +44,9 @@ import {
   type SqlBinding,
 } from "./subscription-usage-store-codec.js";
 
-export { SubscriptionUsageProtocolError, quotaSubjectDigest } from "./subscription-usage-store-codec.js";
 const SUBSCRIPTION_USAGE_PROTOCOL_VERSION = USAGE_AUTHORITY_PROTOCOL_VERSION;
-export const SUBSCRIPTION_USAGE_HISTORY_RETENTION_MS = 90 * 24 * 60 * 60_000;
-export const SUBSCRIPTION_USAGE_HISTORY_HOUR_MS = 60 * 60_000;
+const SUBSCRIPTION_USAGE_HISTORY_RETENTION_MS = 90 * 24 * 60 * 60_000;
+const SUBSCRIPTION_USAGE_HISTORY_HOUR_MS = 60 * 60_000;
 
 const ACQUIRE_BUSY_TIMEOUT_MS = 250;
 const OPERATION_BUSY_TIMEOUT_MS = 100;

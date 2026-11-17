@@ -5,7 +5,7 @@ import type { BackgroundCommandRecord } from "../../../../src/infra/runtime-fact
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
 import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background-index"
-import { recordSubagentCompleted, recordSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
+import { buildDurableSubagentCreated, buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import type { ReplayedSession } from "../../../../src/orchestration/session/schemas"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { backgroundIndexEntries } from "../../../../src/protocol/client/background-index"
@@ -139,8 +139,15 @@ function project() {
     async subagentRun(sessionId: string, status?: "completed" | "partial" | "failed"): Promise<void> {
       const writer = facts(sessionId)
       await writer.transaction(() => {
-        recordSubagentCreated(writer, { childRunId: `${sessionId}-run`, toolUseId: `${sessionId}-run`, modelRequestId: "request", agentType: "worker", description: sessionId, model: "model", effort: "low", maxTurns: 4, tools: [], executionCwd: dir })
-        if (status) recordSubagentCompleted(writer, { childRunId: `${sessionId}-run`, status, isError: status === "failed", content: "done", durationMs: 10 })
+        void writer.record(buildDurableSubagentCreated({
+          childSessionId: sessionId, childRunId: `${sessionId}-run`, conversationId: `conversation-${sessionId}`,
+          parentSessionId: "chat", parentConversationId: "conversation", parentToolCallId: `${sessionId}-run`, modelRequestId: "request",
+          persona: { name: "worker", kind: "persona" },
+          capabilityGrant: { operation: "subagent", required: [], capabilities: [], moduleIds: [], requireWorkflowConfirmation: false, workflowsMode: "off", identity: "grant" },
+          admittedModuleIds: [], skillsRevision: 1, model: "model", effort: "low", tools: [], executionCwd: dir,
+          budget: { maxTurns: 4, maxTokens: 0 }, parentDepth: 0, description: sessionId,
+        }))
+        if (status) void writer.record(buildSubagentCompleted({ childRunId: `${sessionId}-run`, status, isError: status === "failed", content: "done", durationMs: 10 }))
       })
       writer.dispose()
     },

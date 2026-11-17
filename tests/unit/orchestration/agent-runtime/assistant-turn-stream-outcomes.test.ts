@@ -5,9 +5,9 @@ import { Log } from "../../../../src/infra/log.js";
 
 import { createAssistantAttempt } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js";
 import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
-import { ApiOverloaded, ContextOverflow, OutputOverflow, toFailureReason, TransientDisconnect } from "../../../../src/orchestration/agent-runtime/errors.js";
+import { ContextOverflow, fromStreamError, OutputOverflow, toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js";
 import { describeAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js";
-import { ContentFilteredError, ContentRefusedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { ContentFilteredError, ContentRefusedError, LlmStreamError } from "../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { withStreamAttempt } from "../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
 import { planHistoryLowering } from "../../../../src/orchestration/agent-runtime/llm/provider-history.js";
@@ -146,7 +146,7 @@ describe("streamAssistantTurn outcome tagging", () => {
     const client = { ...fakeClient(async function* (): AsyncGenerator<ProviderStreamEvent> {
       yield { kind: "thinking_complete", thinking: "private reasoning", signature: "reasoning_content" };
       yield { kind: "text_delta", text: "partial", blockKey: "text" };
-      throw normalizeProviderAttemptFailure(new TransientDisconnect({ message: "drop" }));
+      throw normalizeProviderAttemptFailure(fromStreamError(new LlmStreamError("drop", "transient")));
     }), accessProvider: "custom-a", modelFamily: "openai" as const, model: "shared-model", historyTarget: () => served };
     const result = await runTurn(client, baseInput());
     expect(result.assistantMetadata).toMatchObject({ accessProvider: "custom-a", api: "openai-responses", model: "shared-model", stopReason: "error" });
@@ -167,7 +167,7 @@ describe("streamAssistantTurn outcome tagging", () => {
 
   test("TransientDisconnect returns stream_error outcome", async () => {
     const client = fakeClient(async function* (): AsyncGenerator<ProviderStreamEvent> {
-      throw normalizeProviderAttemptFailure(new TransientDisconnect({ message: "drop" }));
+      throw normalizeProviderAttemptFailure(fromStreamError(new LlmStreamError("drop", "transient")));
     });
     const result = await runTurn(client, baseInput());
     expect(result.outcome.kind).toBe("stream_error");
@@ -175,7 +175,7 @@ describe("streamAssistantTurn outcome tagging", () => {
 
   test("ApiOverloaded returns stream_error outcome", async () => {
     const client = fakeClient(async function* (): AsyncGenerator<ProviderStreamEvent> {
-      throw normalizeProviderAttemptFailure(new ApiOverloaded({ message: "overloaded" }));
+      throw normalizeProviderAttemptFailure(fromStreamError(new LlmStreamError("overloaded", "overload")));
     });
     const result = await runTurn(client, baseInput());
     expect(result.outcome.kind).toBe("stream_error");

@@ -7,7 +7,8 @@ import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/ag
 import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
 import { createClaudeReminders, createModelReminders, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/agent-loop-history.js";
-import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry, createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry } from "../../../../helpers/hosted-engine-text.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";

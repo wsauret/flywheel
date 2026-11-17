@@ -23,6 +23,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import { fakeModelInfos, tierAvailableModels } from "../../../../helpers/model-tier-fixtures.js"
 import { roleCapture } from "../../../../helpers/role-capture.js"
 import { newTestRunner } from "../../../../helpers/agent-runner.js"
+import { processSettled } from "../../../../helpers/process-settled.js"
 const createHarness = subagentChildHarnesses()
 
 function localClient(model: string) {
@@ -188,7 +189,7 @@ describe("explicit child Resume", () => {
       const childRunId = runs(harness.store, child).at(-1)!.childRunId
       expect(tasks.activeBackgroundCommands()).toMatchObject([{ id: childRunId, roleSessionId: child }])
       expect(tasks.awaitedTaskCount()).toBe(1)
-      const waiting = tasks.waitProcess(childRunId)
+      const waiting = processSettled(tasks, childRunId)
       if (ending === "stop") {
         expect((await createProcessTool(tasks).execute({ action: "stop", process_id: childRunId }, { ...context, userDataRoot: `${harness.projectRoot}/.test-account`, retrievalSessionId: root.sessionId })).outcome).toBe("ok")
       } else {
@@ -335,7 +336,7 @@ describe("explicit child Resume", () => {
       calls.push(options)
       const done = Promise.withResolvers<AgentRunResult>()
       results.push(done)
-      return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "aborted" } }) }, done: done.promise }
+      return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "aborted" } }) }, done: done.promise }
     })
     try {
       const root = await createRoot(harness.manager)
@@ -420,7 +421,7 @@ describe("explicit child Resume", () => {
       calls.at(-1)!.runtimeSurfaces?.handoff?.onContent({ summary: "finished remaining work" })
       results.at(-1)!.resolve({ servedRequests: 0, durationMs: 11, terminal: { kind: "completed" } })
       await waitForSettled(harness, root.sessionId)
-      await reconcileChildSessionCompletions({ parentSessionId: root.sessionId, reader: harness.reader, writer: harness.writer })
+      await reconcileChildSessionCompletions({ parentSessionId: root.sessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer })
       expect(originalCallResults()).toEqual(parentResults)
       const attemptCount = status === "stopped" ? 3 : 2
       expect(await harness.reader.readInFlight(root.sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toHaveLength(attemptCount)

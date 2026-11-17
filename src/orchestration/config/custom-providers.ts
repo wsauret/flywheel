@@ -1,5 +1,5 @@
 import { canonicalize } from "../../infra/canonical-name.js";
-import { buildCustomProviderSlice, installCustomProviders, publishCustomProviderSlice, type CustomProviderDefinition, type CustomProviderRejection, type CustomProviderSlice } from "../../infra/llm/custom-provider-registry.js";
+import { buildCustomProviderSlice, publishCustomProviderSlice, type CustomProviderDefinition, type CustomProviderRejection, type CustomProviderSlice } from "../../infra/llm/custom-provider-registry.js";
 import { catalogCredentialProviderIds } from "../credential-provider-modules.js";
 import { modelIdHasTerminalControl } from "../../infra/llm/model-catalog-resolution.js";
 import { Log } from "../../infra/log.js";
@@ -92,12 +92,6 @@ export function publishCustomProvidersFromConfig(section: FlywheelConfig["custom
   publishCustomProviderSlice(candidate.slice);
   logCustomProviderDiagnostics(candidate);
   return candidate;
-}
-
-export function installCustomProvidersFromConfig(section: FlywheelConfig["custom_providers"], warnings: string[]): void {
-  const candidate = buildCustomProvidersFromConfig(section);
-  warnings.push(...candidate.warnings);
-  installCustomProviders(candidate.slice.definitions, candidate.slice.rejections);
 }
 
 function isHttpUrl(value: string): boolean {

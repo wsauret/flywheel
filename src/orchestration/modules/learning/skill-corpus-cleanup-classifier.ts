@@ -26,7 +26,7 @@ interface UnparsedObject {
 
 const packet = (files: PreparedPackage["files"]) => files.map((file) => ({ path: file.path, content: file.content }));
 
-function unparsedObject(value: unknown): value is UnparsedObject {
+function isUnparsedObject(value: unknown): value is UnparsedObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -36,7 +36,7 @@ function exactKeys(value: UnparsedObject, keys: readonly string[]): boolean {
 }
 
 function sameIdentity(value: unknown, expected: SkillPackageIdentity): boolean {
-  return unparsedObject(value) && exactKeys(value, ["sha256", "bytes"]) && value.sha256 === expected.sha256 && value.bytes === expected.bytes;
+  return isUnparsedObject(value) && exactKeys(value, ["sha256", "bytes"]) && value.sha256 === expected.sha256 && value.bytes === expected.bytes;
 }
 
 
@@ -226,7 +226,7 @@ function parseSkillCorpusCleanupResponse(request: SkillCorpusCleanupRequest, out
   if (hasDuplicateJsonObjectKeys(output)) return { ok: false, reason: "duplicate-keys" };
   let value: unknown;
   try { value = JSON.parse(output); } catch { return { ok: false, reason: "invalid-json" }; }
-  if (!unparsedObject(value) || !exactKeys(value, ["requestIdentity", "corePackageId", "corePackageIdentity", "candidateShardIdentity", "classifications"])) return { ok: false, reason: unparsedObject(value) ? `root-keys:${Object.keys(value).sort().join(",")}` : "root-shape" };
+  if (!isUnparsedObject(value) || !exactKeys(value, ["requestIdentity", "corePackageId", "corePackageIdentity", "candidateShardIdentity", "classifications"])) return { ok: false, reason: isUnparsedObject(value) ? `root-keys:${Object.keys(value).sort().join(",")}` : "root-shape" };
   if (!sameIdentity(value.requestIdentity, request.requestIdentity)) return { ok: false, reason: "request-identity" };
   if (value.corePackageId !== request.corePackageId) return { ok: false, reason: "core-package-id" };
   if (!sameIdentity(value.corePackageIdentity, request.corePackageIdentity)) return { ok: false, reason: "core-package-identity" };
@@ -237,7 +237,7 @@ function parseSkillCorpusCleanupResponse(request: SkillCorpusCleanupRequest, out
   const seen = new Set<string>();
   for (const expected of request.candidates) {
     const classification = value.classifications[results.length];
-    if (!unparsedObject(classification)) return { ok: false, reason: "classification-shape" };
+    if (!isUnparsedObject(classification)) return { ok: false, reason: "classification-shape" };
     if (classification.candidateId !== expected.id || seen.has(expected.id)) return { ok: false, reason: "candidate-order" };
     seen.add(expected.id);
     if (classification.outcome === "specialization") {

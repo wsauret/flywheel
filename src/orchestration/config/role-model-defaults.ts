@@ -83,9 +83,9 @@ export const ROLE_MODEL_DEFAULTS = {
   // bench:rank on implementer-2026-11-13T21-16-42-634Z and implementer-2026-11-13T21-16-44-771Z. No Anthropic setting
   // passes the filters, so its top scorer goes second.
   implementer: { preferences: [
-    { family: "openai", model: "gpt-6-astra", effort: "low" },
+    { family: "openai", model: "gpt-6.1-sol", effort: "medium" },
     { family: "anthropic", model: "claude-fable-5.2", effort: "low" },
-  ], fallback: { tier: "mid", effort: "high" } },
+  ], fallback: { tier: "mid", effort: "xhigh" } },
   ship: { preferences: [
     { family: "openai", model: "gpt-6-luna", effort: "high" },
     { family: "anthropic", model: "claude-haiku-5.5", effort: "high" },

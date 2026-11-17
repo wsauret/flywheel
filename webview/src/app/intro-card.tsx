@@ -37,7 +37,7 @@ function CommandHint(props: { readonly command: string; readonly verb: string; r
 /** One module row in the card's grammar: a command action renders as the
  *  kernel's command rows do, a surface action as a hint that opens it, and
  *  anything else as a value with a muted hint. */
-export function IntroModuleRow(props: { readonly row: ModuleRow; readonly onCommand: (id: string) => void; readonly working: (id: string) => boolean; readonly onSurface: (id: string) => void }): JSX.Element {
+function IntroModuleRow(props: { readonly row: ModuleRow; readonly onCommand: (id: string) => void; readonly working: (id: string) => boolean; readonly onSurface: (id: string) => void }): JSX.Element {
   const action = () => props.row.action
   return (
     <>

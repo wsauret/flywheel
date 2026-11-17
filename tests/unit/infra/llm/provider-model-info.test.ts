@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CatalogModelOffering } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import type { ModelPricing } from "../../../../src/infra/llm/models.js";
-import { enrichProviderModelInfo, fillCatalogRouteModelInfos, mergeRouteModelInfos, providerModelInfo, sharedModelInfos } from "../../../../src/infra/llm/provider-model-info.js";
+import { enrichProviderModelInfo, fillCatalogRouteModelInfos, providerModelInfo, sharedModelInfos } from "../../../../src/infra/llm/provider-model-info.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 
 const priced = (provider: string, input: number, output: number): ModelPricing => ({
@@ -16,6 +16,13 @@ const offering = (wireModelId: string, resolvedMetadata?: ReturnType<typeof prov
   dataUse: "standard",
   ...(resolvedMetadata === undefined ? {} : { resolvedMetadata }),
 });
+
+/** The shared record of one model whose routes arrive in automatic-selection order. */
+function mergedRoutes(...routes: ReturnType<typeof providerModelInfo>[]) {
+  const shared = sharedModelInfos(routes.map((route, index) => [route.id, [offering(`route-${index}`, route)]] as const)).get(routes[0]!.id);
+  if (shared === undefined) throw new Error("Expected a shared record");
+  return shared;
+}
 
 describe("shared model metadata", () => {
   test("keeps a model whose routes disagree and takes each field from the first route that states it", () => {
@@ -42,14 +49,14 @@ describe("shared model metadata", () => {
       modelInfo("anthropic", "claude-next", "claude", 10, 50, "2026-08-28", { outputLimit: 128_000, knowledgeCutoff: "2026-01" }),
     );
 
-    const shared = mergeRouteModelInfos([bare, catalogFilled]);
+    const shared = mergedRoutes(bare, catalogFilled);
 
     expect(shared).toMatchObject({ family: "anthropic", cost: { input: 10, output: 50 }, outputLimit: 128_000, contextLimit: 1_000_000, releaseDate: "2026-08-28", knowledgeCutoff: "2026-01" });
     expect(shared.providerFields).toEqual(["contextLimit"]);
   });
 
   test("fills only the defaults of a route and keeps what its own provider and catalog state", () => {
-    const shared = mergeRouteModelInfos([providerModelInfo({ provider: "anthropic", id: "claude-next", pricing: priced("anthropic", 10, 50), reasoningEfforts: ["low", "max"], outputLimit: 128_000 })]);
+    const shared = mergedRoutes(providerModelInfo({ provider: "anthropic", id: "claude-next", pricing: priced("anthropic", 10, 50), reasoningEfforts: ["low", "max"], outputLimit: 128_000 }));
     const ownCatalog = enrichProviderModelInfo(
       providerModelInfo({ provider: "copilot", id: "claude-next", outputLimit: 64_000 }),
       modelInfo("openai", "claude-next", "claude", 0, 0, "2026-08-01"),

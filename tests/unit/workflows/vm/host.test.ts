@@ -1,6 +1,4 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { parseProjectionFact } from "../../../../src/infra/event-projection.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { buildWorkflowCompletedFact, buildWorkflowFailedFact } from "../../../../src/workflows/vm/fact-drafts.js"
@@ -25,6 +23,7 @@ import {
   testHost,
   workflow,
 } from "./host-test-support.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 
 describe("workflow VM host", () => {
@@ -236,7 +235,7 @@ describe("workflow VM host", () => {
 
 
   it("records each parent message once when two settled attempts read one conversation", async () => {
-    const retried = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ ...workflow, phases: workflow.phases.map((phase) => ({ ...phase, retry: { max: 2, stuck: true } })) })
+    const retried = loadedWorkflow({ ...workflow, phases: workflow.phases.map((phase) => ({ ...phase, retry: { max: 2, stuck: true } })) })
     const store = createMemoryStore(initialFacts(retried))
     const first = { key: "msg:parent:call-1", source: { kind: "parent" as const, name: "Planner" }, text: "Also cover Windows." }
     const second = { key: "msg:parent:call-2", source: { kind: "parent" as const, name: "Planner" }, text: "Skip the docs." }

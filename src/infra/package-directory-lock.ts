@@ -9,7 +9,8 @@
  * lock sees everything that every earlier reader recorded. */
 
 import { basename, dirname } from "node:path";
-import { ContainedDirectory } from "./descriptor-directory.js";
+import type { ContainedDirectory } from "./descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "./descriptor-directory.js";
 import { canonicalMutationPath, queuedMutationsSettled, withFileMutationQueues } from "./file-mutation-queue.js";
 import {
   acquireDrainedGateIn,
@@ -109,7 +110,7 @@ function openLockDirectory(packageDir: string): ContainedDirectory {
   const missing: string[] = [".locks"];
   let ancestor = dirname(packageDir);
   for (;;) {
-    const held = ContainedDirectory.openExisting(ancestor, []);
+    const held = openExistingContainedDirectory(ancestor, []);
     if (held) {
       let current = held;
       try {

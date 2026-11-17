@@ -100,7 +100,7 @@ function carrierOf(member: FrontendToolEntry): FrontendToolEntry {
   return member.name === "code" ? { ...member, presentation: { name: "", detail: "" } } : member
 }
 
-export function presentTerminalTranscript(model: TranscriptModel): TerminalTranscript {
+function presentTerminalTranscript(model: TranscriptModel): TerminalTranscript {
   const timelineBlocks: PresentedTerminalRow[] = []
   const hasBoundaryBefore: boolean[] = []
   const timelineBlockIndices: number[] = []

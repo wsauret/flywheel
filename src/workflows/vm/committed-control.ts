@@ -29,6 +29,7 @@ const WorkflowControlStatusSchema = Schema.Union([
   Schema.Literal("ready"),
   Schema.Literal("executing"),
   Schema.Literal("paused"),
+  // Replay only: a recorded follow-up run (refer to `replayFollowUpRun`).
   Schema.Literal("follow_up"),
   Schema.Literal("completed"),
   Schema.Literal("failed"),

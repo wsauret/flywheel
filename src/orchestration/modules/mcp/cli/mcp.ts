@@ -13,7 +13,7 @@ import { createMcpConnectors } from "../connectors.js"
 import { addMcpServers, removeMcpServer, mcpExpectedToken, mcpMutationMessage } from "../config-mutation.js"
 import { createMcpCredentialStore, type McpCredential, type McpCredentialStore } from "../credentials.js"
 import { createMcpManager } from "../manager.js"
-import { processClaudeEngine } from "../claude-engine.js"
+import { accountEngineSession, processClaudeEngine } from "../claude-engine.js"
 import { resolveMcpClient } from "../clients.js"
 import { McpRegistrationRefusedError } from "../errors.js"
 import { MCP_USAGE, parseMcpArgs } from "./args.js"
@@ -146,7 +146,7 @@ export async function runMcp(
       if (server?.oauth?.client_id === undefined || server.url === undefined) throw new Error(`--client-secret requires oauth.client_id in the config of MCP server '${action.name}'`)
       await storeClientSecret(action.name, server.url, await readClientSecret(options), options, accountAuthDir(directories.userDataRoot))
     }
-    const claudeEngine = launcher ? processClaudeEngine(accountAuthDir(directories.userDataRoot), launcher) : undefined
+    const claudeEngine = launcher ? processClaudeEngine(accountEngineSession(accountAuthDir(directories.userDataRoot), launcher)) : undefined
     // Status lists the claude.ai connectors of the profile's Claude logins while the switch is on.
     const command = await commandRegistry(servers, config, action.kind === "status" && config.claude_ai_connectors ? options.claudeLogins : undefined, runtimeConfig, action.local ? directories.projectRoot : "")
     const registry = command.registry

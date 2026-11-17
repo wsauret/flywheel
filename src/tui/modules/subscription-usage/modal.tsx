@@ -59,8 +59,8 @@ const MIN_ACCOUNT_RAIL_WIDTH = 24
 const ACCOUNT_PANE_GAP = 2
 const MIN_ACCOUNT_DETAIL_WIDTH = 34
 
-export interface UsageModalLayout { readonly modalWidth: number; readonly contentWidth: number; readonly splitAccounts: boolean }
-export function computeUsageModalLayout(termWidth: number): UsageModalLayout {
+interface UsageModalLayout { readonly modalWidth: number; readonly contentWidth: number; readonly splitAccounts: boolean }
+function computeUsageModalLayout(termWidth: number): UsageModalLayout {
   const modalWidth = computeModalWidth(Math.max(1, Math.floor(termWidth)), MAX_USAGE_MODAL_WIDTH)
   const contentWidth = Math.max(1, modalWidth - MODAL_HORIZONTAL_CHROME)
   return { modalWidth, contentWidth, splitAccounts: contentWidth >= MIN_ACCOUNT_RAIL_WIDTH + ACCOUNT_PANE_GAP + MIN_ACCOUNT_DETAIL_WIDTH }

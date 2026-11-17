@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { processHolders } from "../../../../src/infra/process-holder.js"
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../../../src/infra/descriptor-directory.js"
 import { acquireLockSyncIn, releaseLockIn } from "../../../../src/infra/ownership-file-lock.js"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { claimHeadlessProjectExecution, claimProjectServing } from "../../../../src/orchestration/app-service/project-serving-lane.js"
@@ -53,7 +53,7 @@ describe("one lane per open project", () => {
   test("a successor registering during the handoff decision waits for the atomic release", async () => {
     const projectRoot = project()
     const outgoing = await claimProjectServing(projectRoot, "dev")
-    const directory = ContainedDirectory.openExisting(projectRoot, [".flywheel"])!
+    const directory = openExistingContainedDirectory(projectRoot, [".flywheel"])!
     const gate = acquireLockSyncIn(directory, "project-execution.lock")
     const decision = outgoing.releaseForHandoff(() => true)
     const successor = claimProjectServing(projectRoot, "dev", 0)
@@ -240,7 +240,7 @@ describe("exclusive headless project execution", () => {
   for (const pair of [["headless", "headless"], ["headless", "dev"], ["installed", "headless"], ["dev", "installed"]] as const) {
     test(`simultaneous ${pair.join("/")} checks admit exactly one owner`, async () => {
       const projectRoot = project()
-      const directory = ContainedDirectory.open(projectRoot, [".flywheel"], { privateDirectories: true })
+      const directory = openContainedDirectory(projectRoot, [".flywheel"], { privateDirectories: true })
       const mutex = acquireLockSyncIn(directory, "project-execution.lock")
       const claims = pair.map((owner) => owner === "headless" ? claimHeadlessProjectExecution(projectRoot) : claimProjectServing(projectRoot, owner))
       releaseLockIn(directory, mutex)

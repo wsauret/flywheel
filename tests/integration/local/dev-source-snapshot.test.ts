@@ -10,7 +10,7 @@ import { createAccountRuntimeAttach, isRuntimeListening, readRuntimeIdentity, ty
 import { launchRuntimeClient, type LaunchedRuntimeClient } from "../../../src/cli/runtime-launch.js"
 import { sourceSnapshotHome } from "../../../src/infra/cli-subprocess.js"
 import { scanDebugLogFiles } from "../../../src/infra/debug-log.js"
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js"
+import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { EXECUTABLE_ROLES } from "../../../src/infra/executable-roles.js"
 import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"
@@ -204,7 +204,7 @@ async function executorCommands(servicePid: number): Promise<string[]> {
 
 /** The pids that hold the snapshot `digest` of the checkout at `checkout`. */
 function snapshotHolders(checkout: string, digest: string): number[] {
-  const home = ContainedDirectory.open(sourceSnapshotHome(checkout), [])
+  const home = openContainedDirectory(sourceSnapshotHome(checkout), [])
   try {
     return [...sharedHoldersIn(home, `${digest}.gate`).pids].sort((a, b) => a - b)
   } finally {

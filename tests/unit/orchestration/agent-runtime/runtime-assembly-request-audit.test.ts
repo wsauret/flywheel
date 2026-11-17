@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { testProviderSessionLifetime } from "../../../helpers/provider-authority.js";
 import type { ProviderRequestAttribution, ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
+import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js"
@@ -11,7 +12,10 @@ import { asModelClient } from "./_model-client.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService, GitAiRequestRegistration } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 
-function modelClient() {
+/** A client that answers its first `toolTurns` requests with a tool call, so one
+ *  run sends `toolTurns + 1` requests through the same audit writer. */
+function modelClient(toolTurns = 0) {
+  let requests = 0
   return asModelClient({
     accessProvider: "anthropic_api" as const,
     modelFamily: "anthropic" as const,
@@ -21,20 +25,18 @@ function modelClient() {
     supportsReasoning: false,
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
     async *streamWithTools(): AsyncGenerator<ProviderStreamEvent> {
+      const request = requests++
+      if (request < toolTurns) {
+        yield { kind: "tool_use", toolCall: { id: `tc_${request}`, name: "read", input: { path: "/nonexistent-audit-probe" } } }
+        yield { kind: "done", stopReason: "tool_use" }
+        return
+      }
       yield { kind: "done", stopReason: "end_turn" }
     },
   })
 }
 
-async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<ProviderRequestAuditFact[]> {
-  const facts: ProviderRequestAuditFact[] = []
-  const attribution: ProviderRequestAttribution = {
-    accessProvider: "anthropic_api",
-    accessProviderCandidate: { kind: "singleton", providerId: "anthropic_api", spendMode: "direct_api" },
-    modelFamily: "anthropic",
-    model: "test",
-    contextLimit: 100_000,
-  }
+async function assembledRuntime(extraOptions: Partial<AgentOptions>, facts: ProviderRequestAuditFact[], client = modelClient()) {
   const options: RunnableAgentOptions = {
     model: "test",
     ...testDirectories(process.cwd()),
@@ -50,7 +52,7 @@ async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<Provi
     ...extraOptions,
   }
   const signal = new AbortController().signal
-  const assembled = await assembleRuntimeForTurn({
+  return assembleRuntimeForTurn({
     providerSessionLifetime: testProviderSessionLifetime(),
     options,
     definitions: repoDefinitions(),
@@ -64,9 +66,21 @@ async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<Provi
     instruction: null,
     currentTurn: undefined,
     personas: new Map(),
-    captureModelRuntime: async () => ({ generation: {}, createLLMClient: async () => modelClient() }),
+    captureModelRuntime: async () => ({ generation: {}, createLLMClient: async () => client }),
     createRunner: () => { throw new Error("unused in this test") },
   })
+}
+
+async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<ProviderRequestAuditFact[]> {
+  const facts: ProviderRequestAuditFact[] = []
+  const attribution: ProviderRequestAttribution = {
+    accessProvider: "anthropic_api",
+    accessProviderCandidate: { kind: "singleton", providerId: "anthropic_api", spendMode: "direct_api" },
+    modelFamily: "anthropic",
+    model: "test",
+    contextLimit: 100_000,
+  }
+  const assembled = await assembledRuntime(extraOptions, facts)
   await assembled.tools.resolve()
   await assembled.requestAudit?.recordRequest({
     requestId: "00000000-0000-4000-8000-000000000001",
@@ -147,6 +161,39 @@ describe("runtime request audit conversation identity", () => {
     expect("identity" in fact.payload ? fact.payload.identity : undefined).toEqual({ providerSessionKey: "agent-runner-id" })
     expect("conversationId" in fact.payload).toBe(false)
     expect("treeLeafEntryId" in fact.payload ? fact.payload.treeLeafEntryId : undefined).toBeUndefined()
+  })
+})
+
+// No module transforms model context, so a provider request records no
+// context application: no manifest fact and no per-request application id.
+describe("runtime request audit context application", () => {
+  const conversation = (): AgentOptions["conversation"] => ({
+    kind: "durable-tree",
+    reserveMessageId: async () => crypto.randomUUID(),
+    sessionId: "session-1",
+    conversationId: "tree-1",
+    priorMessages: [{ kind: "user", content: "hello" }],
+    append: () => {},
+    captureCommittedForkMessages: async () => [],
+    resolveLeafId: async () => null, committedTree: async () => ({ leafId: null, entriesById: {} }),
+  })
+
+  it("A request records prompt.assembled without contextApplicationId and no context.application.recorded fact", async () => {
+    const facts: ProviderRequestAuditFact[] = []
+    await runAgentLoop(await assembledRuntime({ conversation: conversation() }, facts))
+    const prompt = promptAssembled(facts)
+    expect("contextApplicationId" in prompt.payload).toBe(false)
+    expect(facts.map((fact) => fact.type)).toEqual(expect.arrayContaining(["prompt.assembled", "model.requested"]))
+    expect(facts.filter((fact) => fact.type === "context.application.recorded" || fact.type === "context.transformer.applied")).toEqual([])
+  })
+
+  it("Three requests record no context application", async () => {
+    const facts: ProviderRequestAuditFact[] = []
+    await runAgentLoop(await assembledRuntime({ conversation: conversation() }, facts, modelClient(2)))
+    const prompts = facts.filter((fact) => fact.type === "prompt.assembled")
+    expect(prompts).toHaveLength(3)
+    for (const prompt of prompts) expect("contextApplicationId" in prompt.payload).toBe(false)
+    expect(facts.filter((fact) => fact.type === "context.application.recorded" || fact.type === "context.transformer.applied")).toEqual([])
   })
 })
 

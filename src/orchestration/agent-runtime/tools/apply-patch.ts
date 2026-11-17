@@ -1,4 +1,4 @@
-import type { ContainedFileMetadata } from "../../../infra/descriptor-directory.js";
+import type { ContainedFileMetadata } from "../../../infra/descriptor-directory-contract.js";
 import type { LineRange } from "./file-read-ledger.js";
 import { type PatchPlan, planPreparedPatch } from "../../../infra/file-edit/patch-plan.js";
 import { type PreparedOperation, type PreparedPatch, preparePatch } from "../../../infra/file-edit/patch-parser.js";

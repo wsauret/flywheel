@@ -432,6 +432,13 @@ export function workflowTree(control: CommittedWorkflowControl, agentName: (defi
     return { id: node.id, kind: "agent", definitionId: node.definitionId, label: node.name, parentId: null, disposition, attempts: 0, ...reasonOf(node) };
   };
 
+  /** The disposition of a list phase that its agents decide. */
+  const phaseAgentsDisposition = (agents: readonly WorkflowTreeAgent[]): "completed" | "running" | "conditional" | "pending" => {
+    if (agents.length > 0 && agents.every(({ disposition }) => disposition === "completed" || disposition === "failed" || disposition === "skipped")) return "completed";
+    if (agents.some(({ disposition }) => disposition === "running" || disposition === "completed" || disposition === "failed")) return "running";
+    return agents.length > 0 && agents.every(({ disposition }) => disposition === "conditional") ? "conditional" : "pending";
+  };
+
   const listPhases = (list: Extract<LogicalNode, { kind: "list" }>, parentId: string | null): WorkflowTreeNode[] => {
     const join = treeJoin(control, list, dispositions);
     const expanded = listJoin(graph, list.id) !== undefined;
@@ -448,11 +455,8 @@ export function workflowTree(control: CommittedWorkflowControl, agentName: (defi
         return [{ ...agent, parentId: id, item: { nodeId: item.id, key: item.key, label: item.label, ordinal: item.ordinal, text } }];
       });
       const last = place === list.phases.length - 1;
-      const disposition = !expanded || own === "skipped" ? own
-        : last && (own === "completed" || own === "failed") ? own
-          : agents.length > 0 && agents.every(({ disposition: one }) => one === "completed" || one === "failed" || one === "skipped") ? "completed"
-            : agents.some(({ disposition: one }) => one === "running" || one === "completed" || one === "failed") ? "running"
-              : agents.length > 0 && agents.every(({ disposition: one }) => one === "conditional") ? "conditional" : "pending";
+      const settledByList = !expanded || own === "skipped" || (last && (own === "completed" || own === "failed"));
+      const disposition = settledByList ? own : phaseAgentsDisposition(agents);
       const phase: WorkflowTreePhase = {
         id, kind: "phase", form: "list", phaseId: definitionId, label: name, parentId, disposition,
         ...(disposition === "skipped" || disposition === "failed" ? reasonOf(list) : {}),

@@ -1,15 +1,15 @@
-import type { StreamTelemetryObserveResult, StreamTelemetrySink } from "./types.js";
+import type { StreamTelemetryObserveResult, StreamTelemetrySink, TelemetryFields } from "./types.js";
 import type { ThinkingStallError } from "./thinking-stall.js";
 
-interface UnknownFields { [key: string]: unknown }
-
+/** Counts one provider frame by its kind. `metadata` builds the frame's fields
+ *  and runs only when the telemetry records that frame. */
 export function observeProviderTelemetry(
   telemetry: StreamTelemetrySink | undefined,
   kind: string | undefined,
-  metadata: UnknownFields = {},
+  metadata?: () => TelemetryFields,
 ): StreamTelemetryObserveResult {
   if (!kind) return;
-  return telemetry?.observe({ source: "provider", kind, metadata: compactMetadata(metadata) });
+  return telemetry?.observe({ source: "provider", kind, ...(metadata ? { metadata: () => compactMetadata(metadata()) } : {}) });
 }
 
 export function observeWatchdogStall(
@@ -25,7 +25,7 @@ export function observeWatchdogStall(
 
 export function observeWatchdogTimeout(
   telemetry: StreamTelemetrySink | undefined,
-  metadata: UnknownFields,
+  metadata: TelemetryFields,
 ): StreamTelemetryObserveResult {
   return telemetry?.observe({
     source: "watchdog",
@@ -37,6 +37,7 @@ export function observeWatchdogTimeout(
 export function observeThinkingStall(
   telemetry: StreamTelemetrySink | undefined,
   error: ThinkingStallError,
+  summaryChars: number,
 ): StreamTelemetryObserveResult {
   return telemetry?.observe({
     source: "watchdog",
@@ -44,11 +45,11 @@ export function observeThinkingStall(
     metadata: {
       ...(error.blockKey ? { blockKey: error.blockKey } : {}),
       elapsedMs: Math.round(error.elapsedMs),
-      summaryChars: error.summary.length,
+      summaryChars,
     },
   });
 }
 
-function compactMetadata(metadata: UnknownFields): UnknownFields {
+function compactMetadata(metadata: TelemetryFields): TelemetryFields {
   return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
 }

@@ -6,12 +6,11 @@ describe("stream attempt watchdog", () => {
   test("maps a watchdog timeout to ProviderAttemptFailure", async () => {
     let timedOut = false;
     const stream = withStreamAttempt(async function* (attempt) {
-      attempt.startStreamDeadline({
-        idleTimeoutMs: 1,
-        onTimeout: () => { timedOut = true; },
+      attempt.armLiveness({
+        label: "test", provider: "Test", idleTimeoutMs: 1,
+        telemetry: { observe: (observation) => { if (observation.kind === "timeout") timedOut = true; } },
         timeoutMessage: () => "stream deadline elapsed",
-      });
-      attempt.resetStreamDeadline();
+      }).frame();
       await new Promise<void>((resolve) => {
         attempt.signal.addEventListener("abort", () => resolve(), { once: true });
       });
@@ -32,12 +31,7 @@ describe("stream attempt watchdog", () => {
 
   test("detects a watchdog timeout after the adapter iterator completes", async () => {
     const stream = withStreamAttempt(async function* (attempt) {
-      attempt.startStreamDeadline({
-        idleTimeoutMs: 1,
-        onTimeout: () => {},
-        timeoutMessage: () => "completion raced timeout",
-      });
-      attempt.resetStreamDeadline();
+      attempt.armLiveness({ label: "test", provider: "Test", telemetry: undefined, idleTimeoutMs: 1, timeoutMessage: () => "completion raced timeout" }).frame();
       await new Promise<void>((resolve) => {
         attempt.signal.addEventListener("abort", () => resolve(), { once: true });
       });
@@ -49,14 +43,13 @@ describe("stream attempt watchdog", () => {
     await expect(drain()).rejects.toBeInstanceOf(ProviderAttemptFailure);
   });
 
-  test("deadline setup and timeout telemetry failures escape unchanged", async () => {
+  test("a failure of the timeout's own telemetry escapes unchanged", async () => {
     const setupFailure = new Error("telemetry failed");
     const stream = withStreamAttempt(async function* (attempt) {
-      attempt.startStreamDeadline({
-        idleTimeoutMs: 1,
-        onTimeout: () => { throw setupFailure; },
-      });
-      attempt.resetStreamDeadline();
+      attempt.armLiveness({
+        label: "test", provider: "Test", idleTimeoutMs: 1,
+        telemetry: { observe: (observation) => { if (observation.kind === "timeout") throw setupFailure; } },
+      }).frame();
       await new Promise<void>((resolve) => {
         attempt.signal.addEventListener("abort", () => resolve(), { once: true });
       });

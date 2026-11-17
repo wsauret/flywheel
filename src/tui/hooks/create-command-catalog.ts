@@ -1,18 +1,14 @@
-import { createSignal } from "solid-js"
+import { createSignal, onCleanup } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import {
   commandCatalogCursor,
   type BuiltInCommandDescriptor,
-  type CommandCatalogPatchPayload,
   type OffCommandDescriptor,
   type RuntimeCommandCatalog,
-  type RuntimeCommandCatalogResult,
 } from "../../protocol/command-catalog-protocol-types.js"
-import type { RuntimeUiPatch } from "../../protocol/runtime-ui-protocol-types.js"
-import { runtimeSnapshotScopeKey } from "../../protocol/client/family-intake.js"
+import { createHeldView } from "../../protocol/client/held-view.js"
 import type { CommandCatalogReadiness } from "../../protocol/client/slash-route.js"
-import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 
 export interface CommandCatalogCache extends CommandCatalogReadiness {
   /** Metadata contributed by enabled capability modules. Empty until the
@@ -41,34 +37,24 @@ export function createCommandCatalog(deps: { appService: Pick<AttachedRuntimeCli
     setBuiltInCommands(reconcile([...catalog.builtInCommands], { key: "id" }))
     setOffCommands(catalog.offCommands)
   }
-  const cursor = commandCatalogCursor()
-  const scope = { kind: "cursor", cursor } as const
-  const receiver = createOrderedPatchReceiver<typeof scope, RuntimeCommandCatalogResult, RuntimeUiPatch & { payload: CommandCatalogPatchPayload }>({
+  const held = createHeldView<RuntimeCommandCatalog>({
     client: deps.appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== "commands") return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return patch.payload.kind === "commands.updated"
-        ? { cursor, scope, patch: { ...patch, payload: patch.payload } }
-        : null
+    cursor: commandCatalogCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "commandCatalog" })
+      return { view: snapshot, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => deps.appService.query({ type: "commandCatalog" }),
-    applySnapshot(snapshot) {
-      apply(snapshot)
-      return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] }
-    },
-    applyPayload(patch) {
-      apply(patch.payload.catalog)
-    },
+    adopt: (payload) => (payload.kind === "commands.updated" ? payload.catalog : undefined),
+    changed: apply,
+    label: "command catalog",
   })
+  onCleanup(held.dispose)
   return {
     builtInCommands: () => builtInCommands,
     offCommands,
     revision,
     known: () => known,
     arrived: arrival.promise,
-    refresh: () => receiver.resnapshot(scope),
+    refresh: held.refresh,
   }
 }

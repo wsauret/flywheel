@@ -11,15 +11,11 @@ import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/r
 import { createAccountProjectRegistry } from "../../../../../src/orchestration/app-service/account-project-registry.js"
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
 import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
-import { attachDeviceChannel, openPairingChannel, RELAY_HEARTBEAT } from "../../../../../src/protocol/modules/remote/relay-channel.js"
+import { attachDeviceChannel, RELAY_HEARTBEAT } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import {
   asKeyPair,
   DEFAULT_RELAY_URL,
-  decodeJsonFrame,
-  decodePairingResult,
   fromBase64Url,
-  keyDigest,
-  parsePairingCodeUrl,
   statedSilenceDeadlineMs,
   toBase64Url,
 } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
@@ -27,7 +23,7 @@ import type { PairedDevice } from "../../../../../src/orchestration/modules/remo
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { FailedRelaySocket, PendingRelaySocket, startRelayStub, type RelayStub } from "./relay-stub.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
-import { deviceIdentity, fromText, sealDevice, text, viewWhere, waitFor } from "./_remote-device-fixtures.js"
+import { fromText, pairDevice, pairedNotices, sealDevice, text, viewWhere, waitFor } from "./_remote-device-fixtures.js"
 
 /** The runtime's remote-access service against an in-process relay that speaks
  *  the contract: pairing, attaching, revocation, reconnect, and the one thing
@@ -60,22 +56,6 @@ describe("remote access against a relay", () => {
     })
     remotes.push(remote)
     return remote
-  }
-
-  /** Pairs a fresh device through the full exchange and returns its identity. */
-  async function pairDevice(remote: RemoteAccess, label = "test phone", existingDevice?: Awaited<ReturnType<typeof deviceIdentity>>) {
-    const window = await remote.openPairing()
-    await viewWhere(remote, (view) => view.connection === "connected")
-    const code = parsePairingCodeUrl(window.code)
-    const runtimeId = await keyDigest(fromBase64Url(code.publicKey))
-    const device = existingDevice ?? await deviceIdentity()
-    const ws = await openPairingChannel(stub.url, runtimeId, code.windowId)
-    const channel = await sealDevice(ws, device, { kind: "pairing", secret: fromBase64Url(code.secret) })
-    await Effect.runPromise(channel.write(text(JSON.stringify({ type: "pair.request", label }))))
-    await waitFor(() => channel.received.length === 1)
-    const result = decodeJsonFrame(decodePairingResult, fromText(channel.received[0]!))
-    await channel.close()
-    return { device, result, runtimeId, code }
   }
 
   beforeEach(() => {
@@ -144,7 +124,7 @@ describe("remote access against a relay", () => {
 
   test("a source run pairs as a second machine: its label says so and its store is its own", async () => {
     const remote = createRemote({ lane: "dev" })
-    const { result } = await pairDevice(remote)
+    const { result } = await pairDevice(stub.url, remote)
     if (result.type !== "pair.accepted") throw new Error(`pairing was ${result.type}`)
     expect(result.runtimeLabel).toBe(`dev (${hostname().replace(/\.local$/, "")})`)
     expect((await remote.notificationAddress()).machine).toBe(`dev (${hostname().replace(/\.local$/, "")})`)
@@ -156,7 +136,7 @@ describe("remote access against a relay", () => {
   test.each(["installed", "dev"] as const)("pairs a device in %s through the sealed pairing channel and keeps its subscription when paired again", async (lane) => {
     const remote = createRemote({ lane })
     const label = "Private phone label for encrypted pairing regression"
-    const { device, result, runtimeId, code } = await pairDevice(remote, label)
+    const { device, result, runtimeId, code } = await pairDevice(stub.url, remote, label)
     // The code and the answer name the machine by its host name, not by a project's.
     const host = hostname().replace(/\.local$/, "")
     const machine = lane === "dev" ? `dev (${host})` : host
@@ -173,13 +153,13 @@ describe("remote access against a relay", () => {
     const wire = stub.pumped.map((frame) => new TextDecoder("utf-8", { fatal: false }).decode(frame)).join("")
     expect(wire).not.toContain("pair.request")
     expect(wire).not.toContain(label)
-    expect(notifications.some((operation) => operation.type === "raise" && operation.occurrence.title === "Remote device paired")).toBe(true)
+    await waitFor(() => pairedNotices(notifications).length === 1)
     expect(published.some((input) => input.payload.kind === "remote.changed")).toBe(true)
     const subscription = { endpoint: "https://push.test/phone", expirationTime: null, keys: { p256dh: "key", auth: "auth" } }
     await remote.setPushSubscription(device.id, subscription)
     expect(readRemotePairingStore(userDataRoot, lane).devices[0]?.pushSubscription).toBeUndefined()
     expect(remote.view().devices[0]?.notifies).toBe(true)
-    await pairDevice(remote, "Renamed phone", device)
+    await pairDevice(stub.url, remote, "Renamed phone", device)
     await viewWhere(remote, (current) => current.pairing === null && current.devices[0]?.label === "Renamed phone")
     expect(remote.pushTargets().map((entry) => entry.subscription)).toEqual([subscription])
     const address = await remote.notificationAddress()
@@ -223,7 +203,7 @@ describe("remote access against a relay", () => {
 
   test("a paired device attaches, exchanges sealed bytes with the accepted socket, and counts as attached", async () => {
     const remote = createRemote()
-    const { device, runtimeId } = await pairDevice(remote)
+    const { device, runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     const echoed = Deferred.makeUnsafe<string>()
     remote.acceptChannels(async (socket: Socket.Socket, paired: PairedDevice) => {
@@ -268,7 +248,7 @@ describe("remote access against a relay", () => {
     // hears nothing and keeps pumping the device's frames into it. Only the
     // machine sees that end at once, so it reports it on its control socket.
     const remote = createRemote()
-    const { device, runtimeId } = await pairDevice(remote)
+    const { device, runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     remote.acceptChannels(async (socket: Socket.Socket) => {
       await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
@@ -291,7 +271,7 @@ describe("remote access against a relay", () => {
   test("closes a device channel whose link to the relay stops answering, so it no longer counts as attached", async () => {
     const heartbeat = manualHeartbeatClock()
     const remote = createRemote({ random: () => 0, heartbeat: { intervalMs: 5, deadlineMs: 20, clock: heartbeat.clock } })
-    const { device, runtimeId } = await pairDevice(remote)
+    const { device, runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     remote.acceptChannels(async (socket: Socket.Socket) => {
       await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
@@ -316,7 +296,7 @@ describe("remote access against a relay", () => {
 
   test("a paired device can be renamed on the machine", async () => {
     const remote = createRemote()
-    const { device } = await pairDevice(remote)
+    const { device } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     expect(await remote.renameDevice(device.id, "Alice's iPhone")).toBe(true)
     expect(remote.view().devices[0]?.label).toBe("Alice's iPhone")
@@ -326,7 +306,7 @@ describe("remote access against a relay", () => {
 
   test("a revoked device is refused by the relay", async () => {
     const remote = createRemote()
-    const { device, runtimeId } = await pairDevice(remote)
+    const { device, runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     expect(await remote.revokeDevice(device.id)).toBe(true)
     expect(await remote.revokeDevice(device.id)).toBe(false)
@@ -337,7 +317,7 @@ describe("remote access against a relay", () => {
 
   test("reconnects to the relay after it drops the control channel", async () => {
     const remote = createRemote({ random: () => 0 })
-    const { runtimeId } = await pairDevice(remote)
+    const { runtimeId } = await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.devices.length === 1 && view.connection === "connected")
     stub.dropRuntime(runtimeId)
     await viewWhere(remote, (view) => view.connection === "reconnecting")
@@ -431,7 +411,7 @@ describe("remote access against a relay", () => {
 
   test("a second placement of the same account shares the identity and the devices", async () => {
     const first = createRemote()
-    const { device } = await pairDevice(first)
+    const { device } = await pairDevice(stub.url, first)
     await viewWhere(first, (view) => view.devices.length === 1)
     const otherProject = mkdtempSync(join(tmpdir(), "flywheel-remote-project2-"))
     try {
@@ -444,7 +424,7 @@ describe("remote access against a relay", () => {
   })
   test("a device revoked through one placement loses its channel to every other placement of the process at once", async () => {
     const first = createRemote()
-    const { device, runtimeId } = await pairDevice(first)
+    const { device, runtimeId } = await pairDevice(stub.url, first)
     const otherProject = mkdtempSync(join(tmpdir(), "flywheel-remote-project2-"))
     try {
       const second = createRemote({ projectRoot: otherProject })
@@ -466,10 +446,10 @@ describe("remote access against a relay", () => {
   test("both lanes share push registration, renewal, removal, and live key changes", async () => {
     const installed = createRemote()
     const dev = createRemote({ lane: "dev" })
-    const { device } = await pairDevice(dev)
+    const { device } = await pairDevice(stub.url, dev)
     const subscription = { endpoint: "https://push.test/shared-phone", expirationTime: null, keys: { p256dh: "key", auth: "auth" } }
     await dev.setPushSubscription(device.id, subscription)
-    await pairDevice(installed, "same phone", device)
+    await pairDevice(stub.url, installed, "same phone", device)
     expect(installed.pushTargets()[0]?.subscription).toEqual(subscription)
     expect(readRemotePairingStore(userDataRoot, "installed").devices[0]?.pushSubscription).toBeUndefined()
     expect(readRemotePairingStore(userDataRoot, "dev").devices[0]?.pushSubscription).toBeUndefined()
@@ -479,7 +459,7 @@ describe("remote access against a relay", () => {
     await dev.renameDevice(device.id, "renamed phone")
     expect(dev.pushTargets()[0]?.subscription).toEqual(subscription)
     expect(dev.view().devices[0]?.label).toBe("renamed phone")
-    await pairDevice(dev, "paired again", device)
+    await pairDevice(stub.url, dev, "paired again", device)
     await viewWhere(dev, (view) => view.pairing === null && view.devices[0]?.label === "paired again")
     expect(dev.pushTargets()[0]?.subscription).toEqual(subscription)
     const original = installed.view().pushPublicKey
@@ -530,12 +510,12 @@ describe("remote access against a relay", () => {
     await viewWhere(dev, (view) => view.devices[0]?.notifies === false)
     expect(dev.pushTargets()).toEqual([])
     await dev.setPushSubscription(device.id, subscription)
-    await pairDevice(installed, "paired again after revocation", device)
+    await pairDevice(stub.url, installed, "paired again after revocation", device)
     expect(installed.pushTargets()[0]?.subscription).toEqual(subscription)
   })
   test("records and forgets startable projects only through the account registry", async () => {
     const remote = createRemote()
-    await pairDevice(remote)
+    await pairDevice(stub.url, remote)
     await viewWhere(remote, (view) => view.projects.length === 1)
     expect(JSON.parse(await Bun.file(join(userDataRoot, "auth", "remote.json")).text())).not.toHaveProperty("placements")
     expect(await remote.forgetProject(remote.view().projects[0]!.placementId)).toBe(true)

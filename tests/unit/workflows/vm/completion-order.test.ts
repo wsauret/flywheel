@@ -1,11 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import { completedBefore, completionOrder } from "../../../../src/workflows/vm/completion-order.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { mapSkills, mapWorkflow } from "./_map-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision([]);
 const record = (id: string, extra: { readonly [key: string]: unknown } = {}) => ({ brief: `Do the ${id} work.`, name: id, ...extra });
@@ -13,7 +12,7 @@ const findings = { type: "list", description: "The findings.", max: 2, unique: "
 
 /** A graph of named agents, a repeat, and a phase after them. */
 function treeGraph() {
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "tree", name: "Tree",
     phases: [
       { phase: "first", agents: [{ agent: "work", ...record("work") }, { agent: "review", ...record("review") }] },

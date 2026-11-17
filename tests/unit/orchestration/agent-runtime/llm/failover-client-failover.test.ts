@@ -367,9 +367,11 @@ describe("all candidates exhausted", () => {
   });
 
   test("an only route out of credit with no stated reset holds a spent limit, also on a free route that no gate holds, and masks no stated reset", async () => {
+    // A fake availability freezes its clock when it is built, and the spent limit that it marks holds from that clock,
+    // so the lower bound of every recheck is read before any fake exists.
+    const before = Date.now();
     const openrouter = singletonCandidate("openrouter");
     const outOfCredit = async (attributions: Parameters<typeof chain>[0]["candidateAttributions"], availability = fakeAvailability({}).availability) => {
-      const before = Date.now();
       const error = await requestEvents(chain({
         candidateAttributions: attributions,
         availability,

@@ -6,7 +6,7 @@ import { fromStreamError, toFailureReason } from "../../../../src/orchestration/
 import { RouteUnavailableError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { classifyResponseFailed } from "../../../../src/orchestration/agent-runtime/llm/openai-helpers.js"
 import type { AgentFailureReason, AgentRunResult } from "../../../../src/orchestration/agent-runtime/types.js"
-import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage, WAIT_LIMIT_MS } from "../../../../src/orchestration/agent-runtime/unattended-recovery.js"
+import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../../src/orchestration/agent-runtime/unattended-recovery.js"
 import { WALL_CLOCK_CHECK_MS } from "../../../../src/infra/wall-clock-sleep.js"
 import { capacityWaitAuthority, registerCapacityWaits, type CapacityWaitAuthority } from "../../../../src/orchestration/session/capacity-wait.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
@@ -380,8 +380,8 @@ describe("unattended recovery", () => {
       const settlement = Promise.withResolvers<void>()
       const recovery = policy(clock, {
         awaitAccessSettled: () => settlement.promise,
-        // The wait's time never ends it here: only the settlement does.
-        sleep: (ms, sleepSignal) => ms === WAIT_LIMIT_MS
+        // The wait's time, at most six hours, never ends it here: only the settlement does.
+        sleep: (ms, sleepSignal) => ms === 6 * 60 * 60 * 1000
           ? new Promise((resolve) => { sleepSignal.addEventListener("abort", () => { resolve() }, { once: true }) })
           : clock.sleep(ms, sleepSignal),
       })

@@ -16,10 +16,10 @@ import { resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../.
 import { acquireSessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createdFact, linkedFact, usageV4Fact } from "../../../fixtures/session-summary-history.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { readWorkflowUsage } from "../../../../src/orchestration/workflow-host/member-totals.js"
 import { historicalWorkflowPublicationFacts } from "../../../release/fixtures/historical-workflow-publication.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const temporary = temporaryDirectories()
 
@@ -76,7 +76,7 @@ test("previous embedded subagent cards move with their agent and cumulative usag
     const reader = asAsyncEventReadSurface(store)
     const members = await workflowMembershipReader(reader).list(previous.sessionId)
     expect(members).toHaveLength(3)
-    const projection = createSessionDetailProjection({
+    const projection = testSessionDetailProjection({
       projectRoot: root, reader, projectionReader: reader, sessionStore: { get: () => undefined },
       manager: { read: id => readSessionMetadata(reader, id) },
     })

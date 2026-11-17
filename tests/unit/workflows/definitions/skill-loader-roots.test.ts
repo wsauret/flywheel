@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ContainedPathError, type ContainedDirectoryContract } from "../../../../src/infra/descriptor-directory.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
 import type { SkillDirectoryEntry } from "../../../../src/workflows/skill-context.js";
 import { SKILL_LIMITS } from "../../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions } from "../../../../src/workflows/skills.js";
@@ -21,7 +21,7 @@ function external(...dirs: string[]) {
   return { roots: dirs.map((dir) => ({ authority: "external" as const, dir, reach: "project" as const })) };
 }
 
-function containedEntries(directory: ContainedDirectoryContract): SkillDirectoryEntry[] {
+function containedEntries(directory: ContainedDirectory): SkillDirectoryEntry[] {
   const directories = new Set(directory.directoryEntryNames());
   return directory.entryNames().map((name) => {
     if (directories.has(name)) return { name, type: "directory" };
@@ -64,7 +64,7 @@ describe("skill root admission", () => {
     writeSkill(SHARED_ROOT, "shared-extra", VALID_SKILL);
     chmodSync(SHARED_ROOT, 0o000);
     let scans = 0;
-    const countScans = (directory: ContainedDirectoryContract): Iterable<SkillDirectoryEntry> => {
+    const countScans = (directory: ContainedDirectory): Iterable<SkillDirectoryEntry> => {
       scans++;
       return containedEntries(directory);
     };
@@ -94,7 +94,7 @@ describe("skill root admission", () => {
     // that were installed; serving them as the contents of a path that now
     // points at another tree would publish neither install faithfully.
     let repointed = false;
-    function* repointThenList(directory: ContainedDirectoryContract): Generator<SkillDirectoryEntry> {
+    function* repointThenList(directory: ContainedDirectory): Generator<SkillDirectoryEntry> {
       if (!repointed) {
         repointed = true;
         renameSync(USER_ROOT, join(TMP, "moved-root"));

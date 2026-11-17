@@ -1,3 +1,4 @@
+import { HashMap } from "effect"
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventStoreAppend, GuardedAppendResult, GuardedEventStoreAppend, StoredFact } from "../../infra/event-store-types.js"
 import { requireGuardedEventAppender } from "../../infra/event-store-types.js"
 import type { EventProjection } from "../../infra/event-projection.js"
@@ -15,7 +16,7 @@ import {
   parseSessionMetadataFact,
   type SessionMetadataFact,
 } from "./session-metadata-facts.js"
-import { createSessionMetadataProjection, createSessionPlacementProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type SessionMetadataProjectionState } from "./session-metadata-projection.js"
+import { createSessionMetadataProjection, createSessionPlacementProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type PerSessionMetadataState, type SessionMetadataProjectionState } from "./session-metadata-projection.js"
 import { createPushFedView } from "../../infra/push-fed-view.js"
 import { isValidTransition, type SessionLifecycleState } from "./types.js"
 import { effectiveSessionShortTitle } from "../../protocol/app-service-types.js"
@@ -148,15 +149,16 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
   // reader that cycles through more sessions, such as the agents of one large
   // workflow, would rebuild each session on every read. The two folds agree,
   // because every metadata fact commits to its own session's aggregate.
-  let projection: EventProjection<SessionMetadataProjectionState> | null = null
+  let projection: EventProjection<PerSessionMetadataState> | null = null
   const writer = deps.writer
   const guardedWriter = () => requireGuardedEventAppender(writer, "Session metadata guarded writes require guarded append authority")
-  const metadataProjection = (): EventProjection<SessionMetadataProjectionState> => {
+  const metadataProjection = (): EventProjection<PerSessionMetadataState> => {
     projection ??= createSessionMetadataProjection(deps.reader)
     return projection
   }
-  const targetedProjection = (id: string): EventProjection<SessionMetadataProjectionState> =>
-    projection ?? createSingleSessionMetadataProjection(deps.reader, id)
+  const targetedState = async (id: string): Promise<SessionMetadataProjectionState> => projection
+    ? sessionMetadataStateOf(await projection.replay(), id)
+    : await createSingleSessionMetadataProjection(deps.reader, id).replay()
 
   async function appendFact(sessionId: string, fact: SessionMetadataFact): Promise<StoredFact> {
     return loggedOperation(
@@ -187,7 +189,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
   }
 
   async function read(id: string): Promise<ReplayedSession | null> {
-    return sessionFromMetadataState(deps.reader, id, await targetedProjection(id).replay())
+    return sessionFromMetadataState(deps.reader, id, await targetedState(id))
   }
 
   async function readOrThrow(id: string): Promise<ReplayedSession> {
@@ -231,14 +233,8 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
   }
 
   async function listForIds(ids: readonly string[]): Promise<SessionMetadataCatalog> {
-    const state: SessionMetadataProjectionState = { sessions: {}, deleted: {}, errors: {} }
-    await Promise.all([...new Set(ids)].map(async (id) => {
-      const aggregate = await targetedProjection(id).replay()
-      if (aggregate.sessions[id]) state.sessions[id] = aggregate.sessions[id]
-      if (aggregate.deleted[id]) state.deleted[id] = true
-      if (aggregate.errors[id]) state.errors[id] = aggregate.errors[id]
-    }))
-    return sessionMetadataCatalogFromState(state, deps.reader)
+    const bySession = HashMap.fromIterable(await Promise.all([...new Set(ids)].map(async (id) => [id, await targetedState(id)] as const)))
+    return sessionMetadataCatalogFromState({ bySession }, deps.reader)
   }
 
   /** The guard keeps two transitions from both reading one state as their

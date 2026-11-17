@@ -48,7 +48,7 @@ Then run `flywheel` in a project directory. On first launch, the provider picker
 
 ## Every subscription you pay for, in one pool
 
-Sign in with **Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go**, and add several paid accounts of each. Add API keys for **Anthropic, OpenAI, Google, DeepSeek, OpenRouter**, or any OpenAI-compatible endpoint.
+Sign in with **Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go**, and add several paid accounts of each. Add API keys for **Anthropic, OpenAI, Google, DeepSeek, Baseten, OpenRouter**, or any OpenAI-compatible endpoint.
 
 - When an account hits its usage cap or goes down, Flywheel switches to the next account automatically. You never retry by hand.
 - The subscription whose weekly window resets soonest is used first, so that quota about to expire is not wasted.
@@ -151,7 +151,7 @@ Flywheel ships about 40 themes, from Catppuccin to Gruvbox, and a new theme appl
 
 Flywheel is early software. The version is 0.x, and interfaces, commands, and settings can still change from one release to the next.
 
-- **A model provider:** a subscription to Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or an API key for Anthropic, OpenAI, Google, DeepSeek, OpenRouter, or an OpenAI-compatible endpoint. Flywheel has no model service of its own.
+- **A model provider:** a subscription to Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or an API key for Anthropic, OpenAI, Google, DeepSeek, Baseten, OpenRouter, or an OpenAI-compatible endpoint. Flywheel has no model service of its own.
 - **No runtime:** the release archive holds everything that Flywheel needs, including the Claude engine. You do not need to install Bun, Node, or any other runtime.
 
 ## Platforms

@@ -29,11 +29,11 @@ const launcher: import("../../../../src/infra/process-supervisor.js").LauncherSc
 export const okWrite = { ok: true } as const
 export type WriteResult = { ok: true } | { ok: false; error: Error }
 export type PolicyResult = { ok: true } | { ok: false; error: { message: string } }
-export const updateShowThinking = mock((_value: boolean, _options?: unknown): WriteResult => okWrite)
-export const updateDiffColors = mock((_value: "theme" | "standard", _options?: unknown) => okWrite)
-export const updateCompatibleRendering = mock((_value: "auto" | "on" | "off", _options?: unknown) => okWrite)
-export const updateProactiveCompactionThreshold = mock((_value: number, _options?: unknown) => okWrite)
-export const updateWebSearchProvider = mock((_value: "chatgpt" | "exa", _options?: unknown) => okWrite)
+export const updateShowThinking = mock((_value: boolean): WriteResult => okWrite)
+export const updateDiffColors = mock((_value: "theme" | "standard") => okWrite)
+export const updateCompatibleRendering = mock((_value: "auto" | "on" | "off") => okWrite)
+export const updateProactiveCompactionThreshold = mock((_value: number) => okWrite)
+export const updateWebSearchProvider = mock((_value: "chatgpt" | "exa") => okWrite)
 export const refreshRuntime = mock(async () => {})
 export const installBundledFont = mock(async () => ({ status: fontStatus, installedFiles: [], targetDir: "/scratch/fonts", warnings: [] }))
 export const fontStatus = { installed: false, installedFiles: [], missingFiles: ["font.otf"], sourceDir: "/src", targetDir: "/scratch/fonts", installable: true }

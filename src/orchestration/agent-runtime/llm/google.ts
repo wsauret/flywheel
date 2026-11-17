@@ -37,7 +37,7 @@ import { invokeProviderAttempt } from "./provider-attempt-boundary.js";
 import { googleHistoryTarget, toGoogleGenerativeAiRequest } from "./conversions/google-generative-ai.js";
 import { sanitizeSurrogates } from "./sanitize-unicode.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
+import { throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, type CompletedStopReason, type ConnectedClient, type LLMClient, type ProviderStreamEvent, type StreamOptions, type ToolPresentation } from "./types.js";
 
@@ -121,8 +121,8 @@ export async function createGoogleAdapter(
         // `abortSignal` is added inside the attempt so its lifetime is explicit.
         const baseConfig: GenerateContentConfig = {
           maxOutputTokens: info.outputLimit,
-          ...(systemPrompt && { systemInstruction: sanitizeSurrogates(systemPrompt) }),
-          ...(options.tools.length > 0 && { tools: convertTools(options.tools, adapter.toolPresentation) }),
+          ...(systemPrompt ? { systemInstruction: sanitizeSurrogates(systemPrompt) } : {}),
+          ...(options.tools.length > 0 ? { tools: convertTools(options.tools, adapter.toolPresentation) } : {}),
           ...(typeof googleOpts?.temperature === "number" ? { temperature: googleOpts.temperature } : {}),
           ...(toolChoice ? { toolConfig: toolChoice } : {}),
         };
@@ -136,7 +136,7 @@ export async function createGoogleAdapter(
           }
           const request: GenerateContentParameters = { model: modelId, contents, config };
 
-          const streamLiveness = armStreamLiveness(attempt, { label: "llm-google", provider: "Google", telemetry: options.telemetry });
+          const streamLiveness = attempt.armLiveness({ label: "llm-google", provider: "Google", telemetry: options.telemetry });
           // `final` marks usage read from the chunk that ended the response; earlier usage is a lower bound.
           let usage: { input: number; output: number; cacheRead: number; reasoning: number; final: boolean } | undefined;
           const usageEvent = () => usage ? ({
@@ -241,11 +241,11 @@ export async function createGoogleAdapter(
                 responseStarted = true;
                 yield { kind: "provider_response_started" } as const;
               }
-              observeProviderTelemetry(options.telemetry, "chunk", {
+              observeProviderTelemetry(options.telemetry, "chunk", () => ({
                 candidateCount: chunk.candidates?.length ?? 0,
                 partCount: chunk.candidates?.[0]?.content?.parts?.length ?? 0,
                 hasUsage: chunk.usageMetadata !== undefined,
-              });
+              }));
               const candidate = chunk.candidates?.[0];
               for (const part of candidate?.content?.parts ?? []) {
                 if (part.text !== undefined) {

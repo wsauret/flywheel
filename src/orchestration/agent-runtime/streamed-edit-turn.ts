@@ -12,15 +12,13 @@ interface StreamedEditTurnOptions {
 export interface StreamedEditTurn {
   observe(event: StreamEvent): void
   retire(toolUseId: string): void
-  reset(): void
   dispose(): void
 }
 
 /** Owns the provisional edit-validation identities and advice for one model turn. */
 export function createStreamedEditTurn(options: StreamedEditTurnOptions): StreamedEditTurn {
-  let attempt = 0
   let input = 0
-  let attemptToken = `${options.turnOrdinal}:${attempt}`
+  const attemptToken = String(options.turnOrdinal)
   const inputs = new Map<string, StreamingEditValidationIdentity>()
   const validation = options.service?.openTurn({
     executionCwd: options.executionCwd,
@@ -71,12 +69,6 @@ export function createStreamedEditTurn(options: StreamedEditTurnOptions): Stream
       if (identity) validation?.append({ ...identity, suffix: event.partialJson })
     },
     retire,
-    reset: () => {
-      validation?.reset(attemptToken)
-      inputs.clear()
-      attempt += 1
-      attemptToken = `${options.turnOrdinal}:${attempt}`
-    },
     dispose: () => {
       validation?.reset(attemptToken)
       inputs.clear()

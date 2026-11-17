@@ -1,10 +1,13 @@
-import { sideQuestionCursor, sideQuestionRequestCursor, sideQuestionProtocol, type SideQuestionResult, type SideQuestionView } from "../../../protocol/modules/side-question.js"
+import { sideQuestionCursor, sideQuestionRequestCursor, sideQuestionProtocol, type SideQuestionResult } from "../../../protocol/modules/side-question.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 import type { ConversationSessionEntry, SessionStore } from "../../session-store/types.js"
-import { sideQuestionHost, type SideQuestionHost } from "./host.js"
+import { sideQuestionHost, type SideQuestionHost, type SideQuestionHostChange } from "./host.js"
 
-/** Both clients lend the same session host. The wire carries whole views, never source context.
+const RETIRED: SideQuestionHostChange = { kind: "control", view: null }
+
+/** Both clients lend the same session host. The wire carries whole views and
+ *  the text a running answer gains, never source context.
  *  Side history lives only in the attached runner, so a read answers from the
  *  resident host and never attaches one; only a person's mutation opens the
  *  chat runner. The runtime follows the store to publish whichever host a
@@ -16,11 +19,21 @@ export function createSideQuestionProtocol(services: Pick<ModuleProtocolServices
   readonly openChatRunner?: (sessionId: string) => Promise<Pick<ChatRunner, "chatModuleHosts"> | undefined>
 }): ModuleProtocolRuntime<typeof sideQuestionProtocol> {
   const subscriptions = new Map<string, { host: SideQuestionHost; unsubscribe: () => void }>()
-  function publish(sessionId: string, view: SideQuestionView | null, change: "control" | "request"): void {
-    if (change === "control") services.publish({ cursor: sideQuestionCursor(sessionId), payload: {
+  function publish(sessionId: string, change: SideQuestionHostChange): void {
+    const request = sideQuestionRequestCursor(sessionId)
+    if (change.kind === "appended") {
+      services.publish({ cursor: request, payload: { kind: "side-question-request.appended", text: change.text } })
+      return
+    }
+    if (change.kind === "request") {
+      services.publish({ cursor: request, payload: { kind: "side-question-request.changed", view: { current: change.current } } })
+      return
+    }
+    const view = change.view
+    services.publish({ cursor: sideQuestionCursor(sessionId), payload: {
       kind: "side-question.changed", view: view ? { revision: view.revision, exchanges: view.exchanges } : null,
     } })
-    services.publish({ cursor: sideQuestionRequestCursor(sessionId), payload: { kind: "side-question-request.changed", view: view ? { current: view.current } : null } })
+    services.publish({ cursor: request, payload: { kind: "side-question-request.changed", view: view ? { current: view.current } : null } })
   }
   /** Subscribes to the host the session holds now and publishes its view when that host changed. */
   function follow(sessionId: string): SideQuestionHost | undefined {
@@ -32,11 +45,11 @@ export function createSideQuestionProtocol(services: Pick<ModuleProtocolServices
     if (prior?.host === current) return current
     prior?.unsubscribe()
     subscriptions.delete(sessionId)
-    if (current) subscriptions.set(sessionId, { host: current, unsubscribe: current.subscribe((view, change) => {
-      publish(sessionId, services.enabled() ? view : null, change)
-      if (view === null && subscriptions.get(sessionId)?.host === current) subscriptions.delete(sessionId)
+    if (current) subscriptions.set(sessionId, { host: current, unsubscribe: current.subscribe((change) => {
+      publish(sessionId, services.enabled() ? change : RETIRED)
+      if (change.kind === "control" && change.view === null && subscriptions.get(sessionId)?.host === current) subscriptions.delete(sessionId)
     }) })
-    publish(sessionId, current?.snapshot() ?? null, "control")
+    publish(sessionId, { kind: "control", view: current?.snapshot() ?? null })
     return current
   }
   const offStore = services.sessionStore.onChange((changed) => {

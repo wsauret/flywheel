@@ -1,4 +1,4 @@
-import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPayload } from "../../../infra/event-store-types.js"
 import { normalizeChatInput, type ChatInputLike } from "../../../infra/chat-input.js"
 import { Log } from "../../../infra/log.js"
 import { workflowContextRecordsAddendum } from "../../../workflows/context-bundle/context-projection.js"
@@ -65,7 +65,7 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
  *  the store cannot hold in-flight state. */
 export async function holdPersonMessageOnce(
   writer: AsyncEventWriter,
-  hold: { readonly sessionId: string; readonly kind: string; readonly key: string; readonly payload: unknown },
+  hold: { readonly sessionId: string; readonly kind: string; readonly key: string; readonly payload: InFlightPayload },
   recorded: () => Promise<PersonMessageRecord | undefined>,
 ): Promise<"held" | PersonMessageRecord | null> {
   if (!writer.swapInFlight) return null

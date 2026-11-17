@@ -18,7 +18,7 @@ test("disposal waits for an active config refresh before releasing the projectio
   const started = await startModulePolicy({ configPath }, runtimeConfig)
   const entered = Promise.withResolvers<void>()
   const release = Promise.withResolvers<void>()
-  const projection = await createModuleProjection({
+  const projection = createModuleProjection({
     location: { configPath },
     capabilities: { ...started.policy, refresh: async () => { entered.resolve(); await release.promise; await started.policy.refresh() } },
     runtimeConfig,
@@ -51,7 +51,7 @@ test("a config publication clears a repaired selection error even when the effec
   const runtimeConfig = await createRuntimeConfigOwner({ configPath, watch: false })
   const started = await startModulePolicy({ configPath }, runtimeConfig)
   const settled = Promise.withResolvers<void>()
-  const projection = await createModuleProjection({
+  const projection = createModuleProjection({
     location: { configPath },
     capabilities: started.policy,
     runtimeConfig,
@@ -79,7 +79,7 @@ async function handEditFixture(prefix: string, source: string) {
   writeFileSync(configPath, source)
   const runtimeConfig = await createRuntimeConfigOwner({ configPath, watch: false })
   const started = await startModulePolicy({ configPath }, runtimeConfig)
-  const projection = await createModuleProjection({
+  const projection = createModuleProjection({
     location: { configPath },
     capabilities: started.policy,
     runtimeConfig,
@@ -124,9 +124,12 @@ test("publishes one curated notification condition for module warnings", async (
   } satisfies ModulePolicy
   const notifications: unknown[] = []
   const publicationOrder: string[] = []
-  const projection = await createModuleProjection({
-    location: { configPath: join(temporaryDirectory("fw-module-notification-"), "flywheel.toml") },
+  const configPath = join(temporaryDirectory("fw-module-notification-"), "flywheel.toml")
+  const runtimeConfig = await createRuntimeConfigOwner({ configPath, watch: false })
+  const projection = createModuleProjection({
+    location: { configPath },
     capabilities,
+    runtimeConfig,
     persistentProcesses: { persisted: false, forcedByCli: false, effective: false },
     preparePublication: () => { publicationOrder.push("prepare") },
     publish: () => { publicationOrder.push("publish") },
@@ -144,4 +147,5 @@ test("publishes one curated notification condition for module warnings", async (
   ])
   expect(JSON.stringify(notifications)).not.toContain("unknown-module")
   await projection.dispose()
+  await runtimeConfig.dispose()
 })

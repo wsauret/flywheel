@@ -1,4 +1,3 @@
-import { EventReaderService, EventStoreWriterService } from "../../infra/event-store-effect.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { loggedOperation } from "../../infra/operation-log.js"
@@ -13,7 +12,6 @@ import { chatDurabilityContext, createDurableChatSession } from "./session-chat-
 import { createSessionRuntimeActor } from "./session-runtime-actor.js"
 import type { SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import type { QuestionSettlementOutcome, ResumeChatOutcome, RuntimeSupervisor, RuntimeSupervisorDeps, SendChatOutcome } from "./runtime-supervisor-types.js"
-import { createTranscriptProjectionCache } from "./transcript-projection-cache.js"
 import { attachedRunnerDelivery } from "./session-background-notifications.js"
 import { liveChildRun, liveChildRuns, liveSessionControl } from "../session/live-session-control.js"
 import { isEmptyChat } from "../session/empty-chat.js"
@@ -41,9 +39,8 @@ interface QuestionAnswers {
 }
 
 export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSupervisor {
-  const eventStore = deps.store ?? deps.runtime.runSync(EventReaderService)
-  const eventWriter = deps.writer ?? deps.runtime.runSync(EventStoreWriterService)
-  const transcriptCache = deps.transcriptCache ?? createTranscriptProjectionCache({ sessionStore: deps.sessionStore, reader: eventStore, projectionReader: deps.projectionReader, projectRoot: deps.directories.projectRoot })
+  const reader = deps.projectionReader
+  const eventWriter = deps.writer
   const actors = new Map<string, SessionRuntimeActor>()
   let disposed = false
   // After a stop that followed a planned replacement's cut: how many rows
@@ -52,8 +49,8 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   async function executeChildSessionDeletion(plan: ChildSessionDeletionPlan): Promise<void> {
     await executeDeletionPlan({
       projectRoot: deps.directories.projectRoot,
-      reader: eventStore,
-      projectionReader: deps.projectionReader,
+      reader,
+      projectionReader: reader,
       writer: eventWriter,
       read: deps.manager.read,
       finalizeDeletionTarget: async (target) => {
@@ -71,23 +68,21 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   const shownSessions = new Set<string>()
   const actorContext: SessionRuntimeActorContext = {
     undoChanges: deps.undoChanges,
-    transcriptCache,
+    transcriptCache: deps.transcriptCache,
     sessionStore: deps.sessionStore,
     manager: deps.manager,
-    eventStore,
-    projectionReader: deps.projectionReader,
+    projectionReader: reader,
     eventWriter,
     executeChildSessionDeletion,
     authProfileId: deps.authProfileId,
-    ...(deps.sessionViewLoader ? { sessionViewLoader: deps.sessionViewLoader } : {}),
+    sessionViewLoader: deps.sessionViewLoader,
     directories: deps.directories,
     runtime: deps.runtime,
     runnerCapabilities: deps.runnerCapabilities,
-    ...(deps.onRunnerDone ? { onRunnerDone: deps.onRunnerDone } : {}),
-    ...(deps.onRunnerError ? { onRunnerError: deps.onRunnerError } : {}),
-    ...(deps.resumeWorkflow ? { resumeWorkflow: deps.resumeWorkflow } : {}),
-    ...(deps.retainedOperations ? { retainedOperations: deps.retainedOperations } : {}),
-    ...(deps.reconcileChildSessionCompletions ? { reconcileChildSessionCompletions: deps.reconcileChildSessionCompletions } : {}),
+    onRunnerError: deps.onRunnerError,
+    resumeWorkflow: deps.resumeWorkflow,
+    retainedOperations: deps.retainedOperations,
+    reconcileChildSessionCompletions: deps.reconcileChildSessionCompletions,
     ...(deps.closeStartupGraceMs !== undefined ? { closeStartupGraceMs: deps.closeStartupGraceMs } : {}),
     isDisposed: () => disposed,
     isShown: (id) => shownSessions.has(id),
@@ -106,8 +101,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   async function reconcileChildSessionCompletions(parentSessionId: string) {
     // Workflow teardown can publish a result after admission closes. Keep its
     // notice durable without waking a runner that shutdown has already closed.
-    if (disposed) return await deps.reconcileChildSessionCompletions?.(parentSessionId)
-      ?? { reconciledCount: 0, workflowAggregateReads: 0 }
+    if (disposed) return await deps.reconcileChildSessionCompletions(parentSessionId)
     return ensureActor(parentSessionId).reconcileChildSessionCompletions()
   }
   /** A client's start of a chat: it always opens a new chat and never takes
@@ -284,14 +278,14 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  A subagent's run lives in its parent's runner, so its live control
    *  cuts it and settles it as interrupted. */
   function interruptSession(sessionId: string, by: ControlInterruption, address?: WorkflowDeliveryAddress): Promise<boolean> {
-    const member = liveSessionControl(eventStore, sessionId)?.member
+    const member = liveSessionControl(reader, sessionId)?.member
     if (member) return Promise.resolve(member.interrupt(by))
     const entry = () => deps.sessionStore.get(sessionId)
     const workflow = () => deps.workflowHosts.get(sessionId)
-    const childRun = () => liveChildRun(eventStore, sessionId)?.child
+    const childRun = () => liveChildRun(reader, sessionId)?.child
     return deps.continuationLanes.interrupt({
-      reader: eventStore,
-      projectionReader: deps.projectionReader,
+      reader,
+      projectionReader: reader,
       writer: eventWriter,
       manager: deps.manager,
       sessionId,
@@ -324,7 +318,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   function releaseForegroundBash(sessionId: string, toolUseId: string): boolean {
     // Preemptive and actor-free: the hold lives on the runner in the shared
     // session store, and workflow sessions have no per-session chat actor.
-    return liveSessionControl(eventStore, sessionId)?.member?.releaseForegroundBash(toolUseId)
+    return liveSessionControl(reader, sessionId)?.member?.releaseForegroundBash(toolUseId)
       ?? deps.sessionStore.releaseForegroundBash(sessionId, toolUseId)
   }
   /** A person's Stop of one background call of a chat. A call that
@@ -336,14 +330,14 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  replacement handed over stops through the keeper; other work, and a
    *  child whose kind no module stops this way, through the runner. */
   async function terminateBackgroundWork(sessionId: string, toolUseId: string): Promise<void> {
-    if (deps.keeper?.terminate(sessionId, toolUseId)) return
-    const settle = await deps.sessionStops?.(sessionId, toolUseId)
+    if (deps.keeper.terminate(sessionId, toolUseId)) return
+    const settle = await deps.sessionStops(sessionId, toolUseId)
     log.info("background stop routed", { sessionId, route: settle ? "child-binding" : "runner" })
     if (settle) {
       const answer = await settle()
       if (!answer.ok) throw new Error(answer.error)
     } else {
-      const member = liveSessionControl(eventStore, sessionId)?.member
+      const member = liveSessionControl(reader, sessionId)?.member
       if (member) member.terminateBackgroundWork(toolUseId)
       else await ensureActor(sessionId).dispatch({ kind: "background.terminate", toolUseId })
     }
@@ -355,7 +349,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     return ensureActor(sessionId).dispatch({ kind: "question.cancel", toolUseId })
   }
   function compactChat(sessionId: string): Promise<boolean> {
-    const member = liveSessionControl(eventStore, sessionId)?.member
+    const member = liveSessionControl(reader, sessionId)?.member
     if (member) return member.compact()
     return ensureActor(sessionId).dispatch({ kind: "chat.compact" })
   }
@@ -408,7 +402,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     await transferForegroundForReplacement()
     const settle = (sessionIds: readonly string[], step: (sessionId: string) => Promise<boolean>) => Promise.all(sessionIds.map((sessionId) =>
       deps.continuationLanes.run(sessionId, () => step(sessionId)).then((interrupted) => ({ sessionId, interrupted }), (error: unknown) => ({ sessionId, error }))))
-    const children = await settle(select(liveChildRuns(eventStore).map((control) => control.sessionId)), (sessionId) => cutChild(sessionId, handoffId))
+    const children = await settle(select(liveChildRuns(reader).map((control) => control.sessionId)), (sessionId) => cutChild(sessionId, handoffId))
     const workflows = await settle(select(deps.workflowHosts.allIds()), (id) => cutWorkflow(id, handoffId, mayRetire))
     const sessions = await settle(select(deps.sessionStore.allIds()), (sessionId) => cutSession(sessionId, handoffId, mayRetire))
     const outcomes = [...children, ...workflows, ...sessions]
@@ -431,11 +425,11 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  longer runs, or whose row of this handoff names the run it runs now, is
    *  the cut's already. Returns whether it interrupted the run. */
   async function cutChild(sessionId: string, handoffId: string): Promise<boolean> {
-    const control = liveChildRun(eventStore, sessionId)
+    const control = liveChildRun(reader, sessionId)
     if (control === undefined) return false
-    const row = await readPlannedSessionContinuationAsync(deps.projectionReader, sessionId)
+    const row = await readPlannedSessionContinuationAsync(reader, sessionId)
     if (row?.handoffId === handoffId && row.runId === control.child.runId) return false
-    return await interruptChildForReplacement({ projectionReader: deps.projectionReader, writer: eventWriter, control, handoffId })
+    return await interruptChildForReplacement({ projectionReader: reader, writer: eventWriter, control, handoffId })
   }
   /** The cut's step for one chat or workflow: a running turn is cut, and
    *  deterministic work accepted at its save point is carried without a turn.
@@ -451,8 +445,8 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     if (!entry || entry.kind !== "chat") return false
     const operations = entry.kind === "chat"
       ? await pendingRetainedOperationContinuations({
-          reader: eventStore,
-          projectionReader: deps.projectionReader,
+          reader,
+          projectionReader: reader,
           manager: deps.manager,
           sessionId,
           conversationId: entry.conversationId,
@@ -467,9 +461,9 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     const turnRuns = entry.runner !== null
       && (entry.kind === "chat" ? entry.runner.holdsRunningTurn() : turnInFlight(entry))
     if (!turnRuns && operations.length === 0) return false
-    const held = (await readPlannedSessionContinuationAsync(deps.projectionReader, sessionId))?.handoffId === handoffId
+    const held = (await readPlannedSessionContinuationAsync(reader, sessionId))?.handoffId === handoffId
     await authorizePlannedSessionContinuation({
-      reader: deps.projectionReader,
+      reader,
       writer: eventWriter,
       continuation: {
         target: { sessionId, kind: entry.kind },
@@ -479,7 +473,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     })
     if (!turnRuns) return true
     if (await deps.sessionStore.interruptForReplacement(sessionId)) return true
-    if (operations.length === 0 && !held && mayRetire()) await retirePlannedSessionContinuation({ reader: deps.projectionReader, writer: eventWriter, sessionId })
+    if (operations.length === 0 && !held && mayRetire()) await retirePlannedSessionContinuation({ reader, writer: eventWriter, sessionId })
     return false
   }
   /** The cut's step for one hosted workflow: the workflow gets its
@@ -495,17 +489,17 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   async function cutWorkflow(workflowId: string, handoffId: string, mayRetire: () => boolean): Promise<boolean> {
     const host = deps.workflowHosts.get(workflowId)
     if (!host) return false
-    const held = (await readPlannedSessionContinuationAsync(deps.projectionReader, workflowId))?.handoffId === handoffId
-    await authorizePlannedSessionContinuation({ reader: deps.projectionReader, writer: eventWriter, continuation: {
+    const held = (await readPlannedSessionContinuationAsync(reader, workflowId))?.handoffId === handoffId
+    await authorizePlannedSessionContinuation({ reader, writer: eventWriter, continuation: {
       target: { kind: "workflow", workflowId }, handoffId,
     } })
     if (await host.interruptForReplacement()) return true
-    if (!held && mayRetire() && await workflowRests(workflowId, host)) await retirePlannedSessionContinuation({ reader: deps.projectionReader, writer: eventWriter, sessionId: workflowId })
+    if (!held && mayRetire() && await workflowRests(workflowId, host)) await retirePlannedSessionContinuation({ reader, writer: eventWriter, sessionId: workflowId })
     return false
   }
   async function workflowRests(workflowId: string, host: WorkflowRunner): Promise<boolean> {
     if (host.interruption() !== undefined) return true
-    const status = (await readWorkflowStatees([workflowId], deps.projectionReader)).statuses.get(workflowId)
+    const status = (await readWorkflowStatees([workflowId], reader)).statuses.get(workflowId)
     return status === "completed" || status === "failed" || status === "paused"
   }
   /** The stop's share of a planned replacement's cut: the cut's own steps,
@@ -539,7 +533,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     // A failed read must not skip the ordered teardown after it. A turn the
     // cut reached still ends as the cut ends it, and a turn it did not reach
     // takes the runtime interrupt, which keeps its Resume.
-    const rows = await plannedContinuationsFor(deps.projectionReader, handoffId).catch((error: unknown) => {
+    const rows = await plannedContinuationsFor(reader, handoffId).catch((error: unknown) => {
       log.warn("the replacement's continuation rows could not be read; each turn the cut has not reached stops with the runtime interrupt", { handoffId, error: errorMessage(error) })
       return []
     })
@@ -553,7 +547,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  its rows itself. */
   async function countSuccessorRows(handoffId: string): Promise<SuccessorRows | undefined> {
     try {
-      const [continuations, handovers] = await Promise.all([plannedContinuationsFor(deps.projectionReader, handoffId), commandHandoversForAsync(deps.projectionReader, handoffId)])
+      const [continuations, handovers] = await Promise.all([plannedContinuationsFor(reader, handoffId), commandHandoversForAsync(reader, handoffId)])
       return { continuations: continuations.length, handovers: handovers.length }
     } catch (error) {
       log.warn("the replacement's successor rows could not be counted; the successor keeps the project named and reads its rows itself", { handoffId, error: errorMessage(error) })
@@ -586,10 +580,10 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       disposed = true
       // A stop ends no reply wait: each stays held, and the next runtime
       // registers it again and applies the end rules (ARCH-SESSIONS-032).
-      suspendReplyWaits(deps.projectionReader)
-      const handoffId = deps.replacementHandoff?.()
+      suspendReplyWaits(reader)
+      const handoffId = deps.replacementHandoff()
       if (handoffId !== undefined) {
-        deps.onReplacementStop?.()
+        deps.onReplacementStop()
         await cutWorkAfterCut(handoffId).catch((error: unknown) => {
           log.warn("work the replacement's cut did not reach could not be cut; it stops interrupted for a person to resume", { handoffId, error: errorMessage(error) })
         })
@@ -614,13 +608,10 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       await Promise.all(closing.map(actor => actor.joinOrderedWork()))
       const actorSettlements = await Promise.allSettled(closing.map((actor) => actor.closeSettled(disposition)))
       const removed = clientsHold ? [] : await removePausedEmptyChats(open)
-      const settlements = await Promise.allSettled([
-        ...(deps.transcriptCache ? [] : [transcriptCache.dispose()]),
-        deps.lifecycle.settleSessionStore(stopBy),
-      ])
+      const settlements = await Promise.allSettled([deps.lifecycle.settleSessionStore(stopBy)])
       // The keeper closes once every host has closed with its runner, so no
       // host's adoption can still take a command the keeper hands over or ends.
-      const keeperSettlement = await Promise.allSettled([deps.keeper?.close()])
+      const keeperSettlement = await Promise.allSettled([deps.keeper.close()])
       const authSettlement = await Promise.allSettled([deps.lifecycle.settleAuthAdmission()])
       if (handoffId !== undefined) successorRowsAfterStop = await countSuccessorRows(handoffId)
       actors.clear()
@@ -647,7 +638,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     const removed: string[] = []
     for (const { id } of candidates) {
       try {
-        if (!await isEmptyChat(await deps.manager.read(id), deps.projectionReader)) continue
+        if (!await isEmptyChat(await deps.manager.read(id), reader)) continue
         await executeChildSessionDeletion(await deps.manager.admitDeletion(id))
         removed.push(id)
       } catch (error) {
@@ -656,5 +647,5 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     }
     return removed
   }
-  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
+  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
 }

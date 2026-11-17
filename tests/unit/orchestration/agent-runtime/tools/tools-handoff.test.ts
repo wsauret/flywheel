@@ -7,6 +7,7 @@ import { Result } from "effect";
 import { handoffDefinition, createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
 import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
@@ -56,7 +57,7 @@ const diagnosis = {
 
 /** Runs one handoff call through the dispatcher, as a model's call runs. */
 function submit(tool: RuntimeTool, input: { [key: string]: unknown }, ctx: ToolContext) {
-  return executePreparedTool(prepareToolCall({ id: "call-handoff", name: "handoff", input }, new Map([["handoff", tool]]), { ok: true }), ctx);
+  return executePreparedTool(prepareToolCall({ id: "call-handoff", name: "handoff", input }, new Map([["handoff", tool]]), admitEveryTool), ctx);
 }
 
 describe("handoff tool", () => {
@@ -557,10 +558,9 @@ describe("handoff tool", () => {
     expect(undelivered.content).toContain("Results still owed");
     expect(captured).toBeNull();
 
-    registry.flushSettledNotifications();
+    const reviewed = registry.deliverDurableSubagentNotification({ key: "subagent-completions:reviewer-1", text: "Architecture review complete" });
     receipt.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    await reviewed;
     receipt = Promise.withResolvers<void>();
     const serverDone = Promise.withResolvers<BackgroundWorkResult>();
     registry.track({
@@ -632,9 +632,7 @@ describe("handoff tool", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect((await attempt("child pending")).outcome).toBe("blocked");
-    registry.flushSettledNotifications();
-    await Promise.resolve();
-    await Promise.resolve();
+    await registry.deliverDurableSubagentNotification({ key: "subagent-completions:child", text: "review complete" });
     mailbox.drainPending();
 
     const server = Promise.withResolvers<BackgroundWorkResult>();

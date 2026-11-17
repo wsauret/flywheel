@@ -1,10 +1,9 @@
 import { Schema } from "effect"
 import { blockIdentity } from "../block-identity.js"
 import type { FrontendOutputBlock } from "../app-service-types.js"
-import { frontendOutputBlockBytes } from "../frontend-output-block-metrics.js"
 import type { OutputDelta, OutputView } from "../output-protocol-types.js"
 import { FrontendOutputBlockSchema } from "../transcript-protocol-schemas.js"
-import { appendText, applyStreamingToolTextOps, applyValueEdits, editableBlock, streamingToolTextOpsBytes, valueEditsBytes, type StreamingTextRejection } from "./streaming-text-edits.js"
+import { appendText, applyStreamingToolTextOps, applyValueEdits, editableBlock, type StreamingTextRejection } from "./streaming-text-edits.js"
 
 const isFrontendOutputBlock = Schema.is(FrontendOutputBlockSchema)
 
@@ -237,7 +236,7 @@ export function applyOutputDelta(view: MutableOutputView, delta: OutputDeltaCont
  *  resident list is a prefix of the true run order); incoming children win on
  *  id match, since they carry the newest status. Child ids are provider
  *  toolUseIds and always present. */
-export function mergeAgentGroupChildren<T extends { readonly id: string }>(resident: readonly T[], incoming: readonly T[]): T[] {
+function mergeAgentGroupChildren<T extends { readonly id: string }>(resident: readonly T[], incoming: readonly T[]): T[] {
   if (resident.length === 0) return [...incoming]
   const incomingIds = new Set(incoming.map((child) => child.id))
   return [...resident.filter((child) => !incomingIds.has(child.id)), ...incoming]
@@ -271,15 +270,6 @@ export function buildBlockIndex(blocks: OutputView["blocks"]): Map<string, numbe
   const map = new Map<string, number>()
   for (const [index, block] of blocks.entries()) map.set(blockIdentity(block), index)
   return map
-}
-
-export function outputDeltaBytes(delta: OutputDeltaContent): number {
-  let bytes = delta.truncateTo === undefined ? 0 : 8
-  for (const change of delta.blocks) {
-    bytes += change.kind === "append-content" ? change.text.length : change.kind === "edit" ? valueEditsBytes(change.edits) : frontendOutputBlockBytes(change.block)
-  }
-  if (delta.streamingToolTextOps !== undefined) bytes += streamingToolTextOpsBytes(delta.streamingToolTextOps)
-  return bytes
 }
 
 /** Truncates and upserts move the total; inserts never reach this function.

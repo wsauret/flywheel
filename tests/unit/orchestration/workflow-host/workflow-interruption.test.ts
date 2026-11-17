@@ -18,8 +18,7 @@ import { createSessionFactWriter } from "../../../../src/orchestration/session/s
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
 import { testAuth } from "../chat/_chat-session-agent-runtime-fixtures"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { ManagedRuntime, Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
+import { ManagedRuntime } from "effect"
 import { EventReaderService, EventStoreLive, EventStoreService } from "../../../../src/infra/event-store-effect.js"
 import { liveWorkflowControl, messageDisposition, type LiveRecipientState } from "../../../../src/orchestration/session/live-session-control.js"
 import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
@@ -38,6 +37,7 @@ import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-ho
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { newTestRunner } from "../../../helpers/agent-runner"
 import { asModelClient } from "../agent-runtime/_model-client"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 afterEach(cleanupProjectRoots)
 
@@ -49,7 +49,7 @@ afterEach(cleanupProjectRoots)
  *  the workflow, and the runner reads that binding from the session manager. */
 async function fixtureWorkflowRun(root: string, streamWithTools: (options: StreamOptions) => AsyncGenerator<ProviderStreamEvent>, capabilityAccess?: CapabilityAccess, stepAgent?: (options: AgentOptions) => Agent, parentSessionId?: string, reenter: boolean | "later_phase" = false) {
   const selectedWorkflow = reenter === "later_phase"
-    ? Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ ...workflow, phases: [...workflow.phases, { phase: "again", runs: "work" }] })
+    ? loadedWorkflow({ ...workflow, phases: [...workflow.phases, { phase: "again", runs: "work" }] })
     : workflow
   const runtime = ManagedRuntime.make(EventStoreLive(resolveEventStoreDbFile(root)))
   const store = await runtime.runPromise(EventStoreService)
@@ -112,7 +112,7 @@ async function fixtureWorkflowRun(root: string, streamWithTools: (options: Strea
     workflowDeps: {
       ...base, definitionRevision, planCapabilities: planEveryCapability, ...(capabilityAccess ? { capabilityAccess } : {}),
       createAgent: (options) => {
-        if (options.purpose.kind !== "workflow-agent") return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
+        if (options.purpose.kind !== "workflow-agent") return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
         if (stepAgent) return stepAgent(options)
         return newTestRunner({ ...options, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
           accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
@@ -135,7 +135,7 @@ describe("workflow interruption ownership", () => {
     const done = Promise.withResolvers<AgentRunResult>()
     const { runtime, runner } = await fixtureWorkflowRun(root, async function* () {}, undefined, (options) => {
       ready.resolve(options)
-      return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+      return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
     }, undefined, true)
     try {
       expect(await runner.prepare()).toBeNull()
@@ -177,7 +177,7 @@ describe("workflow interruption ownership", () => {
           runners.push(runner)
           if (runners.length === 2) bothReady.resolve()
           return {
-            send() {}, end() {}, abort() {},
+            send() {}, abort() {},
             interruptGeneration() {
               runner.interrupts += 1
               return true
@@ -349,7 +349,7 @@ describe("workflow interruption ownership", () => {
         done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } })
       }
       options.lifecycle?.signal?.addEventListener("abort", stop, { once: true })
-      return { done: done.promise, send() { void park().catch(() => {}) }, end() {}, abort: stop }
+      return { done: done.promise, send() { void park().catch(() => {}) }, abort: stop }
     }, undefined, "later_phase")
     expect(await runner.prepare()).toBeNull()
     const running = runner.run().catch(() => undefined)

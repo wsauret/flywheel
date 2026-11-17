@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join, relative } from "node:path";
-import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
 import type { ExternalAccount } from "../../../../../src/infra/llm/access-provider.js";
 import { enginePath } from "../../../../../src/infra/claude-engine.js";
@@ -145,7 +145,7 @@ describe("Claude logins in auth profiles", () => {
     const build = Bun.spawn([process.execPath, "build", "--compile", join(import.meta.dir, "_fake-engine.ts"), "--outfile", fakeEngine], { stdout: "pipe", stderr: "pipe", windowsHide: true });
     if (await build.exited !== 0) throw new Error(`the stand-in engine did not build: ${await new Response(build.stderr).text()}`);
   });
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const launcher = createLauncherScope(supervisor);
   afterAll(async () => {
     await launcher.close();

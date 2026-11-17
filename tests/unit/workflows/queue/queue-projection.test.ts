@@ -8,12 +8,11 @@ import { InvariantViolation } from "../../../../src/infra/invariant"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { factDescriptors } from "../../../../src/infra/event-registry"
 import { WorkflowQueueFactSchemas, parseWorkflowQueueFact, type WorkflowQueueFact } from "../../../../src/workflows/view/view-facts"
-import { createLiveWorkflowView, createReplayingWorkflowView, createWorkflowQueueProjection, loadQueueFromEvents, loadWorkflowStateFromEvents, queueFromProjection } from "../../../../src/workflows/view/view-projection"
+import { createLiveWorkflowView, createReplayingWorkflowView, createWorkflowQueueProjection, loadQueueFromEvents, queueFromProjection } from "../../../../src/workflows/view/view-projection"
 import { loadQueueSnapshotFromReader, readWorkflowStatees } from "../../../../src/workflows/view/view-store"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
 import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { completeAttempt, startExecution } from "../../../../src/workflows/vm/attempt-transitions.js"
@@ -33,6 +32,7 @@ import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflow
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { createMemoryStore, initialFacts, testHost } from "../vm/host-test-support.js"
 import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** Fact literals below carry the registered version of their type, so a queue
  *  fact version bump stays a migration concern instead of a test edit. */
@@ -157,7 +157,7 @@ describe("queue projection invariants", () => {
   // tree showed that chain as one step.
   test.each(["absent", "v1", "invalid-suffix", "companion-damage"] as const)("upgrades %s historical follow-up chains without losing an execution", async (history) => {
     const skills = testSkillRevision(["work", "review"].map((id) => testSkill(id)))
-    const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const definition = loadedWorkflow({
       id: "history", name: "History",
       phases: [{ phase: "work", brief: "Work.", name: "Work", writes: [] }, { phase: "review", brief: "Review.", name: "Review", writes: [] }],
     })
@@ -546,7 +546,7 @@ describe("queue projection invariants", () => {
     expect(projection.getPosition()).toBe(50)
     expect(createWorkflowQueueProjection(projectionReader, "session")).toBe(projection)
     expect(loadQueueFromEvents(events)).toEqual(queueFromProjection(state, events))
-    expect(loadWorkflowStateFromEvents(events)).toBe("paused")
+    expect(loadQueueFromEvents(events)?.status).toBe("paused")
     expect((await readWorkflowStatees(["session"], projectionReader)).statuses.get("session")).toBe("paused")
     if (snapshot) expect(snapshot.attempts.map(({ id }) => id)).toEqual(["old"])
 
@@ -578,14 +578,13 @@ describe("queue projection invariants", () => {
     await expect(held.apply([root, companion!])).rejects.toThrow(InvariantViolation)
     await expect(createWorkflowQueueProjection(asAsyncEventReadSurface(inMemoryEventReader(events)), "session").replay()).rejects.toThrow(InvariantViolation)
     expect(() => loadQueueFromEvents(events)).toThrow(InvariantViolation)
-    expect(() => loadWorkflowStateFromEvents(events)).toThrow(InvariantViolation)
     expect((await readWorkflowStatees(["session"], projectionReader)).errors).toHaveLength(1)
   })
 
   /** The facts of a run of one parallel phase of `agents` agents, as the
    *  current build writes them. */
   async function parallelRun(agents: number): Promise<StoredFact[]> {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "wide", name: "Wide",
       phases: [{ phase: "wide", agents: Array.from({ length: agents }, (_, index) => { const id = `a${String(index).padStart(2, "0")}`; return { agent: id, name: id, brief: "Run.", writes: [] } }) }],
     })

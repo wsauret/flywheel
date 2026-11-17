@@ -1,4 +1,4 @@
-import { HashMap, Option } from "effect"
+import { HashMap, HashSet, Option } from "effect"
 import { createEventProjection, parseProjectionFact } from "../../../infra/event-projection.js"
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface, StoredFact } from "../../../infra/event-store-types.js"
 import { createPushFedView } from "../../../infra/push-fed-view.js"
@@ -21,8 +21,16 @@ interface RunRegistration {
   readonly cut: WorkflowRunCut | null
 }
 /** Keyed with structural sharing, so a fact copies the path to its own run
- *  and never the index of every run. */
-interface RunIndex { readonly runs: HashMap.HashMap<string, RunRegistration> }
+ *  and never the index of every run. `completed` holds every workflow whose
+ *  control completed, also one that a conversion registered later. */
+interface RunIndex { readonly runs: HashMap.HashMap<string, RunRegistration>; readonly completed: HashSet.HashSet<string> }
+
+/** A completed workflow is read-only (PI-INTERACTION-022): it takes no turn
+ *  again, and only this fact of its control ends it. A paused, aborted, or
+ *  failed workflow can resume. */
+const WORKFLOW_COMPLETED = "workflow.completed"
+const RUN_INDEX_FACT_TYPES = [...factTypes(WorkflowRunFactSchemas), WORKFLOW_COMPLETED]
+const RUN_INDEX_FACT_TYPE_SET: ReadonlySet<string> = new Set(RUN_INDEX_FACT_TYPES)
 
 /** Reads lifetime run facts across every control epoch. No session metadata or workflow/session alias is consulted. */
 export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omit<WorkflowRunReader, "readRequest" | "readDefinitionLineage" | "readAttempt"> {
@@ -30,7 +38,7 @@ export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omi
     return heldProjection(reader, `workflow-runs:${workflowId ?? "all"}`, () => createEventProjection(reader, {
       name: "workflow-runs",
       ...(workflowId === undefined ? {} : { aggregateId: `workflow:${workflowId}` }),
-      factTypes: factTypes(WorkflowRunFactSchemas),
+      factTypes: RUN_INDEX_FACT_TYPES,
       initialState: emptyRunIndex,
       reduce: reduceRunIndex,
     }))
@@ -38,44 +46,58 @@ export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omi
   async function registration(id: string): Promise<RunRegistration | null> {
     return Option.getOrNull(HashMap.get((await projection(id).replay()).runs, id))
   }
-  async function registered(include: (run: WorkflowRunRecord) => boolean): Promise<Array<{ workflowId: string, run: WorkflowRunRecord }>> {
-    return [...(await projection().replay()).runs].filter(([, { run }]) => include(run))
+  async function registered(include: (workflowId: string, run: WorkflowRunRecord, completed: RunIndex["completed"]) => boolean): Promise<Array<{ workflowId: string, run: WorkflowRunRecord }>> {
+    const { runs, completed } = await projection().replay()
+    return [...runs].filter(([workflowId, { run }]) => include(workflowId, run, completed))
       .sort(([, left], [, right]) => left.position - right.position)
       .map(([workflowId, { run }]) => ({ workflowId, run }))
   }
   return {
     read: async (id) => (await registration(id))?.run ?? null,
+    readOpen: async (id) => {
+      const index = await projection(id).replay()
+      return HashSet.has(index.completed, id) ? null : Option.getOrNull(HashMap.get(index.runs, id))?.run ?? null
+    },
     readCut: async (id) => (await registration(id))?.cut ?? null,
     readCreationRequest: async (id) => (await registration(id))?.request ?? null,
     readCapabilityBoundary: async (id) => (await registration(id))?.capabilityBoundary,
-    listForParent: (parentSessionId) => registered((run) => run.launchedFrom.parentSessionId === parentSessionId),
+    listForParent: (parentSessionId) => registered((_id, run) => run.launchedFrom.parentSessionId === parentSessionId),
     list: () => registered(() => true),
+    listOpen: () => registered((workflowId, _run, completed) => !HashSet.has(completed, workflowId)),
+    changedRuns: (events) => {
+      const changed = new Set<string>()
+      for (const { type, aggregateId } of events) if (RUN_INDEX_FACT_TYPE_SET.has(type)) changed.add(aggregateId.slice("workflow:".length))
+      return changed
+    },
   }
 }
 
 function emptyRunIndex(): RunIndex {
-  return { runs: HashMap.empty() }
+  return { runs: HashMap.empty(), completed: HashSet.empty() }
 }
 
 function reduceRunIndex(state: RunIndex, event: StoredFact): RunIndex {
-  const fact = parseProjectionFact(event, parseWorkflowRunFact)
   const id = event.aggregateId.slice("workflow:".length)
+  // Only the type of a completion is read; its payload is empty.
+  if (event.type === WORKFLOW_COMPLETED) return { ...state, completed: HashSet.add(state.completed, id) }
+  const fact = parseProjectionFact(event, parseWorkflowRunFact)
   const previous = Option.getOrUndefined(HashMap.get(state.runs, id))
+  const withRuns = (runs: RunIndex["runs"]): RunIndex => ({ ...state, runs })
   switch (fact.type) {
     case "workflow.run.registered":
       if (previous) throw new Error(`Workflow ${id} has multiple run registrations`)
-      return { runs: HashMap.set(state.runs, id, { position: event.position, run: { ...fact.payload.settings, launchedFrom: fact.payload.launchedFrom }, request: fact.payload.request, capabilityBoundary: fact.payload.capabilityBoundary, cut: null }) }
+      return withRuns(HashMap.set(state.runs, id, { position: event.position, run: { ...fact.payload.settings, launchedFrom: fact.payload.launchedFrom }, request: fact.payload.request, capabilityBoundary: fact.payload.capabilityBoundary, cut: null }))
     case "workflow.run.settings.updated":
       if (!previous) throw new Error(`Workflow ${id} settings precede registration`)
-      return { runs: HashMap.set(state.runs, id, { ...previous, run: { ...fact.payload.settings, ...(previous.run.userNamed && fact.payload.labelSource !== "user" ? { label: previous.run.label, shortLabel: previous.run.shortLabel, name: previous.run.name, userNamed: true } : {}), launchedFrom: previous.run.launchedFrom } }) }
+      return withRuns(HashMap.set(state.runs, id, { ...previous, run: { ...fact.payload.settings, ...(previous.run.userNamed && fact.payload.labelSource !== "user" ? { label: previous.run.label, shortLabel: previous.run.shortLabel, name: previous.run.name, userNamed: true } : {}), launchedFrom: previous.run.launchedFrom } }))
     case "workflow.run.adopted":
       if (!previous) throw new Error(`Workflow ${id} adoption precedes registration`)
-      return { runs: HashMap.set(state.runs, id, { ...previous, run: { ...previous.run, ...fact.payload } }) }
+      return withRuns(HashMap.set(state.runs, id, { ...previous, run: { ...previous.run, ...fact.payload } }))
     case "workflow.run.deleted":
-      return { runs: HashMap.remove(state.runs, id) }
+      return withRuns(HashMap.remove(state.runs, id))
     case "workflow.run.cut.updated":
       if (!previous) throw new Error(`Workflow ${id} cut precedes registration`)
-      return { runs: HashMap.set(state.runs, id, { ...previous, cut: nextRunCut(previous.cut, fact.payload.cut) }) }
+      return withRuns(HashMap.set(state.runs, id, { ...previous, cut: nextRunCut(previous.cut, fact.payload.cut) }))
   }
 }
 

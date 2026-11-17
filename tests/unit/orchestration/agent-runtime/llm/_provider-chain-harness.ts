@@ -71,7 +71,7 @@ export function fakeAvailability(script: AvailabilityScript, nowMs = Date.now())
       state.nowMs = Math.max(state.nowMs, pending.untilMs);
     },
     observeChatGptRateHeaders: () => {},
-    observeChatGptUsage: () => {},
+    observeUsage: () => {},
     // Mirrors the owner: the latest future reset that the rate-limit headers state holds the account as a rate limit.
     observeAnthropicRateLimit: (candidate, headers) => {
       const resets = [...headers.entries()].flatMap(([name, value]) => /^anthropic-ratelimit-.+-reset$/.test(name) ? [Date.parse(value)] : []).filter((ms) => ms > state.nowMs);

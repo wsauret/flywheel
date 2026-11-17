@@ -12,7 +12,7 @@ export const papercutLogDefinition: RuntimeTool = {
   inputSchema: {
     type: "object",
     properties: {
-      observation: { type: "string", minLength: 1, description: "One or two sentences that describe the observed papercut." },
+      observation: { type: "string", minLength: 1 },
       category: { type: "string", enum: CATEGORIES },
     },
     required: ["observation"],
@@ -50,23 +50,25 @@ async function recordPapercut(input: RuntimeToolInput, context: ToolContext): Pr
   return { content: "Papercut recorded.", outcome: "ok" }
 }
 
-export function createPapercutDisposeTool(writer: PapercutDispositionWriter): RuntimeTool {
-  return {
-    name: "papercut_dispose",
-    action: "ui_meta",
-    description: "Atomically close one live project papercut as fixed when evidence shows the pain is gone, or dismissed when the record is no longer actionable.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        recorded_fact_id: { type: "string", minLength: 1 },
-        disposition: { type: "string", enum: DISPOSITIONS },
-      },
-      required: ["recorded_fact_id", "disposition"],
-      additionalProperties: false,
+export const papercutDisposeDefinition: RuntimeTool = {
+  name: "papercut_dispose",
+  action: "ui_meta",
+  description: "Close one live project papercut by its record id, as the papercut campaign directs.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      recorded_fact_id: { type: "string", minLength: 1 },
+      disposition: { type: "string", enum: DISPOSITIONS },
     },
-    isConcurrencySafe: false,
-    execute: async (input, context) => disposePapercut(writer, input, context),
-  }
+    required: ["recorded_fact_id", "disposition"],
+    additionalProperties: false,
+  },
+  isConcurrencySafe: false,
+  execute: async (input, context) => {
+    const writer = context.moduleRuntimes?.get(papercutDispositionRuntime)
+    if (!writer) return failure("Papercut disposition has no runtime writer.")
+    return disposePapercut(writer, input, context)
+  },
 }
 
 async function disposePapercut(writer: PapercutDispositionWriter, input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
@@ -76,19 +78,6 @@ async function disposePapercut(writer: PapercutDispositionWriter, input: Runtime
   if (!context.sessionId) return failure("This runtime names no session, so the papercut cannot be disposed.")
   const result = await writer.dispose({ recordedFactId, disposition, disposingSessionId: context.sessionId })
   return { content: result.kind === "disposed" ? "Papercut disposed." : "Papercut was already disposed.", outcome: "ok" }
-}
-
-export const papercutDisposeDefinition: RuntimeTool = {
-  ...createPapercutDisposeTool({
-    dispose: async (input) => {
-      throw new Error(`Papercut disposition writer is not bound for ${input.recordedFactId}`)
-    },
-  }),
-  execute: async (input, context) => {
-    const writer = context.moduleRuntimes?.get(papercutDispositionRuntime)
-    if (!writer) return failure("Papercut disposition has no runtime writer.")
-    return disposePapercut(writer, input, context)
-  },
 }
 
 function nonEmptyString(value: unknown): string | undefined {

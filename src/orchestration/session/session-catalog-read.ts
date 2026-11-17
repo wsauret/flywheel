@@ -1,5 +1,4 @@
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
-import type { WorkflowView } from "../../workflows/view/types.js"
 import type { BudgetSummary } from "./budget-summary.js"
 import type { DiffStatSummary } from "./diff-stat-summary.js"
 import type { SessionDiffStats } from "../../protocol/app-service-types.js"
@@ -7,7 +6,7 @@ import type { DurableSessionCatalogError, DurableSessionCatalogRow, SessionMetad
 import type { SessionDurationProjectionState } from "./session-duration-projection.js"
 import type { SessionForkRecord } from "./session-fork-projection.js"
 import { readForks } from "./session-fork-summary.js"
-import { recoverSessionMetadata, sessionsFromProjection, type SessionMetadataProjectionState } from "./session-metadata-projection.js"
+import { recoverSessionMetadata, sessionMetadataErrors, sessionsFromProjection, type PerSessionMetadataState } from "./session-metadata-projection.js"
 import type { SessionSummaryRead } from "./session-summary-index.js"
 import type { ReplayedSession } from "./schemas.js"
 import { recordedExecutionCwd } from "./session-execution-directory.js"
@@ -23,12 +22,11 @@ export interface SessionCatalogStats {
   budget: Map<string, BudgetSummary>
   durations: Map<string, SessionDurationProjectionState>
   diffStats: Map<string, DiffStatSummary>
-  queues: Map<string, WorkflowView["status"] | undefined>
   forks: { [sessionId: string]: SessionForkRecord }
   errors: DurableSessionCatalogError[]
 }
 /** Adapts one exact derived-index read to the catalog builder while retaining
- * the cheap workflow and fork probes that do not fold workspace history. */
+ * the cheap fork probe that does not fold workspace history. */
 export async function sessionCatalogStatsFromSummary(
   result: SessionSummaryRead,
   sessionIds: readonly string[],
@@ -54,24 +52,8 @@ export async function sessionCatalogStatsFromSummary(
       if (summary.errors.diffStats) errors.push({ sessionId, scope: "diffStats", reason: summary.errors.diffStats })
     }
   }
-  const auxiliary = await readSessionCatalogAuxiliaryStats(sessionIds, projectionReader, errors)
-  return { budget, durations, diffStats, ...auxiliary }
-}
-
-async function readSessionCatalogAuxiliaryStats(
-  sessionIds: readonly string[],
-  projectionReader: AsyncEventStateReadSurface,
-  errors: DurableSessionCatalogError[],
-): Promise<Pick<SessionCatalogStats, "queues" | "forks" | "errors">> {
   const forkResult = await readForks(sessionIds, projectionReader)
-  return {
-    queues: new Map(),
-    forks: forkResult.forks,
-    errors: [
-      ...errors,
-      ...forkResult.errors,
-    ],
-  }
+  return { budget, durations, diffStats, forks: forkResult.forks, errors: [...errors, ...forkResult.errors] }
 }
 
 export function buildDurableSessionCatalog(
@@ -85,7 +67,6 @@ export function buildDurableSessionCatalog(
     stats.budget.get(entry.id),
     stats.durations.get(entry.id),
     stats.diffStats.get(entry.id),
-    stats.queues.get(entry.id),
     stats.forks[entry.id],
   ))
   return {
@@ -106,15 +87,16 @@ export function buildDurableSessionMetadataCatalog(metadataResult: SessionMetada
 
 /** Converts strict projection state and recovers only its quarantined
  * aggregates. Recovered rows follow normal rows so strict ordering is stable. */
-export async function sessionMetadataCatalogFromState(state: SessionMetadataProjectionState, reader: AsyncEventStateReadSurface): Promise<SessionMetadataCatalog> {
-  const recovered = (await Promise.all(Object.keys(state.errors).map(async (sessionId) => {
+export async function sessionMetadataCatalogFromState(state: PerSessionMetadataState, reader: AsyncEventStateReadSurface): Promise<SessionMetadataCatalog> {
+  const errors = [...sessionMetadataErrors(state)].map(([sessionId, reason]) => ({ sessionId, reason }))
+  const recovered = (await Promise.all(errors.map(async ({ sessionId }) => {
     const data = await recoverSessionMetadata(reader, sessionId)
     return data ? { id: sessionId, data, degraded: true as const, unavailableFields: ["metadata"] as const } : null
   }))).filter((entry): entry is NonNullable<typeof entry> => entry !== null)
     .sort((a, b) => Date.parse(b.data.lastUpdated) - Date.parse(a.data.lastUpdated))
   return {
     entries: [...sessionsFromProjection(state), ...recovered],
-    errors: Object.entries(state.errors).map(([sessionId, reason]) => ({ sessionId, reason })),
+    errors,
   }
 }
 
@@ -124,7 +106,6 @@ function toDurableSessionCatalogRow(
   budget?: { totalCost: number; totalBilledCost: number; priceUnavailable: boolean; totalTokens: number; contextPercent: number; contextPromptTokens: number; compactionTriggerTokens?: number },
   duration?: { accumulatedActiveMs: number },
   diffStats?: SessionDiffStats,
-  workflowState?: WorkflowView["status"],
   fork?: SessionForkRecord,
 ): DurableSessionCatalogRow {
   const { id, data: session } = entry
@@ -155,7 +136,6 @@ function toDurableSessionCatalogRow(
     branch: session.branch,
     conversationId: session.conversationId,
     providerConversationId: session.providerConversationId,
-    ...(workflowState ? { workflowState } : {}),
     ...(entry.degraded ? {
       degraded: true,
       unavailableFields: entry.unavailableFields ?? [],

@@ -6,10 +6,10 @@ import { subscriptionUsageProtocol, subscriptionUsageStatusRows } from "../../..
 import { createSubscriptionUsageProtocol } from "../../../../../src/orchestration/modules/subscription-usage/protocol.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 
-test("usage declares five control reads, three lossless mutations, and no live domain", () => {
+test("usage declares five control reads, three mutations, and no live domain", () => {
   expect(subscriptionUsageProtocol.domains).toEqual([])
   expect(subscriptionUsageProtocol.queries.map(({ query, deadline }) => [query, deadline])).toEqual([["usage.metadata", "control"], ["usage.stats", "control"], ["usage.accounts", "control"], ["usage.spend", "control"], ["usage.history", "control"]])
-  expect(subscriptionUsageProtocol.mutations.map(({ type, policy }) => [type, policy])).toEqual([["usage.open", "lossless"], ["usage.refresh", "lossless"], ["usage.apply_reset", "lossless"]])
+  expect(subscriptionUsageProtocol.mutations.map(({ type }) => type)).toEqual(["usage.open", "usage.refresh", "usage.apply_reset"])
   expect(subscriptionUsageModule.contributions.find((entry) => entry.domain === "commands")?.value.id).toBe("usage")
   expect(subscriptionUsageStatusRows(undefined)).toEqual([])
 })

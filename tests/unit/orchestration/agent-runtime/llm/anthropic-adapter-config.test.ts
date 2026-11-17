@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { describe, expect, it, beforeEach, spyOn } from "bun:test";
 import { Redacted } from "effect";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
@@ -494,6 +494,31 @@ describe("Anthropic adapter request configuration", () => {
 
     expect(seen[0]?.get("x-api-key")).toBe("proxy-key");
     expect(seen[0]?.get("authorization")).toBeNull();
+  });
+
+  it("An Anthropic request records its timing through the plain timing fetch", async () => {
+    // Every clock read advances one millisecond: only a fetch that stamps its own send time can measure SDK build
+    // time after the send began, because the fallback stamp equals the send time.
+    let clock = performance.now();
+    const now = spyOn(performance, "now").mockImplementation(() => (clock += 1));
+    const server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch() {
+      return wireResponse([
+        { type: "message_start", message: { id: "msg_timing", usage: { input_tokens: 1, output_tokens: 0 } } },
+        { type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 1 } },
+        { type: "message_stop" },
+      ]);
+    } });
+    const timings: UnknownRecord[] = [];
+    try {
+      const client = await createAnthropicAdapter(Redacted.make("key"), "claude-haiku-4-5", MODEL_INFO, { baseURL: `http://127.0.0.1:${server.port}` });
+      await collect(client, { telemetry: { observe(observation) { if (observation.kind === "timing") timings.push({ ...observation.metadata }); } } });
+    } finally {
+      now.mockRestore();
+      await server.stop(true);
+    }
+
+    expect(timings).toHaveLength(1);
+    expect(timings[0]?.sdkBuildMs).toBeGreaterThan(0);
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

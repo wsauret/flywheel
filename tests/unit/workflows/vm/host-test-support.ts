@@ -1,6 +1,5 @@
-import { asAsyncEventReadSurface, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, requireGuardedEventAppender, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { Schema } from "effect"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
@@ -10,21 +9,22 @@ import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
 import type { ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import type { WorkflowVmHostDeps } from "../../../../src/workflows/vm/host-types.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
-import type { WorkflowProposalEncoding, WorkflowProposalEvent } from "../../../../src/workflows/vm/events.js"
+import type { DecodedWorkflowProposalEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/events.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const workPhase = { phase: "work", brief: "Do the work work.", name: "Work", output: { summary: "Result" }, writes: [{ id: "artifact", lifetime: "transient" }] }
 
-export const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const workflow = loadedWorkflow({
   id: "host-test",
   name: "Host test",
   phases: [workPhase],
@@ -39,7 +39,7 @@ const fixtureRevision = (skills = fixtureSkills, personas: ProjectDefinitionRegi
   return Object.freeze({ ...revision, skills, personas })
 }
 export const definition: ResolvedAgent = requireAgent(resolveWorkflowAgents(workflow), "work")
-export const sequentialWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const sequentialWorkflow = loadedWorkflow({
   id: "host-sequential",
   name: "Host sequential",
   phases: [workPhase, { phase: "review", brief: "Do the review work.", name: "Review", writes: [] }],
@@ -110,6 +110,20 @@ export function initialFacts(
   }))
 }
 
+/** The host deps that a test host does not exercise: commits append to
+ *  `writer` alone, every attempt may start, no message is addressed, and
+ *  disposal releases nothing. */
+export function quietHostDeps(writer: AsyncEventWriter): Pick<WorkflowVmHostDeps, "commitBatch" | "conversationId" | "preAttemptPolicy" | "addressedMessages" | "onPostPreflight" | "lifecycle"> {
+  return {
+    commitBatch: (events) => requireGuardedEventAppender(writer, "A test host commits through guarded append").appendBatchGuarded(events),
+    conversationId: () => `agent-${crypto.randomUUID()}`,
+    preAttemptPolicy: () => null,
+    addressedMessages: { read: async () => [], retire: async () => {} },
+    onPostPreflight: () => {},
+    lifecycle: { settleBackground: () => {}, drainEventBus: () => {}, drainWriter: () => {}, disposeProjections: () => {}, disposeRemaining: () => {} },
+  }
+}
+
 type TestHostOverrides = Partial<WorkflowVmHostDeps> & {
   readonly workflow?: WorkflowDefinition
   readonly skills?: SkillRegistryRevision
@@ -127,6 +141,7 @@ export function testHost(
     ?? fixtureRevision(selectedSkills, selectedPersonas)
   const { workflow: _, skills: __, personas: ___, ...hostOverrides } = overrides
   return createWorkflowVmHost({
+    ...quietHostDeps(overrides.writer ?? store),
     requestAddenda: async () => [],
     servedConversations: async () => new Set(),
     startMode: "launch",
@@ -144,7 +159,7 @@ export function testHost(
   })
 }
 
-type HistoricalFollowUpRequest = Pick<Extract<WorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" }>, "identity" | "input">
+type HistoricalFollowUpRequest = Pick<Extract<DecodedWorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" }>, "identity" | "input">
 
 /** Appends the proposal of `event` to the history of `selectedWorkflow` at
  *  `encoding`, the way the build that wrote that encoding committed it. A
@@ -181,8 +196,9 @@ export async function recordHistoricalFollowUp(
   const previous = replayWorkflowControl(store.events).followUp
   const conversationId = previous?.conversationId ?? "conversation-1"
   const requestSequence = (previous?.requestSequence ?? 0) + 1
-  await recordProposal(store, { type: "FOLLOW_UP_REQUESTED", ...request, conversationId, requestSequence })
-  if (options.settled) await recordProposal(store, { type: "FOLLOW_UP_SUCCEEDED", conversationId, requestSequence })
+  // Encoding 13 is the last that holds a follow-up run.
+  await recordProposal(store, { type: "FOLLOW_UP_REQUESTED", ...request, conversationId, requestSequence }, 13)
+  if (options.settled) await recordProposal(store, { type: "FOLLOW_UP_SUCCEEDED", conversationId, requestSequence }, 13)
   if (options.pausedReason !== undefined) await recordProposal(store, { type: "ABORT", reason: options.pausedReason })
 }
 

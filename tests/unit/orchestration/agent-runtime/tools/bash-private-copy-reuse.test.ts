@@ -45,10 +45,24 @@ const SETTLED = new Map([[1, { ppid: 0, start: "1" }], [50, { ppid: 1, start: "5
 const noSurvivor = kernel(SETTLED);
 const LAUNCH: LaunchStamp = { start: "100", pidNamespace: false };
 
+const OBJECT = "1".repeat(40);
+
+/** What the fake Git answers about the repository, real and private alike. */
+interface FakeRepository {
+  head: string;
+  refs: string;
+  stash: string;
+  index: string;
+  worktrees: string;
+}
+
 /** A project with a session scratch folder inside it, in a repository whose
  *  top level is `top`, or outside Git when `repository` is false. Git is
- *  faked; `init` creates the directory it names, as Git does. */
-function project(options: { readonly prefix?: string; readonly repository?: boolean } = {}) {
+ *  faked over `repository`, which a case changes to move the real state;
+ *  `init` creates the directory it names, as Git does. With `reftable`, the
+ *  real refs are a reftable stack on disk, which a case changes directly. */
+function project(options: { readonly prefix?: string; readonly repository?: boolean; readonly reftable?: boolean } = {}) {
+  const refFormat = options.reftable ? "reftable" : "files";
   const top = fs.realpathSync(createDirectory("bash-private-copy-reuse-"));
   const root = options.prefix ? path.join(top, options.prefix) : top;
   const gitDir = path.join(top, ".git");
@@ -58,41 +72,49 @@ function project(options: { readonly prefix?: string; readonly repository?: bool
   fs.mkdirSync(scratchDir, { recursive: true });
   fs.writeFileSync(path.join(scratchDir, "note.md"), "note\n");
   const initialized: string[] = [];
-  let duringInit: ((privateGit: string) => Promise<void>) | undefined;
+  let during: { readonly argument: string; readonly run: () => Promise<void> } | undefined;
+  const repository: FakeRepository = { head: "refs/heads/main", refs: `${OBJECT} refs/heads/main\n`, stash: "", index: "", worktrees: `worktree ${top}\0\0` };
   const git: OwnedCommandRunner = async command => {
+    if (during && command.includes(during.argument)) await during.run();
     if (command.includes("init")) {
       const privateGit = command[command.length - 1] ?? "";
       initialized.push(privateGit);
-      await duringInit?.(privateGit);
-      fs.mkdirSync(privateGit, { recursive: true });
+      fs.mkdirSync(path.join(privateGit, ...(options.reftable ? ["reftable"] : [])), { recursive: true });
       return answered("");
     }
-    if (command.includes("--verify")) return answered(`${"1".repeat(40)}\n`);
-    if (command.includes("--show-object-format") && !command.includes("--show-toplevel")) return answered("sha1\nfiles\n");
-    if (command.includes("rev-parse")) return answered(`${top}\n${gitDir}\n${gitDir}\nsha1\nfiles\n`);
-    if (command.includes("for-each-ref")) return answered(`${"1".repeat(40)} refs/heads/main\n`);
-    if (command.includes("symbolic-ref")) return answered("refs/heads/main\n");
-    if (command.includes("worktree")) return answered(`worktree ${top}\0\0`);
-    if (command.includes("--get-regexp")) return answered("core.repositoryformatversion 0\n");
+    if (command.includes("--verify")) return answered(`${OBJECT}\n`);
+    if (command.includes("--show-object-format") && !command.includes("--show-toplevel")) return answered(`sha1\n${refFormat}\n`);
+    if (command.includes("rev-parse")) return answered(`${top}\n${gitDir}\n${gitDir}\nsha1\n${refFormat}\n`);
+    if (command.includes("for-each-ref")) return answered(repository.refs);
+    if (command.includes("symbolic-ref")) return answered(`${repository.head}\n`);
+    if (command.includes("worktree")) return answered(repository.worktrees);
+    if (command.includes("--get-regexp")) return answered(options.reftable ? "core.repositoryformatversion 1\nextensions.refstorage reftable\n" : "core.repositoryformatversion 0\n");
     if (command.includes("config")) return { ...answered(""), exitCode: 1 };
+    if (command.includes("reflog")) return answered(repository.stash);
+    if (command.includes("--stage")) return answered(repository.index);
     return answered("");
   };
   const notGit: OwnedCommandRunner = async () => ({ ...answered(""), exitCode: 128 });
   const addRepository = () => {
     fs.mkdirSync(gitDir);
     fs.writeFileSync(path.join(gitDir, "HEAD"), "ref: refs/heads/main\n");
+    if (!options.reftable) return;
+    fs.mkdirSync(path.join(gitDir, "reftable"));
+    fs.writeFileSync(path.join(gitDir, "reftable", "t1.ref"), "one");
+    fs.writeFileSync(path.join(gitDir, "reftable", "tables.list"), "t1.ref\n");
   };
   if (options.repository !== false) addRepository();
   let homes = 0;
   return {
-    top, root, scratchDir, initialized, addRepository,
+    top, root, scratchDir, initialized, addRepository, repository,
     mutations: path.join(scratchDir, "mutations"),
-    watchInit(watch: (privateGit: string) => Promise<void>) {
-      duringInit = watch;
+    /** Runs `run` before each Git command that has `argument`. */
+    during(argument: string, run: () => Promise<void>) {
+      during = { argument, run };
     },
-    take(pool: PrivateCopyPool | undefined, repository = fs.existsSync(gitDir)) {
+    take(pool: PrivateCopyPool | undefined, hasRepository = fs.existsSync(gitDir)) {
       homes += 1;
-      return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(scratchDir, "mutations", `h${homes}`), scratchDir, runGit: repository ? git : notGit, guard: "none", ...(pool ? { pool } : {}) });
+      return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(scratchDir, "mutations", `h${homes}`), scratchDir, runGit: hasRepository ? git : notGit, guard: "none", ...(pool ? { pool } : {}) });
     },
   };
 }
@@ -112,7 +134,7 @@ function contents(directory: string): Map<string, string> {
 }
 
 describe("reusing a private copy", () => {
-  it("refreshes a released copy in its own home with a new private Git directory and no record while it runs", async () => {
+  it("refreshes a released copy in its own home, keeps its private Git directory, and has no record while it runs", async () => {
     const fixture = project();
     // A take pins the hash of a file changed within RACY_WINDOW_NS of its own
     // start, which the copy Worker reads from the real clock. A future
@@ -128,7 +150,8 @@ describe("reusing a private copy", () => {
     const before = { tree: identity(treeFile), base: identity(baseFile) };
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
     const recordDuringRefresh: string[] = [];
-    fixture.watchInit(async () => {
+    // The read of the real index runs after the home was reset, before the copy is recorded again.
+    fixture.during("--stage", async () => {
       recordDuringRefresh.push((await readPrivateProjectCopy(first.home)).kind);
     });
 
@@ -136,8 +159,10 @@ describe("reusing a private copy", () => {
 
     expect(second.home).toBe(first.home);
     expect(recordDuringRefresh).toEqual(["missing"]);
-    expect(fixture.initialized).toEqual([path.join(first.home, "git"), path.join(first.home, "git")]);
-    expect(second.refresh).toMatchObject({ recloned: 0, removed: 0 });
+    expect(fixture.initialized).toEqual([path.join(first.home, "git")]);
+    expect(second.refresh).toMatchObject({ recloned: 0, removed: 0, reseeded: false });
+    // The kept directory's baseline is the first take's, which no read of the private state replaced.
+    expect(second.execution).toEqual(first.execution);
     expect(second.files).toEqual(first.files);
     expect({ tree: identity(treeFile), base: identity(baseFile) }).toEqual(before);
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);
@@ -148,32 +173,99 @@ describe("reusing a private copy", () => {
     await privateCopyRemovals();
   });
 
-  it("removes what the previous command left in the private Git directory, the home, and beside the copy root", async () => {
+  /** What a command can leave in its copy's private Git directory, its home, and beside its copy root. */
+  function leaveTraces(copy: Awaited<ReturnType<ReturnType<typeof project>["take"]>>) {
+    const treeRoot = path.dirname(copy.copyRoot);
+    const git = path.join(copy.home, "git");
+    fs.mkdirSync(path.join(git, "objects", "ab"), { recursive: true });
+    fs.writeFileSync(path.join(git, "objects", "ab", "cdef"), "loose");
+    fs.writeFileSync(path.join(git, "ORIG_HEAD"), OBJECT);
+    fs.writeFileSync(path.join(git, "index.lock"), "");
+    fs.appendFileSync(path.join(git, "config"), "[user]\nname = x\n");
+    fs.mkdirSync(path.join(git, "info"), { recursive: true });
+    fs.writeFileSync(path.join(git, "info", "exclude"), "*.left\n");
+    fs.mkdirSync(path.join(git, "hooks"), { recursive: true });
+    fs.writeFileSync(path.join(git, "hooks", "pre-commit"), "#!/bin/sh\n");
+    fs.mkdirSync(path.join(copy.home, "merge"));
+    fs.writeFileSync(path.join(copy.home, "stray.txt"), "stray");
+    fs.mkdirSync(path.join(treeRoot, "stray-dir"));
+    fs.writeFileSync(path.join(treeRoot, "stray-dir", "f"), "f");
+    fs.writeFileSync(path.join(copy.copyRoot, "created.txt"), "not landed");
+    return {
+      treeRoot, git,
+      removed: [path.join(git, "ORIG_HEAD"), path.join(git, "index.lock"), path.join(git, "info"), path.join(git, "hooks"), path.join(copy.home, "merge"), path.join(copy.home, "stray.txt"), path.join(treeRoot, "stray-dir"), path.join(copy.copyRoot, "created.txt")],
+    };
+  }
+
+  it("keeps the objects of a private Git directory whose real repository did not move, and writes its configuration again", async () => {
     const fixture = project({ prefix: "pkg" });
     const pool = createPrivateCopyPool({ probe: noSurvivor });
     const first = await fixture.take(pool);
-    const treeRoot = path.dirname(first.copyRoot);
-    const git = path.join(first.home, "git");
-    fs.mkdirSync(path.join(git, "objects", "ab"), { recursive: true });
-    fs.writeFileSync(path.join(git, "objects", "ab", "cdef"), "loose");
-    fs.writeFileSync(path.join(git, "ORIG_HEAD"), "1".repeat(40));
-    fs.writeFileSync(path.join(git, "index.lock"), "");
-    fs.mkdirSync(path.join(first.home, "merge"));
-    fs.writeFileSync(path.join(first.home, "stray.txt"), "stray");
-    fs.mkdirSync(path.join(treeRoot, "stray-dir"));
-    fs.writeFileSync(path.join(treeRoot, "stray-dir", "f"), "f");
-    fs.writeFileSync(path.join(first.copyRoot, "created.txt"), "not landed");
+    const { treeRoot, git, removed } = leaveTraces(first);
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
 
     const second = await fixture.take(pool);
 
     expect(second.home).toBe(first.home);
-    for (const left of [path.join(git, "objects", "ab"), path.join(git, "ORIG_HEAD"), path.join(git, "index.lock"), path.join(first.home, "merge"), path.join(first.home, "stray.txt"), path.join(treeRoot, "stray-dir"), path.join(second.copyRoot, "created.txt")]) {
-      expect(fs.existsSync(left)).toBe(false);
-    }
+    expect(second.refresh).toMatchObject({ removed: 1, reseeded: false });
+    expect(fixture.initialized).toHaveLength(1);
+    for (const left of removed) expect(fs.existsSync(left)).toBe(false);
+    expect(fs.readFileSync(path.join(git, "objects", "ab", "cdef"), "utf8")).toBe("loose");
+    expect(fs.readFileSync(path.join(git, "config"), "utf8")).not.toContain("[user]");
+    expect(fs.readFileSync(path.join(git, "objects", "info", "alternates"), "utf8")).toBe(`${path.join(fixture.top, ".git", "objects")}\n`);
     expect(fs.readdirSync(treeRoot).sort()).toEqual([".git", "pkg"]);
     expect(fs.readFileSync(path.join(treeRoot, ".git"), "utf8")).toBe(`gitdir: ${git}\n`);
-    expect(second.refresh?.removed).toBe(1);
+    pool.close();
+    await privateCopyRemovals();
+  });
+
+  it.each<readonly [string, (repository: FakeRepository, top: string) => void]>([
+    ["HEAD moved to another branch", repository => { repository.head = "refs/heads/other"; }],
+    ["a ref was added", repository => { repository.refs += `${OBJECT} refs/tags/v1\n`; }],
+    ["the stash changed", repository => { repository.stash = `${OBJECT} On main: saved\n`; }],
+    ["a file was staged", repository => { repository.index = `100644 ${OBJECT} 0\tsrc/a.ts\0`; }],
+    ["a linked tree was added", (repository, top) => { repository.worktrees += `worktree ${top}-linked\0branch refs/heads/linked\0\0`; }],
+  ])("seeds the private Git directory of a reused copy again when %s in the real repository", async (_moved, move) => {
+    const fixture = project();
+    const pool = createPrivateCopyPool({ probe: noSurvivor });
+    const first = await fixture.take(pool);
+    const { git, removed } = leaveTraces(first);
+    expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
+    move(fixture.repository, fixture.top);
+
+    const second = await fixture.take(pool);
+
+    expect(second.home).toBe(first.home);
+    expect(second.refresh?.reseeded).toBe(true);
+    expect(fixture.initialized).toEqual([git, git]);
+    for (const left of [...removed, path.join(git, "objects", "ab")]) expect(fs.existsSync(left)).toBe(false);
+    expect(fs.readFileSync(path.join(git, "config"), "utf8")).not.toContain("[user]");
+    expect(second.reuse.git?.fingerprint).not.toBe(first.reuse.git?.fingerprint);
+    pool.close();
+    await privateCopyRemovals();
+  });
+
+  it("seeds a reftable repository again when a ref moved after its seed copied the stack", async () => {
+    const fixture = project({ reftable: true });
+    const real = path.join(fixture.top, ".git", "reftable");
+    let moved = false;
+    // The first read of the private state runs after the seed copied the stack and before the take digests it.
+    fixture.during("--no-optional-locks", async () => {
+      if (moved) return;
+      moved = true;
+      fs.writeFileSync(path.join(real, "t2.ref"), "two");
+      fs.writeFileSync(path.join(real, "tables.list"), "t1.ref\nt2.ref\n");
+    });
+    const pool = createPrivateCopyPool({ probe: noSurvivor });
+    const first = await fixture.take(pool);
+    expect(fs.readdirSync(path.join(first.home, "git", "reftable")).sort()).toEqual(["t1.ref", "tables.list"]);
+    expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
+
+    const second = await fixture.take(pool);
+
+    expect(second.home).toBe(first.home);
+    expect(second.refresh?.reseeded).toBe(true);
+    expect(fs.readdirSync(path.join(second.home, "git", "reftable")).sort()).toEqual(["t1.ref", "t2.ref", "tables.list"]);
     pool.close();
     await privateCopyRemovals();
   });
@@ -260,13 +352,14 @@ describe("reusing a private copy", () => {
     await privateCopyRemovals();
   });
 
-  it.each(["exclude", "git", ".git pointer"] as const)("writes nothing through %s replaced by a link to a file outside the home", async replaced => {
+  it.each(["exclude", "git", "objects", "objects info", ".git pointer"] as const)("writes nothing through %s replaced by a link to a file outside the home", async replaced => {
     const fixture = project();
     const pool = createPrivateCopyPool({ probe: noSurvivor });
     const first = await fixture.take(pool);
     const secret = path.join(createDirectory("bash-private-copy-reuse-secret-"), "secret");
     fs.writeFileSync(secret, "secret\n");
-    const target = { exclude: path.join(first.home, "exclude"), git: path.join(first.home, "git"), ".git pointer": path.join(first.copyRoot, ".git") }[replaced];
+    const objects = path.join(first.home, "git", "objects");
+    const target = { exclude: path.join(first.home, "exclude"), git: path.join(first.home, "git"), objects, "objects info": path.join(objects, "info"), ".git pointer": path.join(first.copyRoot, ".git") }[replaced];
     fs.rmSync(target, { recursive: true });
     fs.symlinkSync(secret, target);
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
@@ -274,6 +367,8 @@ describe("reusing a private copy", () => {
     const second = await fixture.take(pool);
 
     expect(second.home).toBe(first.home);
+    // A held Git directory with a link in it is seeded again, never kept.
+    expect(second.refresh?.reseeded).toBe(replaced !== "exclude" && replaced !== ".git pointer");
     expect(fs.readFileSync(secret, "utf8")).toBe("secret\n");
     expect(fs.lstatSync(target).isSymbolicLink()).toBe(false);
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);

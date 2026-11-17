@@ -16,7 +16,7 @@ import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
 import { resolveSyntaxLanguage } from "@tui/adapters/syntax-language.js"
 import { getFiletype } from "@infra/tools/filetype.js"
 import { useTheme } from "@tui/context/theme"
-import { type Accessor, batch, createEffect, createMemo, For, Index, Show, createSignal, mapArray, on, onCleanup, untrack } from "solid-js"
+import { type Accessor, batch, createEffect, createMemo, For, Index, Match, Show, Switch, createSignal, mapArray, on, onCleanup, untrack } from "solid-js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/utils/border.js"
@@ -322,13 +322,16 @@ export function DiffPreview(props: DiffPreviewProps) {
             </box>
           </PreviewViewport>
           {loading() ? <text fg={theme.textMuted}>{"  Loading..."}</text> : null}
-          {fileProps.file.evidenceStatus === "omitted"
-            ? <text fg={theme.textMuted}>{`  ${fileProps.file.path}  (diff omitted: ${OMISSION_REASON_TEXT[fileProps.file.omissionReason ?? ""]})`}</text>
-            : fileProps.file.evidenceStatus === "unavailable"
-            ? <text fg={theme.textMuted}>{"  Change evidence is unavailable"}</text>
-            : fileProps.file.evidenceStatus === "error"
-            ? <box flexDirection="row" paddingLeft={2}><text fg={theme.textMuted}>Could not load change evidence.</text><Button label="Retry" onPress={() => props.onRetryFile?.(fileProps.index)} /></box>
-            : fileProps.file.expanded ? (hasExpandedNote() ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null) : (truncated() ? <text selectable={false} fg={theme.textMuted}>{note()}</text> : null)}
+          <Switch>
+            <Match when={fileProps.file.evidenceStatus === "omitted"}>
+              <text fg={theme.textMuted}>{`  ${fileProps.file.path}  (diff omitted: ${OMISSION_REASON_TEXT[fileProps.file.omissionReason ?? ""]})`}</text>
+            </Match>
+            <Match when={fileProps.file.evidenceStatus === "unavailable"}><text fg={theme.textMuted}>{"  Change evidence is unavailable"}</text></Match>
+            <Match when={fileProps.file.evidenceStatus === "error"}>
+              <box flexDirection="row" paddingLeft={2}><text fg={theme.textMuted}>Could not load change evidence.</text><Button label="Retry" onPress={() => props.onRetryFile?.(fileProps.index)} /></box>
+            </Match>
+            <Match when={fileProps.file.expanded ? hasExpandedNote() : truncated()}><text selectable={false} fg={theme.textMuted}>{note()}</text></Match>
+          </Switch>
         </box>
       </box>
     )
@@ -530,14 +533,14 @@ export function MutationEvidencePreview(props: {
       }</For>
       <box ref={(box: BoxRenderable) => { tail = box }} flexDirection="column" flexShrink={0}
         minHeight={files()?.nextOffset == null ? 0 : 1}>
-        {handle() === undefined || files()?.status === "unavailable"
-          ? <text fg={theme.textMuted}>{"  Change evidence is unavailable"}</text>
-          : files()?.status === "error"
-          ? <box paddingLeft={2} flexDirection="row"><text fg={theme.textMuted}>Could not load change evidence.</text><Button label="Retry" onPress={() => { void handle()?.loadFiles() }} /></box>
-          : !pending() && (files()?.status === "idle" || files()?.status === "loading")
-          ? <text fg={theme.textMuted}>{"  Loading..."}</text>
-          : files()?.status === "ready" && files()?.nextOffset !== null
-          ? <text fg={theme.textMuted}>{"  More files..."}</text> : null}
+        <Switch>
+          <Match when={handle() === undefined || files()?.status === "unavailable"}><text fg={theme.textMuted}>{"  Change evidence is unavailable"}</text></Match>
+          <Match when={files()?.status === "error"}>
+            <box paddingLeft={2} flexDirection="row"><text fg={theme.textMuted}>Could not load change evidence.</text><Button label="Retry" onPress={() => { void handle()?.loadFiles() }} /></box>
+          </Match>
+          <Match when={!pending() && (files()?.status === "idle" || files()?.status === "loading")}><text fg={theme.textMuted}>{"  Loading..."}</text></Match>
+          <Match when={files()?.status === "ready" && files()?.nextOffset !== null}><text fg={theme.textMuted}>{"  More files..."}</text></Match>
+        </Switch>
       </box>
     </box>
   )

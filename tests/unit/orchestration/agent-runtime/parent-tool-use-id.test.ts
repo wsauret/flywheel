@@ -292,7 +292,7 @@ describe("LiveAgent runtime assembly + stream characterization", () => {
         async *streamWithTools() {
           // One transient retry, then the next adapter stream starts silently before real text arrives.
           yield { kind: "stream_retry", attempt: 1, maxAttempts: 3, reason: "boom", delayMs: 1, error: { message: "boom" } } as const;
-          yield { kind: "stream_attempt_start", attempt: 1, maxAttempts: 1, isRetry: false, isFinalAttempt: true, sawThinkingStall: false, disableReasoning: false } as const;
+          yield { kind: "stream_attempt_start", disableReasoning: false } as const;
           yield { kind: "text_delta", text: "ok", blockKey: "text" } as const;
           yield { kind: "done", stopReason: "end_turn" } as const;
         },

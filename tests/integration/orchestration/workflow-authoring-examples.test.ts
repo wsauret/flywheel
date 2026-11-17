@@ -4,7 +4,6 @@ import { mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } fro
 import { renderCapabilityText } from "../../../src/infra/capability-text.js"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js"
-import { CANONICAL_WORKFLOW_FILE } from "../../../src/orchestration/agent-runtime/tools/workflow.js"
 import {
   describeDefinitionRefusal,
   loadPathWorkflow,
@@ -351,9 +350,11 @@ describe("the workflow-authoring examples", () => {
     expect(after.map(({ reads, priorHandoff }) => ({ reads, priorHandoff }))).toEqual(before.map(({ reads, priorHandoff }) => ({ reads, priorHandoff })))
   })
 
-  it("is the definition that the workflow tool prompt shows as its canonical file", async () => {
+  it("is the definition that the skill body shows as its canonical file", async () => {
     const example = await launchExample("review-changes.workflow.yaml")
-    const prompt = await launch("prompt.workflow.yaml", CANONICAL_WORKFLOW_FILE)
+    const body = read("SKILL.md")
+    const canonical = body.slice(body.indexOf("```yaml\n") + "```yaml\n".length, body.indexOf("\n```", body.indexOf("```yaml\n")))
+    const prompt = await launch("prompt.workflow.yaml", canonical)
 
     expect(prompt.definitionSha256).toBe(example.definitionSha256)
     expect(prompt.warnings).toEqual([])

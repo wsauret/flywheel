@@ -19,7 +19,9 @@ interface OutputSessionView {
 
 export type OutputSessionOptions = {
   updateEntry: (patch: SessionEntryBasePatch) => void
-  priorBlocks?: readonly AnyBlock[]
+  /** The output window this session continues: its blocks, and the absolute
+   *  index of the first one. */
+  prior?: { readonly blocks: readonly AnyBlock[]; readonly sequenceStart: number }
   sessionId?: string
 } & (
   /** Either the caller supplies the projector, or this session builds one - and
@@ -38,10 +40,11 @@ export interface OutputSession {
   applyProjectionEvent(event: OutputProjectionEvent): void
   beginTurn(): void
   pushUserMessage(message: string, timestamp: number, options?: { entryId?: string; queued?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }): void
-  /** Seed prior display blocks ahead of live output. Chat seeds at runner
-   *  attach (one synchronous frame with the store's authority handoff);
-   *  workflow/headless sessions seed at construction via `priorBlocks`. */
-  seedBlocks(blocks: readonly AnyBlock[]): void
+  /** Seed prior display blocks ahead of live output; the first sits at
+   *  absolute index `sequenceStart`. Chat seeds at runner attach (one
+   *  synchronous frame with the store's authority handoff); workflow/headless
+   *  sessions seed at construction via `prior`. */
+  seedBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
   hasQueued(): boolean
   /** Marks matching queued rows sent, or all queued rows without a filter. */
   drainQueued(identity?: Pick<UserMessageBlock, "submissionIds" | "dispatchIds">): string[]
@@ -169,7 +172,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   // change latch stays armed until a sync reads getBlocks() — a notification
   // fired into a null handler latches it with no consumer to re-arm, silencing
   // every later change until the end-of-turn flush.
-  if (options.priorBlocks !== undefined) projector.seedBlocks(options.priorBlocks)
+  if (options.prior !== undefined) projector.seedBlocks(options.prior.blocks, options.prior.sequenceStart)
 
   function beginTurn(): void {
     projector.apply({ type: "begin-turn" })
@@ -204,7 +207,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     applyProjectionEvent: (event: OutputProjectionEvent) => projector.apply(event),
     beginTurn,
     pushUserMessage,
-    seedBlocks: (blocks: readonly AnyBlock[]) => projector.seedBlocks(blocks),
+    seedBlocks: (blocks: readonly AnyBlock[], sequenceStart: number) => projector.seedBlocks(blocks, sequenceStart),
     hasQueued: () => projector.hasQueued(),
     drainQueued: (identity) => projector.drainQueued(identity),
     withdrawQueued: (dispatchIds) => projector.withdrawQueued(dispatchIds),

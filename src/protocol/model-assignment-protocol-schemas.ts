@@ -17,6 +17,10 @@ import type {
 
 const ModelSelectionSlotSchema = Schema.Struct({ kind: Schema.Literal("role"), roleId: Schema.String })
 const ModelTierSchema = Schema.Union([Schema.Literal("default"), Schema.Literal("powerful"), Schema.Literal("mid"), Schema.Literal("cheap")])
+const ModelAssignmentExpectedSchema = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("absent") }),
+  Schema.Struct({ kind: Schema.Literal("value"), value: Schema.Struct({ model: Schema.NullOr(Schema.String), effort: Schema.NullOr(EffortSchema) }) }),
+])
 const RuntimeModelAssignmentScopeSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("defaults") }),
   Schema.Struct({ kind: Schema.Literal("session"), sessionId: Schema.String }),
@@ -36,10 +40,15 @@ export const RuntimeSaveModelEffortMutationSchema = Schema.Struct({
   slot: ModelSelectionSlotSchema,
   model: Schema.NullOr(Schema.String),
   effort: Schema.UndefinedOr(Schema.NullOr(EffortSchema)),
+  expected: ModelAssignmentExpectedSchema,
 })
-export const RuntimeResetModelAssignmentsMutationSchema = Schema.Struct({ scope: RuntimeModelAssignmentWriteScopeSchema, slots: Schema.Array(ModelSelectionSlotSchema) })
+export const RuntimeResetModelAssignmentsMutationSchema = Schema.Struct({
+  scope: RuntimeModelAssignmentWriteScopeSchema,
+  slots: Schema.Array(ModelSelectionSlotSchema),
+  expected: Schema.Record(Schema.String, ModelAssignmentExpectedSchema),
+})
 
-export const RuntimeModelAssignmentRowSchema: Schema.Codec<ModelAssignmentRow> = Schema.Struct({
+const modelAssignmentRowFields = {
   slot: ModelSelectionSlotSchema,
   label: Schema.String,
   model: Schema.String,
@@ -47,12 +56,14 @@ export const RuntimeModelAssignmentRowSchema: Schema.Codec<ModelAssignmentRow> =
   modelSource: Schema.Union([Schema.Literal("explicit"), Schema.Literal("default"), Schema.Literal("inherited")]),
   matchesInheritedPair: Schema.Boolean,
   savedModel: Schema.optionalKey(Schema.String),
-})
+}
+
+export const RuntimeModelAssignmentRowSchema: Schema.Codec<ModelAssignmentRow> = Schema.Struct({ ...modelAssignmentRowFields, configured: ModelAssignmentExpectedSchema })
 
 export const RuntimeSessionModelPlanResultSchema: Schema.Codec<RuntimeSessionModelPlanResult> = Schema.Struct({
   sessionId: Schema.String,
   profile: Schema.Struct({ persistedId: Schema.String, effectiveId: Schema.String }),
-  assignments: Schema.Array(RuntimeModelAssignmentRowSchema),
+  assignments: Schema.Array(Schema.Struct(modelAssignmentRowFields)),
   plans: Schema.Array(Schema.Union([
     Schema.Struct({
       kind: Schema.Literal("available"),

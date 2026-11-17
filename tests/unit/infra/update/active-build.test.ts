@@ -6,7 +6,8 @@
 import { describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
 import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js";
 import { ActivationError, activeBuildDir, openActiveBuild, publishActivation } from "../../../../src/infra/update/active-build.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
@@ -24,7 +25,7 @@ function account(): string {
 }
 
 function withAccountRoot<T>(userDataRoot: string, use: (accountRoot: ContainedDirectory) => T): T {
-  const accountRoot = ContainedDirectory.open(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountRoot = openContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   try {
     return use(accountRoot);
   } finally {

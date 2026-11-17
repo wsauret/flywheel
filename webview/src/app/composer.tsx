@@ -41,6 +41,7 @@ interface SlashCommand {
 /** What the app can ask the composer to do from outside it. */
 export interface ComposerHandle {
   capture(): ComposerCheckpoint
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a composer checkpoint that a previous page load saved in browser or editor storage
   adopt(checkpoint: unknown): void
   settled(): Promise<void>
   focus(): void
@@ -60,7 +61,7 @@ export interface ComposerHandle {
 }
 
 /** Child viewers name the runtime's serving reading, never a sibling or Chat role. */
-export function composerModel(kind: SessionRow["kind"] | undefined, childRoles: RoleAssignmentView | undefined, activeModel: ActiveModel | undefined): ActiveModel | undefined {
+function composerModel(kind: SessionRow["kind"] | undefined, childRoles: RoleAssignmentView | undefined, activeModel: ActiveModel | undefined): ActiveModel | undefined {
   return kind === "subagent" || kind === "workflow-agent" ? sessionServingSelection(childRoles) : activeModel
 }
 

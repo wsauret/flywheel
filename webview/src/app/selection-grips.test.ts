@@ -18,7 +18,9 @@ class GripElement extends EventTarget {
   className = ""
   hidden = false
   tabIndex = 0
+  readonly nodeType = 1
   parent: GripElement | undefined
+  get parentElement(): GripElement | null { return this.parent ?? null }
 
   constructor(readonly ownerDocument: GripDocument) { super() }
   setAttribute(name: string, value: string) { this.attributes.set(name, value) }

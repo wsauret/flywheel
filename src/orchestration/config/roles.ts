@@ -40,7 +40,7 @@ export interface ResolvedRole {
   effort: string;
   providerOptions?: ProviderRequestOptions;
   /** Authored policy, retained separately from this transient preview. */
-  setting?: RoleSettingEntry & { readonly fixedEffort?: string };
+  setting?: RoleSettingEntry & { readonly defaultEffort?: string };
   settingScope?: "session" | "profile";
 }
 

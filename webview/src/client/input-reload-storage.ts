@@ -44,7 +44,7 @@ export function browserInputReloadStorage(scope: string | (() => string)): Input
 
 /** Native editor state stays opaque to the extension and uses the same transfer contract. */
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: native VS Code state is untrusted until decoded below
-export function editorInputReloadStorage(api: { getState(): unknown; setState(state: unknown): void }, scope: string): InputReloadStorage {
+export function editorInputReloadStorage(api: { getState(): unknown; setState(state: InputReloadCheckpoint | undefined): void }, scope: string): InputReloadStorage {
   return {
     load: async () => decodeInputReloadCheckpoint(api.getState(), scope),
     save: async (checkpoint: InputReloadCheckpoint) => {

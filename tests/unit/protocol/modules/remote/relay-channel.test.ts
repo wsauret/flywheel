@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { Cause, Effect, Exit, Stream } from "effect"
 import { Socket } from "effect/socket"
 
-import { keepAlive, relayChannelStreams, type HeartbeatClock } from "../../../../../src/protocol/modules/remote/relay-channel.js"
+import { heartbeat, relayChannelStreams, watchPresence, type HeartbeatTiming } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { RELAY_PING, RELAY_PONG } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
 
@@ -16,12 +16,15 @@ const DROP = "drop"
 interface Stub {
   readonly url: string
   readonly pings: string[]
+  /** Settles with the server end of the first socket that opens. */
+  readonly connected: Promise<Bun.ServerWebSocket<unknown>>
   answer: boolean
   stop(): void
 }
 
 function startStub(): Stub {
   const pings: string[] = []
+  const connected = Promise.withResolvers<Bun.ServerWebSocket<unknown>>()
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -29,6 +32,9 @@ function startStub(): Stub {
       return srv.upgrade(request) ? undefined : new Response("websocket only", { status: 426 })
     },
     websocket: {
+      open(ws) {
+        connected.resolve(ws)
+      },
       message(ws, message) {
         if (typeof message !== "string") return
         // Ends the connection with no close frame, as an edge that drops a
@@ -44,6 +50,7 @@ function startStub(): Stub {
   const stub: Stub = {
     url: `ws://127.0.0.1:${server.port}`,
     pings,
+    connected: connected.promise,
     answer: true,
     stop() {
       server.stop(true)
@@ -68,7 +75,7 @@ class HalfOpenSocket extends EventTarget {
   bufferedAmount = 0
   readonly sent: unknown[] = []
   readonly closes: { code: number | undefined; reason: string | undefined }[] = []
-  send(data: unknown): void { this.sent.push(data) }
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void { this.sent.push(data) }
   close(code?: number, reason?: string): void {
     this.closes.push({ code, reason })
     this.readyState = WebSocket.CLOSING
@@ -82,7 +89,7 @@ class HalfOpenSocket extends EventTarget {
  *  interval, the way a stalled event loop or a hidden browser tab fires one. */
 class LateTimer {
   private readonly scheduled = new Set<() => void>()
-  readonly clock: HeartbeatClock = {
+  readonly clock: NonNullable<HeartbeatTiming["clock"]> = {
     every: (_intervalMs, fire) => {
       this.scheduled.add(fire)
       return () => { this.scheduled.delete(fire) }
@@ -98,7 +105,7 @@ function closed(ws: WebSocket): Promise<void> {
   return new Promise((resolve) => ws.addEventListener("close", () => resolve(), { once: true }))
 }
 
-describe("keepAlive", () => {
+describe("heartbeat", () => {
   const stubs: Stub[] = []
   afterEach(() => {
     for (const stub of stubs.splice(0)) stub.stop()
@@ -108,15 +115,16 @@ describe("keepAlive", () => {
     const stub = startStub()
     stubs.push(stub)
     const ws = await opened(stub.url)
-    const heartbeat = manualHeartbeatClock()
-    let settled = false
-    void keepAlive(ws, { ...TIMING, clock: heartbeat.clock }).then(() => { settled = true })
+    const clock = manualHeartbeatClock()
+    let silent = false
+    const stop = heartbeat(ws, () => { silent = true }, { ...TIMING, clock: clock.clock })
     for (let index = 0; index < 6; index += 1) {
       const answered = new Promise<void>((resolve) => ws.addEventListener("message", () => resolve(), { once: true }))
-      heartbeat.advance(TIMING.intervalMs)
+      clock.advance(TIMING.intervalMs)
       await answered
     }
-    expect(settled).toBe(false)
+    stop()
+    expect(silent).toBe(false)
     expect(ws.readyState).toBe(WebSocket.OPEN)
     expect(stub.pings.length).toBeGreaterThanOrEqual(2)
     expect(new Set(stub.pings)).toEqual(new Set([RELAY_PING]))
@@ -124,26 +132,10 @@ describe("keepAlive", () => {
     await closed(ws)
   })
 
-  test("settles and closes the socket when its first ping goes unanswered for the deadline", async () => {
+  test("closes the socket, reports silence, and stops pinging when its first ping goes unanswered for the deadline", async () => {
     const stub = startStub()
     stubs.push(stub)
     stub.answer = false
-    const ws = await opened(stub.url)
-    const heartbeat = manualHeartbeatClock()
-    const ended = keepAlive(ws, { ...TIMING, clock: heartbeat.clock })
-    // The first ping goes out at once, so a socket that died before it was
-    // handed over is caught one deadline in.
-    heartbeat.advance(TIMING.deadlineMs - 1)
-    expect(ws.readyState).toBe(WebSocket.OPEN)
-    heartbeat.advance(1)
-    await ended
-    expect(heartbeat.now()).toBe(TIMING.deadlineMs)
-    expect(ws.readyState).not.toBe(WebSocket.OPEN)
-  })
-
-  test("settles when the socket closes", async () => {
-    const stub = startStub()
-    stubs.push(stub)
     const ws = await opened(stub.url)
     const pings: unknown[] = []
     const send = ws.send.bind(ws)
@@ -152,12 +144,41 @@ describe("keepAlive", () => {
       send(data)
     }
     const clock = manualHeartbeatClock()
-    const heartbeat = keepAlive(ws, { ...TIMING, clock: clock.clock })
-    ws.close(1000)
-    await heartbeat
+    const silences: number[] = []
+    heartbeat(ws, () => { silences.push(clock.now()) }, { ...TIMING, clock: clock.clock })
+    // The first ping goes out at once, so a socket that died before it was
+    // handed over is caught one deadline in.
+    expect(pings).toEqual([RELAY_PING])
+    clock.advance(TIMING.deadlineMs - 1)
+    expect(silences).toEqual([])
+    expect(ws.readyState).toBe(WebSocket.OPEN)
+    const closing = closed(ws)
+    clock.advance(1)
+    expect(silences).toEqual([TIMING.deadlineMs])
+    expect(ws.readyState).not.toBe(WebSocket.OPEN)
     const pinged = pings.length
-    clock.advance(TIMING.deadlineMs)
+    clock.advance(TIMING.deadlineMs * 2)
     expect(pings).toHaveLength(pinged)
+    expect(silences).toEqual([TIMING.deadlineMs])
+    await closing
+  })
+})
+
+describe("watchPresence", () => {
+  const stubs: Stub[] = []
+  afterEach(() => {
+    for (const stub of stubs.splice(0)) stub.stop()
+  })
+
+  test("ends as closed when the relay closes the presence socket, so the caller dials again", async () => {
+    const stub = startStub()
+    stubs.push(stub)
+    const ended = Promise.withResolvers<string>()
+    const device = { publicKey: new Uint8Array(32), deviceId: "device", sign: async () => new Uint8Array(64) }
+    watchPresence(stub.url, "runtime", device, () => {}, (reason) => ended.resolve(reason))
+    const server = await stub.connected
+    server.close(1000)
+    expect(await ended.promise).toBe("closed")
   })
 })
 
@@ -172,19 +193,19 @@ describe("relayChannelStreams", () => {
     // must end on the heartbeat alone, or its reader waits on silence until
     // the runtime protocol's own deadline a minute later.
     const ws = new HalfOpenSocket()
-    const heartbeat = manualHeartbeatClock()
-    const streams = relayChannelStreams(ws, { ...TIMING, clock: heartbeat.clock })
+    const clock = manualHeartbeatClock()
+    const streams = relayChannelStreams(ws, { ...TIMING, clock: clock.clock })
     const reading = Effect.runPromiseExit(Effect.flatMap(
       Socket.fromTransformStream(Effect.succeed(streams)),
       (socket) => Stream.runDrain(Socket.toStream(socket)),
     ))
     ws.deliver()
-    heartbeat.advance(TIMING.intervalMs)
+    clock.advance(TIMING.intervalMs)
     expect(ws.sent).toEqual([RELAY_PING, RELAY_PING])
     ws.answer()
-    heartbeat.advance(TIMING.intervalMs + TIMING.deadlineMs - 1)
+    clock.advance(TIMING.intervalMs + TIMING.deadlineMs - 1)
     expect(ws.closes).toEqual([])
-    heartbeat.advance(1)
+    clock.advance(1)
     expect(await streams.closed).toEqual({ code: 4000, reason: "heartbeat timeout", abrupt: true })
     expect(ws.closes).toEqual([{ code: 4000, reason: "heartbeat timeout" }])
     const exit = await reading
@@ -193,7 +214,7 @@ describe("relayChannelStreams", () => {
     // the channel failed it with as its cause.
     if (Exit.isFailure(exit)) expect(Cause.squash(exit.cause)).toMatchObject({ reason: { _tag: "SocketReadError", cause: { reason: { _tag: "SocketCloseError", code: 4000 } } } })
     const pings = ws.sent.length
-    heartbeat.advance(TIMING.deadlineMs * 2)
+    clock.advance(TIMING.deadlineMs * 2)
     expect(ws.sent).toHaveLength(pings)
   })
 
@@ -232,12 +253,12 @@ describe("relayChannelStreams", () => {
     // crosses the socket, so nothing queued can hold an answer back. A socket
     // that died as it opened must not cost the device a full deadline.
     const ws = new HalfOpenSocket()
-    const heartbeat = manualHeartbeatClock()
-    const streams = relayChannelStreams(ws, { ...TIMING, clock: heartbeat.clock })
+    const clock = manualHeartbeatClock()
+    const streams = relayChannelStreams(ws, { ...TIMING, clock: clock.clock })
     expect(ws.sent).toEqual([RELAY_PING])
-    heartbeat.advance(TIMING.intervalMs - 1)
+    clock.advance(TIMING.intervalMs - 1)
     expect(ws.closes).toEqual([])
-    heartbeat.advance(1)
+    clock.advance(1)
     expect(await streams.closed).toEqual({ code: 4000, reason: "heartbeat timeout", abrupt: true })
   })
 
@@ -247,8 +268,8 @@ describe("relayChannelStreams", () => {
     // pings unanswered for as long as it takes to send; a backlog that keeps
     // shrinking proves the link works.
     const ws = new HalfOpenSocket()
-    const heartbeat = manualHeartbeatClock()
-    const streams = relayChannelStreams(ws, { ...TIMING, clock: heartbeat.clock })
+    const clock = manualHeartbeatClock()
+    const streams = relayChannelStreams(ws, { ...TIMING, clock: clock.clock })
     let ended = false
     void streams.closed.then(() => { ended = true })
     ws.deliver()
@@ -257,13 +278,13 @@ describe("relayChannelStreams", () => {
     const missesAllowed = TIMING.deadlineMs / TIMING.intervalMs
     for (let tick = 0; tick < missesAllowed * 3; tick += 1) {
       ws.bufferedAmount -= 100
-      heartbeat.advance(TIMING.intervalMs)
+      clock.advance(TIMING.intervalMs)
     }
     await Promise.resolve()
     expect(ended).toBe(false)
     expect(ws.closes).toEqual([])
     // A backlog that stops shrinking is a link that stopped moving bytes.
-    heartbeat.advance(TIMING.deadlineMs)
+    clock.advance(TIMING.deadlineMs)
     expect(await streams.closed).toEqual({ code: 4000, reason: "heartbeat timeout", abrupt: true })
   })
 
@@ -272,8 +293,8 @@ describe("relayChannelStreams", () => {
     // fills, so bytes leaving a socket that held no backlog prove nothing: a
     // runtime's event heartbeats must not keep a dead lane open.
     const ws = new HalfOpenSocket()
-    const heartbeat = manualHeartbeatClock()
-    const streams = relayChannelStreams(ws, { ...TIMING, clock: heartbeat.clock })
+    const clock = manualHeartbeatClock()
+    const streams = relayChannelStreams(ws, { ...TIMING, clock: clock.clock })
     ws.deliver()
     const writer = streams.writable.getWriter()
     // The first tick finds the ping answered by the delivered frame; each one
@@ -281,7 +302,7 @@ describe("relayChannelStreams", () => {
     const missesAllowed = TIMING.deadlineMs / TIMING.intervalMs
     for (let tick = 0; tick <= missesAllowed; tick += 1) {
       await writer.write(new Uint8Array(64))
-      heartbeat.advance(TIMING.intervalMs)
+      clock.advance(TIMING.intervalMs)
     }
     expect(await streams.closed).toEqual({ code: 4000, reason: "heartbeat timeout", abrupt: true })
   })

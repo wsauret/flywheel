@@ -178,7 +178,7 @@ describe("createOutputSession — write/push behaviors", () => {
   it("session seeded with priorBlocks still syncs streamed updates incrementally", async () => {
     const { updateEntry } = createMocks()
     const prior: AnyBlock[] = [{ kind: "userMessage", id: "user-1", content: "hi", timestamp: 1, pending: false, injected: false }]
-    session = createOutputSession({ updateEntry, priorBlocks: prior, executionCwd: "/workspace" })
+    session = createOutputSession({ updateEntry, prior: { blocks: prior, sequenceStart: 0 }, executionCwd: "/workspace" })
     await flushMicrotasks()
     ;updateEntry.mockClear()
 
@@ -231,7 +231,7 @@ describe("createOutputSession — write/push behaviors", () => {
     const { updateEntry } = createMocks()
     session = createOutputSession({
       updateEntry,
-      priorBlocks: [{ kind: "text", id: "durable", content: "history", timestamp: 0 }],
+      prior: { blocks: [{ kind: "text", id: "durable", content: "history", timestamp: 0 }], sequenceStart: 0 },
       executionCwd: "/workspace",
     })
     await flushMicrotasks()

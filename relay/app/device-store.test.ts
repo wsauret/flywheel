@@ -11,6 +11,7 @@ import { installManifestHref, readInstallCarry } from "./install-carry.js"
 class FakeRequest extends EventTarget {
   result: unknown
   error: DOMException | null = null
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a fake IndexedDB request result, which holds any stored value
   succeed(result: unknown) {
     this.result = result
     setTimeout(() => this.dispatchEvent(new Event("success")), 0)
@@ -28,6 +29,7 @@ class FakeTransaction extends EventTarget {
         request.succeed(this.data.get(key))
         return request
       },
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: IndexedDB stores any structured-clone value
       put: (value: unknown, key: string) => {
         this.writes.set(key, value)
         const request = new FakeRequest()

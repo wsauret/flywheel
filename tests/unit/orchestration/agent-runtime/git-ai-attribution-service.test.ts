@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join, resolve as resolvePath } from "node:path"
 import { createLoginShellPath } from "../../../../src/infra/login-shell-path.js"
 import type { OwnedCommandOptions, OwnedCommandResult, OwnedCommandRunner } from "../../../../src/infra/owned-command.js"
-import { createGitAiAttributionService, GIT_AI_AGENT_NAME } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
+import { createGitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 
 const ok: OwnedCommandResult = { exitCode: 0, timedOut: false, stdoutBytes: new Uint8Array(), stdout: "", stderr: "" }
 const REPOSITORY_ROOT = resolvePath("/repo")
@@ -45,7 +45,7 @@ describe("GitAiAttributionService", () => {
       type: "ai_agent",
       repo_working_dir: REPOSITORY_ROOT,
       transcript: request().transcript(),
-      agent_name: GIT_AI_AGENT_NAME,
+      agent_name: "opencode",
       edited_filepaths: [join(REPOSITORY_ROOT, "src/a.ts")],
       dirty_files: { [join(REPOSITORY_ROOT, "src/a.ts")]: "after\n" },
       model: "openai/gpt-5",

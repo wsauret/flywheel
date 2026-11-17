@@ -5,9 +5,9 @@
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { isFailoverFailure, ProviderAttemptFailure, type ProviderFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { createHostRegistry, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
+import { processAgentHosts } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { agentLoop, hostScript, lastUserTexts, lookupThenAnswer, registryProxy, TREE } from "./_agent-host.js";
+import { agentLoop, hostScript, lastUserTexts, lookupThenAnswer, TREE } from "./_agent-host.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes } from "./_claude-sdk-client.js";
 import type { FakeReply, RecordedRequest } from "./_fake-host.js";
 
@@ -15,9 +15,7 @@ const temporary = temporaryDirectories();
 removeEngineProbes();
 const diagnostics = captureDiagnostics();
 
-let registry: HostRegistry;
-afterEach(async () => { await registry.drain(); });
-const agentHosts = registryProxy(() => registry);
+afterEach(async () => { await processAgentHosts.drain(); });
 
 const MODEL_REFUSED = { type: "not_found_error", message: "model: claude-opus-5-5" } as const;
 const briefed = (request: RecordedRequest, brief: string) => lastUserTexts(request).some((text) => text.startsWith(brief));
@@ -29,14 +27,13 @@ function failureOf(error: Error | undefined): ProviderFailure | undefined {
 
 /** Runs two hosted agents of one tree at once, with the briefs "A ..." and "B ...", and returns their results. */
 async function twoAgents(reply: (request: RecordedRequest) => FakeReply | undefined) {
-  registry = createHostRegistry();
   let outcome: Awaited<ReturnType<ReturnType<typeof agentLoop>["request"]>>[] = [];
   let requests: readonly RecordedRequest[] = [];
   await onFakeHost(temporary, hostScript((request) => reply(request) ?? lookupThenAnswer(request)), async ({ host, stage, projectRoot }) => {
     const agents = await Promise.all(["A find.", "B find."].map(async (brief) => agentLoop(await stage({ sharedHost: TREE }), projectRoot, brief)));
     outcome = await Promise.all(agents.map((agent) => agent.request()));
     requests = host.requests;
-  }, { seams: { agentHosts } });
+  });
   return { a: outcome[0], b: outcome[1], requests };
 }
 

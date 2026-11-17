@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { clampRailWidth, RAIL_WIDTH_MAX_PX, RAIL_WIDTH_MIN_PX, readRailLayout, writeRailLayout } from "../../../webview/src/app/rail-layout.js"
+import { clampRailWidth, readRailLayout, writeRailLayout } from "../../../webview/src/app/rail-layout.js"
 
 class MemoryStorage {
   readonly values = new Map<string, string>()
@@ -11,8 +11,8 @@ class MemoryStorage {
 
 describe("session rail layout", () => {
   test("keeps a chosen width inside the rail's span", () => {
-    expect(clampRailWidth(10)).toBe(RAIL_WIDTH_MIN_PX)
-    expect(clampRailWidth(10_000)).toBe(RAIL_WIDTH_MAX_PX)
+    expect(clampRailWidth(10)).toBe(192)
+    expect(clampRailWidth(10_000)).toBe(448)
     expect(clampRailWidth(300.6)).toBe(301)
   })
 
@@ -29,7 +29,7 @@ describe("session rail layout", () => {
     storage.setItem("flywheel.rail.width", "not a number")
     expect(readRailLayout(storage).width).toBeUndefined()
     storage.setItem("flywheel.rail.width", "5")
-    expect(readRailLayout(storage).width).toBe(RAIL_WIDTH_MIN_PX)
+    expect(readRailLayout(storage).width).toBe(192)
 
     const denied = { getItem() { throw new Error("denied") }, setItem() { throw new Error("denied") }, removeItem() { throw new Error("denied") } }
     expect(readRailLayout(denied)).toEqual({ width: undefined, collapsed: false })

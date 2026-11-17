@@ -4,7 +4,7 @@ import { createConversationTreeWriterController } from "../../../../src/orchestr
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
 import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
 import type { CompactionEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
-import { createTokenCounter } from "../../../../src/orchestration/agent-runtime/compaction/token-counter";
+import { estimateConversationTokens, tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter";
 import { assistantMessage, createSavePointContext, disposeSavePointContext, type SavePointTestContext } from "./_save-point-fixtures";
 
 let ctx: SavePointTestContext;
@@ -25,9 +25,7 @@ function createController() {
 
 function measureWithPrefix(prefixTokens: number) {
   return (messages: readonly import("../../../../src/orchestration/agent-runtime/llm/types").ConversationMessage[]) => {
-    const counter = createTokenCounter({ provider: "anthropic" });
-    counter.resetFor([...messages]);
-    return prefixTokens + counter.total;
+    return prefixTokens + estimateConversationTokens(messages, tokenCountingPolicy("unmapped-model", "anthropic"));
   };
 }
 

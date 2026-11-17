@@ -456,6 +456,7 @@ function seedLegacyWorkflowControl(
 function seedNonTargets(dbFile: string): void {
   const store = createSqliteEventStore(dbFile)
   try {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: stored definition identities in legacy and malformed shapes
     const append = (aggregateId: string, type: string, version: number, definitionIdentity: unknown) => {
       store.append({
         aggregateId,

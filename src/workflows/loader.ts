@@ -1,7 +1,6 @@
 import { Schema } from "effect";
 import type { DefinitionProvenance } from "./definition-provenance.js";
-import type { WorkflowDefinition } from "./workflow-schema.js";
-import { WorkflowDefinitionSchema } from "./workflow-schema.js";
+import { WorkflowDefinitionSchema, type AuthoredWorkflow, type WorkflowDefinition } from "./workflow-schema.js";
 import type { SkillRegistryRevision } from "./skill-schema.js";
 import { definitionAssets, type AssetLocation, type DefinitionAssetReader } from "./definition-assets.js";
 import { loadBriefs, loadWorkflowInputContract } from "./brief.js";
@@ -25,15 +24,6 @@ function isDocument(value: unknown): value is RawDocument {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Decode one authored workflow document as the loader reads it: a retired
- *  form converted, retired keys dropped, every other key strict. Anything
- *  that rewrites a workflow file validates its output through this, so it
- *  accepts exactly what loads. */
-export function decodeAuthoredWorkflow(document: unknown): typeof WorkflowDefinitionSchema.Type {
-  // This object-only boundary has no source evidence for comma repairs.
-  return decodeStrict(normalizeAuthoredDocument(document, "").document);
-}
-
 /** Attach to one decoded definition what its files hold: the briefs, their
  *  output contracts, and the input contract, read once from `location`.
  *  A published revision never reads them again, so an edit lands only
@@ -41,7 +31,7 @@ export function decodeAuthoredWorkflow(document: unknown): typeof WorkflowDefini
  *  the retired grammar that it was converted from. Throws an AggregateError
  *  with one error for each agent and for the input that failed to load,
  *  each naming the file or agent at fault. */
-export function withLoadedContent(definition: typeof WorkflowDefinitionSchema.Type, input: {
+export function withLoadedContent(definition: AuthoredWorkflow, input: {
   readonly location: AssetLocation | undefined;
   readonly reader: DefinitionAssetReader;
   readonly provenance: DefinitionProvenance;
@@ -50,7 +40,7 @@ export function withLoadedContent(definition: typeof WorkflowDefinitionSchema.Ty
   // Brief loading reads the provenance: a workflow file's counted lists
   // take a default `max` (refer to `loadBriefs`), and the view of the
   // retired grammar: a converted file runs the same briefs.
-  const workflow: WorkflowDefinition = {
+  const workflow = {
     ...definition,
     provenance: input.provenance,
     ...(input.stepGrammar === undefined ? {} : { retiredStepGrammar: input.stepGrammar }),
@@ -129,7 +119,7 @@ export function normalizeAuthoredDocument(raw: unknown, sourceText: string, skil
   };
 }
 
-function decodeStrict(document: unknown): typeof WorkflowDefinitionSchema.Type {
+function decodeStrict(document: unknown): AuthoredWorkflow {
   return Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error", errors: "all" })(document);
 }
 

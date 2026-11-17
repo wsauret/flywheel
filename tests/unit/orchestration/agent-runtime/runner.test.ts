@@ -425,7 +425,6 @@ describe("ordinary runtime request", () => {
       expect(systemPrompt).toContain("Give short updates while you work");
       expect((JSON.stringify(request?.messages).match(new RegExp(task, "g")) ?? []).length).toBe(1);
     } finally {
-      runner.end();
       await background.close();
     }
   });

@@ -83,7 +83,7 @@ async function setup(description = "Implement the reviewed change") {
 }
 
 function stop(store: LocalSqliteEventStore, writer: AsyncEventWriter, stoppedBy: "person" | "agent") {
-  return recordChildWorkflowStop({ reader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy })
+  return recordChildWorkflowStop({ reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy })
 }
 
 function parentNotifications(store: LocalSqliteEventStore, writer: AsyncEventWriter) {
@@ -192,7 +192,7 @@ describe("a workflow Stop", () => {
     await replaceWorkflowState(store, "child", "Implement the reviewed change", "completed")
     const notifications = parentNotifications(store, writer)
     const reconcile = () => reconcileChildSessionCompletions({
-      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), writer,
+      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer,
       deliverNotification: notifications.deliverNotification,
     })
 
@@ -234,7 +234,7 @@ describe("a workflow Stop", () => {
     const { store, writer } = await setup()
     await replaceWorkflowState(store, "child", "Implement the reviewed change", "completed")
     await reconcileChildSessionCompletions({
-      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), writer,
+      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer,
     })
 
     expect(await stop(store, writer, stoppedBy)).toBe(false)
@@ -246,7 +246,7 @@ describe("a workflow that cannot start", () => {
   test("settles the parent's call as failed once, never as a Stop, keeps the child, and delivers its notification once", async () => {
     const { store, writer } = await setup()
     const startFailure = () => recordChildWorkflowStartFailure({
-      reader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow",
+      reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow",
     })
 
     expect(await startFailure()).toBe(true)
@@ -258,7 +258,7 @@ describe("a workflow that cannot start", () => {
     expect(await readChildStop(asAsyncEventReadSurface(store), LAUNCH)).toBeUndefined()
     const notifications = parentNotifications(store, writer)
     const reconcile = () => reconcileChildSessionCompletions({
-      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), writer,
+      parentSessionId: "parent", reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer,
       deliverNotification: notifications.deliverNotification,
     })
 
@@ -275,7 +275,7 @@ describe("a workflow that cannot start", () => {
     // A Resume ran the child again under its parent, and the parent stopped
     // that run: the Stop is a new outcome and owes its own notice, once.
     expect(await recordChildWorkflowStop({
-      reader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy: "agent", correctPriorResult: true,
+      reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy: "agent", correctPriorResult: true,
     })).toBe(true)
     await reconcile()
     await reconcile()
@@ -297,7 +297,7 @@ describe("a workflow that cannot start", () => {
     expect(await actionsWhileRunning()).toContain("background.terminate")
 
     await recordChildWorkflowStartFailure({
-      reader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow",
+      reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow",
     })
 
     // The call no longer waits, so a Stop has nothing to settle: the row
@@ -314,7 +314,7 @@ describe("a workflow Stop of a call whose description has line breaks", () => {
   async function startFailed() {
     const { store, writer } = await setup(description)
     const reader = asAsyncEventReadSurface(store)
-    await recordChildWorkflowStartFailure({ reader, writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow" })
+    await recordChildWorkflowStartFailure({ reader, projectionReader: reader, writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow" })
     const prior = await readToolExecution(reader, "parent", TOOL_USE_ID)
     if (!prior?.resultEventId) throw new Error("the start failure recorded no result")
     return { store, writer, reader, priorResultEventId: prior.resultEventId }
@@ -323,7 +323,7 @@ describe("a workflow Stop of a call whose description has line breaks", () => {
   test("corrects the call's earlier result, and the parent's tool history still reads", async () => {
     const { writer, reader } = await startFailed()
 
-    expect(await recordChildWorkflowStop({ reader, writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy: "agent", correctPriorResult: true })).toBe(true)
+    expect(await recordChildWorkflowStop({ reader, projectionReader: reader, writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", workflowDefinitionId: "workflow", stoppedBy: "agent", correctPriorResult: true })).toBe(true)
 
     expect((await readToolExecution(reader, "parent", TOOL_USE_ID))?.resultOutcome).toBe("cancelled")
   })

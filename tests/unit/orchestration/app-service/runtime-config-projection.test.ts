@@ -5,12 +5,13 @@ import { Schema } from "effect"
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestration/config/schema.js"
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type ConfigMutationResult, type RuntimeConfigOwner, type RuntimeConfigSnapshot } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js"
-import { createRuntimeConfigProjection, projectRuntimeConfig as projectConfig } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
+import { createRuntimeConfigProjection } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
 import { RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
+import { runtimeConfigView } from "../../../helpers/runtime-config-view.js"
 
 const PROJECT = "/scratch/project"
-const projectRuntimeConfig = (source: RuntimeConfigSnapshot) => projectConfig(source, PROJECT)
+const projectRuntimeConfig = (source: RuntimeConfigSnapshot) => runtimeConfigView(source, PROJECT)
 const temporaryDirectory = temporaryDirectories()
 
 const snapshot = (overrides: Partial<RuntimeConfigSnapshot> = {}): RuntimeConfigSnapshot => ({

@@ -7,7 +7,7 @@ import {
   createWin32ContainedDirectoryBackend,
   win32ContainedDirectoryBackend,
 } from "../../../src/infra/descriptor-directory-win32.js";
-import { ContainedPathError, type ContainedDirectoryBackend, type ContainedDirectoryContract } from "../../../src/infra/descriptor-directory-contract.js";
+import { ContainedPathError, type ContainedDirectory, type ContainedDirectoryBackend } from "../../../src/infra/descriptor-directory-contract.js";
 import type { NativeWindowsDirectory } from "../../../src/infra/descriptor-directory-win32-native.js";
 import { pathError } from "../../../src/infra/descriptor-directory-win32-path.js";
 
@@ -33,7 +33,7 @@ function pathBackend(renamePointer?: (pendingPath: string, targetPath: string) =
   return createWin32ContainedDirectoryBackend({ retainedAuthority: false, applyPrivateDirectoryAcl: () => {}, ...(renamePointer === undefined ? {} : { renamePointer }) });
 }
 
-function withDirectory<T>(backend: ContainedDirectoryBackend, use: (directory: ContainedDirectoryContract) => T): T {
+function withDirectory<T>(backend: ContainedDirectoryBackend, use: (directory: ContainedDirectory) => T): T {
   const directory = backend.open(base, [], {});
   try {
     return use(directory);

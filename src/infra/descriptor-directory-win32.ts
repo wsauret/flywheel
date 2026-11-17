@@ -9,20 +9,7 @@ import { randomBytes } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { renameThroughSharing, replaceFileOnWindows } from "./windows-file-replacement.js";
-import {
-  ContainedFileTooLargeError,
-  ContainedPathError,
-  type ContainedDirectoryBackend,
-  type ContainedDirectoryContract,
-  type ContainedDirectoryOptions,
-  type ContainedOwnedFile,
-  type ContainedFileMetadata,
-  type ContainedFileSnapshot,
-  type ContainedRegularFileEntry,
-  type FileMutationAttemptResult,
-  type ContainedStreamOptions,
-  sameFileSnapshot,
-} from "./descriptor-directory-contract.js";
+import { ContainedFileTooLargeError, ContainedPathError, sameFileSnapshot, type ContainedDirectory, type ContainedDirectoryBackend, type ContainedDirectoryOptions, type ContainedFileMetadata, type ContainedFileSnapshot, type ContainedOwnedFile, type ContainedRegularFileEntry, type ContainedStreamOptions, type FileMutationAttemptResult } from "./descriptor-directory-contract.js";
 import { errnoCode } from "./error-message.js";
 import { applyWindowsPrivateDirectoryAcl, type WindowsPrivateDirectoryAclPort } from "./windows-private-directory-acl.js";
 import { openNativeWindowsDirectory, type NativeWindowsDirectory } from "./descriptor-directory-win32-native.js";
@@ -85,7 +72,7 @@ function entryExists(entryPath: string): boolean {
 }
 
 /** One Windows directory held by its resolved absolute path for one operation window. */
-class Win32ContainedDirectory implements ContainedDirectoryContract {
+class Win32ContainedDirectory implements ContainedDirectory {
   readonly #path: string;
   readonly #operations: Win32ContainedDirectoryOperations;
   readonly #dev: number | undefined;
@@ -545,7 +532,7 @@ class Win32ContainedDirectory implements ContainedDirectoryContract {
     // Windows exposes no supported parent-directory flush equivalent; publication uses its platform durability contract.
   }
 
-  renameInto(name: string, target: ContainedDirectoryContract, targetName: string): void {
+  renameInto(name: string, target: ContainedDirectory, targetName: string): void {
     if (!(target instanceof Win32ContainedDirectory)) throw new TypeError("contained directories must use the same platform backend");
     const sourcePath = this.#entry(name);
     const targetPath = target.#entry(targetName);

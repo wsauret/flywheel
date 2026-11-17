@@ -2,11 +2,11 @@ import { describe, expect, it, spyOn } from "bun:test"
 import { createHash } from "node:crypto"
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { AgentGroupBlock } from "../../../../src/infra/output-blocks.js"
 import { frontendOutputBlockBytes } from "../../../../src/protocol/frontend-output-block-metrics.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const context = { executionCwd: process.cwd(), idSuffix: "", presentation: "container" as const }
 
@@ -142,7 +142,7 @@ describe("session-owned child index", () => {
       ...entryRuntimeDefaults(() => [group("uuid-before", "skipped"), group("uuid-live", "parent")], 0),
       kind: "chat" as const, runner: null, conversationId: "uncommitted", description: "Live",
     }
-    const projection = createSessionDetailProjection({
+    const projection = testSessionDetailProjection({
       transcriptCache: cache, reader: asAsyncEventReadSurface(reader), projectionReader: asAsyncEventReadSurface(reader), projectRoot: context.executionCwd, sessionStore: { get: () => entry },
       manager: { read: async () => ({
         label: "Session", lastUpdated: "2026-01-01T00:00:00.000Z", lifecycleState: "active",

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Redacted, Schema } from "effect"
 import { cursorKey, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { FrontendMutationSchema, RuntimeProtocolRpc, RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { RuntimeCursorIdentitySchema, RuntimeSnapshotScopeSchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
+import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
 import { ProviderModelTargetSchema, ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/provider-model-preference-protocol-schemas.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
@@ -139,12 +139,6 @@ describe("runtime protocol contract", () => {
     expect(cursorKey(workspace)).toBe("runtime:workspace")
     expect(cursorKey(auth)).toBe("auth:workspace")
     expect("sessionId" in workspace).toBe(false)
-  })
-
-  test("snapshot scopes cover workspace domains and concrete cursors", () => {
-    expect(Schema.decodeUnknownSync(RuntimeSnapshotScopeSchema)({ kind: "workspace", domain: "output" })).toEqual({ kind: "workspace", domain: "output" })
-    expect(Schema.decodeUnknownSync(RuntimeSnapshotScopeSchema)({ kind: "cursor", cursor: { scope: "session", domain: "status", sessionId: "s1" } }))
-      .toEqual({ kind: "cursor", cursor: { scope: "session", domain: "status", sessionId: "s1" } })
   })
 
   test("notification snapshot, ordered patches, and dismiss mutation share one strict contract", () => {

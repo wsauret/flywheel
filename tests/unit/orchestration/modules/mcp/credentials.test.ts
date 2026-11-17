@@ -7,8 +7,6 @@ import { McpConfigSchema, resolveMcpConfig } from "../../../../../src/orchestrat
 import {
   createMcpCredentialStore,
   credentialKey,
-  fromDiskCredential,
-  toDiskCredential,
   type McpCredential,
 } from "../../../../../src/orchestration/modules/mcp/credentials.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -44,9 +42,10 @@ describe("MCP credentials", () => {
       .not.toBe(credentialKey("work", "https://two.example/mcp"));
   });
 
-  test("round-trips only through explicit disk DTO functions", () => {
-    const original = credential("access-value");
-    const restored = fromDiskCredential(toDiskCredential(original));
+  test("A saved OAuth credential reads back with the same tokens", async () => {
+    const dir = temporaryDirectory("mcp-credentials-test-");
+    await createMcpCredentialStore(dir).save("work", "https://one.example/mcp", credential("access-value"));
+    const restored = createMcpCredentialStore(dir).get("work", "https://one.example/mcp") ?? {};
     expect(Redacted.value(restored.tokens?.accessToken ?? Redacted.make(""))).toBe("access-value");
     expect(Redacted.value(restored.tokens?.refreshToken ?? Redacted.make(""))).toBe("access-value-refresh");
     expect(Redacted.value(restored.clientInformation?.clientSecret ?? Redacted.make(""))).toBe("access-value-client");

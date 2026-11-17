@@ -10,7 +10,8 @@ import {
   readLockedJsonStore,
   type LockedJsonStoreOptions,
 } from "../../../../src/infra/auth/locked-json-store.js";
-import { ContainedDirectory, ContainedPathError } from "../../../../src/infra/descriptor-directory.js";
+import { ContainedPathError } from "../../../../src/infra/descriptor-directory-contract.js";
+import { heldDirectoryPrototype } from "../../../helpers/contained-directory-spies.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
@@ -87,15 +88,16 @@ describe("locked JSON store", () => {
   test("rejects a failed publication and keeps the previous bytes", async () => {
     const store = options();
     await mutateLockedJsonStore(store, (value) => { value.count = 1; });
-    const publish = ContainedDirectory.prototype.writeFile;
+    const held = heldDirectoryPrototype();
+    const publish = held.writeFile;
     const failure = new Error("ENOSPC: no space left on device");
-    ContainedDirectory.prototype.writeFile = function (name, content) {
+    held.writeFile = function (name, content) {
       return name === "credentials.json" ? failure : publish.call(this, name, content);
     };
     try {
       await expect(mutateLockedJsonStore(store, (value) => { value.count = 2; })).rejects.toBe(failure);
     } finally {
-      ContainedDirectory.prototype.writeFile = publish;
+      held.writeFile = publish;
     }
     expect(readLockedJsonStore(store)).toMatchObject({ tag: "valid", value: { count: 1 } });
   });

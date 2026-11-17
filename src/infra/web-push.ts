@@ -81,15 +81,6 @@ async function generateEncryptionMaterial(): Promise<EncryptionMaterial> {
   return { serverKeyPair: generated, salt: crypto.getRandomValues(new Uint8Array(16)) };
 }
 
-/** Imports an ECDH P-256 pair from its raw parts, for the RFC vector. */
-export async function importEncryptionMaterial(input: { readonly privateKey: string; readonly publicKey: string; readonly salt: string }): Promise<EncryptionMaterial> {
-  const publicBytes = fromBase64Url(input.publicKey);
-  const jwk: JsonWebKey = { kty: "EC", crv: "P-256", x: toBase64Url(publicBytes.subarray(1, 33)), y: toBase64Url(publicBytes.subarray(33, 65)), d: input.privateKey };
-  const privateKey = await subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
-  const publicKey = await subtle.importKey("raw", owned(publicBytes), { name: "ECDH", namedCurve: "P-256" }, true, []);
-  return { serverKeyPair: { privateKey, publicKey }, salt: fromBase64Url(input.salt) };
-}
-
 /** Seals `plaintext` to a subscription as one `aes128gcm` record: the RFC 8188
  *  header (salt, record size, the server's ephemeral public key) followed by
  *  the ciphertext of the plaintext and the final-record delimiter. */

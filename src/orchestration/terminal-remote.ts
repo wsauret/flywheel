@@ -58,6 +58,7 @@ export interface RemoteAttach {
   /** The release the machine runs for the project, as presence states it. */
   readonly release: { readonly version: string; readonly protocolVersion: number }
   /** The runtime client over the relay. Its `close` ends the relay client too. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   connect(onDiagnostic: (message: string, detail: unknown) => void): AttachedRuntimeClient
   /** Ends the relay client without a runtime client, as a startup that fails
    *  before it connects does. Its presence sockets would otherwise keep the

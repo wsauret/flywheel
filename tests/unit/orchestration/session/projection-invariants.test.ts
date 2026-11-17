@@ -7,7 +7,7 @@ import * as path from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { asAsyncEventReadSurface, CorruptEventRowError, type EventStore } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
-import { createSessionMetadataProjection, createSingleSessionMetadataProjection, recoverSessionMetadata } from "../../../../src/orchestration/session/session-metadata-projection"
+import { createSessionMetadataProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type PerSessionMetadataState, type SessionMetadataProjectionState } from "../../../../src/orchestration/session/session-metadata-projection"
 import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store"
 import { branchVisibleTranscriptEntries, createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection"
 import { walkBranchFromLeaf } from "../../../../src/orchestration/session/conversation/conversation-tree-context"
@@ -15,6 +15,17 @@ import { assertTolerantReprojectionRegistryComplete, registeredPhaseOneWireTestN
 import { readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta.js"
 import { sessionMetadataCatalogFromState } from "../../../../src/orchestration/session/session-catalog-read.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
+
+/** Every session's entries of the workspace catalog `state` in one state. */
+function flatCatalog(state: PerSessionMetadataState): SessionMetadataProjectionState {
+  const flat: SessionMetadataProjectionState = { sessions: {}, deleted: {}, errors: {} }
+  for (const [, entries] of state.bySession) {
+    Object.assign(flat.sessions, entries.sessions)
+    Object.assign(flat.deleted, entries.deleted)
+    Object.assign(flat.errors, entries.errors)
+  }
+  return flat
+}
 
 interface ChatEntryFixture {
   [key: string]: unknown
@@ -91,7 +102,7 @@ describe("session-metadata-projection invariants", () => {
   test("session_metadata mutation-before-creation strict-projection records the missing creation invariant", async () => {
     appendChildLinkedWithoutCreated("sess-1")
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "sess-1")
 
     expect(state.sessions["sess-1"]).toBeUndefined()
     expect(state.errors["sess-1"]).toContain("session.created has not been observed for sess-1")
@@ -126,7 +137,7 @@ describe("session-metadata-projection invariants", () => {
     })
     appendChildLinkedWithoutCreated("sess-2")
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "sess-2")
 
     expect(state.sessions["sess-2"]).toBeUndefined()
     expect(state.errors["sess-2"]).toBeUndefined()
@@ -138,7 +149,7 @@ describe("session-metadata-projection invariants", () => {
     appendCreated("corrupt-1")
     corruptPayload("corrupt-1", "session.created")
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = flatCatalog(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay())
 
     expect(state.sessions["healthy-1"]).toBeDefined()
     expect(state.sessions["corrupt-1"]).toBeUndefined()
@@ -148,7 +159,7 @@ describe("session-metadata-projection invariants", () => {
 
   test("session_metadata valid-current strict-projection accepts the registered current wire", async () => {
     appendCreated("current-1")
-    expect((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions["current-1"]).toBeDefined()
+    expect(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "current-1").sessions["current-1"]).toBeDefined()
   })
 
   test("decorations tool-result-without-tool-use decoration-reader preserves metadata by tool identity", async () => {
@@ -178,13 +189,13 @@ describe("session-metadata-projection invariants", () => {
     const snapshots = []
     for (const append of history) {
       append()
-      snapshots.push(structuredClone(await catalogPerFact.replay()))
+      snapshots.push(structuredClone(flatCatalog(await catalogPerFact.replay())))
       await perFact.replay()
     }
     // A second reader holds its own catalog, which folds the whole history at once.
-    const oneCatchUp = await createSessionMetadataProjection({ ...asAsyncEventReadSurface(store) }).replay()
+    const oneCatchUp = flatCatalog(await createSessionMetadataProjection({ ...asAsyncEventReadSurface(store) }).replay())
 
-    expect(Object.keys(oneCatchUp.sessions)).toEqual(["keep-1", "keep-2", "gone-1"])
+    expect(Object.keys(oneCatchUp.sessions).toSorted()).toEqual(["gone-1", "keep-1", "keep-2"])
     expect(oneCatchUp.sessions["keep-1"]?.label).toBe("Renamed")
     expect(oneCatchUp.sessions["keep-2"]?.childSessionIds).toEqual(["child-1"])
     expect(oneCatchUp.deleted).toEqual({})
@@ -199,7 +210,7 @@ describe("session-metadata-projection invariants", () => {
     const catalog = createSessionMetadataProjection(asAsyncEventReadSurface(store))
     appendCreated("first-1")
     const first = await catalog.replay()
-    const firstCopy = structuredClone(first)
+    const firstCopy = structuredClone(flatCatalog(first))
     expect(await catalog.replay()).toBe(first)
 
     appendLabelUpdated("first-1")
@@ -207,9 +218,9 @@ describe("session-metadata-projection invariants", () => {
     const second = await catalog.replay()
 
     expect(second).not.toBe(first)
-    expect(first).toEqual(firstCopy)
-    expect(second.sessions["first-1"]?.label).toBe("Renamed")
-    expect(Object.keys(second.sessions)).toEqual(["first-1", "second-1"])
+    expect(flatCatalog(first)).toEqual(firstCopy)
+    expect(flatCatalog(second).sessions["first-1"]?.label).toBe("Renamed")
+    expect(Object.keys(flatCatalog(second).sessions).toSorted()).toEqual(["first-1", "second-1"])
   })
 
   test("aggregate salvage recovers a session quarantined by a readable fact", async () => {
@@ -220,7 +231,7 @@ describe("session-metadata-projection invariants", () => {
       actor: "flywheel", sessionId: "first-1", payload: { label: 42 },
     })
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "first-1")
 
     expect(state.errors["first-1"]).toBeDefined()
     expect(state.sessions["first-1"]).toBeUndefined()
@@ -261,7 +272,7 @@ describe("session-metadata-projection invariants", () => {
     appendLabelUpdated("recoverable-1")
     corruptPayload("recoverable-1", "session.label.updated")
 
-    const state = await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()
+    const state = sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), "recoverable-1")
 
     expect((await recoverSessionMetadata(asAsyncEventReadSurface(store), "recoverable-1"))?.label).toBe("Chat")
     expect(state.errors["recoverable-1"]).toContain("corrupt event row")

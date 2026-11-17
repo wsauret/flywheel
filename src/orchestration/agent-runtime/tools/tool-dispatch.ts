@@ -6,8 +6,10 @@
  *
  *   - `selectedToolNames` converts AgentOptions selections into the
  *     planner's `selected` set;
- *   - `prepareToolCall` + `executePreparedTool` resolve a call against the
- *     executable map produced by the planner and run the handler.
+ *   - `prepareToolCall` is the one resolution step of a call: it repairs the
+ *     name against the executable map produced by the planner, admits the
+ *     capability of the resolved name, and coerces and validates the input;
+ *   - `executePreparedTool` runs the handler of a prepared call.
  */
 
 import { mergeAbortSignals } from "../../../infra/abort.js";
@@ -16,18 +18,14 @@ import { errorDetail, errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js";
 import { durationMs, logCompletion } from "../../../infra/operation-log.js";
-import { runModuleGate, type ModuleGate } from "../../module-hooks.js";
 import type { ToolCall, ToolInputRepair } from "../llm/types.js";
 import type { AgentOptions } from "../types.js";
 import type { GateAdmission } from "./tool-concurrency-gate.js";
-import { coerceToolInput, describeInputRepair } from "./coerce-input.js";
+import { coerceToolCallInput, describeInputRepair, type CoercedToolCallInput } from "./coerce-input.js";
 import { formatToolInputProblems, validateToolInput } from "./validate-input.js";
 import { toolNamesForActions } from "./tool-exposure-planner.js";
-import { grantCovers, NO_CAPABILITY_ACCESS, refuseDisabledToolCall, withCapabilityGrant, type CapabilityAccess, type RuntimeTool, type RuntimeToolInput, type ShellCommand, type ToolAdmissionContext, type ToolContext, type ToolResult } from "./types.js";
-import { toolModuleRequirements } from "./tool-registry.js";
+import type { RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
 import { createToolRegistry, shellCommandOf } from "../../tool-catalog.js";
-import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
-import { resolveToolPath } from "./tool-paths.js";
 import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
 
 const log = Log.create({ service: "tool-dispatch" });
@@ -47,21 +45,26 @@ export function selectedToolNames(options: AgentOptions): ReadonlySet<string> | 
   return undefined;
 }
 
-export type PreparedCallCapabilityAdmission =
-  | { readonly ok: true; readonly access?: CapabilityAccess }
+type PreparedCallCapabilityAdmission =
+  | { readonly ok: true }
   | { readonly ok: false; readonly refusal: ToolResult };
+
+/** The capability admission of one request, fixed with its advertised tool surface (`RequestToolSurface.executionAdmission`) and asked with the resolved name of a call. */
+export type ExecutionAdmission = (toolName: string) => PreparedCallCapabilityAdmission;
 
 export interface PreparedToolCall {
   call: ToolCall;
   tool: RuntimeTool | undefined;
   input: RuntimeToolInput;
   validationResult?: ToolResult;
-  capabilityAdmission?: PreparedCallCapabilityAdmission;
+  /** The request's capability admission of the resolved name (ARCH-RUNTIME-068). */
+  readonly capabilityAdmission: PreparedCallCapabilityAdmission;
   admissionPreparation?: Promise<void>;
   preparedReservedPaths?: readonly string[];
   /** Leads the result when argument coercion or admission preparation repaired the model's input, one line per repair. */
   repairNotice?: string;
-  pendingInputRepairs?: readonly ToolInputRepair[];
+  /** The coercion of the input and its validation verdict, until the final validation keeps or discards them. */
+  pendingCoercion?: CoercedToolCallInput & { readonly repairs: readonly ToolInputRepair[] };
 }
 
 export interface ToolExecutionGateInput {
@@ -78,14 +81,21 @@ export interface ToolExecutionGateInput {
   readonly modules: ModuleRuntimes;
 }
 
-interface ToolReplacementExecutionContext {
-  readonly signal?: AbortSignal;
-  readonly reportProgress: (text: string) => void;
+type ToolExecutionGateDecision =
+  | { readonly kind: "allow" }
+  | { readonly kind: "veto"; readonly reason: string };
+
+/** A module's singleton gate. It allows the exact core path or vetoes the call with a complete reason. */
+export type ToolExecutionGate = (input: ToolExecutionGateInput) => ToolExecutionGateDecision | Promise<ToolExecutionGateDecision>;
+
+/** A gate that fails refuses the call instead of falling through to the core path. */
+async function gateDecision(gate: ToolExecutionGate, input: ToolExecutionGateInput): Promise<ToolExecutionGateDecision> {
+  try {
+    return await gate(input);
+  } catch (error) {
+    throw new Error(`Capability gate failed closed: ${errorMessage(error)}`, { cause: error });
+  }
 }
-
-export type ToolExecutionGate = ModuleGate<ToolExecutionGateInput, ToolReplacementExecutionContext, ToolResult>;
-
-const MAX_GATE_PROGRESS_CHARS = 50_000;
 
 function immutable<Value>(value: Value): Readonly<Value> {
   if (value !== null && typeof value === "object") {
@@ -96,16 +106,7 @@ function immutable<Value>(value: Value): Readonly<Value> {
 }
 
 function descriptorPaths(prepared: PreparedToolCall, executionCwd: string): readonly string[] {
-  if (prepared.preparedReservedPaths) return prepared.preparedReservedPaths;
-  const reserved = prepared.tool?.reservedPaths?.(prepared.input, executionCwd);
-  if (reserved) return reserved;
-  const pathValue = prepared.input.path;
-  if ((prepared.call.name === "read" || prepared.call.name === "search") && typeof pathValue === "string") {
-    const rawPath = prepared.call.name === "read" ? pathValue.replace(/:(?:raw|[-\d+,]+)$/u, "") : pathValue;
-    return [canonicalMutationPath(resolveToolPath(executionCwd, rawPath))];
-  }
-  if (prepared.call.name === "search" && pathValue === undefined) return [canonicalMutationPath(executionCwd)];
-  return [];
+  return prepared.preparedReservedPaths ?? prepared.tool?.reservedPaths?.(prepared.input, executionCwd) ?? [];
 }
 
 function immutableGateInput(prepared: PreparedToolCall, context: ToolContext): ToolExecutionGateInput {
@@ -224,15 +225,21 @@ export function repairToolCall(call: ToolCall, tools: ReadonlyMap<string, Runtim
   return { ...call, name: repaired, repairedFrom: call.name };
 }
 
-export function prepareToolCall(rawCall: ToolCall, tools: ReadonlyMap<string, RuntimeTool>, capabilityAdmission?: PreparedCallCapabilityAdmission): PreparedToolCall {
+/** The one resolution step of a model's tool call, for provider and nested calls alike (ARCH-TOOLS-001). It
+ *  repairs the name against the request's executable tools, admits the capability of the resolved name through
+ *  the request's `admission`, and coerces and validates the input against the tool's compiled schema. A call that
+ *  cannot run carries its model-visible `validationResult`. */
+export function prepareToolCall(rawCall: ToolCall, tools: ReadonlyMap<string, RuntimeTool>, admission: ExecutionAdmission): PreparedToolCall {
   const call = repairToolCall(rawCall, tools);
   const tool = tools.get(call.name);
+  const capabilityAdmission = admission(call.name);
   if (!tool) {
     const available = [...tools.keys()].join(", ");
     return {
       call,
       tool,
       input: call.input,
+      capabilityAdmission,
       validationResult: {
         content: `Unknown tool '${call.name}'; this tool is not registered in the current session. Available tools: ${available}. Either you misspelled the tool name or the tool is not loaded for this run; pick one from the available set.`,
         outcome: "error",
@@ -244,48 +251,52 @@ export function prepareToolCall(rawCall: ToolCall, tools: ReadonlyMap<string, Ru
       call,
       tool,
       input: call.input,
+      capabilityAdmission,
       validationResult: {
         content: `Tool '${call.name}' was not executed: failed to parse tool arguments: ${call.inputParseError}. Re-send the call with well-formed JSON arguments.`,
         outcome: "error",
       },
     };
   }
-  const inputRepairs: ToolInputRepair[] = [];
-  const inputSchema = tool.inputValidationSchema ?? tool.inputSchema;
+  // A short-form tool's call with no arguments reads its contract and runs nothing (ARCH-TOOLS-058). It is decided
+  // here, before a tool's admission preparation can act on the empty input. `details.contractRead` tells the
+  // transcript what the call did (PI-AGENT-131), since the same empty input runs a full-form tool.
+  if (tool.contract && Object.keys(call.input).length === 0) {
+    return { call, tool, input: call.input, capabilityAdmission, validationResult: { content: tool.contract(), outcome: "ok", details: { contractRead: true } } };
+  }
+  const repairs: ToolInputRepair[] = [];
   // A custom-grammar tool takes raw text, so its arguments stay as written.
-  const input = coerceToolInput(call.input, inputSchema, (repair) => inputRepairs.push(repair), { verbatimText: tool.wire?.kind === "custom" });
-  const prepared: PreparedToolCall = {
-    call, tool, input, pendingInputRepairs: inputRepairs,
-    ...(capabilityAdmission ? { capabilityAdmission } : {}),
-  };
+  const coerced = coerceToolCallInput(call.input, tool.inputValidationSchema ?? tool.inputSchema, (repair) => repairs.push(repair), { verbatimText: tool.wire?.kind === "custom" });
+  const prepared: PreparedToolCall = { call, tool, input: coerced.input, capabilityAdmission, pendingCoercion: { ...coerced, repairs } };
   if (!tool.prepareAdmission) validatePreparedInput(prepared);
   return prepared;
 }
 
 /** Final validation is shared by synchronous tools and tools with an async repair. */
 function validatePreparedInput(prepared: PreparedToolCall): void {
-  const { tool, call } = prepared;
-  if (!tool) return;
-  const inputSchema = tool.inputValidationSchema ?? tool.inputSchema;
-  const problemsOf = (candidate: RuntimeToolInput) => tool.validatesOwnInput ? [] : validateToolInput(candidate, inputSchema);
-  const inputRepairs = prepared.pendingInputRepairs ?? [];
-  let problems = problemsOf(prepared.input);
-  const keepRepairs = inputRepairs.length > 0 && problems.length === 0;
-  if (inputRepairs.length > 0) {
-    log.info("tool input repaired before validation", { tool: call.name, toolUseId: call.id, repairs: inputRepairs, kept: keepRepairs });
+  const { tool, call, pendingCoercion } = prepared;
+  if (!tool || !pendingCoercion) return;
+  const { repairs } = pendingCoercion;
+  // Coercion already validated its own result; only a tool-owned repair leaves an input that it has not seen.
+  const problems = tool.validatesOwnInput ? []
+    : prepared.input === pendingCoercion.input ? pendingCoercion.problems
+    : validateToolInput(prepared.input, tool.inputValidationSchema ?? tool.inputSchema);
+  const keepRepairs = repairs.length > 0 && problems.length === 0;
+  if (repairs.length > 0) {
+    log.info("tool input repaired before validation", { tool: call.name, toolUseId: call.id, repairs, kept: keepRepairs });
   }
   if (problems.length > 0) {
     prepared.input = call.input;
     prepared.repairNotice = undefined;
     prepared.preparedReservedPaths = undefined;
-    problems = problemsOf(call.input);
-    prepared.validationResult = { content: formatToolInputProblems(call.name, problems), outcome: "error" };
+    const problemsText = formatToolInputProblems(call.name, pendingCoercion.originalProblems);
+    prepared.validationResult = { content: tool.contract ? `${problemsText}\n\n${tool.contract()}` : problemsText, outcome: "error" };
   } else if (keepRepairs) {
-    call.inputRepairs = [...inputRepairs];
-    const sharedNotice = inputRepairs.map(describeInputRepair).join("\n");
+    call.inputRepairs = [...repairs];
+    const sharedNotice = repairs.map(describeInputRepair).join("\n");
     prepared.repairNotice = prepared.repairNotice ? `${sharedNotice}\n${prepared.repairNotice}` : sharedNotice;
   }
-  prepared.pendingInputRepairs = undefined;
+  prepared.pendingCoercion = undefined;
 }
 
 /** Performs one tool-owned asynchronous normalization before path admission. */
@@ -335,31 +346,6 @@ export async function preparedToolAdmission(prepared: PreparedToolCall, context:
   return { kind: "exclusive" };
 }
 
-/** Capability admission for one prepared call (ARCH-RUNTIME-068, ARCH-TOOLS-008).
- *
- *  The check is here, after input validation and before `tool.execute`, so a
- *  stale call the model kept from an earlier request is refused before any body,
- *  model request, or background side effect. An operation that already holds a
- *  grant covering the requirement uses it: an admitted learning review must not
- *  be refused mid-run by a disable that landed after it started. Everything else
- *  performs a fresh atomic admission and forwards the minted grant, so a deep
- *  callee of this one call never admits the same operation a second time. */
-type PreparedCallAdmission = PreparedCallCapabilityAdmission;
-
-async function admitPreparedCall(tool: RuntimeTool, context: ToolContext): Promise<PreparedCallAdmission> {
-  const required = toolModuleRequirements(context.toolNames?.logical(tool.name) ?? tool.name, createToolRegistry());
-  if (required.length === 0) return { ok: true };
-  // A context that owns no capability policy holds no optional capability, so
-  // its refusal lands here rather than in the tool body.
-  const access = context.capabilityAccess ?? NO_CAPABILITY_ACCESS;
-  if (grantCovers(access.grant, required)) return { ok: true };
-  const admission = await access.admit({ operation: `the ${tool.name} tool`, required });
-  if (!admission.ok) {
-    return { ok: false, refusal: { content: refuseDisabledToolCall(tool.name, admission.reason), outcome: "error" } };
-  }
-  return { ok: true, access: withCapabilityGrant(access, admission.grant) };
-}
-
 export async function executePreparedTool(
   prepared: PreparedToolCall,
   context: ToolContext,
@@ -368,11 +354,14 @@ export async function executePreparedTool(
   await ensureAdmissionPrepared(prepared, context, context.signal);
   const { call, tool, input, validationResult } = prepared;
   if (validationResult) {
-    log.warn("tool admission failed", { tool: call.name, toolUseId: call.id });
+    if (validationResult.outcome === "ok") log.debug("tool contract read", { tool: call.name, toolUseId: call.id });
+    else log.warn("tool admission failed", { tool: call.name, toolUseId: call.id });
     return withInputRepairNotice(prepared, validationResult);
   }
   if (!tool) throw new Error("prepared tool call has neither tool nor validation result");
-  const admission = prepared.capabilityAdmission ?? await admitPreparedCall(tool, context);
+  // The request's admission decides here, after input validation and before `tool.execute`, so a stale call that
+  // the model kept from an earlier request is refused before any body, model request, or background side effect.
+  const admission = prepared.capabilityAdmission;
   if (!admission.ok) {
     log.info("tool refused by capability policy", { tool: call.name, toolUseId: call.id });
     return withInputRepairNotice(prepared, admission.refusal);
@@ -396,7 +385,6 @@ export async function executePreparedTool(
     signal: watchdog ? mergeAbortSignals(context.signal, watchdog.signal) : context.signal,
     toolUseId: call.id,
     outputByteBudget: TOOL_RESULT_MAX_BYTES - (prepared.repairNotice === undefined ? 0 : Buffer.byteLength(`${prepared.repairNotice}\n`, "utf-8")),
-    ...(admission.access ? { capabilityAccess: admission.access } : {}),
     ...(call.modelRequestId ? { modelRequestId: call.modelRequestId } : {}),
     ...(onExecutionOutput ? { onExecutionOutput: (text: string) => { resetWatchdog(); onExecutionOutput(text); } } : {}),
   };
@@ -408,21 +396,12 @@ export async function executePreparedTool(
   // moved to the done record rather than being lost with it.
   log.debug("tool execution start", { tool: call.name, toolUseId: call.id, sessionId: context.sessionId, artifactScopeId: context.artifactScopeId, modelRequestId: call.modelRequestId });
   try {
-    const result = options.gate
-      ? await runModuleGate(
-        options.gate,
-        immutableGateInput(prepared, context),
-        Object.freeze({
-          signal: ctx.signal,
-          reportProgress: (text: string) => ctx.onExecutionOutput?.(text.slice(0, MAX_GATE_PROGRESS_CHARS)),
-        }),
-        () => tool.execute(input, ctx),
-      )
-      : await tool.execute(input, ctx);
-    if ("kind" in result) {
+    const decision = options.gate ? await gateDecision(options.gate, immutableGateInput(prepared, context)) : undefined;
+    if (decision?.kind === "veto") {
       log.info("tool vetoed by capability gate", { tool: call.name, toolUseId: call.id });
-      return withInputRepairNotice(prepared, { content: result.reason, outcome: "error" });
+      return withInputRepairNotice(prepared, { content: decision.reason, outcome: "error" });
     }
+    const result = await tool.execute(input, ctx);
     if (watchdog?.signal.aborted && !context.signal?.aborted) {
       log.warn("tool execution timed out", { tool: call.name, toolUseId: call.id, durationMs: durationMs(start), timeoutMs: watchdogMs });
       // The tool's own account follows the notice: it can say what the

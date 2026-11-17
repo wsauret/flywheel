@@ -207,6 +207,7 @@ describe("chat A/B acceptance scoring", () => {
 
   it("loads a vendored fixture folder with its content in the identity, and the empty tree only with no paths", async () => {
     const tasksDir = tempDir("chat-ab-sources-");
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the task.json sandbox field that the loader decodes
     const writeTask = async (id: string, sandbox: unknown) => {
       await Bun.write(join(tasksDir, id, "task.json"), JSON.stringify({ id, stratum: "bug", sandbox, acceptanceBaseline: baseline }));
       await Bun.write(join(tasksDir, id, "message.md"), "Fix it.\n");

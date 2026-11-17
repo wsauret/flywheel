@@ -31,7 +31,6 @@ const definition = {
   id: "openai_api",
   displayName: "OpenAI API Key",
   shortName: "OpenAI",
-  supportedFamilies: ["openai"],
   defaultChatTransport: "openai-responses",
   cacheRetentionPolicies: ["provider", "in_memory", "24h"],
   configHints: ["flywheel auth login --openai"],
@@ -89,5 +88,5 @@ export const openaiApiModule = {
     { domain: "providers", id: "openai_api", value: { definition, createClient } },
     { domain: "settings", id: "provider-openai-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow OpenAI models through an API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

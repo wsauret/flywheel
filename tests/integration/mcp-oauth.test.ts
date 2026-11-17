@@ -198,6 +198,7 @@ function json(response: import("node:http").ServerResponse, status: number, valu
   response.writeHead(status, { "Content-Type": "application/json" }).end(JSON.stringify(value));
 }
 
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the JSON-RPC result that the fake MCP server sends
 function rpc(response: import("node:http").ServerResponse, id: number | undefined, result: unknown): void {
   json(response, 200, { jsonrpc: "2.0", id, result });
 }

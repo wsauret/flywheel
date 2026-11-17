@@ -212,6 +212,7 @@ export interface TranscriptStoreOptions {
    *  `recovery-failed` status. */
   readonly recoveryBackoff?: BackoffOptions
   readonly recoveryMaxAttempts?: number
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
   /** The session was just created, so its transcript is empty: the view starts
    *  ready, and the first tail read still seeds the held live output. */

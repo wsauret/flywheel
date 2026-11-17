@@ -24,6 +24,7 @@ test("an active workflow member whose run names a profile this account lacks hol
   const resident = createResidentAuthScopes({
     manager: { read: async () => null },
     runs: { read: async () => ({ authProfileId: "Shared" }) },
+    workflows: { list: async () => [], resident: async () => undefined },
     userDataRoot,
     currentProfile: () => defaults,
     resolveProfile: async () => defaults,

@@ -28,31 +28,6 @@ interface ModelUsage {
 }
 export type EventEmitter = (event: RuntimeEvent) => void;
 
-export interface ThinkingAccumulator {
-  append(text: string): void;
-  replace(text: string): void;
-  isEmpty(): boolean;
-  /** Read the accumulated thinking and reset for the next turn. */
-  take(): string;
-}
-
-/** Per-turn thinking content, shared by the stream-event path (which
- *  accumulates deltas) and the turn-assistant path (which takes the result
- *  into the assistant message). */
-export function createThinkingAccumulator(): ThinkingAccumulator {
-  let accumulated = "";
-  return {
-    append(text) { accumulated += text; },
-    replace(text) { accumulated = text; },
-    isEmpty() { return accumulated === ""; },
-    take() {
-      const value = accumulated;
-      accumulated = "";
-      return value;
-    },
-  };
-}
-
 interface ToolCall {
   id: string;
   name: string;

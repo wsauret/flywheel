@@ -5,6 +5,7 @@ import type { RuntimeClientDiagnostic } from "../runtime-client-diagnostics.js"
 interface ReadFailures {
   readonly pending: Set<object>
   readonly listeners: Set<() => void>
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   diagnostic?: (message: string, detail?: unknown) => void
   report?: (diagnostic: RuntimeClientDiagnostic) => void
 }
@@ -21,6 +22,7 @@ export function backgroundReads(connection: { readonly query: object }) {
   const held = state
   return {
     get failing() { return held.pending.size > 0 },
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
     diagnose(diagnostic: ((message: string, detail?: unknown) => void) | undefined, report?: (diagnostic: RuntimeClientDiagnostic) => void) {
       held.diagnostic = diagnostic
       held.report = report

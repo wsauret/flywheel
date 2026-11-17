@@ -32,6 +32,22 @@ export interface SchemaNode {
   additionalProperties?: boolean | SchemaNode;
 }
 
+const compiledSchemas = new WeakMap<object, SchemaNode>();
+
+/**
+ * The `SchemaNode` view of a JSON Schema object, converted once per schema
+ * object. A tool keeps its schema object for its lifetime and nothing mutates
+ * a schema after it is built, so the object identity is the cache key.
+ */
+export function compiledSchema(schema: RuntimeToolInput): SchemaNode {
+  let node = compiledSchemas.get(schema);
+  if (node === undefined) {
+    node = toSchemaNode(schema);
+    compiledSchemas.set(schema, node);
+  }
+  return node;
+}
+
 /**
  * Narrow an untyped JSON-Schema object (`tool.inputSchema` is
  * `RuntimeToolInput`) into the `SchemaNode` view this validator reads. Each field is
@@ -39,7 +55,7 @@ export interface SchemaNode {
  * cast-free: a malformed field is simply absent from the node, which the
  * validator treats as "no constraint of that kind declared".
  */
-export function toSchemaNode(value: unknown): SchemaNode {
+function toSchemaNode(value: unknown): SchemaNode {
   if (!isPlainObject(value)) return {};
   const node: SchemaNode = {};
   if (typeof value.type === "string") node.type = value.type;
@@ -73,7 +89,7 @@ export function validateToolInput(
   input: RuntimeToolInput,
   schema: RuntimeToolInput,
 ): string[] {
-  return schemaProblems(input, toSchemaNode(schema));
+  return schemaProblems(input, compiledSchema(schema));
 }
 
 /** The converter uses the same structural judgment when selecting a repair. */

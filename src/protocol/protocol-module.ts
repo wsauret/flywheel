@@ -66,8 +66,6 @@ export interface ProtocolDomain<
    *  whose view claims what holds right now, such as an attachment, states
    *  here what of it no reader may claim until the runtime answers again. */
   unanswered?(view: View): View
-  /** The editor host omits this domain from its client when set. Default exposed. */
-  readonly editor?: "omitted"
 }
 
 export type AnyProtocolDomain = ProtocolDomain<string, "session" | "workspace" | "workflow", ProtocolSnapshotSpec<string, Schema.Struct.Fields, ProtocolSnapshotResult>, ProtocolSnapshotResult, { readonly kind: string }, unknown>
@@ -80,20 +78,16 @@ export interface ProtocolQuery<Query extends string, Input extends Schema.Struct
   readonly input?: Input
   readonly result: Schema.Codec<Result>
   readonly deadline: "control" | "output"
-  /** The editor host omits this query from its client when set. Default exposed. */
-  readonly editor?: "omitted"
 }
 
 type AnyProtocolQuery = ProtocolQuery<string, Schema.Struct.Fields, unknown>
 
-/** A user mutation the module answers. `policy` is the call class of ARCH-PROTOCOL-020:
- *  a user action is lossless, and a call a client may repeat is retryable
- *  under the control deadline. */
+/** A user mutation the module answers. Every mutation is lossless
+ *  (ARCH-PROTOCOL-020), so a declaration states no call class. */
 export interface ProtocolMutation<Type extends string, Fields extends Schema.Struct.Fields, Result> {
   readonly type: Type
   readonly fields: Fields
   readonly result: Schema.Codec<Result>
-  readonly policy: "lossless" | "retryable"
   /** Closed admission answers through the module's result codec when its
    *  refusal differs from the standard { ok: false, error } result. */
   readonly refuse?: (message: string) => Result
@@ -231,7 +225,6 @@ export interface ProtocolRead<Query extends string> {
   readonly input?: Schema.Struct.Fields
   readonly result: Schema.Codec<unknown>
   readonly deadline: "control" | "output"
-  readonly editor?: "omitted"
   /** A session-scoped snapshot carries the session id beside its declared input. */
   readonly session: boolean
   readonly workflow?: boolean
@@ -263,14 +256,9 @@ export function protocolMutations<const Modules extends readonly ProtocolModule[
 /** Every read of a registry: each domain's snapshot query, then each module query. */
 export function protocolReads<const Modules extends readonly ProtocolModule[]>(modules: Modules): readonly ProtocolRead<ProtocolDomainOf<Modules>["snapshot"]["query"] | ProtocolQueryOf<Modules>["query"]>[] {
   return [
-    ...protocolDomains(modules).map((domain) => ({ ...domain.snapshot, ...(domain.editor === undefined ? {} : { editor: domain.editor }), session: domain.scope === "session", workflow: domain.scope === "workflow" })),
+    ...protocolDomains(modules).map((domain) => ({ ...domain.snapshot, session: domain.scope === "session", workflow: domain.scope === "workflow" })),
     ...protocolQueries(modules).map((query) => ({ ...query, session: false })),
   ]
-}
-
-/** The rows every module of a registry contributes to one slot, in registry order. */
-export function protocolModuleRows(modules: readonly ProtocolModule[], slot: ModuleRowSlot, read: DomainReader, enabled?: readonly ModuleId[]): readonly ModuleRow[] {
-  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.rows?.[slot]?.(read) ?? [] : [])
 }
 
 /** The names of a registry's domains with one scope. */
@@ -321,9 +309,4 @@ export function protocolDomainTable<D extends AnyProtocolDomain, Value>(domains:
   // SAFETY: one entry per domain under its own name is exactly the mapped type; `Object.fromEntries` erases the key set.
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: registry-composed table
   return Object.fromEntries(domains.map((domain) => [domain.domain, select(domain)])) as { readonly [Name in D["domain"]]: Value }
-}
-
-/** Composer chrome from enabled modules, preserving registry order. */
-export function protocolModuleComposerStatus(modules: readonly ProtocolModule[], read: DomainReader, enabled?: readonly ModuleId[], surface: "terminal" | "webview" = "terminal"): readonly ModuleComposerStatus[] {
-  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.composer?.status(read, surface) ?? [] : [])
 }

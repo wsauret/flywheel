@@ -133,7 +133,7 @@ function prior(options: AgentOptions) {
 function capturingFactory(captured: AgentOptions[]): AgentFactory {
   return (options) => {
     captured.push(options)
-    return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }
+    return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }
   }
 }
 

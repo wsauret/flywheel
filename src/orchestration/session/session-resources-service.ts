@@ -15,7 +15,7 @@ import type { SessionToolExecutionStore } from "./tool-execution-types.js"
 import type { DurableOwner } from "../../infra/durable-owner.js"
 
 
-export interface SessionResourceLifecycle {
+interface SessionResourceLifecycle {
   drainEventBus(): Promise<void>
   drainWriter(): Promise<void>
   disposeProjections(): void

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
-import { TextRenderable, type Renderable } from "@opentui/core"
+import { TextRenderable, type Renderable, type RGBA } from "@opentui/core"
 import { createSignal, type Accessor } from "solid-js"
 import { createComponent } from "solid-js/web"
 import { displayWidth } from "../../../src/tui/utils/text.js"
@@ -20,7 +20,7 @@ const ACCOUNT_HOME = "/Users/test"
 
 interface RenderOptions { runtimeIdentity?: Accessor<RuntimeIdentity | undefined>; showBuild?: Accessor<boolean>; availableWidth?: number; frameWidth?: number; frameHeight?: number; projectRoot?: string; accountHome?: string; tabsHintDismissed?: boolean; onDismissTabsHint?: () => void; clickTabsHintDismiss?: boolean; fontTipDismissed?: Accessor<boolean>; moduleRows?: readonly ModuleRow[]; branchName?: Accessor<string | undefined>; modelLabel?: Accessor<string | undefined>; profileName?: Accessor<string | undefined>; noProviderReady?: boolean; afterFirstRender?: () => void; releaseNotice?: Accessor<UpdateStatusView["releaseNotice"]>; onDismissReleaseNotice?: () => void; clickReleaseNoticeDismiss?: boolean }
 
-interface RenderedSpan { readonly text: string; readonly fg: { equals(other: unknown): boolean }; readonly attributes: number }
+interface RenderedSpan { readonly text: string; readonly fg: { equals(other: RGBA): boolean }; readonly attributes: number }
 
 async function renderSessionIntroSpans(options: RenderOptions = {}): Promise<{ frame: string; spans: readonly RenderedSpan[]; links: readonly string[] }> {
   const [{ SessionIntroBlock }, { ThemeProvider }] = await Promise.all([

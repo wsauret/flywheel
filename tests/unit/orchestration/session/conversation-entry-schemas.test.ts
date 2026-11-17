@@ -1,14 +1,23 @@
 import { buildMutationDiff, type MutationDiff } from "../../../../src/infra/mutation-diff.js";
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js";
+import { temporaryDirectories } from "../../../helpers/directories.js";
 import { describe, expect, it } from "bun:test";
 import type { ContentBlock } from "../../../../src/orchestration/agent-runtime/llm/types";
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import {
   CompactionEntrySchema,
-  LabelEntrySchema,
   LeafEntrySchema,
   MessageEntrySchema,
   ConversationEntrySchema,
 } from "../../../../src/orchestration/session/conversation/conversation-entry-schemas";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
+import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork";
+import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+
+const temporaryDirectory = temporaryDirectories();
 
 const baseFields = {
   id: "abc12345",
@@ -344,15 +353,69 @@ describe("CompactionEntrySchema", () => {
   });
 });
 
-describe("LabelEntrySchema", () => {
-  it("allows label to be undefined to clear a label", () => {
-    const entry = parseSchema(LabelEntrySchema, {
+describe("entry shapes that no current build writes", () => {
+  it("The current schema refuses a new label entry", () => {
+    const result = safeParse(ConversationEntrySchema, {
       ...baseFields,
       kind: "label",
-      targetId: "abc12345",
-      label: undefined,
+      targetId: "abc00000",
+      label: "saved",
     });
-    expect(entry.label).toBeUndefined();
+    expect(result.success).toBe(false);
+  });
+
+  it("A stored history with a label entry, a session_info entry, a summary compaction with retainedMessages, and an entry with followUpRequestSequence recovers with the same parentage, the same transcript blocks, and the same provider context as before", async () => {
+    const store = createSqliteEventStore(resolveEventStoreDbFile(temporaryDirectory("historical-entry-shapes-")));
+    const conversationId = "historical-conversation";
+    const sessionId = "historical-session";
+    const at = (second: number) => new Date(Date.UTC(2026, 5, 1, 0, 0, second)).toISOString();
+    const append = (type: string, payload: { [key: string]: unknown }) => store.append({
+      aggregateId: `conversation:${conversationId}`, sessionId, type, version: 1, actor: "flywheel", timestamp: 1, payload: { conversationId, ...payload },
+    });
+    append("chat.tree.created", { createdAt: at(0) });
+    append("chat.entries.appended", { entries: [
+      { kind: "message", id: "ask", parentId: null, timestamp: at(1), message: { kind: "user", content: "first question" } },
+      { kind: "message", id: "answer", parentId: "ask", timestamp: at(2), message: { kind: "assistant", content: "first answer" } },
+      { kind: "compaction", id: "compact", parentId: "answer", timestamp: at(3), sourceLeafId: "answer", summary: "earlier work", retainedMessages: [{ kind: "user", content: "first question" }], tokensBefore: 100, tokensAfter: 10, details: { reason: "hook" }, fromHook: true },
+      { kind: "label", id: "label", parentId: "compact", timestamp: at(4), targetId: "answer", label: "saved" },
+      { kind: "session_info", id: "info", parentId: "label", timestamp: at(5), name: "renamed" },
+      { kind: "message", id: "follow-up", parentId: "info", timestamp: at(6), message: { kind: "user", content: "follow-up question" }, followUpRequestSequence: 1 },
+    ] });
+    append("chat.follow_up_turn.completed", { requestSequence: 1 });
+    // A repeated marker of an earlier build reads as well: no reader needs it.
+    append("chat.follow_up_turn.completed", { requestSequence: 1 });
+
+    const storage = await ConversationTreeStorage.open({ conversationId, sessionId, store: asAsyncEventReadSurface(store) });
+    try {
+      const branch = await storage.getPathToRoot(await storage.getLeafId());
+      expect(branch.map((entry) => [entry.id, entry.parentId])).toEqual([
+        ["ask", null], ["answer", "ask"], ["compact", "answer"], ["label", "compact"], ["info", "label"], ["follow-up", "info"],
+      ]);
+      expect(branch.slice(2, 4)).toEqual([
+        { kind: "compaction", id: "compact", parentId: "answer", timestamp: at(3), sourceLeafId: "answer", summary: "earlier work", retainedMessages: [{ kind: "user", content: "first question" }], tokensBefore: 100, tokensAfter: 10 },
+        { kind: "session_info", id: "label", parentId: "compact", timestamp: at(4) },
+      ]);
+      expect(branch.every((entry) => !("followUpRequestSequence" in entry) && !("name" in entry))).toBe(true);
+
+      expect(projectBlocksFromEntries(branch, { executionCwd: "/workspace" }).map((block) => [block.kind, "id" in block ? block.id : undefined])).toEqual([
+        ["userMessage", "ask"], ["text", "answer"], ["system", "compact"], ["userMessage", "follow-up"],
+      ]);
+      expect(buildSessionContext(branch).messages).toEqual([
+        { kind: "user", content: "first question" },
+        { kind: "compactionSummary", content: "earlier work" },
+        { kind: "user", content: "follow-up question" },
+      ]);
+
+      // A fork copies the recovered branch through the current writer.
+      const capture = await storage.captureCommittedActiveBranch();
+      await forkConversationTree({ source: capture, destinationConversationId: "fork", destinationSessionId: "fork-session", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store), now: () => at(9) });
+      const copied = await ConversationTreeStorage.open({ conversationId: "fork", sessionId: "fork-session", store: asAsyncEventReadSurface(store) });
+      expect((await copied.getPathToRoot(await copied.getLeafId())).map((entry) => entry.kind)).toEqual(["message", "message", "compaction", "session_info", "session_info", "message"]);
+      copied.dispose();
+    } finally {
+      storage.dispose();
+      store.close();
+    }
   });
 });
 

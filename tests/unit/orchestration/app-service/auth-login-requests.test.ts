@@ -13,6 +13,7 @@ import type { AuthOperationNotice } from "../../../../src/protocol/auth-status-p
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import { refusingLauncher } from "../../../helpers/launcher-fake.js";
 import { account, provider, service, silentLog } from "./_auth-login-service-fixtures.js";
+import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js";
 
 /** What one client request asks of the runtime's login service: the profile
  *  it writes, whether the runtime opens the sign-in page, and the steps a flow
@@ -34,7 +35,7 @@ describe("auth login requests", () => {
     if (first.kind !== "prompt") throw new Error(`Expected a prompt, got ${first.kind}`);
     expect(first.prompt).toEqual({ message: "GitHub Enterprise URL/domain (blank for github.com)", placeholder: "company.ghe.com", allowEmpty: true });
     expect(await login.answerPrompt("github_copilot", "stale-operation", "x")).toEqual({ kind: "ignored", providerId: "github_copilot" });
-    const next = await dispatchAuthMutation({ authLogin: login }, { type: "auth.login.answer", providerId: "github_copilot", operationId: first.operationId, answer: "" });
+    const next = await dispatchAuthMutation({ ...authMutationDoubles(), authLogin: login }, { type: "auth.login.answer", providerId: "github_copilot", operationId: first.operationId, answer: "" });
     expect(next).toEqual({ kind: "device_code", operationId: first.operationId, providerId: "github_copilot", userCode: "CODE-1", verificationUri: "https://example.invalid/device" });
     expect(answers).toEqual([""]);
     expect(await login.answerPrompt("github_copilot", first.operationId, "again")).toMatchObject({ kind: "ignored" });
@@ -83,7 +84,7 @@ describe("auth login requests", () => {
       await login.disconnect({ providerId: "anthropic_api", profileId: "work" });
       expect(await Bun.file(join(directories.work, "auth.json")).text()).not.toContain("sk-ant-work");
       expect(refreshed).toEqual(["work"]);
-      expect(await dispatchAuthMutation({ authLogin: login }, { type: "auth.account.rename", providerId: "anthropic_api", instanceId: "one", label: "Work", profileId: "gone" })).toEqual({ ok: false, error: "The auth profile is no longer available." });
+      expect(await dispatchAuthMutation({ ...authMutationDoubles(), authLogin: login }, { type: "auth.account.rename", providerId: "anthropic_api", instanceId: "one", label: "Work", profileId: "gone" })).toEqual({ ok: false, error: "The auth profile is no longer available." });
     } finally {
       login.dispose();
       rmSync(home, { recursive: true });
@@ -159,7 +160,7 @@ describe("auth login requests", () => {
     if (confirmed.kind !== "device_code") throw new Error(`Expected a device code, got ${confirmed.kind}`);
     await asked.promise;
     expect(notices.at(-1)).toEqual({ kind: "confirmation", operationId: confirmed.operationId, providerId: "github_copilot", message: "Replace it?" });
-    expect(await dispatchAuthMutation({ authLogin: login }, { type: "auth.login.answer", providerId: "github_copilot", operationId: confirmed.operationId, answer: "confirm" })).toEqual({ kind: "completed", providerId: "github_copilot" });
+    expect(await dispatchAuthMutation({ ...authMutationDoubles(), authLogin: login }, { type: "auth.login.answer", providerId: "github_copilot", operationId: confirmed.operationId, answer: "confirm" })).toEqual({ kind: "completed", providerId: "github_copilot" });
     expect(replies).toEqual([true]);
 
     asked = Promise.withResolvers();
