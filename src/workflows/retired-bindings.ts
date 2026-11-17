@@ -18,13 +18,12 @@
 import { Schema } from "effect";
 import { isRecord } from "../infra/record.js";
 import { isQualifiedSkillId } from "../infra/skill-id.js";
-import { ToolScopingSchema, type ToolScoping } from "../infra/workflow-types.js";
+import { ToolScopingSchema } from "../infra/workflow-types.js";
 import { ArtifactContractsFrontmatterSchema } from "./artifact-contracts.js";
 import { hashDefinition } from "./definition-hash.js";
 import { retiredHandoffContract, RETIRED_SPEC_HANDOFF, SHIPPED_PLAN_CONTRACT } from "./retired-handoff-contracts.js";
 import type { SkillRegistryRevision } from "./skill-schema.js";
 import type { OutputObject } from "./output-contract/grammar.js";
-import type { WorkflowStep } from "./retired-step-grammar/schema.js";
 
 /** The briefs that retired with their workflows on 2026-10-16, each mapped
  *  to the id of the workflow that it retired with. A person's model setting
@@ -102,26 +101,6 @@ export function retiredBindingSha256(bindingId: string, binding: RetiredBinding)
     ...(binding.external ? { allowedChildSkills: binding.allowedChildSkills ?? [] } : {}),
     bindingId,
   }).sha256;
-}
-
-/** Rebuild the binding one converted step replaced, from the skill, the
- *  handoff type, and the tool scope it named, and the policy the step
- *  keeps. A current step holds no tool scope, so the caller passes the one
- *  the binding recorded. */
-export function retiredBindingOf(step: WorkflowStep, skill: string, handoff: string | undefined, toolScoping: ToolScoping | undefined): RetiredBinding {
-  return {
-    skill,
-    ...(step.name === undefined ? {} : { name: step.name }),
-    ...(handoff === undefined ? {} : { handoff }),
-    ...(step.writes === undefined ? {} : { writes: step.writes }),
-    ...(toolScoping === undefined ? {} : { toolScoping }),
-    ...(step.external === undefined ? {} : {
-      external: true as const,
-      ...(step.external.arguments === undefined ? {} : { arguments: step.external.arguments }),
-      ...(step.external.artifactRedirect === undefined ? {} : { artifactRedirect: step.external.artifactRedirect }),
-      allowedChildSkills: step.external.allowedChildSkills,
-    }),
-  };
 }
 
 type RawDocument = { readonly [key: string]: unknown };

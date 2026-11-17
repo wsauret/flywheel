@@ -8,16 +8,13 @@
 import { expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
-import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
-import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event-read-surface.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { adoptWorkflowChildren, prepareWorkflowAdoption, workflowChildrenNeedAdoption } from "../../../../src/orchestration/modules/workflows/migrations/adopt-workflow-children.js"
+import { adoptWorkflowChildren, workflowChildrenNeedAdoption } from "../../../../src/orchestration/modules/workflows/migrations/adopt-workflow-children.js"
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
 import { historicalCompletionEntryId } from "../../../../src/orchestration/session/child-session-completion.js"
 import { readConversationSnapshotSync } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { queuedUserInputPut, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { chatTurnEndOf, endsAtTurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
-import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { recoverSessionMetadata } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
@@ -115,29 +112,32 @@ test("transfers a pending follow-up when a workflow fact its recovered root supe
   } finally { store.close() }
 })
 
-test.each(["sequence", "cell"] as const)("rolls back the whole prepared adoption on a stale %s", async (conflict) => {
+test("rolls back the whole adoption with its transferred input when the store refuses it", async () => {
   const f = await pendingFixture()
   f.store.close()
   const db = new Database(f.dbFile)
   try {
-    const inserter = createSqliteEventInserter(db)
-    const reader = createSqliteEventReadSurface(db)
-    const workflow = recoverSessionMetadata(reader, "session")
-    if (workflow?.kind !== "workflow") throw new Error("missing workflow")
-    const prepared = prepareWorkflowAdoption(reader, "session", workflow, new Set(), f.root)
-    if (conflict === "cell") inserter.writeInFlight("session", { op: "put", kind: QUEUED_USER_INPUT_IN_FLIGHT_KIND, key: "queued-a", payload: { target: "workflow", text: "changed" } })
-    else inserter.insertEventRows([{ ...buildSessionMetadataAppend("session", { type: "session.lifecycle.changed", version: 1, actor: "flywheel", payload: { lifecycleState: "inactive", lastUpdated: f.now } }, Date.now()), id: crypto.randomUUID() }])
-    const position = reader.currentPosition()
-    const cells = reader.readInFlight("session", QUEUED_USER_INPUT_IN_FLIGHT_KIND)
-    db.exec("BEGIN IMMEDIATE")
-    try {
-      expect(() => inserter.insertEventRows(prepared.events.map((event) => ({ ...event, id: crypto.randomUUID() })))).toThrow()
-    } finally { db.exec("ROLLBACK") }
-    expect(reader.currentPosition()).toBe(position)
-    expect(reader.readInFlight("session", QUEUED_USER_INPUT_IN_FLIGHT_KIND)).toEqual(cells)
-    expect(recoverSessionMetadata(reader, "session")?.launchedFrom).toBeUndefined()
-    expect(reader.read({ types: ["follow_up.transferred", "tool.runtime_invocation.recorded"] })).toEqual([])
+    // The ordinary and the degraded conversion both write, so a store that
+    // refuses every write fails each of them.
+    db.exec("create trigger refuse_writes before insert on event begin select raise(abort, 'injected refusal'); end")
   } finally { db.close() }
+  const retained = () => {
+    const store = createSqliteEventStore(f.dbFile)
+    try {
+      return { position: store.currentPosition(), cells: store.readInFlight("session", QUEUED_USER_INPUT_IN_FLIGHT_KIND) }
+    } finally { store.close() }
+  }
+  const before = retained()
+  const warn = adoptionWarnings()
+  try {
+    expect(adoptWorkflowChildren(f.dbFile, f.root)).toEqual({ adopted: 0, failed: 1 })
+  } finally { warn.mockRestore() }
+  expect(retained()).toEqual(before)
+  const store = createSqliteEventStore(f.dbFile)
+  try {
+    expect(recoverSessionMetadata(store, "session")?.launchedFrom).toBeUndefined()
+    expect(store.read({ types: ["follow_up.transferred", "tool.runtime_invocation.recorded"] })).toEqual([])
+  } finally { store.close() }
 })
 
 test("leaves recovery-held operator input with its unfinished workflow's step", () => {

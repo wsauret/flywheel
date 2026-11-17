@@ -56,7 +56,7 @@ const TARGET_MAX_BYTES = 256 * 1024;
 
 /** One completed unit of the protocol. A caller observes them in order, so a
  *  test can interrupt the run at any publication boundary. */
-export interface MigrationStage {
+interface MigrationStage {
   readonly kind: "staged" | "package-published" | "verified" | "retired";
   readonly root: string;
   readonly target: string;

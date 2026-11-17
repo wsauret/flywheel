@@ -614,7 +614,7 @@ function carrying(event: GuardedEventStoreAppend, writes: readonly InFlightWrite
  *  history happened: the adoption notice, the historical completion, then
  *  any transferred follow-up input in its original order and the runtime
  *  interrupt that ends the batch. */
-export function prepareWorkflowAdoption(reader: EventStoreReadSurface, id: string, workflow: WorkflowSession, excluded: ReadonlySet<string>, projectRoot: string, options: AdoptionOptions = {}): PreparedAdoption {
+function prepareWorkflowAdoption(reader: EventStoreReadSurface, id: string, workflow: WorkflowSession, excluded: ReadonlySet<string>, projectRoot: string, options: AdoptionOptions = {}): PreparedAdoption {
   const warnings: AdoptionWarning[] = []
   const warn: Warn = (warning) => { warnings.push(warning) }
   const degraded = options.mode === "degraded"

@@ -58,7 +58,7 @@ import { settleWorkflowDeletion } from "./workflows/deletion.js"
 import { createWorkflowHosts } from "./workflows/host-collection.js"
 
 /** The launch surface of one runner. Each request reads the live mode. */
-export interface WorkflowsRuntime {
+interface WorkflowsRuntime {
   readonly deps: () => WorkflowToolDeps
   /** The authority of this runner's session under one planned tool set and its request's own availability. */
   readonly authority: (planned: ReadonlyMap<string, RuntimeTool>, availability: DefinitionAvailabilitySnapshot) => LaunchingSessionAuthority
@@ -95,7 +95,7 @@ function createWorkflowsRuntime(services: ModuleRuntimeServices): WorkflowsRunti
  *  own selection. A session that plans no subagent tool dispatches no persona.
  *  Each persona of the session's grant that `availability` refuses keeps its
  *  reason, so a refusal of the file says what to turn on. */
-export function launchingSessionAuthority(planned: ReadonlyMap<string, RuntimeTool>, services: Pick<ModuleRuntimeServices, "allowedSubagentTypes" | "personas">, availability: Pick<DefinitionAvailabilitySnapshot, "personas">): LaunchingSessionAuthority {
+function launchingSessionAuthority(planned: ReadonlyMap<string, RuntimeTool>, services: Pick<ModuleRuntimeServices, "allowedSubagentTypes" | "personas">, availability: Pick<DefinitionAvailabilitySnapshot, "personas">): LaunchingSessionAuthority {
   const toolActions = new Set([...planned.values()].map((tool) => tool.action))
   const granted = [...services.personas.values()]
     .filter((agent) => agent.kind === "persona" && (services.allowedSubagentTypes?.has(agent.name) ?? true))

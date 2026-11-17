@@ -3,7 +3,7 @@ import { POSIX_FILE_MODES } from "../../../helpers/posix-modes.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { migrateLegacyStepCatalog, type MigrationStage } from "../../../../src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.js"
+import { migrateLegacyStepCatalog } from "../../../../src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.js"
 import { tryWithPackageLocksSync } from "../../../../src/infra/package-directory-lock.js"
 import { loadSkillDefinitions } from "../../../../src/workflows/skills.js"
 import type { SkillDefinition } from "../../../../src/workflows/skill-schema.js"
@@ -96,7 +96,10 @@ function installPackage(root: string, id: string, description: string): void {
   writeFileSync(join(root, "skills", id, "SKILL.md"), `---\nname: ${id}\ndescription: ${description}\n---\nInstalled body.\n`)
 }
 
-function migrate(workspace: Workspace, onStage?: (stage: MigrationStage) => void): ReturnType<typeof migrateLegacyStepCatalog> {
+/** The listener the migration calls at each publication boundary, in order. */
+type StageListener = NonNullable<NonNullable<Parameters<typeof migrateLegacyStepCatalog>[1]>["onStage"]>
+
+function migrate(workspace: Workspace, onStage?: StageListener): ReturnType<typeof migrateLegacyStepCatalog> {
   return migrateLegacyStepCatalog(workspace.directories, onStage ? { onStage } : {})
 }
 
@@ -305,7 +308,7 @@ describe("legacy step catalog migration", () => {
     expect(existsSync(source)).toBe(true)
   })
 
-  const boundaries: MigrationStage["kind"][] = ["staged", "package-published", "verified", "retired"]
+  const boundaries: Parameters<StageListener>[0]["kind"][] = ["staged", "package-published", "verified", "retired"]
 
   test.each(boundaries)("restarts to one complete result after an interruption at %s", (kind) => {
     const workspace = newWorkspace()

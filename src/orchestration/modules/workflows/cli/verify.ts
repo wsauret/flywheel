@@ -49,7 +49,7 @@ function projectDependencies(directories: ProjectDirectories): WorkflowVerifyDep
   }
 }
 
-export function renderWorkflowVerificationReport(report: WorkflowVerificationReport): string {
+function renderWorkflowVerificationReport(report: WorkflowVerificationReport): string {
   const lines = [`Result: ${report.result}`, ""]
   if (report.findings.length === 0) {
     lines.push("Findings: none")
@@ -79,7 +79,7 @@ export function renderWorkflowVerificationReport(report: WorkflowVerificationRep
 /** Verify a workflow file as a chat path launch, or an instantiated JSON file.
  *  Decode and semantic errors throw one message with every file diagnostic.
  *  A named workflow id is refused with instructions to pass a file path. */
-export async function resolveWorkflowVerifyInput(
+async function resolveWorkflowVerifyInput(
   input: string,
   dependencies: WorkflowVerifyDependencies,
 ): Promise<WorkflowVerificationReport> {

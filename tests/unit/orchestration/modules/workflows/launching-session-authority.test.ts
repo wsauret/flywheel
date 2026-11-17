@@ -1,17 +1,21 @@
-import { describe, expect, it } from "bun:test"
+import { afterAll, describe, expect, it } from "bun:test"
 import { renderCapabilityText } from "../../../../../src/infra/capability-text.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
 import type { ToolAction } from "../../../../../src/infra/workflow-types.js"
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
-import { launchingSessionAuthority } from "../../../../../src/orchestration/modules/workflows.js"
+import { workflowsModule } from "../../../../../src/orchestration/modules/workflows.js"
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../../../src/infra/workflow-types.js"
-import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definition-availability.js"
+import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/app-service/definition-availability.js"
+import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js"
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
+import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
 import { loadPathWorkflow, sessionWorkflowsDir } from "../../../../../src/orchestration/workflow-host/path-workflow.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
-import { repoDefinitions } from "../../../../helpers/project-definitions.js"
+import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"
+import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"
 
 const temporary = temporaryDirectories()
 
@@ -23,14 +27,23 @@ const personas = new Map([["reviewer", persona("reviewer")], ["planner", persona
 
 const OFF = "agent type reviewer is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on"
 
-/** The persona entries of a definition availability under which every persona is available, except the ones
- *  `off` names, each with the owner's reason sentence. */
-function availability(off: readonly string[] = []) {
-  return {
-    personas: new Map([...personas.keys()].map((name) => [name, off.includes(name)
-      ? { id: name, requires: [], types: [name], missing: [], off: [name], available: false, modelInvocable: false, reason: OFF }
-      : { id: name, requires: [], types: [name], missing: [], off: [], available: true, modelInvocable: true }])),
-  }
+/** The definition availability of {@link personas} with the agent types that `off` names turned off. */
+function availability(off: readonly string[] = []): DefinitionAvailabilitySnapshot {
+  return fixedAvailability({ personas }, undefined, off)
+}
+
+const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
+afterAll(() => background.close())
+
+/** The authority the workflows runtime of one runner grants under `planned` and `snapshot`. */
+function launchingSessionAuthority(planned: ReadonlyMap<string, RuntimeTool>, services: Pick<ModuleRuntimeServices, "allowedSubagentTypes" | "personas">, snapshot: DefinitionAvailabilitySnapshot) {
+  const runtime = workflowsModule.runtime.create(moduleRuntimeServices({
+    ...services,
+    background,
+    startWorkflow: async () => { throw new Error("this test launches no workflow") },
+  }))
+  if (!runtime) throw new Error("the workflows runtime needs a workflow starter and a background owner")
+  return runtime.authority(planned, snapshot)
 }
 
 function tool(name: string, action: ToolAction): RuntimeTool {

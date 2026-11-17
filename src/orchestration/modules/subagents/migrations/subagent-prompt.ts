@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { parseSubagentRunFact } from "../facts.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
 
-export const SUBAGENT_PROMPT_MIGRATION_ID = "subagent-prompt-task-v3"
+const SUBAGENT_PROMPT_MIGRATION_ID = "subagent-prompt-task-v3"
 
 const SubagentPromptV1PayloadSchema = Schema.Struct({
   childRunId: Schema.String,

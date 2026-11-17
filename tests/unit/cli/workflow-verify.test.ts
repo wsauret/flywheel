@@ -1,12 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import {
-  renderWorkflowVerificationReport,
-  resolveWorkflowVerifyInput,
-  runWorkflowVerify,
-} from "../../../src/orchestration/modules/workflows/cli/verify.js"
-import type { WorkflowVerificationReport } from "../../../src/workflows/vm/verify-types.js"
-import { fixtureDefinitions } from "../../helpers/project-definitions.js"
-import { testDirectories } from "../../helpers/directories.js"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
+import { runWorkflowVerify } from "../../../src/orchestration/modules/workflows/cli/verify.js"
+import { fileTemporaryDirectory, testDirectories } from "../../helpers/directories.js"
 import { Database } from "bun:sqlite"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import * as fs from "node:fs"
@@ -22,130 +16,129 @@ import { startNext, wideControl } from "../workflows/vm/_tree-fixtures.js"
 import { verifyRecoveredWorkflow } from "../../../src/workflows/vm/verify.js"
 import { buildWorkflowControlCommittedFact } from "../../../src/workflows/vm/session-facts.js"
 
-const definitions = fixtureDefinitions()
+/** One prepared project whose installed definitions every file verification reads. */
+const filesRoot = fileTemporaryDirectory("flywheel-workflow-verify-files-")
+let filesRootPrepared = false
 
-async function rejection(pending: Promise<unknown>): Promise<string> {
-  try {
-    await pending
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
+function project(): ReturnType<typeof testDirectories> {
+  const directories = testDirectories(filesRoot)
+  if (!filesRootPrepared) {
+    prepareWorkspaceState(directories).generation.release()
+    filesRootPrepared = true
   }
-  throw new Error("Expected the verification to reject")
+  return directories
 }
 
-const proved: WorkflowVerificationReport = {
-  result: "proved",
-  findings: [{
-    name: "terminal_reachable",
-    target: "completed",
-    message: "The workflow completes.",
-    witness: ["INITIALIZE", "START"],
-    noPathReason: null,
-  }],
-  uncertainties: [],
+/** Writes `content` at `relative` in the project and answers its path. */
+function draft(relative: string, content: string): string {
+  const file = path.join(filesRoot, relative)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, content)
+  return file
 }
 
-const partial: WorkflowVerificationReport = {
-  result: "partially_proved",
-  findings: [{
-    name: "array_bounded_for",
-    target: "workflow:node:2",
-    message: "The loop uses its runtime array.",
-    witness: [],
-    noPathReason: null,
-  }],
-  uncertainties: [{
-    name: "runtime_for_array_size",
-    target: "workflow:node:2",
-    detail: "The runtime array length is dynamic.",
-  }],
+/** Runs `flywheel workflow verify <file>` and answers its exit code, its
+ *  standard output, and each line it wrote to standard error. */
+async function verifyFile(file: string): Promise<{ readonly code: number; readonly out: string; readonly errors: readonly string[] }> {
+  const out: string[] = []
+  const errors: string[] = []
+  const log = spyOn(console, "log").mockImplementation((...args: unknown[]) => { out.push(args.map(String).join(" ")) })
+  const error = spyOn(console, "error").mockImplementation((...args: unknown[]) => { errors.push(args.map(String).join(" ")) })
+  try {
+    const code = await runWorkflowVerify([file], project())
+    return { code, out: out.join("\n"), errors }
+  } finally {
+    log.mockRestore()
+    error.mockRestore()
+  }
 }
 
-const invalid: WorkflowVerificationReport = {
-  result: "invalid",
-  findings: [{
-    name: "schema_invalid",
-    target: "control",
-    message: "The control does not match the schema.",
-    witness: null,
-    noPathReason: "Strict decoding failed before initialization.",
-  }],
-  uncertainties: [],
-}
+const USAGE = "Usage: flywheel workflow verify <workflow.yaml|workflow.json> | flywheel workflow verify --workflow <workflow-id>"
 
 describe("workflow verification report rendering", () => {
-  it("renders a proved report and its event witness", () => {
-    expect(renderWorkflowVerificationReport(proved)).toBe([
-      "Result: proved",
+  it("prints the result, each finding with its event witness, and each uncertainty", async () => {
+    const file = draft("drafts/simple.yaml", "id: simple\nname: Simple\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n")
+    const verified = await verifyFile(file)
+
+    expect(verified.code).toBe(0)
+    expect(verified.out).toBe([
+      "Result: partially_proved",
       "",
       "Findings:",
-      "- terminal_reachable [completed]: The workflow completes.",
-      "  Event witness: INITIALIZE -> START",
+      "- terminal_reachable [completed]: The production machine reaches completed.",
+      "  Event witness: INITIALIZE -> START -> COMMIT_SUCCEEDED -> ATTEMPT_STARTED -> COMMIT_SUCCEEDED -> ATTEMPT_SUCCEEDED -> COMMIT_SUCCEEDED",
+      "- terminal_reachable [failed]: The production machine reaches failed.",
+      "  Event witness: INITIALIZE -> START -> COMMIT_SUCCEEDED -> ATTEMPT_STARTED -> COMMIT_SUCCEEDED -> ATTEMPT_FAILED -> COMMIT_SUCCEEDED",
       "",
-      "Uncertainties: none",
+      "Uncertainties:",
+      "- runtime_handoff_values: Synthetic handoffs cover empty and positive values, not every runtime value.",
     ].join("\n"))
   })
 
-  it("renders a partial report and every named uncertainty", () => {
-    const output = renderWorkflowVerificationReport(partial)
-    expect(output).toContain("Result: partially_proved")
-    expect(output).toContain("Event witness: (initial state)")
-    expect(output).toContain("runtime_for_array_size [workflow:node:2]: The runtime array length is dynamic.")
+  it("prints an invalid instantiated file with its no-path reason and exits 1", async () => {
+    const verified = await verifyFile(draft("scratch/plan.json", "{}"))
+
+    expect(verified.code).toBe(1)
+    expect(verified.out).toStartWith("Result: invalid\n\nFindings:\n- schema_invalid [control]: Concrete workflow control failed strict decode")
+    expect(verified.out).toEndWith("  No path: Strict control decoding failed before machine initialization.\n\nUncertainties: none")
   })
 
-  it("renders an invalid report and its no-path reason", () => {
-    const output = renderWorkflowVerificationReport(invalid)
-    expect(output).toContain("Result: invalid")
-    expect(output).toContain("schema_invalid [control]: The control does not match the schema.")
-    expect(output).toContain("No path: Strict decoding failed before initialization.")
+  it("prints a structural finding with no target at the initial state and exits 1", async () => {
+    const control = wideControl(2)
+    const overrun = { ...control, guardrails: { ...control.guardrails, maxAttempts: 1 } }
+    const verified = await verifyFile(draft("scratch/overrun.json", JSON.stringify(overrun)))
+
+    expect(verified.code).toBe(1)
+    expect(verified.out).toStartWith("Result: invalid\n\nFindings:\n")
+    expect(verified.out).toContain("\n- attempt_limit_overrun: The workflow queues 5 attempts, more than its attempt limit of 1.\n  Event witness: (initial state)\n")
   })
 })
 
 describe("workflow verification input resolution", () => {
-  it("refuses a named workflow and asks for a file path", async () => {
-    await expect(resolveWorkflowVerifyInput("debug", {
-      skills: definitions.skills(),
-      readText: async () => { throw new Error("no file is read for an id") },
-    })).rejects.toThrow('Named workflow verification is no longer supported: debug. Pass a workflow file path (.yaml, .yml, or .json).')
+  it("loads YAML with the production loader and the installed skill registry", async () => {
+    // code-review is a bundled skill, so every project installs it.
+    const verified = await verifyFile(draft("scratch/workflow.yml", "id: cli-test\nname: CLI test\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n    dependencies: [code-review]\n"))
+
+    expect(verified.code).toBe(0)
+    expect(verified.out).toMatch(/^Result: (proved|partially_proved)\n/u)
   })
 
-  it("loads YAML with the production loader and the injected skill registry", async () => {
-    const skillId = definitions.skills().skills.keys().next().value
-    if (!skillId) throw new Error("The project registry has no skill packages")
-    const report = await resolveWorkflowVerifyInput("scratch/workflow.yml", {
-      skills: definitions.skills(),
-      readText: async () => `id: cli-test\nname: CLI test\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n    dependencies: [${skillId}]\n`,
-    })
-    expect(["proved", "partially_proved"]).toContain(report.result)
+  it("refuses a definition with an unknown skill with one definition error", async () => {
+    const file = draft("drafts/unknown.yaml", "id: unknown\nname: Unknown\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n    dependencies: [no.such-skill]\n")
+    const verified = await verifyFile(file)
+
+    expect(verified.code).toBe(2)
+    expect(verified.errors).toEqual([
+      `Workflow definition errors:\n${file} (unknown): Phase "work", phases.0: requires skill "no.such-skill", which is not installed`,
+      USAGE,
+    ])
   })
 
   it.each([
     ["skill:fixture.root", "a workflow no longer runs a skill as a brief; write the brief inline and add dependencies: [fixture.root]"],
     ["missing", 'runs brief "missing", which this file does not hold; write the brief inline'],
   ])("refuses runs %s with an inline-brief alternative", async (runs, message) => {
-    const refusal = await rejection(resolveWorkflowVerifyInput("drafts/refused.yaml", {
-      skills: definitions.skills(),
-      readText: async () => `id: refused\nname: Refused\nphases:\n  - phase: work\n    runs: ${runs}\n`,
-    }))
-    expect(refusal).toContain('Phase "work", phases.0.runs')
-    expect(refusal).toContain(message)
+    const verified = await verifyFile(draft("drafts/refused.yaml", `id: refused\nname: Refused\nphases:\n  - phase: work\n    runs: ${runs}\n`))
+
+    expect(verified.code).toBe(2)
+    expect(verified.errors[0]).toContain('Phase "work", phases.0.runs')
+    expect(verified.errors[0]).toContain(message)
   })
 
   it("refuses a retired module brief by name", async () => {
-    const refusal = await rejection(resolveWorkflowVerifyInput("drafts/audit.workflow.yaml", {
-      skills: definitions.skills(),
-      readText: async () => "id: audit\nname: Audit\nphases:\n  - phase: audit\n    runs: fly.raindrop-audit\n",
-    }))
-    expect(refusal).toContain('runs brief "fly.raindrop-audit", which Flywheel no longer ships')
+    const verified = await verifyFile(draft("drafts/audit.workflow.yaml", "id: audit\nname: Audit\nphases:\n  - phase: audit\n    runs: fly.raindrop-audit\n"))
+
+    expect(verified.code).toBe(2)
+    expect(verified.errors[0]).toContain('runs brief "fly.raindrop-audit", which Flywheel no longer ships')
   })
 
   it("judges a draft outside every definition root as a path launch does, so the skill's canonical example verifies", async () => {
     const example = path.join(import.meta.dir, "../../../src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/review-changes.workflow.yaml")
-    const report = await resolveWorkflowVerifyInput(example, {
-      skills: definitions.skills(),
-      readText: async (file) => fs.readFileSync(file, "utf8"),
-    })
-    expect(report.result).not.toBe("invalid")
+    const verified = await verifyFile(example)
+
+    expect(verified.code).toBe(0)
+    expect(verified.out).toStartWith("Result: partially_proved\n")
+    expect(verified.out).toContain("- runtime_map_width [review-changes:node:1]: The verifier samples a launch input of 2 items")
     // Exploring the example's state space is about 0.4 s of CPU work on an
     // idle machine, and a contended 4-CPU runner stretches it past the
     // 5 s default, so the budget covers the work instead of the machine.
@@ -153,55 +146,38 @@ describe("workflow verification input resolution", () => {
 
   it("accepts an agent's model and effort in files inside and outside former definition roots", async () => {
     const keyed = "id: keyed\nname: Keyed\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n    model: mid\n    effort: low\n"
-    const dependencies = {
-      skills: definitions.skills(),
-      readText: async () => keyed,
-    }
-    const draft = await resolveWorkflowVerifyInput("drafts/keyed.workflow.yaml", dependencies)
-    expect(draft.result).not.toBe("invalid")
 
-    const project = await resolveWorkflowVerifyInput(".flywheel/workflows/keyed.yaml", dependencies)
-    expect(project.result).not.toBe("invalid")
+    expect((await verifyFile(draft("drafts/keyed.workflow.yaml", keyed))).code).toBe(0)
+    expect((await verifyFile(draft(".flywheel/workflows/keyed.yaml", keyed))).code).toBe(0)
   })
 
   it("reports every schema and semantic error without assigning a former definition layer", async () => {
     const fixture = fs.readFileSync(path.join(import.meta.dir, "../../fixtures/workflow-project/workflows/repair.yaml"), "utf8")
-    const dependencies = (file: string) => ({
-      skills: definitions.skills(),
-      readText: async () => file,
-    })
     const unknownField = fixture.replace("id: repair", "id: repair-bad")
       .replace("while: verify.defects", "while: verify.nonexistent")
+    const outside = draft("drafts/repair-bad.yaml", unknownField)
 
-    expect(await rejection(resolveWorkflowVerifyInput("drafts/repair-bad.yaml", dependencies(unknownField)))).toBe([
+    expect((await verifyFile(outside)).errors[0]).toBe([
       "Workflow definition errors:",
-      'drafts/repair-bad.yaml (repair-bad): Repeat 3, phases.2.repeat.while: while "verify.nonexistent" names undeclared output field "nonexistent" of "verify"',
+      `${outside} (repair-bad): Repeat 3, phases.2.repeat.while: while "verify.nonexistent" names undeclared output field "nonexistent" of "verify"`,
     ].join("\n"))
 
-    expect(await rejection(resolveWorkflowVerifyInput(".flywheel/workflows/repair-bad.yaml", dependencies(unknownField))))
-      .toStartWith("Workflow definition errors:\n.flywheel/workflows/repair-bad.yaml (repair-bad): Repeat 3")
+    const inside = draft(".flywheel/workflows/repair-bad.yaml", unknownField)
+    expect((await verifyFile(inside)).errors[0]).toStartWith(`Workflow definition errors:\n${inside} (repair-bad): Repeat 3`)
 
     const twoSchemaErrors = unknownField.replace("id: repair-bad", "id: 7").replace(/    brief: [^\n]+/, "    runs: [broken]")
-    const schemaErrors = await rejection(resolveWorkflowVerifyInput("drafts/repair-bad.yaml", dependencies(twoSchemaErrors)))
+    const schemaErrors = (await verifyFile(draft("drafts/repair-bad.yaml", twoSchemaErrors))).errors[0]
     // Each schema issue names its key path, so the author fixes the key it names.
-    expect(schemaErrors).toContain("drafts/repair-bad.yaml: id: ")
-    expect(schemaErrors).toContain(`drafts/repair-bad.yaml: Phase "investigate", phases.0.runs: `)
+    expect(schemaErrors).toContain(`${outside}: id: `)
+    expect(schemaErrors).toContain(`${outside}: Phase "investigate", phases.0.runs: `)
   })
 
   it("names a missing file plainly", async () => {
-    await expect(resolveWorkflowVerifyInput("wf/missing.yaml", {
-      skills: definitions.skills(),
-      readText: (file) => Bun.file(path.join(os.tmpdir(), "flywheel-absent", file)).text(),
-    })).rejects.toThrow(/^File not found: wf\/missing\.yaml$/u)
-  })
+    const missing = path.join(filesRoot, "wf/missing.yaml")
+    const verified = await verifyFile(missing)
 
-  it("passes JSON to strict instantiated verification", async () => {
-    const report = await resolveWorkflowVerifyInput("scratch/plan.json", {
-      skills: definitions.skills(),
-      readText: async () => "{}",
-    })
-    expect(report.result).toBe("invalid")
-    expect(report.findings[0]?.name).toBe("schema_invalid")
+    expect(verified.code).toBe(2)
+    expect(verified.errors[0]).toStartWith(`File not found: ${missing}: `)
   })
 })
 

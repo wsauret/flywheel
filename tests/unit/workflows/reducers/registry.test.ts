@@ -1,9 +1,9 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, spyOn } from "bun:test"
 import { latestReducer, requireReducer, runReducer } from "../../../../src/workflows/reducers/registry.js"
 import type { EarlierRound, JoinContracts, ReducerInputSlot } from "../../../../src/workflows/reducers/reducer.js"
 import { compiledFields } from "../../../../src/workflows/output-contract/compile.js"
 import type { Field, FieldMap } from "../../../../src/workflows/output-contract/grammar.js"
-import { workflowReducerLines } from "../../../../src/orchestration/modules/workflows/cli/reducers.js"
+import { runWorkflowReducers } from "../../../../src/orchestration/modules/workflows/cli/reducers.js"
 
 const coverage = latestReducer("coverage")!
 const PARAMS = { priority: "priority", outcome: "outcome", exclusions: "exclusions" }
@@ -451,7 +451,17 @@ describe("quorum@1", () => {
 
 describe("flywheel workflow reducers", () => {
   it("lists each reducer with the parameters that its join takes", () => {
-    expect(workflowReducerLines()).toEqual([
+    const written: string[] = []
+    const write = spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array) => {
+      written.push(String(chunk))
+      return true
+    })
+    try {
+      runWorkflowReducers()
+    } finally {
+      write.mockRestore()
+    }
+    expect(written.join("").split("\n")).toEqual([
       "collect@1: no parameters",
       "coverage@1:",
       "  priority: The item field whose values are required | supporting.",
@@ -473,6 +483,7 @@ describe("flywheel workflow reducers", () => {
       "  min_valid: The fewest valid votes that pass a verdict; at least 1, so an all-abstain vote never passes.",
       "  max_refuted: The most refuted votes that a passing verdict allows.",
       "  group_by (optional): A required string field of each item. Each of its values gets its own verdict. A phase with votes takes none, because each item gets its own verdict.",
+      "",
     ])
   })
 })

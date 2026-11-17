@@ -20,7 +20,7 @@ import type { AskUserController } from "../../../../../src/orchestration/runner/
 import type { SkillManageToolDeps } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import type { LearningRuntime } from "../../../../../src/orchestration/modules/learning.js";
-import type { WorkflowsRuntime } from "../../../../../src/orchestration/modules/workflows.js";
+import { workflowsModule } from "../../../../../src/orchestration/modules/workflows.js";
 import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
 import type { ModuleId } from "../../../../../src/protocol/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
@@ -72,6 +72,9 @@ function workflowDeps(mode: WorkflowsMode): WorkflowToolDeps {
     resolveLaunchTarget: async () => ({ error: "unused in this test" }), executionCwd: "/project",
   };
 }
+
+/** The launch surface the workflows module builds for one runner. */
+type WorkflowsRuntime = NonNullable<ReturnType<typeof workflowsModule.runtime.create>>;
 
 function workflowsRuntime(mode: WorkflowsMode): WorkflowsRuntime {
   return { deps: () => workflowDeps(mode), authority: () => fullAuthority() };

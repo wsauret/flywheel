@@ -7,7 +7,7 @@ export function runWorkflowReducers(): void {
   process.stdout.write(`${workflowReducerLines().join("\n")}\n`)
 }
 
-export function workflowReducerLines(): readonly string[] {
+function workflowReducerLines(): readonly string[] {
   return REGISTERED_REDUCERS.flatMap(({ id, version, parameters }) => parameters.length === 0
     ? [`${id}@${version}: no parameters`]
     : [`${id}@${version}:`, ...parameters.map(({ name, optional, description }) => `  ${name}${optional ? " (optional)" : ""}: ${description}`)])

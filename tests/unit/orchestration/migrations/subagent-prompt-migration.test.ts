@@ -8,10 +8,10 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { loadSubagentRunsFromEvents } from "../../../../src/orchestration/modules/subagents/history/subagent-run-projection.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import {
-  migrateSubagentPromptTaskInstructions,
-  SUBAGENT_PROMPT_MIGRATION_ID,
-} from "../../../../src/orchestration/modules/subagents/migrations/subagent-prompt.js"
+import { migrateSubagentPromptTaskInstructions } from "../../../../src/orchestration/modules/subagents/migrations/subagent-prompt.js"
+
+/** The id each pass records in its migration fact, which a durable fact keeps. */
+const MIGRATION_ID = "subagent-prompt-task-v3"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-subagent-prompt-migration-${process.pid}-${Date.now()}`)
 
@@ -75,7 +75,7 @@ describe("migrateSubagentPromptTaskInstructions", () => {
     })
     expect(after[3]).toEqual(before[3])
     expect(migrationFacts(dbFile)).toEqual([{
-      migrationId: SUBAGENT_PROMPT_MIGRATION_ID,
+      migrationId: MIGRATION_ID,
       factTypes: ["subagent.prompted"],
       repaired: 3,
     }])
@@ -134,7 +134,7 @@ describe("migrateSubagentPromptTaskInstructions", () => {
     expect(migrateSubagentPromptTaskInstructions(dbFile)).toEqual({ repaired: 1 })
     expect(eventRows(dbFile).filter(({ type, version }) => type === "subagent.prompted" && version !== 3)).toEqual([])
     expect(migrationFacts(dbFile).map(({ migrationId }) => migrationId))
-      .toEqual([SUBAGENT_PROMPT_MIGRATION_ID, SUBAGENT_PROMPT_MIGRATION_ID])
+      .toEqual([MIGRATION_ID, MIGRATION_ID])
   })
 
   it("retires the side-table migration ledger earlier binaries recorded into", () => {

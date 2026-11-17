@@ -15,8 +15,7 @@ import { ToolScopingSchema } from "../../../../src/infra/workflow-types.js"
 import { ArtifactContractsFrontmatterSchema } from "../../../../src/workflows/artifact-contracts.js"
 import type { SkillDefinition } from "../../../../src/workflows/skill-schema.js"
 import type { RetiredBinding } from "../../../../src/workflows/retired-bindings.js"
-import { legacyCaptureOf, legacyIdentityOf, type LegacyCapture } from "../../../../src/orchestration/modules/workflows/migrations/legacy-identity-view.js"
-import { LEGACY_HANDOFF_CONTRACTS } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-step-content-pins.js"
+import { LEGACY_HANDOFF_CONTRACTS, legacyCaptureOf, legacyIdentityOf, type LegacyCapture } from "./_pre-cutover-control.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import type { StepGrammarWorkflow } from "../../../../src/workflows/retired-step-grammar/schema.js"
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js"
@@ -583,13 +582,6 @@ export function withCurrentBindingIds(
     return { ...attempt, definitionId: bound.step.definitionId }
   })
 }
-
-/** Steps that a shipped workflow dropped or rebound after the cutover. Their frozen pins
- *  stay, because they describe what the pre-cutover build recorded. */
-export const CHANGED_SINCE_CUTOVER: ReadonlyMap<string, readonly string[]> = new Map([
-  ["bench-implement", ["seed-plan"]],
-  ["debug", ["fix", "investigate", "verify"]],
-])
 
 /** Rebuild the step record that one binding replaced. The skill the binding
  *  named owns the procedure and its direct-invocation metadata when it is

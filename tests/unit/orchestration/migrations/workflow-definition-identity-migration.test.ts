@@ -19,8 +19,7 @@ import {
   type DefinitionIdentity,
   type LegacyDefinitionIdentity,
 } from "../../../../src/workflows/vm/definition-identity.js"
-import { legacyCaptureOf, legacyIdentityOf } from "../../../../src/orchestration/modules/workflows/migrations/legacy-identity-view.js"
-import { LEGACY_HANDOFF_CONTRACTS } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-step-content-pins.js"
+import { LEGACY_HANDOFF_CONTRACTS, legacyCaptureOf, legacyIdentityOf } from "./_pre-cutover-control.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { workflowAggregateId } from "../../../../src/workflows/vm/session-facts.js"
 import { testDirectories } from "../../../helpers/directories.js"
