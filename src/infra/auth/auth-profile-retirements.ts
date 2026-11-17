@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type { ContainedDirectory } from "../descriptor-directory-contract.js";
 import { requireAuthProfileName } from "../paths.js";
 
@@ -38,7 +39,7 @@ export function readAuthProfileRetirements(auth: ContainedDirectory): AuthProfil
     }
     return Object.freeze(canonical);
   } catch (cause) {
-    throw new AuthProfileRetirementsError(`${auth.canonicalPath()}/${AUTH_PROFILE_RETIREMENTS_FILE}`, cause);
+    throw new AuthProfileRetirementsError(join(auth.canonicalPath(), AUTH_PROFILE_RETIREMENTS_FILE), cause);
   }
 }
 

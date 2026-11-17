@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
 import { ContainedPathError } from "../../../../src/infra/descriptor-directory-contract.js";
 import * as containedDirectories from "../../../../src/infra/descriptor-directory.js";
@@ -25,7 +25,8 @@ describe("AuthProfileStore", () => {
     (await store.create("work")).close();
     const file = join(root, "auth", ".profile-retirements.json");
     writeFileSync(file, bytes);
-    const unreadableLedger = /^Cannot read auth profile transfers at .+\/auth\/\.profile-retirements\.json\./;
+    const separator = sep === "\\" ? "\\\\" : sep;
+    const unreadableLedger = new RegExp(`^Cannot read auth profile transfers at .+${separator}auth${separator}\\.profile-retirements\\.json\\.`);
     expect(() => store.inspect()).toThrow(unreadableLedger);
     await expect(store.create("other")).rejects.toThrow(unreadableLedger);
     expect(readFileSync(file, "utf8")).toBe(bytes);
