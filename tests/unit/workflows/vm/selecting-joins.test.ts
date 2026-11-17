@@ -8,7 +8,7 @@ import { replayWorkflowControl, resumesFailedAgents } from "../../../../src/work
 import { attemptScope } from "../../../../src/workflows/vm/list-transitions.js";
 import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js";
 import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/events.js";
-import { classifyWorkflowHistory } from "../../../../src/workflows/vm/recovery-fold.js";
+import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation.js";
 import { failedAgents } from "../../../../src/workflows/output-contract/workflow-completion.js";
 import { workflowTree } from "../../../../src/workflows/vm/view-tree.js";
 import { attemptOf, FINDINGS_CHECKS, FINDINGS_FILES, FINDINGS_REPORT, FINDINGS_REVIEWS, findingsAnswer, findingsWorkflow, mapSkills, VOTES_CHECKS, VOTES_REPORT, votesAnswer, votesWorkflow } from "./_map-fixtures.js";
@@ -342,7 +342,7 @@ describe("the Resume of a run whose item agent failed", () => {
     // history still classifies as a run that can execute.
     expect(replayWorkflowControl(events)).toEqual(vm.freshViews().control);
     expect(vm.queue()!.attempts.map(({ id }) => id)).toEqual(vm.freshViews().control.attempts.map(({ id }) => id));
-    expect(classifyWorkflowHistory(events).plan.executable).toBe(true);
+    expect(validateWorkflowBootstrap(events).executable).toBe(true);
   });
 
   it("runs another list that reads changed work again as a new run beside its superseded items, and replay derives the same control", async () => {
@@ -394,7 +394,7 @@ describe("the Resume of a run whose item agent failed", () => {
     expect(report?.entryId).toBe(`${FINDINGS_CHECKS}:join`);
     expect<unknown>(report?.handoff).toEqual(verdicts);
     expect(replayWorkflowControl(vm.events())).toEqual(vm.freshViews().control);
-    expect(classifyWorkflowHistory(vm.events()).plan.executable).toBe(true);
+    expect(validateWorkflowBootstrap(vm.events()).executable).toBe(true);
   });
 });
 
@@ -464,7 +464,7 @@ describe("the Resume of a run whose repeats read a refolded join", () => {
     expect(queuedAttempts(control)).toBe(10);
     expect(vm.queue()!.tree.nodes.filter(({ kind, label }) => kind === "agent" && label === "Probe")).toHaveLength(2);
     expect(replayWorkflowControl(vm.events())).toEqual(control);
-    expect(classifyWorkflowHistory(vm.events()).plan.executable).toBe(true);
+    expect(validateWorkflowBootstrap(vm.events()).executable).toBe(true);
   });
 
   /** Run the `repeat` phase over the two items, with `report` after it, and

@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { completeAttempt, failAttempt, prepareExecution, admissibleExecutionInput, startExecution } from "../../../../src/workflows/vm/attempt-transitions.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
@@ -122,7 +122,7 @@ export function startNext(control: CommittedWorkflowControl): CommittedWorkflowC
 
 /** Interrupt the attempt that runs, as a person's Interrupt does. */
 export function interrupt(control: CommittedWorkflowControl): CommittedWorkflowControl {
-  const result = transitionWorkflow(initializeWorkflow(control).state, { type: "ABORT", reason: "Interrupted by the person" })
+  const result = transitionDecodedWorkflow(initializeWorkflow(control).state, { type: "ABORT", reason: "Interrupted by the person" })
   const pending = result.state.context.pending?.proposedCommitted
   if (pending === undefined) throw new Error("The interrupt proposed no control")
   return pending

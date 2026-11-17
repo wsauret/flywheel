@@ -53,7 +53,7 @@ async function expectDrift(
         changes: error.changes.map(() => ({ component })),
       },
     })
-    expect(events.at(-1)?.payload).toEqual(vm.lineage().driftRejections.at(-1))
+    expect(events.at(-1)?.payload).toEqual((await vm.lineage()).driftRejections.at(-1))
     expect(events.some(({ payload }) => JSON.stringify(payload).includes("must-not-launch"))).toBe(false)
     return error
   }
@@ -85,7 +85,7 @@ describe("SQLite workflow VM definition drift", () => {
     expect(currentDefinitionDriftRejection(vm.events())).toBeUndefined()
 
     await expectDrift(vm, { identityVersionOverride: "3" }, "version")
-    expect(currentDefinitionDriftRejection(vm.events())).toEqual(vm.lineage().driftRejections.at(-1))
+    expect(currentDefinitionDriftRejection(vm.events())).toEqual((await vm.lineage()).driftRejections.at(-1))
 
     await vm.commitCompeting({ type: "START" })
     expect(currentDefinitionDriftRejection(vm.events())).toBeUndefined()

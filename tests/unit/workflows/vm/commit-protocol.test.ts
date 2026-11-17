@@ -357,6 +357,6 @@ describe("SQLite workflow VM commit protocol", () => {
     expect(batch.map(({ seq }) => seq)).toEqual(Array.from({ length: batch.length }, (_, index) => index))
     expect(vm.committed.aggregateSeq).toBe(batch.length)
     expect(vm.queue()?.attempts[0]?.id).toBe(vm.committed.attempts[0]?.id)
-    expect(vm.lineage().compiledWorkflow?.workflowDefinitionId).toBe("sqlite-acceptance")
+    expect((await vm.lineage()).compiledWorkflow?.workflowDefinitionId).toBe("sqlite-acceptance")
   })
 })

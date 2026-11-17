@@ -9,7 +9,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js"
-import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
+import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"
 import { loadHandoffsFromEvents } from "../../../../src/workflows/output-contract/projection.js"
 import { accumulatorStateFromProjection, createWorkflowContextProjection } from "../../../../src/workflows/context-bundle/context-projection.js"
 import { buildContextAccumulatedFact, buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
@@ -37,14 +37,15 @@ import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/comm
 import type { WorkflowMachineState } from "../../../../src/workflows/vm/control-types.js"
 import type { WorkflowEvent } from "../../../../src/workflows/vm/events.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
+import { continueWorkflowReplay } from "../../../../src/workflows/vm/replay.js"
+import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import {
   buildWorkflowControlInitializedFact,
   parseWorkflowSessionFact,
   type WorkflowSessionFact,
 } from "../../../../src/workflows/vm/session-facts.js"
-import { initializeWorkflow, replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { quietHostDeps } from "./host-test-support.js"
 
@@ -178,8 +179,9 @@ export class SqliteVmDriver {
     return loadHandoffsFromEvents(this.events())
   }
 
-  lineage() {
-    return loadDefinitionLineageFromEvents(this.events())
+  /** The definition lineage that the run recorded, as its reader reads it from the store. */
+  async lineage() {
+    return readRunDefinitionLineage(asAsyncEventReadSurface(this.store), this.sessionId)
   }
   workflowStores(): { readonly queueStore: WorkflowViewStore; readonly contextStore: WorkflowContextStore } {
     const reader = asAsyncEventReadSurface(this.store)
@@ -217,7 +219,7 @@ export class SqliteVmDriver {
   }
 
   propose(event: WorkflowEvent): WorkflowTransitionResult {
-    return composeWorkflowCompanions(transitionWorkflow(this.state, event), {
+    return composeWorkflowCompanions(transitionDecodedWorkflow(this.state, event), {
       queue: this.queue(),
       resolvedAgents: this.bindings,
       timestamp: 100,
@@ -368,7 +370,7 @@ export class SqliteVmDriver {
   freshState(): WorkflowMachineState {
     const fresh = createSqliteEventStore(join(this.root, ".flywheel", "flywheel.sqlite"))
     try {
-      return replayWorkflow(replayWorkflowControl(fresh.read({ aggregateId: this.aggregateId })))
+      return replayDecodedWorkflow(replayWorkflowControl(fresh.read({ aggregateId: this.aggregateId })))
     } finally {
       fresh.close()
     }
@@ -382,7 +384,6 @@ export class SqliteVmDriver {
         control: replayWorkflowControl(events),
         queue: loadQueueFromEvents(events),
         handoffs: loadHandoffsFromEvents(events),
-        lineage: loadDefinitionLineageFromEvents(events),
       }
     } finally {
       fresh.close()
@@ -398,7 +399,9 @@ export class SqliteVmDriver {
         ...this.definitionRevision,
         skills,
       })
-      return await replayWorkflowFromFacts(fresh.read({ aggregateId: this.aggregateId }), event, {
+      const plan = recoverWorkflowControl(fresh.read({ aggregateId: this.aggregateId }))
+      if (!plan.executable) throw new Error(`The run does not replay: ${plan.reasons.map(({ kind }) => kind).join(", ")}`)
+      return await continueWorkflowReplay(plan.control, event, {
         sessionId: this.sessionId,
         writer: asAsyncEventWriter(fresh),
         definitionRevision: revision,
@@ -412,7 +415,7 @@ export class SqliteVmDriver {
 
   async commitCompeting(event: WorkflowEvent): Promise<void> {
     const snapshot = this.freshState()
-    const proposal = composeWorkflowCompanions(transitionWorkflow(snapshot, event), {
+    const proposal = composeWorkflowCompanions(transitionDecodedWorkflow(snapshot, event), {
       queue: this.queue(),
       resolvedAgents: this.bindings,
       timestamp: 100,

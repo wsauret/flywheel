@@ -6,7 +6,7 @@ import type { WorkflowDefinition } from "../../../../src/workflows/workflow-sche
 import type { WorkflowProposalEvent } from "../../../../src/workflows/vm/events.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
@@ -99,7 +99,7 @@ function resolvedAgentsOf(workflow: WorkflowDefinition): ReturnType<typeof resol
 export async function commitWorkflowEvent(deps: Pick<WorkflowControllerDeps, "manager" | "projectionReader">, workflowId: string, workflow: WorkflowDefinition, event: WorkflowProposalEvent, from?: CommittedWorkflowControl): Promise<CommittedWorkflowControl> {
   const recovered = from ? { executable: true as const, control: from } : recoverWorkflowControl((await deps.projectionReader.readSlice({ aggregateId: `workflow:${workflowId}` }, true)).facts)
   if (!recovered.executable) throw new Error("Expected complete workflow control")
-  const result = composeWorkflowCompanions(transitionWorkflow(replayWorkflow(recovered.control), event), {
+  const result = composeWorkflowCompanions(transitionDecodedWorkflow(replayDecodedWorkflow(recovered.control), event), {
     queue: await loadQueueSnapshotFromReader(deps.projectionReader, workflowId),
     resolvedAgents: resolvedAgentsOf(workflow), timestamp: 10, addenda: [],
   })

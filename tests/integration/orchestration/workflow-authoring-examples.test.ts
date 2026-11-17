@@ -1,18 +1,17 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { readdirSync, readFileSync, realpathSync } from "node:fs"
 import { renderCapabilityText } from "../../../src/infra/capability-text.js"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js"
 import {
   describeDefinitionRefusal,
   loadPathWorkflow,
-  sessionWorkflowsDir,
   type PathWorkflowLaunch,
 } from "../../../src/orchestration/workflow-host/path-workflow.js"
 import type { WorkflowInputValue } from "../../../src/workflows/output-contract/compile.js"
 import type { AccumulatedContext } from "../../../src/workflows/context-bundle/context.js"
-import { attemptContextRecipient } from "../../../src/workflows/vm/attempt-runner.js"
+import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/attempt-runner.js"
 import { runDefinition } from "../../../src/orchestration/workflow-host/definition-source.js"
 import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
@@ -28,11 +27,12 @@ import {
   agentRecords,
   allPhases,
   namedAgents,
-  streamOf,
+  streams,
   type WorkflowDefinition,
 } from "../../../src/workflows/workflow-schema.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
+import { stagedWorkflowContent } from "../../helpers/workflow-files.js"
 import { mapHost, SqliteVmDriver } from "../../unit/workflows/vm/_sqlite-vm-driver.js"
 
 const temporary = temporaryDirectories()
@@ -50,9 +50,7 @@ const CHAT_AUTHORITY = { toolActions: new Set(ToolActionSchema.literals.filter((
 /** Launch one file through the path pipeline, as an agent's file launches. */
 async function launch(name: string, content: string): Promise<PathWorkflowLaunch> {
   const sessionDir = realpathSync(temporary("flywheel-workflow-authoring-"))
-  mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true })
-  writeFileSync(join(sessionWorkflowsDir(sessionDir), name), content)
-  const launched = await loadPathWorkflow({ path: `scratch/workflows/${name}`, sessionDir, revision, authority: CHAT_AUTHORITY })
+  const launched = await loadPathWorkflow({ ...stagedWorkflowContent(sessionDir, content), sessionDir, revision, authority: CHAT_AUTHORITY })
   if (!launched.ok) throw new Error(`${name} was refused: ${Object.values(describeDefinitionRefusal("", launched)).flat().join("\n")}`)
   return launched
 }
@@ -132,6 +130,32 @@ function recordFields(workflow: WorkflowDefinition, definitionId: string): Field
 /** A handoff that fills each declared output field of one agent record. */
 function syntheticHandoff(workflow: WorkflowDefinition, definitionId: string, item: string) {
   return { summary: `${definitionId}|${item}|summary`, ...syntheticFields(recordFields(workflow, definitionId), `${definitionId}|${item}`) }
+}
+
+/** The context that the attempt runner reads for one attempt. The runner
+ *  stops at that read, so no agent runs. */
+async function attemptContext(
+  store: AttemptExecutorDeps["context"],
+  agents: AttemptExecutorDeps["resolvedAgents"],
+  ...[input, host]: Parameters<WorkflowVmHostDeps["attemptRunner"]["run"]>
+): Promise<AccumulatedContext> {
+  let captured: AccumulatedContext | undefined
+  await createAttemptExecutor({
+    resolvedAgents: agents,
+    context: {
+      getContext: async (recipient) => {
+        captured = await store.getContext(recipient)
+        throw new Error("the test reads the context only")
+      },
+    },
+    skills: revision.skills,
+    worker: () => Promise.reject(new Error("no agent runs")),
+    recordInvocation: () => Promise.resolve(),
+    unavailableToolReason: () => "",
+    earlierCheckpoint: () => Promise.resolve(null),
+  }).run(input, host)
+  if (captured === undefined) throw new Error(`the attempt runner read no context for ${input.definitionId}`)
+  return captured
 }
 
 const EXAMPLES = readdirSync(EXAMPLES_DIR).filter((name) => name.endsWith(".workflow.yaml")).sort()
@@ -215,9 +239,7 @@ describe("the workflow-authoring examples", () => {
     await vm.initialize()
     const contexts = new Map<string, AccumulatedContext[]>()
     const answer: WorkflowVmHostDeps["attemptRunner"]["run"] = async (input, active) => {
-      const agent = agents.get(input.definitionId)
-      if (agent === undefined) throw new Error(`no agent ${input.definitionId}`)
-      const context = await vm.workflowStores().contextStore.getContext(attemptContextRecipient(input, agent))
+      const context = await attemptContext(vm.workflowStores().contextStore, agents, input, active)
       contexts.set(input.definitionId, [...contexts.get(input.definitionId) ?? [], context])
       const item = input.scope._tag === "item" ? input.scope.key : "phase"
       return { kind: "success", attemptId: input.attemptId, conversationId: active.conversationId, handoff: syntheticHandoff(workflow, input.definitionId, item), reassessment: null }
@@ -246,7 +268,7 @@ describe("the workflow-authoring examples", () => {
         // own output, or its first named agent's. A quorum groups the item of
         // each agent: an item of the list that the head of its stream reads.
         const joined = phase.agents === undefined ? phase.phase : namedAgents(phase)[0]?.agent ?? ""
-        const over = streamOf(workflow, phase.phase)[0]?.over ?? ""
+        const over = streams(workflow).find((stream) => stream.some(({ phase: id }) => id === phase.phase))?.[0]?.over ?? ""
         const [source = "", list] = over.split(".")
         if (phaseJoin.reducer === "quorum" && source !== WORKFLOW_INPUT_SOURCE_ID && !outputs.has(source)) throw new Error(`${name}: no item contract for the quorum source ${over}`)
         const [fields, key] = phaseJoin.reducer === "dedupe"
@@ -323,10 +345,8 @@ describe("the workflow-authoring examples", () => {
     // Each host resolves the reader's agent from the definition that it runs:
     // the launch from the file, and the resume from the run's record.
     const answering = (definition: WorkflowDefinition, synthesize: AccumulatedContext[], pause: boolean): WorkflowVmHostDeps["attemptRunner"]["run"] => async (input, active) => {
-      const agent = resolveWorkflowAgents(definition).get(input.definitionId)
-      if (agent === undefined) throw new Error(`no agent ${input.definitionId}`)
       if (input.definitionId === "synthesize") {
-        synthesize.push(await vm.workflowStores().contextStore.getContext(attemptContextRecipient(input, agent)))
+        synthesize.push(await attemptContext(vm.workflowStores().contextStore, resolveWorkflowAgents(definition), input, active))
         if (pause) {
           // A person's Stop pauses the run while the reader runs.
           queueMicrotask(() => { void launched.abort("Runtime shutdown") })

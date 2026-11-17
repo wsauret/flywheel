@@ -3,12 +3,15 @@ import { tmpdir } from "node:os";
 import { mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ContainedDirectory } from "../../../src/infra/descriptor-directory-contract.js";
-import type { SkillDirectoryEntry } from "../../../src/workflows/skill-context.js";
+import type { SkillDirectoryEntries } from "../../../src/workflows/skill-context.js";
 import { readSkillPackage, readSkillPackageFiles, readSkillResource, withSkillRoot } from "../../../src/workflows/skill-context.js";
 import { renderSkillClosure, renderSkillContext } from "../../../src/workflows/skill-render.js";
 import type { SkillDefinition, SkillPackageBinding } from "../../../src/workflows/skill-schema.js";
 import { publishSkillRevision, SKILL_LIMITS } from "../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
+
+/** One entry that a directory lister yields. */
+type SkillDirectoryEntry = ReturnType<SkillDirectoryEntries> extends Iterable<infer Entry> ? Entry : never;
 
 const TMP = join(tmpdir(), "flywheel-skill-context-test");
 const ROOT = join(TMP, "skills");

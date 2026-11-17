@@ -3,13 +3,11 @@ import { hashContent } from "../../../../src/workflows/definition-hash.js";
 import { buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js";
 import { buildHandoffValidatedFact, buildHandoffWrittenFact } from "../../../../src/workflows/output-contract/facts.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import {
-  DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID,
-  DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON,
-} from "../../../../src/workflows/vm/definition-identity.js";
+import { DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID } from "../../../../src/workflows/vm/definition-identity.js";
 import { buildWorkflowControlCommittedFact, committedWorkflowEvent, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact, buildDefinitionIdentityAdoptedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
-import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowAbortedFact, buildWorkflowCompletedFact, buildAttemptRecoveredFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact, buildWorkflowResumedFact } from "../../../../src/workflows/vm/fact-drafts.js";
+import { buildAttemptBlockedFact, buildAttemptFailedFact, buildAttemptInsertionRejectedFact, buildAttemptResumeCapExceededFact, buildAttemptResumeRecoveredFact, buildAttemptRetryInsertedFact, buildAttemptRevertedFact, buildAttemptStartedFact, buildAttemptSucceededFact, buildFollowUpFailedFact, buildFollowUpRequestedFact, buildFollowUpSucceededFact, buildFollowUpTransferredFact, buildForExpandedFact, buildForExpansionRejectedFact, buildWorkflowAbortedFact, buildWorkflowCompletedFact, buildWorkflowFailedFact, buildWorkflowPausedFact, buildWorkflowReassessedFact, buildWorkflowResumedFact } from "../../../../src/workflows/vm/fact-drafts.js";
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js";
+import { historicalAttemptRecoveredFact } from "../../../helpers/workflow-root-fixtures.js";
 import { testResolvedAgent, testSkill } from "../../../helpers/skill-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
@@ -152,7 +150,7 @@ describe("workflow session facts", () => {
       control: paused,
     });
     if (root.type !== "workflow.control.recovered") throw new Error("Expected recovery root");
-    const attempt = buildAttemptRecoveredFact("attempt", "conversation");
+    const attempt = historicalAttemptRecoveredFact("attempt", "conversation");
 
     expect(root.version).toBe(12);
     expect(parseWorkflowSessionFact(root)).toEqual(root);
@@ -209,7 +207,7 @@ describe("workflow session facts", () => {
 
     expect(fact.payload).toEqual({
       migrationId: "workflow-definition-identity-context-v1",
-      reason: DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON,
+      reason: "Control was staged before definition identity covered composed skills and reachable personas; the normalized session adopts the selected definition when it still exists.",
       prior,
       adopted,
       evidence: [{ component: "skill", skillId: "implementation", recorded: "<missing>", current: "c".repeat(64) }],

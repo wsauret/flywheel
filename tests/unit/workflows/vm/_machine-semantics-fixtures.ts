@@ -3,8 +3,8 @@ import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/comm
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import type { FollowUpV10 } from "../../../../src/workflows/vm/graph-types.js";
 import {
-  replayWorkflow,
-  transitionWorkflow,
+  replayDecodedWorkflow,
+  transitionDecodedWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
 
 export const ownership = { _tag: "workflow", workflowDefinitionId: "semantic" } as const;
@@ -49,7 +49,7 @@ export function runningControl(options: {
 export function acknowledge(result: WorkflowTransitionResult): WorkflowTransitionResult {
   const pending = result.state.context.pending;
   if (!pending) throw new Error("semantic event must propose a commit");
-  return transitionWorkflow(result.state, {
+  return transitionDecodedWorkflow(result.state, {
     type: "COMMIT_SUCCEEDED", proposalId: pending.proposalId,
     aggregateSeq: pending.proposedCommitted.aggregateSeq,
   });
@@ -60,7 +60,7 @@ export function startPreparedAttempt(result: WorkflowTransitionResult): Workflow
   if (result.command.kind !== "prepare_attempt") throw new Error("semantic transition must prepare an attempt");
   const { attemptId } = result.command.attempt;
   expect(result.state.context.committed.attempts.find(({ id }) => id === attemptId)?.state._tag).toBe("pending");
-  const proposed = transitionWorkflow(result.state, {
+  const proposed = transitionDecodedWorkflow(result.state, {
     type: "ATTEMPT_STARTED", attemptId, conversationId: `conversation:${attemptId}`,
   });
   expect(proposed.state.context.pending?.facts.map(({ type }) => type)).toEqual([
@@ -73,10 +73,10 @@ export function startPreparedAttempt(result: WorkflowTransitionResult): Workflow
   return started;
 }
 
-export function success(state: ReturnType<typeof replayWorkflow>, handoff: { [key: string]: unknown }, attemptId = "attempt") {
+export function success(state: ReturnType<typeof replayDecodedWorkflow>, handoff: { [key: string]: unknown }, attemptId = "attempt") {
   const attempt = state.context.committed.attempts.find(({ id }) => id === attemptId);
   if (!attempt?.conversationId) throw new Error("completed attempt must have a committed conversation identity");
-  return transitionWorkflow(state, {
+  return transitionDecodedWorkflow(state, {
     type: "ATTEMPT_SUCCEEDED",
     outcome: { attemptId, conversationId: attempt.conversationId, handoff, reassessment: null },
   });

@@ -8,7 +8,11 @@ import { createWorkflowRuntimePublisher } from "../../../../src/workflows/vm/hos
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { drive, fourLaneControl, interrupt, startNext, wideBindings, wideControl } from "./_tree-fixtures.js"
 import { runningControl } from "./_machine-semantics-fixtures.js"
-import { addressedKeysToRetire, startedAgents } from "../../../../src/workflows/vm/host-commit-controller.js"
+import { createWorkflowHostCommitController, startedAgents } from "../../../../src/workflows/vm/host-commit-controller.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
+import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
+import type { AddressedAddendum } from "../../../../src/workflows/context-bundle/context-facts.js"
+import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
@@ -21,10 +25,42 @@ import {
   initialFacts,
   sequentialWorkflow,
   testHost,
+  testHostDeps,
   workflow,
 } from "./host-test-support.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
+/** The cells that the commit controller retires when one commit moves the
+ *  workflow view from `before` to `after` while `messages` are held. The
+ *  commit is the person's interrupt of `before`, and the view reads around
+ *  it return `before`, then `after`. */
+async function retiredAcross(
+  messages: readonly AddressedAddendum[],
+  before: CommittedWorkflowControl,
+  after: CommittedWorkflowControl,
+  bindings: ReadonlyMap<string, ResolvedAgent>,
+): Promise<readonly string[]> {
+  const retired: string[] = []
+  const views = [flattenWorkflowView(before, bindings), flattenWorkflowView(after, bindings)] as const
+  let reads = 0
+  const controller = createWorkflowHostCommitController({
+    host: testHostDeps(createMemoryStore([]), {
+      addressedMessages: { read: async () => messages, retire: async (keys) => { retired.push(...keys) } },
+      // The store places the batch where the proposal expects it.
+      commitBatch: async (appends) => {
+        const first = appends[0]?.expectedSeq ?? 0
+        return { kind: "stored", events: appends.map(({ expectedSeq: _expectedSeq, ...fact }, index) => ({ ...fact, id: `event-${first + index}`, seq: first + index, position: first + index + 1 })) }
+      },
+    }),
+    resolvedAgents: bindings,
+    publisher: { emitInitialized: async () => {}, publishCommittedBatch: async () => {} },
+    queue: async () => reads++ === 0 ? views[0] : views[1],
+    applyStoredFacts: async () => {},
+  })
+  const event = { type: "ABORT", reason: "Interrupted by the person" } as const
+  await controller.commit({ event, result: transitionDecodedWorkflow(initializeWorkflow(before).state, event) })
+  return retired
+}
 
 describe("workflow VM host", () => {
   it("commits attempt start before invoking one bounded worker and publishes only committed progress", async () => {
@@ -285,21 +321,21 @@ describe("workflow VM host", () => {
     expect(retired).toEqual([["msg:parent:call-1"]])
   })
 
-  it("keeps the cell of a message for the step that runs or waits in the same attempt across a commit, and retires every other cell once recorded", () => {
+  it("keeps the cell of a message for the step that runs or waits in the same attempt across a commit, and retires every other cell once recorded", async () => {
     const group = "input-mapped:node:1"
     const forLane = (key: string, ordinal: number) => ({ key, source: { kind: "person" as const }, text: "Keep the old flag names.", addressedTo: [{ _tag: "item" as const, listNodeId: group, itemNodeId: `${group}:item:${ordinal}`, key: `t${ordinal}` }] as const })
     const messages = [forLane("for-t2", 2), forLane("for-t3", 3)]
-    const running = flattenWorkflowView(fourLaneControl(), wideBindings)
+    const running = fourLaneControl()
     // Lane t2 runs before and after, so its step reads the message in its
     // conversation; lane t3 reads the record when its first step starts.
-    expect(addressedKeysToRetire(messages, running, running)).toEqual(["for-t3"])
+    expect(await retiredAcross(messages, running, running, wideBindings)).toEqual(["for-t3"])
     // An interrupt parks the same attempt, which a later run resumes.
-    expect(addressedKeysToRetire(messages, running, flattenWorkflowView(interrupt(fourLaneControl()), wideBindings))).toEqual(["for-t3"])
+    expect(await retiredAcross(messages, running, interrupt(fourLaneControl()), wideBindings)).toEqual(["for-t3"])
     // A commit that starts the step builds its prompt from the record.
-    expect(addressedKeysToRetire(messages, flattenWorkflowView(wideControl(4), wideBindings), running)).toEqual(["for-t2", "for-t3"])
+    expect(await retiredAcross(messages, wideControl(4), running, wideBindings)).toEqual(["for-t2", "for-t3"])
   })
 
-  it("delivers whole-workflow and logical step messages to a flat follow-up and keeps their cells while the attempt continues", () => {
+  it("delivers whole-workflow and logical step messages to a flat follow-up and keeps their cells while the attempt continues", async () => {
     // Only a run from before phases runs a follow-up as a second attempt of
     // its node: the `then` chain is the history arm of its agent node.
     const bindings = resolveWorkflowAgents(sequentialWorkflow)
@@ -321,10 +357,10 @@ describe("workflow VM host", () => {
     const targeted = { ...message, key: "targeted", addressedTo: [{ _tag: "agent" as const, nodeId: owner, definitionId: "work" }] as const }
     expect(addressReachesStartedAgent(running, { addressedTo: message.addressedTo, label: "the workflow" })).toBe(true)
     expect(addressReachesStartedAgent(running, { addressedTo: targeted.addressedTo, label: "agent work" })).toBe(true)
-    expect(addressedKeysToRetire([message, targeted], running, running)).toEqual([])
-    expect(addressedKeysToRetire([message, targeted], running, flattenWorkflowView(interrupt(control), bindings))).toEqual([])
-    const settled = flattenWorkflowView(drive(afterWork, () => ({ handoff: { summary: "reviewed" } })), bindings)
-    expect(addressedKeysToRetire([message, targeted], running, settled)).toEqual(["answer", "targeted"])
+    expect(await retiredAcross([message, targeted], control, control, bindings)).toEqual([])
+    expect(await retiredAcross([message, targeted], control, interrupt(control), bindings)).toEqual([])
+    const settled = drive(afterWork, () => ({ handoff: { summary: "reviewed" } }))
+    expect(await retiredAcross([message, targeted], control, settled, bindings)).toEqual(["answer", "targeted"])
   })
 
   it("composes sequential attempt companions from caught-up queue and context", async () => {

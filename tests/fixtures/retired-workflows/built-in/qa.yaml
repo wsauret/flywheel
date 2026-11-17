@@ -1,0 +1,34 @@
+id: qa
+name: QA
+description: Inventory the user-visible surface, exercise every entry from scratch in each verification pass, fix reproducible issues, and record blocking findings.
+use_when: >
+  The user wants an exhaustive QA pass on the current project: "QA the app",
+  "do a full quality pass", "test every surface". Every follow-up pass also
+  exercises the complete surface from scratch. Produces a timestamped run
+  directory under docs/qa/runs/ with a changelog and unclear-findings
+  document, and applies fixes in the same pass.
+confirmation_template: qa
+requires_description: false
+steps:
+  surface-map:
+    file: steps/qa.surface-map.md
+    writes:
+      - id: surface-map
+        lifetime: durable
+        supersedes: []
+  test-fix-surface:
+    file: steps/qa.test-fix-surface.md
+    writes:
+      - qa-findings
+  review-fixes:
+    file: steps/qa.review-fixes.md
+    writes:
+      - qa-contest
+flow:
+  - step: surface-map
+  - step: test-fix-surface
+  - while: review-fixes.findings
+    do: review-fixes
+    then: test-fix-surface
+    maxIterations: 5
+    detectStuck: true

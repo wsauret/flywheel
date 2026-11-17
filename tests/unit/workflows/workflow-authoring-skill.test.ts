@@ -1,14 +1,14 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import * as yaml from "js-yaml"
-import { mkdirSync, readFileSync, realpathSync } from "node:fs"
+import { readFileSync, realpathSync } from "node:fs"
 import { renderCapabilityText } from "../../../src/infra/capability-text.js"
 import { join } from "node:path"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../../src/infra/workflow-yaml.js"
-import { readPathWorkflow, sessionWorkflowsDir } from "../../../src/orchestration/workflow-host/path-workflow.js"
+import { readPathWorkflow } from "../../../src/orchestration/workflow-host/path-workflow.js"
 import { JOIN_EXPANSION_CAP_BYTES } from "../../../src/workflows/context-bundle/context.js"
 import { envelopeKeys } from "../../../src/workflows/output-contract/grammar.js"
-import { COMPLETION_AGENT_RESULTS_CAP_BYTES } from "../../../src/workflows/output-contract/workflow-completion.js"
+import { workflowCompletionContent } from "../../../src/workflows/output-contract/workflow-completion.js"
 import { REGISTERED_REDUCERS } from "../../../src/workflows/reducers/registry.js"
 import { decodeWorkflowFile } from "../../../src/workflows/workflow-file.js"
 import {
@@ -17,6 +17,7 @@ import {
 } from "../../../src/workflows/workflow-schema.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
+import { stagedWorkflowContent } from "../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()
 const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "orchestration", "modules", "workflows", "definitions", "skills", "workflow-authoring")
@@ -84,8 +85,7 @@ describe("the workflow-authoring reference", () => {
     const revision = repoDefinitions().captureRevision()
     const load = async (content: string) => {
       const sessionDir = realpathSync(temporary("flywheel-local-names-"))
-      mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true })
-      const result = await readPathWorkflow({ path: "scratch/workflows/names.workflow.yaml", savedContent: content, sessionDir, revision })
+      const result = await readPathWorkflow({ ...stagedWorkflowContent(sessionDir, content), sessionDir, revision })
       if (!result.ok) throw new Error(JSON.stringify(result))
       return result
     }
@@ -132,6 +132,11 @@ describe("the workflow-authoring reference", () => {
     expect(range("`retry` `max`", (attempts) => ({ phase: "work", brief: "Work.", retry: { max: attempts } }))).toEqual([false, true, true, false])
     expect(limits.get("Workflow file size")).toBe(`${WORKFLOW_FILE_MAX_BYTES} bytes`)
     expect(limits.get("Item handoff content after a join")).toBe(`${JOIN_EXPANSION_CAP_BYTES} bytes`)
-    expect(limits.get("Agent results in your completion message")).toBe(`${COMPLETION_AGENT_RESULTS_CAP_BYTES} bytes`)
+    // A result larger than any limit is left out, and the message names the limit that it enforced.
+    const overfull = workflowCompletionContent({
+      status: "completed", label: "Limits", sessionId: "session", handoff: null, tree: { nodes: [] }, failedAgents: [], resumable: false,
+      results: [{ label: "large", status: "completed", content: { summary: "x".repeat(1 << 20) } }],
+    })
+    expect(limits.get("Agent results in your completion message")).toBe(`${/did not fit the (\d+)-byte limit/u.exec(overfull)?.[1]} bytes`)
   })
 })

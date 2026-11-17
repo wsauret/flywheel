@@ -153,7 +153,7 @@ async function readOutputFile(submission: UnknownRecord, context: OutputAcceptCo
  *  even when the decode fails, so one report names every issue. A key that
  *  the contract does not declare stays in the payload with a note: it is
  *  work the agent did, and a strict reader reads only the declared keys. */
-export async function validateAgentOutput(
+async function validateAgentOutput(
   output: CompiledOutput,
   submitted: UnknownRecord,
   context: OutputCheckContext,

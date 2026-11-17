@@ -1,14 +1,15 @@
 import { Schema } from "effect";
-import { describe, expect, it } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { temporaryDirectories } from "../../../helpers/directories.js";
 import {
-  createDefinitionAssetReader,
+  definitionAssets,
   describeAsset,
   resolveAssetRef,
   type AssetLocation,
+  type DefinitionAssetReader,
 } from "../../../../src/workflows/definition-assets.js";
+import { workflowAssets } from "../../../../src/workflows/agents/manifest.js";
 import { withLoadedContent } from "../../../../src/workflows/loader.js";
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { parseWorkflowYaml } from "../../../../src/infra/workflow-yaml.js";
@@ -67,17 +68,35 @@ const FAKE_MANIFEST = {
   "agents/personas/other.md": "not a core file",
 };
 
-describe("createDefinitionAssetReader in manifest mode", () => {
-  // The core directory does not exist, so any disk read would fail: every
-  // value the reader returns therefore comes from the manifest.
-  const reader = createDefinitionAssetReader(FAKE_MANIFEST, join("/scratch", "no-core-tree"));
+describe("the definition assets of a compiled binary", () => {
+  const embedded = { ...FAKE_MANIFEST, "workflows/notes.txt": "not a definition file" };
+  let reader: DefinitionAssetReader;
 
-  it("lists only the core files", () => {
+  // A compiled binary loads the module once, after the build filled the
+  // manifest. A fresh instance of the module does the same here.
+  beforeAll(async () => {
+    Object.assign(workflowAssets, embedded);
+    const binary: typeof import("../../../../src/workflows/definition-assets.js") = await import(`../../../../src/workflows/definition-assets.js?manifest=${crypto.randomUUID()}`);
+    reader = binary.definitionAssets;
+  });
+
+  afterAll(() => {
+    for (const key of Object.keys(embedded)) Reflect.deleteProperty(workflowAssets, key);
+  });
+
+  it("lists only the core files of the definition file types", () => {
     expect(reader.listCoreFiles()).toEqual(["contracts/result.json", "contracts/targets.json", "solo.yaml"]);
   });
 
   it("refuses a core file that the build did not embed, and never falls back to the disk", () => {
     expect(() => reader.read({ root: { kind: "core" }, path: "debug.yaml" })).toThrow("bundled:debug.yaml is not in this build");
+    // The source tree holds this file, but the build did not embed it.
+    expect(definitionAssets.listCoreFiles()).toContain("contracts/implementation-plan.json");
+    expect(() => reader.read({ root: { kind: "core" }, path: "contracts/implementation-plan.json" })).toThrow("bundled:contracts/implementation-plan.json is not in this build");
+  });
+
+  it("refuses a core file of a type that the build does not embed", () => {
+    expect(() => reader.read({ root: { kind: "core" }, path: "notes.txt" })).toThrow("bundled:notes.txt is not in this build");
   });
 
   it("loads a workflow with its inline brief and contract files from the manifest", () => {
@@ -94,42 +113,23 @@ describe("createDefinitionAssetReader in manifest mode", () => {
   });
 
   it("refuses an input contract that declares an output envelope key, and names the file", () => {
-    const invalidReader = createDefinitionAssetReader({
-      ...FAKE_MANIFEST,
-      "workflows/contracts/targets.json": JSON.stringify({ summary: "Not an input key.", fields: {} }),
-    }, join("/scratch", "no-core-tree"));
-    expect(() => withLoadedContent(Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(parseWorkflowYaml(invalidReader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
-      reader: invalidReader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
-    })).toThrow(/Workflow "solo" input: bundled:contracts\/targets\.json: invalid input contract:\nsummary: /);
+    workflowAssets["workflows/contracts/targets.json"] = JSON.stringify({ summary: "Not an input key.", fields: {} });
+    try {
+      expect(() => withLoadedContent(Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(parseWorkflowYaml(reader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
+        reader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
+      })).toThrow(/Workflow "solo" input: bundled:contracts\/targets\.json: invalid input contract:\nsummary: /);
+    } finally {
+      workflowAssets["workflows/contracts/targets.json"] = embedded["workflows/contracts/targets.json"];
+    }
   });
 });
 
-describe("createDefinitionAssetReader in source mode", () => {
-  const tempDir = temporaryDirectories();
-
-  // A source run must accept exactly the core paths that the binary embeds,
-  // so a definition that loads in development also loads in a release.
-  function sourceReader() {
-    const coreDir = tempDir("flywheel-core-assets-");
-    mkdirSync(join(coreDir, "contracts"));
-    writeFileSync(join(coreDir, "contracts", "Result.json"), JSON.stringify({ summary: "The result." }));
-    writeFileSync(join(coreDir, "solo.yaml"), "id: solo\n");
-    writeFileSync(join(coreDir, "notes.txt"), "not a definition file");
-    writeFileSync(join(coreDir, "contracts", ".DS_Store"), "");
-    return createDefinitionAssetReader({}, coreDir);
-  }
-
-  it("lists only the file types that the build embeds", () => {
-    expect(sourceReader().listCoreFiles()).toEqual(["contracts/Result.json", "solo.yaml"]);
-  });
-
+// A source run must accept exactly the core paths that the binary embeds,
+// so a definition that loads in development also loads in a release.
+describe("the definition assets of a source run", () => {
   it("refuses a core path that differs from a listed file only in case, as the binary does", () => {
-    const reader = sourceReader();
-    expect(reader.read({ root: { kind: "core" }, path: "contracts/Result.json" })).toContain("The result.");
-    expect(() => reader.read({ root: { kind: "core" }, path: "contracts/result.json" })).toThrow("bundled:contracts/result.json is not in this build");
-  });
-
-  it("refuses a core file of a type that the build does not embed", () => {
-    expect(() => sourceReader().read({ root: { kind: "core" }, path: "notes.txt" })).toThrow("bundled:notes.txt is not in this build");
+    const source = readFileSync(join(import.meta.dir, "../../../../src/workflows/workflows/contracts/implementation-plan.json"), "utf8");
+    expect(definitionAssets.read({ root: { kind: "core" }, path: "contracts/implementation-plan.json" })).toBe(source);
+    expect(() => definitionAssets.read({ root: { kind: "core" }, path: "contracts/Implementation-plan.json" })).toThrow("bundled:contracts/Implementation-plan.json is not in this build");
   });
 });

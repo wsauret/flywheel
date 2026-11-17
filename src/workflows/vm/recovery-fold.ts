@@ -35,7 +35,7 @@ export interface WorkflowRecoveryClassification {
  *  such as a new root, a migration, a damaged row, or a run that does not
  *  validate, settles on the validators' answer, and the next fact other than
  *  a settings update makes the fold stale so that its reader seeds it again. */
-export type WorkflowRecoveryFold = AdvancingFold | SettledFold | StaleFold
+type WorkflowRecoveryFold = AdvancingFold | SettledFold | StaleFold
 
 interface AdvancingFold {
   readonly kind: "advancing"
@@ -68,7 +68,7 @@ const SEGMENT_TERMINAL_TYPES: ReadonlySet<string> = new Set(["workflow.control.c
 const RESEED_TYPES: ReadonlySet<string> = new Set([...WORKFLOW_ROOT_FACT_TYPES, "workflow.definition_identity.migrated"])
 
 /** The validators' answer for the whole history. */
-export function classifyWorkflowHistory(facts: readonly (StoredFact | CorruptEventRowError)[]): WorkflowRecoveryClassification {
+function classifyWorkflowHistory(facts: readonly (StoredFact | CorruptEventRowError)[]): WorkflowRecoveryClassification {
   const plan = validateWorkflowBootstrap(facts)
   return {
     plan,
@@ -78,7 +78,7 @@ export function classifyWorkflowHistory(facts: readonly (StoredFact | CorruptEve
 }
 
 /** Classifies the whole history and keeps what later facts need to advance it. */
-export function seedWorkflowRecoveryFold(facts: readonly (StoredFact | CorruptEventRowError)[]): WorkflowRecoveryFold {
+function seedWorkflowRecoveryFold(facts: readonly (StoredFact | CorruptEventRowError)[]): WorkflowRecoveryFold {
   const classification = classifyWorkflowHistory(facts)
   const { plan } = classification
   const settled: SettledFold = { kind: "settled", classification, control: strictControl(facts, plan) }
@@ -108,7 +108,7 @@ export function seedWorkflowRecoveryFold(facts: readonly (StoredFact | CorruptEv
 }
 
 /** Advances the fold by the next fact of the workflow aggregate. */
-export function advanceWorkflowRecoveryFold(fold: WorkflowRecoveryFold, fact: StoredFact): WorkflowRecoveryFold {
+function advanceWorkflowRecoveryFold(fold: WorkflowRecoveryFold, fact: StoredFact): WorkflowRecoveryFold {
   if (fold.kind === "settled" && validSettingsUpdate(fact)) {
     const { classification } = fold
     const { plan } = classification
@@ -139,7 +139,7 @@ export function advanceWorkflowRecoveryFold(fold: WorkflowRecoveryFold, fact: St
 }
 
 /** The classification the fold holds, or null when only the whole history can say. */
-export function classifyWorkflowRecoveryFold(fold: WorkflowRecoveryFold): WorkflowRecoveryClassification | null {
+function classifyWorkflowRecoveryFold(fold: WorkflowRecoveryFold): WorkflowRecoveryClassification | null {
   if (fold.kind === "stale") return null
   if (fold.kind === "settled") return fold.classification
   // A tree before version 4 rebuilds from the whole history, so only a current tree classifies here.

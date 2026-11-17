@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { prepareWorkflowLaunch, WorkflowRequiredSkillsMissingError } from "../../../../src/orchestration/workflow-host/publish.js"
+import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/publish.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js"
 import { renderSkillContext } from "../../../../src/workflows/skill-render.js"
@@ -78,7 +78,7 @@ describe("workflow launch required skills", () => {
       definitionRevision: definitionRevision(revisionWithout("root-cause-analysis")),
     })
 
-    await expect(launch).rejects.toBeInstanceOf(WorkflowRequiredSkillsMissingError)
+    await expect(launch).rejects.toMatchObject({ _tag: "WorkflowRequiredSkillsMissingError", workflowDefinitionId: FIXTURE_WORKFLOW_ID })
     await expect(launch).rejects.toThrow(
       'Workflow "repair" agent "investigate" requires skill "root-cause-analysis", which is not installed',
     )

@@ -3,8 +3,8 @@ import { Schema } from "effect";
 import { completeAttempt, prepareExecution, startExecution } from "../../../../src/workflows/vm/attempt-transitions.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
-import { parseWorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
+import type { ReassessmentProposal } from "../../../../src/workflows/vm/events.js";
 import { withNodeState } from "../../../../src/workflows/vm/graph-changes.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
@@ -116,7 +116,7 @@ describe("workflow machine phase containers", () => {
       { [OUTER]: { _tag: "running" }, [ONE]: { _tag: "running" }, [TWO]: { _tag: "failed", reason: "worker failed" } },
       { [ONE]: { _tag: "running" }, [TWO]: { _tag: "failed", reason: "worker failed" } });
     const root = buildWorkflowControlInitializedFact(control);
-    const proposed = transitionDecodedWorkflow(replayWorkflow(root.payload.control), {
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(root.payload.control), {
       type: "ATTEMPT_SUCCEEDED",
       outcome: { attemptId: `${ONE}:attempt:1`, conversationId: null, handoff: { summary: "one done" }, reassessment: null },
     }, 11);
@@ -135,7 +135,7 @@ describe("workflow machine phase containers", () => {
     const compiled = compileWorkflowControl(definition, resolveWorkflowAgents(definition), { skills: phaseSkills });
     expect(compiled.graph.dependencies).toEqual([]);
     const reversed = { ...compiled, attempts: compiled.attempts.toReversed() };
-    const started = acknowledge(transitionWorkflow(replayWorkflow(reversed), { type: "START" }));
+    const started = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(reversed), { type: "START" }));
     expect(started.command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId: "siblings:node:1:node:1:attempt:1" } });
   });
 
@@ -143,10 +143,10 @@ describe("workflow machine phase containers", () => {
     const base = withStates(phaseControl(),
       { [OUTER]: { _tag: "running" }, [ONE]: { _tag: "completed" } },
       { [ONE]: { _tag: "completed" } });
-    const proposal = (changes: readonly unknown[]) => transitionWorkflow(replayWorkflow(base), parseWorkflowEvent({
+    const proposal = (changes: ReassessmentProposal["changes"]) => transitionDecodedWorkflow(replayDecodedWorkflow(base), {
       type: "REASSESSMENT_PROPOSED",
       proposal: { proposalId: "reassess", ownerNodeId: ONE, reason: "change", changes },
-    }));
+    });
     const two = base.attempts.find(({ logicalNodeId }) => logicalNodeId === TWO);
     if (!two) throw new Error("fixture attempt missing");
     const inserted = proposal([{
@@ -299,9 +299,9 @@ describe("workflow machine lists", () => {
   it("refuses a reassessment that targets the work of a list's item", async () => {
     const vm = mapDriver();
     await completePlan(vm, items("a"));
-    expect(() => transitionWorkflow(replayWorkflow({ ...vm.committed, status: "executing" }), parseWorkflowEvent({
+    expect(() => transitionDecodedWorkflow(replayDecodedWorkflow({ ...vm.committed, status: "executing" }), {
       type: "REASSESSMENT_PROPOSED",
       proposal: { proposalId: "reassess", ownerNodeId: PLAN, reason: "change", changes: [{ kind: "add_dependency", dependency: { nodeId: stage(1, 2), dependsOn: PLAN } }] },
-    }))).toThrow(/belongs to a list or a repeat, which only expansion and rounds change/);
+    })).toThrow(/belongs to a list or a repeat, which only expansion and rounds change/);
   });
 });

@@ -22,7 +22,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { workflowRunWriter } from "../../../../src/orchestration/module-catalog"
 import { publishTestWorkflow } from "../session/_session-manager-fixtures"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff"
@@ -102,9 +102,9 @@ function project(temporaryDirectory: (prefix: string) => string) {
       await publishTestWorkflow(manager, { id: "workflow", description: "Implement", launchedFrom: { parentSessionId: "chat", conversationId: "conversation", toolUseId: "toolu_workflow" } })
       let memberId: string | undefined
       if (startMember) {
-        const advance = async (event: Parameters<typeof transitionWorkflow>[1]) => {
+        const advance = async (event: Parameters<typeof transitionDecodedWorkflow>[1]) => {
           const control = replayWorkflowControl(store.read({ aggregateId: "workflow:workflow" }))
-          const proposed = transitionWorkflow(replayWorkflow(control), event)
+          const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), event)
           if (proposed.command.kind !== "commit") throw new Error("expected a control commit")
           const proposal = proposed.command.proposal
           expect(await manager.commitWorkflow({ workflowId: "workflow", events: proposal.facts.map((fact, index) => ({

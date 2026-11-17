@@ -9,6 +9,7 @@ import { withLoadedContent } from "../../src/workflows/loader.js";
 import type { SkillRegistryRevision } from "../../src/workflows/skill-schema.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
 import { stepGrammarWarning } from "../../src/workflows/retired-step-grammar/convert.js";
+import { stageWorkflowSource, type StagedWorkflowFile } from "../../src/orchestration/workflow-host/path-workflow.js";
 
 /** Loads explicit fixture files without a production definition catalog or layer merge. */
 export function loadWorkflowFiles(entries: Iterable<{ file: string; location: AssetLocation; content: string }>, layer: DefinitionLayer = "project", bundle?: string, reader: DefinitionAssetReader = definitionAssets, skills?: SkillRegistryRevision) {
@@ -56,6 +57,15 @@ export function loadedWorkflow(document: unknown, provenance?: Partial<Definitio
     reader: definitionAssets,
     provenance: { layer: "project", filePath: `${definition.id}.workflow.yaml`, id: definition.id, ...stated, ...provenance },
   });
+}
+
+/** Saves `content` in the session's workflow directory as a `workflow` call
+ *  with content does, and answers the staged file: its path and the saved
+ *  bytes, which a path launch takes as they are. */
+export function stagedWorkflowContent(sessionDir: string, content: string): StagedWorkflowFile {
+  const staged = stageWorkflowSource({ kind: "content", content }, sessionDir, sessionDir);
+  if ("error" in staged) throw new Error(staged.error);
+  return staged;
 }
 
 const StatedProvenanceSchema = Schema.Struct({ provenance: Schema.optionalKey(DefinitionProvenanceSchema) });

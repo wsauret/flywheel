@@ -1,0 +1,14 @@
+id: bench-plan
+name: Plan Model Benchmark
+description: Run the spec-create step for model benchmarking.
+user-invocable: false
+disable-model-invocation: true
+steps:
+  spec-create:
+    file: bundled:steps/fly.spec-create.md
+    writes:
+      - id: plan
+        lifetime: durable
+        supersedes: []
+flow:
+  - step: spec-create

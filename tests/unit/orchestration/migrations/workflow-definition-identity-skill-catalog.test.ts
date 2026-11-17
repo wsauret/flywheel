@@ -36,7 +36,7 @@ import {
 } from "./_legacy-workflow-aggregate.js"
 import { stagedControl } from "./_pre-phase-control.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { userSkillStoreDir } from "../../../../src/workflows/skills.js"
+import { ownedSkillStoreDirs } from "../../../../src/workflows/skills.js"
 
 const tmpRoot = path.join(os.tmpdir(), `flywheel-catalog-identity-${process.pid}-${Date.now()}`)
 const MIGRATED_TYPE = "workflow.definition_identity.migrated"
@@ -392,7 +392,7 @@ describe("managed learning under the catalog pass", () => {
     seedLegacyAggregate(dbFile, "legacy-session")
     // A malformed proposal record: managed-skill reconciliation quarantines it, so
     // its survival proves this pass mutated no global package state.
-    const proposals = path.join(userSkillStoreDir(processDirectories.userDataRoot), ".operations", "proposals")
+    const proposals = path.join(ownedSkillStoreDirs(processDirectories).user, ".operations", "proposals")
     fs.mkdirSync(proposals, { recursive: true })
     const proposal = path.join(proposals, `${"c".repeat(64)}.json`)
     fs.writeFileSync(proposal, "not a proposal record")

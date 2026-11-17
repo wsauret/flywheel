@@ -163,7 +163,7 @@ function failure(
  *  scope, and the outputs that its record reads. A resumed attempt resolves
  *  its record from the same recorded definition, so it reads the same
  *  outputs. */
-export function attemptContextRecipient(
+function attemptContextRecipient(
   input: Pick<AttemptExecutionInput, "attemptId" | "logicalNodeId" | "scope">,
   agent: Pick<ResolvedAgent, "reads">,
 ): ContextRecipient {

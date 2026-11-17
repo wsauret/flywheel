@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, CorruptEventRowError } from "../../../../src/i
 import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event-read-surface.js"
 import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
 import { InvariantViolation } from "../../../../src/infra/invariant.js"
-import { readWorkflowProjectionBoundary, selectWorkflowFactSource } from "../../../../src/workflows/session-fact-source.js"
+import { selectWorkflowFactSource, workflowProjectionBoundary } from "../../../../src/workflows/session-fact-source.js"
 import type { WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { createWorkflowQueueProjection, queueFromProjection } from "../../../../src/workflows/view/view-projection.js"
 import { readWorkflowStatees } from "../../../../src/workflows/view/view-store.js"
@@ -90,7 +90,7 @@ describe("workflow fact source", () => {
       db.run("update event set payload = '{{broken' where type = 'workflow.control.initialized'")
       const store = createSqliteEventReadSurface(db)
       const projectionReader = asAsyncEventReadSurface(store)
-      expect(await readWorkflowProjectionBoundary(projectionReader, "workflow:session")).toBe(roots[1]?.position)
+      expect(await workflowProjectionBoundary(projectionReader, "workflow:session").read()).toBe(roots[1]?.position)
       expect(queueFromProjection(await createWorkflowQueueProjection(projectionReader, "session").replay())?.status).toBe("paused")
       expect(contextFromProjection(await createWorkflowContextProjection(projectionReader, "session").replay()).request?.original).toBe("recovered request")
       expect(await readWorkflowStatees(["session"], projectionReader)).toEqual({ statuses: new Map([["session", "paused"]]), errors: [] })
@@ -162,7 +162,7 @@ describe("workflow fact source", () => {
       const store = createSqliteEventReadSurface(db)
       const projectionReader = asAsyncEventReadSurface(store)
       const error = damage === "json" ? CorruptEventRowError : InvariantViolation
-      await expect(readWorkflowProjectionBoundary(projectionReader, "workflow:session")).rejects.toThrow(error)
+      await expect(workflowProjectionBoundary(projectionReader, "workflow:session").read()).rejects.toThrow(error)
       await expect(createWorkflowQueueProjection(projectionReader, "session").replay()).rejects.toThrow(error)
       await expect(createWorkflowContextProjection(projectionReader, "session").replay()).rejects.toThrow(error)
       const result = await readWorkflowStatees(["session"], projectionReader)
@@ -280,10 +280,10 @@ describe("workflow fact source", () => {
       ]))
       const store = createSqliteEventReadSurface(db)
       const projectionReader = asAsyncEventReadSurface(store)
-      expect(await readWorkflowProjectionBoundary(projectionReader, "workflow:session")).toBeUndefined()
+      expect(await workflowProjectionBoundary(projectionReader, "workflow:session").read()).toBeUndefined()
       expect(contextFromProjection(await createWorkflowContextProjection(projectionReader, "session").replay()).request?.original).toBe("original request")
       writer.insertEventRows(storedWorkflowFacts([buildContextInputSeededFact("workflow", "rootless")]).map((fact) => ({ ...fact, id: "rootless", aggregateId: "workflow:rootless", sessionId: "rootless" })))
-      await expect(readWorkflowProjectionBoundary(projectionReader, "workflow:rootless")).rejects.toThrow(InvariantViolation)
+      await expect(workflowProjectionBoundary(projectionReader, "workflow:rootless").read()).rejects.toThrow(InvariantViolation)
     } finally {
       db.close()
     }

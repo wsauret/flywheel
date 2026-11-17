@@ -1,15 +1,15 @@
 import { describe, expect, it } from "bun:test";
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, realpathSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { namesShippedSite, SHIPPED_SITES, test1Input, TEST1_WORKFLOW } from "../../../bench/chat-ab/workflow-audit-tests.js";
 import { ToolActionSchema } from "../../../src/infra/workflow-types.js";
-import { describeDefinitionRefusal, loadPathWorkflow, sessionWorkflowsDir } from "../../../src/orchestration/workflow-host/path-workflow.js";
+import { describeDefinitionRefusal, loadPathWorkflow } from "../../../src/orchestration/workflow-host/path-workflow.js";
 import { latestReducer } from "../../../src/workflows/reducers/registry.js";
 import { compileOutput } from "../../../src/workflows/output-contract/compile.js";
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { repoDefinitions } from "../../helpers/project-definitions.js";
+import { stagedWorkflowContent } from "../../helpers/workflow-files.js";
 
 const temporary = temporaryDirectories();
 const revision = repoDefinitions().captureRevision();
@@ -55,9 +55,8 @@ async function runScript(source: string, launchArgs: ReturnType<typeof test1Inpu
 /** The Flywheel file, read through the path launch pipeline that the chat agent's launch runs. */
 async function launchedFlywheelFile() {
   const sessionDir = realpathSync(temporary("chat-ab-claude-code-test1-"));
-  mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true });
-  writeFileSync(join(sessionWorkflowsDir(sessionDir), "review.workflow.yaml"), readFileSync(TEST1_WORKFLOW.flywheel, "utf8"));
-  const launched = await loadPathWorkflow({ path: "scratch/workflows/review.workflow.yaml", sessionDir, revision, authority: CHAT_AUTHORITY });
+  const staged = stagedWorkflowContent(sessionDir, readFileSync(TEST1_WORKFLOW.flywheel, "utf8"));
+  const launched = await loadPathWorkflow({ ...staged, sessionDir, revision, authority: CHAT_AUTHORITY });
   if (!launched.ok) throw new Error(`The test 1 file was refused: ${Object.values(describeDefinitionRefusal("", launched)).flat().join("\n")}`);
   return launched;
 }

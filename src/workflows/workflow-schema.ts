@@ -461,14 +461,6 @@ export function allPhases(workflow: Pick<WorkflowDefinition, "phases">): readonl
   return phases;
 }
 
-/** The stream that a list phase belongs to: the list phase that heads it,
- *  and each stream phase that follows, in order. A phase that no stream
- *  holds is its own stream of one. */
-export function streamOf(workflow: Pick<WorkflowDefinition, "phases">, phaseId: string): readonly WorkflowPhase[] {
-  const lists = streams(workflow);
-  return lists.find((stream) => stream.some(({ phase }) => phase === phaseId)) ?? [];
-}
-
 /** Every stream of a workflow: a list phase over a list field and the stream
  *  phases that follow it, each `over` the phase before. */
 export function streams(workflow: Pick<WorkflowDefinition, "phases">): readonly (readonly WorkflowPhase[])[] {

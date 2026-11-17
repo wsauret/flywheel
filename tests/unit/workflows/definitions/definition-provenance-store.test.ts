@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { buildDefinitionDriftRejectedFact, buildWorkflowCompilationFacts } from "../../../../src/workflows/definition-provenance-fact-writers.js"
 import { parseDefinitionProvenanceFact } from "../../../../src/workflows/definition-provenance-facts.js"
-import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
+import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"
 import type { AttemptRow } from "../../../../src/workflows/view/types.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { recordedWorkflow } from "../../../../src/workflows/loader.js"
@@ -18,13 +18,14 @@ import { testSkill } from "../../../helpers/skill-fixtures.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { canonicalWorkflowRecord } from "../../../../src/workflows/definition-records.js"
 
-function makeWriter(sessionId: string, baseDir: string) {
+/** A writer of one workflow run's facts, which records them where a launch does. */
+function makeWriter(workflowId: string, baseDir: string) {
   const store = createSqliteEventStore(resolveEventStoreDbFile(baseDir))
-  const writer = createSessionFactWriter({ sessionId, writer: asAsyncEventWriter(store) })
+  const writer = createSessionFactWriter({ owner: { kind: "workflow", workflowId }, writer: asAsyncEventWriter(store) })
   return {
     writer,
     loadLineage() {
-      return loadDefinitionLineageFromEvents(store.read({ aggregateId: `session:${sessionId}` }))
+      return readRunDefinitionLineage(asAsyncEventReadSurface(store), workflowId)
     },
     dispose() {
       writer.dispose()
@@ -68,7 +69,7 @@ describe("definition provenance facts", () => {
         await handle.writer.record(fact)
       }
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       expect(lineage.definitionOrder).toEqual([
         "workflow:wf",
         "agent:plan",
@@ -104,7 +105,7 @@ describe("definition provenance facts", () => {
       handle.dispose()
 
       const reopened = makeWriter("session-1", projectRoot)
-      expect(reopened.loadLineage().compiledWorkflow).toMatchObject({
+      expect((await reopened.loadLineage()).compiledWorkflow).toMatchObject({
         userRequestArtifactId: "user-request",
         userRequestSha256: hashContent("Build the feature").sha256,
       })
@@ -169,7 +170,7 @@ describe("definition provenance facts", () => {
         await handle.writer.record(fact)
       }
 
-      expect(handle.loadLineage().definitions["workflow:wf"]?.provenance?.bundle).toBe("development")
+      expect((await handle.loadLineage()).definitions["workflow:wf"]?.provenance?.bundle).toBe("development")
       handle.dispose()
     } finally {
       rmSync(projectRoot, { recursive: true, force: true })
@@ -195,7 +196,7 @@ describe("definition provenance facts", () => {
         await handle.writer.record(fact)
       }
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       expect(lineage.definitions["workflow:wf"]?.provenance).toEqual({ layer: "session", filePath, id: "wf" })
       expect(lineage.compiledWorkflow).toMatchObject({
         verification: "invalid",
@@ -230,7 +231,7 @@ describe("definition provenance facts", () => {
         },
       }))
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       const compiled = lineage.compiledWorkflow
       if (!compiled || !("stepIds" in compiled)) throw new Error("expected a compilation row that names step ids")
       expect(compiled.stepIds).toEqual(["plan"])
@@ -264,7 +265,7 @@ describe("definition provenance facts", () => {
         },
       }))
 
-      const compiled = handle.loadLineage().compiledWorkflow
+      const compiled = (await handle.loadLineage()).compiledWorkflow
       expect(compiled).toMatchObject({ verification: "partially_proved", worstCaseAttempts: 4 })
       expect(compiled).not.toHaveProperty("warnings")
       handle.dispose()
@@ -295,7 +296,7 @@ describe("definition provenance facts", () => {
         },
       }))
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       expect(lineage.compiledWorkflow).toMatchObject({
         stepIds: ["plan"],
         verification: "invalid",
@@ -332,7 +333,7 @@ describe("definition provenance facts", () => {
         payload: { kind: "workflow", id: "wf", definition, provenance },
       }))
 
-      const recorded = handle.loadLineage().definitions["workflow:wf"]?.definition
+      const recorded = (await handle.loadLineage()).definitions["workflow:wf"]?.definition
       expect(recorded).toMatchObject({ steps: { plan: { kind: "check", toolScoping } } })
       // Resume converts the step-grammar record of a file-launched run to
       // phases and decodes the result strictly.
@@ -359,7 +360,7 @@ describe("definition provenance facts", () => {
       })) {
         await first.writer.record(fact)
       }
-      const firstLineage = first.loadLineage()
+      const firstLineage = await first.loadLineage()
       const firstStepHash = firstLineage.hashes["agent:plan"]?.sha256
       const firstSkillHash = firstLineage.hashes["skill:planning"]?.sha256
       first.dispose()
@@ -377,7 +378,7 @@ describe("definition provenance facts", () => {
       })) {
         await second.writer.record(fact)
       }
-      const secondLineage = second.loadLineage()
+      const secondLineage = await second.loadLineage()
       expect(secondLineage.hashes["agent:plan"]?.sha256).toBe(firstStepHash)
       expect(secondLineage.hashes["skill:planning"]?.sha256).toBe(firstSkillHash)
       second.dispose()
@@ -424,7 +425,7 @@ describe("definition provenance facts", () => {
         },
       }))
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       expect(lineage.definitionOrder).toEqual(["step:plan"])
       expect(lineage.definitions["step:plan"]?.provenance?.filePath).toBe("/defs/plan.md")
       expect(lineage.hashes["step:plan"]?.sha256).toBe("a".repeat(64))
@@ -469,7 +470,7 @@ describe("definition provenance facts", () => {
         await handle.writer.record(parseDefinitionProvenanceFact({ ...fact, actor: "flywheel" }))
       }
 
-      const lineage = handle.loadLineage()
+      const lineage = await handle.loadLineage()
       expect(lineage.definitionOrder).toEqual(["workflow:wf", "binding:plan"])
       expect(lineage.definitions["binding:plan"]?.definition).toMatchObject({ skill: "planning", handoff: "spec-handoff" })
       expect(lineage.hashes["binding:plan"]?.sha256).toBe("b".repeat(64))
@@ -499,7 +500,7 @@ describe("definition provenance facts", () => {
         }],
         latestSeq: 7,
       }))
-      expect(handle.loadLineage().driftRejections).toEqual([{
+      expect((await handle.loadLineage()).driftRejections).toEqual([{
         workflowId: "wf",
         changes: [{
           component: "agent",

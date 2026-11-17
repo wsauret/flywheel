@@ -4,7 +4,7 @@ import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companio
 import type { RequestAddendumMessage } from "../../../../src/workflows/context-bundle/context-facts.js";
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { initializeWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const workWrites = [{ id: "artifact", lifetime: "durable" as const, supersedes: [] }];
@@ -20,14 +20,14 @@ const workflow = loadedWorkflow({
 });
 function running() {
   const compiled = compileWorkflowControl(workflow, testResolvedAgents([work]), { skills });
-  const started = transitionWorkflow(initializeWorkflow(compiled).state, {
+  const started = transitionDecodedWorkflow(initializeWorkflow(compiled).state, {
     type: "ATTEMPT_STARTED",
     attemptId: compiled.attempts[0]?.id ?? "missing",
     conversationId: "conversation-1",
   });
   const pending = started.state.context.pending;
   if (!pending) throw new Error("start proposal missing");
-  const acknowledged = transitionWorkflow(started.state, {
+  const acknowledged = transitionDecodedWorkflow(started.state, {
     type: "COMMIT_SUCCEEDED",
     proposalId: pending.proposalId,
     aggregateSeq: pending.proposedCommitted.aggregateSeq,
@@ -35,9 +35,9 @@ function running() {
   return { control: acknowledged.state.context.committed, state: acknowledged.state };
 }
 
-function factsFor(event: Parameters<typeof transitionWorkflow>[1], addenda: readonly RequestAddendumMessage[] = []) {
+function factsFor(event: Parameters<typeof transitionDecodedWorkflow>[1], addenda: readonly RequestAddendumMessage[] = []) {
   const active = running();
-  const proposal = transitionWorkflow(active.state, event);
+  const proposal = transitionDecodedWorkflow(active.state, event);
   return composeWorkflowCompanions(proposal, {
     queue: flattenWorkflowView(active.control, testResolvedAgents([work])),
     resolvedAgents: testResolvedAgents([work]),
@@ -188,7 +188,7 @@ describe("workflow proposal companions", () => {
       "follow_up.requested",
       "workflow.control.committed",
     ]);
-    const acknowledged = transitionWorkflow(composed.state, {
+    const acknowledged = transitionDecodedWorkflow(composed.state, {
       type: "COMMIT_SUCCEEDED",
       proposalId: composed.command.proposal.proposalId,
       aggregateSeq: composed.state.context.pending?.proposedCommitted.aggregateSeq ?? 0,

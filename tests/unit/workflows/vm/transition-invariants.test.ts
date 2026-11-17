@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import {
   initializeWorkflow,
-  transitionWorkflow,
+  transitionDecodedWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
 
 function control(): CommittedWorkflowControl {
@@ -58,8 +58,8 @@ function control(): CommittedWorkflowControl {
 describe("workflow transition invariants", () => {
   it("is deterministic, emits one commit, and selects one stable attempt", () => {
     const initial = initializeWorkflow(control());
-    const first = transitionWorkflow(initial.state, { type: "START" });
-    const replay = transitionWorkflow(initial.state, { type: "START" });
+    const first = transitionDecodedWorkflow(initial.state, { type: "START" });
+    const replay = transitionDecodedWorkflow(initial.state, { type: "START" });
     expect(first).toEqual(replay);
     expect(first.command.kind).toBe("commit");
     expect(first.state.context.pending?.facts.filter(({ type }) => type === "attempt.started")).toHaveLength(0);
@@ -67,36 +67,24 @@ describe("workflow transition invariants", () => {
 
     const pending = first.state.context.pending;
     if (!pending) throw new Error("start must propose a commit");
-    const prepared = transitionWorkflow(first.state, {
+    const prepared = transitionDecodedWorkflow(first.state, {
       type: "COMMIT_SUCCEEDED",
       proposalId: pending.proposalId,
       aggregateSeq: pending.proposedCommitted.aggregateSeq,
     });
     expect(prepared.command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId: "attempt-a" } });
 
-    const start = transitionWorkflow(prepared.state, {
+    const start = transitionDecodedWorkflow(prepared.state, {
       type: "ATTEMPT_STARTED", attemptId: "attempt-a", conversationId: "conversation-a",
     });
     const startPending = start.state.context.pending;
     if (!startPending) throw new Error("attempt start must propose a commit");
-    const committed = transitionWorkflow(start.state, {
+    const committed = transitionDecodedWorkflow(start.state, {
       type: "COMMIT_SUCCEEDED",
       proposalId: startPending.proposalId,
       aggregateSeq: startPending.proposedCommitted.aggregateSeq,
     });
     expect(committed.command).toMatchObject({ kind: "run_attempts", attempts: [{ attemptId: "attempt-a" }] });
     expect(committed.state.context.pending).toBeNull();
-  });
-
-  it("rejects deliberately corrupted owned state before transition", () => {
-    const valid = initializeWorkflow(control()).state;
-    const corrupted = {
-      ...valid,
-      context: {
-        ...valid.context,
-        committed: { ...valid.context.committed, frontier: [""] },
-      },
-    };
-    expect(() => transitionWorkflow(corrupted, { type: "START" })).toThrow();
   });
 });

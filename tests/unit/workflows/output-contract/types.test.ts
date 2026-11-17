@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 import { compileOutput } from "../../../../src/workflows/output-contract/compile.js";
 import type { OutputObject } from "../../../../src/workflows/output-contract/grammar.js";
-import type { CommandRun, PayloadOf, StepPayload } from "../../../../src/workflows/output-contract/types.js";
+import type { PayloadOf, StepPayload } from "../../../../src/workflows/output-contract/types.js";
 
 /** True only when the two types are identical. */
 type Equal<Left, Right> = (<T>() => T extends Left ? 1 : 2) extends (<T>() => T extends Right ? 1 : 2) ? true : false;
@@ -35,6 +35,8 @@ const reviewContract = {
 } as const satisfies OutputObject;
 
 type ReviewPayload = PayloadOf<typeof reviewContract>;
+/** One command-run record of a payload. */
+type CommandRun = ReviewPayload["commands_run"][number];
 
 describe("PayloadOf", () => {
   test("maps a TS-literal contract to its payload type", () => {

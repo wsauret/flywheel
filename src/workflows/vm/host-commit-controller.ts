@@ -204,7 +204,7 @@ function continuingAgents(before: WorkflowView, after: WorkflowView): readonly A
  *  live at once, or when it resumes in a later run, which adopts the cell.
  *  The commit that settles or replaces that attempt retires the cell. An
  *  agent that a commit starts reads the record in its prompt. */
-export function addressedKeysToRetire(messages: readonly AddressedAddendum[], before: WorkflowView, after: WorkflowView): readonly string[] {
+function addressedKeysToRetire(messages: readonly AddressedAddendum[], before: WorkflowView, after: WorkflowView): readonly string[] {
   const agents = continuingAgents(before, after)
   return messages.flatMap(({ key, addressedTo }) => agents.some((agent) => addressReachesAgent(addressedTo, agent)) ? [] : [key])
 }

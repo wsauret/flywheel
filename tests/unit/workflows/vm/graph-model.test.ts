@@ -5,13 +5,13 @@ import {
   CommittedWorkflowControlSchema,
   parseCommittedWorkflowControl,
 } from "../../../../src/workflows/vm/committed-control.js";
-import { parsePendingWorkflowCommit } from "../../../../src/workflows/vm/control-types.js";
 import { parseWorkflowCommand } from "../../../../src/workflows/vm/commands.js";
-import { parseWorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import { WorkflowProposalEventSchema } from "../../../../src/workflows/vm/events.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
 
 const decodeWorkflowGraph = Schema.decodeUnknownSync(WorkflowGraphSchema, { onExcessProperty: "error" });
+const decodeProposalEvent = Schema.decodeUnknownSync(WorkflowProposalEventSchema, { onExcessProperty: "error" });
 const ownership = { _tag: "workflow", workflowDefinitionId: "workflow" } as const;
 const graph = {
   nodes: [{
@@ -189,24 +189,6 @@ describe("workflow VM graph model", () => {
     })).toThrow();
   });
 
-  it("keeps previous and proposed controls distinct in pending commits", () => {
-    const proposed = { ...control, aggregateSeq: 1 } as const;
-    const pending = parsePendingWorkflowCommit({
-      proposalId: "proposal-1",
-      expectedSeq: 0,
-      previousCommitted: control,
-      proposedCommitted: proposed,
-      facts: [{
-        type: "workflow.paused", version: 1, actor: "flywheel",
-        payload: { reason: "changed" },
-      }],
-      nextLifecycle: "executing",
-    });
-
-    expect(pending.previousCommitted.aggregateSeq).toBe(0);
-    expect(pending.proposedCommitted.aggregateSeq).toBe(1);
-  });
-
   it("discriminates exact command and event variants", () => {
     const commands = [
       { kind: "commit", proposal: { proposalId: "p", expectedSeq: 0, facts: [] } },
@@ -245,13 +227,13 @@ describe("workflow VM graph model", () => {
         },
       },
     ] as const;
-    expect(events.map((event) => parseWorkflowEvent(event).type)).toEqual(events.map(({ type }) => type));
+    expect(events.map((event) => decodeProposalEvent(event).type)).toEqual(events.map(({ type }) => type));
     expect(() => parseWorkflowCommand({ kind: "none", extra: true })).toThrow();
-    expect(() => parseWorkflowEvent({ type: "RESUME", readers: {}, extra: true })).toThrow();
+    expect(() => decodeProposalEvent({ type: "RESUME", readers: {}, extra: true })).toThrow();
     expect(() => parseWorkflowCommand({
       kind: "run_follow_up", input: { workflowDefinitionId: "workflow", prompt: "Continue", conversationId: null },
     })).toThrow();
-    expect(() => parseWorkflowEvent({ type: "ATTEMPT_STARTED", attemptId: "a", conversationId: null })).toThrow();
-    expect(() => parseWorkflowEvent({ type: "FOLLOW_UP_REQUESTED", input: { text: "Explain" }, identity: { kind: "identified", inputID: "follow-up-input" }, conversationId: "follow-up", requestSequence: 1 })).toThrow();
+    expect(() => decodeProposalEvent({ type: "ATTEMPT_STARTED", attemptId: "a", conversationId: null })).toThrow();
+    expect(() => decodeProposalEvent({ type: "FOLLOW_UP_REQUESTED", input: { text: "Explain" }, identity: { kind: "identified", inputID: "follow-up-input" }, conversationId: "follow-up", requestSequence: 1 })).toThrow();
   });
 });

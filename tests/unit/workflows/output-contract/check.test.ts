@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { validateAgentOutput } from "../../../../src/workflows/output-contract/accept.js";
-import { compileOutput, type OutputCheckContext } from "../../../../src/workflows/output-contract/compile.js";
+import { acceptAgentOutput, type OutputAcceptance, type OutputAcceptContext } from "../../../../src/workflows/output-contract/accept.js";
+import { compileOutput } from "../../../../src/workflows/output-contract/compile.js";
 import {
   canonicalizeCommandRuns,
   checkCommandCitations,
@@ -24,8 +24,13 @@ const ledger: readonly CommandEvidence[] = [
 
 const readLedger = async () => ledger;
 
-function context(executionCwd: string): OutputCheckContext {
-  return { executionCwd, pathExists: async (file) => existsSync(file), readCommandEvidence: readLedger };
+function context(executionCwd: string): OutputAcceptContext {
+  return { executionCwd, pathExists: async (file) => existsSync(file), readCommandEvidence: readLedger, fileExists: async (file) => existsSync(file), readText: (file) => Bun.file(file).text() };
+}
+
+/** The issues that refused an inline handoff, or none for an accepted one. */
+function issuesOf(acceptance: OutputAcceptance) {
+  return acceptance.ok ? [] : acceptance.problems;
 }
 
 describe("check path probes", () => {
@@ -58,14 +63,14 @@ describe("check path probes", () => {
       sources: ["docs/report.md", "../proof.md", "docs/missing.md"],
       choice: { kind: "file", at: "docs/gone.md" },
     };
-    const checked = await validateAgentOutput(compiled, payload, context(root));
-    expect(checked.issues).toEqual([
+    const checked = await acceptAgentOutput(compiled, payload, context(root));
+    expect(issuesOf(checked)).toEqual([
       { path: "sources.2", message: "referenced artifact does not exist: docs/missing.md" },
       { path: "choice.at", message: "referenced artifact does not exist: docs/gone.md" },
     ]);
-    expect(checked.payload.report).toBe(proof);
-    expect(checked.payload.sources).toEqual(payload.sources);
-    expect((await validateAgentOutput(compiled, { ...payload, sources: ["../proof.md"], choice: { kind: "file", at: null } }, context(root))).issues).toEqual([]);
+    expect(checked.payload?.report).toBe(proof);
+    expect(checked.payload?.sources).toEqual(payload.sources);
+    expect(issuesOf(await acceptAgentOutput(compiled, { ...payload, sources: ["../proof.md"], choice: { kind: "file", at: null } }, context(root)))).toEqual([]);
     expect(await compiled.check({ summary: "Done.", report: "", sources: [null] }, context(root))).toEqual([]);
   });
 });
@@ -169,18 +174,18 @@ describe("one citation path", () => {
   test("accepts a wrong exit code, records the real one, and still refuses a list of only unknown citations under commands.min", async () => {
     const cited = compileOutput({ commands: { min: 1 } });
     const root = temporaryDirectory("output-contract-resolution-");
-    const accepted = await validateAgentOutput(cited, { summary: "Done.", commands_run: [{ toolUseId: "toolu_lint", exitCode: 0, observation: "2 errors" }] }, context(root));
+    const accepted = await acceptAgentOutput(cited, { summary: "Done.", commands_run: [{ toolUseId: "toolu_lint", exitCode: 0, observation: "2 errors" }] }, context(root));
     expect(accepted).toEqual({
+      ok: true,
       payload: { summary: "Done.", commands_run: [{ toolUseId: "toolu_lint", command: "bun run lint", cwd: "/repo/web", exitCode: 1, changedAfter: [], observation: "2 errors" }] },
-      issues: [],
       repairs: [{ kind: "ignored_field", index: 0, field: "exitCode" }],
       notes: [],
     });
-    const refused = await validateAgentOutput(cited, { summary: "Done.", commands_run: [
+    const refused = await acceptAgentOutput(cited, { summary: "Done.", commands_run: [
       { toolUseId: "toolu_none", observation: "ok" },
       { toolUseId: "toolu_other", observation: "ok" },
     ] }, context(root));
-    expect(refused.issues).toEqual([
+    expect(issuesOf(refused)).toEqual([
       { path: "commands_run", message: "expected at least 1 cited command run", hint: "Eligible shell command calls: toolu_test (bun test), toolu_lint (bun run lint)" },
     ]);
     expect(refused.repairs).toEqual([
@@ -191,7 +196,7 @@ describe("one citation path", () => {
 
   test("refuses a malformed record by its own keys and never asks for a key that resolution records", async () => {
     const root = temporaryDirectory("output-contract-malformed-");
-    const { issues } = await validateAgentOutput(compileOutput({}), { summary: "Done.", commands_run: [{ observation: "" }, 3] }, context(root));
+    const issues = issuesOf(await acceptAgentOutput(compileOutput({}), { summary: "Done.", commands_run: [{ observation: "" }, 3] }, context(root)));
     expect(issues.map(({ path }) => path)).toEqual(["commands_run.0.toolUseId", "commands_run.0.observation", "commands_run.1"]);
   });
 

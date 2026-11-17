@@ -15,7 +15,7 @@ import { describeDefinitionRefusal, readPathWorkflow, stageWorkflowSource, workf
  *  role. Only a root chat asks the person (PI-AGENT-024). A child that planned
  *  `workflow` under On mode still reaches this refusal when the person sets
  *  Ask before its call lands, because the mode is read at the call. */
-export const WORKFLOW_LAUNCH_RETRY_INSTRUCTION = "Call ask_user with a workflow_launch decision naming the same source. After the user approves, retry workflow with the confirmation_id returned by ask_user. A child session has no ask_user: message your parent with message_session to ask it for the launch."
+const WORKFLOW_LAUNCH_RETRY_INSTRUCTION = "Call ask_user with a workflow_launch decision naming the same source. After the user approves, retry workflow with the confirmation_id returned by ask_user. A child session has no ask_user: message your parent with message_session to ask it for the launch."
 
 /** Why a session without a scratch directory launches no workflow file. */
 export const NO_WORKFLOW_DIRECTORY = "This session has no scratch directory, so it cannot launch a workflow file."

@@ -4,8 +4,7 @@ import { asAsyncEventReadSurface, CorruptEventRowError, type StoredFact } from "
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { buildDefinitionDriftRejectedFact } from "../../../../src/workflows/definition-provenance-fact-writers.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
-import { buildAttemptRecoveredFact } from "../../../../src/workflows/vm/fact-drafts.js"
-import { advanceWorkflowRecoveryFold, classifyWorkflowHistory, classifyWorkflowRecoveryFold, readWorkflowControl, readWorkflowRecoveryEvidence, seedWorkflowRecoveryFold } from "../../../../src/workflows/vm/recovery-fold.js"
+import { readWorkflowControl, readWorkflowRecovery, readWorkflowRecoveryEvidence, type WorkflowRecoveryClassification } from "../../../../src/workflows/vm/recovery-fold.js"
 import { readWorkflowControlStatuses } from "../../../../src/workflows/vm/control-status.js"
 import { graphTopology, type GraphTopology } from "../../../../src/workflows/vm/graph-topology.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
@@ -13,7 +12,7 @@ import { commitWorkflowRecovery } from "../../../../src/orchestration/workflow-h
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js"
-import { initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
+import { historicalAttemptRecoveredFact, initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
 import { canonicalScenarios } from "./golden/_canonical-scenarios.js"
 import { runCanonicalScenario } from "./golden/_golden-harness.js"
 import { createMemoryStore, initialFacts, recordProposal, testHost, workflow } from "./host-test-support.js"
@@ -22,32 +21,63 @@ import thenHistories from "../../orchestration/session/golden/then-continuation-
 
 type Row = StoredFact | CorruptEventRowError
 
-/** Folds the history the way its held reader does: it advances by the facts
- *  committed since the last read, and seeds again from the whole prefix when
- *  the fold cannot answer or a damaged row arrives. The answer at each read
- *  must equal the validators' answer for that whole prefix. By default the
- *  reader reads after every fact, which also covers prefixes inside a batch. */
-function expectFoldMatchesValidators(facts: readonly Row[], readsAfter: readonly number[] = facts.map((_, index) => index + 1)) {
-  let fold = seedWorkflowRecoveryFold([])
-  let seeded = 0
-  let read = 0
-  for (const end of readsAfter) {
-    const prefix = facts.slice(0, end)
-    let damaged = false
-    for (const fact of facts.slice(read, end)) {
-      if (fact instanceof CorruptEventRowError) damaged = true
-      else fold = advanceWorkflowRecoveryFold(fold, fact)
-    }
-    read = end
-    let classification = damaged ? null : classifyWorkflowRecoveryFold(fold)
-    if (!classification) {
-      seeded += 1
-      fold = seedWorkflowRecoveryFold(prefix)
-      classification = classifyWorkflowRecoveryFold(fold)
-    }
-    expect({ end, classification }).toEqual({ end, classification: classifyWorkflowHistory(prefix) })
+/** One aggregate's rows behind a read surface, committed in order. A strict
+ *  read sees a damaged row by its envelope, as the store indexes it, and a
+ *  tolerant read returns the damaged row itself. */
+function historyStore() {
+  const envelopes: StoredFact[] = []
+  const rows = new Map<number, Row>()
+  const local = inMemoryEventReader(envelopes)
+  return {
+    reader: asAsyncEventReadSurface({ ...local, readTolerant: (query) => local.read(query).flatMap(({ position }) => rows.get(position) ?? []) }),
+    committed: () => envelopes.length,
+    commit(added: readonly Row[]) {
+      for (const row of added) {
+        const envelope = row instanceof CorruptEventRowError ? envelopeOf(row) : row
+        envelopes.push(envelope)
+        rows.set(envelope.position, row)
+      }
+    },
   }
-  return { seeded }
+}
+
+function envelopeOf({ row }: CorruptEventRowError): StoredFact {
+  return {
+    id: row.eventId, aggregateId: row.aggregateId, sessionId: row.sessionId, seq: row.seq, position: row.position,
+    type: row.type, version: row.version, timestamp: row.timestamp, actor: row.actor, payload: {},
+  }
+}
+
+function workflowIdOf(facts: readonly Row[]): string {
+  const [first] = facts
+  if (!first) throw new Error("The history is empty")
+  return (first instanceof CorruptEventRowError ? first.row.aggregateId : first.aggregateId).replace(/^workflow:/u, "")
+}
+
+/** What a reader that seeds from the whole of `facts` reads: the validators' answer. */
+async function recoveryOf(facts: readonly Row[]): Promise<WorkflowRecoveryClassification> {
+  const store = historyStore()
+  store.commit(facts)
+  return readWorkflowRecovery(store.reader, workflowIdOf(facts))
+}
+
+/** Reads the history through one held reader, which advances by the facts
+ *  committed since its last read and seeds again from the whole prefix when
+ *  its fold cannot answer or a damaged row arrives. The answer at each read
+ *  must equal the validators' answer for that whole prefix. By default the
+ *  reader reads after every fact, which also covers prefixes inside a batch.
+ *  Each seed is the one full read of the history, so the count of full reads
+ *  is the count of seeds. */
+async function expectFoldMatchesValidators(facts: readonly Row[], readsAfter: readonly number[] = facts.map((_, index) => index + 1)) {
+  const workflowId = workflowIdOf(facts)
+  const held = historyStore()
+  const counter = countStateRequests(held.reader)
+  for (const end of readsAfter) {
+    held.commit(facts.slice(held.committed(), end))
+    const classification = await readWorkflowRecovery(counter.reader, workflowId)
+    expect({ end, classification }).toEqual({ end, classification: await recoveryOf(facts.slice(0, end)) })
+  }
+  return { seeded: counter.take().filter(({ method }) => method === "readSlice").length }
 }
 
 /** One aggregate's history with contiguous sequences and positions. */
@@ -92,7 +122,10 @@ async function recoveredHistory(): Promise<readonly StoredFact[]> {
     },
   })
   expect(result.kind).toBe("committed")
-  return store.events.filter(({ aggregateId }) => aggregateId === "workflow:session")
+  // The memory store numbers an append by the count of its facts, so the
+  // splice above makes the recovery root reuse a position. A store never
+  // does, and the held reader reads by position.
+  return store.events.filter(({ aggregateId }) => aggregateId === "workflow:session").map((fact, index) => ({ ...fact, position: index + 1 }))
 }
 
 describe("workflow recovery fold", () => {
@@ -100,8 +133,8 @@ describe("workflow recovery fold", () => {
   for (const scenario of canonicalScenarios) {
     it(`answers as the validators do after every prefix of canonical run ${scenario.id}, and seeds only at its launch and its first proposal`, async () => {
       const { events, batchEnds } = await runCanonicalScenario(scenario)
-      expectFoldMatchesValidators(events)
-      expect(expectFoldMatchesValidators(events, batchEnds)).toEqual({ seeded: 2 })
+      await expectFoldMatchesValidators(events)
+      expect(await expectFoldMatchesValidators(events, batchEnds)).toEqual({ seeded: 2 })
     })
   }
 
@@ -122,7 +155,7 @@ describe("workflow recovery fold", () => {
     for (const end of laterEnds) {
       rows.push(...history.slice(rows.length, end))
       const evidence = await readWorkflowRecoveryEvidence(counter.reader, scenario.id)
-      expect(evidence.classification).toEqual(classifyWorkflowHistory(rows))
+      expect(evidence.classification).toEqual(await recoveryOf(rows))
       expect(Object.keys(evidence).sort()).toEqual(["aggregateSeq", "assessmentIdentity", "classification"])
       const { plan } = evidence.classification
       if (plan.executable) topologies.add(graphTopology(plan.control.graph))
@@ -199,35 +232,35 @@ describe("workflow recovery fold", () => {
     const healthy = await scenarioHistory(id)
     const index = healthy.findLastIndex(({ type }) => type === "context.accumulated")
     const paused = healthy.map((fact, position) => position === index ? { ...fact, payload: {} } : fact)
-    expect(classifyWorkflowHistory(paused).plan.executable).toBe(false)
+    expect((await recoveryOf(paused)).plan.executable).toBe(false)
     expect((await readWorkflowControl(asAsyncEventReadSurface(inMemoryEventReader(paused)), id)).status).toBe("completed")
     const damaged = healthy.map((fact, position) => position === index ? corrupted(fact) : fact)
     const local = inMemoryEventReader(healthy)
     await expect(readWorkflowControl(asAsyncEventReadSurface({ ...local, readTolerant: () => damaged }), id)).rejects.toBeInstanceOf(CorruptEventRowError)
   })
 
-  it("answers as the validators do after each proposal of a stored version 10 run", () => {
+  it("answers as the validators do after each proposal of a stored version 10 run", async () => {
     const facts = storedWorkflowFacts(repeatBoundHistory.map(parseWorkflowSessionFact))
     const proposals = facts.flatMap(({ type }, index) => type === "workflow.control.committed" ? [index + 1] : [])
     // The first read follows the first proposal, so the fold seeds once and advances through the run.
-    expect(expectFoldMatchesValidators(facts, [...proposals, facts.length]).seeded).toBe(1)
+    expect((await expectFoldMatchesValidators(facts, [...proposals, facts.length])).seeded).toBe(1)
   })
 
   it("seeds again at a recovery root and advances the recovered run", async () => {
     const facts = await recoveredHistory()
     expect(facts.some(({ type }) => type === "workflow.control.recovered")).toBe(true)
-    expectFoldMatchesValidators(facts)
+    await expectFoldMatchesValidators(facts)
   })
 
   it("seeds again at a newest root that this build cannot read, and at a root that replaces a healthy run", async () => {
     const healthy = await scenarioHistory("linear-three-phase-completion")
     const [root] = storedWorkflowFacts([initializedWorkflowRoot])
     if (!root) throw new Error("The root fixture is missing")
-    expectFoldMatchesValidators(restamped([...healthy, { ...root, version: root.version + 1 }, ...healthy.slice(1)]))
-    expectFoldMatchesValidators(restamped([...healthy, ...healthy]))
+    await expectFoldMatchesValidators(restamped([...healthy, { ...root, version: root.version + 1 }, ...healthy.slice(1)]))
+    await expectFoldMatchesValidators(restamped([...healthy, ...healthy]))
   })
 
-  it("answers as the validators do for the historical contextless recovery root", () => {
+  it("answers as the validators do for the historical contextless recovery root", async () => {
     const root = recoveredWorkflowRoot(initializedWorkflowRoot.payload.control, 3)
     const identities = {
       ...root.payload.identities,
@@ -237,10 +270,10 @@ describe("workflow recovery fold", () => {
     const recovered = parseWorkflowSessionFact({
       ...root, version: 1, payload: { ...root.payload, supersededThroughSeq: 0, identities, control: { ...controlBeforePhases(root.payload.control), issues: [], seals: [] } },
     })
-    expectFoldMatchesValidators(storedWorkflowFacts([
+    await expectFoldMatchesValidators(storedWorkflowFacts([
       buildContextInputSeededFact("workflow", "Predecessor request"),
       recovered,
-      buildAttemptRecoveredFact("attempt", "conversation"),
+      historicalAttemptRecoveredFact("attempt", "conversation"),
     ]))
   })
 
@@ -249,18 +282,18 @@ describe("workflow recovery fold", () => {
     for (const type of ["queue.state.changed", "step.status.changed", "context.accumulated"]) {
       const index = healthy.findIndex((fact, position) => position > healthy.length / 2 && fact.type === type)
       expect(index).toBeGreaterThan(0)
-      expectFoldMatchesValidators(healthy.map((fact, position) => position === index ? corrupted(fact) : fact))
+      await expectFoldMatchesValidators(healthy.map((fact, position) => position === index ? corrupted(fact) : fact))
     }
   })
 
-  it("settles on the validators' answer for stored runs whose tree predates version 4, including a refused insertion", () => {
+  it("settles on the validators' answer for stored runs whose tree predates version 4, including a refused insertion", async () => {
     for (const history of Object.values(thenHistories)) {
       const facts = storedWorkflowFacts(history.map(parseWorkflowSessionFact))
-      expectFoldMatchesValidators(facts)
+      await expectFoldMatchesValidators(facts)
     }
     const refused = storedWorkflowFacts(thenHistories.refusedContinuation.map(parseWorkflowSessionFact))
     expect(refused.map(({ type }) => type)).toContain("attempt.insertion_rejected")
-    expect(classifyWorkflowHistory(refused).retry).toBe(false)
+    expect((await recoveryOf(refused)).retry).toBe(false)
   })
 
   it("answers as the validators do after every prefix of a current run whose list expansion is refused", async () => {
@@ -270,16 +303,16 @@ describe("workflow recovery fold", () => {
     const tooMany = Array.from({ length: 6 }, (_, index) => ({ id: `item-${index}` }))
     const { events, batchEnds } = await runCanonicalScenario({ ...scenario, outcomes: [{ ...source, handoff: { ...source.handoff, items: tooMany } }, ...rest] })
     expect(events.map(({ type }) => type)).toContain("group.expansion_rejected")
-    expectFoldMatchesValidators(events)
-    expect(expectFoldMatchesValidators(events, batchEnds).seeded).toBe(2)
+    await expectFoldMatchesValidators(events)
+    expect((await expectFoldMatchesValidators(events, batchEnds)).seeded).toBe(2)
   })
 
   it("answers as the validators do when a readable context fact has a body this build rejects", async () => {
     const healthy = await scenarioHistory("linear-three-phase-completion")
     const index = healthy.findLastIndex(({ type }) => type === "context.accumulated")
     const facts = healthy.map((fact, position) => position === index ? { ...fact, payload: {} } : fact)
-    expect(classifyWorkflowHistory(facts).plan.executable).toBe(false)
-    expectFoldMatchesValidators(facts)
+    expect((await recoveryOf(facts)).plan.executable).toBe(false)
+    await expectFoldMatchesValidators(facts)
   })
 
   it("holds a definition drift rejection until control moves on", async () => {
@@ -290,8 +323,8 @@ describe("workflow recovery fold", () => {
     const committed = healthy.findLast(({ type }) => type === "workflow.control.committed")
     if (!committed) throw new Error("The run committed no proposal")
     const facts = restamped([...healthy, { ...healthy[0]!, ...rejection }, { ...healthy[0]!, ...rejection }, committed])
-    expectFoldMatchesValidators(facts)
-    const rejected = classifyWorkflowHistory(facts.slice(0, healthy.length + 1)).rejection
+    await expectFoldMatchesValidators(facts)
+    const rejected = (await recoveryOf(facts.slice(0, healthy.length + 1))).rejection
     expect(rejected?.workflowId).toBe("pause-before-worker")
   })
 })

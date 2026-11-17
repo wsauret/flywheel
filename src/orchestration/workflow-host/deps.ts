@@ -151,7 +151,7 @@ export function bindWorkflowDepsToSession(base: WorkflowDeps, source: SessionWor
 
 /** Dependency injection hooks for testing. Lives here (not in tests/) because
  *  prepareWorkflowDeps uses it as a parameter type. */
-export interface WorkflowDepsOverrides {
+interface WorkflowDepsOverrides {
   createAgent?: AgentFactory
   createLLMClient?: LLMClientFactory
   connection?: EffectiveProviderConnection

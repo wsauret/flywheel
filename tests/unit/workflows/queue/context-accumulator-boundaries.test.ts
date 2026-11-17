@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createContextAccumulator, expandJoinReferences, JOIN_EXPANSION_CAP_BYTES } from "../../../../src/workflows/context-bundle/context";
 import { makeEntry } from "./_context-accumulator-fixtures";
-import { renderWorkflowRequest } from "../../../../src/workflows/context-bundle/workflow-request";
+import { renderWorkflowRequestSection } from "../../../../src/workflows/context-bundle/workflow-request";
 
 describe("pipeline context liveness", () => {
   test("a transient handoff is available only until the next accepted handoff", () => {
@@ -167,7 +167,7 @@ describe("branch context scope", () => {
     expect(addressed(1, "a")).toEqual([]);
     expect(addressed(3, "c")).toEqual([]);
     expect(lane(1, "a").exclusions).toContainEqual({ kind: "addendum", id: "msg:parent:call-1", reason: "sibling_item" });
-    expect(renderWorkflowRequest(lane(2, "b").request!)).toContain('1. From the parent "parent", addressed to item "b" and item "d":\nKeep the old flag names.');
+    expect(renderWorkflowRequestSection(lane(2, "b").request!)).toContain('1. From the parent "parent", addressed to item "b" and item "d":\nKeep the old flag names.');
     // The workflow scope reads the lanes' message only after their join, and
     // the step's message never.
     expect(accumulator.getContext().exclusions).toEqual([
@@ -196,7 +196,7 @@ describe("branch context scope", () => {
     for (const [ordinal, key] of [[1, "a"], [2, "b"], [3, "c"], [4, "d"]] as const) expect(addenda(ordinal, key)).toEqual(["msg:parent:call-1"]);
     expect(addenda(1, "a", 2)).toEqual(["msg:parent:call-1"]);
     expect(lane(3, "c").exclusions).toEqual([]);
-    expect(renderWorkflowRequest(lane(3, "c").request!)).toContain('1. From the parent "parent", addressed to the workflow:\nUse the new API.');
+    expect(renderWorkflowRequestSection(lane(3, "c").request!)).toContain('1. From the parent "parent", addressed to the workflow:\nUse the new API.');
     accumulator.accumulate(joinEntry(["a", "b", "c", "d"]));
     expect(accumulator.getContext().request?.addenda.map(({ key }) => key)).toEqual(["msg:parent:call-1"]);
     expect(accumulator.getContext().exclusions.filter(({ kind }) => kind === "addendum")).toEqual([]);

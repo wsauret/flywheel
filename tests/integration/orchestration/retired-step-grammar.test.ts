@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { readFileSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { loadPathWorkflow, sessionWorkflowsDir } from "../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow } from "../../../src/orchestration/workflow-host/path-workflow.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
 import { createContextAccumulator } from "../../../src/workflows/context-bundle/context.js"
-import { loadWorkflowDefinitions } from "../../helpers/workflow-files.js"
+import { loadWorkflowDefinitions, stagedWorkflowContent } from "../../helpers/workflow-files.js"
 import { compileWorkflowControl } from "../../../src/workflows/vm/compile.js"
 import { verifyAuthoredWorkflow } from "../../../src/workflows/vm/verify.js"
 import type { WorkflowDefinition } from "../../../src/workflows/workflow-schema.js"
@@ -29,8 +29,7 @@ const GSD_SKILLS = ["gsd.spec-create", "gsd.spec-review", "gsd.implement", "gsd.
  *  warnings of the launch. */
 async function launch(content: string) {
   const sessionDir = realpathSync(temporary("flywheel-retired-steps-"))
-  mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true })
-  const result = await loadPathWorkflow({ path: "scratch/workflows/converted.workflow.yaml", savedContent: content, sessionDir, revision, authority: fullAuthority() })
+  const result = await loadPathWorkflow({ ...stagedWorkflowContent(sessionDir, content), sessionDir, revision, authority: fullAuthority() })
   if (!result.ok) throw new Error(`the file was refused: ${result.reason}: ${JSON.stringify(result.diagnostics)}`)
   expect(result.verification.result).not.toBe("invalid")
   compile(result.workflow, revision.skills)
@@ -151,8 +150,7 @@ describe("a saved file of the retired step grammar, by conversion rule", () => {
     [{ name: "Work", external: { skill: "fixture.root", arguments: ["old"], allowedChildSkills: [], artifactRedirect: { fromPath: "old.md", toDir: "result" } }, output: { summary: "Done." } }, "a workflow no longer runs a skill as a brief; write the brief inline and add dependencies: [fixture.root]"],
   ])("refuses a saved step that runs content outside the file", async (record, refusal) => {
     const sessionDir = realpathSync(temporary("flywheel-retired-content-"))
-    mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true })
-    const result = await loadPathWorkflow({ path: "scratch/workflows/converted.workflow.yaml", savedContent: stepFile({ work: record }, [{ step: "work" }]), sessionDir, revision, authority: fullAuthority() })
+    const result = await loadPathWorkflow({ ...stagedWorkflowContent(sessionDir, stepFile({ work: record }, [{ step: "work" }])), sessionDir, revision, authority: fullAuthority() })
     expect(result.ok).toBe(false)
     if (result.ok) throw new Error("retired content launched")
     expect(result.diagnostics?.map(({ message }) => message).join("\n")).toContain(refusal)

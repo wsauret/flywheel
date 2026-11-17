@@ -4,15 +4,14 @@ import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { foldWorkflowControl, replayWorkflowControl, replayWorkflowControlFrom } from "../../../../src/workflows/vm/fact-fold.js"
 import { composeWorkflowProposal } from "../../../../src/workflows/vm/proposal-composition.js"
 import { buildDefinitionIdentityAdoptedFact, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, buildDefinitionIdentityMigratedFact, parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
-import { buildAttemptRecoveredFact } from "../../../../src/workflows/vm/fact-drafts.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import {
   DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID,
   DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID,
   type DefinitionIdentity,
 } from "../../../../src/workflows/vm/definition-identity.js"
 import * as committedControl from "../../../../src/workflows/vm/committed-control.js"
-import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"
+import { historicalAttemptRecoveredFact, recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"
 import { selectNewestWorkflowRoot } from "../../../../src/workflows/workflow-root.js"
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
@@ -35,7 +34,7 @@ function trace() {
   )
   if (initialized.type !== "workflow.control.initialized") throw new Error("Expected initialized root")
   const initial = initialized.payload.control
-  const proposal = transitionWorkflow(initializeWorkflow(initial).state, { type: "PAUSE", reason: "operator" })
+  const proposal = transitionDecodedWorkflow(initializeWorkflow(initial).state, { type: "PAUSE", reason: "operator" })
   if (proposal.command.kind !== "commit" || !proposal.state.context.pending) {
     throw new Error("Pause must propose a commit")
   }
@@ -131,23 +130,23 @@ describe("workflow control fact fold", () => {
   it("replays current reassessment and commit facts", () => {
     const { initialized, initial } = trace()
     const batches: WorkflowSessionFact[][] = []
-    const commit = (result: ReturnType<typeof transitionWorkflow>) => {
+    const commit = (result: ReturnType<typeof transitionDecodedWorkflow>) => {
       if (result.command.kind !== "commit" || !result.state.context.pending) throw new Error("Event did not propose a commit")
       batches.push([...result.command.proposal.facts])
-      return transitionWorkflow(result.state, {
+      return transitionDecodedWorkflow(result.state, {
         type: "COMMIT_SUCCEEDED",
         proposalId: result.state.context.pending.proposalId,
         aggregateSeq: result.state.context.pending.proposedCommitted.aggregateSeq,
       })
     }
-    const prepared = commit(transitionWorkflow(initializeWorkflow(initial).state, { type: "START" }))
+    const prepared = commit(transitionDecodedWorkflow(initializeWorkflow(initial).state, { type: "START" }))
     if (prepared.command.kind !== "prepare_attempt") throw new Error("Start did not prepare an attempt")
-    const running = commit(transitionWorkflow(prepared.state, {
+    const running = commit(transitionDecodedWorkflow(prepared.state, {
       type: "ATTEMPT_STARTED",
       attemptId: prepared.command.attempt.attemptId,
       conversationId: "conversation",
     }))
-    const reassessment = transitionWorkflow(running.state, {
+    const reassessment = transitionDecodedWorkflow(running.state, {
       type: "REASSESSMENT_PROPOSED",
       proposal: {
         proposalId: "reassessment",
@@ -219,7 +218,7 @@ describe("workflow control fact fold", () => {
     }))
     const independent = [stored(cut, initial.aggregateSeq), ...requests]
     const prefix = foldWorkflowControl(initial, independent)
-    const proposed = transitionWorkflow(initializeWorkflow(prefix).state, { type: "PAUSE", reason: "operator" })
+    const proposed = transitionDecodedWorkflow(initializeWorkflow(prefix).state, { type: "PAUSE", reason: "operator" })
     if (proposed.command.kind !== "commit" || !proposed.state.context.pending) throw new Error("Pause must propose a commit")
     const suffix = proposed.command.proposal.facts.map((fact, index) => stored(fact, prefix.aggregateSeq + index))
     const history = [stored(initialized, 0), ...independent, ...suffix]
@@ -345,7 +344,7 @@ describe("workflow control fact fold", () => {
       },
       control: recoveredControl,
     })
-    const companion = buildAttemptRecoveredFact("workflow:node:1:attempt:1", "conversation")
+    const companion = historicalAttemptRecoveredFact("workflow:node:1:attempt:1", "conversation")
 
     expect(workflowRecoveryBasis([stored(recovered, 0), stored(companion, 1), { broken: true }])).toBeNull()
     expect(workflowRecoveryBasis([stored(recovered, 0)])).toEqual(recoveredControl)
@@ -389,11 +388,11 @@ describe("workflow control fact fold", () => {
       const event = state.lifecycle === "paused"
         ? { type: "RESUME" as const, readers: {} }
         : { type: "PAUSE" as const, reason: `pause-${index}` }
-      const proposal = transitionWorkflow(state, event)
+      const proposal = transitionDecodedWorkflow(state, event)
       if (proposal.command.kind !== "commit" || !proposal.state.context.pending) throw new Error("Expected commit")
       const startSeq = history.length
       history.push(...proposal.command.proposal.facts.map((fact, factIndex) => stored(fact, startSeq + factIndex)))
-      state = transitionWorkflow(proposal.state, {
+      state = transitionDecodedWorkflow(proposal.state, {
         type: "COMMIT_SUCCEEDED",
         proposalId: proposal.command.proposal.proposalId,
         aggregateSeq: proposal.state.context.pending.proposedCommitted.aggregateSeq,
@@ -461,7 +460,7 @@ describe("workflow control fact fold", () => {
       ? buildDefinitionIdentityAdoptedFact(initial.definitionIdentity, identity)
       : buildDefinitionIdentityMigratedFact(DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID, initial.definitionIdentity, identity)
     const afterIdentity = { ...initial, definitionIdentity: identity, aggregateSeq: initial.aggregateSeq + 2 }
-    const next = transitionWorkflow(initializeWorkflow(afterIdentity).state, { type: "PAUSE", reason: "operator" })
+    const next = transitionDecodedWorkflow(initializeWorkflow(afterIdentity).state, { type: "PAUSE", reason: "operator" })
     if (next.command.kind !== "commit" || !next.state.context.pending) throw new Error("Pause must propose a commit")
     const nextFacts = next.command.proposal.facts
     const afterCommit = next.state.context.pending.proposedCommitted
@@ -548,10 +547,10 @@ describe("workflow control fact fold", () => {
     if (initialized.type !== "workflow.control.initialized") throw new Error("Expected initialized root")
     const facts: WorkflowSessionFact[] = [initialized]
     let state = initializeWorkflow(initialized.payload.control).state
-    const commit = (result: ReturnType<typeof transitionWorkflow>) => {
+    const commit = (result: ReturnType<typeof transitionDecodedWorkflow>) => {
       if (result.command.kind !== "commit" || !result.state.context.pending) throw new Error("Event did not propose a commit")
       facts.push(...result.command.proposal.facts)
-      const acknowledged = transitionWorkflow(result.state, {
+      const acknowledged = transitionDecodedWorkflow(result.state, {
         type: "COMMIT_SUCCEEDED",
         proposalId: result.state.context.pending.proposalId,
         aggregateSeq: result.state.context.pending.proposedCommitted.aggregateSeq,
@@ -561,11 +560,11 @@ describe("workflow control fact fold", () => {
     }
     const handoffs = [{ summary: "The plan.", items: items("a", "b") }, { summary: "implemented a" }, { summary: "reviewed a" }, { summary: "implemented b" }, { summary: "reviewed b" }]
     for (const handoff of handoffs) {
-      const prepared = commit(transitionWorkflow(state, { type: "START" }))
+      const prepared = commit(transitionDecodedWorkflow(state, { type: "START" }))
       if (prepared.command.kind !== "prepare_attempt") throw new Error("Start did not prepare an attempt")
       const { attemptId } = prepared.command.attempt
-      commit(transitionWorkflow(state, { type: "ATTEMPT_STARTED", attemptId, conversationId: `conversation-${attemptId}` }))
-      commit(transitionWorkflow(state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId, conversationId: `conversation-${attemptId}`, handoff, reassessment: null } }))
+      commit(transitionDecodedWorkflow(state, { type: "ATTEMPT_STARTED", attemptId, conversationId: `conversation-${attemptId}` }))
+      commit(transitionDecodedWorkflow(state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId, conversationId: `conversation-${attemptId}`, handoff, reassessment: null } }))
     }
     const committed = state.context.committed
     expect(replayWorkflowControl(facts)).toEqual(committed)

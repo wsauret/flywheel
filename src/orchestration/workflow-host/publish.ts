@@ -35,7 +35,7 @@ import type { WorkflowLaunchAgentModels } from "../../infra/workflow-types.js"
  *  not install. Startup validation cannot decide this: packages hot reload, so
  *  a package present when definitions loaded can be gone by launch time. The
  *  launch is refused before compilation, never later at prompt assembly. */
-export class WorkflowRequiredSkillsMissingError extends Schema.TaggedError<WorkflowRequiredSkillsMissingError>()(
+class WorkflowRequiredSkillsMissingError extends Schema.TaggedError<WorkflowRequiredSkillsMissingError>()(
   "WorkflowRequiredSkillsMissingError",
   {
     workflowDefinitionId: Schema.String,

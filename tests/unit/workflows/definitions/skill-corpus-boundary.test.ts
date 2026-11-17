@@ -6,7 +6,6 @@ import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-m
 import { bashModule } from "../../../../src/orchestration/modules/bash/module.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import {
-  bundledCorpusIdentity,
   skillPackageManifestIdentity,
   publishSkillRevision,
   type BundledSkillPackage,
@@ -36,21 +35,25 @@ function bundled(id: string, sourceKind: "agent" | "module", sha256: string, byt
   };
 }
 
+/** The corpus identity that a published revision records. */
+function corpusIdentity(corpus: ReadonlyMap<string, BundledSkillPackage>) {
+  return publishSkillRevision(1, new Map(), corpus).bundledCorpusIdentity;
+}
+
 describe("production core skill boundary", () => {
   it("identifies bundled packages in canonical id order", () => {
     const left = bundled("zeta", "module", "b".repeat(64), 12);
     const right = bundled("alpha", "agent", "a".repeat(64), 7);
 
-    const first = bundledCorpusIdentity(new Map([[left.id, left], [right.id, right]]));
-    const reordered = bundledCorpusIdentity(new Map([[right.id, right], [left.id, left]]));
-    const changed = bundledCorpusIdentity(new Map([
+    const first = corpusIdentity(new Map([[left.id, left], [right.id, right]]));
+    const reordered = corpusIdentity(new Map([[right.id, right], [left.id, left]]));
+    const changed = corpusIdentity(new Map([
       [right.id, { ...right, packageIdentity: { ...right.packageIdentity, bytes: 8 } }],
       [left.id, left],
     ]));
 
     expect(first).toEqual(reordered);
     expect(first).toEqual({ version: 1, sha256: expect.stringMatching(/^[0-9a-f]{64}$/), bytes: 19 });
-    expect(publishSkillRevision(1, new Map(), new Map([[left.id, left], [right.id, right]])).bundledCorpusIdentity).toEqual(first);
     expect(skillPackageManifestIdentity([
       { id: right.id, packageIdentity: right.packageIdentity },
       { id: left.id, packageIdentity: left.packageIdentity },

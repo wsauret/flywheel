@@ -1,0 +1,14 @@
+id: bench-implement
+name: Implement Step Benchmark
+description: Run the bundled implement step against a recorded plan fixture.
+user-invocable: false
+disable-model-invocation: true
+steps:
+  implement:
+    file: bundled:steps/fly.implement.md
+    writes:
+      - id: implementation
+        lifetime: durable
+        supersedes: []
+flow:
+  - step: implement

@@ -1,0 +1,37 @@
+id: debug
+name: Debug
+description: Investigate, fix, and verify a small reported issue.
+use_when: >
+  Use for a small investigation and fix when the user reports a specific bug
+  and the root cause is not known. The workflow separates root-cause analysis,
+  the fix, and verification. Keep obvious fixes and clear local changes
+  in-process.
+confirmation_template: debug
+steps:
+  investigate:
+    file: steps/debug.investigate.md
+    writes:
+      - id: debug-investigation
+        lifetime: durable
+        supersedes: []
+  fix:
+    file: steps/debug.fix.md
+    writes:
+      - id: debug-fix
+        lifetime: durable
+        supersedes: []
+  verify:
+    file: steps/debug.verify.md
+    writes:
+      - id: debug-verification
+        lifetime: durable
+        supersedes: []
+flow:
+  - step: investigate
+    then:
+      step: fix
+      when: hypothesis
+  - while: verify.defects
+    maxIterations: 3
+    do: verify
+    then: fix

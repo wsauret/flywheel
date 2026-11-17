@@ -136,13 +136,22 @@ export function testHost(
   store: EventReader & AsyncEventWriter,
   overrides: TestHostOverrides = {},
 ): ReturnType<typeof createWorkflowVmHost> {
+  return createWorkflowVmHost(testHostDeps(store, overrides))
+}
+
+/** The deps of a test host over `store`: one session that launches the
+ *  fixture workflow, whose attempts the test supplies. */
+export function testHostDeps(
+  store: EventReader & AsyncEventWriter,
+  overrides: TestHostOverrides = {},
+): WorkflowVmHostDeps {
   const selectedWorkflow = overrides.workflow ?? workflow
   const selectedSkills = overrides.skills ?? fixtureSkills
   const selectedPersonas = overrides.personas ?? new Map()
   const definitionRevision = overrides.definitionRevision
     ?? fixtureRevision(selectedSkills, selectedPersonas)
   const { workflow: _, skills: __, personas: ___, ...hostOverrides } = overrides
-  return createWorkflowVmHost({
+  return {
     ...quietHostDeps(overrides.writer ?? store),
     requestAddenda: async () => [],
     servedConversations: async () => new Set(),
@@ -158,7 +167,7 @@ export function testHost(
     emit: () => {},
     now: () => 10,
     ...hostOverrides,
-  })
+  }
 }
 
 type HistoricalFollowUpRequest = Pick<Extract<DecodedWorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" }>, "identity" | "input">

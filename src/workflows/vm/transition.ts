@@ -13,7 +13,6 @@ import {
 } from "./commands.js";
 import {
   parseWorkflowMachineContext,
-  parseWorkflowMachineState,
   type PendingWorkflowCommit,
   type VmLifecycle,
   type WorkflowMachineContext,
@@ -22,7 +21,6 @@ import {
 import {
   CURRENT_PROPOSAL_ENCODING,
   parseFollowUpTransferEvent,
-  parseWorkflowEvent,
   type WorkflowEvent,
   type DecodedWorkflowEvent,
   type DecodedWorkflowProposalEvent,
@@ -305,11 +303,6 @@ export function initializeWorkflow(control: CommittedWorkflowControl): WorkflowT
   return { state: stateFromSnapshot(ready), command: commandFromActions(actions) };
 }
 
-/** Rebuild a pure XState snapshot from committed control without snapshot persistence. */
-export function replayWorkflow(control: CommittedWorkflowControl): WorkflowMachineState {
-  return replayDecodedWorkflow(parseCommittedWorkflowControl(control));
-}
-
 /** Rebuild XState from control that a strict internal boundary already decoded. */
 export function replayDecodedWorkflow(control: CommittedWorkflowControl): WorkflowMachineState {
   const snapshot = workflowMachine.resolveState({
@@ -317,11 +310,6 @@ export function replayDecodedWorkflow(control: CommittedWorkflowControl): Workfl
     context: { committed: control, pending: null },
   });
   return stateFromSnapshot(snapshot);
-}
-
-/** Drive one synchronous deterministic event through the static workflow machine. */
-export function transitionWorkflow(state: WorkflowMachineState, event: WorkflowEvent): WorkflowTransitionResult {
-  return transitionDecodedWorkflow(parseWorkflowMachineState(state), parseWorkflowEvent(event));
 }
 
 /** Drive values that a strict internal boundary already decoded through XState. */

@@ -20,7 +20,6 @@ import { isRecord } from "../infra/record.js";
 import { isQualifiedSkillId } from "../infra/skill-id.js";
 import { ToolScopingSchema } from "../infra/workflow-types.js";
 import { ArtifactContractsFrontmatterSchema } from "./artifact-contracts.js";
-import { hashDefinition } from "./definition-hash.js";
 import { retiredHandoffContract, RETIRED_SPEC_HANDOFF, SHIPPED_PLAN_CONTRACT } from "./retired-handoff-contracts.js";
 import type { SkillRegistryRevision } from "./skill-schema.js";
 import type { OutputObject } from "./output-contract/grammar.js";
@@ -83,24 +82,12 @@ const decodeBindingRecord = Schema.decodeUnknownSync(RetiredBindingSchema, { onE
  *  after it drops the keys that build had already retired: `selfReview`, and
  *  the `ask_user` grant. The provenance record holds what that build
  *  recorded, which had neither. */
-export function decodeRetiredBinding(authored: unknown): RetiredBinding {
+function decodeRetiredBinding(authored: unknown): RetiredBinding {
   if (!isRecord(authored)) return decodeBindingRecord(authored);
   const { selfReview: _selfReview, ...kept } = authored;
   if (!isRecord(kept.toolScoping) || !("ask_user" in kept.toolScoping)) return decodeBindingRecord(kept);
   const { ask_user: _askUser, ...toolScoping } = kept.toolScoping;
   return decodeBindingRecord({ ...kept, toolScoping });
-}
-
-/** The hash the last pre-cutover build recorded for one binding: its
- *  canonical record, with the `writes` and `allowedChildSkills` defaults
- *  filled and its id added. */
-export function retiredBindingSha256(bindingId: string, binding: RetiredBinding): string {
-  return hashDefinition({
-    ...binding,
-    writes: binding.writes ?? [],
-    ...(binding.external ? { allowedChildSkills: binding.allowedChildSkills ?? [] } : {}),
-    bindingId,
-  }).sha256;
 }
 
 type RawDocument = { readonly [key: string]: unknown };

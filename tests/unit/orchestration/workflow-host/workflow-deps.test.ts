@@ -5,7 +5,7 @@ import { Redacted } from "effect";
 import { bindWorkflowDepsToSession, prepareWorkflowDeps } from "../../../../src/orchestration/workflow-host/deps";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestration/config/schema";
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
-import type { PrepareWorkflowDepsInput, WorkflowDepsOverrides } from "../../../../src/orchestration/workflow-host/deps";
+import type { PrepareWorkflowDepsInput } from "../../../../src/orchestration/workflow-host/deps";
 import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js";
 import type { AccountDirectories } from "../../../../src/infra/directory-authorities.js";
 import { testDirectories } from "../../../helpers/directories.js";
@@ -17,6 +17,8 @@ import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchest
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
 import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+
+type WorkflowDepsOverrides = NonNullable<PrepareWorkflowDepsInput["overrides"]>;
 
 /** Account authorities of the isolated test account home. A case that reads the
  *  global config publishes its own instead. */

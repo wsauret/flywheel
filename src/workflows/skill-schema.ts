@@ -254,7 +254,7 @@ export function skillPackageManifestIdentity(manifest: readonly SkillPackageMani
 
 /** Identify every bundled package in canonical id order. Each id is byte-length
  * framed before the exact package digest and admitted byte count. */
-export function bundledCorpusIdentity(corpus: ReadonlyMap<string, BundledSkillPackage>): BundledCorpusIdentity {
+function bundledCorpusIdentity(corpus: ReadonlyMap<string, BundledSkillPackage>): BundledCorpusIdentity {
   return skillPackageManifestIdentity([...corpus.values()].map(({ id, packageIdentity }) => ({ id, packageIdentity })));
 }
 

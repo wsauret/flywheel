@@ -40,14 +40,6 @@ export type PendingWorkflowCommit = typeof PendingWorkflowCommitSchema.Type;
 export type WorkflowMachineContext = typeof WorkflowMachineContextSchema.Type;
 export type WorkflowMachineState = typeof WorkflowMachineStateSchema.Type;
 
-export function parseWorkflowMachineState(value: unknown): WorkflowMachineState {
-  return Schema.decodeUnknownSync(WorkflowMachineStateSchema, { onExcessProperty: "error" })(value);
-}
-
 export function parseWorkflowMachineContext(value: unknown): WorkflowMachineContext {
   return Schema.decodeUnknownSync(WorkflowMachineContextSchema, { onExcessProperty: "error" })(value);
-}
-
-export function parsePendingWorkflowCommit(value: unknown): PendingWorkflowCommit {
-  return Schema.decodeUnknownSync(PendingWorkflowCommitSchema, { onExcessProperty: "error" })(value);
 }

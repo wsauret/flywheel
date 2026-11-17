@@ -17,7 +17,7 @@ import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../
 import type { HeldRetainedOperation, RetainedOperationAcceptance, RetainedOperationCommitResult } from "../../../../src/orchestration/module-seams"
 import { bindRetainedOperations } from "../../../../src/orchestration/session/module-session-operations"
 import { workflowLaunchHost, type WorkflowLaunchHost } from "../../../../src/orchestration/workflow-host/launch-operation-contract"
-import { loadPathWorkflow, saveWorkflowContent } from "../../../../src/orchestration/workflow-host/path-workflow"
+import { loadPathWorkflow } from "../../../../src/orchestration/workflow-host/path-workflow"
 import { prepareWorkflowLaunch } from "../../../../src/orchestration/workflow-host/publish"
 import type { SessionStore, SessionEntry } from "../../../../src/orchestration/session-store/types"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
@@ -38,6 +38,7 @@ import type { CapabilityRequest, ModulePolicy } from "../../../../src/orchestrat
 import type { ModuleState } from "../../../../src/orchestration/config/module-descriptor"
 import { modelWorkflowLaunchOrigin, workflowLaunchDecision, type ModelWorkflowLaunchOrigin, type WorkflowLaunchTarget } from "../../../../src/orchestration/workflow-host/launch-origin"
 import { fullAuthority } from "../../../helpers/launch-authority"
+import { stagedWorkflowContent } from "../../../helpers/workflow-files.js"
 type WorkflowLaunchDecision = ReturnType<typeof workflowLaunchDecision>["decision"]
 import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager"
@@ -300,7 +301,7 @@ export async function modelLaunch(deps: Pick<WorkflowControllerDeps, "manager">,
 export function fixtureSource(deps: Pick<WorkflowControllerDeps, "projectRoot">, chatSessionId = "parent-chat", content = readFileSync(join(import.meta.dir, "../../../fixtures/workflow-project/workflows/repair.yaml"), "utf8")) {
   const sessionDir = resolveSessionDir(chatSessionId, deps.projectRoot)
   mkdirSync(sessionDir, { recursive: true })
-  return { kind: "path" as const, path: saveWorkflowContent(sessionDir, content) }
+  return { kind: "path" as const, path: stagedWorkflowContent(sessionDir, content).path }
 }
 
 /** The repair fixture, or the workflow file `content`, loaded as a launch from the parent chat's scratch directory. */

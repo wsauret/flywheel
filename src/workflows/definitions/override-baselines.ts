@@ -34,7 +34,7 @@ interface OwnedManifestRead {
   readonly repaired: boolean
 }
 
-export type DefinitionOverrideBaselineManifest =
+type DefinitionOverrideBaselineManifest =
   | { readonly kind: "readable"; readonly records: DefinitionOverrideBaselineRecords }
   | { readonly kind: "unreadable"; readonly reason: UnreadableManifestReason }
 
@@ -115,7 +115,7 @@ function readOwnedManifest(manifestPath: string): OwnedManifestRead {
 }
 
 /** Observes each physical override once. Read-only observations need no mutation ownership. Snapshot publication completes before a new baseline is committed. */
-export async function acknowledgeDefinitionOverrideBaselines(options: AcknowledgeDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineRecords> {
+async function acknowledgeDefinitionOverrideBaselines(options: AcknowledgeDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineRecords> {
   const observed = readDefinitionOverrideBaselines(options.userDataRoot)
   if (observed.kind === "readable") {
     const missing = options.resolutions.some((resolution) => options.catalog.files[resolution.target] !== undefined

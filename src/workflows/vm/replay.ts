@@ -1,4 +1,4 @@
-import type { AsyncEventWriter, StoredFact } from "../../infra/event-store-types.js"
+import type { AsyncEventWriter } from "../../infra/event-store-types.js"
 import { buildDefinitionDriftRejectedFact } from "../definition-provenance-fact-writers.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../agent-resolution.js"
 import type { ProjectDefinitionRegistryRevision } from "../definition-registry.js"
@@ -47,8 +47,7 @@ import {
 } from "./persona-identity-proofs.js"
 import { leanPromptDroppedSkills, skillsBeforeLeanPrompt, withoutLeanPromptDependencies } from "./skill-identity-proofs.js"
 import type { WorkflowEvent } from "./events.js"
-import { recoverWorkflowControl } from "./recovery.js"
-import { WorkflowDriftEvidencePersistenceError, WorkflowMalformedStateError } from "./host-types.js"
+import { WorkflowDriftEvidencePersistenceError } from "./host-types.js"
 import {
   buildDefinitionIdentityAdoptedFact,
   buildDefinitionIdentityMigratedFact,
@@ -66,25 +65,6 @@ export interface WorkflowReplayDeps {
   readonly workflow: WorkflowDefinition
   readonly writer: AsyncEventWriter
   readonly now?: () => number
-}
-
-/** Strictly validate committed facts, reject definition drift, rebuild control, then apply one pure event. */
-export async function replayWorkflowFromFacts(
-  facts: readonly StoredFact[],
-  event: WorkflowEvent,
-  deps: WorkflowReplayDeps,
-  identityOverride?: DefinitionIdentityVersionOverride,
-): Promise<WorkflowTransitionResult> {
-  const plan = recoverWorkflowControl(facts)
-  if (!plan.executable) {
-    const reason = plan.reasons.map(({ kind }) => kind).join(", ")
-    throw new WorkflowMalformedStateError({
-      sessionId: deps.sessionId,
-      message: `Workflow session ${deps.sessionId} has non-executable durable state: ${reason}`,
-    })
-  }
-  const control = plan.control
-  return continueWorkflowReplay(control, event, deps, identityOverride)
 }
 
 /** Check definition identity and apply one event to control that strict replay already decoded. */

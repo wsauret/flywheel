@@ -37,7 +37,7 @@ export interface DefinitionLineageView {
 
 const DEFINITION_PROVENANCE_FACT_TYPES = factTypes(DefinitionProvenanceFactSchemas)
 
-export function loadDefinitionLineageFromEvents(events: readonly StoredFact[]): DefinitionLineageView {
+function loadDefinitionLineageFromEvents(events: readonly StoredFact[]): DefinitionLineageView {
   return reduceEvents(events, {
     initialState,
     reduce: reduceDefinitionEvent,

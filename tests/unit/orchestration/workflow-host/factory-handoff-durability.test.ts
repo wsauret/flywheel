@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { buildArtifactContext } from "../../../../src/orchestration/workflow-host/artifact-context.js"
 import { createOutputAcceptContext } from "../../../../src/orchestration/workflow-host/output-accept-context.js"
 import { fixture } from "../session/_session-change-fixtures.js"
-import { validateAgentOutput } from "../../../../src/workflows/output-contract/accept.js"
+import { acceptAgentOutput } from "../../../../src/workflows/output-contract/accept.js"
 import { compileOutput } from "../../../../src/workflows/output-contract/compile.js"
 
 const research = compileOutput({ fields: { file_path: { type: "path", description: "The research document." } } })
@@ -25,10 +25,10 @@ describe("workflow host handoff authority", () => {
       writeFileSync(join(executionCwd, "src", "marker.ts"), "export const marker = 'WORKER';\n")
 
       const validation = createOutputAcceptContext(executionCwd)
-      const accepted = await validateAgentOutput(research, { file_path: "docs/research/audit.md", summary: "done" }, validation)
-      expect(accepted.issues).toEqual([])
-      const parentOnly = await validateAgentOutput(research, { file_path: "docs/research/parent-only.md", summary: "done" }, validation)
-      expect(parentOnly.issues.map(({ path }) => path)).toEqual(["file_path"])
+      const accepted = await acceptAgentOutput(research, { file_path: "docs/research/audit.md", summary: "done" }, validation)
+      expect(accepted.ok).toBe(true)
+      const parentOnly = await acceptAgentOutput(research, { file_path: "docs/research/parent-only.md", summary: "done" }, validation)
+      expect(parentOnly.ok ? [] : parentOnly.problems.map(({ path }) => path)).toEqual(["file_path"])
 
       const artifactContext = await buildArtifactContext([{ agentName: "Research", conversationIds: [], handoffs: [{
         summary: "done",

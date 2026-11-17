@@ -23,7 +23,7 @@ import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runn
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import { validateWorkflowBootstrap } from "../../../../src/workflows/vm/bootstrap-validation.js"
 import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact } from "../../../../src/workflows/vm/session-facts.js"
-import { buildAttemptRecoveredFact } from "../../../../src/workflows/vm/fact-drafts.js"
+import { historicalAttemptRecoveredFact } from "../../../helpers/workflow-root-fixtures.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
@@ -296,7 +296,7 @@ describe("workflow recovery atomicity", () => {
     fixture.store.appendBatch([
       // The version 1 producer also wrote the inert issue and seal lists.
       { ...current, version: 1, payload: { ...current.payload, control: { ...controlBeforePhases(current.payload.control), issues: [], seals: [] } } },
-      buildAttemptRecoveredFact(attempt.id, "old-conversation"),
+      historicalAttemptRecoveredFact(attempt.id, "old-conversation"),
     ].map((fact) => ({ ...fact, aggregateId, sessionId: fixture.sessionId, timestamp: 10 })))
     const conversationBefore = fixture.store.read({ aggregateId: "conversation:old-conversation" })
     expect((await commitWorkflowRecovery(fixture.input())).kind).toBe("committed")
@@ -325,7 +325,7 @@ describe("workflow recovery atomicity", () => {
       identities: { workflow: { source: "recovered", value: "implement" }, step: { source: "recovered", value: attempt.logicalNodeId }, attempt: { source: "recovered", value: attempt.id }, conversation: { source: "recovered", value: "old-conversation" } },
     })
     const seed = fixture.prepared.workflowFacts.find(({ type }) => type === "context.input.seeded")!
-    const finalBatch = [nextRoot, buildAttemptRecoveredFact(attempt.id, "old-conversation"), { ...seed, payload: { workflowDefinitionId: "implement", userRequest: "current epoch task" } }, ...queueFactsForState(null, flattenWorkflowView(finalControl, fixture.bindings))]
+    const finalBatch = [nextRoot, historicalAttemptRecoveredFact(attempt.id, "old-conversation"), { ...seed, payload: { workflowDefinitionId: "implement", userRequest: "current epoch task" } }, ...queueFactsForState(null, flattenWorkflowView(finalControl, fixture.bindings))]
     const stored = fixture.store.appendBatch(finalBatch.map((fact) => ({ ...fact, aggregateId, sessionId: fixture.sessionId, timestamp: 30 })))
     for (const fact of stored) { context.apply(fact); queue.apply(fact) }
     const db = new Database(resolveEventStoreDbFile(fixture.projectRoot))

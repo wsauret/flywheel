@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { acknowledge, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
 import { createMemoryStore, initialFacts, sequentialWorkflow, testHost } from "./host-test-support.js";
 import { replayWorkflowControl, resumesFailedAgents } from "../../../../src/workflows/vm/fact-fold.js";
@@ -43,7 +43,7 @@ describe("a failed workflow step", () => {
   }
 
   it("fails only the failed step, runs the work that does not need it, and fails the run that needed it", () => {
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(failingSourceControl()), {
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), {
       type: "ATTEMPT_FAILED",
       failure: { attemptId: "attempt", kind: "fatal", reason: "unauthorized", conversationId: "conversation" },
     }));
@@ -87,7 +87,7 @@ describe("a failed workflow step", () => {
   } as const);
 
   it("fails the run when its last step fails, because the parent reads that step's output", () => {
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(runningControl()), fatal("attempt")));
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(runningControl()), fatal("attempt")));
     expect(failed.state.lifecycle).toBe("failed");
     expect(failed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "failed"]]);
   });
@@ -95,7 +95,7 @@ describe("a failed workflow step", () => {
   it("completes the run when a failed step's output is read by no step and is not the result", () => {
     const control = failingSourceControl();
     const free: CommittedWorkflowControl = { ...control, graph: { ...control.graph, dependencies: [{ nodeId: "independent", dependsOn: "reader" }] } };
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(free), fatal("attempt")));
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(free), fatal("attempt")));
     const reader = acknowledge(success(startPreparedAttempt(failed).state, {}, "reader:attempt"));
     const settled = acknowledge(success(startPreparedAttempt(reader).state, {}, "independent:attempt"));
     expect(settled.state.lifecycle).toBe("completed");
@@ -105,10 +105,10 @@ describe("a failed workflow step", () => {
 
   // A follow-up exists only in control from before phases.
   it("fails the node of a failed follow-up step, so the step that reads it does not run", () => {
-    const followed = acknowledge(success(replayWorkflow(withReader(runningControl({ then: { step: "follow", when: null, then: null } }))), {}));
+    const followed = acknowledge(success(replayDecodedWorkflow(withReader(runningControl({ then: { step: "follow", when: null, then: null } }))), {}));
     const follow = startPreparedAttempt(followed);
     const followId = follow.state.context.committed.attempts.find(({ definitionId }) => definitionId === "follow")!.id;
-    const failed = acknowledge(transitionWorkflow(follow.state, fatal(followId)));
+    const failed = acknowledge(transitionDecodedWorkflow(follow.state, fatal(followId)));
     expect(failed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "failed"], ["reader", "blocked"]]);
     expect(failed.state.lifecycle).toBe("failed");
   });
@@ -123,7 +123,7 @@ describe("a failed workflow step", () => {
       }],
       guardrails: { ...base.guardrails, attemptMutationsUsed: ["attempt", "attempt-2"].map((attemptId) => ({ attemptId, used: 0 })) },
     });
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(loop), fatal("attempt")));
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(loop), fatal("attempt")));
     expect(failed.state.context.committed.attempts.map(({ id, state }) => [id, state._tag]))
       .toEqual([["attempt", "failed"], ["attempt-2", "skipped"], ["reader:attempt", "pending"]]);
     expect(failed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "failed"], ["reader", "blocked"]]);
@@ -131,11 +131,11 @@ describe("a failed workflow step", () => {
   });
 
   it("resumes a failed run by running only its failed step and the work that waited on it", () => {
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(failingSourceControl()), fatal("attempt")));
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), fatal("attempt")));
     const ended = acknowledge(success(startPreparedAttempt(failed).state, {}, "independent:attempt"));
     expect(ended.state.lifecycle).toBe("failed");
 
-    const resumed = acknowledge(transitionWorkflow(ended.state, { type: "RESUME", readers: {} }));
+    const resumed = acknowledge(transitionDecodedWorkflow(ended.state, { type: "RESUME", readers: {} }));
     expect(resumed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "ready"], ["reader", "pending"], ["independent", "completed"]]);
     expect(resumed.command).toMatchObject({ kind: "prepare_attempt", attempt: { conversationId: null } });
     if (resumed.command.kind !== "prepare_attempt") throw new Error("Expected a continuation");
@@ -162,13 +162,13 @@ describe("a failed workflow step", () => {
       }],
       guardrails: { ...base.guardrails, attemptMutationsUsed: ["attempt", "attempt-2"].map((attemptId) => ({ attemptId, used: 0 })) },
     };
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(loop), {
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(loop), {
       type: "ATTEMPT_FAILED",
       failure: { attemptId: "attempt", kind: "context_overflow", reason: "context overflow", conversationId: "conversation" },
     }));
     expect(failed.state.context.committed.attempts[0]).toMatchObject({ state: { _tag: "failed" }, conversationId: null });
 
-    const resumed = acknowledge(transitionWorkflow(failed.state, { type: "RESUME", readers: {} }));
+    const resumed = acknowledge(transitionDecodedWorkflow(failed.state, { type: "RESUME", readers: {} }));
     expect(resumed.state.context.committed.attempts.filter(({ provenance }) => provenance._tag !== "continuation").map(({ id, state }) => [id, state._tag])).toEqual([["attempt", "failed"], ["attempt-2", "pending"]]);
     expect(resumed.command).toMatchObject({ kind: "prepare_attempt", attempt: { conversationId: null } });
     expect(resumed.state.context.committed.attempts.find(({ provenance }) => provenance._tag === "continuation")).toMatchObject({
@@ -182,7 +182,7 @@ describe("a failed workflow step", () => {
       type: "ATTEMPT_FAILED",
       failure: { attemptId: "attempt", kind: "context_overflow", reason: "context overflow", conversationId: "conversation", toolUses },
     } as const);
-    const continued = acknowledge(transitionWorkflow(replayWorkflow(failingSourceControl()), overflow(4)));
+    const continued = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), overflow(4)));
     expect(continued.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "running"], ["reader", "pending"], ["independent", "ready"]]);
     expect(continued.state.context.committed.attempts.slice(0, 2)).toMatchObject([
       { id: "attempt", state: { _tag: "failed" }, conversationId: null },
@@ -190,19 +190,19 @@ describe("a failed workflow step", () => {
     ]);
     expect(continued.command).toMatchObject({ kind: "prepare_attempt", attempt: { definitionId: "work", provenance: { _tag: "continuation", reason: "overflow" } } });
 
-    const failed = acknowledge(transitionWorkflow(replayWorkflow(failingSourceControl()), overflow(0)));
+    const failed = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), overflow(0)));
     expect(failed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "failed"], ["reader", "blocked"], ["independent", "ready"]]);
     expect(failed.state.context.committed.attempts).toHaveLength(failingSourceControl().attempts.length);
     expect(failed.state.context.committed.attempts[0]?.state).toMatchObject({ _tag: "failed", reason: "context overflow" });
     // A proposal of encoding 13 failed the step for every overflow, and strict replay keeps that.
-    const recorded = acknowledge(transitionDecodedWorkflow(replayWorkflow(failingSourceControl()), overflow(4), 13));
+    const recorded = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), overflow(4), 13));
     expect(recorded.state.context.committed.graph.nodes[0]?.state._tag).toBe("failed");
   });
 
   it("keeps a completed run complete: a Resume proposes nothing", () => {
-    const completed = acknowledge(success(replayWorkflow(runningControl()), {}));
+    const completed = acknowledge(success(replayDecodedWorkflow(runningControl()), {}));
     expect(completed.state.lifecycle).toBe("completed");
-    const resumed = transitionWorkflow(completed.state, { type: "RESUME", readers: {} });
+    const resumed = transitionDecodedWorkflow(completed.state, { type: "RESUME", readers: {} });
     expect(resumed.state.lifecycle).toBe("completed");
     expect(resumed.state.context.pending).toBeNull();
     expect(resumed.command).toEqual({ kind: "none" });
@@ -210,13 +210,13 @@ describe("a failed workflow step", () => {
 
   it("re-derives a recorded encoding 7 failure as the pause that it recorded", () => {
     const failure = { attemptId: "attempt", kind: "fatal", reason: "unauthorized", conversationId: "conversation" } as const;
-    const proposed = transitionDecodedWorkflow(replayWorkflow(failingSourceControl()), { type: "ATTEMPT_FAILED", failure }, 7);
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(failingSourceControl()), { type: "ATTEMPT_FAILED", failure }, 7);
     expect(proposed.state.context.pending?.facts.map(({ type, version }) => `${type}@${version}`)).toEqual(["attempt.reverted@1", "workflow.control.committed@7"]);
     const paused = acknowledge(proposed);
     expect(paused.state.lifecycle).toBe("paused");
     expect(paused.state.context.committed.attempts[0]).toMatchObject({ state: { _tag: "pending" }, conversationId: "conversation" });
 
-    const overflow = acknowledge(transitionDecodedWorkflow(replayWorkflow(runningControl()), {
+    const overflow = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(runningControl()), {
       type: "ATTEMPT_FAILED",
       failure: { ...failure, kind: "context_overflow" },
     }, 7));

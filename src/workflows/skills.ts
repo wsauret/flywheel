@@ -48,14 +48,8 @@ interface OwnedSkillStoreDirs {
 export function ownedSkillStoreDirs(directories: Pick<ProjectDirectories, "projectRoot" | "userDataRoot">): OwnedSkillStoreDirs {
   return {
     project: projectSkillStoreDir(directories.projectRoot),
-    user: userSkillStoreDir(directories.userDataRoot),
+    user: join(directories.userDataRoot, "skills"),
   };
-}
-
-/** The account-global store Flywheel owns. Named on its own because a consumer
- *  that writes only global packages has no project root to pass. */
-export function userSkillStoreDir(userDataRoot: string): string {
-  return join(userDataRoot, "skills");
 }
 
 /** External skill store roots of one project, highest precedence first: the

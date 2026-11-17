@@ -26,7 +26,7 @@ export function workflowProjectionBoundary(reader: AsyncEventStateReadSurface, a
 /** Read the validated family reset position through bounded root-type probes.
  * An aggregate without control history has no boundary; rootless control
  * history is invalid. */
-export async function readWorkflowProjectionBoundary(reader: AsyncEventStateReadSurface, aggregateId: string): Promise<number | undefined> {
+async function readWorkflowProjectionBoundary(reader: AsyncEventStateReadSurface, aggregateId: string): Promise<number | undefined> {
   const { facts: roots } = await reader.readSlice(
     { aggregateId, types: WORKFLOW_ROOT_FACT_TYPES, order: "desc", limit: 1 },
     true,

@@ -7,10 +7,9 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { commitWorkflowRecovery } from "../../../../src/orchestration/workflow-host/recovery-commit.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
-import { buildAttemptRecoveredFact } from "../../../../src/workflows/vm/fact-drafts.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js"
-import { initializedWorkflowFacts, initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
+import { historicalAttemptRecoveredFact, initializedWorkflowFacts, initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js"
 import { buildContextAccumulatedFact, buildContextInputAddedFact, buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 
@@ -78,7 +77,7 @@ describe("complete workflow bootstrap", () => {
       const facts = storedWorkflowFacts([
         buildContextInputSeededFact("workflow", "Predecessor request"),
         recovered,
-        buildAttemptRecoveredFact("attempt", "conversation"),
+        historicalAttemptRecoveredFact("attempt", "conversation"),
       ])
       expect(recoverWorkflowContext(facts).seed?.fact.payload.userRequest ?? null)
         .toBe(version === 1 ? "Predecessor request" : null)

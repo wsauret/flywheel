@@ -20,7 +20,7 @@ type AdmittedStructure = Pick<CommittedWorkflowControl, "graph" | "attempts" | "
  *  when it is a container. A list that has not expanded counts at its worst
  *  case: its items, its declared width times its votes, each with one agent
  *  for each phase. A repeat also counts each round that it can still add. */
-export interface SubtreeUsage {
+interface SubtreeUsage {
   readonly nodes: number;
   readonly depth: number;
 }
@@ -133,7 +133,7 @@ function futureRounds(graph: WorkflowGraph, repeat: RepeatNode, maxInserts: numb
  *  `worstCase`, every list counts at its worst case, expanded or not, which
  *  is the bound the compiler derives from the authored phases. Admission and
  *  inspection read usage here, so both report the same numbers. */
-export function subtreeUsage(graph: WorkflowGraph, nodeId: string, measure: "current" | "worstCase" = "current", maxInserts = 0): SubtreeUsage {
+function subtreeUsage(graph: WorkflowGraph, nodeId: string, measure: "current" | "worstCase" = "current", maxInserts = 0): SubtreeUsage {
   const owned = children(graph);
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
   const seen = new Set<string>();

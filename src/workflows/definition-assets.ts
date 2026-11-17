@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
-import { workflowAssets as manifestWorkflowAssets, type WorkflowAssets } from "./agents/manifest.js";
+import { workflowAssets as manifestWorkflowAssets } from "./agents/manifest.js";
 
 /** Where a definition file lives. The core root is Flywheel's own workflow
  *  folder, `src/workflows/workflows/`, in a source run and in the compiled
@@ -106,35 +106,34 @@ function filesBelow(dir: string, prefix = ""): string[] {
   });
 }
 
-/** Build a reader over one manifest. Production uses {@link definitionAssets};
- *  a test passes a manifest to read as the compiled binary does.
- *
- *  Both modes read the core root the same way. A core path must match a
- *  listed core file exactly, case included, and only definition file types
- *  are listed. A source run on a case-insensitive file system therefore
- *  refuses the same path that the binary refuses. */
-export function createDefinitionAssetReader(manifest: WorkflowAssets, coreDir: string = coreWorkflowsDir): DefinitionAssetReader {
-  const manifestMode = Object.keys(manifest).length > 0;
-  const listCoreFiles = (): readonly string[] => (manifestMode
-    ? Object.keys(manifest).filter((key) => key.startsWith(CORE_MANIFEST_PREFIX)).map((key) => key.slice(CORE_MANIFEST_PREFIX.length))
-    : filesBelow(coreDir)
+/** Whether the build filled the manifest, decided once when the module loads. */
+const manifestMode = Object.keys(manifestWorkflowAssets).length > 0;
+
+// Both modes read the core root the same way. A core path must match a
+// listed core file exactly, case included, and only definition file types
+// are listed. A source run on a case-insensitive file system therefore
+// refuses the same path that the binary refuses.
+function listCoreFiles(): readonly string[] {
+  return (manifestMode
+    ? Object.keys(manifestWorkflowAssets).filter((key) => key.startsWith(CORE_MANIFEST_PREFIX)).map((key) => key.slice(CORE_MANIFEST_PREFIX.length))
+    : filesBelow(coreWorkflowsDir)
   ).filter(isDefinitionAsset).sort();
-  const readCore = (path: string): string => {
-    // A source run lists the tree again on each read, so a file added during
-    // the session loads on the next reload, as an edited file does.
-    const content = !listCoreFiles().includes(path) ? undefined
-      : manifestMode ? manifest[`${CORE_MANIFEST_PREFIX}${path}`]
-      : readFileSync(join(coreDir, ...path.split("/")), "utf8");
-    if (content === undefined) throw new Error(`Bundled definition file ${BUNDLED_PREFIX}${path} is not in this build`);
-    return content;
-  };
-  return {
-    read: (location) => location.root.kind === "core"
-      ? readCore(location.path)
-      : readFileSync(join(location.root.dir, ...location.path.split("/")), "utf8"),
-    listCoreFiles,
-  };
+}
+
+function readCore(path: string): string {
+  // A source run lists the tree again on each read, so a file added during
+  // the session loads on the next reload, as an edited file does.
+  const content = !listCoreFiles().includes(path) ? undefined
+    : manifestMode ? manifestWorkflowAssets[`${CORE_MANIFEST_PREFIX}${path}`]
+    : readFileSync(join(coreWorkflowsDir, ...path.split("/")), "utf8");
+  if (content === undefined) throw new Error(`Bundled definition file ${BUNDLED_PREFIX}${path} is not in this build`);
+  return content;
 }
 
 /** The process reader. */
-export const definitionAssets: DefinitionAssetReader = createDefinitionAssetReader(manifestWorkflowAssets);
+export const definitionAssets: DefinitionAssetReader = {
+  read: (location) => location.root.kind === "core"
+    ? readCore(location.path)
+    : readFileSync(join(location.root.dir, ...location.path.split("/")), "utf8"),
+  listCoreFiles,
+};

@@ -3,7 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { resolveEventStoreDbFile, resolveSessionDir } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
-import { workflowLaunchTargets, WORKFLOW_LAUNCH_RETRY_INSTRUCTION } from "../../../../src/orchestration/workflow-host/launch-origin.js"
+import { approvalRefusal, workflowLaunchTargets } from "../../../../src/orchestration/workflow-host/launch-origin.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND, type WorkflowLaunchOperation } from "../../../../src/orchestration/workflow-host/launch-operation-contract.js"
 import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input-projection.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
@@ -20,6 +20,8 @@ const CHAT = "chat-1"
 const CONVERSATION = "conv-1"
 const CONFIRMATION = "toolu-approval"
 const TOOL_CALL = "toolu-launch"
+/** What every approval refusal tells the model to do next. */
+const RETRY = approvalRefusal("").recovery
 
 afterEach(cleanupProjectRoots)
 
@@ -57,7 +59,7 @@ async function consumedBy(setup: Awaited<ReturnType<typeof askSetup>>) {
 async function refused(setup: Awaited<ReturnType<typeof askSetup>>, result: Awaited<ReturnType<typeof setup.launch>>, reason: string, retry = true) {
   if (!("error" in result)) throw new Error("expected a refusal")
   expect(result.error).toContain(reason)
-  expect(result.recovery).toBe(retry ? WORKFLOW_LAUNCH_RETRY_INSTRUCTION : undefined)
+  expect(result.recovery).toBe(retry ? RETRY : undefined)
   expect(setup.prepareCalls()).toBe(0)
   expect(setup.manager.publishWorkflow).not.toHaveBeenCalled()
   expect(setup.workflowHosts._startCalls).toEqual([])
@@ -108,7 +110,7 @@ describe("model file launches under Workflows Ask", () => {
     expect(setup.manager.publishWorkflow).not.toHaveBeenCalledWith(expect.objectContaining({ runtimeInvocation: expect.anything() }))
     expect(await consumedBy(setup)).toBe(TOOL_CALL)
     const second = await setup.launch({ toolUseId: "second" })
-    expect(second).toMatchObject({ error: expect.stringContaining("was already used"), recovery: WORKFLOW_LAUNCH_RETRY_INSTRUCTION })
+    expect(second).toMatchObject({ error: expect.stringContaining("was already used"), recovery: RETRY })
     expect(setup.manager.publishWorkflow).toHaveBeenCalledTimes(1)
   })
 
@@ -168,7 +170,7 @@ describe("model file launches under Workflows Ask", () => {
     setup.approve()
     expect(await setup.launch()).toEqual({ error: "Workflow publish error: aggregate conflict" })
     expect(await consumedBy(setup)).toBe(TOOL_CALL)
-    expect(await setup.launch()).toMatchObject({ error: expect.stringContaining("was already used"), recovery: WORKFLOW_LAUNCH_RETRY_INSTRUCTION })
+    expect(await setup.launch()).toMatchObject({ error: expect.stringContaining("was already used"), recovery: RETRY })
   })
 
   it("keeps approval reusable when provider preparation fails", async () => {

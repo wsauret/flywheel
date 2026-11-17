@@ -268,10 +268,6 @@ type ReplayedFollowUpRunEvent =
 export type DecodedWorkflowProposalEvent = WorkflowProposalEvent | ReplayedFollowUpRunEvent;
 export type DecodedWorkflowEvent = WorkflowEvent | ReplayedFollowUpRunEvent;
 
-export function parseWorkflowEvent(value: unknown): WorkflowEvent {
-  return Schema.decodeUnknownSync(WorkflowEventSchema, { onExcessProperty: "error" })(value);
-}
-
 export function parseFollowUpTransferEvent(value: unknown): FollowUpTransferEvent {
   return Schema.decodeUnknownSync(FollowUpTransferEventSchema, { onExcessProperty: "error" })(value);
 }

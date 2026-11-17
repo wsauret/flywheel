@@ -4,7 +4,6 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { migrateWorkflowDefinitionIdentityContext } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity.js"
 import { migrateDefinitionIdentitySkillCatalog } from "../../../../src/orchestration/modules/workflows/migrations/workflow-definition-identity-skill-catalog.js"
-import { DEFINITION_IDENTITY_RENAME_MIGRATION_ID } from "../../../../src/workflows/vm/definition-identity.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { buildDefinitionIdentityMigratedFact, workflowAggregateId } from "../../../../src/workflows/vm/session-facts.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
@@ -46,7 +45,7 @@ describe("pre-rename workflow history", () => {
     seedPreRenameAggregate(dbFile, sessionId)
     const current = preCutoverIdentity(WORKFLOW_ID)
     const v1Identity = { ...current, skills: current.skills.map((skill) => skill.skillId === "fly.implementation-spec" ? { ...skill, skillId: "implementation-spec" } : skill) }
-    const fact = buildDefinitionIdentityMigratedFact(DEFINITION_IDENTITY_RENAME_MIGRATION_ID, replay(dbFile, sessionId).definitionIdentity, v1Identity)
+    const fact = buildDefinitionIdentityMigratedFact("workflow-definition-identity-implementation-first-rename-v1", replay(dbFile, sessionId).definitionIdentity, v1Identity)
     const store = createSqliteEventStore(dbFile)
     try {
       store.append({ ...fact, aggregateId: workflowAggregateId(sessionId), sessionId, timestamp: 2 })

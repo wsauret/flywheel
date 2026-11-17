@@ -24,8 +24,10 @@ import {
   personaIdentitySha256,
   WorkflowDefinitionDriftError,
   type DefinitionIdentity,
+  type DefinitionIdentityVersionOverride,
 } from "../../../../src/workflows/vm/definition-identity.js"
-import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
+import { continueWorkflowReplay, type WorkflowReplayDeps } from "../../../../src/workflows/vm/replay.js"
+import type { WorkflowEvent } from "../../../../src/workflows/vm/events.js"
 import { foldWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { atCapabilityMarkers, atCapabilityTextBase, beforeExplorerModelClaim, beforeLeanPersonaText, beforeLexiconCut, beforeToolSteeringCut, beforeUatScratchpadRule } from "../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
@@ -35,7 +37,7 @@ import {
   parseWorkflowSessionFact,
   type WorkflowSessionFact,
 } from "../../../../src/workflows/vm/session-facts.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill, testSkillRevision, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
@@ -110,18 +112,26 @@ function deps(
   }
 }
 
+/** Replays `facts` as a resumed run does: strict recovery of control, then
+ *  the definition identity check and one event. */
+async function replayFromFacts(facts: readonly StoredFact[], event: WorkflowEvent, replayDeps: WorkflowReplayDeps, identityOverride?: DefinitionIdentityVersionOverride) {
+  const plan = recoverWorkflowControl(facts)
+  if (!plan.executable) throw new Error(`The run does not replay: ${plan.reasons.map(({ kind }) => kind).join(", ")}`)
+  return continueWorkflowReplay(plan.control, event, replayDeps, identityOverride)
+}
+
 describe("workflow fact replay", () => {
   it("strictly folds committed facts into a fresh machine before the next pure transition", async () => {
     const initialized = buildWorkflowControlInitializedFact(
       compileWorkflowControl(workflow, bindings, { skills }),
     )
     const committed = initialized.payload.control
-    const paused = transitionWorkflow(initializeWorkflow(committed).state, {
+    const paused = transitionDecodedWorkflow(initializeWorkflow(committed).state, {
       type: "PAUSE", reason: "operator",
     })
     if (paused.command.kind !== "commit" || !paused.state.context.pending) throw new Error("Pause must propose a commit")
 
-    const result = await replayWorkflowFromFacts(
+    const result = await replayFromFacts(
       [
         storedFact(initialized, 0),
         ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1)),
@@ -136,17 +146,6 @@ describe("workflow fact replay", () => {
     expect(result.command.kind).toBe("commit")
   })
 
-  it("rejects malformed internally owned control facts without tolerance", async () => {
-    const initialized = buildWorkflowControlInitializedFact(
-      compileWorkflowControl(workflow, bindings, { skills }),
-    )
-    const malformed = { ...storedFact(initialized, 0), payload: { ...initialized.payload, extra: true } }
-    const appends: GuardedEventStoreAppend[] = []
-
-    await expect(replayWorkflowFromFacts([malformed], { type: "START" }, deps(appends))).rejects.toThrow()
-    expect(appends).toEqual([])
-  })
-
   it("reads a stored companion by its type and position, so its unreadable body does not stop the run", async () => {
     const initialized = buildWorkflowControlInitializedFact(
       compileWorkflowControl(workflow, bindings, { skills }),
@@ -157,7 +156,7 @@ describe("workflow fact replay", () => {
       payload: {},
     }
 
-    const result = await replayWorkflowFromFacts([storedFact(initialized, 0), malformedQueueFact], { type: "START" }, deps([]))
+    const result = await replayFromFacts([storedFact(initialized, 0), malformedQueueFact], { type: "START" }, deps([]))
     expect(result.command.kind).toBe("commit")
     // A batch that no store positioned is a current write, so every body
     // still parses strictly.
@@ -192,7 +191,7 @@ describe("workflow fact replay", () => {
       type: "queue.deleted", version: 1, actor: "flywheel", payload: {},
     })
 
-    await expect(replayWorkflowFromFacts(
+    await expect(replayFromFacts(
       [storedFact(initialized, 0), storedFact(trailing, 1)],
       { type: "START" },
       deps(appends),
@@ -219,7 +218,7 @@ describe("workflow fact replay", () => {
     const { adopted, facts } = legacyAdoption()
     const appends: GuardedEventStoreAppend[] = []
 
-    const result = await replayWorkflowFromFacts(
+    const result = await replayFromFacts(
       facts,
       { type: "START" },
       deps(appends, dependentSkills),
@@ -233,7 +232,7 @@ describe("workflow fact replay", () => {
     const { facts } = legacyAdoption()
     const appends: GuardedEventStoreAppend[] = []
 
-    await expect(replayWorkflowFromFacts(
+    await expect(replayFromFacts(
       facts,
       { type: "START" },
       deps(appends, dependentSkills),
@@ -255,7 +254,7 @@ describe("workflow fact replay", () => {
     const { facts, personas, current } = pausedOverTurnCaps()
     const appends: GuardedEventStoreAppend[] = []
 
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, agentWorkflow))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, agentWorkflow))
 
     expect(appends).toHaveLength(3)
     expect(appends).toMatchObject([
@@ -266,7 +265,7 @@ describe("workflow fact replay", () => {
     expect(result.state.context.committed.definitionIdentity).toEqual(current)
     const adoptions = appends.map(({ expectedSeq: _expectedSeq, ...persisted }, index) => ({ ...persisted, id: `adoption-${index}`, position: facts.length + index + 1, seq: facts.length + index }))
     const resumedAgain: GuardedEventStoreAppend[] = []
-    await replayWorkflowFromFacts([...facts, ...adoptions], { type: "RESUME", readers: {} }, deps(resumedAgain, skills, personas, agentWorkflow))
+    await replayFromFacts([...facts, ...adoptions], { type: "RESUME", readers: {} }, deps(resumedAgain, skills, personas, agentWorkflow))
     expect(resumedAgain).toEqual([])
   })
 
@@ -281,12 +280,12 @@ describe("workflow fact replay", () => {
     expect(compiled.definitionIdentity.skills.map(({ skillId }) => skillId)).toEqual(["implementation", "work"])
     const recorded = { ...compiled.definitionIdentity, personas: [], skills: compiled.definitionIdentity.skills.filter(({ skillId }) => skillId === "work") }
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
     const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, advisorSkills, personas))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, advisorSkills, personas))
     expect(appends).toHaveLength(1)
     expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_DEFAULT_ADVISOR_MIGRATION_ID } })
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
@@ -297,7 +296,7 @@ describe("workflow fact replay", () => {
     const adopted = [...facts, { ...persisted, id: "adoption", position: facts.length + 1, seq: facts.length }]
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("advisor", { ...advisor, description: `${advisor.description} Edited.` })
-    await expect(replayWorkflowFromFacts(adopted, { type: "RESUME", readers: {} }, deps(rejected, advisorSkills, edited))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(adopted, { type: "RESUME", readers: {} }, deps(rejected, advisorSkills, edited))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
     expect(rejected[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "advisor" }] } })
   })
@@ -309,7 +308,7 @@ describe("workflow fact replay", () => {
     const appends: GuardedEventStoreAppend[] = []
 
     const edited = new Map(personas).set("helper", { ...helper, description: `${helper.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, edited, agentWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, edited, agentWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
 
     expect(appends.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
     expect(appends[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "helper" }] } })
@@ -324,18 +323,18 @@ describe("workflow fact replay", () => {
     const { maxTurns: _budget, ...historical } = beforeLexiconCut(atCapabilityTextBase(explorer))
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(historical).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
     const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
     expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_LEXICON_PERSONAS_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -347,18 +346,18 @@ describe("workflow fact replay", () => {
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(beforeToolSteeringCut(beforeLexiconCut(atCapabilityTextBase(explorer)))).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
     const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
     expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_TOOL_STEERING_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -372,18 +371,18 @@ describe("workflow fact replay", () => {
     const historical = { ...beforeToolSteeringCut(beforeLexiconCut(atCapabilityTextBase(explorer))), projectContext: false, engineeringDoctrine: false }
     const recorded = withRecordedExplorer(compiled.definitionIdentity, hashDefinition(historical).sha256)
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
     const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
     expect(appends.map(({ payload }) => "migrationId" in payload ? payload.migrationId : undefined)).toEqual([DEFINITION_IDENTITY_PERSONA_PROMPT_SWITCHES_MIGRATION_ID, DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -398,7 +397,7 @@ describe("workflow fact replay", () => {
     })
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, generalWorkflow))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, generalWorkflow))
     expect(appends).toHaveLength(1)
     expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID } })
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
@@ -408,12 +407,12 @@ describe("workflow fact replay", () => {
     const { expectedSeq: _expectedSeq, ...persisted } = adoption
     const adopted = [...facts, { ...persisted, id: "adoption", position: facts.length + 1, seq: facts.length }]
     const resumedAgain: GuardedEventStoreAppend[] = []
-    await replayWorkflowFromFacts(adopted, { type: "RESUME", readers: {} }, deps(resumedAgain, reviewSkills, personas, generalWorkflow))
+    await replayFromFacts(adopted, { type: "RESUME", readers: {} }, deps(resumedAgain, reviewSkills, personas, generalWorkflow))
     expect(resumedAgain).toEqual([])
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("reviewer-code-quality", { ...reviewer, description: `${reviewer.description} Edited.` })
-    await expect(replayWorkflowFromFacts(adopted, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, edited, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(adopted, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, edited, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "reviewer-code-quality" }] } })
   })
 
@@ -424,7 +423,7 @@ describe("workflow fact replay", () => {
     const added = new Map(personas).set("project-security", { ...reviewer, name: "project-security", role: "reviewer-security", requiredSkills: [] })
 
     const rejected: GuardedEventStoreAppend[] = []
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, added, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, reviewSkills, added, generalWorkflow))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
     expect(rejected[0]).toMatchObject({ payload: { changes: [{ component: "persona", personaName: "project-security" }] } })
   })
@@ -445,7 +444,7 @@ describe("workflow fact replay", () => {
     expect(recorded.personas.map(({ personaName }) => personaName)).toEqual(["general"])
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(pausedFacts(compiled, recorded), { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, stepWorkflow))
+    const result = await replayFromFacts(pausedFacts(compiled, recorded), { type: "RESUME", readers: {} }, deps(appends, reviewSkills, personas, stepWorkflow))
     expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_PHASE_GRAMMAR_MIGRATION_ID } }])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
   })
@@ -460,19 +459,19 @@ describe("workflow fact replay", () => {
     const recordedSha256 = personaIdentitySha256(beforeUatScratchpadRule(beforeLeanPersonaText(uat)))
     const recorded = { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === "reviewer-uat" ? { ...entry, sha256: recordedSha256 } : entry) }
     const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-    const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+    const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
     if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
     const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, uatSkills, personas, workflowWithUat))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, uatSkills, personas, workflowWithUat))
     expect(appends).toHaveLength(1)
     expect(appends[0]).toMatchObject({ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_UAT_SCRATCHPAD_MIGRATION_ID } })
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("reviewer-uat", { ...uat, description: `${uat.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, uatSkills, edited, workflowWithUat))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, uatSkills, edited, workflowWithUat))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -495,13 +494,13 @@ describe("workflow fact replay", () => {
     const facts = pausedFacts(compiled, { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === name ? { ...entry, sha256: recordedSha256 } : entry) })
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, eraSkills, personas, workflowWithPersona))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, eraSkills, personas, workflowWithPersona))
     expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID } }])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set(name, { ...persona, description: `${persona.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, eraSkills, edited, workflowWithPersona))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, eraSkills, edited, workflowWithPersona))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -514,13 +513,13 @@ describe("workflow fact replay", () => {
     const facts = pausedFacts(compiled, withRecordedExplorer(compiled.definitionIdentity, personaIdentitySha256(beforeExplorerModelClaim(beforeLeanPersonaText(explorer)))))
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, skills, personas, workflowWithExplorer))
     expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID } }])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set("explorer", { ...explorer, description: `${explorer.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, skills, edited, workflowWithExplorer))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -536,13 +535,13 @@ describe("workflow fact replay", () => {
     const facts = pausedFacts(compiled, { ...compiled.definitionIdentity, personas: compiled.definitionIdentity.personas.map((entry) => entry.personaName === name ? { ...entry, sha256: recordedSha256 } : entry) })
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, personas, workflowWithAgent))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, personas, workflowWithAgent))
     expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID } }])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const edited = new Map(personas).set(name, { ...agent, description: `${agent.description} Edited.` })
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, leanSkills, edited, workflowWithAgent))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, leanSkills, edited, workflowWithAgent))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 
@@ -556,13 +555,13 @@ describe("workflow fact replay", () => {
     const facts = pausedFacts(compiled, recorded)
 
     const appends: GuardedEventStoreAppend[] = []
-    const result = await replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, new Map(), workflowWithImplementation))
+    const result = await replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(appends, leanSkills, new Map(), workflowWithImplementation))
     expect(appends).toMatchObject([{ type: "workflow.definition_identity.migrated", payload: { migrationId: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID } }])
     expect(result.state.context.committed.definitionIdentity).toEqual(compiled.definitionIdentity)
 
     const rejected: GuardedEventStoreAppend[] = []
     const external = withTestExternalSkills(leanSkills, ["implementation"])
-    await expect(replayWorkflowFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, external, new Map(), workflowWithImplementation))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
+    await expect(replayFromFacts(facts, { type: "RESUME", readers: {} }, deps(rejected, external, new Map(), workflowWithImplementation))).rejects.toBeInstanceOf(WorkflowDefinitionDriftError)
     expect(rejected.map(({ type }) => type)).toEqual(["definition.drift_rejected"])
   })
 })
@@ -604,7 +603,7 @@ function pausedOverTurnCaps() {
     }),
   }
   const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity: recorded })
-  const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+  const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
   if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
   const facts = [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
   return { facts, personas, current }
@@ -629,7 +628,7 @@ function familyReview() {
 /** The facts of a session that `compiled` initialized with `definitionIdentity` recorded, then paused. */
 function pausedFacts(compiled: ReturnType<typeof compileWorkflowControl>, definitionIdentity: DefinitionIdentity): StoredFact[] {
   const initialized = buildWorkflowControlInitializedFact({ ...compiled, definitionIdentity })
-  const paused = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
+  const paused = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "PAUSE", reason: "operator" })
   if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
   return [storedFact(initialized, 0), ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1))]
 }

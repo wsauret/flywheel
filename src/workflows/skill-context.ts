@@ -24,7 +24,7 @@ const UTF8 = new TextDecoder("utf-8", { fatal: true });
 /** One typed entry observed in a contained directory. A link is retained as a
  * candidate so binding can follow it, or report it when it names no
  * directory, instead of silently hiding an install. */
-export interface SkillDirectoryEntry {
+interface SkillDirectoryEntry {
   readonly name: string;
   readonly type: "directory" | "file" | "symlink" | "other";
 }

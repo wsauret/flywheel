@@ -7,7 +7,7 @@ import type { WorkflowEvent } from "../../../../src/workflows/vm/events.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { initializeWorkflow, replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import histories from "./golden/committed-v2-histories.json";
 import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js";
@@ -19,11 +19,11 @@ const review = { step: "review", when: null, then: null } as const;
 function driver(control: ReturnType<typeof runningControl>) {
   const root = buildWorkflowControlInitializedFact(control);
   const facts: WorkflowSessionFact[] = [root];
-  let state = replayWorkflow(root.payload.control);
+  let state = replayDecodedWorkflow(root.payload.control);
   return {
     control: () => state.context.committed,
     send(event: WorkflowEvent) {
-      const result = transitionWorkflow(state, event);
+      const result = transitionDecodedWorkflow(state, event);
       const pending = result.state.context.pending;
       if (!pending) throw new Error("Expected proposal");
       facts.push(...pending.facts);
@@ -83,7 +83,7 @@ describe("lineage-selected authored continuation", () => {
     run.send(success("node:attempt:2", "second"));
     run.send({ type: "ATTEMPT_STARTED", attemptId: "node:attempt:3", conversationId: "third" });
     const control = run.control();
-    expect(() => transitionWorkflow(replayWorkflow(control), { type: "ATTEMPT_BLOCKED", blocked: { attemptId: "node:attempt:3", conversationId: "third", handoff }, correctiveDefinitionId: "work" })).toThrow("authored continuation");
+    expect(() => transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "ATTEMPT_BLOCKED", blocked: { attemptId: "node:attempt:3", conversationId: "third", handoff }, correctiveDefinitionId: "work" })).toThrow("authored continuation");
     const routed = run.send({ type: "ATTEMPT_BLOCKED", blocked: { attemptId: "node:attempt:3", conversationId: "third", handoff }, correctiveDefinitionId: "review" });
     expect(routed.attempts.at(-1)).toMatchObject({ definitionId: "review", parentAttemptId: "node:attempt:3" });
   });
@@ -91,7 +91,7 @@ describe("lineage-selected authored continuation", () => {
   it.each(["gated", "ineligible"] as const)("fails a stored block when its next unit is %s", (kind) => {
     const run = driver(runningControl({ then: { ...review, when: kind === "gated" ? "completed" : null } }));
     const correctiveDefinitionId = null;
-    if (kind === "gated") expect(() => transitionWorkflow(replayWorkflow(run.control()), { type: "ATTEMPT_BLOCKED", blocked: { attemptId: "attempt", conversationId: "conversation", handoff }, correctiveDefinitionId: "review" })).toThrow("authored continuation");
+    if (kind === "gated") expect(() => transitionDecodedWorkflow(replayDecodedWorkflow(run.control()), { type: "ATTEMPT_BLOCKED", blocked: { attemptId: "attempt", conversationId: "conversation", handoff }, correctiveDefinitionId: "review" })).toThrow("authored continuation");
     const failed = run.send({ type: "ATTEMPT_BLOCKED", blocked: { attemptId: "attempt", conversationId: "conversation", handoff }, correctiveDefinitionId });
     expect(failed.status).toBe("failed");
     expect(failed.attempts).toHaveLength(1);
@@ -101,7 +101,7 @@ describe("lineage-selected authored continuation", () => {
   it("uses current lineage when completing a retry from a historical prefix", () => {
     const prefix = histories.retry.slice(0, 5);
     const previous = replayWorkflowControl(prefix);
-    const result = transitionWorkflow(replayWorkflow(previous), success("node:attempt:2", "retry-conversation"));
+    const result = transitionDecodedWorkflow(replayDecodedWorkflow(previous), success("node:attempt:2", "retry-conversation"));
     const pending = result.state.context.pending;
     if (!pending) throw new Error("Expected proposal");
     expect(pending.proposedCommitted.attempts.at(-1)).toMatchObject({ definitionId: "review", parentAttemptId: "node:attempt:2" });
@@ -143,14 +143,14 @@ function runRepeat(
     return acknowledge(result);
   };
   const invocations = new Map<string, number>();
-  let state = commit(transitionWorkflow(initializeWorkflow(root.payload.control).state, { type: "START" }));
+  let state = commit(transitionDecodedWorkflow(initializeWorkflow(root.payload.control).state, { type: "START" }));
   while (state.command.kind === "prepare_attempt") {
     const { attemptId, definitionId } = state.command.attempt;
     const invocation = (invocations.get(definitionId) ?? 0) + 1;
     invocations.set(definitionId, invocation);
-    state = commit(transitionWorkflow(state.state, { type: "ATTEMPT_STARTED", attemptId, conversationId: attemptId }));
+    state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_STARTED", attemptId, conversationId: attemptId }));
     const result = definitionId === "source" ? { summary: "two", items: source.items ?? [{ id: "x" }, { id: "y" }] } : handoffFor(definitionId, invocation);
-    state = commit(transitionWorkflow(state.state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId, conversationId: attemptId, handoff: result, reassessment: null } }));
+    state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId, conversationId: attemptId, handoff: result, reassessment: null } }));
   }
   const control = state.state.context.committed;
   expect(control.status).toBe(source.status ?? "completed");

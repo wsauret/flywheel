@@ -32,9 +32,3 @@ export function retiredBuiltInDefinition(workflowId: string): StepGrammarWorkflo
   decoded.set(workflowId, workflow);
   return workflow;
 }
-
-/** The base text of one built-in workflow, for the fixture that pins each
- *  copy to the base bytes. */
-export function retiredBuiltInText(workflowId: string): string | undefined {
-  return RETIRED_BUILT_IN_TEXTS.get(workflowId);
-}

@@ -1,6 +1,6 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { loadPathWorkflow, sessionWorkflowsDir, type LaunchingSessionAuthority } from "../../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow, type LaunchingSessionAuthority } from "../../../../src/orchestration/workflow-host/path-workflow.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
@@ -20,7 +20,8 @@ export function pathWorkflowFixtures() {
     session() {
       // Launch paths use the real path, not the link in the macOS temporary root.
       const sessionDir = realpathSync(temporary("flywheel-path-workflow-"))
-      const dir = sessionWorkflowsDir(sessionDir)
+      // The session's workflow directory, where an agent writes a file it launches.
+      const dir = join(sessionDir, "scratch", "workflows")
       mkdirSync(dir, { recursive: true })
       return { sessionDir, dir }
     },

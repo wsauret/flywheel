@@ -11,7 +11,7 @@ import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/wo
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/commands.js";
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js";
 import { agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../src/workflows/output-contract/workflow-completion.js";
-import { renderWorkflowRequest, renderWorkflowRequestSection } from "../../../../src/workflows/context-bundle/workflow-request.js";
+import { renderWorkflowRequestSection } from "../../../../src/workflows/context-bundle/workflow-request.js";
 import { attemptOf, branch, INPUT_GROUP, INPUT_TAIL, inputBranch, inputMapWorkflow, inputStage, items, MAP_GROUP, mapSkills, mapWorkflow, oneAtATime, PLAN, stage, SURVEY_GROUP, SURVEY_SYNTHESIZE, surveyAnswer, surveyStage, surveyWorkflow, TAIL, type SurveyTarget } from "./_map-fixtures.js";
 import { fourLaneControl, listJoin, targets, wideMapWorkflow } from "./_tree-fixtures.js";
 import type { AddressedAddendum } from "../../../../src/workflows/context-bundle/context-facts.js";
@@ -683,8 +683,8 @@ describe("map pipeline through the production host", () => {
     // Every stage, in every branch, reads the input as workflow-scope
     // request context beside its own item.
     for (const attemptId of ran) expect(seen.get(attemptId)?.request).toEqual({ original: "SQLite VM acceptance", input, addenda: [] });
-    const rendered = renderWorkflowRequest({ original: "SQLite VM acceptance", input, addenda: [] });
-    expect(rendered).toStartWith("SQLite VM acceptance\n\n### Workflow input\n\n```json\n");
+    const rendered = renderWorkflowRequestSection({ original: "SQLite VM acceptance", input, addenda: [] });
+    expect(rendered).toContain("## User Request\n\nSQLite VM acceptance\n\n### Workflow input\n\n```json\n");
     expect(rendered).toContain('"goal": "Ship both."');
 
     // A Stop expands each branch handoff that the join references, in item

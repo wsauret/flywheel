@@ -101,9 +101,6 @@ export function buildAttemptResumeCapExceededFact(): Draft<"attempt.resume_cap_e
 export function buildAttemptResumeRecoveredFact(): Draft<"attempt.resume_recovered"> {
   return { type: "attempt.resume_recovered", version: 1, actor: "flywheel", payload: {} };
 }
-export function buildAttemptRecoveredFact(attemptId: string, conversationId: string | null): Draft<"attempt.recovered"> {
-  return { type: "attempt.recovered", version: 1, actor: "flywheel", payload: { attemptId, conversationId } };
-}
 /** Record the accepted changes of a reassessment at the proposal's
  *  encoding. A proposal of encoding 9 or earlier holds only graph version 3
  *  changes, which version 2 records. */

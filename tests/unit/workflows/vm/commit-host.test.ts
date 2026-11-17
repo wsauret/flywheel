@@ -5,10 +5,10 @@ import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event
 import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import { createWorkflowCommitHost, WorkflowCommitConflictError, WorkflowCommitStorageError } from "../../../../src/workflows/vm/commit-host.js"
+import { createWorkflowCommitHost, WorkflowCommitStorageError } from "../../../../src/workflows/vm/commit-host.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js"
@@ -100,7 +100,7 @@ function host(eventWriter: AsyncEventWriter, events: readonly StoredFact[] | Eve
 describe("workflow commit host", () => {
   it("awaits exactly one guarded batch and puts expectedSeq only on its first event", async () => {
     const initialized = initializedRoot()
-    const proposed = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, {
+    const proposed = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, {
       type: "PAUSE", reason: "operator",
     })
     if (proposed.command.kind !== "commit") throw new Error("Pause must propose a commit")
@@ -136,7 +136,6 @@ describe("workflow commit host", () => {
     const conflict = host(writer({
       appendBatchGuarded: async () => ({ kind: "conflict", conflict: { aggregateId: "session:session", expectedSeq: 4, actualSeq: 5 } }),
     })).commit(proposal)
-    await expect(conflict).rejects.toBeInstanceOf(WorkflowCommitConflictError)
     await expect(conflict).rejects.toMatchObject({
       _tag: "WorkflowCommitConflictError",
       proposalId: "proposal",
@@ -155,7 +154,7 @@ describe("workflow commit host", () => {
 
   it("preserves the typed conflict when proposal-prefix validation fails", async () => {
     const initial = initializeWorkflow(compileWorkflowControl(workflow, bindings, { skills }))
-    const proposed = transitionWorkflow(initial.state, { type: "START" })
+    const proposed = transitionDecodedWorkflow(initial.state, { type: "START" })
     if (proposed.command.kind !== "commit") throw new Error("start must propose a commit")
 
     let thrown: unknown
@@ -173,12 +172,12 @@ describe("workflow commit host", () => {
     }
 
     if (!(thrown instanceof Error)) throw new Error("proposal-prefix validation did not throw")
-    expect(thrown.cause).toBeInstanceOf(WorkflowCommitConflictError)
+    expect(thrown.cause).toMatchObject({ _tag: "WorkflowCommitConflictError" })
   })
 
   it("applies every stored event before acknowledging the commit", async () => {
     const initial = initializeWorkflow(compileWorkflowControl(workflow, bindings, { skills }))
-    const proposed = transitionWorkflow(initial.state, { type: "START" })
+    const proposed = transitionDecodedWorkflow(initial.state, { type: "START" })
     if (proposed.command.kind !== "commit") throw new Error("start must propose a commit")
     let projectionReleased = false
     const appliedBatches: (readonly StoredFact[])[] = []
@@ -213,7 +212,7 @@ describe("workflow commit host", () => {
   it("resolves a conflict only by rereading facts and discarding the stale snapshot", async () => {
     const initialized = initializedRoot()
     const committed = initialized.payload.control
-    const paused = transitionWorkflow(initializeWorkflow(committed).state, {
+    const paused = transitionDecodedWorkflow(initializeWorkflow(committed).state, {
       type: "PAUSE", reason: "concurrent operator",
     })
     if (paused.command.kind !== "commit" || !paused.state.context.pending) throw new Error("Pause must propose a commit")
@@ -221,7 +220,7 @@ describe("workflow commit host", () => {
       storedFact(initialized, 0),
       ...paused.command.proposal.facts.map((fact, index) => storedFact(fact, index + 1)),
     ]
-    const proposed = transitionWorkflow(initializeWorkflow(committed).state, { type: "START" })
+    const proposed = transitionDecodedWorkflow(initializeWorkflow(committed).state, { type: "START" })
     if (proposed.command.kind !== "commit") throw new Error("start must propose a commit")
 
     const projected: string[] = []
@@ -247,14 +246,14 @@ describe("workflow commit host", () => {
   it("publishes each complete winning conflict batch after projection and excludes a trailing partial batch", async () => {
     const initialized = initializedRoot()
     const initial = initializeWorkflow(initialized.payload.control)
-    const paused = transitionWorkflow(initial.state, { type: "PAUSE", reason: "first winner" })
+    const paused = transitionDecodedWorkflow(initial.state, { type: "PAUSE", reason: "first winner" })
     if (paused.command.kind !== "commit" || !paused.state.context.pending) throw new Error("Pause must propose a commit")
-    const pausedState = transitionWorkflow(paused.state, {
+    const pausedState = transitionDecodedWorkflow(paused.state, {
       type: "COMMIT_SUCCEEDED",
       proposalId: paused.command.proposal.proposalId,
       aggregateSeq: paused.state.context.pending.proposedCommitted.aggregateSeq,
     })
-    const resumed = transitionWorkflow(pausedState.state, { type: "RESUME", readers: {} })
+    const resumed = transitionDecodedWorkflow(pausedState.state, { type: "RESUME", readers: {} })
     if (resumed.command.kind !== "commit") throw new Error("Resume must propose a commit")
     const winningFacts = [...paused.command.proposal.facts, ...resumed.command.proposal.facts]
     const events = [
@@ -262,7 +261,7 @@ describe("workflow commit host", () => {
       ...winningFacts.map((fact, index) => storedFact(fact, index + 1)),
       storedFact({ type: "queue.deleted", version: 1, actor: "flywheel", payload: {} }, winningFacts.length + 1),
     ]
-    const stale = transitionWorkflow(initial.state, { type: "START" })
+    const stale = transitionDecodedWorkflow(initial.state, { type: "START" })
     if (stale.command.kind !== "commit") throw new Error("Start must propose a commit")
     const projected: string[] = []
     const published: { readonly types: readonly string[]; readonly projectedCount: number }[] = []
@@ -297,7 +296,7 @@ describe("workflow commit host", () => {
       const store = createSqliteEventReadSurface(db)
       const initialized = initializedRoot()
       const original = initializeWorkflow(initialized.payload.control)
-      const stale = transitionWorkflow(original.state, { type: "START" })
+      const stale = transitionDecodedWorkflow(original.state, { type: "START" })
       if (stale.command.kind !== "commit") throw new Error("Start must propose a commit")
       const events = inserter.insertEventRows([storedFact(initialized, 0)])
       const live = createLiveWorkflowView(asAsyncEventReadSurface(store), "session")
@@ -312,18 +311,18 @@ describe("workflow commit host", () => {
       events.push(...bootstrap)
       db.run("update event set payload = '{{broken' where aggregate_id = 'workflow:session' and seq = ?", [damagedSeq])
       expect(stale.command.proposal.expectedSeq).toBe(1)
-      const resumed = composeWorkflowCompanions(transitionWorkflow(initializeWorkflow(root.payload.control).state, { type: "RESUME", readers: {} }), {
+      const resumed = composeWorkflowCompanions(transitionDecodedWorkflow(initializeWorkflow(root.payload.control).state, { type: "RESUME", readers: {} }), {
         queue: bootstrapQueue, resolvedAgents: bindings, timestamp: 10, addenda: [],
       })
       if (resumed.command.kind !== "commit" || !resumed.state.context.pending) throw new Error("Resume must propose a commit")
       const nextSeq = 2 + bootstrap.length
       const firstBatch = inserter.insertEventRows(resumed.command.proposal.facts.map((fact, index) => storedFact(fact, index + nextSeq)))
       const resumedQueue = loadQueueFromEvents([...events, ...firstBatch])
-      const resumedState = transitionWorkflow(resumed.state, {
+      const resumedState = transitionDecodedWorkflow(resumed.state, {
         type: "COMMIT_SUCCEEDED", proposalId: resumed.command.proposal.proposalId,
         aggregateSeq: resumed.state.context.pending.proposedCommitted.aggregateSeq,
       })
-      const paused = composeWorkflowCompanions(transitionWorkflow(resumedState.state, { type: "PAUSE", reason: "second winner" }), {
+      const paused = composeWorkflowCompanions(transitionDecodedWorkflow(resumedState.state, { type: "PAUSE", reason: "second winner" }), {
         queue: resumedQueue, resolvedAgents: bindings, timestamp: 10, addenda: [],
       })
       if (paused.command.kind !== "commit") throw new Error("Pause must propose a commit")
@@ -360,7 +359,7 @@ describe("workflow commit host", () => {
       const inserter = createSqliteEventInserter(db)
       const store = createSqliteEventReadSurface(db)
       const initialized = initializedRoot()
-      const proposed = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "START" })
+      const proposed = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "START" })
       if (proposed.command.kind !== "commit") throw new Error("Start must propose a commit")
       const recovered = recoveredWorkflowRoot(initialized.payload.control, 4)
       inserter.insertEventRows([
@@ -393,7 +392,7 @@ describe("workflow commit host", () => {
 
   it("rebases a competing recovered root and synchronizes held families without folding superseded poison", async () => {
     const initialized = initializedRoot()
-    const proposed = transitionWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "START" })
+    const proposed = transitionDecodedWorkflow(initializeWorkflow(initialized.payload.control).state, { type: "START" })
     if (proposed.command.kind !== "commit") throw new Error("Start must propose a commit")
     const events = [storedFact(initialized, 0)]
     const context = createWorkflowContextProjection(asAsyncEventReadSurface(inMemoryEventReader(events)), "session")

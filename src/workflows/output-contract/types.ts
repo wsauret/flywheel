@@ -35,7 +35,7 @@ type VariantPayload<Tag extends string, Cases extends CaseMap> = {
 }[keyof Cases & string];
 
 /** One stored command-run record after the boundary filled `command`. */
-export type CommandRun = ValueOf<typeof envelope.commands_run.of>;
+type CommandRun = ValueOf<typeof envelope.commands_run.of>;
 
 type FieldsOf<O extends OutputObject> = O extends { readonly fields?: infer Fields } ? Exclude<Fields, undefined> : never;
 

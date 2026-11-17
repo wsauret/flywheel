@@ -5,7 +5,7 @@ import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { attemptOf, inputMapWorkflow, inputStage, items, mapSkills } from "./_map-fixtures.js"
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import arms from "./golden/committed-v10-history-arms.json"
 import { loadWorkflowFile } from "../../../../src/workflows/workflow-file.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
@@ -284,7 +284,7 @@ describe("SQLite workflow VM replay", () => {
     expect(views.queue?.attempts.map(({ status }) => status)).toEqual(["completed", "pending"])
     expect((await vm.context())?.entries[0]?.handoff).toEqual({ summary: "facts only" })
     expect(views.handoffs[0]?.validationStatus).toBe("passed")
-    expect(views.lineage.compiledWorkflow?.workflowDefinitionId).toBe("sqlite-acceptance")
+    expect((await vm.lineage()).compiledWorkflow?.workflowDefinitionId).toBe("sqlite-acceptance")
     expect(prepared.command).toMatchObject({
       kind: "prepare_attempt", attempt: { definitionId: "review", conversationId: null },
     })
@@ -325,7 +325,7 @@ function replayRecordedRun(recorded: RecordedRun): readonly PreparedAttempt[] {
     const pending = result.state.context.pending
     if (!pending) return result
     facts.push(...pending.facts)
-    return transitionWorkflow(result.state, { type: "COMMIT_SUCCEEDED", proposalId: pending.proposalId, aggregateSeq: pending.proposedCommitted.aggregateSeq })
+    return transitionDecodedWorkflow(result.state, { type: "COMMIT_SUCCEEDED", proposalId: pending.proposalId, aggregateSeq: pending.proposedCommitted.aggregateSeq })
   }
   const expected = recorded.run.map(({ attemptId, logicalNodeId, scope, ...rest }) => ({
     ...rest, attemptId: currentId(attemptId), logicalNodeId: currentId(logicalNodeId), scope: { sharedEntryIds: scope.sharedEntryIds.map(currentId) },
@@ -333,13 +333,13 @@ function replayRecordedRun(recorded: RecordedRun): readonly PreparedAttempt[] {
   const prepared: PreparedAttempt[] = []
   const running: string[] = []
   const finished = new Set<string>()
-  let state = commit(transitionWorkflow(initializeWorkflow(replayWorkflowControl([root])).state, { type: "START" }))
+  let state = commit(transitionDecodedWorkflow(initializeWorkflow(replayWorkflowControl([root])).state, { type: "START" }))
   for (let guard = 0; guard < 500; guard += 1) {
     const command = state.command
     if (command.kind === "prepare_attempt") {
       const { attemptId, definitionId, logicalNodeId, scope, item } = command.attempt
       prepared.push({ attemptId, definitionId, logicalNodeId, sharedEntryIds: scope.sharedEntryIds ?? [], item })
-      state = commit(transitionWorkflow(state.state, { type: "ATTEMPT_STARTED", attemptId, conversationId: attemptId }))
+      state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_STARTED", attemptId, conversationId: attemptId }))
       continue
     }
     if (command.kind === "run_attempts") {
@@ -350,7 +350,7 @@ function replayRecordedRun(recorded: RecordedRun): readonly PreparedAttempt[] {
     finished.add(next)
     const handoff = expected.find(({ attemptId }) => attemptId === next)?.handoff
     if (!handoff) throw new Error(`The base build recorded no handoff for "${next}"`)
-    state = commit(transitionWorkflow(state.state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId: next, conversationId: next, handoff, reassessment: null } }))
+    state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId: next, conversationId: next, handoff, reassessment: null } }))
   }
   expect(prepared).toEqual(expected.map(({ attemptId, definitionId, logicalNodeId, scope, item }) => ({ attemptId, definitionId, logicalNodeId, sharedEntryIds: scope.sharedEntryIds, item })))
   const control = state.state.context.committed

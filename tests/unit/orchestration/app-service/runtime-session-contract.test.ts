@@ -20,7 +20,7 @@ import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("runtime session protocol contract", () => {
@@ -86,7 +86,7 @@ describe("runtime session protocol contract", () => {
       expect(continued.views[0]?.view?.row.admittedActions).toContain("chat.interrupt")
 
       const beforeStop = replayWorkflowControl(store.read({ aggregateId: `workflow:${flowId}` }))
-      const aborted = transitionWorkflow(replayWorkflow(beforeStop), { type: "ABORT", reason: "The user stopped it before it finished" })
+      const aborted = transitionDecodedWorkflow(replayDecodedWorkflow(beforeStop), { type: "ABORT", reason: "The user stopped it before it finished" })
       if (aborted.command.kind !== "commit") throw new Error("Expected abort commit")
       const proposal = aborted.command.proposal
       await manager.commitWorkflow({ workflowId: flowId, events: proposal.facts.map((fact, index) => ({ ...fact, aggregateId: `workflow:${flowId}`, sessionId: flowId, timestamp: 2, ...(index === 0 ? { expectedSeq: proposal.expectedSeq } : {}) })) })

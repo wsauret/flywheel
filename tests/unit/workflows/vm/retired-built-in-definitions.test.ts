@@ -1,9 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { parseWorkflowYaml } from "../../../../src/infra/workflow-yaml.js"
 import { loadWorkflowFiles } from "../../../helpers/workflow-files.js"
-import { loopBody, mapStages, walkFlow, whileMap } from "../../../../src/workflows/retired-step-grammar/schema.js"
-import { retiredBuiltInDefinition, retiredBuiltInText } from "../../../../src/workflows/vm/retired-built-in-definitions.js"
+import { loopBody, mapStages, StepGrammarWorkflowSchema, walkFlow, whileMap } from "../../../../src/workflows/retired-step-grammar/schema.js"
+import { retiredBuiltInDefinition } from "../../../../src/workflows/vm/retired-built-in-definitions.js"
 import { agentRecords, WorkflowDefinitionSchema, type AuthoredWorkflow } from "../../../../src/workflows/workflow-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { convertStepGrammar } from "../../../../src/workflows/retired-step-grammar/convert.js"
@@ -26,6 +29,11 @@ const BASE_SHA256 = new Map([
   ["raindrop-audit", "14647b19e16f683e72f4d600b3bb95b7d573d48f3dbdebd919b299756a9b3e00"],
 ])
 const IDS = [...BASE_SHA256.keys()]
+
+/** The base text of one built-in, which the fixture keeps byte for byte. */
+function baseText(id: string): string {
+  return readFileSync(join(import.meta.dir, "..", "..", "..", "fixtures", "retired-workflows", "built-in", `${id}.yaml`), "utf8")
+}
 
 function installedOrConverted(id: string): AuthoredWorkflow {
   const base = retiredBuiltInDefinition(id)
@@ -54,8 +62,10 @@ function baseRecordKeys(id: string): readonly string[] {
 }
 
 describe("the built-in workflows of the last build before phases", () => {
-  it.each([...BASE_SHA256])("keeps the base bytes of %s", (id, sha256) => {
-    expect(createHash("sha256").update(retiredBuiltInText(id) ?? "").digest("hex")).toBe(sha256)
+  it.each([...BASE_SHA256])("keeps the base bytes of %s, which its retired definition holds", (id, sha256) => {
+    const text = baseText(id)
+    expect(createHash("sha256").update(text).digest("hex")).toBe(sha256)
+    expect(retiredBuiltInDefinition(id)).toEqual(Schema.decodeUnknownSync(StepGrammarWorkflowSchema, { onExcessProperty: "error" })(parseWorkflowYaml(text).document))
   })
 
   it.each(IDS)("preserves in %s an agent record for each step record key of its base text", (id) => {
@@ -70,7 +80,7 @@ describe("the built-in workflows of the last build before phases", () => {
   // Each text loads from the folder of its built-in, as the base loaded it.
   it.each(IDS)("refuses a new launch of the base text of %s because its briefs retired", (id) => {
     const dir = "/scratch/retired-workflows"
-    const content = (retiredBuiltInText(id) ?? "").replaceAll("file: steps/", "file: bundled:steps/")
+    const content = baseText(id).replaceAll("file: steps/", "file: bundled:steps/")
     const entry = { file: `${dir}/${id}.yaml`, location: { root: { kind: "directory" as const, dir }, path: `${id}.yaml` }, content }
     const { results, errors } = loadWorkflowFiles([entry], "bundled", undefined, undefined, revision.skills)
     expect(results.has(id)).toBe(false)

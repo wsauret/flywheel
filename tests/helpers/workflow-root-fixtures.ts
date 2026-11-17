@@ -49,6 +49,13 @@ export function recoveredWorkflowRoot(control: CommittedWorkflowControl, aggrega
   return recovered
 }
 
+/** The companion that the recovery root of an earlier build wrote for the
+ *  attempt it carried over. No current path writes it; stored history still
+ *  holds it. */
+export function historicalAttemptRecoveredFact(attemptId: string, conversationId: string | null): Extract<WorkflowSessionFact, { type: "attempt.recovered" }> {
+  return { type: "attempt.recovered", version: 1, actor: "flywheel", payload: { attemptId, conversationId } }
+}
+
 export function storedWorkflowFacts(facts: readonly WorkflowSessionFact[], fromSeq = 0): StoredFact[] {
   return facts.map((fact, index) => ({
     ...fact,

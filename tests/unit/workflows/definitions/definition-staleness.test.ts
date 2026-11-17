@@ -1,12 +1,18 @@
 import { describe, expect, test } from "bun:test"
-import { deriveDefinitionStalenessReport, classifyOverride } from "../../../../src/workflows/definitions/override-staleness.js"
+import { deriveDefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
 import { resolveDefinitionCandidates } from "../../../../src/infra/definition-resolution.js"
 
 describe("definition override staleness", () => {
   test("derives every status from base and current default identities", () => {
-    expect(classifyOverride("same", "same")).toBe("current")
-    expect(classifyOverride("old", "new")).toBe("upstream-changed")
-    expect(classifyOverride(undefined, "new")).toBe("upstream-changed")
+    const status = (base: string | undefined, current: string) => deriveDefinitionStalenessReport([resolveDefinitionCandidates("persona", "reviewer", "agents/reviewer.md", [
+      { kind: "valid", source: { path: "/project/.flywheel/agents/reviewer.md", layer: "project", identity: "mine" }, value: "mine" },
+    ])], {
+      files: { "agents/reviewer.md": { content: "bundled", overlayTarget: "agents/reviewer.md", sourceHash: current, baseDefaultHash: current } },
+    }, base === undefined ? {} : { "/project/.flywheel/agents/reviewer.md": { acknowledged_default_hash: base } }).overrides.map((override) => override.status)
+
+    expect(status("same", "same")).toEqual(["current"])
+    expect(status("old", "new")).toEqual(["upstream-changed"])
+    expect(status(undefined, "new")).toEqual(["upstream-changed"])
   })
 
 

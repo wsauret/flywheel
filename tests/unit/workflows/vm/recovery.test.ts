@@ -11,7 +11,7 @@ import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js"
 import { buildDefinitionIdentityMigratedFact, buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID } from "../../../../src/workflows/vm/definition-identity.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { createMemoryStore } from "./host-test-support.js"
@@ -54,26 +54,26 @@ function history() {
     parseWorkflowSessionFact({ type: "queue.deleted", version: 1, actor: "flywheel", payload: {} }),
     buildContextInputSeededFact("recovery", "Original task"),
   ]
-  const commit = (result: ReturnType<typeof transitionWorkflow>) => {
+  const commit = (result: ReturnType<typeof transitionDecodedWorkflow>) => {
     const composed = composeWorkflowProposal(result, companions)
     if (composed.command.kind !== "commit" || !composed.state.context.pending) throw new Error("Expected proposal")
     append(composed.command.proposal.facts)
-    return transitionWorkflow(composed.state, {
+    return transitionDecodedWorkflow(composed.state, {
       type: "COMMIT_SUCCEEDED", proposalId: composed.command.proposal.proposalId,
       aggregateSeq: composed.state.context.pending.proposedCommitted.aggregateSeq,
     })
   }
-  const prepared = commit(transitionWorkflow(initializeWorkflow(root.payload.control).state, { type: "START" }))
+  const prepared = commit(transitionDecodedWorkflow(initializeWorkflow(root.payload.control).state, { type: "START" }))
   if (prepared.command.kind !== "prepare_attempt") throw new Error("Expected A")
   const a = prepared.command.attempt.attemptId
-  const runningA = commit(transitionWorkflow(prepared.state, { type: "ATTEMPT_STARTED", attemptId: a, conversationId: "a" }))
-  const finishedA = commit(transitionWorkflow(runningA.state, {
+  const runningA = commit(transitionDecodedWorkflow(prepared.state, { type: "ATTEMPT_STARTED", attemptId: a, conversationId: "a" }))
+  const finishedA = commit(transitionDecodedWorkflow(runningA.state, {
     type: "ATTEMPT_SUCCEEDED",
     outcome: { attemptId: a, conversationId: "a", handoff: { summary: "A is complete" }, reassessment: null },
   }))
   if (finishedA.command.kind !== "prepare_attempt") throw new Error("Expected B")
   const b = finishedA.command.attempt.attemptId
-  const runningB = commit(transitionWorkflow(finishedA.state, { type: "ATTEMPT_STARTED", attemptId: b, conversationId: "b" }))
+  const runningB = commit(transitionDecodedWorkflow(finishedA.state, { type: "ATTEMPT_STARTED", attemptId: b, conversationId: "b" }))
   return { db, reader, append, root, control: runningB.state.context.committed }
 }
 

@@ -3,12 +3,12 @@ import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js"
 import { eligibleLearnedSkills } from "../../../src/orchestration/modules/learning/learned-skill-eligibility.js"
-import { LEGACY_WORKFLOW_BINDINGS } from "../orchestration/migrations/_pre-cutover-control.js"
+import { LEGACY_WORKFLOW_BINDINGS, retiredBindingSha256 } from "../orchestration/migrations/_pre-cutover-control.js"
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js"
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js"
 import { loadWorkflowDefinitions } from "../../helpers/workflow-files.js"
 import { retiredHandoffContract } from "../../../src/workflows/retired-handoff-contracts.js"
-import { decodeRetiredBinding, formerStepSkillWarnings, retiredBindingSha256 } from "../../../src/workflows/retired-bindings.js"
+import { formerStepSkillWarnings } from "../../../src/workflows/retired-bindings.js"
 import { agentRecords, type WorkflowDefinition } from "../../../src/workflows/workflow-schema.js"
 import type { StepGrammarWorkflow } from "../../../src/workflows/retired-step-grammar/schema.js"
 import { temporaryDirectories, testDirectories } from "../../helpers/directories.js"
@@ -89,10 +89,10 @@ describe("a saved workflow file in the retired bindings form", () => {
       "04bf8cc748033bebd4be6d10467081edaf344e9696f7f3601a4159d18a59ae03",
       "8fb7f1638a41f1144e7d38b5499b0874069b74dd39957a30786540a01f7b5d2e",
     ]
-    expect(LEGACY_WORKFLOW_BINDINGS.debug.map((binding) => retiredBindingSha256(binding.bindingId, decodeRetiredBinding({
+    expect(LEGACY_WORKFLOW_BINDINGS.debug.map((binding) => retiredBindingSha256(binding.bindingId, {
       skill: binding.skillId, handoff: binding.handoff, toolScoping: binding.toolScoping,
       writes: [{ id: binding.bindingId, lifetime: "durable", supersedes: [] }],
-    })))).toEqual(pins)
+    }))).toEqual(pins)
   })
 
   it.each(["debug.fix", "debug.investigate", "debug.verify", "fly.implement", "fly.raindrop-audit", "fly.spec-create", "fly.spec-review", "qa.review-fixes", "qa.surface-map", "qa.test-fix-surface"])("refuses the retired binding %s by name", (id) => {

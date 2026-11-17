@@ -1,11 +1,10 @@
-import { cpSync, mkdtempSync, writeFileSync } from "node:fs"
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js"
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js"
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js"
 import { testAccountHome, testDirectories } from "../../helpers/directories.js"
 import { repoModules } from "../../helpers/project-definitions.js"
-import { retiredBuiltInText } from "../../../src/workflows/vm/retired-built-in-definitions.js"
 
 /** Person-kept copies of the last step-grammar implement and qa workflows,
  * and the phase-grammar debug workflow and briefs from 64d9b75aea.
@@ -26,8 +25,7 @@ export function retainedProject(options: { readonly legacyDebug?: boolean; reado
   // contents under a plain name and copies them into place.
   cpSync(join(import.meta.dir, "retained-project"), join(root, ".flywheel"), { recursive: true })
   for (const id of [...(options.legacyDebug ? ["debug"] : []), ...(options.legacyRaindropAudit ? ["raindrop-audit"] : [])]) {
-    const text = retiredBuiltInText(id)
-    if (!text) throw new Error(`The frozen ${id} definition is missing`)
+    const text = readFileSync(join(import.meta.dir, "built-in", `${id}.yaml`), "utf8")
     writeFileSync(join(root, ".flywheel", "workflows", `${id}.yaml`), text.replaceAll("file: steps/", "file: briefs/"))
   }
   return root

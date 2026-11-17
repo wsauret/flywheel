@@ -58,7 +58,7 @@ export interface LaunchingSessionAuthority {
 }
 
 /** The one directory a session's workflow files launch from. */
-export function sessionWorkflowsDir(sessionDir: string): string {
+function sessionWorkflowsDir(sessionDir: string): string {
   return join(sessionScratchDir(sessionDir), "workflows")
 }
 
@@ -71,7 +71,7 @@ export function sessionWorkflowsDir(sessionDir: string): string {
  *  content over the byte limit is refused before parsing or writing. Other launch
  *  checks follow the save, so a refused launch keeps the file for the
  *  author to fix. The write is atomic and follows no directory link. */
-export function saveWorkflowContent(sessionDir: string, content: string): string {
+function saveWorkflowContent(sessionDir: string, content: string): string {
   const bytes = Buffer.byteLength(content)
   if (bytes > WORKFLOW_FILE_MAX_BYTES) throw new Error(`the workflow content holds ${bytes} bytes, more than the limit of ${WORKFLOW_FILE_MAX_BYTES}`)
   const name = workflowContentFileName(content)
@@ -446,7 +446,7 @@ function targetLocator(workflow: WorkflowDefinition): (target: string | null) =>
 /** What a verifier report leaves unproved, each located at the phase,
  *  agent, or repeat that it targets: each defect, and each uncertainty that the values of a
  *  run do not decide (refer to `launchVerificationWarnings`). */
-export function verificationWarnings(file: string, workflow: WorkflowDefinition, verification: WorkflowVerificationReport): WorkflowFileDiagnostic[] {
+function verificationWarnings(file: string, workflow: WorkflowDefinition, verification: WorkflowVerificationReport): WorkflowFileDiagnostic[] {
   const warned = launchVerificationWarnings(verification)
   const located = targetLocator(workflow)
   return [

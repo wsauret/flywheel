@@ -6,10 +6,7 @@ import {
   describeDefinitionRefusal,
   loadPathWorkflow,
   readPathWorkflow,
-  saveWorkflowContent,
-  sessionWorkflowsDir,
   stageWorkflowSource,
-  verificationWarnings,
   type LaunchingSessionAuthority,
 } from "../../../../src/orchestration/workflow-host/path-workflow.js"
 import { hashDefinition } from "../../../../src/workflows/definition-hash.js"
@@ -18,11 +15,12 @@ import { WORKFLOW_FILE_MAX_BYTES } from "../../../../src/infra/workflow-yaml.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { decodeWorkflowFile, loadWorkflowFile } from "../../../../src/workflows/workflow-file.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
-import { topNodeId, type WorkflowDefinition, type WorkflowPhase } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition, WorkflowPhase } from "../../../../src/workflows/workflow-schema.js"
 import { buildDefinitionIdentity } from "../../../../src/workflows/vm/definition-identity.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { pathWorkflowFixtures, revision, write } from "./_path-workflow-fixtures.js"
+import { stagedWorkflowContent } from "../../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()
 const { refusal, session } = pathWorkflowFixtures()
@@ -247,7 +245,7 @@ ${SURVEY}`
     write(other.dir, "theirs.workflow.yaml", SURVEY)
     const linkedWorkflows = realpathSync(temporary("flywheel-path-workflow-"))
     mkdirSync(join(linkedWorkflows, "scratch"), { recursive: true })
-    symlinkSync(other.dir, sessionWorkflowsDir(linkedWorkflows))
+    symlinkSync(other.dir, join(linkedWorkflows, "scratch", "workflows"))
     const linkedScratch = realpathSync(temporary("flywheel-path-workflow-"))
     symlinkSync(join(other.sessionDir, "scratch"), join(linkedScratch, "scratch"))
     const linkedSession = join(temporary("flywheel-path-workflow-"), "session")
@@ -264,12 +262,12 @@ describe("the content of a workflow file", () => {
     const sessionDir = realpathSync(temporary("flywheel-path-workflow-"))
     const outside = realpathSync(temporary("flywheel-path-workflow-outside-"))
     mkdirSync(join(sessionDir, "scratch"))
-    symlinkSync(outside, sessionWorkflowsDir(sessionDir), "dir")
-    expect(() => saveWorkflowContent(sessionDir, SURVEY)).toThrow()
+    symlinkSync(outside, join(sessionDir, "scratch", "workflows"), "dir")
+    expect(() => stagedWorkflowContent(sessionDir, SURVEY)).toThrow()
     expect(readdirSync(outside)).toEqual([])
     const linkedSession = join(temporary("flywheel-path-workflow-"), "session")
     symlinkSync(outside, linkedSession, "dir")
-    expect(() => saveWorkflowContent(linkedSession, SURVEY)).toThrow()
+    expect(() => stagedWorkflowContent(linkedSession, SURVEY)).toThrow()
     expect(readdirSync(outside)).toEqual([])
   })
 
@@ -278,19 +276,19 @@ describe("the content of a workflow file", () => {
     const file = join(dir, "survey-routes.workflow.yaml")
     const fd = openSync(file, "w")
     try { ftruncateSync(fd, 64 * 1024 * 1024) } finally { closeSync(fd) }
-    expect(saveWorkflowContent(sessionDir, SURVEY)).toBe(file)
+    expect(stagedWorkflowContent(sessionDir, SURVEY)).toEqual({ path: file, savedContent: SURVEY })
     expect(readFileSync(file, "utf8")).toBe(SURVEY)
     expect(readdirSync(dir)).toEqual(["survey-routes.workflow.yaml"])
   })
 
   it("refuses oversized content before creating the workflow directory or replacing a file", () => {
     const sessionDir = realpathSync(temporary("flywheel-path-workflow-"))
-    const dir = sessionWorkflowsDir(sessionDir)
+    const dir = join(sessionDir, "scratch", "workflows")
     const oversized = `${SURVEY}# ${"é".repeat(WORKFLOW_FILE_MAX_BYTES)}\n`
-    expect(() => saveWorkflowContent(sessionDir, oversized)).toThrow(`more than the limit of ${WORKFLOW_FILE_MAX_BYTES}`)
+    expect(() => stagedWorkflowContent(sessionDir, oversized)).toThrow(`more than the limit of ${WORKFLOW_FILE_MAX_BYTES}`)
     expect(existsSync(dir)).toBe(false)
-    const file = saveWorkflowContent(sessionDir, SURVEY)
-    expect(() => saveWorkflowContent(sessionDir, oversized)).toThrow()
+    const file = stagedWorkflowContent(sessionDir, SURVEY).path
+    expect(() => stagedWorkflowContent(sessionDir, oversized)).toThrow()
     expect(readFileSync(file, "utf8")).toBe(SURVEY)
     expect(readdirSync(dir)).toEqual(["survey-routes.workflow.yaml"])
   })
@@ -672,25 +670,28 @@ phases:
 })
 
 describe("what the verifier leaves unproved", () => {
-  it("warns at the phase of each defect and at the phases for each uncertainty that the values of a run do not decide", async () => {
-    const { sessionDir, dir } = session()
-    const file = await loadPathWorkflow({ path: write(dir, "survey.workflow.yaml", SURVEY), sessionDir, revision, authority: fullAuthority() })
-    if (!file.ok) throw new Error(Object.values(describeDefinitionRefusal("", file)).flat().join("\n"))
-    const fix = topNodeId("survey-routes", 1)
+  it("saves staged content under the session, verifies it, and warns at the phases for a bound that the values of a run do not decide", async () => {
+    const sessionDir = realpathSync(temporary("flywheel-path-workflow-"))
+    // Eight parallel agents have more orders of outcomes than the exploration
+    // bound holds, so the verifier stops at its bound and proves no more.
+    const wide = `id: wide-review
+name: Wide review
+phases:
+  - phase: lenses
+    agents: [a1, a2, a3, a4, a5, a6, a7, a8]
+    brief: Review the change through your lens.
+  - phase: report
+    brief: Report the findings.
+`
+    const staged = stagedWorkflowContent(sessionDir, wide)
+    expect(staged).toEqual({ path: join(sessionDir, "scratch", "workflows", "wide-review.workflow.yaml"), savedContent: wide })
 
-    expect(verificationWarnings(file.shown, file.workflow, {
-      result: "invalid",
-      findings: [
-        { name: "unreachable_work", target: fix, message: `Logical node "${fix}" cannot reach execution through the production machine.`, witness: [], noPathReason: null },
-        { name: "terminal_reachable", target: "completed", message: "The production machine reaches completed.", witness: [], noPathReason: null },
-      ],
-      uncertainties: [
-        { name: "runtime_handoff_values", target: null, detail: "Synthetic handoffs cover empty and positive values, not every runtime value." },
-        { name: "bounded_graph_exploration", target: null, detail: "States beyond the 20000-state exploration bound were not proved." },
-      ],
-    })).toEqual([
-      { file: "scratch/workflows/survey.workflow.yaml", entry: 'Phase "fix"', keyPath: "phases.1", message: `unreachable_work: Logical node "${fix}" cannot reach execution through the production machine.` },
-      { file: "scratch/workflows/survey.workflow.yaml", keyPath: "phases", message: "bounded_graph_exploration: States beyond the 20000-state exploration bound were not proved." },
+    const file = await loadPathWorkflow({ ...staged, sessionDir, revision, authority: fullAuthority() })
+    if (!file.ok) throw new Error(Object.values(describeDefinitionRefusal("", file)).flat().join("\n"))
+
+    expect(file.verification.result).toBe("partially_proved")
+    expect(file.warnings).toEqual([
+      { file: "scratch/workflows/wide-review.workflow.yaml", keyPath: "phases", message: "bounded_graph_exploration: States beyond the 20000-state exploration bound were not proved." },
     ])
   })
 })

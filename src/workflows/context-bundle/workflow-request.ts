@@ -37,7 +37,7 @@ function renderAddendum(addendum: ContextAddendum, index: number): string {
  *  neither reads exactly what an earlier build gave it. An external agent
  *  receives this text as `workflow.userRequest`. The inherited intent belongs
  *  to the workflow-shared system tier, not this private request. */
-export function renderWorkflowRequest(request: WorkflowRequest): string {
+function renderWorkflowRequest(request: WorkflowRequest): string {
   return [
     request.original,
     ...(request.input === undefined ? [] : ["### Workflow input", `\`\`\`json\n${JSON.stringify(request.input, null, 2)}\n\`\`\``]),

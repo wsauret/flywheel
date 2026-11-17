@@ -4,7 +4,7 @@ import type { AgentDefinition } from "../../../../../src/infra/agent-definition.
 import type { ToolAction } from "../../../../../src/infra/workflow-types.js"
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import { workflowsModule } from "../../../../../src/orchestration/modules/workflows.js"
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { readFileSync, realpathSync } from "node:fs"
 import { join } from "node:path"
 import { ToolActionSchema } from "../../../../../src/infra/workflow-types.js"
 import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../../../../src/orchestration/app-service/definition-availability.js"
@@ -12,10 +12,11 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
 import type { ModuleRuntimeServices } from "../../../../../src/orchestration/agent-runtime/module-runtime-services.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
-import { loadPathWorkflow, sessionWorkflowsDir } from "../../../../../src/orchestration/workflow-host/path-workflow.js"
+import { loadPathWorkflow } from "../../../../../src/orchestration/workflow-host/path-workflow.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"
+import { stagedWorkflowContent } from "../../../../helpers/workflow-files.js"
 
 const temporary = temporaryDirectories()
 
@@ -81,14 +82,12 @@ describe("the authority a launching session grants a workflow file", () => {
 
   it("refuses the bundled reviewer example while the reviewer type is off, says how to turn it on, and launches it with the type on", async () => {
     const sessionDir = realpathSync(temporary("flywheel-launch-authority-"))
-    mkdirSync(sessionWorkflowsDir(sessionDir), { recursive: true })
-    const file = join(sessionWorkflowsDir(sessionDir), "lens-review.workflow.yaml")
     // The example as an agent with every agent type on reads it: with a lens reviewer off, it is not offered at all.
-    writeFileSync(file, renderCapabilityText(readFileSync(join(import.meta.dir, "../../../../../src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/lens-review.workflow.yaml"), "utf8"), () => true))
+    const staged = stagedWorkflowContent(sessionDir, renderCapabilityText(readFileSync(join(import.meta.dir, "../../../../../src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/lens-review.workflow.yaml"), "utf8"), () => true))
     const installed = repoDefinitions().captureRevision()
     const planned = new Map(ToolActionSchema.literals.map((action) => [action, tool(action, action)] as const))
     const launch = (disabledTypes: readonly string[]) => loadPathWorkflow({
-      path: file, sessionDir, revision: installed,
+      ...staged, sessionDir, revision: installed,
       authority: launchingSessionAuthority(planned, { personas: installed.personas }, definitionAvailabilityOf(installed, composeFirstPartyModules().enabledModuleIds, disabledTypes)),
     })
 

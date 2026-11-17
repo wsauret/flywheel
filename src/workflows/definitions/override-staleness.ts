@@ -6,7 +6,7 @@ import type { DefinitionFamily, DefinitionLayer, DefinitionResolution } from "..
 import type { DefinitionOverrideBaselineRecords } from "./override-baselines.js"
 
 import type { MutationDiff } from "../../infra/mutation-diff.js"
-export type DefinitionStalenessStatus = "current" | "upstream-changed"
+type DefinitionStalenessStatus = "current" | "upstream-changed"
 export type OverrideResolutionAction = "keep-mine" | "adopt-default" | "rebase"
 
 interface BoundOverrideTarget {
@@ -124,7 +124,7 @@ export function deriveDefinitionStalenessReport(
         layer: candidate.source.layer,
         path: candidate.source.path,
         catalogPath: resolution.target,
-        status: classifyOverride(baseDefaultHash, currentDefault.baseDefaultHash),
+        status: baseDefaultHash === currentDefault.baseDefaultHash ? "current" : "upstream-changed",
         valid: candidate.kind === "valid",
         ...(baseDefaultHash ? { baseDefaultHash } : {}),
         currentDefaultHash: currentDefault.baseDefaultHash,
@@ -135,10 +135,6 @@ export function deriveDefinitionStalenessReport(
   }
   return { overrides, diagnostics }
 }
-export function classifyOverride(base: string | undefined, currentDefaultHash: string): DefinitionStalenessStatus {
-  return base === currentDefaultHash ? "current" : "upstream-changed"
-}
-
 
 function snapshotPathFor(family: DefinitionFamily, overridePath: string): string {
   return family === "skill" ? join(dirname(overridePath), ".base") : `${overridePath}.base`

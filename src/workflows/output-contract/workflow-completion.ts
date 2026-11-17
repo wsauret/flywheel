@@ -434,7 +434,7 @@ export interface WorkflowCompletionInput {
  *  agent reads and condenses the earlier ones: the final report survives a
  *  run whose item results alone would fill the limit. The content names each result
  *  that did not fit and how to read it. */
-export const COMPLETION_AGENT_RESULTS_CAP_BYTES = 65_536
+const COMPLETION_AGENT_RESULTS_CAP_BYTES = 65_536
 
 /** One agent result as the parent reads it: a heading with its label and
  *  status, then its handoff as a later agent reads it, whose commands run

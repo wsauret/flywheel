@@ -10,10 +10,7 @@ import {
 } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import { createWorkflowTool } from "../../../../../src/orchestration/agent-runtime/tools/workflow.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import {
-  WORKFLOW_LAUNCH_RETRY_INSTRUCTION,
-  type ResolveWorkflowLaunchTarget,
-} from "../../../../../src/orchestration/workflow-host/launch-origin.js";
+import { approvalRefusal, type ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/launch-origin.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
@@ -446,9 +443,10 @@ describe("createWorkflowTool", () => {
   })
 
   it("refuses every launch with the reason on a workflow card that offers no retry advice", async () => {
+    const refusal = approvalRefusal("Confirmation q-7 was already used, and one approval launches one workflow.");
     const tool = createWorkflowTool(makeDeps({
       mode: "ask",
-      startWorkflow: async () => ({ error: "Confirmation q-7 was already used, and one approval launches one workflow.", recovery: WORKFLOW_LAUNCH_RETRY_INSTRUCTION }),
+      startWorkflow: async () => refusal,
     }));
 
     const reused = await tool.execute({ source: SOURCE, summary: "s", description: "d", confirmation_id: "q-7" }, makeContext());
@@ -456,7 +454,7 @@ describe("createWorkflowTool", () => {
 
     expect(reused).toMatchObject({
       outcome: "error",
-      content: `Confirmation q-7 was already used, and one approval launches one workflow. ${WORKFLOW_LAUNCH_RETRY_INSTRUCTION}`,
+      content: `Confirmation q-7 was already used, and one approval launches one workflow. ${refusal.recovery}`,
       details: { agentFailure: { title: "Workflow not started", message: "Confirmation q-7 was already used, and one approval launches one workflow." } },
     });
     expect(unknown).toMatchObject({

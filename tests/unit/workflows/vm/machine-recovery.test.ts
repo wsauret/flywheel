@@ -1,9 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
   initializeWorkflow,
-  replayWorkflow,
+  replayDecodedWorkflow,
   transitionDecodedWorkflow,
-  transitionWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile.js";
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
@@ -49,7 +48,7 @@ describe("workflow machine recovery semantics", () => {
       status: "executing" as const,
     };
 
-    let completed = acknowledge(success(replayWorkflow(running), {
+    let completed = acknowledge(success(replayDecodedWorkflow(running), {
       summary: "Decisive investigation result.",
       hypothesis,
       evidence: ["Focused evidence."],
@@ -92,31 +91,31 @@ describe("workflow machine recovery semantics", () => {
   });
 
   it("restarts an attempt that made progress since its last start without end, and pauses one that made none after three restarts", () => {
-    const restart = (state: ReturnType<typeof replayWorkflow>, progressed: readonly string[]) =>
-      acknowledge(transitionWorkflow(state, { type: "RECOVER", progressed }));
-    let progressing = replayWorkflow(runningControl());
+    const restart = (state: ReturnType<typeof replayDecodedWorkflow>, progressed: readonly string[]) =>
+      acknowledge(transitionDecodedWorkflow(state, { type: "RECOVER", progressed }));
+    let progressing = replayDecodedWorkflow(runningControl());
     for (let recovery = 1; recovery <= 4; recovery += 1) {
       const recovered = restart(progressing, ["attempt"]);
       expect(recovered.state.context.committed.attempts[0]?.resumeRevertCount).toBe(1);
       progressing = startPreparedAttempt(recovered).state;
     }
 
-    let stalled = replayWorkflow(runningControl());
+    let stalled = replayDecodedWorkflow(runningControl());
     for (let recovery = 1; recovery <= 3; recovery += 1) stalled = startPreparedAttempt(restart(stalled, [])).state;
-    const capped = transitionWorkflow(stalled, { type: "RECOVER", progressed: [] });
+    const capped = transitionDecodedWorkflow(stalled, { type: "RECOVER", progressed: [] });
     expect(capped.state.context.pending?.facts.map(({ type }) => type)).toEqual(["attempt.resume_cap_exceeded", "workflow.control.committed"]);
     expect(acknowledge(capped).state.lifecycle).toBe("paused");
   });
 
   it("recovers only the interrupted frontier and never revives a failed retry ancestor", () => {
-    const failed = acknowledge(transitionWorkflow(
-      replayWorkflow(runningControl({ retry: { max: 2, stuck: true } })),
+    const failed = acknowledge(transitionDecodedWorkflow(
+      replayDecodedWorkflow(runningControl({ retry: { max: 2, stuck: true } })),
       {
         type: "ATTEMPT_FAILED",
         failure: { attemptId: "attempt", kind: "handoff", reason: "retry", conversationId: "ancestor-conversation" },
       },
     ));
-    const recovered = acknowledge(transitionWorkflow(failed.state, { type: "RECOVER", progressed: [] }));
+    const recovered = acknowledge(transitionDecodedWorkflow(failed.state, { type: "RECOVER", progressed: [] }));
 
     expect(recovered.state.context.committed.attempts[0]).toMatchObject({
       id: "attempt",
@@ -131,8 +130,8 @@ describe("workflow machine recovery semantics", () => {
 
   it.each([{ gate: null }, { gate: "" }, { gate: [] }, { gate: "continue" }])("preserves conditional continuation after recovery of a root retry with $gate", ({ gate }) => {
     const then = { step: "follow", when: "gate", then: { step: "nested", when: null, then: null } } as const;
-    const retried = startPreparedAttempt(acknowledge(transitionWorkflow(
-      replayWorkflow(runningControl({ then, retry: { max: 2, stuck: true } })),
+    const retried = startPreparedAttempt(acknowledge(transitionDecodedWorkflow(
+      replayDecodedWorkflow(runningControl({ then, retry: { max: 2, stuck: true } })),
       {
         type: "ATTEMPT_FAILED",
         failure: {
@@ -141,8 +140,8 @@ describe("workflow machine recovery semantics", () => {
         },
       },
     )));
-    const recovered = startPreparedAttempt(acknowledge(transitionWorkflow(
-      replayWorkflow(retried.state.context.committed), { type: "RECOVER", progressed: [] },
+    const recovered = startPreparedAttempt(acknowledge(transitionDecodedWorkflow(
+      replayDecodedWorkflow(retried.state.context.committed), { type: "RECOVER", progressed: [] },
     )));
     expect(recovered.state.context.committed.attempts[1]).toMatchObject({
       parentAttemptId: "attempt", provenance: { _tag: "retry" }, iteration: 2,

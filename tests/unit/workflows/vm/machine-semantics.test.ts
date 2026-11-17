@@ -3,9 +3,8 @@ import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/comm
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
 import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/session-facts.js";
 import {
-  replayWorkflow,
+  replayDecodedWorkflow,
   transitionDecodedWorkflow,
-  transitionWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
 
 import { acknowledge, ownership, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
@@ -20,11 +19,11 @@ const blockedHandoff = {
 };
 
 function block(
-  state: ReturnType<typeof replayWorkflow>,
+  state: ReturnType<typeof replayDecodedWorkflow>,
   attemptId = "attempt",
   correctiveDefinitionId: string | null = null,
 ) {
-  return transitionWorkflow(state, {
+  return transitionDecodedWorkflow(state, {
     type: "ATTEMPT_BLOCKED",
     blocked: { attemptId, conversationId: "conversation", handoff: blockedHandoff },
     correctiveDefinitionId,
@@ -87,7 +86,7 @@ describe("workflow machine fake semantics", () => {
       };
       const root = buildWorkflowControlInitializedFact(control);
       const handoff = { continue: "yes", summary: "Finished source work" };
-      const proposed = success(replayWorkflow(root.payload.control), handoff);
+      const proposed = success(replayDecodedWorkflow(root.payload.control), handoff);
       const pending = proposed.state.context.pending;
       if (!pending) throw new Error("Expected refusal commit");
       expect(pending.facts.map(({ type }) => type)).toEqual([
@@ -115,8 +114,8 @@ describe("workflow machine fake semantics", () => {
     for (const kind of ["blocked", "retry"] as const) {
       const base = runningControl({ then: { step: "follow", when: null, then: null }, retry: { max: 2, stuck: true } });
       const root = buildWorkflowControlInitializedFact({ ...base, guardrails: { ...base.guardrails, maxAttempts: 1 } });
-      const state = replayWorkflow(root.payload.control);
-      const proposed = kind === "blocked" ? block(state, "attempt", "follow") : transitionWorkflow(state, {
+      const state = replayDecodedWorkflow(root.payload.control);
+      const proposed = kind === "blocked" ? block(state, "attempt", "follow") : transitionDecodedWorkflow(state, {
         type: "ATTEMPT_FAILED",
         failure: { attemptId: "attempt", kind: "handoff", reason: "missing evidence", conversationId: "conversation" },
       });
@@ -143,18 +142,18 @@ describe("workflow machine fake semantics", () => {
 
   it("still throws for missing insertion accounting", () => {
     const base = runningControl({ then: { step: "follow", when: null, then: null } });
-    expect(() => success(replayWorkflow({ ...base, guardrails: { ...base.guardrails, attemptMutationsUsed: [] } }), {}))
+    expect(() => success(replayDecodedWorkflow({ ...base, guardrails: { ...base.guardrails, attemptMutationsUsed: [] } }), {}))
       .toThrow('missing guardrail accounting for attempt "attempt"');
   });
 
   it("inserts one nested follow-up per completion and applies empty-value gating", () => {
     const then = { step: "follow", when: "gate", then: { step: "nested", when: null, then: null } } as const;
     for (const gate of [null, undefined, "", []]) {
-      const proposed = success(replayWorkflow(runningControl({ then })), { gate });
+      const proposed = success(replayDecodedWorkflow(runningControl({ then })), { gate });
       expect(proposed.state.context.pending?.proposedCommitted.attempts).toHaveLength(1);
     }
 
-    const first = startPreparedAttempt(acknowledge(success(replayWorkflow(runningControl({ then })), { gate: "yes" })));
+    const first = startPreparedAttempt(acknowledge(success(replayDecodedWorkflow(runningControl({ then })), { gate: "yes" })));
     expect(first.command).toMatchObject({ kind: "run_attempts", attempts: [{ definitionId: "follow" }] });
     const followId = first.state.context.committed.attempts[1]?.id;
     if (!followId) throw new Error("follow-up attempt missing");
@@ -163,8 +162,8 @@ describe("workflow machine fake semantics", () => {
   });
 
   it("distinguishes authored handoff retry, ordinary failure, and context overflow", () => {
-    const retryState = replayWorkflow(runningControl({ retry: { max: 2, stuck: true } }));
-    const retried = startPreparedAttempt(acknowledge(transitionWorkflow(retryState, {
+    const retryState = replayDecodedWorkflow(runningControl({ retry: { max: 2, stuck: true } }));
+    const retried = startPreparedAttempt(acknowledge(transitionDecodedWorkflow(retryState, {
       type: "ATTEMPT_FAILED",
       failure: { attemptId: "attempt", kind: "handoff", reason: "missing evidence", conversationId: "conversation" },
     })));
@@ -173,7 +172,7 @@ describe("workflow machine fake semantics", () => {
       attempts: [{ iteration: 2, priorRetryFeedback: "missing evidence", provenance: { _tag: "retry" } }],
     });
     const retryBase = runningControl({ retry: { max: 2, stuck: true } });
-    const uncharged = transitionWorkflow(replayWorkflow({
+    const uncharged = transitionDecodedWorkflow(replayDecodedWorkflow({
       ...retryBase,
       guardrails: { ...retryBase.guardrails, maxInserts: 0, maxMutationsPerAttempt: 1, attemptMutationsUsed: [{ attemptId: "attempt", used: 1 }] },
     }), {
@@ -184,7 +183,7 @@ describe("workflow machine fake semantics", () => {
     expect(uncharged.state.context.pending?.proposedCommitted.guardrails.insertsUsed).toBe(0);
 
     for (const kind of ["fatal", "transient", "context_overflow", "missing_handoff"] as const) {
-      const proposed = transitionWorkflow(replayWorkflow(runningControl()), {
+      const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(runningControl()), {
         type: "ATTEMPT_FAILED",
         failure: { attemptId: "attempt", kind, reason: "unauthorized", conversationId: "conversation" },
       });
@@ -224,7 +223,7 @@ describe("workflow machine fake semantics", () => {
       attempts: [{ ...workOf(base).attempt, definitionId: "source" }],
     };
 
-    const expanded = acknowledge(success(replayWorkflow(control), { items: [{ id: "one" }] }));
+    const expanded = acknowledge(success(replayDecodedWorkflow(control), { items: [{ id: "one" }] }));
     const body = expanded.state.context.committed.attempts[1];
     if (!body) throw new Error("for body attempt missing");
     const bodyRun = startPreparedAttempt(expanded);
@@ -260,7 +259,7 @@ describe("workflow machine fake semantics", () => {
 
     const root = buildWorkflowControlInitializedFact(control);
     for (const encoding of [2, 3, 4, 6] as const) {
-      const proposal = transitionDecodedWorkflow(replayWorkflow(root.payload.control), {
+      const proposal = transitionDecodedWorkflow(replayDecodedWorkflow(root.payload.control), {
         type: "ATTEMPT_SUCCEEDED",
         outcome: { attemptId: "attempt", conversationId: "conversation", handoff: { items: [{ id: "one" }] }, reassessment: null },
       }, encoding);
@@ -271,18 +270,18 @@ describe("workflow machine fake semantics", () => {
       ]);
       expect(replayWorkflowControl([root, ...pending.facts])).toEqual(pending.proposedCommitted);
     }
-    const rejected = acknowledge(success(replayWorkflow(control), { items: [{ id: "one" }] }));
+    const rejected = acknowledge(success(replayDecodedWorkflow(control), { items: [{ id: "one" }] }));
     expect(rejected.state.lifecycle).toBe("paused");
     expect(rejected.state.context.committed.attempts).toMatchObject([{ definitionId: "source", state: { _tag: "completed" } }]);
     expect(rejected.state.context.committed.graph.nodes[1]?.state._tag).toBe("ready");
   });
 
   it("drops an ineligible reassessment target before charging its budget", () => {
-    const state = replayWorkflow({
+    const state = replayDecodedWorkflow({
       ...runningControl(),
       guardrails: { ...runningControl().guardrails, maxMutationsPerAttempt: 1 },
     });
-    const proposed = transitionWorkflow(state, {
+    const proposed = transitionDecodedWorkflow(state, {
       type: "REASSESSMENT_PROPOSED",
       proposal: {
         proposalId: "reassess-1", ownerNodeId: "node", reason: "change",
@@ -303,7 +302,7 @@ describe("workflow machine fake semantics", () => {
     const targetAttempt = {
       ...workOf(base).attempt, id: "target-attempt", logicalNodeId: target.id, state: { _tag: "pending" },
     } as const;
-    const state = replayWorkflow({
+    const state = replayDecodedWorkflow({
       ...base,
       graph: { ...base.graph, nodes: [...base.graph.nodes, target] },
       attempts: [...base.attempts, targetAttempt],
@@ -314,7 +313,7 @@ describe("workflow machine fake semantics", () => {
       },
     });
     const before = JSON.stringify(state);
-    expect(() => transitionWorkflow(state, {
+    expect(() => transitionDecodedWorkflow(state, {
       type: "REASSESSMENT_PROPOSED",
       proposal: {
         proposalId: "reassess-2", ownerNodeId: "node", reason: "change",
@@ -329,7 +328,7 @@ describe("workflow machine fake semantics", () => {
 
   it("creates reassessment attempts without artifact-selection state", () => {
     const base = runningControl();
-    const proposed = transitionWorkflow(replayWorkflow(base), {
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(base), {
       type: "REASSESSMENT_PROPOSED",
       proposal: {
         proposalId: "reassess-add-node",
@@ -384,7 +383,7 @@ describe("workflow machine fake semantics", () => {
         attemptMutationsUsed: [ownerAttempt, targetAttemptA, targetAttemptB].map(({ id: attemptId }) => ({ attemptId, used: 0 })),
       },
     };
-    const proposed = transitionWorkflow(replayWorkflow(control), {
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), {
       type: "REASSESSMENT_PROPOSED",
       proposal: {
         proposalId: "reassess-work", ownerNodeId: ownerNode.id, reason: "change",
@@ -461,7 +460,7 @@ describe("workflow machine fake semantics", () => {
         attemptMutationsUsed: [review, authoredThen, targetAttempt].map(({ id: attemptId }) => ({ attemptId, used: 0 })),
       },
     };
-    const proposal = transitionWorkflow(replayWorkflow(control), {
+    const proposal = transitionDecodedWorkflow(replayDecodedWorkflow(control), {
       type: "ATTEMPT_SUCCEEDED",
       outcome: {
         attemptId: review.id,
@@ -489,7 +488,7 @@ describe("workflow machine fake semantics", () => {
 
   it("records the blocked source durably and runs only the eligible reassessment", () => {
     const then = { step: "follow", when: null, then: null } as const;
-    const proposed = block(replayWorkflow(runningControl({ then })), "attempt", "follow");
+    const proposed = block(replayDecodedWorkflow(runningControl({ then })), "attempt", "follow");
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("blocked event must propose a commit");
 
@@ -505,7 +504,7 @@ describe("workflow machine fake semantics", () => {
 
   it("fails instead of routing a block to a follow-up that cannot correct it", () => {
     const then = { step: "follow", when: null, then: null } as const;
-    const proposed = block(replayWorkflow(runningControl({ then })));
+    const proposed = block(replayDecodedWorkflow(runningControl({ then })));
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("blocked event must propose a commit");
 
@@ -520,14 +519,14 @@ describe("workflow machine fake semantics", () => {
 
   it("rejects a corrective continuation the authored graph does not name", () => {
     const then = { step: "follow", when: null, then: null } as const;
-    expect(() => block(replayWorkflow(runningControl({ then })), "attempt", "unrelated"))
+    expect(() => block(replayDecodedWorkflow(runningControl({ then })), "attempt", "unrelated"))
       .toThrow(/corrective continuation "unrelated"/);
-    expect(() => block(replayWorkflow(runningControl()), "attempt", "follow"))
+    expect(() => block(replayDecodedWorkflow(runningControl()), "attempt", "follow"))
       .toThrow(/the authored continuation is absent/);
   });
 
   it("fails with typed blocker evidence when the blocked node has no next step", () => {
-    const proposed = block(replayWorkflow(runningControl()));
+    const proposed = block(replayDecodedWorkflow(runningControl()));
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("blocked event must propose a commit");
 
@@ -547,7 +546,7 @@ describe("workflow machine fake semantics", () => {
   });
 
   it("keeps the blocked source immutable and lineage-links its corrective replacement", () => {
-    const proposal = transitionWorkflow(replayWorkflow(blockedThenReassessing()), {
+    const proposal = transitionDecodedWorkflow(replayDecodedWorkflow(blockedThenReassessing()), {
       type: "ATTEMPT_SUCCEEDED",
       outcome: {
         attemptId: "attempt:reassess",
@@ -577,7 +576,7 @@ describe("workflow machine fake semantics", () => {
   });
 
   it("never settles a blocked source through a confirming reassessment", () => {
-    const proposal = transitionWorkflow(replayWorkflow(blockedThenReassessing()), {
+    const proposal = transitionDecodedWorkflow(replayDecodedWorkflow(blockedThenReassessing()), {
       type: "ATTEMPT_SUCCEEDED",
       outcome: {
         attemptId: "attempt:reassess",
@@ -608,7 +607,7 @@ describe("workflow machine fake semantics", () => {
         attemptMutationsUsed: [{ attemptId: "attempt", used: 0 }, { attemptId: corrected.id, used: 0 }],
       },
     };
-    const proposal = success(replayWorkflow(control), { summary: "corrected" }, corrected.id);
+    const proposal = success(replayDecodedWorkflow(control), { summary: "corrected" }, corrected.id);
     const pending = proposal.state.context.pending;
     if (!pending) throw new Error("corrected completion must propose a commit");
 

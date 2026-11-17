@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { subtreeUsage, worstCaseAttempts } from "../../../../src/workflows/vm/structural-admission.js";
+import { structuralFindings, worstCaseAttempts } from "../../../../src/workflows/vm/structural-admission.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import { FINDINGS_FILES, mapSkills, VOTES_CHECKS, votesDefinition } from "./_map-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
@@ -22,7 +22,14 @@ describe("list votes compilation", () => {
     expect(contract["failed"]).toMatchObject({ max: 18 });
     // Three reviews at launch, 6 findings x 3 votes x 1 phase, and the report.
     expect(worstCaseAttempts(control)).toBe(3 + 6 * 3 + 1);
-    expect(subtreeUsage(control.graph, VOTES_CHECKS, "worstCase")).toEqual({ nodes: 6 * 3 * 2, depth: 2 });
+    // Inspection counts the unexpanded list at its worst case: an agent for
+    // each vote of each item, in the list and in its one phase, two
+    // containers deep. A declared limit just below each count reports both.
+    const limited = { ...control, graph: { ...control.graph, budgets: [{ parentNodeId: VOTES_CHECKS, limits: { nodes: 6 * 3 * 2 - 1, depth: 1 } }] } };
+    expect(structuralFindings(limited).filter(({ name }) => name === "parent_budget_overrun").map(({ message }) => message)).toEqual([
+      `Phase "${VOTES_CHECKS}" holds ${6 * 3 * 2} nodes, more than its declared limit of ${6 * 3 * 2 - 1}.`,
+      `Phase "${VOTES_CHECKS}" nests 2 containers deep, more than its declared limit of 1.`,
+    ]);
     // A retry runs again for every vote.
     expect(worstCaseAttempts(compile({ retry: { max: 2 } }))).toBe(3 + 6 * 3 * 2 + 1);
   });

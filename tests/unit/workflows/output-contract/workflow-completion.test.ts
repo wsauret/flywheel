@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { COMPLETION_AGENT_RESULTS_CAP_BYTES, readWorkflowCompletionEvidence, terminalWorkflow, workflowCompletionContent } from "../../../../src/workflows/output-contract/workflow-completion.js"
+import { readWorkflowCompletionEvidence, terminalWorkflow, workflowCompletionContent } from "../../../../src/workflows/output-contract/workflow-completion.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
@@ -463,7 +463,9 @@ describe("the workflow completion result", () => {
   })
 
   it("keeps the latest agent results that fit its limit, lists them in graph order, and names each other one and how to read it", () => {
-    const sized = (share: number) => ({ summary: "x".repeat(Math.floor(COMPLETION_AGENT_RESULTS_CAP_BYTES * share)) })
+    // The limit that the workflow-authoring skill states for these results.
+    const limitBytes = 65_536
+    const sized = (share: number) => ({ summary: "x".repeat(Math.floor(limitBytes * share)) })
     // In graph order the lanes would fill the limit before the report.
     const content = workflowCompletionContent({
       status: "completed", label: "Large", sessionId: "session", handoff: null, tree: { nodes: [] }, failedAgents: [], resumable: false,
@@ -476,6 +478,6 @@ describe("the workflow completion result", () => {
     })
 
     expect([...content.matchAll(/^## (.+)$/gmu)].map((match) => match[1])).toEqual(["second: completed", "third: skipped (its input failed)", "report: completed"])
-    expect(content).toEndWith(`These agent results did not fit the ${COMPLETION_AGENT_RESULTS_CAP_BYTES}-byte limit of this message: first. Read each handoff with \`flywheel events search --session session --type handoff.written --json\`, which names the agent of each one.`)
+    expect(content).toEndWith(`These agent results did not fit the ${limitBytes}-byte limit of this message: first. Read each handoff with \`flywheel events search --session session --type handoff.written --json\`, which names the agent of each one.`)
   })
 })

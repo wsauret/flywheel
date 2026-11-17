@@ -3,9 +3,8 @@ import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/comm
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 import {
   initializeWorkflow,
-  replayWorkflow,
+  replayDecodedWorkflow,
   transitionDecodedWorkflow,
-  transitionWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
 import type { DecodedWorkflowEvent } from "../../../../src/workflows/vm/events.js";
 import type { WorkflowMachineState } from "../../../../src/workflows/vm/control-types.js";
@@ -52,7 +51,7 @@ function control(status: CommittedWorkflowControl["status"] = "ready"): Committe
 function acknowledge(result: WorkflowTransitionResult): WorkflowTransitionResult {
   const pending = result.state.context.pending;
   if (!pending) throw new Error("test transition must have a pending commit");
-  return transitionWorkflow(result.state, {
+  return transitionDecodedWorkflow(result.state, {
     type: "COMMIT_SUCCEEDED",
     proposalId: pending.proposalId,
     aggregateSeq: pending.proposedCommitted.aggregateSeq,
@@ -64,13 +63,13 @@ describe("workflow machine lifecycle", () => {
     const initial = initializeWorkflow(control());
     expect(initial).toMatchObject({ state: { lifecycle: "ready", context: { pending: null } }, command: { kind: "none" } });
 
-    const proposed = transitionWorkflow(initial.state, { type: "START" });
+    const proposed = transitionDecodedWorkflow(initial.state, { type: "START" });
     expect(proposed.state.lifecycle).toBe("awaiting_commit");
     expect(proposed.command.kind).toBe("commit");
     expect(proposed.state.context.committed).toEqual(initial.state.context.committed);
     expect(proposed.state.context.pending?.proposedCommitted.attempts[0]?.state._tag).toBe("pending");
 
-    const stale = transitionWorkflow(proposed.state, { type: "COMMIT_SUCCEEDED", proposalId: "stale", aggregateSeq: 1 });
+    const stale = transitionDecodedWorkflow(proposed.state, { type: "COMMIT_SUCCEEDED", proposalId: "stale", aggregateSeq: 1 });
     expect(stale.state).toEqual(proposed.state);
     expect(stale.command.kind).toBe("none");
 
@@ -79,7 +78,7 @@ describe("workflow machine lifecycle", () => {
     expect(prepared.state.context.pending).toBeNull();
     expect(prepared.command).toMatchObject({ kind: "prepare_attempt", attempt: { attemptId: "attempt-1" } });
 
-    const started = transitionWorkflow(prepared.state, {
+    const started = transitionDecodedWorkflow(prepared.state, {
       type: "ATTEMPT_STARTED", attemptId: "attempt-1", conversationId: "conversation-1",
     });
     expect(started.state.context.pending?.facts.map(({ type }) => type)).toEqual([
@@ -92,7 +91,7 @@ describe("workflow machine lifecycle", () => {
     });
     expect(committed.command).toMatchObject({ kind: "run_attempts", attempts: [{ attemptId: "attempt-1" }] });
 
-    const duplicate = transitionWorkflow(committed.state, {
+    const duplicate = transitionDecodedWorkflow(committed.state, {
       type: "COMMIT_SUCCEEDED",
       proposalId: started.state.context.pending?.proposalId ?? "missing",
       aggregateSeq: committed.state.context.committed.aggregateSeq,
@@ -101,19 +100,19 @@ describe("workflow machine lifecycle", () => {
   });
 
   it("commits pause, resume, abort, and follow-up transitions", () => {
-    const prepared = acknowledge(transitionWorkflow(initializeWorkflow(control()).state, { type: "START" }));
-    const executing = acknowledge(transitionWorkflow(prepared.state, {
+    const prepared = acknowledge(transitionDecodedWorkflow(initializeWorkflow(control()).state, { type: "START" }));
+    const executing = acknowledge(transitionDecodedWorkflow(prepared.state, {
       type: "ATTEMPT_STARTED", attemptId: "attempt-1", conversationId: "conversation-1",
     }));
-    const paused = acknowledge(transitionWorkflow(executing.state, { type: "PAUSE", reason: "operator" }));
+    const paused = acknowledge(transitionDecodedWorkflow(executing.state, { type: "PAUSE", reason: "operator" }));
     expect(paused.state.lifecycle).toBe("paused");
     expect(paused.command.kind).toBe("none");
 
-    const resumed = acknowledge(transitionWorkflow(paused.state, { type: "RESUME", readers: {} }));
+    const resumed = acknowledge(transitionDecodedWorkflow(paused.state, { type: "RESUME", readers: {} }));
     expect(resumed.state.lifecycle).toBe("ready");
     expect(resumed.command.kind).toBe("prepare_attempt");
 
-    const abortProposal = transitionWorkflow(resumed.state, { type: "ABORT", reason: "operator" });
+    const abortProposal = transitionDecodedWorkflow(resumed.state, { type: "ABORT", reason: "operator" });
     expect(abortProposal.state.context.pending?.facts).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: "workflow.aborted", payload: expect.objectContaining({ reason: "operator" }) }),
     ]));
@@ -132,7 +131,7 @@ describe("workflow machine lifecycle", () => {
     const done = acknowledge(recorded(followUp.state, { type: "FOLLOW_UP_SUCCEEDED", conversationId: "follow-up-1", requestSequence: 1 }));
     expect(done.state.lifecycle).toBe("completed");
 
-    const recovered = acknowledge(transitionWorkflow(replayWorkflow(followUp.state.context.committed), { type: "RECOVER", progressed: [] }));
+    const recovered = acknowledge(transitionDecodedWorkflow(replayDecodedWorkflow(followUp.state.context.committed), { type: "RECOVER", progressed: [] }));
     expect(recovered.command).toEqual({ kind: "none" });
     expect(recovered.state.context.committed.followUp).toEqual({
       conversationId: "follow-up-1",
@@ -152,7 +151,7 @@ describe("workflow machine lifecycle", () => {
     }));
     const aborted = acknowledge(recorded(requested.state, { type: "ABORT", reason: "operator" }));
     const before = aborted.state.context.committed;
-    const proposed = recorded(replayWorkflow(before), { type: "RESUME", readers: {} });
+    const proposed = recorded(replayDecodedWorkflow(before), { type: "RESUME", readers: {} });
     expect(proposed.command.kind).toBe("commit");
     expect(proposed.state.context.committed).toEqual(before);
     expect(proposed.state.context.pending?.facts.map(({ type }) => type)).toEqual([
@@ -164,7 +163,7 @@ describe("workflow machine lifecycle", () => {
     expect(resumed.state.context.committed).toEqual({
       ...before, status: "follow_up", aggregateSeq: before.aggregateSeq + 2,
     });
-    expect(transitionWorkflow(resumed.state, {
+    expect(transitionDecodedWorkflow(resumed.state, {
       type: "COMMIT_SUCCEEDED", proposalId: proposed.state.context.pending!.proposalId,
       aggregateSeq: resumed.state.context.committed.aggregateSeq,
     }).command.kind).toBe("none");
@@ -177,7 +176,7 @@ describe("workflow machine lifecycle", () => {
     const realNow = Date.now;
     Date.now = () => { throw new Error("Date.now is forbidden"); };
     try {
-      const proposed = transitionWorkflow(initializeWorkflow(control()).state, { type: "START" });
+      const proposed = transitionDecodedWorkflow(initializeWorkflow(control()).state, { type: "START" });
       expect(acknowledge(proposed).command.kind).toBe("prepare_attempt");
     } finally {
       Date.now = realNow;

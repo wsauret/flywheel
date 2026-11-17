@@ -14,7 +14,7 @@ import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
 import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/workflows/vm/recovery.js";
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/replay.js";
-import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js";
 import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
@@ -49,7 +49,7 @@ describe("historical committed v2 replay", () => {
     const facts: unknown[] = [...histories.retry];
     const control = replayWorkflowControl(facts);
     expect(control.followUp).toEqual({ conversationId: "follow-up", requestSequence: 1, identity: { kind: "historical" }, pendingInput: { text: "explain" } });
-    let state = replayWorkflow(control);
+    let state = replayDecodedWorkflow(control);
     for (const event of [
       { type: "RECOVER", progressed: [] },
       { type: "FOLLOW_UP_FAILED", reason: "retry later", conversationId: "follow-up", requestSequence: 1 },
@@ -105,7 +105,7 @@ describe("historical committed v2 replay", () => {
 describe("historical committed v3 replay", () => {
   it("preserves a final blocked handoff that paused under the v3 producer", () => {
     const root = buildWorkflowControlInitializedFact(runningControl());
-    const blocked = transitionDecodedWorkflow(replayWorkflow(root.payload.control), {
+    const blocked = transitionDecodedWorkflow(replayDecodedWorkflow(root.payload.control), {
       type: "ATTEMPT_BLOCKED",
       blocked: {
         attemptId: "attempt",
@@ -137,7 +137,7 @@ describe("historical committed v3 replay", () => {
 describe("success fact versions in strict replay", () => {
   const succeeded = (encoding: 4 | 6 | 7 | 8 | 9) => {
     const root = buildWorkflowControlInitializedFact(runningControl());
-    const state = replayWorkflow(root.payload.control);
+    const state = replayDecodedWorkflow(root.payload.control);
     const proposed = transitionDecodedWorkflow(state, {
       type: "ATTEMPT_SUCCEEDED",
       outcome: { attemptId: "attempt", conversationId: "conversation", handoff: { summary: "done" }, reassessment: null },
@@ -419,7 +419,7 @@ describe("paused runs from before the inert fields left control", () => {
     expect(`${root.type}@${root.version}`).toBe("workflow.control.recovered@3");
     const control = replayWorkflowControl([root]);
     expect(control.status).toBe("paused");
-    const proposed = transitionWorkflow(replayWorkflow(control), { type: "RESUME", readers: {} });
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "RESUME", readers: {} });
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("Expected a resume proposal");
     expect(pending.facts.at(-1)?.version).toBe(14);
@@ -470,7 +470,7 @@ describe("paused runs from before phase containers", () => {
     const control = replayWorkflowControl([root]);
     expect(control.status).toBe("paused");
     expect(control.graph.budgets).toBeUndefined();
-    const proposed = transitionWorkflow(replayWorkflow(control), { type: "RESUME", readers: {} });
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "RESUME", readers: {} });
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("Expected a resume proposal");
     expect(pending.facts.at(-1)?.version).toBe(14);
@@ -546,7 +546,7 @@ describe("paused runs from before map groups", () => {
     expect(`${root.type}@${root.version}`).toBe("workflow.control.recovered@5");
     const control = replayWorkflowControl([root]);
     expect(control.status).toBe("paused");
-    const proposed = transitionWorkflow(replayWorkflow(control), { type: "RESUME", readers: {} });
+    const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "RESUME", readers: {} });
     const pending = proposed.state.context.pending;
     if (!pending) throw new Error("Expected a resume proposal");
     const stored = pending.facts.map((fact, index) => ({ ...fact, seq: root.seq + 1 + index }));

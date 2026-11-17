@@ -271,7 +271,7 @@ export function isContentOnlyIdentityChange(
  *  for their own legacy members, so the ordered chain reaches one strict shape
  *  without a runtime fallback. */
 export const DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID = "workflow-definition-identity-context-v1"
-export const DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON =
+const DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON =
   "Control was staged before definition identity covered composed skills and reachable personas; the normalized session adopts the selected definition when it still exists."
 
 /** The unification cutover replaced the retired step definitions that a
@@ -280,7 +280,7 @@ export const DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON =
  *  selected skill and its workflow binding exactly reconstruct each recorded
  *  snapshot of a retired step definition. */
 export const DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID = "workflow-definition-identity-unified-catalog-v1"
-export const DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_REASON =
+const DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_REASON =
   "Control was staged while a workflow identity recorded step definitions; the session adopts the binding-and-skill identity because the selected skills and bindings reconstruct every recorded step snapshot exactly." // stored reason text
 
 /** The implementation-first rename replaced the durable workflow, binding, and
@@ -288,20 +288,20 @@ export const DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_REASON =
  * `flywheel-core` became `implement`, the `flywheel.`/`get-stuff-done.`/
  * `compound-eng.` skill families became `fly.`/`gsd.`/`ce.`, and the
  * spec-writing pair lost the word plan. */
-export const DEFINITION_IDENTITY_RENAME_MIGRATION_ID = "workflow-definition-identity-implementation-first-rename-v1"
-export const DEFINITION_IDENTITY_RENAME_MIGRATION_REASON =
+const DEFINITION_IDENTITY_RENAME_MIGRATION_ID = "workflow-definition-identity-implementation-first-rename-v1"
+const DEFINITION_IDENTITY_RENAME_MIGRATION_REASON =
   "Control was staged before the implementation-first rename; the session adopts the renamed identity because the recorded ids map onto the workflow, bindings, skills, handoff types, and personas the current definition names."
 
 /** The dependency-only implementation specification joined the `fly.` family
  * after its other workflow-owned consumers. The pass also recognizes `planning`
  * so a store can upgrade directly from any earlier release. */
-export const DEFINITION_IDENTITY_SKILL_NAMESPACE_RENAME_MIGRATION_ID =
+const DEFINITION_IDENTITY_SKILL_NAMESPACE_RENAME_MIGRATION_ID =
   "workflow-definition-identity-skill-namespace-rename-v2"
-export const DEFINITION_IDENTITY_SKILL_NAMESPACE_RENAME_MIGRATION_REASON =
+const DEFINITION_IDENTITY_SKILL_NAMESPACE_RENAME_MIGRATION_REASON =
   "Control was staged before the implementation specification skill joined the fly namespace; the session adopts the renamed identity because every recorded id maps onto the current definition."
 
 export const DEFINITION_IDENTITY_GRAPH_MIGRATION_ID = "workflow-definition-identity-graph-v1"
-export const DEFINITION_IDENTITY_GRAPH_MIGRATION_REASON =
+const DEFINITION_IDENTITY_GRAPH_MIGRATION_REASON =
   "Control recorded whole-workflow provenance before structural graph compatibility became distinct; the session adopts the graph identity derived from its recorded workflow snapshot."
 
 export const DEFINITION_IDENTITY_RETIRED_SELF_REVIEW_MIGRATION_ID = "workflow-definition-identity-retired-self-review-v1"
@@ -330,7 +330,7 @@ const DEFINITION_IDENTITY_RUNTIME_WORDING_MIGRATION_REASON =
 
 /** The brief cutover replaced the bindings and the handoff registry of an
  *  identity with one entry for each agent record. Remove after 2027-04-30. */
-export const DEFINITION_IDENTITY_STEP_CONTENT_MIGRATION_ID = "workflow-definition-identity-step-content-v1" // stored migration id
+const DEFINITION_IDENTITY_STEP_CONTENT_MIGRATION_ID = "workflow-definition-identity-step-content-v1" // stored migration id
 const DEFINITION_IDENTITY_STEP_CONTENT_MIGRATION_REASON =
   "Control recorded the binding and handoff registry identity of the build before step content; the session adopts the step identity because the graph, every binding, every handoff contract, and every skill the steps still compose equal what that build recorded." // stored reason text
 
@@ -423,7 +423,7 @@ const DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_REASON =
  * that already adopted an earlier migration can still receive a later one.
  * Append a new migration at the end and never reorder or remove one: a recorded
  * fact names its position in the chain by id alone. */
-export const DEFINITION_IDENTITY_MIGRATIONS = [
+const DEFINITION_IDENTITY_MIGRATIONS = [
   { id: DEFINITION_IDENTITY_CONTEXT_MIGRATION_ID, reason: DEFINITION_IDENTITY_CONTEXT_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_ID, reason: DEFINITION_IDENTITY_UNIFIED_CATALOG_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_RENAME_MIGRATION_ID, reason: DEFINITION_IDENTITY_RENAME_MIGRATION_REASON },

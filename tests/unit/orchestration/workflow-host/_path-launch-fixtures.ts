@@ -13,7 +13,6 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
-import { sessionWorkflowsDir } from "../../../../src/orchestration/workflow-host/path-workflow.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions } from "../../../helpers/project-definitions.js"
@@ -53,7 +52,8 @@ export async function pathSetup(mode: "on" | "ask" = "on", suppliedDeps?: Workfl
   const parent = await manager.read(chatSessionId)
   if (parent?.kind !== "chat") throw new Error("the parent is not a chat")
   const sessionDir = resolveSessionDir(chatSessionId, root)
-  const dir = sessionWorkflowsDir(sessionDir)
+  // The session's workflow directory, where an agent writes a file it launches.
+  const dir = join(sessionDir, "scratch", "workflows")
   mkdirSync(dir, { recursive: true })
   const workflowHosts = createMockWorkflowHosts()
   const starts = workflowHosts._startCalls

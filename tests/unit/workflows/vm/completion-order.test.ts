@@ -1,9 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
-import { completedBefore, completionOrder } from "../../../../src/workflows/vm/completion-order.js";
+import { completedBefore } from "../../../../src/workflows/vm/completion-order.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
-import { mapSkills, mapWorkflow } from "./_map-fixtures.js";
 import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision([]);
@@ -24,15 +23,15 @@ function treeGraph() {
 }
 
 describe("completion order", () => {
+  // The ids name each node by its position: node 1 holds the named agents,
+  // node 2 is the repeat with the two phases of its first round, and node 3
+  // is the last phase.
   it.each([
-    ["named agents, a repeat, and a phase after them", treeGraph],
-    ["a list with its stream and join", () => compileWorkflowControl(mapWorkflow, resolveWorkflowAgents(mapWorkflow), { skills: mapSkills }).graph],
-  ])("answers each pair as the set of nodes that complete before the later one (%s)", (_name, graph) => {
-    const compiled = graph();
-    const completesBefore = completionOrder(compiled);
-    for (const later of compiled.nodes) {
-      const before = completedBefore(compiled, later.id);
-      for (const earlier of compiled.nodes) expect(completesBefore(earlier.id, later.id)).toBe(before.has(earlier.id));
-    }
+    ["the named agents of the first phase, which run side by side", "tree:node:1:node:2", []],
+    ["a phase of the repeat, after the whole first phase", "tree:node:2:round:1:node:1", ["tree:node:1", "tree:node:1:node:1", "tree:node:1:node:2"]],
+    ["the later phase of one round, after the earlier one", "tree:node:2:round:1:node:2", ["tree:node:1", "tree:node:1:node:1", "tree:node:1:node:2", "tree:node:2:round:1:node:1"]],
+    ["the last phase, after the repeat and every phase it holds", "tree:node:3", ["tree:node:1", "tree:node:1:node:1", "tree:node:1:node:2", "tree:node:2", "tree:node:2:round:1:node:1", "tree:node:2:round:1:node:2"]],
+  ])("names the nodes that complete before %s", (_name, targetId, before) => {
+    expect([...completedBefore(treeGraph(), targetId)].sort()).toEqual(before);
   });
 });

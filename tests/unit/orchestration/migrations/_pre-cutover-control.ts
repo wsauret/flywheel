@@ -13,7 +13,7 @@ import type { ToolScoping } from "../../../../src/infra/workflow-types.js"
 import { hashContent, hashDefinition } from "../../../../src/workflows/definition-hash.js"
 import { renderSkillContext } from "../../../../src/workflows/skill-render.js"
 import type { StepGrammarWorkflow, WorkflowStep } from "../../../../src/workflows/retired-step-grammar/schema.js"
-import { retiredBindingSha256, type RetiredBinding } from "../../../../src/workflows/retired-bindings.js"
+import type { RetiredBinding } from "../../../../src/workflows/retired-bindings.js"
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
@@ -138,6 +138,18 @@ export interface LegacyCapture {
 function frozenBindings(workflowId: string): ReadonlyMap<string, LegacyBindingPin> {
   const pins: readonly LegacyBindingPin[] = Object.entries(LEGACY_WORKFLOW_BINDINGS).find(([id]) => id === workflowId)?.[1] ?? []
   return new Map(pins.map((pin) => [pin.bindingId, pin]))
+}
+
+/** The hash the last pre-cutover build recorded for one binding: its
+ *  canonical record, with the `writes` and `allowedChildSkills` defaults
+ *  filled and its id added. */
+export function retiredBindingSha256(bindingId: string, binding: RetiredBinding): string {
+  return hashDefinition({
+    ...binding,
+    writes: binding.writes ?? [],
+    ...(binding.external ? { allowedChildSkills: binding.allowedChildSkills ?? [] } : {}),
+    bindingId,
+  }).sha256
 }
 
 /** Rebuild the binding one converted step replaced, from the skill, the
