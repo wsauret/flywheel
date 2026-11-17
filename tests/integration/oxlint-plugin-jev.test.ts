@@ -120,6 +120,22 @@ describe("oxlint-plugin-jev", () => {
     expect(run.stderr.split(warning)).toHaveLength(2);
   });
 
+  it("sends no request for a function rule's one-statement arrows under minStatements, and still asks about longer functions", async () => {
+    const server = startMock();
+    const source = [
+      "export const forward = (value: number): number => double(value);",
+      "export const wrapped = (value: number): number => {\n  return double(value);\n};",
+      "export function sum(left: number, right: number): number {\n  const total = left + right;\n  return total;\n}",
+      "declare function double(value: number): number;",
+    ].join("\n");
+    const run = await lint(
+      { TYPESAFE_API_KEY: "test-key", TYPESAFE_BASE_URL: server.origin },
+      { source, rules: [{ ...addRule, minStatements: 2 }] },
+    );
+    expect(server.requests.map(({ questions }) => questions)).toEqual([1]);
+    expect(run.diagnostics).toHaveLength(1);
+  });
+
   it("keeps every request of token-dense source under the decision models' 64k-token limit", async () => {
     const server = startMock();
     const source = ["first", "second", "third"].map((name) => `export function ${name}(): string {\n  return "0x${hex(40_000)}";\n}\n`).join("");

@@ -16,6 +16,11 @@ export interface JevRule {
   cutoff: number;
   /** File rules may select a source line, keeping a file-level finding below this probability. */
   location?: { question: string; cutoff: number };
+  /**
+   * Function rules only: skip a function whose body has fewer top-level statements than this,
+   * before any request. An expression body, such as `(x) => f(x)`, counts as one statement.
+   */
+  minStatements?: number;
   /** Shown instead of the question when the rule fires. Not sent to the model. */
   message?: string;
 }
