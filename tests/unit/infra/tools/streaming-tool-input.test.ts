@@ -552,6 +552,10 @@ describe("StreamingToolInputs row derivation", () => {
 
   /** Far below what one delta reads when it reads the input streamed before it. */
   const DELTA_READ_BOUND = 500;
+  /** An input this many times the bound fails it on any delta that reads the
+   *  input streamed before it, also one that does so only at a line end. A
+   *  larger input proves nothing more and pays the metering on every delta. */
+  const INPUT_PER_BOUND = 12;
 
   interface DeltaReads {
     readonly most: number;
@@ -684,13 +688,13 @@ describe("StreamingToolInputs row derivation", () => {
     ]);
   });
 
-  test("over a 2,000-line heredoc streamed one character per delta, no delta reads the command streamed before it, in the decoder or the transcript row, and each command completes once", () => {
-    const body = Array.from({ length: 2000 }, (_, line) => `line ${line} ${"x".repeat(30)}`).join("\n");
+  test("over a long heredoc streamed one character per delta, no delta reads the command streamed before it, in the decoder or the transcript row, and each command completes once", () => {
+    const body = Array.from({ length: 160 }, (_, line) => `line ${line} ${"x".repeat(30)}`).join("\n");
     const command = `cat > out.txt <<'EOF'\n${body}\nEOF\n./publish.sh out.txt`;
-    expect(command.length).toBeGreaterThan(80_000);
+    expect(command.length).toBeGreaterThan(INPUT_PER_BOUND * DELTA_READ_BOUND);
     for (const through of ["decoder", "transcript"] as const) {
       const { most, rows } = mostReadByOneDelta("bash", { command }, through);
-      // One delta that read the command streamed before it would read tens of thousands.
+      // One delta that read the command streamed before it would read thousands.
       expect(most).toBeLessThan(DELTA_READ_BOUND);
       expect(rows.at(-1)).toEqual(resolveToolRowPresentation("bash", { command }, "/workspace"));
     }
@@ -701,15 +705,10 @@ describe("StreamingToolInputs row derivation", () => {
     expect(completed).toEqual([...parseShell(command)]);
   });
 
-  // The transcript adds the row's own work to the decoder's, so a patch far
-  // longer than the bound proves it there at a quarter of the metered time.
-  test.each([
-    ["200 KB", "decoder", 2000],
-    ["50 KB", "transcript", 500],
-  ] as const)("over a %s V4A patch streamed one character per delta, no delta reads the patch streamed before it, through the %s", (_size, through, lineCount) => {
-    const lines = Array.from({ length: lineCount }, (_, line) => `+${String(line).padEnd(99, "z")}`);
+  test.each(["decoder", "transcript"] as const)("over a long V4A patch streamed one character per delta, no delta reads the patch streamed before it, through the %s", (through) => {
+    const lines = Array.from({ length: 60 }, (_, line) => `+${String(line).padEnd(99, "z")}`);
     const input = `*** Begin Patch\n*** Update File: src/a.ts\n${lines.join("\n")}\n*** End Patch`;
-    expect(input.length).toBeGreaterThan(lineCount * 100);
+    expect(input.length).toBeGreaterThan(INPUT_PER_BOUND * DELTA_READ_BOUND);
     const { most, rows } = mostReadByOneDelta("edit", { input }, through);
     expect(most).toBeLessThan(DELTA_READ_BOUND);
     expect(rows.at(-1)).toEqual({ presentation: { name: "Edit", detail: "src/a.ts" }, sentence: { name: "Edited", detail: "a.ts" } });
