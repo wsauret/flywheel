@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
 import {
   createToolResultDisplayMetaCursorReader,
@@ -10,7 +10,7 @@ import {
 } from "../../../../src/orchestration/session/conversation/tool-result-meta"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
 import { readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence.js"
-import { readPatchContent } from "../../../../src/orchestration/session/session-change-sources.js"
+import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
 
 function recoveredReader() {
@@ -18,7 +18,7 @@ function recoveredReader() {
 }
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 const { appendSessionFact } = transcriptFixture(() => store, () => baseDir)
 transcriptStores((nextStore, directory) => {
   store = nextStore
@@ -194,7 +194,7 @@ describe("transcript auxiliary cursor readers", () => {
     const first = files.files[0]
     if (first?.kind !== "display" || first.file.patch.kind !== "retained") throw new Error("Missing display patch")
     expect(first.file.conflictMarkers).toBe(true)
-    expect(await readPatchContent(reader, sessionId, first.file.patch.reference)).toBe(mutation.files[0]!.unifiedDiff)
+    expect(completePatch(await resolveRetainedPatch(reader, sessionId, { kind: "evidence", evidence: first.file }))).toBe(mutation.files[0]!.unifiedDiff)
     expect(files.files[1]).toEqual({ kind: "not_applied", ...notApplied[0]! })
     expect(meta.get("failed-edit")).toBeUndefined()
   })
@@ -263,11 +263,11 @@ describe("transcript auxiliary cursor readers", () => {
     let reads = 0
     const reader = {
       ...store,
-      read: (...args: Parameters<EventStore["read"]>) => {
+      read: (...args: Parameters<LocalSqliteEventStore["read"]>) => {
         if (args[0]?.positions === undefined) reads += 1
         return store.read(...args)
       },
-      readTolerant: (...args: Parameters<EventStore["readTolerant"]>) => {
+      readTolerant: (...args: Parameters<LocalSqliteEventStore["readTolerant"]>) => {
         if (args[0]?.positions === undefined) reads += 1
         return store.readTolerant(...args)
       },

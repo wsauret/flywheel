@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createChatSession, type ChatSessionDeps } from "../../../../src/orchestration/chat/session"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
@@ -28,7 +28,7 @@ import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
 
 /** `deps` with the session's in-flight cells in `store`, where its
  *  conversation commits retire them. */
-function withStoreCells(deps: ChatSessionDeps, store: EventStore): ChatSessionDeps {
+function withStoreCells(deps: ChatSessionDeps, store: LocalSqliteEventStore): ChatSessionDeps {
   return { ...deps, infra: { ...deps.infra, sessionEventWriter: inFlightCellsIn(deps.sessionId, asAsyncEventWriter(store)) } }
 }
 

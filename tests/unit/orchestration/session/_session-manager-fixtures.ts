@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type EventStore, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import type { SessionManager, SessionManagerDeps } from "../../../../src/orchestration/session/manager";
 import type { RoleSettings, Session } from "../../../../src/orchestration/session/schemas";
@@ -19,21 +19,21 @@ import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } f
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js";
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js";
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 
 /** Commits one control transition with the companion facts the runtime publishes. */
-export async function advanceTestWorkflow(manager: SessionManager, store: EventStoreReadSurface, workflowId: string, event: Parameters<typeof transitionWorkflow>[1]): Promise<void> {
+export async function advanceTestWorkflow(manager: SessionManager, store: EventStoreReadSurface, workflowId: string, event: Parameters<typeof transitionDecodedWorkflow>[1]): Promise<void> {
   const bindings = testResolvedAgents([testResolvedAgent(TEST_BINDING_ID, TEST_SKILL, { name: TEST_SKILL.name })]);
   const facts = store.read({ aggregateId: `workflow:${workflowId}` });
   const control = replayWorkflowControl(facts);
   // One clock read per commit, as the runtime stamps one commit, so durations
   // derived across its facts never depend on when each was mapped.
   const timestamp = Date.now();
-  const result = composeWorkflowCompanions(transitionWorkflow(replayWorkflow(control), event), {
+  const result = composeWorkflowCompanions(transitionDecodedWorkflow(replayDecodedWorkflow(control), event), {
     queue: loadQueueFromEvents(facts), resolvedAgents: bindings, timestamp, addenda: [],
   });
   if (result.command.kind !== "commit") throw new Error("Expected a workflow commit");
@@ -232,7 +232,7 @@ interface RacingPublicationWriter {
  *  batch that links a child, so a test can land a concurrent commit between
  *  the publication's guard read and its append. */
 export function racingPublicationWriter(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   beforePublication: (attempt: number) => void | Promise<void>,
 ): RacingPublicationWriter {
   let attempts = 0;
@@ -255,7 +255,7 @@ export function racingPublicationWriter(
 /** Moves a workflow's live owner from `previousParentId` to `parentSessionId`
  *  with the facts the workflow children migration writes. That migration is
  *  the one writer that adopts a workflow. */
-export function adoptTestWorkflow(store: Pick<EventStore, "appendBatch">, adoption: {
+export function adoptTestWorkflow(store: Pick<LocalSqliteEventStore, "appendBatch">, adoption: {
   readonly workflowSessionId: string;
   readonly previousParentId: string;
   readonly parentSessionId: string;

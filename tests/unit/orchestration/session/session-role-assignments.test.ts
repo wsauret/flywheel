@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { parseSchema, safeParse } from "../../../helpers/schema-assertions.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { buildSessionRolesSnapshottedFact, parseSessionMetadataFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
@@ -10,7 +10,7 @@ import { RoleSettingEntrySchema } from "../../../../src/infra/role-settings.js"
 import { cleanupTmpRoot, makeTmpDir, minimalSession } from "./_session-manager-fixtures.js"
 import { makeMetadataStore } from "./_session-metadata-test-helpers.js"
 
-const ownedStores: EventStore[] = []
+const ownedStores: LocalSqliteEventStore[] = []
 const T1 = "2026-03-20T10:00:00.000Z"
 const T2 = "2026-03-20T10:01:00.000Z"
 const T3 = "2026-03-20T10:02:00.000Z"
@@ -24,17 +24,17 @@ afterEach(() => {
   cleanupTmpRoot()
 })
 
-function openStore(root = makeTmpDir()): EventStore {
+function openStore(root = makeTmpDir()): LocalSqliteEventStore {
   const store = createSqliteEventStore(resolveEventStoreDbFile(root))
   ownedStores.push(store)
   return store
 }
 
-function append(store: EventStore, id: string, type: string, payload: { [key: string]: unknown }, version: number): void {
+function append(store: LocalSqliteEventStore, id: string, type: string, payload: { [key: string]: unknown }, version: number): void {
   store.append({ aggregateId: `session:${id}`, type, version, timestamp: Date.now(), actor: "flywheel", sessionId: id, payload })
 }
 
-function created(store: EventStore, id: string, session: Session = minimalSession({ lastUpdated: T1 })): void {
+function created(store: LocalSqliteEventStore, id: string, session: Session = minimalSession({ lastUpdated: T1 })): void {
   append(store, id, "session.created", session, 3)
 }
 

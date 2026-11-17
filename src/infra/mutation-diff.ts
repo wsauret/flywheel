@@ -15,7 +15,7 @@ import { createPatch } from "diff";
 import { Schema } from "effect";
 import { redactSecrets } from "./redact-secrets.js";
 
-export const MUTATION_DIFF_VERSION = 1;
+const MUTATION_DIFF_VERSION = 1;
 
 /** Maximum rendered hunk lines retained for one file's expanded disclosure. */
 export const MUTATION_DIFF_RENDERED_LINE_LIMIT = 1_000;

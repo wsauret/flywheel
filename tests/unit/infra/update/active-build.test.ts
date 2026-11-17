@@ -8,7 +8,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
 import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
-import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js";
+import { versionsDir } from "../../../../src/infra/paths.js";
 import { ActivationError, activeBuildDir, openActiveBuild, publishActivation } from "../../../../src/infra/update/active-build.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { useWin32ContainedDirectories } from "../../../helpers/win32-contained-directories.js";
@@ -75,7 +75,7 @@ describe("the activation on the Windows backend", () => {
     const userDataRoot = account();
     activate(userDataRoot, FIRST);
 
-    expect(fs.readFileSync(currentBuildLink(userDataRoot), "utf8")).toBe(`versions\\${FIRST.version}\\${FIRST.buildId}`);
+    expect(fs.readFileSync(path.join(userDataRoot, "current"), "utf8")).toBe(`versions\\${FIRST.version}\\${FIRST.buildId}`);
   });
 
   test.each([
@@ -84,7 +84,7 @@ describe("the activation on the Windows backend", () => {
     ["a directory one level too shallow", `versions\\${FIRST.version}`],
   ])("refuses %s rather than name a build", (_case, text) => {
     const userDataRoot = account();
-    fs.writeFileSync(currentBuildLink(userDataRoot), text);
+    fs.writeFileSync(path.join(userDataRoot, "current"), text);
 
     expect(() => pointedDir(userDataRoot)).toThrow(ActivationError);
     expect(activeBuildDir(userDataRoot)).toBeUndefined();
@@ -92,7 +92,7 @@ describe("the activation on the Windows backend", () => {
 
   test("names nothing for a build that is not installed", () => {
     const userDataRoot = account();
-    fs.writeFileSync(currentBuildLink(userDataRoot), `versions\\${FIRST.version}\\${"c".repeat(64)}`);
+    fs.writeFileSync(path.join(userDataRoot, "current"), `versions\\${FIRST.version}\\${"c".repeat(64)}`);
 
     expect(pointedDir(userDataRoot)).toBeUndefined();
   });

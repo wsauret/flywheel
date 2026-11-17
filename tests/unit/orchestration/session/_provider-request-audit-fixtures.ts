@@ -1,22 +1,31 @@
-import type { EventStore } from "../../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import {
-  buildProviderRequestFacts,
+  recordProviderRequest,
   type ConversationDedup,
 } from "../../../../src/orchestration/session/provider-request-audit-recorder.js"
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js"
 import type { ProviderRequestAuditRequestInput } from "../../../../src/orchestration/session/provider-request-audit-types.js"
+
+/** The audit facts that the live recorder records for one provider request,
+ *  in record order. Advances `dedup` as the recorder does. */
+export async function providerRequestFacts(input: ProviderRequestAuditRequestInput, dedup: ConversationDedup = {}): Promise<ProviderRequestAuditFact[]> {
+  const facts: ProviderRequestAuditFact[] = []
+  await recordProviderRequest({ observe: (fact) => facts.push(fact) }, input, dedup)
+  return facts
+}
 
 /** Seeds historical provider-request audit rows into a store. Live recording
  *  goes to the debug log only; tests for the historical projection and the
- *  reconstruction fold append the same built facts as durable rows the way
+ *  reconstruction fold append the same recorded facts as durable rows the way
  *  older runtimes wrote them. */
-export function appendProviderRequestFacts(
-  store: Pick<EventStore, "append">,
+export async function appendProviderRequestFacts(
+  store: Pick<LocalSqliteEventStore, "append">,
   sessionId: string,
   input: Omit<ProviderRequestAuditRequestInput, "requestId"> & Partial<Pick<ProviderRequestAuditRequestInput, "requestId">>,
   dedup: ConversationDedup = {},
-): string {
-  const built = buildProviderRequestFacts({ ...input, requestId: input.requestId ?? crypto.randomUUID() }, dedup)
-  for (const fact of built.facts) {
+): Promise<string> {
+  const requestId = input.requestId ?? crypto.randomUUID()
+  for (const fact of await providerRequestFacts({ ...input, requestId }, dedup)) {
     store.append({
       aggregateId: `session:${sessionId}`,
       type: fact.type,
@@ -27,6 +36,5 @@ export function appendProviderRequestFacts(
       payload: fact.payload,
     })
   }
-  Object.assign(dedup, built.dedupAdvance)
-  return built.requestId
+  return requestId
 }

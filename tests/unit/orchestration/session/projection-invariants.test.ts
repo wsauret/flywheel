@@ -5,7 +5,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, CorruptEventRowError, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, CorruptEventRowError, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { createSessionMetadataProjection, createSingleSessionMetadataProjection, recoverSessionMetadata, sessionMetadataStateOf, type PerSessionMetadataState, type SessionMetadataProjectionState } from "../../../../src/orchestration/session/session-metadata-projection"
 import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store"
@@ -31,7 +31,7 @@ interface ChatEntryFixture {
   [key: string]: unknown
 }
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-proj-inv-"))

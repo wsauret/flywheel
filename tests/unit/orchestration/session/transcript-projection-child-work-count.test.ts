@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
@@ -11,7 +11,7 @@ import { countStateRequests } from "../../../helpers/state-requests"
 
 const directories = temporaryDirectories()
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 beforeEach(() => {
   baseDir = directories("transcript-child-work-count-")
   store = createSqliteEventStore(resolveEventStoreDbFile(baseDir))

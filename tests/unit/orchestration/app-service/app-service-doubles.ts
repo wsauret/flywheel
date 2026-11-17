@@ -5,12 +5,13 @@ import type { RuntimeSupervisor, SendChatOutcome } from "../../../../src/orchest
 import type { WorkflowController } from "../../../../src/orchestration/workflow-host/controller.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import type { ChatSessionEntry, SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
+import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-types.js"
 import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/app-service.js"
 import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-admission.js"
 import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
 import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
@@ -182,7 +183,7 @@ export function workflowController(_sessionStore: SessionStore, _manager: Sessio
 export function workflowProtocol(options: {
   readonly controller: WorkflowController
   readonly supervisor?: RuntimeSupervisor
-  readonly store?: EventStore | RuntimeEventStore | ReturnType<typeof createMemoryStore>
+  readonly store?: LocalSqliteEventStore | RuntimeEventStore | ReturnType<typeof createMemoryStore>
   readonly sessions?: SessionStore
   readonly manager?: SessionManager
   readonly hosts?: Pick<WorkflowHosts, "isRunning" | "onChange" | "abort">

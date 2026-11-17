@@ -5,7 +5,7 @@ import { testAuthContext } from "../../../helpers/auth-context.js"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type InFlightWrite } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type InFlightWrite } from "../../../../src/infra/event-store-types"
 import { EventBus, createEmit } from "../../../../src/infra/event-bus"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
@@ -48,7 +48,7 @@ const expectedInput = {
   content: [{ type: "text", text: originalInput.text }, { type: "image", mediaType: "image/png", data: "YWJj" }],
 } satisfies ConversationMessage
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let writer: AsyncEventWriter
 let factoryErrors: unknown[]
 let inputSessionId: string

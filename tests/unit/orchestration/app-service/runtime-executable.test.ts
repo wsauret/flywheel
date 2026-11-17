@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os"
 import { join, relative } from "node:path"
 
-import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js"
+import { versionsDir } from "../../../../src/infra/paths.js"
 import { executableBuild } from "../../../../src/infra/update/live-builds.js"
 import { installedBuild, installedBuildId, installedExecutable, processRunningBuild, runningBuildId, runningDisplayBuildId, type RunningBuild } from "../../../../src/orchestration/app-service/runtime-executable.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
@@ -90,7 +90,7 @@ describe("the installed build identity", () => {
     const host = { platform: "win32" as const, execPath: running }
 
     expect(installedBuildId(directories, host)).toBeUndefined()
-    writeFileSync(currentBuildLink(userDataRoot), `versions\\0.0.10\\${"f".repeat(64)}`)
+    writeFileSync(join(userDataRoot, "current"), `versions\\0.0.10\\${"f".repeat(64)}`)
     expect(installedBuildId(directories, host)).toBe("f".repeat(64))
   })
 })
@@ -109,8 +109,8 @@ describe("the running build identity", () => {
       return directory
     }
     const activate = (directory: string): void => {
-      if (process.platform === "win32") writeFileSync(currentBuildLink(userDataRoot), relative(userDataRoot, directory))
-      else symlinkSync(directory, currentBuildLink(userDataRoot))
+      if (process.platform === "win32") writeFileSync(join(userDataRoot, "current"), relative(userDataRoot, directory))
+      else symlinkSync(directory, join(userDataRoot, "current"))
     }
     try {
       const running = build("1.0.0", "a".repeat(64))
@@ -121,7 +121,7 @@ describe("the running build identity", () => {
       expect(runningBuildId(started, directories)).toBe("a".repeat(64))
       expect(runningDisplayBuildId(started)).toBe("a".repeat(64))
       // An install activates the newer build after this process started.
-      rmSync(currentBuildLink(userDataRoot))
+      rmSync(join(userDataRoot, "current"))
       activate(newer)
       expect(installedBuildId(directories, host)).toBe("b".repeat(64))
       expect(runningBuildId(started, directories)).toBe("a".repeat(64))
@@ -143,7 +143,7 @@ describe("the running build identity", () => {
     // An update activates another build by its pointer; the build this
     // process runs is the directory it started from.
     placeBuild(userDataRoot, "0.1.0", "e".repeat(64), "win32")
-    writeFileSync(currentBuildLink(userDataRoot), `versions\\0.1.0\\${"e".repeat(64)}`)
+    writeFileSync(join(userDataRoot, "current"), `versions\\0.1.0\\${"e".repeat(64)}`)
     expect(runningBuildId(started, directories)).toBe("f".repeat(64))
   })
 })

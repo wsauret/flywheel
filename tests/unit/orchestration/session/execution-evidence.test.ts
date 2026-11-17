@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Schema } from "effect";
 import { decodeExecutionEvidence, ExecutionEvidenceSchema, type ExecutionEvidence } from "../../../../src/protocol/execution-evidence.js";
 import { subcommandDispatch } from "../../../../src/cli/subcommands.js";
-import type { EventStore } from "../../../../src/infra/event-store-types.js";
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js";
 import type { LauncherContext } from "../../../../src/infra/process-supervisor.js";
@@ -39,18 +39,18 @@ const usage = (attemptId: string): UsageEntry => ({
   price: { kind: "priced", estimatedUsd: 0.2, rateCard: {}, provenance: "fixture" },
 });
 
-function append(store: EventStore, sessionId: string, type: string, version: number, payload: { [key: string]: unknown }, actor = "flywheel"): void {
+function append(store: LocalSqliteEventStore, sessionId: string, type: string, version: number, payload: { [key: string]: unknown }, actor = "flywheel"): void {
   store.append({ aggregateId: `session:${sessionId}`, sessionId, type, version, payload, actor, timestamp: 1 });
 }
 
-function session(store: EventStore, root: string, id: string, parent?: string): void {
+function session(store: LocalSqliteEventStore, root: string, id: string, parent?: string): void {
   const common = { label: id, lifecycleState: "inactive" as const, executionCwd: root, lastUpdated: "2026-10-13T00:00:00.000Z" };
   store.append(buildSessionMetadataAppend(id, buildSessionCreatedFact(parent
     ? { ...common, kind: "subagent", command: "subagent", conversationId: id, launchedFrom: { parentSessionId: parent, toolUseId: `tool-${id}` } }
     : { ...common, kind: "chat", command: "chat", conversationId: id })));
 }
 
-function request(store: EventStore, sessionId: string, requestId: string, purpose?: "compaction"): void {
+function request(store: LocalSqliteEventStore, sessionId: string, requestId: string, purpose?: "compaction"): void {
   const identity = { providerSessionKey: sessionId, conversationId: sessionId };
   append(store, sessionId, "prompt.assembled", 5, {
     requestId, identity, turn: 1, promptKind: "chat", ...(purpose ? { requestPurpose: purpose } : {}),

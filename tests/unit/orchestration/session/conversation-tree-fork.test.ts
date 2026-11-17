@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
@@ -17,7 +17,7 @@ const DESTINATION_SESSION_ID = "destination-session"
 const LARGE_TOOL_CONTENT = "owned fork content quixotic\n".repeat(300)
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let timestamp = 0
 
 function now(): string {

@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createModelReminders } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
 import { ENGINE_INSTRUCTIONS } from "../../../helpers/hosted-engine-text.js";
@@ -15,7 +15,7 @@ import { compaction, message, nextTimestamp, resetTimestamps } from "./_conversa
 import { SHELL_CAPABILITIES } from "../../../helpers/prompt-capabilities.js";
 
 let baseDir: string;
-let store: EventStore;
+let store: LocalSqliteEventStore;
 const sessionId = "s_tree_context";
 const conversationId = "c_tree_context";
 async function openTree(): Promise<ConversationTree> {

@@ -17,7 +17,7 @@ import { DebugLog } from "./debug-log.js"
  *  same row without bloating the term index. */
 export const CONVERSATION_FTS_TABLE = "conversation_recall_fts"
 
-export function createConversationFtsTable(db: Database): void {
+function createConversationFtsTable(db: Database): void {
   db.exec(`
     create virtual table if not exists ${CONVERSATION_FTS_TABLE} using fts5(
       content,
@@ -56,7 +56,7 @@ interface TextContentBlock extends ContentBlock {
 // discards them once the committed append supersedes them, so indexing a
 // provisional row would orphan it in the FTS table and corrupt recall
 // ranking/counts. This matches recall's own exclusion of provisional entries.
-export function indexChatEntriesForFts(db: Database, event: StoredFact, content: ContentResolver): void {
+function indexChatEntriesForFts(db: Database, event: StoredFact, content: ContentResolver): void {
   if (event.type !== "chat.entries.appended") return
   const conversationId = event.payload.conversationId
   if (typeof conversationId !== "string") throw ftsViolation(event, `${event.type} payload missing conversationId`)

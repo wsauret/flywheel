@@ -6,7 +6,7 @@ import * as path from "node:path"
 
 import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE, createConversationFtsTable, indexChatEntriesForFts } from "../../../src/infra/conversation-fts.js"
+import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE } from "../../../src/infra/conversation-fts.js"
 import { countConversationRecall as count, searchConversationRecall as search, type RecallSearchQuery } from "../../../src/infra/conversation-recall-search.js"
 import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js"
 import { buildFtsMatch } from "../../../src/orchestration/session/conversation-recall.js"
@@ -46,11 +46,14 @@ function appendProvisional(entry: { [key: string]: unknown }): void {
   })
 }
 
-function openReadDb(): Database {
-  const db = new Database(":memory:")
-  createConversationFtsTable(db)
-  for (const fact of store.read()) indexChatEntriesForFts(db, fact, store.toolContent)
-  return db
+/** Runs `read` against the production search index, caught up through every stored fact. */
+async function withIndexedDb(read: (db: Database) => void): Promise<void> {
+  const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  try {
+    read(await index.through(store.currentPosition()))
+  } finally {
+    await index.dispose()
+  }
 }
 
 function searchConversationRecall(db: Database, query: Omit<RecallSearchQuery, "upperPosition">) {
@@ -227,39 +230,32 @@ describe("searchConversationRecall", () => {
       db.close()
     }
   })
-  test("returns a match-centered highlighted excerpt after a long prefix", () => {
+  test("returns a match-centered highlighted excerpt after a long prefix", async () => {
     const prefix = Array.from({ length: 80 }, (_, index) => `prefix${index}`).join(" ")
     appendEntries("chat.entries.appended", [userEntry("a", null, `${prefix} kafka trailing context`)])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(hits[0]?.snippet).toContain("[kafka]")
       expect(hits[0]?.snippet).toStartWith("...")
       expect(hits[0]?.snippet).not.toContain("prefix0")
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("returns both matches ordered by rank when both match", () => {
+  test("returns both matches ordered by rank when both match", async () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka")])
     appendEntries("chat.entries.appended", [userEntry("b", "a", "kafka kafka kafka kafka")])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(new Set(hits.map((h) => h.entryId))).toEqual(new Set(["a", "b"]))
       // The denser turn (more occurrences) ranks first under BM25.
       expect(hits[0]?.entryId).toBe("b")
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("entryIds allowlist restricts the search; empty set returns no rows", () => {
+  test("entryIds allowlist restricts the search; empty set returns no rows", async () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka")])
     appendEntries("chat.entries.appended", [userEntry("b", "a", "kafka")])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const onlyB = searchConversationRecall(db, {
         conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set(["b"]),
       })
@@ -269,37 +265,29 @@ describe("searchConversationRecall", () => {
         conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set<string>(),
       })
       expect(none).toEqual([])
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("provisional entries are NOT indexed; only the committed append indexes a single row", () => {
+  test("provisional entries are NOT indexed; only the committed append indexes a single row", async () => {
     // The projection discards provisional entries once the committed append
     // supersedes them, so indexing a provisional row would orphan it in the FTS
     // table and corrupt recall counts. Only the committed row may exist.
     appendProvisional(userEntry("a", null, "kafka pipeline"))
-    const dbAfterProvisional = openReadDb()
-    try {
+    await withIndexedDb((dbAfterProvisional) => {
       const provisionalRows = dbAfterProvisional
         .query<{ c: number }, []>(`select count(*) as c from ${CONVERSATION_FTS_TABLE} where entry_id = 'a'`).all()
       expect(provisionalRows[0]?.c).toBe(0)
-    } finally {
-      dbAfterProvisional.close()
-    }
+    })
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka pipeline")])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const rows = db.query<{ c: number }, []>(`select count(*) as c from ${CONVERSATION_FTS_TABLE} where entry_id = 'a'`).all()
       expect(rows[0]?.c).toBe(1)
       const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(hits.map((h) => h.entryId)).toEqual(["a"])
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("countConversationRecall returns the true total independent of any page limit", () => {
+  test("countConversationRecall returns the true total independent of any page limit", async () => {
     const total = 14
     let parent: string | null = null
     for (let i = 0; i < total; i++) {
@@ -307,22 +295,18 @@ describe("searchConversationRecall", () => {
       appendEntries("chat.entries.appended", [userEntry(id, parent, "kafka rebalance")])
       parent = id
     }
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       // limit is intentionally far below the true count: count() ignores it.
       const resultCount = countConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 3 })
       expect(resultCount).toBe(total)
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("countConversationRecall honors the lineage entryIds allowlist", () => {
+  test("countConversationRecall honors the lineage entryIds allowlist", async () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka")])
     appendEntries("chat.entries.appended", [userEntry("b", "a", "kafka")])
     appendEntries("chat.entries.appended", [userEntry("c", "b", "kafka")])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const scoped = countConversationRecall(db, {
         conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set(["a", "c"]),
       })
@@ -331,41 +315,33 @@ describe("searchConversationRecall", () => {
         conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set<string>(),
       })
       expect(empty).toBe(0)
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("a query word with punctuation matches the content the tokenizer split", () => {
+  test("a query word with punctuation matches the content the tokenizer split", async () => {
     // The tokenizer splits "feature-flag" into feature + flag and "3.11" into
     // 3 + 11; a bareword with "." or an unbalanced quote is an FTS5 syntax error.
     appendEntries("chat.entries.appended", [userEntry("a", null, "toggled the feature-flag rollout")])
     appendEntries("chat.entries.appended", [userEntry("b", "a", "boot Windows 3.11 from win311.img")])
     appendEntries("chat.entries.appended", [userEntry("c", "b", "the quick brown fox")])
     appendEntries("chat.entries.appended", [userEntry("d", "c", "unrelated content")])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       for (const [query, entryId] of [["feature-flag", "a"], ["3.11 QEMU", "b"], ["win311.img", "b"], ['"brown', "c"]] as const) {
         const recallQuery = { conversationId: CONVERSATION_ID, match: buildFtsMatch(query), limit: 5 }
         expect(searchConversationRecall(db, recallQuery).map((h) => h.entryId)).toEqual([entryId])
         expect(countConversationRecall(db, recallQuery)).toBe(1)
       }
-    } finally {
-      db.close()
-    }
+    })
   })
 
-  test("displayOnly and leaf/label entries produce no FTS row", () => {
+  test("displayOnly and leaf/label entries produce no FTS row", async () => {
     appendEntries("chat.entries.appended", [
       { kind: "message", id: "a", parentId: null, timestamp: new Date().toISOString(), displayOnly: true, message: { kind: "user", content: "kafka diagnostic" } },
       { kind: "label", id: "b", parentId: "a", timestamp: new Date().toISOString(), targetId: "a", label: "kafka label" },
     ])
-    const db = openReadDb()
-    try {
+    await withIndexedDb((db) => {
       const rows = db.query<{ c: number }, []>(`select count(*) as c from ${CONVERSATION_FTS_TABLE}`).all()
       expect(rows[0]?.c).toBe(0)
-    } finally {
-      db.close()
-    }
+    })
   })
 })

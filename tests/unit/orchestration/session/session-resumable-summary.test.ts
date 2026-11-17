@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { isWorkflowResumeCandidate } from "../../../../src/orchestration/session/resumable.js"
@@ -15,7 +15,7 @@ import { workflowSessionActions } from "../../../../src/orchestration/session/ch
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 
 const dirs: string[] = []
-const stores: EventStore[] = []
+const stores: LocalSqliteEventStore[] = []
 
 function makeTmpDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "flywheel-resumable-summary-"))
@@ -32,7 +32,7 @@ function queueWithStatus(queue: WorkflowView, status: WorkflowView["status"]): W
   }
 }
 
-async function seedQueue(store: EventStore, sessionId: string, status: WorkflowView["status"]): Promise<void> {
+async function seedQueue(store: LocalSqliteEventStore, sessionId: string, status: WorkflowView["status"]): Promise<void> {
   const current = await loadQueueSnapshotFromReader(asAsyncEventReadSurface(store), sessionId)
   if (!current) throw new Error("published workflow requires a queue")
   const aggregateId = `workflow:${sessionId}`

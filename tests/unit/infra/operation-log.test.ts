@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { InvariantViolation } from "../../../src/infra/invariant.js"
-import { logCompletion, loggedOperation, loggedSyncOperation, recordBackgroundFailure, type OperationLogger } from "../../../src/infra/operation-log.js"
+import { logCompletion, loggedOperation, recordBackgroundFailure, type OperationLogger } from "../../../src/infra/operation-log.js"
 
 type LogFields = { [key: string]: unknown } | undefined
 
@@ -41,14 +41,14 @@ describe("operation log", () => {
     expect(typeof calls[1]?.extra?.durationMs).toBe("number")
   })
 
-  it("logs sync operation failures with structured error detail", () => {
+  it("logs operation failures with structured error detail", async () => {
     const { calls, log } = recordingLogger()
     const cause = new Error("inner")
     const failure = new Error("outer", { cause })
 
-    expect(() => loggedSyncOperation({ log, operation: "read rows", fields: { aggregateId: "a1" } }, () => {
+    await expect(loggedOperation({ log, operation: "read rows", fields: { aggregateId: "a1" } }, async () => {
       throw failure
-    })).toThrow("outer")
+    })).rejects.toThrow("outer")
 
     expect(calls.map((call) => [call.level, call.message])).toEqual([
       ["debug", "read rows start"],
@@ -112,10 +112,10 @@ describe("operation log", () => {
     expect(calls[0]?.extra).toMatchObject({ sessionId: "s1", error: "generation closed", errorDetail: { kind: "error", message: "generation closed" } })
   })
 
-  it("puts the completion record at debug for a hot-path operation", () => {
+  it("puts the completion record at debug for a hot-path operation", async () => {
     const { calls, log } = recordingLogger()
 
-    loggedSyncOperation({ log, operation: "list catalog", level: "debug" }, () => 7)
+    await loggedOperation({ log, operation: "list catalog", level: "debug" }, async () => 7)
 
     expect(calls.map((call) => [call.level, call.message])).toEqual([
       ["debug", "list catalog start"],
@@ -123,11 +123,11 @@ describe("operation log", () => {
     ])
   })
 
-  it("records a completion under its slow threshold at debug and one past it at info", () => {
+  it("records a completion under its slow threshold at debug and one past it at info", async () => {
     const { calls, log } = recordingLogger()
 
-    loggedSyncOperation({ log, operation: "flush", slowMs: 60_000 }, () => 1)
-    loggedSyncOperation({ log, operation: "flush", slowMs: 0 }, () => 1)
+    await loggedOperation({ log, operation: "flush", slowMs: 60_000 }, async () => 1)
+    await loggedOperation({ log, operation: "flush", slowMs: 0 }, async () => 1)
 
     expect(calls.map((call) => [call.level, call.message])).toEqual([
       ["debug", "flush start"],
@@ -139,10 +139,10 @@ describe("operation log", () => {
     expect(calls[3]?.extra).toMatchObject({ slowMs: 0 })
   })
 
-  it("records a slow operation's failure at error whatever its threshold", () => {
+  it("records a slow operation's failure at error whatever its threshold", async () => {
     const { calls, log } = recordingLogger()
 
-    expect(() => loggedSyncOperation({ log, operation: "flush", slowMs: 60_000 }, () => { throw new Error("disk full") })).toThrow("disk full")
+    await expect(loggedOperation({ log, operation: "flush", slowMs: 60_000 }, async () => { throw new Error("disk full") })).rejects.toThrow("disk full")
 
     expect(calls.map((call) => [call.level, call.message])).toEqual([
       ["debug", "flush start"],

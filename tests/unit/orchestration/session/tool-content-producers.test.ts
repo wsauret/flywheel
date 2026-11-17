@@ -6,7 +6,7 @@ import * as path from "node:path"
 
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
@@ -28,7 +28,7 @@ const SMALL_TEXT = "short output"
 const FIXED_TIME = new Date(2026, 4, 21).toISOString()
 
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let dbFile: string
 
 beforeEach(() => {

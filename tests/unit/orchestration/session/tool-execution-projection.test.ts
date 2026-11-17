@@ -5,17 +5,17 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { activeSubagentIds, createToolExecutionProjection as createAsyncToolExecutionProjection, toolExecutionTimelineFromProjection } from "../../../../src/orchestration/session/tool-execution-projection"
+import { createToolExecutionProjection as createAsyncToolExecutionProjection, toolExecutionTimelineFromProjection } from "../../../../src/orchestration/session/tool-execution-projection"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types"
 
 const TMP_ROOT = path.join(
   os.tmpdir(),
   `flywheel-tool-execution-projection-test-${process.pid}-${Date.now()}`,
 )
-const createToolExecutionProjection = (store: EventStore, sessionId: string) =>
+const createToolExecutionProjection = (store: LocalSqliteEventStore, sessionId: string) =>
   createAsyncToolExecutionProjection(asAsyncEventReadSurface(store), sessionId)
 
 let tmpDir: string
@@ -26,7 +26,7 @@ function makeTmpDir(): string {
   return dir
 }
 
-function appendFact(store: EventStore, sessionId: string, fact: SessionRuntimeFact): void {
+function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: SessionRuntimeFact): void {
   store.append({
     aggregateId: `session:${sessionId}`,
     type: fact.type,
@@ -472,7 +472,7 @@ describe("tool execution projection", () => {
     expect(state.tools.phantom?.acknowledgedAt).toBeNumber()
   })
 
-  it("activeSubagentIds includes in-flight subagents and excludes workflow launches", async () => {
+  it("the active subagent index includes in-flight subagents and excludes workflow launches", async () => {
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
     const sessionId = "active-subagents-1"
 
@@ -554,8 +554,7 @@ describe("tool execution projection", () => {
     const state = await createToolExecutionProjection(store, sessionId).replay()
     store.close()
 
-    const ids = activeSubagentIds(state)
-    expect([...ids].sort()).toEqual(["sub-1"])
+    expect([...state.activeSubagentToolUseIds].sort()).toEqual(["sub-1"])
   })
 })
 
@@ -604,7 +603,7 @@ function resultFactV2(toolUseId: string, modelRequestId: string): SessionRuntime
 }
 
 describe("tool execution projection - repeated terminal evidence", () => {
-  const input = (sessionId: string, store: EventStore): void => appendFact(store, sessionId, {
+  const input = (sessionId: string, store: LocalSqliteEventStore): void => appendFact(store, sessionId, {
     type: "tool.input.completed",
     version: 1,
     actor: "agent",

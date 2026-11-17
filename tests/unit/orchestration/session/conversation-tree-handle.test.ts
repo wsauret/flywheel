@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
 import { createConversationTree, readTranscript, readReconciledBranch, readReconciledTranscript, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
@@ -17,7 +17,7 @@ import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 
 let baseDir: string;
-let store: EventStore;
+let store: LocalSqliteEventStore;
 
 beforeEach(() => {
   baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-tree-handle-"));
@@ -35,7 +35,7 @@ async function conversationIdOf(mgr: ReturnType<typeof createSessionManager>, se
   return conversationId;
 }
 
-async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: EventStore }) {
+async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: LocalSqliteEventStore }) {
   const tree = await tryOpenConversationTree({ ...options, store: asAsyncEventReadSurface(options.store) });
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`);
   return tree;
@@ -301,7 +301,7 @@ describe("borrowed tree handle lifecycle", () => {
   });
 });
 
-function immediateWriter(target: EventStore): AsyncEventWriter {
+function immediateWriter(target: LocalSqliteEventStore): AsyncEventWriter {
   return { ...asAsyncEventWriter(target), pruneSupersededEvents: async () => 0 };
 }
 

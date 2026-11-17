@@ -10,8 +10,9 @@ import { readSessionContentRange } from "../../../../src/infra/session-content"
 import { sessionContentFixture } from "../../../helpers/session-content"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { DELIVERY_CONFIRMATION } from "../../../../src/infra/delivery-confirmation.js"
-import { AnyBlockSchema } from "../../../../src/infra/output-blocks.js"
-import { projectBlocksFromEntries, TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
+import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { branchBlocks } from "../../../helpers/branch-blocks"
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks"
 
 const CWD = resolve("/scratch/project")
@@ -23,8 +24,8 @@ function entry(message: MessageEntry["message"], overrides: Partial<MessageEntry
   return { id: `e${seq}`, parentId: seq === 1 ? null : `e${seq - 1}`, timestamp: T0, kind: "message", message, ...overrides }
 }
 
-function project(entries: ConversationEntry[]) {
-  return projectBlocksFromEntries(entries, { executionCwd: CWD })
+function project(entries: Parameters<typeof branchBlocks>[0], options: Omit<Parameters<typeof branchBlocks>[1], "executionCwd"> = {}) {
+  return branchBlocks(entries, { executionCwd: CWD, ...options })
 }
 
 describe("tree -> output blocks re-projection", () => {
@@ -84,7 +85,7 @@ describe("tree -> output blocks re-projection", () => {
     const beforeSeam = projection.snapshot()
     projection.add(second)
 
-    expect(projection.snapshot()).toEqual(projectBlocksFromEntries([first, second], { executionCwd: CWD }))
+    expect(projection.snapshot()).toEqual(project([first, second]))
     expect(projection.snapshot()).toEqual([
       { kind: "text", id: first.id, content: "hello ", timestamp: Date.parse(T0) },
       { kind: "text", id: second.id, content: "world", timestamp: Date.parse(T0) },
@@ -188,21 +189,18 @@ describe("tree -> output blocks re-projection", () => {
       content: [{ type: "text", text: "Workflow started; the terminal result will update this row." }],
     })
 
-    const pending = projectBlocksFromEntries([assistant, acknowledgement], { executionCwd: CWD, toolResultMeta: new Map() })[0]
+    const pending = project([assistant, acknowledgement], { toolResultMeta: new Map() })[0]
     const card = { done: 6, total: 6, failed: 0, finishedFailed: 0, running: 0, parked: 0, coverage: [{ text: "coverage required 2 of 3, 1 unsurveyed", tone: "failed" as const }], before: 0, after: 0, phases: [] }
-    const completed = projectBlocksFromEntries([assistant, acknowledgement], {
-      executionCwd: CWD,
+    const completed = project([assistant, acknowledgement], {
       toolResultMeta: new Map([["workflow-1", { terminalOutcome: "ok", displayContent: "Workflow completed." }]]),
       toolSummaries: new Map([["workflow-1", { toolUseId: "workflow-1", status: "completed", ownsSettlement: false, totalToolCount: 6, label: "Fanout Ui", card }]]),
     })[0]
-    const failed = projectBlocksFromEntries([assistant, acknowledgement], {
-      executionCwd: CWD,
+    const failed = project([assistant, acknowledgement], {
       toolResultMeta: new Map([["workflow-1", { terminalOutcome: "error", displayContent: "Review failed." }]]),
     })[0]
 
     // Before its terminal result, the card reads the workflow's own state.
-    const interrupted = projectBlocksFromEntries([assistant, acknowledgement], {
-      executionCwd: CWD,
+    const interrupted = project([assistant, acknowledgement], {
       toolResultMeta: new Map(),
       toolSummaries: new Map([["workflow-1", { toolUseId: "workflow-1", status: "paused", pausedBy: "runtime", ownsSettlement: false, totalToolCount: 3, duration: 4000, linkUri: "flywheel://session/workflow-child" }]]),
     })[0]
@@ -289,8 +287,7 @@ describe("tree -> output blocks re-projection", () => {
       content: [{ type: "text", text: "stdout\nstderr\n[exit code: 47]" }],
     })
 
-    const blocks = projectFrontendOutputBlocks(projectBlocksFromEntries([assistant, result], {
-      executionCwd: CWD,
+    const blocks = projectFrontendOutputBlocks(project([assistant, result], {
       toolResultMeta: new Map([["toolu_bash_failure", { exitCode: 47 }]]),
     }))
 
@@ -313,8 +310,7 @@ describe("tree -> output blocks re-projection", () => {
     })
     const newResult = entry({ kind: "toolResult", toolUseId: "new-bash", content: [{ type: "text", text: "compressed new" }] })
     const oldResult = entry({ kind: "toolResult", toolUseId: "old-bash", content: [{ type: "text", text: "compressed old" }] })
-    const blocks = projectBlocksFromEntries([assistant, newResult, oldResult], {
-      executionCwd: CWD,
+    const blocks = project([assistant, newResult, oldResult], {
       toolResultMeta: new Map([["new-bash", { executionOutput: "durable new tail" }]]),
     })
 
@@ -339,7 +335,7 @@ describe("tree -> output blocks re-projection", () => {
       ["empty-background", { background: true }],
       ["output-background", { background: true, executionOutput: "ready\n" }],
     ])
-    const blocks = projectBlocksFromEntries([assistant, emptyResult, outputResult], { executionCwd: CWD, toolResultMeta })
+    const blocks = project([assistant, emptyResult, outputResult], { toolResultMeta })
     expect(blocks.filter((block) => block.kind === "tool").map((tool) => [tool.status, tool.content])).toEqual([
       ["completed", undefined],
       ["completed", "ready\n"],
@@ -349,7 +345,7 @@ describe("tree -> output blocks re-projection", () => {
     for (const item of [assistant, emptyResult, outputResult]) lazy.add(item)
     const restored = lazy.snapshot().filter((block) => block.kind === "tool").map((base) => lazy.toolBlockReader(base).read(toolResultMeta.get(base.id)))
     expect(restored).toEqual(blocks)
-    expect(Schema.encodeSync(Schema.Array(AnyBlockSchema))(restored)).toEqual(restored)
+    expect(Schema.encodeSync(Schema.Array(FrontendOutputBlockSchema))(restored)).toEqual(restored)
   })
 
   it("keeps block identity unique when a damaged branch repeats a toolUseId", () => {
@@ -362,8 +358,7 @@ describe("tree -> output blocks re-projection", () => {
     const firstResult = entry({ kind: "toolResult", toolUseId: "toolu_dup", content: [{ type: "text", text: "hi" }] })
     const copy = entry({ kind: "assistant", content: [{ type: "tool_use", id: "toolu_dup", name: "bash", input: { command: "echo hi" } }] })
     const copyResult = entry({ kind: "toolResult", toolUseId: "toolu_dup", content: [{ type: "text", text: "hi" }] })
-    const blocks = projectBlocksFromEntries([first, firstResult, copy, copyResult], {
-      executionCwd: CWD,
+    const blocks = project([first, firstResult, copy, copyResult], {
       toolResultMeta: new Map([["toolu_dup", { executionOutput: "durable tail" }]]),
     })
 
@@ -384,7 +379,7 @@ describe("tree -> output blocks re-projection", () => {
       // longer produces an invocation body, so reconstruction carries none.
       const source = `\nreturn ${testCase.id}\n`
       const use = entry({ kind: "assistant", content: [{ type: "tool_use", id: testCase.id, name: "code", input: { source } }] })
-      const block = projectBlocksFromEntries([use, testCase.result], { executionCwd: CWD })[0]
+      const block = project([use, testCase.result])[0]
       const content = testCase.result.message.content
       expect(block).toMatchObject({
         kind: "tool",
@@ -399,8 +394,7 @@ describe("tree -> output blocks re-projection", () => {
   it("ignores retired Code details during ordinary reconstruction", () => {
     const use = entry({ kind: "assistant", content: [{ type: "tool_use", id: "code-old", name: "code", input: { source: "return 1" } }] })
     const result = entry({ kind: "toolResult", toolUseId: "code-old", content: [{ type: "text", text: "exact" }] })
-    const block = projectBlocksFromEntries([use, result], {
-      executionCwd: CWD,
+    const block = project([use, result], {
       toolResultMeta: new Map([["code-old", {}]]),
     })[0]
     expect(block).toMatchObject({ kind: "tool", name: "code", status: "completed", content: "exact" })
@@ -412,8 +406,7 @@ describe("tree -> output blocks re-projection", () => {
       content: [{ type: "tool_use", id: "toolu_meta", name: "replace", input: { files: ["a.ts"], old: "a", new: "b" } }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_meta", content: [{ type: "text", text: "ok" }] })
-    const blocks = projectBlocksFromEntries([assistant, result], {
-      executionCwd: CWD,
+    const blocks = project([assistant, result], {
       toolResultMeta: new Map([["toolu_meta", { diff: "-a\n+b", filetype: "typescript" }]]),
     })
 
@@ -430,8 +423,7 @@ describe("tree -> output blocks re-projection", () => {
       content: [{ type: "tool_use", id: "toolu_skill", name: "skill_manage", input: { action: "save", name: "example" } }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_skill", content: [{ type: "text", text: "written" }] })
-    const blocks = projectBlocksFromEntries([assistant, result], {
-      executionCwd: CWD,
+    const blocks = project([assistant, result], {
       toolResultMeta: new Map([["toolu_skill", { resultAction: "updated" }]]),
     })
 
@@ -448,15 +440,15 @@ describe("tree -> output blocks re-projection", () => {
       content: [{ type: "tool_use", id: "toolu_msg", name: "message_session", input: { to: "3f2a-parent", text: "done" } }],
     })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_msg", content: [{ type: "text", text: "Delivered to 3f2a-parent." }] })
-    const [named] = projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_msg", { targetName: "Plan the release" }]]) })
-    const unnamed = projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map() })
+    const [named] = project([assistant, result], { toolResultMeta: new Map([["toolu_msg", { targetName: "Plan the release" }]]) })
+    const unnamed = project([assistant, result], { toolResultMeta: new Map() })
     // The row also states the session it addresses, which the transcript
     // projection names by that session's title now.
     expect(named).toMatchObject({ kind: "tool", presentation: { name: "Message to", detail: "Plan the release" }, targetSessionId: "3f2a-parent" })
     expect(unnamed[0]).toMatchObject({ kind: "tool", presentation: { name: "Message to", detail: "3f2a-parent" } })
     // A held message states its outcome on the row, as the live row does.
-    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_msg", { targetName: "Plan the release", statusMessage: "Held: nothing runs it now." }]]) })[0]).toMatchObject({ kind: "tool", status: "blocked", statusMessage: "Held: nothing runs it now.", presentation: { detail: "Plan the release" } })
-    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_msg", { contractRead: true }]]) })[0]).toMatchObject({ presentation: { name: "Read", detail: "message_session tool contract" }, sentence: { name: "Read", detail: "message_session tool contract" }, action: "search" })
+    expect(project([assistant, result], { toolResultMeta: new Map([["toolu_msg", { targetName: "Plan the release", statusMessage: "Held: nothing runs it now." }]]) })[0]).toMatchObject({ kind: "tool", status: "blocked", statusMessage: "Held: nothing runs it now.", presentation: { detail: "Plan the release" } })
+    expect(project([assistant, result], { toolResultMeta: new Map([["toolu_msg", { contractRead: true }]]) })[0]).toMatchObject({ presentation: { name: "Read", detail: "message_session tool contract" }, sentence: { name: "Read", detail: "message_session tool contract" }, action: "search" })
 
     // A loaded transcript folds without results and reads the meta of a row on demand.
     const lazy = new TreeBlockProjection({ executionCwd: CWD })
@@ -649,7 +641,7 @@ describe("tree -> output blocks re-projection", () => {
       id: "conversation:c1:7", aggregateId: "conversation:c1", type: "chat.entries.appended", version: 1, position: 7,
       seq: 2, timestamp: 123, actor: "flywheel", sessionId: "s1", payload: { secret: "do-not-render" },
     }
-    const blocks = projectBlocksFromEntries([{
+    const blocks = project([{
       kind: "degraded",
       event: { aggregateId: rawEnvelope.aggregateId, type: rawEnvelope.type, version: rawEnvelope.version, position: rawEnvelope.position },
       sourceEntryId: "orphan",
@@ -668,7 +660,7 @@ describe("tree -> output blocks re-projection", () => {
         notice: "Part of this transcript could not be displayed.",
         timestamp: 123,
       },
-    }], { executionCwd: CWD })
+    }])
 
     expect(blocks).toEqual([{
       kind: "degraded",

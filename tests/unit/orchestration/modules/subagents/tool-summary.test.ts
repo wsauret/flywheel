@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, type EventStore, type EventStoreAppend } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../../src/infra/event-store-types.js"
 import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
 import { Log } from "../../../../../src/infra/log.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
@@ -16,7 +16,7 @@ import { countStateRequests, factsRead } from "../../../../helpers/state-request
 import type { ToolHistorySummary } from "../../../../../src/orchestration/module-seams.js"
 
 let directory: string
-let store: EventStore
+let store: LocalSqliteEventStore
 const sessionId = "summary-session"
 
 beforeEach(() => {

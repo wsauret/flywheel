@@ -3,21 +3,21 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { contextEvent, recordRuntimeEvent } from "./_budget-store-fixtures"
-import { createSessionViewLoader, loadSessionView, toSessionView } from "../../../../src/orchestration/session-store/view"
+import { createSessionViewLoader, toSessionView } from "../../../../src/orchestration/session-store/view"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
-import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types"
+import type { SessionEntry } from "../../../../src/orchestration/session-store/types"
 import { createStoredSession } from "./_session-metadata-test-helpers"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
 
 let tmpDir: string
-let reader: EventStore
+let reader: LocalSqliteEventStore
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "session-view-test-"))
@@ -100,7 +100,7 @@ describe("toSessionView", () => {
       connectionState: "connected",
       compactionStartedAt: null,
       activeSubagents: new Set<string>(),
-    } satisfies ChatSessionEntry
+    } satisfies Extract<SessionEntry, { kind: "chat" }>
 
     const view = toSessionView("chat-awaiting", entry, "active")
 
@@ -108,12 +108,17 @@ describe("toSessionView", () => {
   })
 })
 
-describe("loadSessionView", () => {
+/** One load through a fresh session view loader. */
+function loadView(sessionId: string) {
+  return createSessionViewLoader({ reader: asAsyncEventReadSurface(reader), projectionReader: asAsyncEventReadSurface(reader) }).load(sessionId)
+}
+
+describe("session view loading", () => {
   it("loads a workflow member's own output and budget independently from the run queue", async () => {
     const { sessionId, workflowId } = await memberSession()
     await recordBudget(sessionId, { cost: 0.25, input: 30, output: 12, contextPrompt: 50, contextWindow: 100 })
 
-    const view = await loadSessionView(sessionId, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))
+    const view = await loadView(sessionId)
 
     expect(view?.kind).toBe("workflow-agent")
     if (view?.kind !== "workflow-agent") throw new Error("expected workflow member")
@@ -132,7 +137,7 @@ describe("loadSessionView", () => {
     const { sessionId } = await memberSession()
     await recordBudget(sessionId, { contextPrompt: 10447, contextWindow: 1050000 })
 
-    const view = await loadSessionView(sessionId, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))
+    const view = await loadView(sessionId)
 
     expect(view?.contextPercent).toBe(1)
   })
@@ -141,7 +146,7 @@ describe("loadSessionView", () => {
     const manager = createSessionManager({ projectRoot: tmpDir, executionCwd: tmpDir, store: reader })
     const sessionId = await publishTestWorkflow(manager)
 
-    const view = await loadSessionView(sessionId, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))
+    const view = await loadView(sessionId)
 
     expect(view).toBeNull()
   })
@@ -156,7 +161,7 @@ describe("loadSessionView", () => {
       payload: { accumulatedActiveMs: 123_000 },
     })
 
-    const view = await loadSessionView(sessionId, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))
+    const view = await loadView(sessionId)
 
     expect(view?.kind).toBe("chat")
     if (view?.kind !== "chat") throw new Error("expected chat view")
@@ -173,7 +178,7 @@ describe("loadSessionView", () => {
     const sessionId = await createStoredSession({ ...baseSession("inactive"), kind: "chat", command: "chat", conversationId: "conv-seed", seedContext: "Workflow summary" }, tmpDir, "chat-seed")
     await commitUserTurn("conv-seed", sessionId)
 
-    const view = await loadSessionView(sessionId, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))
+    const view = await loadView(sessionId)
 
     expect(view?.kind).toBe("chat")
     if (view?.kind !== "chat") throw new Error("expected chat view")
@@ -181,7 +186,7 @@ describe("loadSessionView", () => {
   })
 
   it("returns null for missing session", async () => {
-    expect(await loadSessionView("missing", asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))).toBeNull()
+    expect(await loadView("missing")).toBeNull()
   })
 
 
@@ -190,13 +195,13 @@ describe("loadSessionView", () => {
     // A chat with no committed user turn is not a conversation (recovery
     // tombstones it) -- not loadable.
     const outputOnlyChat = await mgr.createChat({ name: "Output only", initialState: "inactive" })
-    expect(await loadSessionView(outputOnlyChat, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader))).toBeNull()
+    expect(await loadView(outputOnlyChat)).toBeNull()
 
     // A chat with a committed user turn and zero rendered output IS loadable.
     const committedChat = await mgr.createChat({ name: "Committed", initialState: "inactive" })
     const conversationId = (await mgr.listMetadata()).sessions.find((s) => s.id === committedChat)!.conversationId!
     await commitUserTurn(conversationId, committedChat)
-    expect((await loadSessionView(committedChat, asAsyncEventReadSurface(reader), asAsyncEventReadSurface(reader)))?.kind).toBe("chat")
+    expect((await loadView(committedChat))?.kind).toBe("chat")
   })
 
 })

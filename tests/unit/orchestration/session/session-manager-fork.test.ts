@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { mkdirSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types"
 import { createSessionManager, SessionForkRefusal } from "../../../../src/orchestration/session/manager"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
@@ -23,7 +23,7 @@ function message(id: string, parentId: string | null, kind: "user" | "assistant"
 
 async function seedChat(
   manager: ReturnType<typeof createSessionManager>,
-  store: EventStore,
+  store: LocalSqliteEventStore,
   options: Parameters<typeof manager.createChat>[0] = {},
 ) {
   const sourceSessionId = await manager.createChat({
@@ -57,7 +57,7 @@ async function seedChat(
 }
 
 function publicationWriter(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   beforePublication: (attempt: number, events: readonly GuardedEventStoreAppend[]) => void | Promise<void>,
 ) {
   let attempts = 0
@@ -77,7 +77,7 @@ function publicationWriter(
   }
 }
 
-function appendSourceTelemetry(store: EventStore, sourceSessionId: string, value: number): void {
+function appendSourceTelemetry(store: LocalSqliteEventStore, sourceSessionId: string, value: number): void {
   store.append({
     aggregateId: `session:${sourceSessionId}`,
     type: "session.duration.recorded",

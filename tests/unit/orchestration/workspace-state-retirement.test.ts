@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { resolveEventStoreDbFile, resolveSessionsDir } from "../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
 import {
@@ -309,12 +309,12 @@ describe("a resumed retirement", () => {
     writeManifest(baseDir, manifest)
     stageTarget(baseDir, ["flywheel.sqlite", "sessions"])
     stampEpoch(resolveEventStoreDbFile(baseDir), WORKSPACE_STATE_EPOCH)
-    writeUnder(path.join(resolveSessionsDir(baseDir), "reappeared"), "owner.pid", "1")
+    writeUnder(path.join(flywheelDir(baseDir), "sessions", "reappeared"), "owner.pid", "1")
 
     expect(() => prepareWorkspaceState(directories)).toThrow("cannot prove the location of sessions")
 
     expect(fs.readFileSync(stagedMember(baseDir, "sessions"), "utf8")).toBe("staged bytes")
-    expect(fs.readFileSync(path.join(resolveSessionsDir(baseDir), "reappeared", "owner.pid"), "utf8")).toBe("1")
+    expect(fs.readFileSync(path.join(flywheelDir(baseDir), "sessions", "reappeared", "owner.pid"), "utf8")).toBe("1")
     expect(readManifest(baseDir)).toEqual(manifest)
   })
 

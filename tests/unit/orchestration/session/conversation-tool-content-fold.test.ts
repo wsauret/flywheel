@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { contentEvidence } from "../../../../src/infra/content-evidence"
-import { asAsyncEventReadSurface, type EventStore, type StoredFact } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types"
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ToolContentRow } from "../../../../src/infra/tool-content"
@@ -16,7 +16,7 @@ const SESSION_ID = "session-1"
 const LARGE_TEXT = "tool output line with searchable token quixotic\n".repeat(200)
 
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-fold-content-"))

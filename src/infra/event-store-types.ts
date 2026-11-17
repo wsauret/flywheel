@@ -625,8 +625,6 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
   close(): void
 }
 
-export type EventStore = LocalSqliteEventStore
-
 /** A local store's write methods: synchronous on a tooling connection, or
  *  already promise-returning on the lane-owned runtime store. Either way the
  *  writes land on a local connection. */

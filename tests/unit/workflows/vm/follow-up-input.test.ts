@@ -1,17 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { DurableFollowUpInputSchema, type DurableFollowUpInput } from "../../../../src/infra/chat-input-schema.js";
-import { parseWorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import { DurableFollowUpInputSchema } from "../../../../src/infra/chat-input-schema.js";
 import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
-import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
-import type { DecodedWorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
+import type { DecodedWorkflowEvent, WorkflowEvent } from "../../../../src/workflows/vm/events.js";
 import type { WorkflowMachineState } from "../../../../src/workflows/vm/control-types.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures.js";
 
 const identity = { kind: "identified", inputID: "original-input" } as const;
-const richInput: DurableFollowUpInput = { text: "", attachments: [{ marker: "image", mediaType: "image/png", data: "aW1hZ2U=" }], invocation: { label: "explain", args: "image" }, origin: "human" };
+const richInput: typeof DurableFollowUpInputSchema.Type = { text: "", attachments: [{ marker: "image", mediaType: "image/png", data: "aW1hZ2U=" }], invocation: { label: "explain", args: "image" }, origin: "human" };
 const request = { type: "FOLLOW_UP_REQUESTED", conversationId: "follow-up", requestSequence: 1, input: richInput, identity } as const;
 
 /** A follow-up run as a build before 2026-10-03 committed it: at encoding
@@ -22,7 +21,7 @@ function recorded(state: WorkflowMachineState, event: DecodedWorkflowEvent) {
 
 function requested() {
   const root = buildWorkflowControlInitializedFact({ ...runningControl(), attempts: [], graph: { nodes: [], dependencies: [], joins: [], budgets: [] }, status: "completed" });
-  const result = recorded(replayWorkflow(root.payload.control), request);
+  const result = recorded(replayDecodedWorkflow(root.payload.control), request);
   const pending = result.state.context.pending;
   if (!pending) throw new Error("Expected request proposal");
   return { root, result, facts: [root, ...pending.facts], control: pending.proposedCommitted };
@@ -48,7 +47,7 @@ describe("durable workflow follow-up input", () => {
 
   it("replays a recorded run with FOLLOW_UP_REQUESTED and FOLLOW_UP_SUCCEEDED to the same status and positions", () => {
     const { facts, control } = requested();
-    let state = replayWorkflow(control);
+    let state = replayDecodedWorkflow(control);
     for (const event of [
       { type: "FOLLOW_UP_FAILED", reason: "provider stopped", conversationId: "follow-up", requestSequence: 1 },
       { type: "PAUSE", reason: "operator" },
@@ -71,10 +70,9 @@ describe("durable workflow follow-up input", () => {
   });
 
   it("refuses a follow-up request from a current writer, at the type and at the runtime boundary", () => {
-    const completed = replayWorkflow(requested().root.payload.control);
     // @ts-expect-error A current writer proposes no follow-up run.
-    expect(() => transitionWorkflow(completed, request)).toThrow();
-    expect(() => parseWorkflowEvent(request)).toThrow();
+    const proposed: WorkflowEvent = request;
+    expect(() => transitionDecodedWorkflow(replayDecodedWorkflow(requested().root.payload.control), proposed)).toThrow();
     // A current terminal fact cannot hold one either.
     const committed = requested().facts.at(-1)!;
     expect(() => parseWorkflowSessionFact({ ...committed, version: 14 })).toThrow();

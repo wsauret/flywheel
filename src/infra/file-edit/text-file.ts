@@ -1,10 +1,9 @@
 /** Line and line-ending model shared by the patch and string planners.
  *
  *  One scanner splits text into lines that keep their own CR, LF, or CRLF
- *  ending, and one rule picks the file style. Replacements restore endings so
- *  a replaced line keeps its own ending, an inserted line takes the nearest
- *  local ending, and only a file with no local evidence falls back to the file
- *  style. A missing final newline stays missing, and a BOM stays in the first
+ *  ending. Replacements restore endings so a replaced line keeps its own
+ *  ending, an inserted line takes the nearest ending in the file, and only a
+ *  file with no ending at all falls back to LF. A missing final newline stays missing, and a BOM stays in the first
  *  line's text. Offsets inside this module are UTF-16 code units; callers that
  *  report UTF-8 byte spans convert through `utf8ByteOffsets`. */
 
@@ -81,25 +80,8 @@ export function scanSourceLines(contents: string): SourceLine[] {
   return lines;
 }
 
-/** The one file-style rule: the most frequent ending; a tie goes to the ending seen first; no endings means LF. */
-export function preferredLineEnding(lines: readonly SourceLine[]): LineEnding {
-  const counts = new Map<LineEnding, { count: number; firstSeen: number }>();
-  for (const [index, line] of lines.entries()) {
-    if (line.ending === undefined) continue;
-    const entry = counts.get(line.ending);
-    if (entry) entry.count += 1;
-    else counts.set(line.ending, { count: 1, firstSeen: index });
-  }
-  let preferred: LineEnding = "\n";
-  let best: { count: number; firstSeen: number } | undefined;
-  for (const [ending, entry] of counts) {
-    if (!best || entry.count > best.count || (entry.count === best.count && entry.firstSeen < best.firstSeen)) {
-      best = entry;
-      preferred = ending;
-    }
-  }
-  return preferred;
-}
+/** The ending of a new line in a file that has no line ending to copy. */
+const FALLBACK_ENDING: LineEnding = "\n";
 
 function utf8Length(text: string): number {
   return Buffer.byteLength(text, "utf8");
@@ -140,11 +122,9 @@ class EndingResolver {
   readonly #lines: readonly SourceLine[];
   readonly #previous: (NearestEnding | undefined)[];
   readonly #next: (NearestEnding | undefined)[];
-  readonly #preferred: LineEnding;
 
-  constructor(lines: readonly SourceLine[], preferred: LineEnding) {
+  constructor(lines: readonly SourceLine[]) {
     this.#lines = lines;
-    this.#preferred = preferred;
     this.#previous = [];
     let nearest: NearestEnding | undefined;
     for (const [index, line] of lines.entries()) {
@@ -166,7 +146,7 @@ class EndingResolver {
       if (own !== undefined) return own;
     }
     const target = start + relative;
-    return (this.#nearest(target, start, start + oldLength) ?? this.#nearest(target, 0, this.#lines.length))?.ending ?? this.#preferred;
+    return (this.#nearest(target, start, start + oldLength) ?? this.#nearest(target, 0, this.#lines.length))?.ending ?? FALLBACK_ENDING;
   }
 
   #nearest(target: number, rangeStart: number, rangeEnd: number): NearestEnding | undefined {
@@ -183,11 +163,9 @@ class EndingResolver {
 export class SourceFile {
   #lines: SourceLine[];
   readonly #byteOffsets: number[];
-  readonly #preferred: LineEnding;
 
   private constructor(lines: SourceLine[]) {
     this.#lines = lines;
-    this.#preferred = preferredLineEnding(lines);
     this.#byteOffsets = [0];
     for (const line of lines) {
       const previous = this.#byteOffsets[this.#byteOffsets.length - 1] ?? 0;
@@ -218,7 +196,7 @@ export class SourceFile {
 
   /** Applies start-sorted, non-overlapping replacements and restores every new line's ending. */
   applyReplacements(replacements: readonly LineReplacement[]): void {
-    const endings = new EndingResolver(this.#lines, this.#preferred);
+    const endings = new EndingResolver(this.#lines);
     const lastLineUnterminated = this.#lines.length > 0 && this.#lines[this.#lines.length - 1]?.ending === undefined;
     const prepared: { start: number; oldLength: number; lines: SourceLine[]; bridge: LineEnding | undefined }[] = [];
     let previousEnd = 0;
@@ -263,21 +241,18 @@ interface EndingBoundary {
 
 /** Rewrites the line boundaries of replacement text to the endings of the source span it replaces.
  *  The i-th boundary in the replacement takes the i-th boundary inside the span; further boundaries
- *  take the span's first ending, else the nearest ending around the span, else the file style.
+ *  take the span's first ending, else the nearest ending around the span, else LF.
  *  Spans must arrive in ascending order so the boundary index is scanned once. */
 export class LineEndingRestorer {
   readonly #boundaries: EndingBoundary[] = [];
-  readonly #preferred: LineEnding;
   #cursor = 0;
 
   constructor(contents: string) {
-    const lines = scanSourceLines(contents);
     let offset = 0;
-    for (const line of lines) {
+    for (const line of scanSourceLines(contents)) {
       if (line.ending !== undefined) this.#boundaries.push({ offset: offset + line.text.length, ending: line.ending });
       offset += line.text.length + (line.ending?.length ?? 0);
     }
-    this.#preferred = preferredLineEnding(lines);
   }
 
   restore(replacement: string, span: TextSpan): string {
@@ -286,7 +261,7 @@ export class LineEndingRestorer {
     let after = first;
     while (after < this.#boundaries.length && (this.#boundaries[after]?.offset ?? Infinity) <= span.end) after += 1;
     const replaced = this.#boundaries.slice(first, after);
-    const fallback = replaced[0]?.ending ?? this.#nearestAround(first, span) ?? this.#preferred;
+    const fallback = replaced[0]?.ending ?? this.#nearestAround(first, span) ?? FALLBACK_ENDING;
     // A boundary exactly at the span end also terminates the next adjacent span.
     this.#cursor = after > 0 && this.#boundaries[after - 1]?.offset === span.end ? after - 1 : after;
     return scanSourceLines(replacement)

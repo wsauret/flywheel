@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import type { IndexedTranscript } from "../../../../src/orchestration/session/conversation/branch-history-builder"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
@@ -11,9 +11,9 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { publishTestWorkflow } from "./_session-manager-fixtures"
 
-export function transcriptStores(accept: (store: EventStore, directory: string) => void): void {
+export function transcriptStores(accept: (store: LocalSqliteEventStore, directory: string) => void): void {
   let directory: string
-  let store: EventStore
+  let store: LocalSqliteEventStore
   beforeEach(() => {
     directory = mkdtempSync(join(tmpdir(), "flywheel-transcript-projection-"))
     store = createSqliteEventStore(resolveEventStoreDbFile(directory))
@@ -25,7 +25,7 @@ export function transcriptStores(accept: (store: EventStore, directory: string) 
   })
 }
 
-export async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: EventStore }) {
+export async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: LocalSqliteEventStore }) {
   const tree = await tryOpenConversationTree({ ...options, store: asAsyncEventReadSurface(options.store), writer: options.writer ?? asAsyncEventWriter(options.store) })
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
@@ -35,7 +35,7 @@ export async function blocks(history: IndexedTranscript | null) {
   return history ? Promise.all(Array.from({ length: history.blockCount }, (_, index) => history.readBlock(index))) : []
 }
 
-export function transcriptFixture(currentStore: () => EventStore, directory: () => string) {
+export function transcriptFixture(currentStore: () => LocalSqliteEventStore, directory: () => string) {
   async function createChat(): Promise<{ sessionId: string; conversationId: string }> {
     const manager = createSessionManager({ projectRoot: directory(), executionCwd: directory(), store: currentStore() })
     const sessionId = await manager.createChat({ name: "Chat" })

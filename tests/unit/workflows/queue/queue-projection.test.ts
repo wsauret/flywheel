@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type EventStore, type StoredFact } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { factDescriptors } from "../../../../src/infra/event-registry"
@@ -28,7 +28,7 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolutio
 import { asThenChain } from "../../../helpers/control-before-phases.js"
 import arms from "../vm/golden/committed-v10-history-arms.json"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
-import { initializeWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { initializeWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { createMemoryStore, initialFacts, testHost } from "../vm/host-test-support.js"
 import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
@@ -51,7 +51,7 @@ function queueFact<T extends WorkflowQueueFact["type"]>(
 
 let tmpDir: string
 
-function appendFact(store: EventStore, sessionId: string, fact: WorkflowQueueFact): void {
+function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: WorkflowQueueFact): void {
   const aggregateId = `workflow:${sessionId}`
   if (store.countByAggregate(aggregateId) === 0) {
     store.append({
@@ -324,14 +324,14 @@ describe("queue projection invariants", () => {
     let state = initializeWorkflow(replayWorkflowControl(events)).state
     function commit(type: "PAUSE" | "RESUME") {
       const queue = loadQueueFromEvents(events)!
-      const proposal = composeWorkflowCompanions(transitionWorkflow(state, type === "PAUSE" ? { type, reason: "person" } : { type, readers: {} }), {
+      const proposal = composeWorkflowCompanions(transitionDecodedWorkflow(state, type === "PAUSE" ? { type, reason: "person" } : { type, readers: {} }), {
         queue, resolvedAgents: bindings, timestamp: 100, addenda: [],
       })
       if (proposal.command.kind !== "commit" || !proposal.state.context.pending) throw new Error("expected proposal")
       const pending = proposal.state.context.pending
       const batch = storedWorkflowFacts(proposal.command.proposal.facts, events.length)
       events.push(...batch)
-      state = transitionWorkflow(proposal.state, { type: "COMMIT_SUCCEEDED", proposalId: pending.proposalId, aggregateSeq: pending.proposedCommitted.aggregateSeq }).state
+      state = transitionDecodedWorkflow(proposal.state, { type: "COMMIT_SUCCEEDED", proposalId: pending.proposalId, aggregateSeq: pending.proposedCommitted.aggregateSeq }).state
       return batch
     }
     for (let index = 0; index < history; index += 1) {

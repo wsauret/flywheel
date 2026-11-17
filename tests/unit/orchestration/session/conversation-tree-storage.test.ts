@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
@@ -15,7 +15,7 @@ import { createProjectExecutionState } from "../../../../src/orchestration/app-s
 import { closeFixtures, fixture } from "../app-service/_project-state-worker-fixture"
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let reader: AsyncEventStateReadSurface
 const sessionId = "s_abcd1234"
 const conversationId = "c_abcd1234"

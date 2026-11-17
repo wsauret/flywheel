@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type EventStore } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { attachProjectionFoldCache, openProjectionFoldCache, type FoldCacheSlot, type ProjectionFoldCache } from "../../../../../src/infra/projection-fold-cache.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
@@ -11,7 +11,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js"
 type FoldToSave = Parameters<FoldCacheSlot["save"]>[0]
 
 const temporaryDirectory = temporaryDirectories()
-let store: EventStore
+let store: LocalSqliteEventStore
 let cache: ProjectionFoldCache
 const childSessionId = "child"
 

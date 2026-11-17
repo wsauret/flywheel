@@ -2,12 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Schema } from "effect";
-import {
-  renderSessionNotesAutoCompactFallback,
-  renderSessionNotesGuidance,
-  SESSION_NOTES_AUTO_COMPACT_FALLBACK_TEMPLATE,
-  SESSION_NOTES_GUIDANCE_TEMPLATE,
-} from "../../../../src/infra/agent-assets/session-notes.js";
+import { renderSessionNotesAutoCompactFallback, renderSessionNotesGuidance } from "../../../../src/infra/agent-assets/session-notes.js";
 import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 
 const TOKEN_BUDGET_KEYS = ["guidance_message", "auto_compact_fallback_prompt"] as const;
@@ -60,6 +55,30 @@ function applyLedger(source: string, ledger: readonly (readonly [string, string]
   }, source);
 }
 
+/** The text that each placeholder renders for a reader with every capability: the exact words for a short
+ *  fragment, the first and last words for a long one. Both ends are fixed, so text added to a template next to
+ *  a placeholder cannot hide inside the placeholder's match. */
+const PLACEHOLDER_TEXT = new Map([
+  ["skill_checkpoint_guidance", 'Keep a short "Relevant skills" section .+? Do not copy skill bodies into the checkpoint\\.'],
+  ["design_intent_guidance", 'Keep a clearly labeled "Design intent" section .+? do not reconstruct it from memory\\.'],
+  ["request_reference_guidance", "Keep in References the durable recall entry IDs .+? important actions and tool calls\\."],
+  ["request_reference_clause", ", and the durable recall entry ID of every relevant user request still being solved"],
+  ["recall_guidance", "Use the `recall` tool to recover details by durable entry ID\\."],
+  ["recall_recovery_source", ", and durable conversation recall"],
+  ["recall_bookkeeping", " or recall"],
+]);
+
+/** Matches a rendered prompt against its adapted template: literal text byte for byte, and each `{placeholder}` as its `PLACEHOLDER_TEXT`. */
+function templatePattern(template: string): RegExp {
+  const parts = template.split(/\{([a-z_]+)\}/).map((part, index) => {
+    if (index % 2 === 0) return part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const text = PLACEHOLDER_TEXT.get(part);
+    if (text === undefined) throw new Error(`no expected text for placeholder {${part}}`);
+    return `(?:${text})`;
+  });
+  return new RegExp(`^${parts.join("")}$`, "s");
+}
+
 describe("session notes prompt adaptations", () => {
   it("preserves relevant skill references and restores their context in every recovery mode", () => {
     for (const recall of [[{ name: "recall" }], []]) {
@@ -100,14 +119,15 @@ describe("session notes prompt adaptations", () => {
     const source = Schema.decodeUnknownSync(ModelsSchema)(parsed);
     const firstModel = Schema.decodeUnknownSync(ModelSchema)(source.models[0]);
     const tokenBudget = firstModel.model_messages.token_budget;
-    const adapted = {
-      guidance_message: SESSION_NOTES_GUIDANCE_TEMPLATE,
-      auto_compact_fallback_prompt: SESSION_NOTES_AUTO_COMPACT_FALLBACK_TEMPLATE,
+    const input = { has: promptCapabilities([{ name: "recall" }, { name: "skill" }]) };
+    const rendered = {
+      guidance_message: renderSessionNotesGuidance(input),
+      auto_compact_fallback_prompt: renderSessionNotesAutoCompactFallback(input),
     };
 
     for (const key of TOKEN_BUDGET_KEYS) {
       const expected = applyLedger(tokenBudget[key], REPLACEMENTS[key]);
-      expect(adapted[key]).toBe(expected);
+      expect(rendered[key]).toMatch(templatePattern(expected));
     }
   });
 

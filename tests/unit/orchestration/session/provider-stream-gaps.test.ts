@@ -3,13 +3,13 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { InvariantViolation } from "../../../../src/infra/invariant"
-import type { EventStore } from "../../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { analyzeStreamGaps } from "../../../../src/orchestration/session/diagnostics/provider-stream-gaps"
 
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   tmpDir = mkdtempSync(join(tmpdir(), "flywheel-stream-gaps-"))

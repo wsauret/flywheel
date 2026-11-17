@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store"
-import type { EventStore } from "../../../../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../../../src/infra/paths"
 import type { ProviderRequestAuditFact } from "../../../../../../src/orchestration/session/provider-request-audit-facts"
 import type { SessionRuntimeFact } from "../../../../../../src/orchestration/session/session-runtime-event-types"
@@ -25,7 +25,7 @@ interface Metadata {
   [key: string]: unknown
 }
 
-export function withEfficiencyStore(sessionId: string, run: (store: EventStore) => void): void {
+export function withEfficiencyStore(sessionId: string, run: (store: LocalSqliteEventStore) => void): void {
   const tmp = mkdtempSync(join(tmpdir(), "step-efficiency-"))
   const store = createSqliteEventStore(resolveEventStoreDbFile(tmp))
   try {
@@ -36,7 +36,7 @@ export function withEfficiencyStore(sessionId: string, run: (store: EventStore) 
   }
 }
 
-export function appendFact(store: EventStore, sessionId: string, fact: TestFact, timestamp: number): void {
+export function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: TestFact, timestamp: number): void {
   store.append({
     aggregateId: `session:${sessionId}`,
     type: fact.type,
@@ -48,7 +48,7 @@ export function appendFact(store: EventStore, sessionId: string, fact: TestFact,
   })
 }
 
-export function appendSingleStepStarted(store: EventStore, sessionId: string): void {
+export function appendSingleStepStarted(store: LocalSqliteEventStore, sessionId: string): void {
   appendFact(store, sessionId, queueCreated(), 1_000)
   appendFact(store, sessionId, {
     type: "step.resume_state.recorded",
@@ -60,7 +60,7 @@ export function appendSingleStepStarted(store: EventStore, sessionId: string): v
 }
 
 export function appendStepStatus(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   sessionId: string,
   status: "running" | "completed" | "failed" | "skipped",
   timestamp: number,
@@ -74,7 +74,7 @@ export function appendStepStatus(
 }
 
 export function appendPrompt(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   sessionId: string,
   requestId: string,
   conversationId: string,
@@ -131,7 +131,7 @@ export function appendPrompt(
 }
 
 export function appendResponse(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   sessionId: string,
   requestId: string,
   conversationId: string,
@@ -156,7 +156,7 @@ export function appendResponse(
 }
 
 export function appendUsage(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   sessionId: string,
   requestId: string,
   conversationId: string,
@@ -186,7 +186,7 @@ export function appendUsage(
 }
 
 export function appendStreamEvent(
-  store: EventStore,
+  store: LocalSqliteEventStore,
   sessionId: string,
   input: {
     requestId: string
@@ -217,7 +217,7 @@ export function appendStreamEvent(
   }, timestamp)
 }
 
-export function appendSubagentTool(store: EventStore, sessionId: string): void {
+export function appendSubagentTool(store: LocalSqliteEventStore, sessionId: string): void {
   appendFact(store, sessionId, {
     type: "tool.input.completed",
     version: 1,
@@ -259,7 +259,7 @@ export function appendSubagentTool(store: EventStore, sessionId: string): void {
   }, 1_520)
 }
 
-export function appendChildTool(store: EventStore, sessionId: string): void {
+export function appendChildTool(store: LocalSqliteEventStore, sessionId: string): void {
   appendFact(store, sessionId, {
     type: "tool.input.completed",
     version: 1,
@@ -286,7 +286,7 @@ export function appendChildTool(store: EventStore, sessionId: string): void {
   }, 1_670)
 }
 
-export function appendSubagentCompleted(store: EventStore, sessionId: string, timestamp = 1_800): void {
+export function appendSubagentCompleted(store: LocalSqliteEventStore, sessionId: string, timestamp = 1_800): void {
   appendFact(store, sessionId, {
     type: "subagent.completed",
     version: 1,
@@ -311,7 +311,7 @@ export function appendSubagentCompleted(store: EventStore, sessionId: string, ti
   }, timestamp)
 }
 
-export function appendParentSubagentScenario(store: EventStore, sessionId: string): void {
+export function appendParentSubagentScenario(store: LocalSqliteEventStore, sessionId: string): void {
   appendSingleStepStarted(store, sessionId)
   appendPrompt(store, sessionId, "req-parent", "conv-worker", 1, 1_300)
   appendUsage(store, sessionId, "req-parent", "conv-worker", 1, 1_400, {

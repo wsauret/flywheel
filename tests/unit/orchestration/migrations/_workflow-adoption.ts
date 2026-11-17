@@ -9,7 +9,7 @@
 import { expect, spyOn } from "bun:test"
 import { join } from "node:path"
 import { canonicalDirectory } from "../../../../src/infra/directory-authorities.js"
-import type { EventStore } from "../../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { Log } from "../../../../src/infra/log.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { buildRuntimeWorkflowInvocationAppend } from "../../../../src/orchestration/session/child-session-publication.js"
@@ -132,7 +132,7 @@ export async function recordCompletedRun(f: AdoptionFixture, followUp: boolean) 
 
 /** Commits a follow-up into the completed workflow `session` as v0.0.12
  *  does: the request and its committed control, at v0.0.12's version. */
-export function acceptOlderFollowUp(store: EventStore, text: string) {
+export function acceptOlderFollowUp(store: LocalSqliteEventStore, text: string) {
   const completed = replayWorkflowControl(store.read({ aggregateId: "workflow:session" }))
   const requested = transitionDecodedWorkflow(replayDecodedWorkflow(completed), {
     type: "FOLLOW_UP_REQUESTED", input: { text, origin: "human" }, identity: { kind: "identified", inputID: "older-input" },
@@ -143,7 +143,7 @@ export function acceptOlderFollowUp(store: EventStore, text: string) {
 }
 
 /** The entries of the conversation's current branch, oldest first. */
-export function branch(store: EventStore, conversationId: string): ConversationEntry[] {
+export function branch(store: LocalSqliteEventStore, conversationId: string): ConversationEntry[] {
   const tree = readConversationSnapshotSync(store, conversationId)
   const entries: ConversationEntry[] = []
   for (let id = tree.leafId; id !== null;) {
@@ -156,7 +156,7 @@ export function branch(store: EventStore, conversationId: string): ConversationE
 }
 
 /** The workflow's adopted binding and the chat that owns it. */
-export function owner(store: EventStore, workflowId: string) {
+export function owner(store: LocalSqliteEventStore, workflowId: string) {
   const binding = recoverSessionMetadata(store, workflowId)?.launchedFrom
   const parent = binding ? recoverSessionMetadata(store, binding.parentSessionId) : null
   if (!binding?.toolUseId || parent?.kind !== "chat") throw new Error(`${workflowId} has no owning chat`)

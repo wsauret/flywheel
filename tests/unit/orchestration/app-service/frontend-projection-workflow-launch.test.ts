@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/frontend-projection"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
@@ -11,7 +11,7 @@ import { chatEntry, fakeSessionStore, fileChanged } from "./_frontend-projection
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
-const ownedStores: EventStore[] = []
+const ownedStores: LocalSqliteEventStore[] = []
 afterEach(() => {
   for (const store of ownedStores.splice(0)) store.close()
   cleanupTmpRoot()

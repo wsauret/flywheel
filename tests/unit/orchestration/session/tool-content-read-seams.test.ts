@@ -4,7 +4,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { contentEvidence } from "../../../../src/infra/content-evidence"
-import { asAsyncEventReadSurface, type AsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ContentResolver, ToolContentRow } from "../../../../src/infra/tool-content"
 import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta"
@@ -21,7 +21,7 @@ const CONTENT_TEXT = "nested tool result body\n".repeat(200)
 const OUTPUT_TEXT = "captured execution output\n".repeat(200)
 
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-tool-content-seams-"))

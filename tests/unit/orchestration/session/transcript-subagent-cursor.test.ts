@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
 import { createSubagentRunsByToolUseIdCursorReader, readSubagentRunsByToolUseId } from "../../../../src/orchestration/modules/subagents/history/subagent-history"
 
-let store: EventStore
+let store: LocalSqliteEventStore
 let baseDir: string
 const { appendSessionFact, appendCreatedSubagent, appendSubagentCompletion } = transcriptFixture(() => store, () => baseDir)
 transcriptStores((nextStore, directory) => {

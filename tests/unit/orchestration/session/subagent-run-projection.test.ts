@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type EventStore, type StoredFact } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { loadSubagentRunsFromEvents, readSubagentRuns } from "../../../../src/orchestration/modules/subagents/history/subagent-run-projection"
@@ -12,7 +12,7 @@ import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 
 let tmpDir: string
 
-function appendFact(store: EventStore, sessionId: string, fact: SubagentRunFact): StoredFact {
+function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: SubagentRunFact): StoredFact {
   return store.append({
     aggregateId: `session:${sessionId}`,
     type: fact.type,

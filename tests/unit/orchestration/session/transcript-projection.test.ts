@@ -2,15 +2,15 @@ import { createSessionToolSummaryReader } from "../../../../src/orchestration/mo
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { describe, expect, it, spyOn } from "bun:test"
 import { Hash } from "node:crypto"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { blocks, openExistingTree, transcriptFixture, transcriptStores } from "./_transcript-projection-fixtures"
+import { branchHistory } from "../../../helpers/branch-blocks"
 import { openReadonlyEventReader } from "../../../../src/infra/sqlite-event-store"
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock"
 import { SessionTranscriptProjection } from "../../../../src/orchestration/session/conversation/transcript-projection"
 import { createAgentInputCursorReader } from "../../../../src/orchestration/session/agent-input-projection"
-import { buildBranchHistoryFromEntries } from "../../../../src/orchestration/session/conversation/branch-history-builder"
 import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchestration/session/conversation/tool-result-meta"
 import { createWorkflowToolCore } from "../../../../src/orchestration/agent-runtime/tools/workflow-tool"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery"
@@ -20,7 +20,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { startTestWorkflowMember, succeedTestWorkflowMember } from "./_session-manager-fixtures"
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 const { createChat, immediateWriter, publishWorkflowBinding, appendSessionFact, appendCompletedSubagent } =
   transcriptFixture(() => store, () => baseDir)
@@ -222,7 +222,7 @@ describe("SessionTranscriptProjection", () => {
     await writer.moveTo(root)
     await writer.appendMessage({ kind: "assistant", content: "new branch" })
     const actual = await projection.read()
-    const expected = buildBranchHistoryFromEntries(await writer.getBranch(), { executionCwd: baseDir })
+    const expected = branchHistory(await writer.getBranch(), { executionCwd: baseDir })
 
     expect(await blocks(actual)).toEqual([...expected.blocks])
     expect(actual?.tipEntryId).toBe(expected.tipEntryId)

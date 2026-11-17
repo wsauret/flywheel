@@ -21,14 +21,14 @@ import { asModelClient } from "../_model-client.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventWriter, type EventStore } from "../../../../../src/infra/event-store-types.js";
+import { asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js";
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const temporaryDirectory = temporaryDirectories();
-const stores: EventStore[] = [];
+const stores: LocalSqliteEventStore[] = [];
 afterEach(() => { for (const store of stores.splice(0)) store.close(); });
 
 interface UnknownRecord { [key: string]: unknown }

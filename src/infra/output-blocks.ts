@@ -552,7 +552,7 @@ export type QuestionEntry = typeof QuestionEntrySchema.Type
 export type QuestionBlock = typeof QuestionBlockSchema.Type
 export type DegradedBlock = typeof DegradedBlockSchema.Type
 
-export const AnyBlockSchema = Schema.Union([
+const AnyBlockSchema = Schema.Union([
   TextBlockSchema,
   ToolEntrySchema,
   AgentGroupBlockSchema,

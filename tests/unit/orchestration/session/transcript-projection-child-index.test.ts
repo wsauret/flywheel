@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache"
@@ -14,7 +14,8 @@ import { createToolResultDisplayMetaCursorReader } from "../../../../src/orchest
 import { createAgentInputCursorReader } from "../../../../src/orchestration/session/agent-input-projection"
 import { readOutputSequence } from "../../../../src/orchestration/app-service/output-sequence"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
-import type { ChatSessionEntry, SessionEntry } from "../../../../src/orchestration/session-store/types"
+import type { SessionEntry } from "../../../../src/orchestration/session-store/types"
+import type { ChatSessionEntry } from "../../../helpers/session-entries"
 import { createOutputProjection } from "../../../../src/orchestration/app-service/output-projection"
 import { createShippedOutput } from "../../../../src/orchestration/app-service/shipped-output"
 import { fakeSessionStore } from "../app-service/app-service-doubles"
@@ -25,7 +26,7 @@ import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runti
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition"
 import { composeControlRestatement } from "../../../../src/workflows/vm/companions"
 import { workflowCardHeaderParts } from "../../../../src/protocol/client/workflow-card"
 import { Schema } from "effect"
@@ -33,7 +34,7 @@ import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-p
 import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   baseDir = mkdtempSync(join(tmpdir(), "flywheel-transcript-child-index-"))
@@ -53,7 +54,7 @@ async function createChat(): Promise<{ sessionId: string; conversationId: string
   return { sessionId, conversationId }
 }
 
-async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: EventStore }) {
+async function openExistingTree(options: Omit<Parameters<typeof tryOpenConversationTree>[0], "store"> & { store: LocalSqliteEventStore }) {
   const tree = await tryOpenConversationTree({ ...options, store: asAsyncEventReadSurface(options.store), writer: asAsyncEventWriter(options.store) })
   if (!tree) throw new Error(`expected conversation tree ${options.conversationId}`)
   return tree
@@ -78,7 +79,7 @@ async function publishMember(parentSessionId: string, conversationId: string) {
 async function pauseWorkflow(manager: ReturnType<typeof createSessionManager>, timestamp: number) {
   const facts = store.read({ aggregateId: "workflow:workflow-child" })
   const control = replayWorkflowControl(facts)
-  const result = composeControlRestatement(transitionWorkflow(replayWorkflow(control), { type: "PAUSE", reason: "Test interrupt" }), loadQueueFromEvents(facts))
+  const result = composeControlRestatement(transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "PAUSE", reason: "Test interrupt" }), loadQueueFromEvents(facts))
   if (result.command.kind !== "commit") throw new Error("Expected pause proposal")
   const committed = await manager.commitWorkflow({ workflowId: "workflow-child", events: result.command.proposal.facts.map((fact, index) => ({
     ...fact, aggregateId: "workflow:workflow-child", sessionId: "workflow-child", timestamp,

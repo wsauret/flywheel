@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type EventReader, type EventStore, type StoredFact } from "../../../../../src/infra/event-store-types.ts"
+import { asAsyncEventReadSurface, asAsyncEventWriter, CorruptEventRowError, type EventReader, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/event-store-types.ts"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.ts"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.ts"
 import type { ExperimentFact, ExperimentInitializedFact } from "../../../../../src/orchestration/modules/experiments/facts.ts"
@@ -14,7 +14,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"
 
-const stores: EventStore[] = []
+const stores: LocalSqliteEventStore[] = []
 const directories: string[] = []
 
 afterEach(() => {
@@ -24,7 +24,7 @@ afterEach(() => {
   directories.length = 0
 })
 
-function storePair(): [EventStore, EventStore] {
+function storePair(): [LocalSqliteEventStore, LocalSqliteEventStore] {
   const directory = mkdtempSync(join(tmpdir(), "flywheel-experiment-projection-"))
   directories.push(directory)
   const dbFile = resolveEventStoreDbFile(directory)
@@ -34,7 +34,7 @@ function storePair(): [EventStore, EventStore] {
   return [left, right]
 }
 
-function append(store: EventStore, sessionId: string, fact: ExperimentFact): StoredFact {
+function append(store: LocalSqliteEventStore, sessionId: string, fact: ExperimentFact): StoredFact {
   return store.append({
     aggregateId: `session:${sessionId}`,
     type: fact.type,
@@ -72,7 +72,7 @@ function initialized(segment: number, name = `segment-${segment}`, maxIterations
 }
 
 /** The guard of the session's experiments runtime, over `store`. */
-function runtimeGuard(store: EventStore, sessionId: string) {
+function runtimeGuard(store: LocalSqliteEventStore, sessionId: string) {
   const runtime = createExperimentsRuntime(moduleRuntimeServices({
     sessionId,
     projectionReader: asAsyncEventReadSurface(store),

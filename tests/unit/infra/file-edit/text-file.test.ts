@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { LineEndingRestorer, preferredLineEnding, scanSourceLines, SourceFile, utf8ByteOffsets } from "../../../../src/infra/file-edit/text-file.js";
+import { LineEndingRestorer, scanSourceLines, SourceFile, utf8ByteOffsets } from "../../../../src/infra/file-edit/text-file.js";
 
 describe("text file model", () => {
   it("scans every ending style and keeps an unterminated tail and a BOM as text", () => {
@@ -13,11 +13,11 @@ describe("text file model", () => {
     expect(scanSourceLines("")).toEqual([]);
   });
 
-  it("prefers the most frequent ending and breaks ties toward the ending seen first", () => {
-    expect(preferredLineEnding(scanSourceLines("a\nb\r\nc\r\n"))).toBe("\r\n");
-    expect(preferredLineEnding(scanSourceLines("a\rb\nc"))).toBe("\r");
-    expect(preferredLineEnding(scanSourceLines("a\nb\r\n"))).toBe("\n");
-    expect(preferredLineEnding(scanSourceLines("plain"))).toBe("\n");
+  it("ends a new line with LF in a file that has no line ending to copy", () => {
+    const file = SourceFile.parse("plain");
+    file.applyReplacements([{ start: 1, oldLength: 0, lines: ["added"] }]);
+    expect(file.contents()).toBe("plain\nadded");
+    expect(new LineEndingRestorer("plain").restore("a\nb", { start: 0, end: 5 })).toBe("a\nb");
   });
 
   it("reports line spans as cumulative UTF-8 byte offsets across mixed endings and the file end", () => {

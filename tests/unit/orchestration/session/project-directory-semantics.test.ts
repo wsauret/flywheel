@@ -14,7 +14,7 @@ import { join } from "node:path"
 import { selectStartupDirectories, type ProjectDirectories } from "../../../../src/infra/directory-authorities.js"
 import { toFileUri } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { createMemoryTool } from "../../../../src/orchestration/modules/learning/tools/memory.js"
 import { writeDefinition } from "../../../../src/orchestration/agent-runtime/tools/write.js"
 import type { DispatchedToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
@@ -66,7 +66,7 @@ function toolContext(executionCwd: string, projectRoot: string): DispatchedToolC
 
 /** The project's event store, over the state generation this test owns until it
  *  closes the store. */
-function openProjectStore(directories: ProjectDirectories): EventStore {
+function openProjectStore(directories: ProjectDirectories): LocalSqliteEventStore {
   const prepared = prepareWorkspaceState(directories)
   const store = createSqliteEventStore(prepared.dbFile)
   return {
@@ -86,7 +86,7 @@ async function writeFileWithTool(executionCwd: string, projectRoot: string, path
 /** One assistant tool call, recorded the way a real turn records it: the tool
  *  argument keeps the relative path the model used, so only the session's
  *  execution directory can give it meaning later. */
-async function recordRelativeToolCall(store: EventStore, sessionId: string, conversationId: string, relativePath: string): Promise<void> {
+async function recordRelativeToolCall(store: LocalSqliteEventStore, sessionId: string, conversationId: string, relativePath: string): Promise<void> {
   const tree = await tryOpenConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
   if (!tree) throw new Error(`expected conversation tree ${conversationId}`)
   await tree.appendMessages([
@@ -100,7 +100,7 @@ async function recordRelativeToolCall(store: EventStore, sessionId: string, conv
   tree.getStorage().dispose()
 }
 
-function historyProjection(store: EventStore, projectRoot: string, manager: Parameters<typeof testSessionDetailProjection>[0]["manager"]) {
+function historyProjection(store: LocalSqliteEventStore, projectRoot: string, manager: Parameters<typeof testSessionDetailProjection>[0]["manager"]) {
   return testSessionDetailProjection({
     projectRoot,
     sessionStore: { get: () => undefined },
@@ -114,7 +114,7 @@ const SESSION_CREATED_AT = "2026-01-01T00:00:00.000Z"
 interface SessionCreatedPayload { [key: string]: unknown }
 
 
-function appendChatSession(store: EventStore, sessionId: string, version: number, payload: SessionCreatedPayload): void {
+function appendChatSession(store: LocalSqliteEventStore, sessionId: string, version: number, payload: SessionCreatedPayload): void {
   store.append({
     aggregateId: `session:${sessionId}`,
     sessionId,

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import type { EventStore } from "../../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import type { ToolContentRow } from "../../../../src/infra/tool-content"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { buildSessionContent, type SessionContentNodeRow } from "../../../../src/infra/session-content"
@@ -24,7 +24,7 @@ interface EventPayload {
   [key: string]: unknown
 }
 let tmpDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let dbPath: string
 
 const DURABLE_TYPES = ["chat.entries.appended", "tool.result.recorded", "workflow.control.committed", "model.usage.measured"] as const

@@ -3,12 +3,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store";
 import { cleanupTmpRoot, makeTmpDir, minimalSession } from "./_session-persistence-fixtures";
 
-const ownedStores: EventStore[] = [];
+const ownedStores: LocalSqliteEventStore[] = [];
 
 afterEach(() => {
   for (const store of ownedStores.splice(0)) store.close();

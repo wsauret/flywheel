@@ -16,7 +16,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Log } from "../../../../src/infra/log.js";
-import { currentBuildLink, liveBuildsDir, updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
+import { liveBuildsDir, updateAuthorityDbFile, versionsDir } from "../../../../src/infra/paths.js";
 import { buildCollectionPending, collectBuildTrees } from "../../../../src/infra/update/build-retention.js";
 import { buildExecutable } from "../../../../src/infra/update/build-identity.js";
 import { recordBuildProved } from "../../../../src/infra/update/service-start-record.js";
@@ -208,7 +208,7 @@ function windowsBuild(version: string, marker: string, age = 0): string {
 }
 
 function point(version: string, buildId: string): void {
-  fs.writeFileSync(currentBuildLink(userDataRoot), `versions\\${version}\\${buildId}`);
+  fs.writeFileSync(path.join(userDataRoot, "current"), `versions\\${version}\\${buildId}`);
 }
 
 /** The executables a Windows process runs, by inode: Windows refuses to
@@ -238,7 +238,7 @@ describe("a Windows account", () => {
   test("a pointer that names no installed build keeps every build", async () => {
     windowsBuild("1.4.0", "a");
     fillRetentionBand();
-    fs.writeFileSync(currentBuildLink(userDataRoot), "..\\elsewhere\\1.4.0");
+    fs.writeFileSync(path.join(userDataRoot, "current"), "..\\elsewhere\\1.4.0");
     const before = installedBuilds();
 
     const collected = await collectBuildTrees({ userDataRoot, execPath: process.execPath, platform: "win32" });
@@ -489,6 +489,6 @@ describe("what is collected", () => {
 
     expect(fs.existsSync(path.join(userDataRoot, "flywheel.toml"))).toBe(true);
     expect(fs.existsSync(path.join(userDataRoot, "sessions", "one"))).toBe(true);
-    expect(fs.existsSync(currentBuildLink(userDataRoot))).toBe(true);
+    expect(fs.existsSync(path.join(userDataRoot, "current"))).toBe(true);
   });
 });

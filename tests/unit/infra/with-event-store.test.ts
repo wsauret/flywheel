@@ -5,7 +5,7 @@ import * as path from "node:path"
 import { Database } from "bun:sqlite"
 
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store"
-import type { EventStore } from "../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths"
 import { withEventStore } from "../../../src/infra/with-event-store"
 
@@ -21,7 +21,7 @@ function makeTmpDir(): string {
   return dir
 }
 
-function appendFact(store: EventStore, type: string): void {
+function appendFact(store: LocalSqliteEventStore, type: string): void {
   store.append({
     aggregateId: "session:with-store",
     type,

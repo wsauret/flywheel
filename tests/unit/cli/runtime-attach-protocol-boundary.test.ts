@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createAccountRuntimeAttach, type RuntimeIdentity } from "../../../src/cli/runtime-attach.js"
 import type { TerminalSuccessor } from "../../../src/cli/terminal-handoff.js"
-import { currentBuildLink, versionsDir } from "../../../src/infra/paths.js"
+import { versionsDir } from "../../../src/infra/paths.js"
 import { executableBuild } from "../../../src/infra/update/live-builds.js"
 import { useWin32ContainedDirectories } from "../../helpers/win32-contained-directories.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
@@ -69,7 +69,7 @@ describe("account runtime attach at a protocol boundary", () => {
         // An update activates a newer build, which serves in a protocol this
         // terminal cannot speak.
         place(updated.buildId)
-        writeFileSync(currentBuildLink(userDataRoot), `versions\\0.1.0\\${updated.buildId}`)
+        writeFileSync(join(userDataRoot, "current"), `versions\\0.1.0\\${updated.buildId}`)
         const followed: TerminalSuccessor[] = []
         await expect(boundaryAttach(root, {
           runningBuild: atStart,

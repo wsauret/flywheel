@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import type { EventStore } from "../../../../src/infra/event-store-types";
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import type { SessionManagerDeps } from "../../../../src/orchestration/session/manager";
 
@@ -12,7 +12,7 @@ export const TMP_ROOT = path.join(
   `flywheel-resume-integ-${process.pid}-${Date.now()}`,
 );
 
-export const stores: EventStore[] = [];
+export const stores: LocalSqliteEventStore[] = [];
 
 export function makeTmpDir(): string {
   const dir = path.join(TMP_ROOT, crypto.randomUUID());

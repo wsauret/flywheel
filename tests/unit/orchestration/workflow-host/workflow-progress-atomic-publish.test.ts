@@ -5,10 +5,10 @@ import { mkdtempSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
+import { readRunDefinitionLineage } from "../../../../src/workflows/definition-provenance-projection.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
 import { readStoredSession } from "../session/_session-metadata-test-helpers.js"
 import { seedModelWorkflowCall } from "./_workflow-progress-fixtures.js"
@@ -23,7 +23,7 @@ function origin(parentId: string, conversationId: string) {
   return modelWorkflowLaunchOrigin(parentId, { conversationId, toolUseId: "tool-1", confirmation: { kind: "absent" }, authority: fullAuthority() })
 }
 
-function observingWriter(store: EventStore, batches: string[][]): AsyncEventWriter {
+function observingWriter(store: LocalSqliteEventStore, batches: string[][]): AsyncEventWriter {
   return {
     ...asAsyncEventWriter(store),
     append: async () => { throw new Error("workflow launch must use appendBatch") },
@@ -49,7 +49,7 @@ describe("startWorkflow atomic publish", () => {
   it("publishes run settings, parent binding, lineage, and queue creation in one SQLite batch", async () => {
     const projectRoot = realpathSync(mkdtempSync(join(tmpdir(), "flywheel-atomic-transaction-")))
     trackProjectRoot(projectRoot)
-    let store: EventStore | undefined
+    let store: LocalSqliteEventStore | undefined
     try {
       const sessionStore = createMockSessionStore()
       store = trackEventStore(createSqliteEventStore(resolveEventStoreDbFile(projectRoot)))
@@ -91,7 +91,7 @@ describe("startWorkflow atomic publish", () => {
       expect(catalog.some(({ id }) => id === result.workflowId)).toBe(false)
       expect((await reader.listForParent(parentId)).map(run => run.workflowId)).toEqual([result.workflowId])
       const queue = await loadQueueSnapshotFromReader(asAsyncEventReadSurface(store), result.workflowId)
-      const lineage = loadDefinitionLineageFromEvents(store.read({ aggregateId: `workflow:${result.workflowId}` }))
+      const lineage = await readRunDefinitionLineage(asAsyncEventReadSurface(store), result.workflowId)
       expect(queue).not.toBeNull()
       expect(lineage.compiledWorkflow).toMatchObject({
         workflowDefinitionId: FIXTURE_WORKFLOW_ID,
@@ -113,7 +113,7 @@ describe("startWorkflow atomic publish", () => {
   it("leaves no child aggregate or parent link when the publication transaction fails", async () => {
     const projectRoot = realpathSync(mkdtempSync(join(tmpdir(), "flywheel-atomic-q-fail-")))
     trackProjectRoot(projectRoot)
-    let store: EventStore | undefined
+    let store: LocalSqliteEventStore | undefined
     try {
       const sessionStore = createMockSessionStore()
       store = trackEventStore(createSqliteEventStore(resolveEventStoreDbFile(projectRoot)))
@@ -152,7 +152,7 @@ describe("startWorkflow atomic publish", () => {
   it("retains the published run and parent binding when the workflow host cannot start", async () => {
     const projectRoot = realpathSync(mkdtempSync(join(tmpdir(), "flywheel-atomic-start-fail-")))
     trackProjectRoot(projectRoot)
-    let store: EventStore | undefined
+    let store: LocalSqliteEventStore | undefined
     try {
       const sessionStore = createMockSessionStore()
       const hosts = createMockWorkflowHosts()

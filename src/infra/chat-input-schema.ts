@@ -20,4 +20,3 @@ export const DurableFollowUpInputSchema = Schema.Struct({
   ...ChatInputObjectSchema.fields,
   origin: Schema.optionalKey(Schema.Literal("human")),
 });
-export type DurableFollowUpInput = typeof DurableFollowUpInputSchema.Type;

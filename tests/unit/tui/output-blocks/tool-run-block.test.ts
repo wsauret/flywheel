@@ -2,7 +2,8 @@ import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import { Schema } from "effect"
-import { AnyBlockSchema, type ToolEntry } from "../../../../src/infra/output-blocks.js"
+import type { ToolEntry } from "../../../../src/infra/output-blocks.js"
+import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import type { ToolRun, ToolRunStatus } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 import { terminalTranscript } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
@@ -16,7 +17,7 @@ interface ToolInput {
   readonly [key: string]: unknown
 }
 
-const isBlock = Schema.is(AnyBlockSchema)
+const isBlock = Schema.is(FrontendOutputBlockSchema)
 
 /** A row with `extra` laid over it. The overrides can mix status variants,
  *  so the row is checked against the block schema it must satisfy. */

@@ -1,6 +1,6 @@
 import { describe, expect, test, spyOn } from "bun:test"
 import { temporaryDirectories } from "../../../helpers/directories.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
@@ -38,7 +38,7 @@ async function setup() {
   const manager = createSessionManager({ projectRoot: root, executionCwd: root, store })
   return { root, store, manager, reader: asAsyncEventReadSurface(store) }
 }
-function registerRetainedRun(store: EventStore, workflowId: string) {
+function registerRetainedRun(store: LocalSqliteEventStore, workflowId: string) {
   store.append({
     aggregateId: `workflow:${workflowId}`, sessionId: workflowId, timestamp: 0, actor: "flywheel", type: "workflow.run.registered", version: 1,
     payload: {

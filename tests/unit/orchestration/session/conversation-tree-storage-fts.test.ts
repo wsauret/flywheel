@@ -5,14 +5,14 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE, type ConversationSearchIndex } from "../../../../src/infra/conversation-fts"
 import { searchConversationRecall } from "../../../../src/infra/conversation-recall-search"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile, resolveConversationSearchDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let index: ConversationSearchIndex
 const sessionId = "s_abcd1234"
 const conversationId = "c_abcd1234"

@@ -70,20 +70,6 @@ export async function loggedOperation<T>(options: LoggedOperationOptions<T>, run
   }
 }
 
-export function loggedSyncOperation<T>(options: LoggedOperationOptions<T>, run: () => T): T {
-  const start = performance.now()
-  const fields = options.fields ?? {}
-  options.log.debug(`${options.operation} start`, fields)
-  try {
-    const result = run()
-    logOperationDone(options, fields, result, start)
-    return result
-  } catch (err) {
-    recordOperationFailure(options, fields, start, err)
-    throw err
-  }
-}
-
 function logOperationDone<T>(
   options: LoggedOperationOptions<T>,
   fields: OperationFields,

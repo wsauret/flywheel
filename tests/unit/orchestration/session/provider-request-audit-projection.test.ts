@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import type { EventStore } from "../../../../src/infra/event-store-types"
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { InvariantViolation } from "../../../../src/infra/invariant"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts"
@@ -14,7 +14,7 @@ import type { ProviderStreamSummary, ProviderTransportContext } from "../../../.
 let tmpDir: string
 const retiredGeneration = [5, 6].join(".")
 
-function appendFact(store: EventStore, sessionId: string, fact: ProviderRequestAuditFact): void {
+function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: ProviderRequestAuditFact): void {
   store.append({
     aggregateId: `session:${sessionId}`,
     type: fact.type,

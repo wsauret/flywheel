@@ -102,7 +102,7 @@ export function seekSequence(lines: readonly string[], pattern: readonly string[
 }
 
 /** The one indentation shift every non-blank line pair shares, or none when the lines disagree. */
-export function uniformIndentDelta(actual: readonly string[], expected: readonly string[]): IndentDelta {
+function uniformIndentDelta(actual: readonly string[], expected: readonly string[]): IndentDelta {
   let shared: IndentDelta | undefined;
   for (const [offset, expectedLine] of expected.entries()) {
     const actualLine = actual[offset] ?? "";

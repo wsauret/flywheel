@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import type { EventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/event-store-types";
+import type { LocalSqliteEventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/event-store-types";
 
 import { canonicalDirectory } from "../../../../src/infra/directory-authorities";
 import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types";
@@ -10,7 +10,7 @@ import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/fact-draft
 import { readStoredSession } from "./_session-metadata-test-helpers";
 import { adoptTestWorkflow, cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow, racingPublicationWriter } from "./_session-manager-fixtures";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
-import { SubagentDepthLimitError, WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication";
+import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication";
 import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-catalog";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
@@ -18,10 +18,10 @@ import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestratio
 import { Schema } from "effect";
 import { SessionSchema } from "../../../../src/orchestration/session/schemas";
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership";
-import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition";
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold";
 
-function appendParentTelemetry(store: EventStore, parentId: string, accumulatedActiveMs: number): void {
+function appendParentTelemetry(store: LocalSqliteEventStore, parentId: string, accumulatedActiveMs: number): void {
   store.append({
     aggregateId: `session:${parentId}`,
     type: "session.duration.recorded",
@@ -105,9 +105,9 @@ describe("SessionManager workflow relationships", () => {
     const { deps, store } = makeDepsWithStore(baseDir);
     const manager = createSessionManager(deps);
     const workflowId = await publishTestWorkflow(manager, { authProfileId });
-    const advance = async (event: Parameters<typeof transitionWorkflow>[1]) => {
+    const advance = async (event: Parameters<typeof transitionDecodedWorkflow>[1]) => {
       const control = replayWorkflowControl(store.read({ aggregateId: `workflow:${workflowId}` }));
-      const proposed = transitionWorkflow(replayWorkflow(control), event);
+      const proposed = transitionDecodedWorkflow(replayDecodedWorkflow(control), event);
       if (proposed.command.kind !== "commit") throw new Error("expected a workflow commit");
       return proposed.command.proposal.facts.map((fact, index) => ({
         aggregateId: `workflow:${workflowId}`, sessionId: workflowId, timestamp: Date.now(),
@@ -582,7 +582,7 @@ describe("SessionManager subagent relationships", () => {
       runBinding: bindingAppend(rejectedId, "run-4", parentId),
       assignment: "inspect",
       promptFact: promptAppend(rejectedId, "run-4"),
-    })).rejects.toBeInstanceOf(SubagentDepthLimitError);
+    })).rejects.toThrow("Subagent depth 4 exceeds the maximum depth 3");
 
     expect(store.read({ aggregateId: `session:${rejectedId}` })).toEqual([]);
     expect(store.read({ aggregateId: `conversation:${rejectedConversationId}` })).toEqual([]);

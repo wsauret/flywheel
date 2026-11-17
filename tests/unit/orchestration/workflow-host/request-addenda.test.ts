@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { SessionRelation } from "../../../../src/infra/chat-input-schema"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types"
@@ -15,7 +15,7 @@ import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 const sessionId = "workflow-session"
 const conversationId = "step-conversation"
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   baseDir = mkdtempSync(join(tmpdir(), "flywheel-request-addenda-"))

@@ -3,7 +3,7 @@ import { POSIX_FILE_MODES } from "../../../helpers/posix-modes.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { currentBuildLink, versionsDir } from "../../../../src/infra/paths.js";
+import { versionsDir } from "../../../../src/infra/paths.js";
 import {
   BUILD_METADATA_FILE,
   assertInstallLocation,
@@ -92,7 +92,6 @@ describe("immutable install target", () => {
   });
 
   test("one account-global link names the build the next launch runs", () => {
-    expect(currentBuildLink("/account/.flywheel")).toBe(path.join("/account/.flywheel", "current"));
     expect(buildInstallDir("/account/.flywheel", decodeBuildMetadata(metadata())).startsWith(`${versionsDir("/account/.flywheel")}${path.sep}`)).toBe(true);
   });
 

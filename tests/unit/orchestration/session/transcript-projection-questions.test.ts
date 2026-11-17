@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { SessionTranscriptProjection } from "../../../../src/orchestration/session/conversation/transcript-projection"
@@ -12,7 +12,7 @@ import { createTranscriptProjectionCache } from "../../../../src/orchestration/a
 import { readAllOutputBlocks } from "../../../helpers/indexed-output"
 
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 
 beforeEach(() => {
   baseDir = mkdtempSync(join(tmpdir(), "flywheel-transcript-questions-"))

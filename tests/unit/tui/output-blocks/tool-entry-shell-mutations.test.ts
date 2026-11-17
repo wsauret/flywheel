@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { AnyBlockSchema, TOOL_PREVIEW_LINE_LIMIT, type ToolEntry } from "../../../../src/infra/output-blocks.js"
+import { TOOL_PREVIEW_LINE_LIMIT, type ToolEntry } from "../../../../src/infra/output-blocks.js"
+import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
@@ -47,7 +48,7 @@ async function renderToolEntry(block: ToolEntry, options: RenderToolEntryOptions
   return result
 }
 
-const isBlock = Schema.is(AnyBlockSchema)
+const isBlock = Schema.is(FrontendOutputBlockSchema)
 
 /** A bash row with `fields` laid over it; an override of `undefined` removes
  *  the field. The overrides can mix status variants, so the row is checked

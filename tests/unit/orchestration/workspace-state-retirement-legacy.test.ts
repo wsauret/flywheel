@@ -7,7 +7,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { resolveSessionsDir } from "../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
 import { observeRetirementCheckpoints, type RetirementCheckpoint } from "../../helpers/retirement-checkpoints.js"
@@ -244,7 +243,7 @@ describe("a quarantine an older release completed", () => {
   it("is kept while the live generation is one this release refuses", () => {
     const directories = makeWorkspace()
     const target = stageCompletedQuarantine(directories.projectRoot, { epoch: 1 })
-    writeUnder(path.join(resolveSessionsDir(directories.projectRoot), "stale-session"), "blocks.json", "[]")
+    writeUnder(path.join(flywheelDir(directories.projectRoot), "sessions", "stale-session"), "blocks.json", "[]")
 
     expect(() => prepareWorkspaceState(directories)).toThrow("orphaned workspace members")
 

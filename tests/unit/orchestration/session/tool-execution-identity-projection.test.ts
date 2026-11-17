@@ -5,7 +5,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { InvariantViolation } from "../../../../src/infra/invariant";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { contentEvidence } from "../../../../src/infra/content-evidence";
@@ -13,7 +13,7 @@ import { countToolCall, createToolExecutionProjection as createAsyncToolExecutio
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types";
 
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-tool-execution-identity-projection-test-${process.pid}-${Date.now()}`);
-const createToolExecutionProjection = (store: EventStore, sessionId: string) =>
+const createToolExecutionProjection = (store: LocalSqliteEventStore, sessionId: string) =>
   createAsyncToolExecutionProjection(asAsyncEventReadSurface(store), sessionId);
 let tmpDir: string;
 
@@ -23,7 +23,7 @@ function makeTmpDir(): string {
   return dir;
 }
 
-function appendFact(store: EventStore, sessionId: string, fact: SessionRuntimeFact): void {
+function appendFact(store: LocalSqliteEventStore, sessionId: string, fact: SessionRuntimeFact): void {
   store.append({ aggregateId: `session:${sessionId}`, type: fact.type, version: fact.version, timestamp: Date.now(), actor: fact.actor, sessionId, payload: fact.payload });
 }
 
@@ -265,7 +265,7 @@ describe("tool execution identity projection", () => {
   it("refuses a follow-up whose identity conflicts with its call's first fact, as the reducer does, only with identity parity", async () => {
     const output = "captured execution output\n".repeat(200);
     const evidence = contentEvidence(output);
-    const conflicts: readonly [string, (store: EventStore, sessionId: string) => void][] = [
+    const conflicts: readonly [string, (store: LocalSqliteEventStore, sessionId: string) => void][] = [
       ["inline result", (store, sessionId) => appendFact(store, sessionId, { type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId: "nested", outcome: "ok", modelRequestId: "other" } })],
       ["inline acknowledgement", (store, sessionId) => appendFact(store, sessionId, { type: "tool.result.acknowledged", version: 1, actor: "provider", payload: { toolUseId: "nested", parentToolUseId: "other" } })],
       ["referenced output", (store, sessionId) => store.append({

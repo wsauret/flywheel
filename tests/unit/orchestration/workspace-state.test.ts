@@ -15,7 +15,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { Worker } from "node:worker_threads"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import { resolveEventStoreDbFile, resolveSessionsDir } from "../../../src/infra/paths.js"
+import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { createSessionManager } from "../../../src/orchestration/session/manager.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
@@ -145,7 +145,7 @@ describe("prepareWorkspaceState", () => {
 
     const result = prepareWorkspaceState(directories)
 
-    expect(fs.existsSync(path.join(resolveSessionsDir(baseDir), sessionId))).toBe(true)
+    expect(fs.existsSync(path.join(flywheelDir(baseDir), "sessions", sessionId))).toBe(true)
     const reopened = createSqliteEventStore(result.dbFile)
     try {
       expect((await createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, store: reopened }).listMetadata()).sessions).toHaveLength(1)
@@ -162,7 +162,7 @@ describe("prepareWorkspaceState", () => {
     fs.mkdirSync(path.dirname(dbFile), { recursive: true })
     fs.writeFileSync(`${dbFile}-wal`, "orphan log")
     fs.writeFileSync(`${dbFile}-shm`, "orphan shared memory")
-    writeUnder(path.join(resolveSessionsDir(baseDir), "stale-session"), "blocks.json", "[]")
+    writeUnder(path.join(flywheelDir(baseDir), "sessions", "stale-session"), "blocks.json", "[]")
     writeUnder(path.join(flywheelDir(baseDir), "agent-outputs", "stale-session"), "read_1.txt", "crumb")
 
     expect(() => prepareWorkspaceState(directories))
@@ -170,7 +170,7 @@ describe("prepareWorkspaceState", () => {
 
     expect(fs.existsSync(dbFile)).toBe(false)
     expect(fs.readFileSync(`${dbFile}-wal`, "utf8")).toBe("orphan log")
-    expect(fs.readFileSync(path.join(resolveSessionsDir(baseDir), "stale-session", "blocks.json"), "utf8")).toBe("[]")
+    expect(fs.readFileSync(path.join(flywheelDir(baseDir), "sessions", "stale-session", "blocks.json"), "utf8")).toBe("[]")
     expect(stateEntries(baseDir)).toEqual(["agent-outputs", "flywheel.sqlite-shm", "flywheel.sqlite-wal", "sessions"])
   })
 
@@ -273,7 +273,7 @@ describe("prepareWorkspaceState", () => {
     const outside = path.join(tmpRoot, `outside-${crypto.randomUUID()}`)
     writeUnder(outside, "evidence.txt", "not ours")
     fs.mkdirSync(flywheelDir(baseDir), { recursive: true })
-    fs.symlinkSync(outside, resolveSessionsDir(baseDir))
+    fs.symlinkSync(outside, path.join(baseDir, ".flywheel", "sessions"))
 
     expect(() => prepareWorkspaceState(directories)).toThrow(CONTAINMENT_REFUSAL)
     expect(fs.readFileSync(path.join(outside, "evidence.txt"), "utf8")).toBe("not ours")

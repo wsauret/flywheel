@@ -13,7 +13,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { Effect } from "effect"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
 import type { EventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane-types.js"
@@ -38,7 +38,7 @@ import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubl
 // ---------------------------------------------------------------------------
 
 let callLog: string[]
-let eventStores: EventStore[]
+let eventStores: LocalSqliteEventStore[]
 let writerLanes: EventStoreWriterLane[]
 let storeDirectories: string[]
 let queueStoreCreations: number
@@ -122,7 +122,7 @@ function fakeCreateWorkflowContextStore(): WorkflowContextStore {
 // Deps builder
 // ---------------------------------------------------------------------------
 
-function createTempEventStore(): EventStore {
+function createTempEventStore(): LocalSqliteEventStore {
   const dir = mkdtempSync(join(tmpdir(), "fw-sessres-"))
   storeDirectories.push(dir)
   const store = createSqliteEventStore(join(dir, "flywheel.sqlite"))
@@ -130,13 +130,13 @@ function createTempEventStore(): EventStore {
   return store
 }
 
-function createWriterLane(store: EventStore): EventStoreWriterLane {
+function createWriterLane(store: LocalSqliteEventStore): EventStoreWriterLane {
   const lane = createEventStoreWriterLane(store)
   writerLanes.push(lane)
   return lane
 }
 
-function provideEventStoreServices<A, E, R>(effect: Effect.Effect<A, E, R>, store: EventStore) {
+function provideEventStoreServices<A, E, R>(effect: Effect.Effect<A, E, R>, store: LocalSqliteEventStore) {
   return Effect.provideService(
     Effect.provideService(
       Effect.provideService(effect, EventReaderService, asAsyncEventReadSurface(store)),
@@ -148,7 +148,7 @@ function provideEventStoreServices<A, E, R>(effect: Effect.Effect<A, E, R>, stor
   )
 }
 
-function makeDeps(store: EventStore): AcquireSessionResourcesDeps {
+function makeDeps(store: LocalSqliteEventStore): AcquireSessionResourcesDeps {
   const emitter: import("../../../../src/infra/event-bus").EmitFn = () => {}
   return {
     sessionId: "test-session",
@@ -197,7 +197,7 @@ describe("acquireSessionResources", () => {
     const realStoreDirectory = mkdtempSync(join(tmpdir(), "fw-sessres-borrowed-"))
     const realStore = createSqliteEventStore(join(realStoreDirectory, "flywheel.sqlite"))
     let closeCount = 0
-    const eventStore: EventStore = { ...realStore, close: () => { closeCount += 1 } }
+    const eventStore: LocalSqliteEventStore = { ...realStore, close: () => { closeCount += 1 } }
 
     try {
       await Effect.runPromise(Effect.scoped(provideEventStoreServices(acquireSessionResources(makeDeps(eventStore)), eventStore)))

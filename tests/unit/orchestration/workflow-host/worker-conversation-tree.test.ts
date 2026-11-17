@@ -20,7 +20,7 @@ import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestr
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
 import type { AttemptRow } from "../../../../src/workflows/view/types"
 import { reconcileWorkflowAgentInput } from "../../../../src/orchestration/workflow-host/agent-input-recovery.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { createWorkflowAgentInputs, type WorkflowAgentInputs } from "../../../../src/orchestration/workflow-host/agent-inputs"
 
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
@@ -29,7 +29,7 @@ import { childSessionProjectionAttachment } from "../../../../src/orchestration/
 import type { AttachChildSessionProjection } from "../../../../src/orchestration/module-seams"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 const sessionId = "s_worker_tree"
 
 beforeEach(() => {

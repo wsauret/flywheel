@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStore, type InFlightSwap } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore, type InFlightSwap } from "../../../../src/infra/event-store-types";
 import { resolveSessionDir } from "../../../../src/infra/paths";
 import { chatSessionActions, readChatTurnEnd } from "../../../../src/orchestration/session/chat-session-run-evidence";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
@@ -20,11 +20,11 @@ afterEach(() => {
 });
 
 describe("runtime invocation publication", () => {
-  type ParentRace = (store: EventStore, parentId: string, conversationId: string, attempt: number) => Promise<void>;
+  type ParentRace = (store: LocalSqliteEventStore, parentId: string, conversationId: string, attempt: number) => Promise<void>;
 
   /** Commits one parent entry as another writer would: an assistant reply
    *  for an `a` id, a person's message for a `u` id, so turns alternate. */
-  async function appendParentEntry(store: EventStore, parentId: string, conversationId: string, id: string): Promise<void> {
+  async function appendParentEntry(store: LocalSqliteEventStore, parentId: string, conversationId: string, id: string): Promise<void> {
     const writerTree = await tryOpenConversationTree({ conversationId, sessionId: parentId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) });
     await writerTree?.appendMessage(id.startsWith("u")
       ? { kind: "user", content: `concurrent message ${id}`, origin: "human" }
@@ -130,7 +130,7 @@ describe("runtime invocation publication", () => {
   it("keeps the committed aggregate when another publisher loses the same retained launch", async () => {
     // Both publishers retire the one retained launch cell, as a headless
     // run and a resident resume of the same launch do.
-    const retainedLaunch = (store: EventStore, parentId: string): InFlightSwap => {
+    const retainedLaunch = (store: LocalSqliteEventStore, parentId: string): InFlightSwap => {
       const [cell] = store.readInFlight(parentId, "workflow.launch");
       if (cell === undefined) throw new Error("expected the retained launch cell");
       return { op: "swap", kind: cell.kind, key: cell.key, expectedRaw: cell.raw, payload: null };

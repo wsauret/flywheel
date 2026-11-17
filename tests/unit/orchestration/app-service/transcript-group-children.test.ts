@@ -6,7 +6,7 @@ import * as os from "node:os"
 import * as path from "node:path"
 import type { AnyBlock, ToolEntry } from "../../../../src/infra/output-blocks.js"
 import { getToolDisplay } from "../../../../src/infra/tools/tool-display-registry.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
@@ -97,7 +97,7 @@ afterEach(() => {
   fs.rmSync(TMP_ROOT, { recursive: true, force: true })
 })
 
-function appendFact(store: EventStore, fact: SessionRuntimeFact): void {
+function appendFact(store: LocalSqliteEventStore, fact: SessionRuntimeFact): void {
   store.append({
     aggregateId: `session:${SESSION_ID}`,
     type: fact.type,
@@ -113,7 +113,7 @@ const CHILD_EXECUTION = { executionMode: "foreground" as const, traceKind: "tool
 
 /** Both facts the runtime can produce for one attempted child call, appended
  *  under the dispatching subagent's tool-use id. */
-function appendHiddenValidationFailure(store: EventStore): void {
+function appendHiddenValidationFailure(store: LocalSqliteEventStore): void {
   appendFact(store, {
     type: "tool.validation.failed",
     version: 1,
@@ -132,7 +132,7 @@ function appendHiddenValidationFailure(store: EventStore): void {
   })
 }
 
-function appendSuccessfulSibling(store: EventStore): void {
+function appendSuccessfulSibling(store: LocalSqliteEventStore): void {
   appendFact(store, {
     type: "tool.input.completed",
     version: 1,
@@ -213,7 +213,7 @@ describe("shared visible-container child reads", () => {
     // Drawing a row reads its own facts by position; only a cursor replay
     // scans the session.
     let reads = 0
-    const reader: EventStore = {
+    const reader: LocalSqliteEventStore = {
       ...store,
       read(query) {
         if (query?.positions === undefined) reads += 1
@@ -301,7 +301,7 @@ const CHILD_MUTATION = {
   omissions: [],
 }
 
-function appendChildMemoryCall(store: EventStore): void {
+function appendChildMemoryCall(store: LocalSqliteEventStore): void {
   appendFact(store, {
     type: "tool.input.completed",
     version: 1,
@@ -319,7 +319,7 @@ function appendChildMemoryCall(store: EventStore): void {
   })
 }
 
-function appendChildMemoryResult(store: EventStore, outcome: "ok" | "error" | "blocked" | "interrupted"): void {
+function appendChildMemoryResult(store: LocalSqliteEventStore, outcome: "ok" | "error" | "blocked" | "interrupted"): void {
   appendFact(store, {
     type: "tool.result.recorded",
     version: 1,
@@ -404,7 +404,7 @@ describe("agent-update child of an agent group across settlement", () => {
     appendChildMemoryResult(store, "ok")
     const { createMutationEvidenceRecovery } = await import("../../../../src/orchestration/session/mutation-evidence-recovery.js")
     const { readMutationEvidenceFiles } = await import("../../../../src/infra/mutation-evidence.js")
-    const { readPatchContent } = await import("../../../../src/orchestration/session/session-change-sources.js")
+    const { completePatch, resolveRetainedPatch } = await import("../../../../src/orchestration/session/session-change-sources.js")
     const reader = createMutationEvidenceRecovery(asAsyncEventReadSurface(store), asAsyncEventWriter(store)).reader
     const children = (await createToolResultDisplayMetaCursorReader(reader, SESSION_ID).replay()).children(PARENT_TOOL_USE_ID, {
       executionCwd: CWD, idSuffix: "", presentation: "container", settledCount: 1,
@@ -418,7 +418,7 @@ describe("agent-update child of an agent group across settlement", () => {
     if (page.kind !== "available") throw new Error("Missing recovered files")
     const entry = page.files[0]
     if (entry?.kind !== "display" || entry.file.patch.kind !== "retained") throw new Error("Missing retained patch")
-    expect(await readPatchContent(reader, SESSION_ID, entry.file.patch.reference)).toBe(CHILD_MUTATION.files[0]!.unifiedDiff)
+    expect(completePatch(await resolveRetainedPatch(reader, SESSION_ID, { kind: "evidence", evidence: entry.file }))).toBe(CHILD_MUTATION.files[0]!.unifiedDiff)
     expect((await result.readBlock(0)).resultAction).toBe("created")
   })
 })
@@ -438,7 +438,7 @@ describe("historical nested children", () => {
     statusMessage: row.status === "blocked" ? row.statusMessage : undefined,
   })
 
-  async function recordCases(store: EventStore): Promise<void> {
+  async function recordCases(store: LocalSqliteEventStore): Promise<void> {
     const writer = createSessionFactWriter({ sessionId: SESSION_ID, writer: asAsyncEventWriter(store) })
     for (const item of cases) {
       for (const event of [

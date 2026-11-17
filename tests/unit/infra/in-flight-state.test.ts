@@ -4,12 +4,12 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
-import type { EventStore, EventStoreAppend, InFlightWrite } from "../../../src/infra/event-store-types.js"
+import type { LocalSqliteEventStore, EventStoreAppend, InFlightWrite } from "../../../src/infra/event-store-types.js"
 
 const dirs: string[] = []
-const stores: EventStore[] = []
+const stores: LocalSqliteEventStore[] = []
 
-function openStore(): EventStore {
+function openStore(): LocalSqliteEventStore {
   const dir = mkdtempSync(join(tmpdir(), "flywheel-in-flight-"))
   dirs.push(dir)
   const store = createSqliteEventStore(resolveEventStoreDbFile(dir))

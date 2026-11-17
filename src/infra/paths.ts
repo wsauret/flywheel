@@ -182,7 +182,6 @@ export const versionsDir = (userDataRoot: string): string => path.join(userDataR
 /** The activation's own name, for a caller that resolves it as one entry of
  *  the account root through a held descriptor rather than as a path. */
 export const CURRENT_BUILD_LINK = "current";
-export const currentBuildLink = (userDataRoot: string): string => path.join(userDataRoot, CURRENT_BUILD_LINK);
 /** Where processes register the installed build they are executing, so a
  *  collector can tell a build nothing is reading from one a week-long session
  *  still runs. It sits beside the update authority because it is the same
@@ -234,10 +233,6 @@ export function resolveProjectionFoldCacheDbFile(projectRoot: string): string {
 
 export function resolveSessionSummaryDbFile(projectRoot: string): string {
   return path.resolve(projectRoot, ".flywheel", "session-summary.sqlite");
-}
-
-export function resolveSessionsDir(projectRoot: string): string {
-  return path.resolve(projectRoot, SESSIONS_DIR);
 }
 
 /**

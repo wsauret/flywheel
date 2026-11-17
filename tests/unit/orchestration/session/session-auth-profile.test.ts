@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionMetadataProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store.js"
@@ -8,7 +8,7 @@ import { createSessionAuthAdmission, ensureSessionAuthProfile, resolveSessionAut
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { cleanupTmpRoot, makeTmpDir, minimalSession } from "./_session-manager-fixtures.js"
 
-const stores: EventStore[] = []
+const stores: LocalSqliteEventStore[] = []
 const T1 = "2026-03-20T10:00:00.000Z"
 
 const auth = (overrides: Partial<AuthProfileResolution> = {}): AuthProfileResolution => ({

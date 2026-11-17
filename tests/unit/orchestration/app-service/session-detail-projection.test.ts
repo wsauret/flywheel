@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from "bun:test"
 import { Schema } from "effect"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD, temporaryDirectories } from "../../../helpers/directories.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createSessionDetailReader } from "../../../../src/orchestration/app-service/session-detail-projection.js"
@@ -14,7 +14,7 @@ import { createConversationTree, tryOpenConversationTree } from "../../../../src
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
-import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { SessionSummaryIndex } from "../../../../src/orchestration/session/session-summary-index.js"
 import type { SessionManager } from "../../../../src/orchestration/session/manager.js"
 import { isInterruptible, offeredSessionControls } from "../../../../src/protocol/client/session-controls.js"
@@ -23,7 +23,7 @@ import type { RuntimeSessionDetailResult } from "../../../../src/protocol/sessio
 import { WORKFLOW_LAUNCH_OPERATION_KIND, type WorkflowLaunchOperation } from "../../../../src/orchestration/workflow-host/launch-operation-contract.js"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
-import { projectBlocksFromEntries } from "../../../../src/orchestration/session/conversation/conversation-block-projection.js"
+import { branchBlocks } from "../../../helpers/branch-blocks.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
@@ -145,7 +145,7 @@ describe("history query status projection", () => {
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId(interruptedTurnEnd("person"), "cut"))
     await tree.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "Durable answer." }] })
-    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, prior: { blocks: projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot }), sequenceStart: 0 } })
+    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, prior: { blocks: branchBlocks(await tree.getBranch(), { executionCwd: projectRoot }), sequenceStart: 0 } })
     tree.getStorage().dispose()
     live.pushSystemMessage("Background work still runs.", 2)
     live.pushUserMessage("Wrap up.", 3, { queued: true })
@@ -443,7 +443,7 @@ describe("controls of a session a successor owes its continuation", () => {
   }
 
   /** Records a turn of `conversationId` and the runtime's planned cut of it. */
-  async function cutTurn(store: EventStore, writer: AsyncEventWriter, sessionId: string, conversationId: string): Promise<void> {
+  async function cutTurn(store: LocalSqliteEventStore, writer: AsyncEventWriter, sessionId: string, conversationId: string): Promise<void> {
     const options = { conversationId, sessionId, store: asAsyncEventReadSurface(store), writer }
     const tree = await tryOpenConversationTree(options) ?? await createConversationTree(options)
     const end = interruptedTurnEnd("replacement")
@@ -455,7 +455,7 @@ describe("controls of a session a successor owes its continuation", () => {
   /** The detail a client reads once the service that cut the session has
    *  released it: no runner holds it, and the successor has recovered it
    *  as inactive. */
-  async function detailOf(store: EventStore, sessionId: string, session: SessionMetadata): Promise<RuntimeSessionDetailResult> {
+  async function detailOf(store: LocalSqliteEventStore, sessionId: string, session: SessionMetadata): Promise<RuntimeSessionDetailResult> {
     const history = createSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => undefined }, manager: { read: async () => session }, reader: store })
     try {
       return await history.sessionDetail(sessionId)

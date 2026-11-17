@@ -4,18 +4,17 @@
  *  the project, and a session id that is not one path component must not name a
  *  directory at all. */
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, setSystemTime } from "bun:test";
 import { CONTAINMENT_REFUSAL } from "../../../helpers/containment-refusal.js";
 import { POSIX_FILE_MODES } from "../../../helpers/posix-modes.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { ensureSessionDir, resolveOwnerPidPath, resolveSessionDir, resolveSessionsDir } from "../../../../src/infra/paths";
+import { ensureSessionDir, resolveOwnerPidPath, resolveSessionDir } from "../../../../src/infra/paths";
 import {
   createBreadcrumbMaintenance,
   deleteSessionArtifacts,
-  sessionArtifactInventory,
-  sweepBreadcrumbs,
+  sweepIdleScratch,
   writeArtifactBreadcrumb,
 } from "../../../../src/orchestration/session/session-artifacts";
 import { isSessionOwnerGone, removeOwnerPid, writeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
@@ -49,7 +48,7 @@ describe("a session id is one path component", () => {
 
 describe("the owner lock refuses a replaced session component", () => {
   it("refuses a session directory that is a symlink and writes no lock inside it", () => {
-    fs.mkdirSync(resolveSessionsDir(baseDir), { recursive: true });
+    fs.mkdirSync(path.join(baseDir, ".flywheel", "sessions"), { recursive: true });
     fs.symlinkSync(outside, resolveSessionDir(sessionId, baseDir));
 
     expect(() => writeOwnerPid(sessionId, baseDir)).toThrow(CONTAINMENT_REFUSAL);
@@ -58,7 +57,7 @@ describe("the owner lock refuses a replaced session component", () => {
 
   it("refuses a sessions directory that is a symlink", () => {
     fs.mkdirSync(path.join(baseDir, ".flywheel"), { recursive: true });
-    fs.symlinkSync(outside, resolveSessionsDir(baseDir));
+    fs.symlinkSync(outside, path.join(baseDir, ".flywheel", "sessions"));
 
     expect(() => writeOwnerPid(sessionId, baseDir)).toThrow(CONTAINMENT_REFUSAL);
     expect(fs.readdirSync(outside)).toEqual([]);
@@ -103,7 +102,7 @@ describe("deleting one session's artifacts", () => {
   });
 
   it("deletes nothing outside the project when the session directory is a symlink", () => {
-    fs.mkdirSync(resolveSessionsDir(baseDir), { recursive: true });
+    fs.mkdirSync(path.join(baseDir, ".flywheel", "sessions"), { recursive: true });
     fs.writeFileSync(path.join(outside, "evidence.txt"), "not ours");
     fs.symlinkSync(outside, resolveSessionDir(sessionId, baseDir));
 
@@ -125,18 +124,27 @@ describe("a project root another writer replaced", () => {
     return link;
   }
 
-  it("refuses every session artifact operation, and writes nothing through the link", () => {
+  it("refuses every session artifact operation, and writes nothing through the link", async () => {
     fs.mkdirSync(path.join(outside, ".flywheel", "sessions", sessionId), { recursive: true });
     fs.writeFileSync(path.join(outside, ".flywheel", "sessions", sessionId, "evidence.txt"), "not ours");
+    const expiredBreadcrumb = path.join(outside, ".flywheel", "agent-outputs", sessionId, "search_2026-01-01T00-00-00-000Z_abc123.txt");
+    fs.mkdirSync(path.dirname(expiredBreadcrumb), { recursive: true });
+    fs.writeFileSync(expiredBreadcrumb, "not ours");
+    fs.utimesSync(expiredBreadcrumb, 0, 0);
     const root = linkedRoot();
 
     expect(() => writeArtifactBreadcrumb({ projectRoot: root, artifactScopeId: sessionId, toolName: "bash", content: "payload" })).toThrow();
-    expect(() => sessionArtifactInventory(root)).toThrow(CONTAINMENT_REFUSAL);
-    expect(() => sweepBreadcrumbs(root, Date.now())).toThrow(CONTAINMENT_REFUSAL);
+    await expect(sweepIdleScratch({ projectRoot: root, now: Date.now(), signal: new AbortController().signal, runGit: async () => { throw new Error("the sweep reached git"); } }))
+      .rejects.toThrow(CONTAINMENT_REFUSAL);
+    // The breadcrumb sweep runs as maintenance, which records its refusal.
+    createBreadcrumbMaintenance(root).request();
+    await Promise.resolve();
     expect(() => deleteSessionArtifacts(sessionId, root)).toThrow(CONTAINMENT_REFUSAL);
 
     expect(fs.readFileSync(path.join(outside, ".flywheel", "sessions", sessionId, "evidence.txt"), "utf8")).toBe("not ours");
-    expect(fs.readdirSync(path.join(outside, ".flywheel"))).toEqual(["sessions"]);
+    expect(fs.readdirSync(path.dirname(expiredBreadcrumb))).toEqual([path.basename(expiredBreadcrumb)]);
+    expect(fs.readFileSync(expiredBreadcrumb, "utf8")).toBe("not ours");
+    expect(fs.readdirSync(path.join(outside, ".flywheel")).sort()).toEqual(["agent-outputs", "sessions"]);
   });
 });
 
@@ -191,17 +199,24 @@ describe("the project-wide breadcrumb sweep", () => {
     return filePath;
   }
 
-  it("applies one cutoff to every session, and reports the trees it found", () => {
+  /** One maintenance pass with the clock at `now`, as a finished tool call
+   *  requests it. */
+  async function sweepAt(now: number): Promise<void> {
+    setSystemTime(now);
+    createBreadcrumbMaintenance(baseDir).request();
+    await Promise.resolve();
+  }
+
+  afterEach(() => {
+    setSystemTime();
+  });
+
+  it("applies one cutoff to every session", async () => {
     const fresh = plant("session-fresh", NOW - 6 * DAY_MS);
     const aged = plant("session-aged", NOW - 8 * DAY_MS);
     ensureSessionDir("session-fresh", baseDir);
 
-    expect(sessionArtifactInventory(baseDir)).toEqual([
-      { sessionId: "session-aged", hasSessionDir: false, hasBreadcrumbDir: true },
-      { sessionId: "session-fresh", hasSessionDir: true, hasBreadcrumbDir: true },
-    ]);
-
-    sweepBreadcrumbs(baseDir, NOW);
+    await sweepAt(NOW);
 
     expect(fs.existsSync(fresh)).toBe(true);
     expect(fs.existsSync(aged)).toBe(false);
@@ -211,43 +226,43 @@ describe("the project-wide breadcrumb sweep", () => {
     expect(fs.existsSync(resolveSessionDir("session-fresh", baseDir))).toBe(true);
   });
 
-  it("keeps a breadcrumb exactly at the retention boundary", () => {
+  it("keeps a breadcrumb exactly at the retention boundary", async () => {
     const boundary = plant("session-boundary", NOW - 7 * DAY_MS);
 
-    sweepBreadcrumbs(baseDir, NOW);
+    await sweepAt(NOW);
 
     expect(fs.existsSync(boundary)).toBe(true);
   });
 
-  it("uses file modification time rather than the timestamp in its name", () => {
+  it("uses file modification time rather than the timestamp in its name", async () => {
     const expired = plant("session-expired-mtime", NOW - 8 * DAY_MS, NOW);
     const fresh = plant("session-fresh-mtime", NOW - 6 * DAY_MS, NOW - 30 * DAY_MS);
 
-    sweepBreadcrumbs(baseDir, NOW);
+    await sweepAt(NOW);
 
     expect(fs.existsSync(expired)).toBe(false);
     expect(fs.existsSync(fresh)).toBe(true);
   });
 
-  it("leaves a name it did not mint where it stands", () => {
+  it("leaves a name it did not mint where it stands", async () => {
     const dir = path.join(baseDir, ".flywheel", "agent-outputs", "session-foreign");
     fs.mkdirSync(dir, { recursive: true });
     const foreign = path.join(dir, "notes.txt");
     fs.writeFileSync(foreign, "someone else's file");
 
-    sweepBreadcrumbs(baseDir, NOW + 1_000 * DAY_MS);
+    await sweepAt(NOW + 1_000 * DAY_MS);
 
     expect(fs.existsSync(foreign)).toBe(true);
   });
 
-  it("isolates an unsafe entry and still removes expired safe breadcrumbs", () => {
+  it("isolates an unsafe entry and still removes expired safe breadcrumbs", async () => {
     const unsafeDir = path.join(baseDir, ".flywheel", "agent-outputs", "a-unsafe");
     fs.mkdirSync(unsafeDir, { recursive: true });
     fs.writeFileSync(path.join(outside, "evidence.txt"), "not ours");
     fs.symlinkSync(outside, path.join(unsafeDir, "search_2026-01-01T00-00-00-000Z_abc123.txt"));
     const expired = plant("z-safe", NOW - 8 * DAY_MS);
 
-    sweepBreadcrumbs(baseDir, NOW);
+    await sweepAt(NOW);
 
     expect(fs.existsSync(expired)).toBe(false);
     expect(fs.readFileSync(path.join(outside, "evidence.txt"), "utf8")).toBe("not ours");

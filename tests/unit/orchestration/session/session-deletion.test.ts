@@ -15,7 +15,7 @@ import {
   type SessionManagerDeps,
 } from "../../../../src/orchestration/session/manager";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import type { EventStore } from "../../../../src/infra/event-store-types";
+import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { finalizeTestSessionDeletion } from "./_session-manager-fixtures";
 import { writeArtifactBreadcrumb } from "../../../../src/orchestration/session/session-artifacts";
@@ -27,7 +27,7 @@ const TMP_ROOT = path.join(
   os.tmpdir(),
   `flywheel-deletion-test-${process.pid}-${Date.now()}`,
 );
-const managerStores: EventStore[] = [];
+const managerStores: LocalSqliteEventStore[] = [];
 
 /** Create an isolated tmp dir for a single test. */
 function makeTmpDir(): string {

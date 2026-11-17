@@ -3,7 +3,7 @@ import { Schema } from "effect"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
@@ -11,7 +11,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
 import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types.js"
+import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { WorkflowView, AttemptRow } from "../../../../src/workflows/view/types.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
@@ -542,7 +542,7 @@ describe("bounded output history protocol", () => {
 
 })
 
-const openStores: { readonly store: EventStore; readonly dir: string }[] = []
+const openStores: { readonly store: LocalSqliteEventStore; readonly dir: string }[] = []
 afterEach(() => {
   // Each store closes before its directory goes, which Windows requires.
   for (const { store, dir } of openStores.splice(0)) {
@@ -602,7 +602,7 @@ function workflowSession() {
   }
 }
 
-function appendWorkflowQueue(store: EventStore, sessionId: string, conversationId: string): void {
+function appendWorkflowQueue(store: LocalSqliteEventStore, sessionId: string, conversationId: string): void {
   const queue: WorkflowView = {
     attempts: [workflowStep(conversationId)],
     tree: plainAgentTree([workflowStep(conversationId)]),

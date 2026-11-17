@@ -5,7 +5,6 @@ import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
 import {
   buildMutationDiff,
-  MUTATION_DIFF_VERSION,
   MutationDiffSchema,
   type MutationDiff,
 } from "../../../src/infra/mutation-diff.js";
@@ -22,7 +21,7 @@ describe("the diff of one mutation", () => {
       { path: "gone.md", before: { kind: "text", text: "one\n" }, after: { kind: "absent" } },
     ]);
 
-    expect(diff.version).toBe(MUTATION_DIFF_VERSION);
+    expect(diff.version).toBe(1);
     expect(diff.omissions).toEqual([]);
     expect(diff.files.map((file) => [file.path, file.change])).toEqual([
       ["added.md", "added"],
@@ -147,8 +146,8 @@ describe("the diff of one mutation", () => {
   it("is refused by its own schema when a field it does not declare appears", () => {
     const strict = Schema.decodeUnknownSync(MutationDiffSchema, { onExcessProperty: "error" });
 
-    expect(() => strict({ version: MUTATION_DIFF_VERSION, files: [], omissions: [], extra: 1 })).toThrow();
-    expect(() => strict({ version: MUTATION_DIFF_VERSION + 1, files: [], omissions: [] })).toThrow();
-    expect(() => strict({ version: MUTATION_DIFF_VERSION, files: [{ path: "f.md", change: "renamed", unifiedDiff: "" }], omissions: [] })).toThrow();
+    expect(() => strict({ version: 1, files: [], omissions: [], extra: 1 })).toThrow();
+    expect(() => strict({ version: 2, files: [], omissions: [] })).toThrow();
+    expect(() => strict({ version: 1, files: [{ path: "f.md", change: "renamed", unifiedDiff: "" }], omissions: [] })).toThrow();
   });
 });

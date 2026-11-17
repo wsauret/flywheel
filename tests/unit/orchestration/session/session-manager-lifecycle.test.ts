@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { DebugLogRecordInput } from "../../../../src/infra/debug-log";
 import { Log } from "../../../../src/infra/log";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager";
 import { readStoredSession } from "./_session-metadata-test-helpers";
@@ -28,7 +28,7 @@ function readLifecycleChangeCount(id: string, baseDir: string): number {
   }
 }
 
-async function commitUserTurn(baseDir: string, store: EventStore, sessionId: string): Promise<void> {
+async function commitUserTurn(baseDir: string, store: LocalSqliteEventStore, sessionId: string): Promise<void> {
   const session = await readStoredSession(sessionId, baseDir);
   if (!session || session.kind !== "chat") throw new Error(`Expected chat session: ${sessionId}`);
   const writer = createConversationTreeWriterController({

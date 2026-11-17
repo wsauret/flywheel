@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { applyIndentDelta, indentDelta, seekSequence, uniformIndentDelta } from "../../../../src/infra/file-edit/seek-sequence.js";
+import { applyIndentDelta, indentDelta, seekSequence } from "../../../../src/infra/file-edit/seek-sequence.js";
 
 describe("seek sequence", () => {
   // The first four cases are the Codex CLI's own seek_sequence tests
@@ -55,9 +55,9 @@ describe("seek sequence", () => {
   });
 
   it("reports a uniform indentation shift and none for a mixed one", () => {
-    expect(uniformIndentDelta(["    if ready:", "        run()"], ["if ready:", "    run()"])).toEqual({ kind: "add", prefix: "    " });
-    expect(uniformIndentDelta(["  one", "", "  two"], ["\t  one", "", "\t  two"])).toEqual({ kind: "remove", prefix: "\t" });
-    expect(uniformIndentDelta(["\tone", " two"], ["one", "two"])).toEqual({ kind: "none" });
+    expect(seekSequence(["    if ready:", "        run()"], ["if ready:", "    run()"], 0, false)).toEqual({ index: 0, kind: "trim", indentDelta: { kind: "add", prefix: "    " } });
+    expect(seekSequence(["  one", "", "  two"], ["\t  one", "", "\t  two"], 0, false)).toEqual({ index: 0, kind: "trim", indentDelta: { kind: "remove", prefix: "\t" } });
+    expect(seekSequence(["\tone", " two"], ["one", "two"], 0, false)).toEqual({ index: 0, kind: "trim", indentDelta: { kind: "none" } });
     expect(indentDelta("\t", "    ")).toBeUndefined();
   });
 

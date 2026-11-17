@@ -1,7 +1,7 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Schema } from "effect"
 import { FIXTURE_EXECUTION_CWD, temporaryDirectories } from "../../../helpers/directories.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures.js"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
@@ -29,7 +29,7 @@ import { countStateRequests, factsRead } from "../../../helpers/state-requests.j
 import { authorizePlannedSessionContinuation, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
 
 const tmp = temporaryDirectories()
-function register(store: EventStore) {
+function register(store: LocalSqliteEventStore) {
   store.append({
     aggregateId: "workflow:child-flow", sessionId: "child-flow", timestamp: 0, actor: "flywheel",
     type: "workflow.run.registered", version: 1,
@@ -46,7 +46,7 @@ function register(store: EventStore) {
     payload: { toolUseId: "launch", toolName: "workflow", input, inputBytes: evidence.bytes, inputSha256: evidence.sha256, inputPreview: evidence.preview, executionMode: "background", traceKind: "subagent", childHasOwnViewport: true, modelRequestId: "request" },
   })
 }
-function detailReader(store: EventStore, wholeReads?: FactQuery[]) {
+function detailReader(store: LocalSqliteEventStore, wholeReads?: FactQuery[]) {
   const reader = asAsyncEventReadSurface(store)
   return createWorkflowDetailReader({
     projectRoot: FIXTURE_EXECUTION_CWD, manager: { read: async () => null },
@@ -56,7 +56,7 @@ function detailReader(store: EventStore, wholeReads?: FactQuery[]) {
     } } : reader,
   })
 }
-function state(store: EventStore, status: "idle" | "running" | "paused" | "completed" | "failed", version = 10) {
+function state(store: LocalSqliteEventStore, status: "idle" | "running" | "paused" | "completed" | "failed", version = 10) {
   store.append({ aggregateId: "workflow:child-flow", type: "queue.created", version, timestamp: 0, actor: "flywheel", sessionId: "child-flow", payload: { rows: { attempts: [], cursor: 0, status, mutationLog: [] } } })
 }
 

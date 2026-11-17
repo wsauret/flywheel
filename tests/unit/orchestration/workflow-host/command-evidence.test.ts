@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js";
 interface FactPayload { [key: string]: unknown }
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { createConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
@@ -11,11 +11,11 @@ import { createCommandEvidenceSource } from "../../../../src/orchestration/workf
 import { buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts.js";
 import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js";
 
-function immediateWriter(store: EventStore): AsyncEventWriter {
+function immediateWriter(store: LocalSqliteEventStore): AsyncEventWriter {
   return { ...asAsyncEventWriter(store), pruneSupersededEvents: async () => 0 };
 }
 
-function appendToolFact(store: EventStore, sessionId: string, type: string, payload: FactPayload): void {
+function appendToolFact(store: LocalSqliteEventStore, sessionId: string, type: string, payload: FactPayload): void {
   store.append({
     aggregateId: `session:${sessionId}`,
     type,
@@ -27,7 +27,7 @@ function appendToolFact(store: EventStore, sessionId: string, type: string, payl
   });
 }
 
-function appendFileChanged(store: EventStore, sessionId: string, displayPath: string): void {
+function appendFileChanged(store: LocalSqliteEventStore, sessionId: string, displayPath: string): void {
   const endpoint = { bytes: 1, sha256: "a".repeat(64), preview: "x" };
   store.append({
     aggregateId: `session:${sessionId}`,

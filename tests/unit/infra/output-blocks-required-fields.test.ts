@@ -1,6 +1,7 @@
 import { safeParse } from "../../helpers/schema-assertions.js";
 import { describe, expect, test } from "bun:test";
-import { AnyBlockSchema, isVisibleMessageBlock, type AnyBlock } from "../../../src/infra/output-blocks";
+import { isVisibleMessageBlock, type AnyBlock } from "../../../src/infra/output-blocks";
+import { FrontendOutputBlockSchema } from "../../../src/protocol/transcript-protocol-schemas.js";
 
 // Regression coverage for Phase 5 Theme 3 t5.4: schema fields the sole writer
 // always sets are now required. Omitting them must fail parsing.
@@ -24,8 +25,9 @@ describe("output-blocks: tightened required fields", () => {
   })
 
   test("UserMessageBlock rejects a block missing pending", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(FrontendOutputBlockSchema, {
       kind: "userMessage",
+      id: "u1",
       content: "hi",
       timestamp: 1,
       injected: false,
@@ -34,8 +36,9 @@ describe("output-blocks: tightened required fields", () => {
   });
 
   test("UserMessageBlock rejects a block missing injected", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(FrontendOutputBlockSchema, {
       kind: "userMessage",
+      id: "u1",
       content: "hi",
       timestamp: 1,
       pending: false,
@@ -44,7 +47,7 @@ describe("output-blocks: tightened required fields", () => {
   });
 
   test("QuestionEntry rejects a question missing multiSelect", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(FrontendOutputBlockSchema, {
       kind: "question",
       toolUseId: "tu-1",
       questions: [{ question: "pick", choices: [{ kind: "option", label: "a" }] }],

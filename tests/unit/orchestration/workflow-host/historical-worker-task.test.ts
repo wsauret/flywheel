@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { EventBus, createEmit } from "../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
@@ -35,7 +35,7 @@ const operatorText = "  Keep the completed edits.\nContinue only the remaining w
 const canonicalPrompt = "# Original request\nImplement the requested feature.\n\n# Current skill\nVerify the remaining changes."
 const step: AttemptRow = { id: "step-1", definitionId: "work", briefId: "work", workflowDefinitionId: "wf", name: "Work", status: "running", writes: [], resumeRevertCount: 0 }
 let baseDir: string
-let store: EventStore
+let store: LocalSqliteEventStore
 let writer: AsyncEventWriter
 
 beforeEach(() => {

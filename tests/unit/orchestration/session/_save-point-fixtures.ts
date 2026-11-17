@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
@@ -16,7 +16,7 @@ export interface SavePointTestContext {
   sessionId: string;
   conversationId: string;
   tree: ConversationTree;
-  store: EventStore;
+  store: LocalSqliteEventStore;
 }
 
 export async function createSavePointContext(): Promise<SavePointTestContext> {

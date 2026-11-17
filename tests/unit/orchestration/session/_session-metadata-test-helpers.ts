@@ -1,5 +1,5 @@
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { ensureSessionDir, resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { deleteSessionArtifacts } from "../../../../src/orchestration/session/session-artifacts.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store.js"
@@ -7,7 +7,7 @@ import type { ReplayedSession, Session } from "../../../../src/orchestration/ses
 
 export function makeMetadataStore(
   baseDir: string,
-  store: EventStore = createSqliteEventStore(resolveEventStoreDbFile(baseDir)),
+  store: LocalSqliteEventStore = createSqliteEventStore(resolveEventStoreDbFile(baseDir)),
 ): ReturnType<typeof createSessionMetadataStore> {
   return createSessionMetadataStore({
     reader: asAsyncEventReadSurface(store),
@@ -15,7 +15,7 @@ export function makeMetadataStore(
   })
 }
 
-export async function createStoredSession(data: Session, baseDir: string, id?: string, store?: EventStore): Promise<string> {
+export async function createStoredSession(data: Session, baseDir: string, id?: string, store?: LocalSqliteEventStore): Promise<string> {
   const ownedStore = store ?? createSqliteEventStore(resolveEventStoreDbFile(baseDir))
   const metadata = makeMetadataStore(baseDir, ownedStore)
   try {
@@ -27,7 +27,7 @@ export async function createStoredSession(data: Session, baseDir: string, id?: s
   }
 }
 
-export async function readStoredSession(id: string, baseDir: string, store?: EventStore): Promise<ReplayedSession | null> {
+export async function readStoredSession(id: string, baseDir: string, store?: LocalSqliteEventStore): Promise<ReplayedSession | null> {
   const ownedStore = store ?? createSqliteEventStore(resolveEventStoreDbFile(baseDir))
   try {
     return await makeMetadataStore(baseDir, ownedStore).read(id)
@@ -36,7 +36,7 @@ export async function readStoredSession(id: string, baseDir: string, store?: Eve
   }
 }
 
-export async function listStoredSessions(baseDir: string, store?: EventStore): Promise<readonly { id: string; data: ReplayedSession }[]> {
+export async function listStoredSessions(baseDir: string, store?: LocalSqliteEventStore): Promise<readonly { id: string; data: ReplayedSession }[]> {
   const ownedStore = store ?? createSqliteEventStore(resolveEventStoreDbFile(baseDir))
   try {
     return (await makeMetadataStore(baseDir, ownedStore).list()).entries
@@ -48,7 +48,7 @@ export async function listStoredSessions(baseDir: string, store?: EventStore): P
 /** Mirrors SessionManager.delete in miniature: the unconditional
  *  `session.deleted` tombstone through the metadata store's transactional
  *  append, then artifact removal. */
-export async function deleteStoredSession(id: string, baseDir: string, store?: EventStore): Promise<void> {
+export async function deleteStoredSession(id: string, baseDir: string, store?: LocalSqliteEventStore): Promise<void> {
   const ownedStore = store ?? createSqliteEventStore(resolveEventStoreDbFile(baseDir))
   try {
     await makeMetadataStore(baseDir, ownedStore).appendFacts([buildSessionMetadataAppend(id, {

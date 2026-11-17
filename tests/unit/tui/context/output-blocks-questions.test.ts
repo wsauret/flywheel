@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { safeParse } from "../../../helpers/schema-assertions.js";
-import { AnyBlockSchema } from "../../../../src/infra/output-blocks";
+import { QuestionBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js";
 import type { QuestionBlock } from "../../../../src/infra/output-blocks";
 import { adaptQuestionHistoryRows } from "../../../../src/tui/output-blocks/question-history-format.js";
 
@@ -43,12 +43,12 @@ describe("QuestionBlockSchema", () => {
       cancelled: false,
       timestamp: 2000,
     };
-    const result = safeParse(AnyBlockSchema, block);
+    const result = safeParse(QuestionBlockSchema, block);
     expect(result.success).toBe(true);
   });
 
   it("rejects missing required questions field", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(QuestionBlockSchema, {
       kind: "question",
       toolUseId: "tool_q3",
       timestamp: 1000,
@@ -57,7 +57,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("rejects question entry missing choices", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(QuestionBlockSchema, {
       kind: "question",
       toolUseId: "tool_q4",
       questions: [{ question: "Pick one", multiSelect: false }],
@@ -67,7 +67,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("rejects missing required toolUseId field", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(QuestionBlockSchema, {
       kind: "question",
       questions: [{ question: "Pick one", choices: [{ kind: "option", label: "A" }], multiSelect: false }],
       timestamp: 1000,
@@ -76,7 +76,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("accepts an empty choices array", () => {
-    const result = safeParse(AnyBlockSchema, {
+    const result = safeParse(QuestionBlockSchema, {
       kind: "question",
       toolUseId: "tool_q5",
       questions: [{ question: "Pick one", choices: [], multiSelect: false }],
