@@ -1,0 +1,14 @@
+tests/unit/infra/tools/streaming-tool-input.test.ts
+  h_4b47e9e4a8b456 555-558,691-692,694,697,708-709,711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a2a504e21da8d8438ee60c59fdfeb9fd89b95cdf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
