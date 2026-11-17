@@ -1,0 +1,64 @@
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 67,215,250-262,268-274,277,285-286,290,308,408,413,435-441,451-452
+src/orchestration/auth/auth-profile-manager.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/auth/openai-oauth.ts
+  h_4b47e9e4a8b456 21,59
+src/orchestration/auth/provider-observations/subscription-usage-service.ts
+  h_4b47e9e4a8b456 23
+src/orchestration/config/config-reference.ts
+  h_4b47e9e4a8b456 365
+src/orchestration/config/model-assignment-controller.ts
+  h_4b47e9e4a8b456 33,40
+src/orchestration/config/module-policy.ts
+  h_4b47e9e4a8b456 64,113
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 96
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 13,15
+src/tui/hooks/use-settings-modal.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 13,365,371
+tests/unit/orchestration/app-service/app-service-capability-settings.test.ts
+  h_4b47e9e4a8b456 8,27,67
+tests/unit/orchestration/app-service/auth-login-reconnect.test.ts
+  h_4b47e9e4a8b456 14,250,308,317,341
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 12,23,41,472-486
+tests/unit/orchestration/auth/auth-actions.test.ts
+  h_4b47e9e4a8b456 5,127
+tests/unit/orchestration/auth/auth-profile-manager.test.ts
+  h_4b47e9e4a8b456 5,60
+tests/unit/orchestration/auth/login-abort.test.ts
+  h_4b47e9e4a8b456 1,8-10,21-23,25-26,40-53,55-62,64-65,71-74,76,80,83-84,87-88,90,92-93,97-103,107,110,112,116-120,130,133,142,145,154,158,164,169-170,172,180,192,194,199-202,205,209,213,217,221,223,229,237,241,248,252,261,265,269,273,280,284,291
+tests/unit/orchestration/auth/provider-login-flow.test.ts
+  h_4b47e9e4a8b456 78
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service-lifecycle.test.ts
+  h_4b47e9e4a8b456 6,116-117
+tests/unit/orchestration/config/config-models-subagent-resolution.test.ts
+  h_4b47e9e4a8b456 3,11,21
+tests/unit/orchestration/config/config-module-settings-persistence.test.ts
+  h_4b47e9e4a8b456 10,163,169
+tests/unit/orchestration/config/config-reference.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/config/config-settings-persistence.test.ts
+  h_4b47e9e4a8b456 11,137,140
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/config/model-tiers.test.ts
+  h_4b47e9e4a8b456 5,7,16-21,27-29,33-34,88-89,148,155,167-169,179-180,185
+tests/unit/orchestration/config/module-policy.test.ts
+  h_4b47e9e4a8b456 6,8,22-26,41,57-58,75,90,128,144,163,173,186-187,192,198,219-220,227,229-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "21a2624ea0038c97c4e871293556c296cfd22b0d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
