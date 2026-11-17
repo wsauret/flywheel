@@ -20,7 +20,7 @@ export async function recordSubagentCompletion(
     status: input.result.status,
     // A person's Stop fails the parent's call, as a failure does.
     isError: input.result.status === "failed" || input.result.status === "stopped",
-    ...(input.result.modelFailure ? { modelFailure: true } : {}),
+    ...(input.result.status === "failed" && input.result.modelFailure ? { modelFailure: true } : {}),
     content: input.result.content,
     durationMs: usage?.durationMs ?? 0,
     ...(usage ? {

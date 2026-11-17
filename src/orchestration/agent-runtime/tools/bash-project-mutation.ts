@@ -109,11 +109,7 @@ export type MutationExecution = IsolatedExecution | Pick<IsolatedExecution, "env
  *  handover row names never goes back to the pool. A command whose copy cannot be
  *  taken still runs, in the real project, uncaptured (`runUncaptured`). The landing
  *  checks execution policy, repository topology, and semantic Git state before publishing file contents only. */
-export async function runInPrivateCopy(input: {
-  readonly context: ToolContext;
-  readonly spawnOwned: NonNullable<ToolContext["spawnOwned"]>;
-  readonly command: string;
-  readonly env: ShellEnvironment;
+export async function runInPrivateCopy(input: Omit<IsolatedExecution, "privateCopy"> & {
   readonly home: string;
   /** The session scratch directory, which holds the mutation Git shim that every command of the session shares. */
   readonly scratchDir: string;

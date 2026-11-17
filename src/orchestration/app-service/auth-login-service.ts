@@ -321,7 +321,7 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
         }
         try {
           if (reconnecting && instanceId !== undefined) {
-            if (!await reconnectWithApiKey(providerId, instanceId, key, profile.directory, options.resolveKey, settleCatalog)) throw new Error(CREDENTIAL_CHANGED)
+            if (!await reconnectWithApiKey({ providerId, instanceId }, key, profile.directory, options.resolveKey, settleCatalog)) throw new Error(CREDENTIAL_CHANGED)
           } else {
             await loginWithApiKey(providerId, key, profile.directory, options.resolveKey, undefined, settleCatalog)
           }
@@ -412,14 +412,14 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
     async disconnect({ providerId, instanceId, profileId }) {
       const profile = requireProfile(profileId)
       if (instanceId === undefined) await logoutProvider(providerId, profile.directory, options.resolveKey, { launcher: options.launcher })
-      else await disconnectProviderInstance(providerId, instanceId, profile.directory, { launcher: options.launcher })
+      else await disconnectProviderInstance({ providerId, instanceId }, profile.directory, { launcher: options.launcher })
       await options.refresh(profile.id)
     },
 
     async rename({ providerId, instanceId, label, profileId }) {
       const profile = requireProfile(profileId)
       const trimmed = label?.trim()
-      await renameProviderInstance(providerId, instanceId, trimmed === undefined || trimmed.length === 0 ? undefined : trimmed, profile.directory)
+      await renameProviderInstance({ providerId, instanceId }, trimmed === undefined || trimmed.length === 0 ? undefined : trimmed, profile.directory)
       await options.refresh(profile.id)
     },
   }

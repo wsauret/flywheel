@@ -64,6 +64,13 @@ type ProjectRecoveryScope = "closed-generation" | "ownerless"
 
 type Degraded = { sessionId: string; error: string }
 
+/** The project's directories and the store that recovery reads and writes. */
+interface ProjectRecoveryPorts {
+  readonly directories: ProjectDirectories
+  readonly reader: AsyncEventStateReadSurface
+  readonly writer: AsyncEventWriter
+}
+
 /** The state Worker's one projection reader over its store. It normalizes
  *  historical mutation evidence once, and each of its sequence reads settles
  *  the session it names first (see settlingGuardReads). The projection
@@ -141,10 +148,7 @@ function createProjectStateOwners(input: {
  *  their cells. A session whose history this release cannot read is reported and left
  *  paused; it never holds the project, a sibling session, or a later append
  *  (ARCH-SUBSTRATE-013). */
-function createProjectRecovery(input: {
-  readonly directories: ProjectDirectories
-  readonly reader: AsyncEventStateReadSurface
-  readonly writer: AsyncEventWriter
+function createProjectRecovery(input: ProjectRecoveryPorts & {
   readonly manager: SessionManager
   readonly predecessorPids?: readonly number[]
 }) {
@@ -406,10 +410,7 @@ async function recoverRetainedDeletions(input: {
  *  stale-session pass after readiness, never on the startup path. One targeted
  *  child-history read finds open runs, then one aggregate metadata read confirms
  *  each candidate. Returns how many runs it settled. */
-export async function recoverOrphanedChildRuns(input: {
-  readonly directories: ProjectDirectories
-  readonly reader: AsyncEventStateReadSurface
-  readonly writer: AsyncEventWriter
+export async function recoverOrphanedChildRuns(input: ProjectRecoveryPorts & {
   readonly manager: Pick<SessionManager, "read">
 }): Promise<number> {
   const { reader: projectionReader, writer, directories } = input

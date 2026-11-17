@@ -329,7 +329,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
           state: () => replacement.state,
           changed: replacement.refresh,
           joinHandoff: () => handoffs.join(projectRoot),
-          stopped: (rows) => handoffs.stopped(projectRoot, rows),
+          stopped: (rows) => handoffs.recordProjectStopped(projectRoot, rows),
         },
         // Until the project runtime exists, no hold can be registered, and a
         // stop then, such as the rollback of a failed open, knows nothing of

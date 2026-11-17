@@ -17,8 +17,6 @@ const log = Log.create({ service: "llm-openai-chatgpt" });
 
 interface StringFields { [key: string]: string }
 interface ChatGptBackendError { readonly response: Response; readonly quotaExhausted: boolean }
-type ChatGPTAuth = Extract<OpenAIAuth, { kind: "chatgpt" }>;
-type FetchLike = (url: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
 export const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
@@ -32,11 +30,11 @@ export const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
  *  written under; it is absent only for a client built outside the composition
  *  root, which has no project to write under and so writes no dump. */
 export function createChatGPTClient(options: {
-  readonly auth: ChatGPTAuth;
+  readonly auth: Extract<OpenAIAuth, { kind: "chatgpt" }>;
   readonly projectRoot?: string;
   readonly oauthPersistence: OAuthPersistencePolicy;
   readonly tokenAccessor?: ChatGPTTokenAccessor;
-  readonly transportFetch?: FetchLike;
+  readonly transportFetch?: (url: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   readonly availability?: ProviderAvailability;
   readonly candidate?: AccessProviderCandidate;
 }): OpenAI {

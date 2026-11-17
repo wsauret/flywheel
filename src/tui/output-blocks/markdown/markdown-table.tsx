@@ -52,7 +52,13 @@ export function MarkdownTable(props: MarkdownTableProps): JSX.Element {
   )
 }
 
-function TableGrid(props: { model: TableModel; borderColor: TableBorderColor; textColor: TableBorderColor }): JSX.Element {
+interface TableProps {
+  model: TableModel
+  borderColor: TableBorderColor
+  textColor: TableBorderColor
+}
+
+function TableGrid(props: TableProps): JSX.Element {
   return (
     <box flexDirection="column" width="100%">
       <TableRuleRow kind="top" model={props.model} borderColor={props.borderColor} />
@@ -76,7 +82,7 @@ function TableGrid(props: { model: TableModel; borderColor: TableBorderColor; te
   )
 }
 
-function TableContentRow(props: { cells: TableCell[]; model: TableModel; borderColor: TableBorderColor; textColor: TableBorderColor }): JSX.Element {
+function TableContentRow(props: TableProps & { cells: TableCell[] }): JSX.Element {
   return (
     <box flexDirection="row" alignItems="stretch" width="100%">
       <Index each={props.model.columns}>
@@ -149,7 +155,7 @@ function TableRuleCell(props: {
   )
 }
 
-function TableCards(props: { model: TableModel; borderColor: TableBorderColor; textColor: TableBorderColor }): JSX.Element {
+function TableCards(props: TableProps): JSX.Element {
   return (
     <box flexDirection="column" width="100%">
       <Index each={props.model.rows}>

@@ -1,7 +1,7 @@
 import type { AuthContext } from "../../infra/auth/auth-context.js";
 import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory } from "../../infra/auth/auth-profile-store.js";
 import { authStoreObservationKey, loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js";
-import { prepareProviderModelPreferences, type AccountProviderModelPreference } from "../../infra/auth/provider-model-preference-store.js";
+import { loadAndMigrateProviderModelPreferences, type AccountProviderModelPreference } from "../../infra/auth/provider-model-preference-store.js";
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderId } from "../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import type { AccessAuditProgressListener, AccessAuditStatus, ModelDiscoveryMode, ModelListingClient } from "../../infra/llm/model-listing.js";
@@ -109,7 +109,7 @@ export async function resolveProviderModelCatalog(
         const rows = [...offerings].map(([modelId, modelOfferings]) => ({ modelId, offerings: modelOfferings }));
         return [[accessProviderAccountKey(entry.candidate), groupedOfferingIndex(rows)] as const];
       }));
-      const prepared = await prepareProviderModelPreferences(access, capturedAuthRevision, [...currentAccounts.values()], () => authStoreObservationKey(observeAuth()), offeringIndexes, deps.preferencePersistence ?? (deps.auth.conditions?.length ? "read-only" : "persist"));
+      const prepared = await loadAndMigrateProviderModelPreferences(access, capturedAuthRevision, [...currentAccounts.values()], () => authStoreObservationKey(observeAuth()), offeringIndexes, deps.preferencePersistence ?? (deps.auth.conditions?.length ? "read-only" : "persist"));
       preferences = new Map(prepared?.accounts);
       autoEnableNewModels = prepared?.autoEnableNewModels ?? true;
     } finally {

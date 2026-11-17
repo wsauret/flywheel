@@ -59,7 +59,7 @@ test("startup asks the paid-use question from the cached consent snapshot withou
   }, false)
 
   expect(requests).toEqual([{ kind: "query", type: "authStatusSnapshot" }])
-  expect(opened).toEqual([[auth, 17, "chatgpt", accountCorrelationId]])
+  expect(opened).toEqual([[auth, 17, expect.objectContaining({ providerId: "chatgpt", accountCorrelationId })]])
 })
 
 test.each(["1", "0"])("automatic profile review preserves refresh with suppression %s", async (flag) => {
@@ -78,5 +78,5 @@ test.each(["1", "0"])("automatic profile review preserves refresh with suppressi
   }, true, true)
 
   expect(requests).toEqual(["auth.refresh", "authStatusSnapshot"])
-  expect(opened).toEqual(flag === "1" ? [] : [[auth, 17, "chatgpt", accountCorrelationId]])
+  expect(opened).toEqual(flag === "1" ? [] : [[auth, 17, expect.objectContaining({ providerId: "chatgpt", accountCorrelationId })]])
 })

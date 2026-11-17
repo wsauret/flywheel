@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { deselectAllProviderModels, prepareProviderModelPreferences, providerModelPreferencesRevision, readProviderModelPreferences, setProviderAutoEnableNewModels, setProviderFreeRoutePreference, setProviderModelPreference } from "../../../../src/infra/auth/provider-model-preference-store.js";
+import { deselectAllProviderModels, loadAndMigrateProviderModelPreferences, providerModelPreferencesRevision, readProviderModelPreferences, setProviderAutoEnableNewModels, setProviderFreeRoutePreference, setProviderModelPreference } from "../../../../src/infra/auth/provider-model-preference-store.js";
 import { authStoreRevision } from "../../../../src/infra/auth/auth-store.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
@@ -34,12 +34,12 @@ describe("provider model preference store", () => {
       { kind: "singleton" as const, providerId: "openai_api" },
       { kind: "singleton" as const, providerId: "anthropic_api" },
     ];
-    await setProviderModelPreference(access, accounts[0]!, " GPT-5 ", "enabled", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
-    await setProviderModelPreference(access, accounts[1]!, "Claude-Opus-4-6", "disabled", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderModelPreference(access, accounts[0]!, " GPT-5 ", "enabled", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
+    await setProviderModelPreference(access, accounts[1]!, "Claude-Opus-4-6", "disabled", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     const path = join(authDir(root, "work"), "model-preferences.json");
     expect(readFileSync(path, "utf8")).toBe('{\n  "version": 4,\n  "accounts": [\n    {\n      "account": {\n        "kind": "singleton",\n        "providerId": "anthropic_api"\n      },\n      "disabled": [\n        "claude-opus-4.6"\n      ]\n    },\n    {\n      "account": {\n        "kind": "singleton",\n        "providerId": "openai_api"\n      },\n      "enabled": [\n        "gpt-5"\n      ]\n    }\n  ]\n}\n');
-    await setProviderModelPreference(access, accounts[0]!, "gpt-5", "default", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
-    await setProviderModelPreference(access, accounts[1]!, "claude-opus-4-6", "default", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderModelPreference(access, accounts[0]!, "gpt-5", "default", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
+    await setProviderModelPreference(access, accounts[1]!, "claude-opus-4-6", "default", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     expect(existsSync(path)).toBe(false);
     access.close();
   });
@@ -53,11 +53,11 @@ describe("provider model preference store", () => {
     const accounts = [openrouter, openai];
     writeFileSync(path, '{"version":2,"accounts":[{"account":{"kind":"singleton","providerId":"openrouter"},"disabled":["model"]}]}');
 
-    const migrated = await prepareProviderModelPreferences(access, "same", accounts, () => "same", new Map());
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", accounts, () => "same", new Map());
     expect(migrated?.accounts.get(accessProviderAccountKey(openrouter))?.preferFreeRoutes).toBe(false);
     expect(readFileSync(path, "utf8")).toContain('"version": 4');
 
-    await setProviderFreeRoutePreference(access, openrouter, true, accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderFreeRoutePreference(access, openrouter, true, accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     const preferences = readProviderModelPreferences(access, new Map());
     expect(preferences.accounts.get(accessProviderAccountKey(openrouter))?.preferFreeRoutes).toBe(true);
     expect(preferences.accounts.get(accessProviderAccountKey(openai))).toBeUndefined();
@@ -71,7 +71,7 @@ describe("provider model preference store", () => {
     const path = join(authDir(root, "work"), "model-preferences.json");
     writeFileSync(path, '{"version":3,"accounts":[{"account":{"kind":"singleton","providerId":"openai_api"},"disabled":["gpt-5-mini"]}]}');
 
-    const migrated = await prepareProviderModelPreferences(access, "same", [account], () => "same", new Map());
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", new Map());
 
     expect(migrated?.accounts.get(accessProviderAccountKey(account))).toMatchObject({
       disabled: new Set(["gpt-5-mini"]),
@@ -87,14 +87,14 @@ describe("provider model preference store", () => {
     const account = { kind: "singleton" as const, providerId: "openrouter" };
     const accounts = [account];
 
-    await setProviderFreeRoutePreference(access, account, true, accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderFreeRoutePreference(access, account, true, accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     expect(readProviderModelPreferences(access, new Map()).accounts.get(accessProviderAccountKey(account))).toMatchObject({
       enabled: new Set(),
       disabled: new Set(),
       preferFreeRoutes: true,
     });
-    await prepareProviderModelPreferences(access, authStoreRevision(access), accounts, () => authStoreRevision(access), new Map());
-    await setProviderFreeRoutePreference(access, account, false, accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await loadAndMigrateProviderModelPreferences(access, authStoreRevision(access), accounts, () => authStoreRevision(access), new Map());
+    await setProviderFreeRoutePreference(access, account, false, accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     expect(readProviderModelPreferences(access, new Map()).accounts.size).toBe(0);
     access.close();
   });
@@ -110,8 +110,7 @@ describe("provider model preference store", () => {
       false,
       new Map([[accessProviderAccountKey(account), { account, effectiveModelIds: ["gpt-5"], catalogModelIds: ["gpt-5", "gpt-5-mini"] }]]),
       accounts,
-      authStoreRevision(access),
-      providerModelPreferencesRevision(access),
+      { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) },
     );
     expect(readProviderModelPreferences(access, new Map()).accounts.get(accessProviderAccountKey(account))).toMatchObject({
       enabled: new Set(["gpt-5"]),
@@ -124,8 +123,7 @@ describe("provider model preference store", () => {
       true,
       new Map([[accessProviderAccountKey(account), { account, effectiveModelIds: ["gpt-5"], catalogModelIds: ["gpt-5", "gpt-5-mini"] }]]),
       accounts,
-      authStoreRevision(access),
-      providerModelPreferencesRevision(access),
+      { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) },
     );
     expect(readProviderModelPreferences(access, new Map()).accounts.get(accessProviderAccountKey(account))).toMatchObject({
       enabled: new Set(),
@@ -143,7 +141,7 @@ describe("provider model preference store", () => {
     expect(readProviderModelPreferences(access, new Map([[accessProviderAccountKey({ kind: "singleton", providerId: "anthropic_api" }), aliases]])).accounts.values().next().value?.disabled).toEqual(new Set(["claude-fable-5.1"]));
     const account = { kind: "singleton" as const, providerId: "anthropic_api" };
     const indexes = new Map([[accessProviderAccountKey(account), aliases]]);
-    await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes);
+    await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes);
     expect(readFileSync(path, "utf8")).toContain('"claude-fable-5.1"');
     expect(readFileSync(path, "utf8")).not.toContain('"claude-fable-5-1"');
 
@@ -177,7 +175,7 @@ describe("provider model preference store", () => {
     const path = join(authDir(root, "work"), "model-preferences.json");
     writeFileSync(path, '{"version":4,"accounts":[{"account":{"kind":"subscription","providerId":"opencode_go","instanceId":"go"},"enabled":["beam-free","minimax-m3.1-flash-free"],"disabled":["glm-5.2-free"]}]}');
 
-    const migrated = await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes);
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes);
 
     // The free-only wire names its model, the enabled free route keeps serving free, and the disabled free route never disabled the paid wire.
     expect(migrated?.accounts.get(key)).toEqual({ account, enabled: new Set(["beam-1.0-501b-a23b", "minimax-m3.1-flash"]), disabled: new Set(), preferFreeRoutes: true });
@@ -198,7 +196,7 @@ describe("provider model preference store", () => {
     const path = join(authDir(root, "work"), "model-preferences.json");
     writeFileSync(path, '{"version":4,"accounts":[{"account":{"kind":"subscription","providerId":"opencode_go","instanceId":"go"},"disabled":["minimax-m3.1-flash-free"]}]}');
 
-    const migrated = await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes);
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes);
 
     expect(migrated?.accounts.has(key)).toBe(false);
     expect(readProviderModelPreferences(access, indexes).accounts.size).toBe(0);
@@ -214,7 +212,7 @@ describe("provider model preference store", () => {
     const path = join(authDir(root, "work"), "model-preferences.json");
     writeFileSync(path, '{"version":2,"accounts":[{"account":{"kind":"singleton","providerId":"anthropic_api"},"enabled":["claude-opus-4-6-20260101"],"disabled":["claude-opus-4-6-2026-02-01"]}]}');
 
-    const migrated = await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes);
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes);
 
     expect(migrated?.accounts.get(key)).toMatchObject({ enabled: new Set(), disabled: new Set(["claude-opus-4.6"]) });
     expect(readFileSync(path, "utf8")).toContain('"claude-opus-4.6"');
@@ -222,7 +220,7 @@ describe("provider model preference store", () => {
 
     const readOnlyBytes = '{"version":2,"accounts":[{"account":{"kind":"singleton","providerId":"anthropic_api"},"enabled":["claude-opus-4.6"],"disabled":["claude-opus-4-6-20260201"]}]}';
     writeFileSync(path, readOnlyBytes);
-    const readOnly = await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes, "read-only");
+    const readOnly = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes, "read-only");
     expect(readOnly?.accounts.get(key)).toMatchObject({ enabled: new Set(["claude-opus-4.6"]), disabled: new Set() });
     expect(readFileSync(path, "utf8")).toBe(readOnlyBytes);
     access.close();
@@ -235,7 +233,7 @@ describe("provider model preference store", () => {
     const malformed = '{"version":1,"providers":{"openai_api":{"enabled":["gpt-5"],"disabled":["gpt-5"]}}}';
     writeFileSync(path, malformed);
     expect(() => readProviderModelPreferences(access, new Map())).toThrow();
-    await expect(setProviderModelPreference(access, "openai_api", "gpt-5", "default", [{ kind: "singleton", providerId: "openai_api" }], authStoreRevision(access), providerModelPreferencesRevision(access))).rejects.toThrow();
+    await expect(setProviderModelPreference(access, "openai_api", "gpt-5", "default", [{ kind: "singleton", providerId: "openai_api" }], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) })).rejects.toThrow();
     expect(readFileSync(path, "utf8")).toBe(malformed);
     access.close();
   });
@@ -246,10 +244,10 @@ describe("provider model preference store", () => {
     const account = { kind: "singleton" as const, providerId: "openai_api" };
     const expectedPreferenceRevision = providerModelPreferencesRevision(access);
 
-    await expect(setProviderModelPreference(access, account, "gpt-5", "enabled", [account], "prepared-auth", expectedPreferenceRevision)).rejects.toThrow("changed during provider-model preference mutation");
+    await expect(setProviderModelPreference(access, account, "gpt-5", "enabled", [account], { auth: "prepared-auth", preferences: expectedPreferenceRevision })).rejects.toThrow("changed during provider-model preference mutation");
     expect(providerModelPreferencesRevision(access)).toBe(expectedPreferenceRevision);
 
-    await expect(setProviderModelPreference(access, account, "gpt-5", "enabled", [account], authStoreRevision(access), "stale-preference")).rejects.toThrow("changed during provider-model preference mutation");
+    await expect(setProviderModelPreference(access, account, "gpt-5", "enabled", [account], { auth: authStoreRevision(access), preferences: "stale-preference" })).rejects.toThrow("changed during provider-model preference mutation");
     expect(providerModelPreferencesRevision(access)).toBe(expectedPreferenceRevision);
     access.close();
   });
@@ -260,10 +258,10 @@ describe("provider model preference store", () => {
     const selected = { kind: "singleton" as const, providerId: "openai_api" };
     const other = { kind: "singleton" as const, providerId: "anthropic_api" };
     const accounts = [selected, other];
-    await setProviderModelPreference(access, selected, "gpt-4.1", "disabled", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
-    await setProviderModelPreference(access, other, "claude-opus-4-6", "enabled", accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderModelPreference(access, selected, "gpt-4.1", "disabled", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
+    await setProviderModelPreference(access, other, "claude-opus-4-6", "enabled", accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
 
-    await deselectAllProviderModels(access, selected, ["gpt-5-mini", " GPT-5 "], accounts, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await deselectAllProviderModels(access, selected, ["gpt-5-mini", " GPT-5 "], accounts, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
 
     const preferences = readProviderModelPreferences(access, new Map());
     expect(preferences.accounts.get(accessProviderAccountKey(selected))).toMatchObject({ enabled: new Set(), disabled: new Set(["gpt-4.1", "gpt-5", "gpt-5-mini"]) });
@@ -280,7 +278,7 @@ describe("provider model preference store", () => {
       { kind: "subscription" as const, providerId: "chatgpt", instanceId: "first" },
       { kind: "subscription" as const, providerId: "chatgpt", instanceId: "second" },
     ];
-    const migrated = await prepareProviderModelPreferences(access, "same", accounts, () => "same", new Map());
+    const migrated = await loadAndMigrateProviderModelPreferences(access, "same", accounts, () => "same", new Map());
     expect([...migrated!.accounts.keys()]).toEqual(accounts.map(accessProviderAccountKey));
     expect(readFileSync(path, "utf8")).toContain('"version": 4');
     access.close();
@@ -299,7 +297,7 @@ describe("provider model preference store", () => {
       : { kind: "singleton" as const, providerId: "anthropic_api" };
     const indexes = new Map([[accessProviderAccountKey(account), aliases]]);
 
-    const preferences = await prepareProviderModelPreferences(access, "same", [account], () => "same", indexes, "read-only");
+    const preferences = await loadAndMigrateProviderModelPreferences(access, "same", [account], () => "same", indexes, "read-only");
 
     expect(preferences?.accounts.get(accessProviderAccountKey(account))?.disabled).toEqual(new Set([bytes.includes("chatgpt") ? "gpt-5" : "claude-fable-5.1"]));
     expect(readFileSync(path, "utf8")).toBe(bytes);
@@ -312,12 +310,12 @@ describe("provider model preference store", () => {
     const discovered = { kind: "subscription" as const, providerId: "claude_agent_sdk", instanceId: "uuid-person" };
     const other = { kind: "singleton" as const, providerId: "openai_api" };
     const both = [discovered, other];
-    await setProviderModelPreference(access, discovered, "claude-opus-4-6", "disabled", both, authStoreRevision(access), providerModelPreferencesRevision(access));
+    await setProviderModelPreference(access, discovered, "claude-opus-4-6", "disabled", both, { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) });
     const writes = [
-      () => setProviderModelPreference(access, other, "gpt-5", "enabled", [other], authStoreRevision(access), providerModelPreferencesRevision(access)),
-      () => deselectAllProviderModels(access, other, ["gpt-5.1"], [other], authStoreRevision(access), providerModelPreferencesRevision(access)),
-      () => setProviderFreeRoutePreference(access, other, true, [other], authStoreRevision(access), providerModelPreferencesRevision(access)),
-      () => setProviderAutoEnableNewModels(access, false, new Map([[accessProviderAccountKey(other), { account: other, effectiveModelIds: ["gpt-5"], catalogModelIds: ["gpt-5"] }]]), [other], authStoreRevision(access), providerModelPreferencesRevision(access)),
+      () => setProviderModelPreference(access, other, "gpt-5", "enabled", [other], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) }),
+      () => deselectAllProviderModels(access, other, ["gpt-5.1"], [other], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) }),
+      () => setProviderFreeRoutePreference(access, other, true, [other], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) }),
+      () => setProviderAutoEnableNewModels(access, false, new Map([[accessProviderAccountKey(other), { account: other, effectiveModelIds: ["gpt-5"], catalogModelIds: ["gpt-5"] }]]), [other], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) }),
     ];
 
     for (const write of writes) {
@@ -332,7 +330,7 @@ describe("provider model preference store", () => {
     const access = await new AuthProfileStore(root).create("work", "Work");
     const current = { kind: "singleton" as const, providerId: "openai_api" };
     const absent = { kind: "singleton" as const, providerId: "anthropic_api" };
-    await expect(setProviderModelPreference(access, absent, "claude-opus-4-6", "enabled", [current], authStoreRevision(access), providerModelPreferencesRevision(access))).rejects.toThrow("not a current account");
+    await expect(setProviderModelPreference(access, absent, "claude-opus-4-6", "enabled", [current], { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) })).rejects.toThrow("not a current account");
     expect(readProviderModelPreferences(access, new Map()).accounts.size).toBe(0);
     access.close();
   });

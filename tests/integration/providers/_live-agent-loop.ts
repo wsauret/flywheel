@@ -63,7 +63,7 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
   const events: StreamEvent[] = [];
   try {
     const tools = await createRequestToolSurface(
-      (moduleSnapshot, runtimeConfig) => plannedRequest(planToolExposure({
+      ({ moduleSnapshot, runtimeConfig }) => plannedRequest(planToolExposure({
         kernel: testKernelToolDeps({
           userDataRoot: liveDirectories.userDataRoot,
           moduleSnapshot,

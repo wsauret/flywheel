@@ -11,6 +11,10 @@ import type { DisconnectConfirmation, DisconnectTarget } from "./auth-modal-disc
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 import type { SignInPage } from "../terminal-attach.js"
+import type { ProviderModelTarget } from "../../protocol/provider-model-preference-protocol-types.js"
+
+/** One subscription account, named as a provider-model view names it. */
+export type SubscriptionAccountTarget = Omit<Extract<ProviderModelTarget, { kind: "subscription" }>, "kind">
 
 /** What the auth modal needs. Every credential write it starts is a runtime
  *  mutation on `appService`, so the runtime that serves the session owns it. */
@@ -63,9 +67,9 @@ export interface AuthModalHook {
   answerLoginQuestion: (login: boolean) => void
   /** Answers the runtime's question before a new paid account replaces free-plan accounts: true replaces them. */
   answerLoginConfirmation: (replace: boolean) => void
-  openAuthAccountDetail: (auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string, focusEnvelopeId?: string) => boolean
+  openAuthAccountDetail: (auth: RuntimeAuthView, snapshotPosition: number, account: SubscriptionAccountTarget, focusEnvelopeId?: string) => boolean
   /** Opens the paid-use question for one account; closing it records an answer. */
-  openPaidUseQuestion: (auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string) => boolean
+  openPaidUseQuestion: (auth: RuntimeAuthView, snapshotPosition: number, account: SubscriptionAccountTarget) => boolean
   closeAuthModal: () => void
   finishRename: () => void
   selectProvider: (index: number) => void

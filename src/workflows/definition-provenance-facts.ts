@@ -367,9 +367,8 @@ export type DefinitionHashRecordedPayload =
   | typeof DefinitionHashRecordedPayloadSchema.Type
   | typeof DefinitionHashRecordedV2PayloadSchema.Type
   | typeof DefinitionHashRecordedV1PayloadSchema.Type
-type CurrentWorkflowCompiledPayload = typeof WorkflowCompiledPayloadSchema.Type
 export type WorkflowCompiledPayload =
-  | CurrentWorkflowCompiledPayload
+  | typeof WorkflowCompiledPayloadSchema.Type
   | typeof WorkflowCompiledV10PayloadSchema.Type
   | typeof WorkflowCompiledV9PayloadSchema.Type
   | typeof WorkflowCompiledV8PayloadSchema.Type

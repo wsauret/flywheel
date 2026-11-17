@@ -90,15 +90,21 @@ function shortDateRange(startMs: number, endMs: number): string {
 }
 function valueText(value: SubscriptionUsageMetric["used"]): string | undefined {
   if (!value) return undefined
-  if (value.kind === "percentage") return `${Math.round(value.value * 100)}%`
-  if (value.kind === "money") return `${value.currency} ${value.value}`
-  return `${value.value.toLocaleString("en-US")} ${value.unit}`
+  switch (value.kind) {
+    case "percentage": return `${Math.round(value.value * 100)}%`
+    case "money": return `${value.currency} ${value.value}`
+    case "count": return `${value.value.toLocaleString("en-US")} ${value.unit}`
+    default: return value satisfies never
+  }
 }
 function isMatchingUnit(left: SubscriptionUsageMetric["used"], right: SubscriptionUsageMetric["limit"]): boolean {
-  if (!left || !right || left.kind !== right.kind) return false
-  if (left.kind === "count" && right.kind === "count") return left.unit === right.unit
-  if (left.kind === "money" && right.kind === "money") return left.currency === right.currency
-  return left.kind === "percentage" && right.kind === "percentage"
+  if (!left || !right) return false
+  switch (left.kind) {
+    case "percentage": return right.kind === "percentage"
+    case "money": return right.kind === "money" && left.currency === right.currency
+    case "count": return right.kind === "count" && left.unit === right.unit
+    default: return left satisfies never
+  }
 }
 function usageFraction(metric: SubscriptionUsageMetric): number | undefined {
   if (metric.usedFraction !== undefined) return metric.usedFraction

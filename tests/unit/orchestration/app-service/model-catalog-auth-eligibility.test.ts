@@ -537,8 +537,7 @@ describe("catalog auth eligibility", () => {
         }));
         const state = published.prepare({
           profileId,
-          authRevision: "auth-revision",
-          preferenceRevision: "preference-revision",
+          inputRevision: { auth: "auth-revision", preferences: "preference-revision" },
           catalogs,
           inventoryCandidates: candidates,
           accountCatalogs: resolved.accounts,

@@ -89,14 +89,6 @@ export interface CredentialProviderCli {
   readonly flag?: string;
 }
 
-/** A key format a provider owns. A login that receives a key carrying another
- *  provider's prefix is refused before it is stored, because the store would
- *  report success and then serve no models. */
-interface ApiKeyPrefix {
-  readonly prefix: string;
-  readonly description: string;
-}
-
 export interface OAuthLoginPrompt {
   readonly message: string;
   readonly placeholder?: string;
@@ -272,7 +264,14 @@ interface AccessProviderOAuthStrategy {
 }
 
 type AccessProviderAuthStrategy =
-  | { readonly kind: "api_key"; readonly statusRank: number; readonly keyPrefix?: ApiKeyPrefix }
+  | {
+    readonly kind: "api_key";
+    readonly statusRank: number;
+    /** A key format the provider owns. A login that receives a key carrying another
+     *  provider's prefix is refused before it is stored, because the store would
+     *  report success and then serve no models. */
+    readonly keyPrefix?: { readonly prefix: string; readonly description: string };
+  }
   | (AccessProviderOAuthStrategy & AccessProviderOAuthLogin)
   | ({ readonly kind: "external"; readonly statusRank: number } & AccessProviderExternalLogin);
 

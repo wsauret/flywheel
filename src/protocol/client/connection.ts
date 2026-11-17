@@ -214,6 +214,12 @@ interface LaneFailure {
   readonly cause: unknown
 }
 
+/** One recovery of the event lane, from its first break until it connects again. `brokeAt` is when the runtime
+ *  was last answering, kept across every failed attempt so the fault says how long it has been. `faultTimer` is the
+ *  fault window's end, then the deadline of an attach sent after it. Once `windowEnded`, an attach that does not
+ *  answer is the fault's evidence. */
+interface Recovery { readonly brokeAt: number; faultTimer: ReturnType<typeof setTimeout> | undefined; windowEnded: boolean }
+
 /** Settles when the event loop should stop waiting on its current race: a
  *  close, a reconnect request, or the last subscriber leaving. */
 interface Wake {
@@ -246,14 +252,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
 
   let state: ConnectionState = "connecting"
   let health: RuntimeTransportHealth = { kind: "healthy" }
-  // When the runtime was last answering, kept across every failed attempt of
-  // one recovery so the fault says how long it has been.
-  let brokeAt: number | undefined
-  // The fault window's end, then the deadline of an attach sent after it.
-  let faultTimer: ReturnType<typeof setTimeout> | undefined
-  // Whether this recovery's fault window has ended: from then on an attach
-  // that does not answer is the fault's evidence.
-  let windowEnded = false
+  let recovery: Recovery | undefined
   let lastFrameAt = 0
   // Frames heard from the runtime on every lane, so a call can tell whether
   // the runtime said anything while it waited.
@@ -342,9 +341,11 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
     for (const listener of listeners) listener(event)
   }
 
+  const beginRecovery = (brokeAt: number): Recovery => (recovery ??= { brokeAt, faultTimer: undefined, windowEnded: false })
+
   function clearFaultTimer(): void {
-    if (faultTimer !== undefined) clearTimeout(faultTimer)
-    faultTimer = undefined
+    clearTimeout(recovery?.faultTimer)
+    if (recovery !== undefined) recovery.faultTimer = undefined
   }
 
   /** The lane is down. The fault window starts at the first break of this
@@ -363,43 +364,42 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
    *  by silence has heard nothing for its whole deadline, longer than the
    *  window, so the attach after it is already the evidence. */
   function armFault(): void {
-    brokeAt ??= now()
-    if (faultTimer !== undefined || windowEnded) return
-    faultTimer = setTimeout(() => {
-      faultTimer = undefined
+    const current = beginRecovery(now())
+    if (current.faultTimer !== undefined || current.windowEnded) return
+    current.faultTimer = setTimeout(() => {
+      current.faultTimer = undefined
       if (closing || state === "connected" || health.kind === "faulted") return
-      windowEnded = true
+      current.windowEnded = true
       // Between attempts the wake only cuts a backoff short; mid-attempt it
       // would end the attach.
       if (attemptRuntime === undefined) wake.resolve()
-    }, Math.max(0, brokeAt + faultAfterMs - now()))
-    faultTimer.unref?.()
+    }, Math.max(0, current.brokeAt + faultAfterMs - now()))
+    current.faultTimer.unref?.()
   }
 
-  /** Whether an attach sent now gives evidence for the fault. */
-  function awaitingEvidence(): boolean {
-    return windowEnded && health.kind !== "faulted"
+  /** The recovery for which an attach sent now gives evidence of the fault, if any. */
+  function awaitingEvidence(): Recovery | undefined {
+    return recovery?.windowEnded === true && health.kind !== "faulted" ? recovery : undefined
   }
 
   /** An attach sent after the window did not answer: the runtime has not
    *  answered for the whole window and still does not. */
   function attachUnanswered(): void {
     clearFaultTimer()
-    if (closing || !awaitingEvidence()) return
-    setHealth({ kind: "faulted", since: brokeAt ?? now() })
+    const current = awaitingEvidence()
+    if (closing || current === undefined) return
+    setHealth({ kind: "faulted", since: current.brokeAt })
   }
 
   function recovered(): void {
     clearFaultTimer()
-    brokeAt = undefined
-    windowEnded = false
+    recovery = undefined
     setHealth({ kind: "healthy" })
   }
 
   function fault(cause: string, refusal?: ServeStartRefusal | RuntimeProtocolRefusal): void {
     if (closing) return
-    brokeAt ??= now()
-    setHealth({ kind: "faulted", since: brokeAt, cause, ...(refusal === undefined ? {} : { refusal }) })
+    setHealth({ kind: "faulted", since: beginRecovery(now()).brokeAt, cause, ...(refusal === undefined ? {} : { refusal }) })
   }
 
   /** The synthetic patch that voids every receiver's resident state. It carries
@@ -703,8 +703,8 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
       // `recovered`, and one sent before the window ended is no evidence.
       const evidence = awaitingEvidence()
       if (evidence) {
-        faultTimer = setTimeout(attachUnanswered, liveness.heartbeatIntervalMs)
-        faultTimer.unref?.()
+        evidence.faultTimer = setTimeout(attachUnanswered, liveness.heartbeatIntervalMs)
+        evidence.faultTimer.unref?.()
       }
       try {
         requested = await runSubscriptionAttempt()
@@ -716,7 +716,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
         const endCause = laneEndCause(cause)
         // A silent lane last heard the runtime at its last frame, a whole
         // silence deadline ago, and the fault window counts from there.
-        if (endCause.kind === "silent") brokeAt ??= lastFrameAt
+        if (endCause.kind === "silent") beginRecovery(lastFrameAt)
         // A protocol refusal repeats at every attempt until the versions
         // agree, and the fault it raised stands until then, so only the first
         // of a run with the same cause is reported.
@@ -746,7 +746,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
         // before its next dial, ends the refusal, and the lane then opens.
         if (refused !== undefined) fault(refused.message, refused.refusal)
       }
-      if (evidence && !requested && windowEnded) attachUnanswered()
+      if (evidence && !requested && recovery?.windowEnded === true) attachUnanswered()
       else if (evidence) clearFaultTimer()
       if (closing || listeners.size === 0) return
       // A lane that ended sooner than a heartbeat interval keeps the backoff
@@ -901,8 +901,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
       if (closing || state === "connected") return
       if (health.kind === "faulted" && health.cause === undefined) {
         clearFaultTimer()
-        windowEnded = false
-        brokeAt = now()
+        recovery = { brokeAt: now(), faultTimer: undefined, windowEnded: false }
         setHealth({ kind: "healthy" })
         armFault()
         // An attach in flight went to the absent runtime, so it ends and the

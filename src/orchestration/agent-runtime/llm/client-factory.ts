@@ -91,7 +91,7 @@ export interface ModelRefusalRecord {
   readonly refusal: ModelRefusal;
 }
 
-/** Saves a refusal for the exact account generation and brings it to the model listing and to later requests.
+/** Saves a refusal for the exact account lineage and brings it to the model listing and to later requests.
  *  It returns at once and never fails; the owner contains a failed save. */
 export type RecordModelRefusal = (record: ModelRefusalRecord) => void;
 

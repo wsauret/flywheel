@@ -132,7 +132,7 @@ export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>):
   }
 
   /** Sends the full registered set, starting the engine for the first server and stopping it after the last. */
-  function apply(): Promise<ClaudeEngineSession | undefined> {
+  function reconcileEngineServers(): Promise<ClaudeEngineSession | undefined> {
     return sync.run(async () => {
       if (registrations.size === 0) {
         const running = session;
@@ -177,7 +177,7 @@ export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>):
         holders.splice(index, 1);
         if (holders.length === 0) registrations.delete(engineName);
         // Only the oldest holder's release changes what the engine holds: the server goes, or the next config applies.
-        if (index === 0) void apply().catch(() => {});
+        if (index === 0) void reconcileEngineServers().catch(() => {});
       },
     };
   }
@@ -223,8 +223,8 @@ export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>):
   async function connect(request: ClaudeServerRequest & { readonly signal: AbortSignal; readonly deadline: number }): Promise<McpConnection> {
     const held = hold(request);
     try {
-      const engine = await apply();
-      // SAFETY: `hold` registered this server, so `apply` started the engine.
+      const engine = await reconcileEngineServers();
+      // SAFETY: `hold` registered this server, so `reconcileEngineServers` started the engine.
       const running = engine!;
       const status = await settled(running, held.engineName, request.deadline, request.signal);
       if (status.status === "needs-auth") throw new McpNeedsAuthError(request.server);
@@ -292,8 +292,8 @@ export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>):
     const held = hold(request);
     const close = async (): Promise<void> => { held.release(); };
     try {
-      const engine = await apply();
-      // SAFETY: `hold` registered this server, so `apply` started the engine.
+      const engine = await reconcileEngineServers();
+      // SAFETY: `hold` registered this server, so `reconcileEngineServers` started the engine.
       const running = engine!;
       // The server joins the engine afresh here, so a sign-in that another Flywheel process stored in the shared
       // engine directory is read before the person is asked to sign in again.
@@ -339,7 +339,7 @@ export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>):
       // The manager closed its connections before it disposed the engine; nothing waits for their close callbacks.
       connections.clear();
       registrations.clear();
-      await apply();
+      await reconcileEngineServers();
     },
   };
 }

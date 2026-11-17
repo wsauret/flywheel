@@ -529,9 +529,9 @@ describe("subagent Stop", () => {
     }
     const authority = createSubagentSessionAuthority({
       manager: child.manager,
-      eventStore: child.reader,
+      reader: child.reader,
       projectionReader,
-      eventWriter: child.writer,
+      writer: child.writer,
       projectRoot: child.projectRoot,
       recall: async () => ({ hits: [] }),
     })

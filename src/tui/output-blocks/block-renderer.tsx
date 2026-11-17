@@ -70,7 +70,7 @@ export function BlockRenderer(props: BlockRendererProps) {
             {(block) => <ToolRunBlock block={block()} streamingToolText={props.streamingToolText} onHydrateBody={props.onHydrateBody} processControls={props.processControls} />}
           </Match>
           <Match when={props.block.kind === "system" ? props.block : undefined}>
-            {(block) => <SystemBlock block={block()} diffColors={props.diffColors} onHydrateBody={props.onHydrateBody} />}
+            {(block) => <SystemBlock block={block()} diffColors={props.diffColors} />}
           </Match>
           <Match when={props.block.kind === "degraded" ? props.block : undefined}>
             {(block) => <DegradedBlock block={block()} />}

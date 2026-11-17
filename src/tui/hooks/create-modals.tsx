@@ -16,6 +16,7 @@ import { sessionModelLabel } from "./active-model-label.js"
 import type { SettingsOperations, SettingsStore } from "./create-settings-store.js"
 import type { RuntimeConfigCache, ShellServices, ShellSignals } from "./shell-state.js"
 import { useAuthModal } from "./use-auth-modal.js"
+import type { AuthModalHook } from "./auth-modal-types.js"
 import { paidModeAwaitsAnswer, subscriptionSpendConsentNeedsReview } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../protocol/client/provider-account-copy.js"
 import { useBackgroundModal } from "./use-background-modal.js"
@@ -46,7 +47,7 @@ interface ActiveProfileConsentInspection {
   authScope: () => RuntimeAuthProfileScope
   agentState: Accessor<"idle" | "active">
   showRefreshFailure: () => void
-  openPaidUseQuestion: (auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string) => boolean
+  openPaidUseQuestion: AuthModalHook["openPaidUseQuestion"]
 }
 
 /** Asks the paid-use question for the first account of the active profile
@@ -81,7 +82,7 @@ export async function inspectActiveProfileConsent(deps: ActiveProfileConsentInsp
   const account = consent.accounts.find((candidate) => candidate.modes.some(paidModeAwaitsAnswer))
   if (!account) return false
   if (automatic && !automaticDialogsEnabled()) return false
-  return deps.openPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, account.providerId, account.accountCorrelationId)
+  return deps.openPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, account)
 }
 
 
@@ -197,8 +198,8 @@ export function createModalModals(deps: ModalsDeps) {
     const account = consent.accounts.find((candidate) => candidate.providerId === destination.providerId && candidate.accountCorrelationId === destination.accountCorrelationId)
     if (!account || (destination.envelopeId !== undefined && !account.modes.some((mode) => mode.envelopeId === destination.envelopeId))) return
     // A notification about paid capacity lands on the question while it is unanswered, and on the account's settings afterwards.
-    if (account.modes.some(paidModeAwaitsAnswer)) authModal.openPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, account.providerId, account.accountCorrelationId)
-    else authModal.openAuthAccountDetail(snapshot.auth, snapshot.snapshotPosition, account.providerId, account.accountCorrelationId, destination.envelopeId)
+    if (account.modes.some(paidModeAwaitsAnswer)) authModal.openPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, account)
+    else authModal.openAuthAccountDetail(snapshot.auth, snapshot.snapshotPosition, account, destination.envelopeId)
   }
   const reviewActiveProfile = () => inspectActiveProfile(true, true)
   const reviewCachedActiveProfile = () => inspectActiveProfile(false)

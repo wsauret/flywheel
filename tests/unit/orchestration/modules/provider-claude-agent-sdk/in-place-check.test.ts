@@ -5,8 +5,9 @@ import { Deferred, Effect, Exit, Scope } from "effect";
 import { TestClock } from "effect/testing";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import type { QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import type { CliFrame, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { inPlaceGate, runInPlaceSelfTest, type SelfTestResult } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/in-place-check.js";
+import { launchFakeQuery } from "./_bridge-harness.js";
 
 const records: DebugLogRecordInput[] = [];
 beforeEach(async () => {
@@ -122,5 +123,27 @@ describe("the in-place gate", () => {
     }, "2.1.295"));
     expect(result).toEqual({ passed: false, failure: "TypeError", conclusive: false });
     expect(scratch()).toEqual(before);
+  });
+
+  test("a self-test whose CLI stream fails while a frame waits for its answer proves nothing, and names the stream", async () => {
+    const noLaunch: LauncherScope = {
+      spawnOwned: () => Promise.reject(new Error("no launch")), adoptOwned: () => Promise.reject(new Error("no adoption")), open: () => noLaunch, close: async () => ({ settled: true }),
+    };
+    const launcher: QueryLauncherConfig = { enginePath: "/missing/claude", configDir: "/scratch/config", account: { home: "/scratch/home", user: "person" }, platform: "linux", hostEnvironment: {}, timeZone: "UTC", temporaryDirectory: "/scratch/tmp", launcher: noLaunch };
+    const result = await Effect.runPromise(runInPlaceSelfTest({
+      launcher, wireModelId: SONNET, contextLimit: 200_000,
+      launchQuery: () => (launch) => {
+        // The engine exits as the first frame reaches it, so the frame's wait is already open.
+        async function* prompt(): AsyncGenerator<CliFrame> {
+          for await (const frame of launch.prompt) {
+            fake.query.failStart(new Error("engine process exited with code 1"));
+            yield frame;
+          }
+        }
+        const fake = launchFakeQuery({ ...launch, prompt: prompt() }, [], "manual");
+        return fake.launched;
+      },
+    }, "2.1.295"));
+    expect(result).toEqual({ passed: false, failure: "stream-failed", conclusive: false });
   });
 });

@@ -23,7 +23,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { prepareWorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js";
 import type { ProfileRequestWorkflowPreparation } from "../../../../src/orchestration/auth/profile-request-service.js";
 import { chmodSync } from "node:fs";
-import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js";
+import { captureHeadlessSnapshotConnection, consumeHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js";
 import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js";
 import { testAccountHome } from "../../../helpers/directories.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
@@ -78,8 +78,7 @@ describe("headless cached catalog ownership", () => {
     }));
     expect(await writeProviderModelCatalog(
       catalogProfile(access, accessProviderRegistry(composeFirstPartyModules()).selection.definitions),
-      { kind: "singleton", providerId: "openai_api" },
-      openAiLineage,
+      { account: { kind: "singleton", providerId: "openai_api" }, lineage: openAiLineage },
       cachedRows,
       DEFAULT_DYNAMIC_CATALOG_LIMITS,
     )).toBe(true);
@@ -151,7 +150,7 @@ describe("headless cached catalog ownership", () => {
       ] } : {}),
     }), { mode: 0o600 });
     const providers = accessProviderRegistry(testCapabilityModules()).selection.definitions;
-    const { connection } = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(authFile, providers), transferredAuthDirectory, providers);
+    const { connection } = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(authFile, providers), transferredAuthDirectory, providers);
     const { auth } = connection;
     const transferredKey = apiKey(auth, "openai_api");
     expect(transferredKey === undefined ? undefined : Redacted.value(transferredKey)).toBe("transferred-openai-key");
@@ -261,7 +260,7 @@ describe("headless cached catalog ownership", () => {
     const catalog = installedModules().map((module) => module.id === CLAUDE_AGENT_SDK_MODULE_ID ? claude : module);
     const moduleSelection = () => composeFirstPartyModules(catalog);
     const providers = accessProviderRegistry(moduleSelection()).selection.definitions;
-    const { connection, release } = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(authFile, providers), join(userDataRoot, "transferred"), providers);
+    const { connection, release } = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(authFile, providers), join(userDataRoot, "transferred"), providers);
     const [account] = connection.subscriptionCredentials.get(CLAUDE_AGENT_SDK_PROVIDER_ID) ?? [];
     const launcher: LauncherScope = {
       spawnOwned: () => Promise.reject(new Error("no launch in a unit test")),

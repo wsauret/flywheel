@@ -260,7 +260,7 @@ describe("acquireSessionResources", () => {
     await Effect.runPromise(Effect.scoped(provideEventStoreServices(Effect.gen(function* () {
       const resources = yield* acquireSessionResources(deps)
       yield* Effect.promise(async () => {
-        const wired = wireSessionSubscribers(bus, resources, (patch) => { metrics.push(patch) }, "test-session")
+        const wired = wireSessionSubscribers(bus, resources, "test-session", (patch) => { metrics.push(patch) })
         const emit = createEmit(bus)
         try {
           counter.take()

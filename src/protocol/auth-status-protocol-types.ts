@@ -7,7 +7,6 @@ import type { SubscriptionSpendConsentView } from "./subscription-spend-consent-
 // One id space with the credential store: the wire schema's Codec annotation
 // compile-forces the protocol literal union to follow every provider added there.
 type AuthProviderId = CredentialProviderId
-type AuthProfileSource = "environment" | "project" | "sticky" | "default"
 export type RuntimeAuthStatusScope =
   | { readonly kind: "defaults" }
   | { readonly kind: "session"; readonly sessionId: string }
@@ -90,7 +89,7 @@ interface RuntimeAuthProfileDescriptor {
 }
 
 export interface RuntimeAuthProfileView extends RuntimeAuthProfileDescriptor {
-  readonly source: AuthProfileSource
+  readonly source: "environment" | "project" | "sticky" | "default"
   readonly availableProfiles: readonly RuntimeAuthProfileDescriptor[]
   readonly projectBinding?: string
 }

@@ -34,7 +34,7 @@ import type { KernelToolDeps, ServingModel } from "./tools/kernel-tool-deps.js";
 import { defaultCacheRetention, requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
-import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
+import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestCapture, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
 import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import { createChildSlotRegistry } from "./child-slot-registry.js";
@@ -351,9 +351,7 @@ function runToolPlanner(source: RunToolsSource) {
     onSkillLoad,
   };
   const kernelOf = (
-    requestModuleSnapshot: FirstPartyModuleComposition,
-    runtimeConfig: RuntimeConfigRequestCapture,
-    providerRuntime: RequestProviderRuntime | undefined,
+    { moduleSnapshot: requestModuleSnapshot, runtimeConfig, providerRuntime }: RequestCapture,
     definitionRevision: ProjectDefinitionRegistryRevision,
     live: FirstPartyModuleComposition = liveModules(requestModuleSnapshot),
   ): KernelToolDeps => requestKernel(kernelRun, {
@@ -363,15 +361,12 @@ function runToolPlanner(source: RunToolsSource) {
     treeDisabledTypes: tree?.disabledTypes ?? disabledAgentTypes(runtimeConfig.moduleSections),
     ...source.serving(providerRuntime),
   });
-  const planRequestTools = async (
-    requestModuleSnapshot: FirstPartyModuleComposition,
-    runtimeConfig: RuntimeConfigRequestCapture,
-    providerRuntime: RequestProviderRuntime | undefined,
-  ): Promise<PlannedRequest> => {
+  const planRequestTools = async (request: RequestCapture): Promise<PlannedRequest> => {
+    const requestModuleSnapshot = request.moduleSnapshot;
     const live = liveModules(requestModuleSnapshot);
     // Read now, not captured at assembly: the skill tool must observe the
     // revision published when this request is planned.
-    const kernel = kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.captureRevision(), live);
+    const kernel = kernelOf(request, definitions.captureRevision(), live);
     const plan = await planToolExposure({
       kernel,
       modules: await moduleRuntimesFor(requestModuleSnapshot),
@@ -406,7 +401,7 @@ export async function planRunCapabilities(input: RunCapabilitySource): Promise<C
   try {
     const { planRequestTools } = runToolPlanner({ input, runtimeIdentity, tree: hold?.tree, serving: () => ({}) });
     const { requestModules } = requestModulesOf(options, hold?.tree);
-    return requestCapabilities(await planRequestTools(requestModules(), options.captureRuntimeConfig(), undefined));
+    return requestCapabilities(await planRequestTools({ moduleSnapshot: requestModules(), runtimeConfig: options.captureRuntimeConfig() }));
   } finally {
     hold?.release();
   }
@@ -619,7 +614,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           moduleSnapshot: request.moduleSnapshot,
           tools: request.tools,
           registrationIdentities: request.registrationIdentities,
-          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.definitionAvailability.tree.definitionRevision),
+          kernel: kernelOf(request, request.definitionAvailability.tree.definitionRevision),
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           memory,
         }));
@@ -632,7 +627,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
         if (headlessPrompt?.kind === "literal") return [];
         const request = toolSurface.current();
         const reminderInput = {
-          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.definitionAvailability.tree.definitionRevision),
+          kernel: kernelOf(request, request.definitionAvailability.tree.definitionRevision),
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           tools: request.tools,
         };

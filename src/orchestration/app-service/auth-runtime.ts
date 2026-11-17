@@ -168,8 +168,8 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     displayName: (providerId) => accessProviderRegistry(options.moduleSelection()).selection.displayName(providerId),
     allowTrainingRoutes: (profileId) => options.runtimeConfig.snapshot().config.profiles[profileId]?.allow_training_routes ?? false,
     ...providerModelPreferencePersistence((profileId) => authDir(options.userDataRoot, profileId)),
-    recheckAccount: ({ profileId, account, expectedAuthRevision, expectedPreferenceRevision }) =>
-      prepareEligibility.recheckAccount({ id: profileId, directory: authDir(options.userDataRoot, profileId) }, account, { auth: expectedAuthRevision, preferences: expectedPreferenceRevision }),
+    recheckAccount: ({ profileId, account, expected }) =>
+      prepareEligibility.recheckAccount({ id: profileId, directory: authDir(options.userDataRoot, profileId) }, account, expected),
     publish: createProviderModelAuthPublisher({
       resolveProfile: resolveOwnedProfile,
       scopesForProfile,

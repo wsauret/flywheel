@@ -15,7 +15,7 @@ describe("background discovery", () => {
   test("background discovery runs one interval after a profile's latest discovery, never before its first one, only while the profile is held open, and stops on disposal (PI-MODEL-046)", async () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     service.publish(service.prepare({
-      profileId: PROFILE.id, authRevision: "auth-v1", preferenceRevision: "preferences-v1",
+      profileId: PROFILE.id, inputRevision: { auth: "auth-v1", preferences: "preferences-v1" },
       catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map(),
     }))
     let now = 0

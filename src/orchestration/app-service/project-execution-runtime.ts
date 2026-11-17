@@ -331,6 +331,9 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // can raise: the notify seam reads the live selection, so a module turned
   // off hears nothing and no kernel producer names one (ARCH-RUNTIME-048, ARCH-STRUCTURE-034).
   const transports = scope.own("module-transports", createModuleTransports(), (owner) => owner.dispose())
+  // The supervisor is composed after the services that hold this opener, so it reads the supervisor when it runs.
+  const openChatRunner = async (sessionId: string): Promise<ChatRunner | undefined> =>
+    await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined
   const moduleServices = scope.own("module-services", composeModuleProcessServices(installedModules(), () => moduleSelection().enabledModuleIds, {
     transports, onFrontendEvent: (listener) => { bus.addListener(listener); return () => bus.removeListener(listener) },
     directories: { ...directories, executionCwd }, eventStore: eventReader, projectionReader, eventWriter, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition,
@@ -344,7 +347,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       recall: backgroundLane.recall,
       attachProjection: childSessionProjectionAttachment(sessionStore),
       deliverNotification: attachedRunnerDelivery(sessionStore),
-      openChatRunner: async (sessionId): Promise<ChatRunner | undefined> => await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined,
+      openChatRunner,
     }),
   }, options.notify !== undefined), (services) => services.dispose())
   moduleServices.reconcile()
@@ -496,7 +499,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       return createWorkflowController({
         sessionStore,
         workflowHosts,
-        openChatRunner: async (sessionId) => await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined,
+        openChatRunner,
         manager,
         ...directories,
         definitions: runtimeDefinitions,
@@ -604,7 +607,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     publish: bus.publish,
     snapshotPosition: bus.snapshotPosition,
     hasLiveSession: projections.projection.hasLiveSession,
-    openChatRunner: async (sessionId) => await runtimeSupervisor.activateSession(sessionId) ? runtimeSupervisor.ensureChatRunner(sessionId) : undefined,
+    openChatRunner,
     background: backgroundLane.moduleSnapshot,
     modules: workflowRunOwner().protocolServices({ modules: moduleServices.services, projectRoot, controller: workflows, auth: authRuntime.workflowAuth, authStatus: authRuntime.authStatusProjection, supervisor: runtimeSupervisor, deletion: manager, bus, hosts: workflowHosts }),
   }, () => moduleSelection().enabledModuleIds, options.notify !== undefined), (owned) => { owned.dispose() })

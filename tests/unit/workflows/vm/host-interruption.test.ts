@@ -406,7 +406,7 @@ describe("workflow VM host SQLite interruption", () => {
       attemptRunner,
       emit: (event) => { emit(event.type, { sessionId: vm.sessionId, data: event.data }) },
       now: () => 100,
-      onPostPreflight: () => { wireSessionSubscribers(bus, resources) },
+      onPostPreflight: () => { wireSessionSubscribers(bus, resources, vm.sessionId) },
       lifecycle: {
         settleBackground: () => { timeline.push("background") },
         drainEventBus: resources.lifecycle.drainEventBus,

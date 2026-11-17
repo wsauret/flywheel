@@ -1,5 +1,9 @@
+import { Log } from "../log.js";
+import { loggedOperation } from "../operation-log.js";
 import type { CatalogJsonValue } from "./model-catalog-resolution.js";
 import type { ModelPricing } from "./models.js";
+
+const log = Log.create({ service: "openai-pricing" });
 
 const PRICING_URL = "https://developers.openai.com/api/docs/pricing.md";
 const MAX_PRICING_BYTES = 512 * 1024;
@@ -61,14 +65,25 @@ function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string, OpenA
   return result;
 }
 
+/** Fetches the official rate card. Pricing is optional enrichment, so every
+ *  failure records once and yields an empty card that keeps the last good one. */
 async function fetchOpenAiStandardPricing(signal: AbortSignal): Promise<ReadonlyMap<string, OpenAiRateCard>> {
   try {
-    const response = await fetch(PRICING_URL, { signal });
-    if (!response.ok || response.headers.get("content-type")?.startsWith("text/markdown") !== true) return new Map();
-    const length = Number(response.headers.get("content-length"));
-    if (Number.isFinite(length) && length > MAX_PRICING_BYTES) return new Map();
-    const markdown = await readBoundedText(response, MAX_PRICING_BYTES);
-    return parseOpenAiStandardPricing(markdown);
+    return await loggedOperation({
+      log,
+      operation: "OpenAI pricing refresh",
+      level: "debug",
+      failureLevel: "warn",
+      summarize: (pricing) => ({ models: pricing.size }),
+    }, async () => {
+      const response = await fetch(PRICING_URL, { signal });
+      const contentType = response.headers.get("content-type");
+      if (!response.ok) throw new TypeError(`OpenAI pricing request failed with status ${response.status}`);
+      if (contentType?.startsWith("text/markdown") !== true) throw new TypeError(`OpenAI pricing response has content type ${contentType ?? "none"}`);
+      const length = Number(response.headers.get("content-length"));
+      if (Number.isFinite(length) && length > MAX_PRICING_BYTES) throw new TypeError("OpenAI pricing response exceeds the size limit");
+      return parseOpenAiStandardPricing(await readBoundedText(response, MAX_PRICING_BYTES));
+    });
   } catch {
     return new Map();
   }

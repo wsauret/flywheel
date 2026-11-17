@@ -6,7 +6,7 @@ import { describe, expect, test } from "bun:test"
 
 import { resolveDefinitionCandidates } from "../../../../src/infra/definition-resolution.js"
 import { acquireLock, releaseLock } from "../../../../src/infra/ownership-file-lock.js"
-import { observeDefinitionOverrideBaselines, readDefinitionOverrideBaselines } from "../../../../src/workflows/definitions/override-baselines.js"
+import { acknowledgeDefinitionOverrideBaselines, readDefinitionOverrideBaselines } from "../../../../src/workflows/definitions/override-baselines.js"
 import { deriveDefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
@@ -28,7 +28,7 @@ describe("definition override baselines", () => {
     const manifestPath = join(userDataRoot, "definition-override-baselines.json")
     await mkdir(`${manifestPath}.lock`)
 
-    expect(await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [], catalog: catalog() })).toEqual({})
+    expect(await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [], catalog: catalog() })).toEqual({})
     expect(existsSync(manifestPath)).toBe(false)
   })
 
@@ -45,7 +45,7 @@ describe("definition override baselines", () => {
     await writeFile(manifestPath, manifest)
     await mkdir(`${manifestPath}.lock`)
 
-    expect(await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })).toEqual(records)
+    expect(await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })).toEqual(records)
     expect(await readFile(manifestPath, "utf8")).toBe(manifest)
     expect(existsSync(`${overridePath}.base`)).toBe(false)
     expect(readDefinitionOverrideBaselines(userDataRoot)).toEqual({ kind: "readable", records })
@@ -61,7 +61,7 @@ describe("definition override baselines", () => {
     await mkdir(join(userDataRoot, "agents"), { recursive: true })
     await writeFile(overridePath, "override")
 
-    const records = await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
+    const records = await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
 
     expect(records[overridePath]).toEqual({ acknowledged_default_hash: hash("bundled") })
     expect(await readFile(`${overridePath}.base`, "utf8")).toBe("bundled")
@@ -77,7 +77,7 @@ describe("definition override baselines", () => {
     await mkdir(join(userDataRoot, "agents"), { recursive: true })
     await writeFile(`${overridePath}.base`, "older")
 
-    const records = await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
+    const records = await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
 
     expect(records[overridePath]).toEqual({ acknowledged_default_hash: hash("older") })
   })
@@ -87,7 +87,7 @@ describe("definition override baselines", () => {
     const overridePath = join(userDataRoot, "agents", "reviewer.md")
     const manifestPath = join(userDataRoot, "definition-override-baselines.json")
     const ownership = await acquireLock(`${manifestPath}.lock`)
-    const observation = observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
+    const observation = acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
     const records = {
       [overridePath]: { acknowledged_default_hash: hash("older") },
       [join(userDataRoot, "other-project", "reviewer.md")]: { acknowledged_default_hash: hash("other") },
@@ -115,7 +115,7 @@ describe("definition override baselines", () => {
     await writeFile(`${overridePath}.base`, "older")
     await writeFile(manifestPath, bytes)
 
-    const records = await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
+    const records = await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [resolution(overridePath)], catalog: catalog() })
 
     expect(records).toEqual({ [overridePath]: { acknowledged_default_hash: hash("older") } })
     expect(readDefinitionOverrideBaselines(userDataRoot)).toEqual({ kind: "readable", records })
@@ -128,7 +128,7 @@ describe("definition override baselines", () => {
     const userDataRoot = temporaryDirectory("flywheel-baselines-")
     await writeFile(join(userDataRoot, "definition-override-baselines.json"), "not json")
 
-    expect(await observeDefinitionOverrideBaselines({ userDataRoot, resolutions: [], catalog: catalog() })).toEqual({})
+    expect(await acknowledgeDefinitionOverrideBaselines({ userDataRoot, resolutions: [], catalog: catalog() })).toEqual({})
     expect(readDefinitionOverrideBaselines(userDataRoot)).toEqual({ kind: "readable", records: {} })
   })
 })

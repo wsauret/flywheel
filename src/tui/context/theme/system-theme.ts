@@ -18,7 +18,6 @@ interface Family {
   slot: number
 }
 type FamilyName = "neutral" | "blue" | "green" | "red" | "yellow" | "violet" | "calamine"
-type Families = { [Name in FamilyName]: Family }
 
 const FAMILIES = {
   neutral: { hue: 231.49, saturation: { min: 0.02, max: 0.08 }, slot: 8 },
@@ -28,10 +27,9 @@ const FAMILIES = {
   yellow: { hue: 82.36, saturation: { min: 0.5, max: 1 }, slot: 3 },
   violet: { hue: 295, saturation: { min: 0.2, max: 0.6 }, slot: 5 },
   calamine: { hue: 202.43, saturation: { min: 0.1, max: 0.74 }, slot: 6 },
-} satisfies Families
+} satisfies { [Name in FamilyName]: Family }
 
 type ThemeToken = Exclude<keyof TuiTheme, "thinkingOpacity" | "background" | "textBright" | "selectionBackground" | "selectionForeground" | "phaseName" | "agentName">
-type TokenFamilies = { [Token in ThemeToken]: FamilyName }
 const TOKEN_FAMILIES = {
   backgroundRaised: "neutral",
   backgroundPanel: "neutral",
@@ -88,10 +86,9 @@ const TOKEN_FAMILIES = {
   chatCodeType: "yellow",
   chatCodeOperator: "calamine",
   chatCodePunctuation: "neutral",
-} satisfies TokenFamilies
+} satisfies { [Token in ThemeToken]: FamilyName }
 interface Curve { coefficients: number[]; reachable: [number, number] }
 type Level = "panel" | "track" | "subtle" | "readable" | "emphasis" | "text"
-type LevelCurves = { [Name in Level]: { [Appearance in ThemeAppearance]: Curve } }
 const LEVELS = {
   panel: {
     dark: { coefficients: [0.29131, -0.39746, 2.33185, -0.85524, -1.2076, 0.86276], reachable: [0, 0.979] },
@@ -129,7 +126,7 @@ const LEVELS = {
       reachable: [0.894, 1],
     },
   },
-} satisfies LevelCurves
+} satisfies { [Name in Level]: { [Appearance in ThemeAppearance]: Curve } }
 
 type Surface = ThemeToken | "background"
 interface Rule { token: ThemeToken; on: Surface[]; level: Level }

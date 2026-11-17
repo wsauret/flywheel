@@ -60,7 +60,7 @@ export function createChatModuleHosts(input: ChatModuleHostInput): ChatModuleHos
     await task
     retired.delete(task)
   }
-  function current(): readonly ChatModuleHost[] {
+  function reconcileHosts(): readonly ChatModuleHost[] {
     if (disposal) return []
     const selected = new Set(input.deps.moduleSelection().contributions.flatMap((entry) => entry.domain === "chatHosts" ? [entry.value] : []))
     for (const contribution of attempted) if (!selected.has(contribution)) attempted.delete(contribution)
@@ -78,18 +78,18 @@ export function createChatModuleHosts(input: ChatModuleHostInput): ChatModuleHos
     }
     return [...active.values()]
   }
-  current()
+  reconcileHosts()
   const hosts: ChatModuleHosts = {
     get<T>(handle: ModuleRuntimeHandle<T>): T | undefined {
-      current()
+      reconcileHosts()
       return composeModuleRuntimes([...active].map(([contribution, host]) => [contribution.handle.moduleId, host] as const)).get(handle)
     },
-    async beforeTurn() { await Promise.all(current().map((host) => join(async () => { await host.beforeTurn?.() }))) },
-    async replay(messages) { for (const host of current()) await join(async () => { await host.replay?.(messages) }) },
-    noteAssistantMessage: (content) => { for (const host of current()) invoke(() => host.noteAssistantMessage?.(content)) },
-    noteUserTurn: () => { for (const host of current()) invoke(() => host.noteUserTurn?.()) },
-    onTurnCompleted: (config) => { for (const host of current()) invoke(() => host.onTurnCompleted?.(config)) },
-    review() { return current().map((host) => { try { return host.review?.() ?? false } catch (error) { report(error); return false } }).some(Boolean) },
+    async beforeTurn() { await Promise.all(reconcileHosts().map((host) => join(async () => { await host.beforeTurn?.() }))) },
+    async replay(messages) { for (const host of reconcileHosts()) await join(async () => { await host.replay?.(messages) }) },
+    noteAssistantMessage: (content) => { for (const host of reconcileHosts()) invoke(() => host.noteAssistantMessage?.(content)) },
+    noteUserTurn: () => { for (const host of reconcileHosts()) invoke(() => host.noteUserTurn?.()) },
+    onTurnCompleted: (config) => { for (const host of reconcileHosts()) invoke(() => host.onTurnCompleted?.(config)) },
+    review() { return reconcileHosts().map((host) => { try { return host.review?.() ?? false } catch (error) { report(error); return false } }).some(Boolean) },
     dispose() {
       if (disposal) return disposal
       const endingHosts = [...active.values()]

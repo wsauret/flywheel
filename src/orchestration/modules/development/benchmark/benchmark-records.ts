@@ -161,10 +161,6 @@ function ledger(file: string) {
   return createJsonLinesLedger(async () => file, RecordLineSchema, "reject");
 }
 
-function sameHeader(a: CampaignHeader, b: CampaignHeader): boolean {
-  return structuredIdentity(a) === structuredIdentity(b);
-}
-
 /** Load one record file. A missing file is undefined. Every structural
  *  violation is an error naming the file and line, never a skipped line: a
  *  header that is not the first line or appears twice, a second line for one
@@ -245,7 +241,7 @@ export async function appendCampaignRecords(
   { cells = [], scores = [], grades = [], failures = [] }: RecordLines,
 ): Promise<{ cells: number; scores: number; grades: number; failures: number }> {
   const existing = await loadCampaignRecords(file);
-  if (existing && !sameHeader(existing.header, header)) throw new Error(`${file} holds another campaign header; refusing to append`);
+  if (existing && structuredIdentity(existing.header) !== structuredIdentity(header)) throw new Error(`${file} holds another campaign header; refusing to append`);
   const records = ledger(file);
   if (!existing) {
     await mkdir(dirname(file), { recursive: true });

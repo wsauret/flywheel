@@ -246,12 +246,9 @@ interface SocketConnection<Outgoing, Incoming> {
  *  reach the wire in the order they were sent, whatever their sizes. Only an
  *  oversize frame, a failed write, or a closed endpoint rejects a send, and a
  *  lost peer releases every waiter through the closed state. */
-function createSocketProcessEndpoint<Outgoing, Incoming>(options: {
+function createSocketProcessEndpoint<Outgoing, Incoming>(options: Required<InternalProcessChannelLimits> & {
   readonly socket: SocketWriter
   readonly decode: InternalProcessDecoder<Incoming>
-  readonly maxFrameBytes: number
-  readonly maxMessageBytes: number
-  readonly maxQueuedBytes: number
 }): SocketConnection<Outgoing, Incoming> {
   const state = endpointState<Incoming>()
   let queuedBytes = 0

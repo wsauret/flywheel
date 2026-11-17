@@ -118,12 +118,8 @@ function addGroup(summary: MutableSummary, group: UsageLedgerGroup): void {
   else summary.includedValueUsd += group.estimatedUsd
 }
 
-function modelSummary(model: string, summary: MutableSummary): UsageModelSummary {
-  return { model, attempts: summary.attempts, unmeasuredAttempts: summary.unmeasuredAttempts, partialAttempts: summary.partialAttempts, cacheComplete: summary.cacheComplete, tokens: tokens(summary), estimatedBilledUsd: summary.estimatedBilledUsd, includedValueUsd: summary.includedValueUsd, priceUnavailable: summary.priceUnavailable }
-}
-
 function sortModels(models: Iterable<[string, MutableSummary]>): UsageModelSummary[] {
-  return [...models].map(([model, summary]) => modelSummary(model, summary)).toSorted((left, right) =>
+  return [...models].map(([model, summary]): UsageModelSummary => ({ model, attempts: summary.attempts, unmeasuredAttempts: summary.unmeasuredAttempts, partialAttempts: summary.partialAttempts, cacheComplete: summary.cacheComplete, tokens: tokens(summary), estimatedBilledUsd: summary.estimatedBilledUsd, includedValueUsd: summary.includedValueUsd, priceUnavailable: summary.priceUnavailable })).toSorted((left, right) =>
     (right.estimatedBilledUsd + right.includedValueUsd) - (left.estimatedBilledUsd + left.includedValueUsd)
     || right.tokens.total - left.tokens.total
     || left.model.localeCompare(right.model))
@@ -139,7 +135,15 @@ function isMeteredAccount(account: Pick<CurrentUsageAccount, "providerId" | "ins
   return metered.some((source) => readsKey(source, account))
 }
 
-function activeSubscriptions(profileId: string, current: CurrentUsageObservationSet, metered: readonly MeteredUsageSource[], providerDisplayName: (providerId: string) => string): ActiveSubscriptionSource[] {
+/** What every projection reads to name its active sources: the current subscription accounts, the metered keys,
+ *  and the provider names that label an account without one. */
+interface UsageSourceInputs {
+  readonly current: CurrentUsageObservationSet
+  readonly metered: readonly MeteredUsageSource[]
+  readonly providerDisplayName: (providerId: string) => string
+}
+
+function activeSubscriptions(profileId: string, { current, metered, providerDisplayName }: UsageSourceInputs): ActiveSubscriptionSource[] {
   return current.accounts.filter((account) => !isMeteredAccount(account, metered)).map((account) => ({
     kind: "subscription" as const,
     sourceId: subscriptionSpendAccountCorrelationId(profileId, account.providerId, account.instanceId),
@@ -175,17 +179,14 @@ function period(range: UsageHistoryResult["range"], entries: UsageRangeEntries, 
   return { range, startMs, endMs, trackingStartMs, partial: trackingStartMs > startMs, incomplete }
 }
 
-export function projectUsageSpend(input: {
+export function projectUsageSpend(input: UsageSourceInputs & {
   readonly metadata: UsageProtocolMetadata
   readonly range: UsageHistoryResult["range"]
   readonly entries: UsageRangeEntries
   readonly trackingStart: string
   readonly incomplete: boolean
-  readonly current: CurrentUsageObservationSet
-  readonly metered: readonly MeteredUsageSource[]
-  readonly providerDisplayName: (providerId: string) => string
 }): UsageSpendResult {
-  const subscriptions = activeSubscriptions(input.metadata.profileId, input.current, input.metered, input.providerDisplayName)
+  const subscriptions = activeSubscriptions(input.metadata.profileId, input)
   const active = new Map<string, ActiveUsageSource>([...subscriptions, ...input.metered].map((source) => [source.sourceId, source]))
   const summaries = new Map<string, MutableSourceSummary>()
   for (const entry of input.entries.groups) {
@@ -245,17 +246,14 @@ function observation(account: CurrentUsageAccount, metricDetail: MetricDetail): 
   return { ...observed, state: "failure", message: account.message }
 }
 
-export function projectUsageAccounts(input: {
-  readonly current: CurrentUsageObservationSet
-  readonly metered: readonly MeteredUsageSource[]
-  readonly providerDisplayName: (providerId: string) => string
+export function projectUsageAccounts(input: UsageSourceInputs & {
   readonly metricDetail: MetricDetail
   readonly quotaBySource: ReadonlyMap<string, AuthorityQuotaAccounting>
   /** Flywheel's monthly cap per provider id, applied to that provider's pooled allowance metric. */
   readonly allowanceCaps: ReadonlyMap<string, number>
   readonly activity: UsageSpendResult | undefined
 }): UsageAccountsResult {
-  const subscriptions = activeSubscriptions(input.current.profileId, input.current, input.metered, input.providerDisplayName)
+  const subscriptions = activeSubscriptions(input.current.profileId, input)
   const activityBySource = new Map(input.activity?.sources.map((source) => [source.sourceId, source]))
   const activity = (sourceId: string) => {
     if (input.activity === undefined) return { state: "ledger-unavailable" as const }
@@ -310,9 +308,9 @@ function spendPointsBySource(spend: UsageHourlySpend, profileId: string, active:
 
 /** The history result: every subscription account's samples, and every
  *  active source's spend by hour, so a metered key has a history too. */
-export function projectUsageHistory(input: { readonly metadata: UsageProtocolMetadata; readonly history: UsageHistoryObservation; readonly spend: UsageHourlySpend | undefined; readonly current: CurrentUsageObservationSet; readonly metered: readonly MeteredUsageSource[]; readonly providerDisplayName: (providerId: string) => string; readonly metricDetail: MetricDetail }): UsageHistoryResult {
+export function projectUsageHistory(input: UsageSourceInputs & { readonly metadata: UsageProtocolMetadata; readonly history: UsageHistoryObservation; readonly spend: UsageHourlySpend | undefined; readonly metricDetail: MetricDetail }): UsageHistoryResult {
   const profileId = input.metadata.profileId
-  const active = new Map<string, ActiveUsageSource>([...activeSubscriptions(profileId, input.current, input.metered, input.providerDisplayName), ...input.metered].map((source) => [source.sourceId, source]))
+  const active = new Map<string, ActiveUsageSource>([...activeSubscriptions(profileId, input), ...input.metered].map((source) => [source.sourceId, source]))
   const spend = input.spend === undefined ? new Map<string, readonly UsageSpendPoint[]>() : spendPointsBySource(input.spend, profileId, active, input.providerDisplayName)
   const subscriptions = input.history.accounts.filter((account) => !isMeteredAccount(account, input.metered)).map(({ providerId, instanceId, identity: _identity, label, samples, latest, peak, ...account }): UsageHistorySource => {
     const sourceId = subscriptionSpendAccountCorrelationId(profileId, providerId, instanceId)

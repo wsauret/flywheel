@@ -16,15 +16,27 @@ interface LoginQuestionDeps {
   close: () => void
 }
 
+interface OwnedQuestion {
+  readonly question: RuntimeAuthLoginQuestion
+  readonly onUndelivered?: () => void
+}
+
+/** The question while the person decides whether to log in. */
+interface AskingQuestion extends OwnedQuestion {
+  readonly phase: "asking"
+}
+
+/** The login the person accepted: its operation once the runtime starts it,
+ *  and whether the person submitted the code that completes it. */
+interface LoginInProgress extends OwnedQuestion {
+  readonly phase: "login"
+  operationId?: string
+  submitted?: true
+}
+
 /** Owns one modal's runtime login, not the account's answer authority. */
 export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
-  let current: {
-    readonly question: RuntimeAuthLoginQuestion
-    readonly onUndelivered?: () => void
-    phase: "asking" | "login"
-    operationId?: string
-    submitted?: true
-  } | undefined
+  let current: AskingQuestion | LoginInProgress | undefined
 
   function cancel(): void {
     const owned = current
@@ -36,7 +48,7 @@ export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
     void deps.dispatch(request).catch(() => { owned.onUndelivered?.() })
   }
 
-  function finish(owned: NonNullable<typeof current>, message?: string): void {
+  function finish(owned: AskingQuestion | LoginInProgress, message?: string): void {
     if (current !== owned) return
     current = undefined
     if (message !== undefined) deps.showToast({ message, variant: "error" })
@@ -60,7 +72,7 @@ export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
     }
   }
 
-  async function login(owned: NonNullable<typeof current>): Promise<void> {
+  async function login(owned: LoginInProgress): Promise<void> {
     try {
       const question = owned.question
       const result = await deps.dispatch({ type: "auth.login", providerId: question.providerId, instanceId: question.instanceId, loginQuestionId: question.questionId, ...deps.signInPage.request })
@@ -102,9 +114,10 @@ export function createAuthModalLoginQuestion(deps: LoginQuestionDeps) {
       const owned = current
       if (owned?.phase !== "asking") return
       if (!yes) { cancel(); deps.close(); return }
-      owned.phase = "login"
-      deps.setView({ kind: "login-question", question: owned.question, choice: "login", submitting: true })
-      void login(owned)
+      const accepted: LoginInProgress = { ...owned, phase: "login" }
+      current = accepted
+      deps.setView({ kind: "login-question", question: accepted.question, choice: "login", submitting: true })
+      void login(accepted)
     },
     cancel,
     observe,

@@ -198,7 +198,7 @@ async function settleMember(resources: ChildExecutionResources, foreground: Retu
 /** Remove after 2027-04-13, with the restatement that uses it. */
 const RESTATED_BRIEF = "Your brief follows. It applies to all of the work above and to the rest of your work."
 
-async function recoverableBuildContext(tree: ConversationTreeWriterController, allowAssistantTail = false): Promise<Awaited<ReturnType<ConversationTreeWriterController["buildContext"]>>> {
+async function buildContextCommittingContinuation(tree: ConversationTreeWriterController, allowAssistantTail = false): Promise<Awaited<ReturnType<ConversationTreeWriterController["buildContext"]>>> {
   try {
     return await tree.buildContext({ allowAssistantTail })
   } catch (err) {
@@ -382,7 +382,7 @@ export function createWorkerCallback(
           )
         }
       }
-      let priorContext = await recoverableBuildContext(treeWriter, restoringWait)
+      let priorContext = await buildContextCommittingContinuation(treeWriter, restoringWait)
       if (firstRun) {
         if (!fresh) {
           // An agent that a build before 2026-10-14 started held its brief in

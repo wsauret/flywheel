@@ -1,7 +1,3 @@
-type ModuleAvailability =
-  | { readonly kind: "available" }
-  | { readonly kind: "unavailable"; readonly reason: string };
-
 type ModuleContribution<Contributions extends object> = {
   readonly [Domain in keyof Contributions]: {
     readonly domain: Domain;
@@ -34,7 +30,7 @@ type ModuleGateDeclaration<Gates extends object> = {
 export interface ModuleDescriptor<Contributions extends object, Observers extends object, Gates extends object> {
   readonly id: string;
   readonly dependencies: readonly string[];
-  readonly availability: ModuleAvailability;
+  readonly availability: { readonly kind: "available" } | { readonly kind: "unavailable"; readonly reason: string };
   /** Declares that enabled module work can outlive its initiating foreground turn. */
   readonly producesBackgroundWork?: boolean;
   readonly contributions: readonly ModuleContribution<Contributions>[];

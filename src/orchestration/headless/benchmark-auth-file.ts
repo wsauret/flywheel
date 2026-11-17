@@ -266,7 +266,7 @@ function openSnapshot(path: string): number {
 }
 
 /** Consumes one owner-private headless credential snapshot without following its name through a link. */
-export function readHeadlessAuthSnapshot(path: string, providers: readonly AccessProviderDefinition[]): HeadlessAuthSnapshot {
+export function consumeHeadlessAuthSnapshot(path: string, providers: readonly AccessProviderDefinition[]): HeadlessAuthSnapshot {
   const descriptor = openSnapshot(path)
   try {
     const metadata = fstatSync(descriptor)
@@ -478,7 +478,7 @@ async function captureProfileStore(options: Parameters<typeof writeHeadlessAuthS
             : credential === undefined ? [] : [{ account: { kind: "singleton", providerId: definition.id }, lineage: decoded.credentialLineages[credentialIdOf(definition)] }]
           for (const { account, lineage } of accounts) {
             if (lineage === undefined) continue
-            const audit = readSavedProviderModels(access, account, lineage, contribution.limits)?.audit
+            const audit = readSavedProviderModels(access, { account, lineage }, contribution.limits)?.audit
             if (audit !== undefined) modelAccess.push({ account, lineage, outcomes: audit.outcomes })
           }
         }

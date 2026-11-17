@@ -25,7 +25,7 @@ export function accessCandidateRows(baselineRows: readonly CatalogCanonicalRow[]
 }
 
 export async function readSavedAudit(withProfile: WithProfile, account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits): Promise<SavedAudit | undefined> {
-  return withProfile(({ access }) => readSavedProviderModels(access, account, lineage, limits)?.audit);
+  return withProfile(({ access }) => readSavedProviderModels(access, { account, lineage }, limits)?.audit);
 }
 
 /** One `audit` pass over one account whose credential is current. */
@@ -57,7 +57,7 @@ export async function runAccessAudit(pass: AccessAuditPass): Promise<SavedAudit 
   if (pass.manual) {
     // A manual recheck makes every current candidate due again but keeps saved outcomes until a conclusive probe replaces them. The store refuses a stale credential lineage under the profile lock, and then nothing is probed.
     const armed = pass.entryRows.length > 0
-      && await withProfile((profile) => writeProviderModelCandidates(profile, account, lineage, pass.entryRows, candidates.map((row) => row.modelId), limits, true));
+      && await withProfile((profile) => writeProviderModelCandidates(profile, { account, lineage }, pass.entryRows, candidates.map((row) => row.modelId), limits, true));
     if (!armed) return pass.audit;
     current = await readSavedAudit(withProfile, account, lineage, limits);
   }
@@ -81,7 +81,7 @@ export async function runAccessAudit(pass: AccessAuditPass): Promise<SavedAudit 
     // A refused model that is refused again changes nothing.
     if (outcome === current.outcomes[modelId] && !current.dueIds.includes(modelId)) continue;
     const { generation } = current;
-    if (!await withProfile((profile) => recordProviderModelAccess(profile, account, lineage, generation, modelId, wireModelId, outcome, limits))) break;
+    if (!await withProfile((profile) => recordProviderModelAccess(profile, { account, lineage }, generation, modelId, wireModelId, outcome, limits))) break;
     current = { ...current, dueIds: current.dueIds.filter((id) => id !== modelId), outcomes: { ...current.outcomes, [modelId]: outcome } };
     await pass.onAccessAudit?.({ account, remaining: current.dueIds.length, modelId, outcome });
   }

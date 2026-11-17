@@ -28,10 +28,6 @@ type MaterializeRoleSnapshotDeps = {
   | { readonly config?: never; readonly activeProfileId?: never; readonly profileRoles: FlywheelConfig["profiles"][string]["roles"] }
 )
 
-function roleAssignmentsFromResolvedRoles(roles: ResolvedRoles): RoleAssignments {
-  return Object.fromEntries([...roles].map(([roleId, role]) => [roleId, roleAssignmentEntryFromSelection(role)]))
-}
-
 /** One seat's effective setting. `defaultEffort` is the effort of a
  *  workflow default that names no model; it stays in force when the model
  *  that serves the seat cannot take it as authored. */
@@ -130,7 +126,7 @@ export async function captureRoleAssignments(deps: MaterializeRoleSnapshotDeps):
   const roles = deps.config !== undefined
     ? await resolveCurrentRoles({ ...deps, additionalRoleIds: deps.personaRoleIds, authProfileId: deps.activeProfileId === undefined ? undefined : () => deps.activeProfileId ?? "" })
     : await resolveCurrentRoles({ ...deps, additionalRoleIds: deps.personaRoleIds })
-  return roleAssignmentsFromResolvedRoles(roles)
+  return Object.fromEntries([...roles].map(([roleId, role]) => [roleId, roleAssignmentEntryFromSelection(role)]))
 }
 
 /** Installs empty authored settings once, without catalog reads or generated defaults. */

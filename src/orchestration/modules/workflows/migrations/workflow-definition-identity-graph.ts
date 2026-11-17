@@ -159,8 +159,9 @@ function planAdoption(row: CandidateRow): PlannedAdoption {
   if (!isRecord(snapshot) || snapshot.kind !== "workflow") throw new Error("missing workflow snapshot")
   const workflow = Schema.decodeUnknownSync(FrozenWorkflowGraphSchema, { onExcessProperty: "ignore" })(snapshot.definition)
   if (workflow.id !== prior.workflowDefinitionId) throw new Error("workflow snapshot identity does not match control")
+  const { workflowSha256: _legacy, ...unhashed } = prior
   const adopted: DefinitionIdentity = {
-    ...withoutWorkflowHash(prior),
+    ...unhashed,
     graphSha256: hashDefinition(workflow.steps).sha256,
   }
   return {
@@ -169,11 +170,6 @@ function planAdoption(row: CandidateRow): PlannedAdoption {
     expectedSeq: row.expectedSeq,
     fact: buildDefinitionIdentityMigratedFact(DEFINITION_IDENTITY_GRAPH_MIGRATION_ID, prior, adopted),
   }
-}
-
-function withoutWorkflowHash(identity: Extract<DefinitionIdentity, { workflowSha256: string }>): Omit<typeof identity, "workflowSha256"> {
-  const { workflowSha256: _legacy, ...rest } = identity
-  return rest
 }
 
 function applyAdoptions(db: Database, planned: readonly PlannedAdoption[]): WorkflowDefinitionIdentityGraphMigration {

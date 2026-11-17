@@ -119,10 +119,10 @@ describe("auth status projection", () => {
 
     const instanceId = openCodeGo?.accounts[0]?.instanceId
     if (instanceId === undefined) throw new Error("expected OpenCode Go account")
-    await renameProviderInstance("opencode_go", instanceId, "Work", directory)
+    await renameProviderInstance({ providerId: "opencode_go", instanceId }, "Work", directory)
     const projection = createAuthStatusProjection({ initialProfile: profile, moduleSelection: completeModuleSelection, subscriptionSpendConsent: emptyConsent })
     expect((await projection.snapshot()).providers.find((provider) => provider.providerId === "opencode_go")?.accounts[0]?.displayLabel).toBe("Work")
-    await disconnectProviderInstance("opencode_go", instanceId, directory, { launcher: refusingLauncher })
+    await disconnectProviderInstance({ providerId: "opencode_go", instanceId }, directory, { launcher: refusingLauncher })
     expect(projection.replace(profile).providers.find((provider) => provider.providerId === "opencode_go")?.accounts).toEqual([])
   })
 
@@ -304,7 +304,7 @@ describe("auth status projection", () => {
     const instances = ["11111111-0000-4000-8000-00000000000a", "11111111-0000-4000-8000-00000000000b"]
     const models = { catalog: new Set<string>(), curatedDefault: new Set<string>(), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set<string>() }
     const state = service.prepare({
-      profileId: "default", autoEnableNewModels: true, authRevision: "a", preferenceRevision: "p", catalogs: new Map(), releaseDates: new Map(),
+      profileId: "default", autoEnableNewModels: true, inputRevision: { auth: "a", preferences: "p" }, catalogs: new Map(), releaseDates: new Map(),
       accountCatalogs: new Map(instances.map((instanceId) => [accessProviderAccountKey(candidate(instanceId)), models])),
       inventoryCandidates: new Map([entry(instances[0] ?? "", false), entry(instances[1] ?? "", true)]),
     })

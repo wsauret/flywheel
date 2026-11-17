@@ -38,10 +38,6 @@ interface SessionViewBase {
   notices: readonly SessionNotice[]
   compactionStartedAt: number | null
   roleAssignments?: RoleAssignments
-}
-
-export interface ChatSessionView extends SessionViewBase {
-  kind: "chat"
   /** Stable Flywheel key for the durable conversation tree. Always present;
    *  minted at session creation, sourced from the store entry (active) or the
    *  durable metadata (inactive), both of which require it. */
@@ -51,18 +47,16 @@ export interface ChatSessionView extends SessionViewBase {
   seedContext?: string
 }
 
+export interface ChatSessionView extends SessionViewBase {
+  kind: "chat"
+}
+
 interface SubagentSessionView extends SessionViewBase {
   kind: "subagent"
-  conversationId: string
-  providerConversationId?: string
-  seedContext?: string
 }
 interface WorkflowAgentSessionView extends SessionViewBase {
   kind: "workflow-agent"
   workflowMembership: WorkflowMembership
-  conversationId: string
-  providerConversationId?: string
-  seedContext?: string
 }
 
 export type SessionView = ChatSessionView | SubagentSessionView | WorkflowAgentSessionView

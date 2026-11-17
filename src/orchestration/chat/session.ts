@@ -175,7 +175,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
 
   const state = new ChatSessionState(deps.initialProviderConversationId, updateEntry)
 
-  const wiredSubscribers = wireSessionSubscribers(eventBus, infra, deps.metricsWriter, sessionId)
+  const wiredSubscribers = wireSessionSubscribers(eventBus, infra, sessionId, deps.metricsWriter)
   const eventUnsubs: Unsubscribe[] = [...wiredSubscribers.unsubscribes]
 
   const session = createOutputSession({ updateEntry, sessionId, executionCwd })

@@ -138,16 +138,20 @@ export interface ModuleSessionDeletion {
     deliverNotification?: ParentNotificationDelivery
   }): Promise<void>
 }
-/** What a kind owner's control of one child reads and runs: the
- *  composition's hosts, module services, and store (`reader` is the store
- *  that keys live run controls). */
-export interface ChildSessionPorts {
-  readonly hosts: RetainedOperationHosts
-  readonly modules: ModuleServices
+/** One project's session store: the store that keys live run controls
+ *  (`reader`), the reader of its projections, and its writer. */
+export interface SessionStorePorts {
+  readonly projectRoot: string
   readonly reader: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
-  readonly projectRoot: string
+}
+
+/** What a kind owner's control of one child reads and runs: the
+ *  composition's hosts, module services, and store. */
+export interface ChildSessionPorts extends SessionStorePorts {
+  readonly hosts: RetainedOperationHosts
+  readonly modules: ModuleServices
   readonly deliverNotification: ParentNotificationDelivery
 }
 
@@ -348,12 +352,8 @@ export interface SessionToolSummaryReader {
    *  reader. Idempotent; a reader that holds nothing omits it. */
   dispose?(): void
 }
-export interface SessionHistoryRecoveryInput {
+export interface SessionHistoryRecoveryInput extends SessionStorePorts {
   readonly sessionId: string
-  readonly reader: AsyncEventStateReadSurface
-  readonly projectionReader: AsyncEventStateReadSurface
-  readonly writer: AsyncEventWriter
-  readonly projectRoot: string
   readonly fallbackConversationId?: string
   readonly protectedToolUseIds?: ReadonlySet<string>
 }
@@ -575,12 +575,8 @@ export interface ModuleChildSessionHistory {
     readonly authorizationId: string
     readonly continuation: number
   }): EventStoreAppend
-  createAuthority(input: {
+  createAuthority(input: SessionStorePorts & {
     readonly manager: Pick<SessionManager, "allocateId" | "publishSubagent" | "read" | "publishActivation">
-    readonly eventStore: AsyncEventStateReadSurface
-    readonly projectionReader: AsyncEventStateReadSurface
-    readonly eventWriter: AsyncEventWriter
-    readonly projectRoot: string
     readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
     readonly attachProjection?: AttachChildSessionProjection
   }): ChildSessionAuthority

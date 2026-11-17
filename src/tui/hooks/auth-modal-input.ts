@@ -135,10 +135,9 @@ export function createAuthModalInput(deps: AuthModalInputDeps) {
   function prepare(): void {
     deps.beginSettingEdit()
     reset()
-    const view = deps.view()
-    const editor = view.kind === "rename-input" ? renameEditor
-      : view.kind === "profile-create-input" || view.kind === "profile-rename-input" ? profileEditor : undefined
-    if (editor !== undefined) editor.setSelection(0, deps.draft().text.length)
+    const editor = textEditorOf(deps.view())
+    // A name edit opens with the current name selected, so typing replaces it; a login field opens empty.
+    if (editor === renameEditor || editor === profileEditor) editor.setSelection(0, deps.draft().text.length)
   }
 
   function reset(): void {

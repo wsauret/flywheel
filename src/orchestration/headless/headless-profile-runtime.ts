@@ -4,7 +4,7 @@ import type { NotificationEpisodeInput } from "../../infra/notification-episode.
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { ProviderConnection } from "../../infra/auth/auth-context.js"
 import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js"
-import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "./benchmark-auth-file.js"
+import { captureHeadlessSnapshotConnection, consumeHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "./benchmark-auth-file.js"
 import type { ModelsClient } from "../../infra/llm/models.js"
 import type { UsageAuthorityGeneration, UsageSettlementAuthorityLease } from "../agent-runtime/usage-settlement.js"
 import { createProfileRequestService, type ProfileRequestWorkflowPreparation } from "../auth/profile-request-service.js"
@@ -71,7 +71,7 @@ export async function resolveHeadlessAuth(
     const profiles = selected(selection?.profile)
     return { profiles, profile: await resolveHeadlessAuthProfile(profiles) }
   }
-  const snapshot = readHeadlessAuthSnapshot(selection.snapshotPath, providers)
+  const snapshot = consumeHeadlessAuthSnapshot(selection.snapshotPath, providers)
   const requested = await selected(selection.profile).resolve()
   if (requested.source === "environment" && requested.id !== snapshot.profile) throw new Error(`The headless auth snapshot is for profile ${snapshot.profile}, but this run selects profile ${requested.id}. Run with --auth-profile ${snapshot.profile}.`)
   const profiles = selected(snapshot.profile)

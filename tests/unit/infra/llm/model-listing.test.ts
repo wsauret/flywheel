@@ -213,7 +213,7 @@ test("cached first-party rows are regrouped through current baseline relationshi
       offerings: [{ wireModelId: "unknown/stable", metadata: null, dataUse: "standard" as const, transport: "openai-responses" as const }],
     },
   ];
-  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch)], classifySlot), account, LINEAGE, savedRows, TEST_CATALOG_LIMITS);
+  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch)], classifySlot), { account, lineage: LINEAGE }, savedRows, TEST_CATALOG_LIMITS);
   access.close();
   const original = globalThis.fetch;
   const document = modelsDevDocument();
@@ -268,11 +268,11 @@ test("two cached accounts share one current baseline and reconcile independently
   // The accounts of a subscription provider live in a subscription credential slot.
   const subscriptionSlots: CredentialSlotClassifier = (id) => id === "delayed" ? "subscription" : classifySlot(id);
   seedDelayedCredential(authDir, [{ id: "a", lineageId: LINEAGE_A }, { id: "b", lineageId: LINEAGE_B }]);
-  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch, "subscription")], subscriptionSlots), accounts[0], LINEAGE_A, [{
+  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch, "subscription")], subscriptionSlots), { account: accounts[0], lineage: LINEAGE_A }, [{
     modelId: "stale-a",
     offerings: [{ wireModelId: "route-a", metadata: { account: "a" }, dataUse: "standard" }],
   }], TEST_CATALOG_LIMITS);
-  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch, "subscription")], subscriptionSlots), accounts[1], LINEAGE_B, [{
+  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch, "subscription")], subscriptionSlots), { account: accounts[1], lineage: LINEAGE_B }, [{
     modelId: "stale-b",
     offerings: [{ wireModelId: "route-b", metadata: { account: "b" }, dataUse: "standard" }],
   }], TEST_CATALOG_LIMITS);
@@ -327,7 +327,7 @@ test("refresh failure retains stable saved rows without models.dev relationships
   const authDir = access.authDirectory;
   const account = { kind: "singleton", providerId: "delayed" } as const;
   seedDelayedCredential(authDir);
-  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch)], classifySlot), account, LINEAGE, [
+  await writeProviderModelCatalog(catalogProfile(access, [delayedProvider(unusedFetch)], classifySlot), { account, lineage: LINEAGE }, [
     { modelId: "removed", offerings: [{ wireModelId: "removed/stable", metadata: null, dataUse: "standard" }] },
     { modelId: "latest", offerings: [{ wireModelId: "~removed/latest", metadata: null, dataUse: "standard" }] },
   ], TEST_CATALOG_LIMITS);

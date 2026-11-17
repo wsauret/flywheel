@@ -31,24 +31,35 @@ import { backgroundWorkOutcome } from "./background-work-outcome.js";
 
 const log = Log.create({ service: "background-work" });
 
-export interface BackgroundWorkResult {
-  /** `partial`: the work stopped at its turn budget and `content` is what it
-   *  had, not a completion. The parent decides whether to retask or accept. */
-  /** `stopped`: a person ended the work with Stop; `cancelled`: the
-   *  requesting agent did. Both are terminal and never resume. */
-  /** `interrupted`: a person, the parent agent, or the runtime interrupted a child run. The run
-   *  has not ended: it keeps its parent binding and can resume (ARCH-SESSIONS-018). */
-  status: "completed" | "partial" | "failed" | "cancelled" | "stopped" | "interrupted";
-  /** Who interrupted an `interrupted` child run: a person, its parent
-   *  agent, or the runtime. Absent for a planned replacement's cut, which
-   *  the successor resumes without a notice. */
-  interruptedBy?: PausedBy;
+/** The result of background work, by status. */
+export type BackgroundWorkResult =
+  | BackgroundWorkResultBase & {
+    /** `partial`: the work stopped at its turn budget and `content` is what it
+     *  had, not a completion. The parent decides whether to retask or accept. */
+    /** `stopped`: a person ended the work with Stop; `cancelled`: the
+     *  requesting agent did. Both are terminal and never resume. */
+    status: "completed" | "partial" | "cancelled" | "stopped";
+  }
+  | BackgroundWorkResultBase & {
+    status: "failed";
+    /** Internal retry admission evidence. Present only for a model-run failure. */
+    modelFailure?: true;
+  }
+  | BackgroundWorkResultBase & {
+    /** `interrupted`: a person, the parent agent, or the runtime interrupted a child run. The run
+     *  has not ended: it keeps its parent binding and can resume (ARCH-SESSIONS-018). */
+    status: "interrupted";
+    /** Who interrupted the child run: a person, its parent agent, or the
+     *  runtime. Absent for a planned replacement's cut, which the successor
+     *  resumes without a notice. */
+    interruptedBy?: PausedBy;
+  };
+
+interface BackgroundWorkResultBase {
   content: string;
   /** A wait's notice that a route may deliver with the parked tool results it follows (`ConversationMessage`
    *  `runtimeNotice`): only a reply wait's end without a reply sets it. */
   runtimeNotice?: true;
-  /** Internal retry admission evidence. Present only for a model-run failure. */
-  modelFailure?: true;
   executionOutputTail?: string;
   /** A background command has one exactly when its exit was observed. One
    *  without it ended with no recorded outcome, as in a crash. */
@@ -72,7 +83,7 @@ export interface BackgroundWorkResult {
 
 /** The result of work that ended. An interrupted run has not ended, so it
  *  never records a completion. */
-export type EndedWorkResult = BackgroundWorkResult & { readonly status: Exclude<BackgroundWorkResult["status"], "interrupted"> };
+export type EndedWorkResult = Exclude<BackgroundWorkResult, { readonly status: "interrupted" }>;
 
 /** Identity pair of the originating tool call. Deferred facts written after
  *  dispatch (live output tails, terminal results, background meta) echo the

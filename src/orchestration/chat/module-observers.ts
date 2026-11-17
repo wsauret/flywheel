@@ -51,7 +51,7 @@ export function createModuleChatObservers(
   // A module selection applies from the next request, so the observer set is
   // reconciled once here and at every turn boundary. The tool inputs between
   // them are delivered to the set as it stands.
-  function current(): ReadonlyMap<Declaration, ModuleChatObserver> {
+  function reconcileObservers(): ReadonlyMap<Declaration, ModuleChatObserver> {
     if (disposed) return active
     const selected = selection().observers.filter((entry) => entry.seam === "chat")
     const ids = new Set(selected)
@@ -69,13 +69,13 @@ export function createModuleChatObservers(
     syncToolInputSubscription()
     return active
   }
-  current()
+  reconcileObservers()
   return {
     async onTurnComplete(reason) {
-      await Promise.all([...current()].map(([id, observer]) => track(id, () => observer.onTurnComplete?.(reason))))
+      await Promise.all([...reconcileObservers()].map(([id, observer]) => track(id, () => observer.onTurnComplete?.(reason))))
     },
     async onCompactionContinuation() {
-      await Promise.all([...current()].map(([id, observer]) => track(id, () => observer.onCompactionContinuation?.())))
+      await Promise.all([...reconcileObservers()].map(([id, observer]) => track(id, () => observer.onCompactionContinuation?.())))
     },
     async dispose() {
       if (!disposed) {

@@ -189,7 +189,7 @@ export async function listModelOptionsForSlot(
   if (isInheriting) for (const row of rows) if (!row.inherit) row.current = false;
   if (inheritedSelection) {
     const matching = rows.find((row) => row.model !== null && sameModelId(row.model, inheritedSelection.model));
-    const efforts = matching?.efforts ?? await effortOptionsForModel(inheritedSelection.model, options);
+    const efforts = matching?.efforts ?? effortOptionsForMetadata(options.modelInfos?.get(normalizeSelectableModelId(inheritedSelection.model)));
     rows.push({
       slot,
       model: null,
@@ -321,10 +321,6 @@ function assignmentSettings(deps: ModelConfigDeps) {
 function assignmentRoles(deps: ModelConfigDeps, available: ReadonlyMap<ModelFamily, ReadonlySet<string>>, options: TierResolutionOptions, requested: ReadonlySet<string>) {
   const profile = profileRoleSettings(deps.config.profiles[deps.authProfileId?.() ?? ""]?.roles, deps.roleEnvironment);
   return previewSessionRoles(deps.sessionRoleAssignments ?? { defaults: {}, overrides: {} }, profile, available, options, requested, deps.agentPersonas);
-}
-
-async function effortOptionsForModel(model: string, options: TierResolutionOptions): Promise<readonly ModelSelectionEffort[]> {
-  return effortOptionsForMetadata(options.modelInfos?.get(normalizeSelectableModelId(model)));
 }
 
 /** Tier resolution reads the account snapshot the caller names. */

@@ -29,7 +29,7 @@ const DEFAULT_CANDIDATE_CATALOGS: ReadonlyMap<string, ProviderModelInventoryCand
   catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
 }]])
 const NO_DATES: ReadonlyMap<string, string> = new Map()
-const INPUT_REVISIONS = { authRevision: "auth-revision", preferenceRevision: "preference-revision" }
+const INPUT_REVISIONS = { inputRevision: { auth: "auth-revision", preferences: "preference-revision" } }
 
 const persistRevision = async (): Promise<string> => "preference-revision-next"
 const trainingRoutesDisabled = (): boolean => false
@@ -100,8 +100,8 @@ describe("provider-model preference service", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (providerId) => providerId === "openai_api" ? "OpenAI" : providerId,
       allowTrainingRoutes: trainingRoutesDisabled,
-      persist: async ({ profileId, account, expectedAuthRevision, expectedPreferenceRevision, modelId, checked }) => {
-        writes.push(`${profileId}:${account.providerId}:${modelId}:${checked}:${expectedAuthRevision}:${expectedPreferenceRevision}`)
+      persist: async ({ profileId, account, expected, modelId, checked }) => {
+        writes.push(`${profileId}:${account.providerId}:${modelId}:${checked}:${expected.auth}:${expected.preferences}`)
         writeStarted.resolve()
         await new Promise<void>((resolve) => { releaseWrite = resolve })
         return "preference-revision-next"
@@ -566,7 +566,7 @@ describe("provider-model preference service", () => {
     expect(view).toEqual(expect.objectContaining({ recheckAvailable: true, audit: { remaining: 0, refused: 1 }, rows: expect.arrayContaining([expect.objectContaining({ modelId: "gpt-5", accessState: "pending" })]) }))
     expect(view).toEqual(Schema.decodeUnknownSync(ProviderModelViewSchema)(view))
     expect(await service.query("work", target("chatgpt", "b"))).not.toHaveProperty("recheckAvailable")
-    expect(requests).toEqual([{ profileId: "work", account: { kind: "subscription", providerId: "supergrok", instanceId: "a" }, expectedAuthRevision: "auth-revision", expectedPreferenceRevision: "preference-revision" }])
+    expect(requests).toEqual([{ profileId: "work", account: { kind: "subscription", providerId: "supergrok", instanceId: "a" }, expected: { auth: "auth-revision", preferences: "preference-revision" } }])
     expect(service.state("work")).toBe(state)
     expect(writes).toEqual([])
 

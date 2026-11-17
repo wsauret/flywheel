@@ -9,6 +9,7 @@ import type { ShellServices } from "./shell-state.js"
 import type { AuthProfileScopeLabel } from "./auth-profile-selection.js"
 import { buildAuthRows, buildProviderOptions, type AuthView, type ProviderOption, type ProviderSettingsTarget, type SubscriptionCapabilityAccount } from "./auth-modal-options.js"
 import type { SubscriptionSpendConsentControl } from "./use-subscription-spend-consent-control.js"
+import type { SubscriptionAccountTarget } from "./auth-modal-types.js"
 import { automaticDialogsEnabled } from "./automatic-dialogs.js"
 import { PAID_USE_SETTINGS_LOAD_FAILURE } from "../../protocol/client/provider-account-copy.js"
 
@@ -41,7 +42,7 @@ interface AuthModalProviderSettingsDeps {
   readonly authFilePath: () => string | undefined
 }
 
-function resolveProviderSettings(auth: RuntimeAuthView, providerId: string, accountCorrelationId: string, profileScopeLabel: AuthProfileScopeLabel): { readonly providers: ProviderOption[]; readonly view: ProviderSettingsView } | undefined {
+function resolveProviderSettings(auth: RuntimeAuthView, { providerId, accountCorrelationId }: SubscriptionAccountTarget, profileScopeLabel: AuthProfileScopeLabel): { readonly providers: ProviderOption[]; readonly view: ProviderSettingsView } | undefined {
   const providers = buildProviderOptions(auth.providers, auth.subscriptionSpendConsent)
   const option = providers.find((candidate) => candidate.id === providerId)
   const capability = option?.capabilityAccounts.find((candidate) => candidate.accountCorrelationId === accountCorrelationId)
@@ -55,13 +56,13 @@ function resolveProviderSettings(auth: RuntimeAuthView, providerId: string, acco
 
 export function createAuthModalProviderSettings(deps: AuthModalProviderSettingsDeps) {
   /** Shows the paid-use question for one exact account inside the open modal. */
-  function showPaidUseQuestion(auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string, owner: ModalHandle, returnTo: PaidUseQuestionView["returnTo"]): boolean {
-    const resolved = resolveProviderSettings(auth, providerId, accountCorrelationId, deps.profileScopeLabel())
+  function showPaidUseQuestion(auth: RuntimeAuthView, snapshotPosition: number, target: SubscriptionAccountTarget, owner: ModalHandle, returnTo: PaidUseQuestionView["returnTo"]): boolean {
+    const resolved = resolveProviderSettings(auth, target, deps.profileScopeLabel())
     if (!resolved || resolved.view.target.kind !== "account" || resolved.view.target.capability === undefined) return false
     const { account, capability } = resolved.view.target
     batch(() => {
       deps.showSettings({ kind: "paid-use-question", option: resolved.view.option, account, capability, originCursor: resolved.view.originCursor, returnTo }, resolved.providers)
-      deps.consent.openQuestion(auth.subscriptionSpendConsent, snapshotPosition, accountCorrelationId, owner)
+      deps.consent.openQuestion(auth.subscriptionSpendConsent, snapshotPosition, target.accountCorrelationId, owner)
     })
     return true
   }
@@ -86,7 +87,7 @@ export function createAuthModalProviderSettings(deps: AuthModalProviderSettingsD
         : candidate.accountCorrelationId === subscriptionSpendAccountCorrelationId(consent.profileId, providerId, instanceId))
       const capability = connected ?? waiting[0]
       if (!capability) return "none"
-      return showPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, providerId, capability.accountCorrelationId, owner, "list") ? "opened" : "none"
+      return showPaidUseQuestion(snapshot.auth, snapshot.snapshotPosition, { providerId, accountCorrelationId: capability.accountCorrelationId }, owner, "list") ? "opened" : "none"
     } catch {
       if (deps.attemptCurrent(attemptId)) deps.showToast({ message: PAID_USE_SETTINGS_LOAD_FAILURE, variant: "warning" })
       return "failed"
@@ -94,10 +95,10 @@ export function createAuthModalProviderSettings(deps: AuthModalProviderSettingsD
   }
 
   /** Opens the modal on the paid-use question for one account; answering it closes the modal. */
-  function openPaidUseQuestion(auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string): boolean {
+  function openPaidUseQuestion(auth: RuntimeAuthView, snapshotPosition: number, target: SubscriptionAccountTarget): boolean {
     deps.openAuthModal()
     const owner = deps.owner()
-    return owner?.isOpen() === true && showPaidUseQuestion(auth, snapshotPosition, providerId, accountCorrelationId, owner, "close")
+    return owner?.isOpen() === true && showPaidUseQuestion(auth, snapshotPosition, target, owner, "close")
   }
 
   async function openAccountSettings(option: ProviderOption, account: AuthProviderAccountStatus, capability: SubscriptionCapabilityAccount | undefined, originCursor: number): Promise<void> {
@@ -127,15 +128,15 @@ export function createAuthModalProviderSettings(deps: AuthModalProviderSettingsD
     deps.showSettings({ kind: "provider-settings", option, target, originCursor, ...(attentionPath === undefined ? {} : { attentionPath }), ...(option.freeRoutes === undefined ? {} : { freeRoutes: { ...option.freeRoutes, changing: false } }) })
   }
 
-  function openAuthAccountDetail(auth: RuntimeAuthView, snapshotPosition: number, providerId: string, accountCorrelationId: string, focusEnvelopeId?: string): boolean {
-    const resolved = resolveProviderSettings(auth, providerId, accountCorrelationId, deps.profileScopeLabel())
+  function openAuthAccountDetail(auth: RuntimeAuthView, snapshotPosition: number, target: SubscriptionAccountTarget, focusEnvelopeId?: string): boolean {
+    const resolved = resolveProviderSettings(auth, target, deps.profileScopeLabel())
     if (!resolved) return false
     deps.openAuthModal()
     const owner = deps.owner()
     if (!owner?.isOpen()) return false
     batch(() => {
       deps.showSettings(resolved.view, resolved.providers)
-      deps.consent.openProviderSettings(auth.subscriptionSpendConsent, snapshotPosition, accountCorrelationId, owner, focusEnvelopeId)
+      deps.consent.openProviderSettings(auth.subscriptionSpendConsent, snapshotPosition, target.accountCorrelationId, owner, focusEnvelopeId)
     })
     return true
   }

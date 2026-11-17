@@ -29,12 +29,12 @@ test("preserves pending selections through policy changes and audit publications
   const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id,
     allowTrainingRoutes: () => false,
-    persist: ({ account, modelId, state, currentAccounts, expectedAuthRevision, expectedPreferenceRevision }) =>
-      setProviderModelPreference(access, account, modelId, state, currentAccounts, expectedAuthRevision, expectedPreferenceRevision),
-    persistAllDeselected: ({ account, modelIds, currentAccounts, expectedAuthRevision, expectedPreferenceRevision }) =>
-      deselectAllProviderModels(access, account, modelIds, currentAccounts, expectedAuthRevision, expectedPreferenceRevision),
-    persistAutoEnableNewModels: ({ enabled, accountCatalogs, currentAccounts, expectedAuthRevision, expectedPreferenceRevision }) =>
-      setProviderAutoEnableNewModels(access, enabled, accountCatalogs, currentAccounts, expectedAuthRevision, expectedPreferenceRevision),
+    persist: ({ account, modelId, state, currentAccounts, expected }) =>
+      setProviderModelPreference(access, account, modelId, state, currentAccounts, expected),
+    persistAllDeselected: ({ account, modelIds, currentAccounts, expected }) =>
+      deselectAllProviderModels(access, account, modelIds, currentAccounts, expected),
+    persistAutoEnableNewModels: ({ enabled, accountCatalogs, currentAccounts, expected }) =>
+      setProviderAutoEnableNewModels(access, enabled, accountCatalogs, currentAccounts, expected),
   })
   const refresh = async () => {
     const resolved = await resolveProviderModelCatalog({
@@ -48,7 +48,7 @@ test("preserves pending selections through policy changes and audit publications
     })
     service.publish(service.prepare({
       profileId: "work", autoEnableNewModels: resolved.autoEnableNewModels,
-      authRevision: authStoreRevision(access), preferenceRevision: providerModelPreferencesRevision(access),
+      inputRevision: { auth: authStoreRevision(access), preferences: providerModelPreferencesRevision(access) },
       catalogs: resolved.providers, accountCatalogs: resolved.accounts,
       inventoryCandidates: new Map([...resolved.inventoryCandidates].map(([id, entry]) => [id, {
         ...entry, catalog: { kind: "available" as const, provenance: "models-dev-bundled" as const, liveOutcome: "valid" as const },

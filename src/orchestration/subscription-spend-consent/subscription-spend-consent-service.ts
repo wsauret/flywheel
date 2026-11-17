@@ -23,8 +23,8 @@ export interface SubscriptionSpendAuthorization {
 export interface SubscriptionSpendConsentCapture {
   readonly profileId: string;
   readonly usageGeneration?: number;
-  readonly authorityIncarnation?: string;
-  readonly authorityRevision?: number;
+  /** The consent authority that the capture read; absent when the capture failed. */
+  readonly authority?: { readonly incarnation: string; readonly revision: number };
   readonly rows: readonly SubscriptionSpendConsentRow[];
   readonly authorizations: ReadonlyMap<string, SubscriptionSpendAuthorization>;
   readonly message?: typeof SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE;
@@ -95,7 +95,7 @@ function immutableSpendSource(source: SubscriptionUsageSpendSource): Subscriptio
 }
 
 function protocolView(capture: SubscriptionSpendConsentCapture, options: SubscriptionSpendConsentServiceOptions): SubscriptionSpendConsentView {
-  if (capture.authorityIncarnation === undefined || capture.authorityRevision === undefined || capture.usageGeneration === undefined) return Object.freeze({ kind: "unavailable", profileId: capture.profileId, message: SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE });
+  if (capture.authority === undefined || capture.usageGeneration === undefined) return Object.freeze({ kind: "unavailable", profileId: capture.profileId, message: SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE });
   const accounts = new Map<string, {
     accountCorrelationId: string;
     providerId: string;
@@ -138,8 +138,8 @@ function protocolView(capture: SubscriptionSpendConsentCapture, options: Subscri
     kind: "available",
     profileId: capture.profileId,
     usageGeneration: capture.usageGeneration,
-    authorityIncarnation: capture.authorityIncarnation,
-    authorityRevision: capture.authorityRevision,
+    authorityIncarnation: capture.authority.incarnation,
+    authorityRevision: capture.authority.revision,
     accounts: Object.freeze([...accounts.values()].map((account) => Object.freeze({ ...account, modes: Object.freeze(account.modes.map((mode) => Object.freeze(mode))) }))),
   });
 }
@@ -191,7 +191,7 @@ export function createSubscriptionSpendConsentService(options: SubscriptionSpend
       authorityIncarnation: consent.incarnation,
       authorityRevision: consent.revision,
     })]]));
-    return Object.freeze({ profileId: options.profileId, usageGeneration: generation, authorityIncarnation: consent.incarnation, authorityRevision: consent.revision, rows, authorizations });
+    return Object.freeze({ profileId: options.profileId, usageGeneration: generation, authority: Object.freeze({ incarnation: consent.incarnation, revision: consent.revision }), rows, authorizations });
   };
 
   return {
@@ -202,8 +202,8 @@ export function createSubscriptionSpendConsentService(options: SubscriptionSpend
       try {
         const current = await capture();
         if (current.usageGeneration !== mutation.usageGeneration
-          || current.authorityIncarnation !== mutation.authorityIncarnation
-          || current.authorityRevision !== mutation.authorityRevision) return { kind: "stale" };
+          || current.authority?.incarnation !== mutation.authorityIncarnation
+          || current.authority.revision !== mutation.authorityRevision) return { kind: "stale" };
         const currentIds = current.rows.map((row) => row.envelope.id);
         if (currentIds.length !== mutation.envelopeIds.length || currentIds.some((id, index) => id !== mutation.envelopeIds[index])) return { kind: "invalid-envelope" };
         const envelopes = current.rows.map((row) => row.envelope);

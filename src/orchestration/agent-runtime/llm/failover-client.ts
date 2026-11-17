@@ -352,12 +352,6 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
     return () => { for (const stop of stops) stop() };
   }
 
-
-
-  function servingAttempt(staged: StagedProviderClient): ServingAttempt {
-    return staged.attempt;
-  }
-
   /** Pending candidates remain unresolved while ready candidates serve. Each
    * exact candidate is attempted once; planning never claims a probe. */
   function requestWalk(candidateAttributions: readonly AccessProviderCandidateAttribution[], mode: WalkMode, providerOptions?: ProviderRequestOptions, signal?: AbortSignal, prepare?: AdmittedModelRequestRun<unknown>["prepare"]) {
@@ -475,13 +469,12 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
             }
             try {
               const staged = await deps.build(attribution);
-              const attempt = servingAttempt(staged);
               if (prepare === undefined) {
                 attempted.add(routeKey(attribution));
                 handedOff = true;
-                return { candidate, attribution, servingAttempt: attempt, probes };
+                return { candidate, attribution, servingAttempt: staged.attempt, probes };
               }
-              const prepared = await prepare(attempt);
+              const prepared = await prepare(staged.attempt);
               if (!await affordable(attribution, prepared)) continue;
               waitSignal.throwIfAborted();
               const client = await staged.connect();
@@ -508,8 +501,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
         if (pending.length > 0) {
           if (mode === "plans" && pendingPlan) {
             const staged = await deps.build(pendingPlan);
-            const attempt = servingAttempt(staged);
-            return { candidate: pendingPlan.candidate, attribution: pendingPlan, servingAttempt: attempt, probes: [] };
+            return { candidate: pendingPlan.candidate, attribution: pendingPlan, servingAttempt: staged.attempt, probes: [] };
           }
           await availability.waitForChange(coalescedPending(pending), waitSignal);
           continue;

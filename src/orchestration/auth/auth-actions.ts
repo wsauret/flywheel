@@ -86,7 +86,10 @@ async function settleOrRollback(
   }
 }
 
-function selectedInstance(providerId: CredentialProviderId, instanceId: string, authDir: string): CredentialInstance {
+/** One stored account of a provider with a subscription credential slot. */
+type SubscriptionAccount = Omit<Extract<AccessProviderAccountIdentity, { readonly kind: "subscription" }>, "kind">;
+
+function selectedInstance({ providerId, instanceId }: SubscriptionAccount, authDir: string): CredentialInstance {
   const loaded = loadAuthStoreWithDiagnostics(authDir, installedCredentialProviderIds(), installedCredentialSlotClassifier());
   if (loaded.diagnostics.length > 0) throw new Error(`Cannot reconnect ${providerId}: auth store is invalid`);
   const collection = loaded.store[providerId];
@@ -190,9 +193,9 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
 /** Re-authenticates one API-key account and replaces it only if the selected
  *  instance still has the credential captured when the flow started. Only a
  *  provider with a subscription credential slot has instances to reconnect. */
-export async function reconnectWithApiKey(providerId: CredentialProviderId, instanceId: string, key: string, authDir: string, resolveKey: KeyResolver, settle: AuthCatalogSettlement): Promise<boolean> {
+export async function reconnectWithApiKey({ providerId, instanceId }: SubscriptionAccount, key: string, authDir: string, resolveKey: KeyResolver, settle: AuthCatalogSettlement): Promise<boolean> {
   if (installedCredentialSlotClassifier()(providerId) !== "subscription") throw new Error(`Credential provider ${providerId} does not support instance reconnect`);
-  const expected = selectedInstance(providerId, instanceId, authDir).credential;
+  const expected = selectedInstance({ providerId, instanceId }, authDir).credential;
   const original = key.trim();
   if (!original) throw new Error("API key must not be empty");
   const resolved = await resolveKey(original);
@@ -406,7 +409,7 @@ function recordSignedInPlan(usage: () => UsageAuthority, reading: SubscriptionUs
  *  as another account is the account changing. */
 export async function reconnectWithOAuth(definition: OAuthDefinition, instanceId: string, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, deps: Pick<OAuthLoginDeps, "start" | "resolve"> = { start: definition.auth.start, resolve: resolveAuthContext }): Promise<boolean> {
   const credentialId = credentialIdOf(definition);
-  const selected = selectedInstance(credentialId, instanceId, options.authDir);
+  const selected = selectedInstance({ providerId: credentialId, instanceId }, options.authDir);
   const previous = runtimeCredential(selected.credential);
   let replaced = false;
   await storeOAuthLogin(definition, { ...options, ...(previous.type === "oauth" ? { previous } : {}) }, {
@@ -454,7 +457,7 @@ export function providerLoginFlow(providerId: string, definitions: readonly Acce
   return definition.auth.flow === "browser" ? { flow: "browser", login, reconnect } : { flow: "device-code", login, reconnect };
 }
 
-export async function renameProviderInstance(providerId: CredentialProviderId, instanceId: string, label: string | undefined, authDir: string): Promise<void> {
+export async function renameProviderInstance({ providerId, instanceId }: SubscriptionAccount, label: string | undefined, authDir: string): Promise<void> {
   const external = externalLogin(providerId);
   if (external !== undefined) throw new Error(`${external.displayName} names each account by its email address and takes no label.`);
   await renameCredentialInstance(providerId, instanceId, label, authDir, installedCredentialSlotClassifier());
@@ -462,7 +465,7 @@ export async function renameProviderInstance(providerId: CredentialProviderId, i
 
 /** Removes one account. An external login's account logs out through its
  *  program; an account that the program no longer holds is already gone. */
-export async function disconnectProviderInstance(providerId: CredentialProviderId, instanceId: string, authDir: string, ports: Pick<ProviderAccountPorts, "launcher">): Promise<void> {
+export async function disconnectProviderInstance({ providerId, instanceId }: SubscriptionAccount, authDir: string, ports: Pick<ProviderAccountPorts, "launcher">): Promise<void> {
   const external = externalLogin(providerId);
   if (external === undefined) {
     await deleteCredentialInstance(providerId, instanceId, authDir, installedCredentialSlotClassifier());

@@ -68,6 +68,14 @@ export interface UsageModalHook {
   spendScroll: ModalScrollController
 }
 
+/** One usage read: its request id and the scope and profile it read. A newer request or another scope or profile
+ *  retires it. */
+interface UsageRequest {
+  readonly id: number
+  readonly scope: RuntimeAuthStatusScope
+  readonly profileId: string | undefined
+}
+
 function usageScope(sessionId: string | undefined): RuntimeAuthStatusScope {
   return sessionId === undefined ? { kind: "defaults" } : { kind: "session", sessionId }
 }
@@ -109,16 +117,17 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
   let activeProfileId = deps.effectiveProfileId()
 
   const sourceIds = (): readonly string[] => view() === "spend" ? spend()?.sources.map((source) => source.sourceId) ?? [] : view() === "history" ? history()?.sources.map((source) => source.sourceId) ?? [] : accounts()?.sources.map((source) => source.sourceId) ?? []
-  const isCurrent = (scope: RuntimeAuthStatusScope, profileId: string | undefined): boolean => sameScope(activeScope, scope) && profileId === activeProfileId && profileId === deps.effectiveProfileId()
-  const isLive = (id: number, scope: RuntimeAuthStatusScope, profileId: string | undefined): boolean => requestId === id && isCurrent(scope, profileId)
-  const fail = (id: number, scope: RuntimeAuthStatusScope, profileId: string | undefined, next: UsageReadFailure): void => {
-    if (!isLive(id, scope, profileId)) return
+  const nextRequest = (): UsageRequest => ({ id: ++requestId, scope: activeScope, profileId: activeProfileId })
+  const isCurrent = ({ scope, profileId }: UsageRequest): boolean => sameScope(activeScope, scope) && profileId === activeProfileId && profileId === deps.effectiveProfileId()
+  const isLive = (request: UsageRequest): boolean => requestId === request.id && isCurrent(request)
+  const fail = (request: UsageRequest, next: UsageReadFailure): void => {
+    if (!isLive(request)) return
     setLoading(false); setFailure(next)
   }
   /** A background check never reports a failure of its own: a failed check only says the reading can be behind, and a
    *  failed refresh that the person started stays until they act again. */
-  const settleCheck = (id: number, scope: RuntimeAuthStatusScope, profileId: string | undefined, delayed: boolean): void => {
-    if (!isLive(id, scope, profileId) || failure()?.kind === "failed") return
+  const settleCheck = (request: UsageRequest, delayed: boolean): void => {
+    if (!isLive(request) || failure()?.kind === "failed") return
     setFailure(delayed ? { kind: "delayed" } : undefined)
   }
   const reset = (): void => {
@@ -132,7 +141,8 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
 
   /** Shows the view's recorded result. A preview only displays it: the request that started it still owns `loading` and the
    *  failure. A background check settles as a check (`settleCheck`). */
-  async function queryView(next: UsageModalView, id: number, scope: RuntimeAuthStatusScope, profileId: string | undefined, { preserveScroll = false, preview = false, background = false } = {}): Promise<void> {
+  async function queryView(next: UsageModalView, request: UsageRequest, { preserveScroll = false, preview = false, background = false } = {}): Promise<void> {
+    const { scope, profileId } = request
     let failed: UsageReadFailure | undefined
     try {
       const result = next === "accounts"
@@ -140,7 +150,7 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
         : next === "spend"
           ? await deps.appService.query({ type: "usage.spend", scope, range: spendRange() })
           : await deps.appService.query({ type: "usage.history", scope, range: historyRange() })
-      if (!isLive(id, scope, profileId)) return
+      if (!isLive(request)) return
       if (result.profileId !== profileId) { if (!preview) setLoading(false); return }
       if (next === "accounts" && isKind(result, "usage.accounts")) { setAccounts(result); selectAvailable(result.sources.map((source) => source.sourceId)) }
       else if (next === "spend" && isKind(result, "usage.spend")) { setSpend(result); selectAvailable(result.sources.map((source) => source.sourceId)); if (!preserveScroll) spendScroll.reset() }
@@ -148,18 +158,18 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
       else failed = readFailure(`Invalid usage ${next} response fields: ${invalidUsageFields(result)}`)
     } catch (cause) { failed = readFailure(cause) }
     if (preview) return
-    if (background) settleCheck(id, scope, profileId, failed !== undefined)
-    else if (failed === undefined) { setFailure(undefined); setLoading(false) } else fail(id, scope, profileId, failed)
+    if (background) settleCheck(request, failed !== undefined)
+    else if (failed === undefined) { setFailure(undefined); setLoading(false) } else fail(request, failed)
   }
   function loadUsage(): void {
     const scope = usageScope(deps.foregroundId())
     const profileId = deps.effectiveProfileId()
     if (!sameScope(scope, activeScope) || profileId !== activeProfileId) reset()
     activeScope = scope; activeProfileId = profileId
-    const id = ++requestId; const generation = modalGeneration
+    const request = nextRequest(); const generation = modalGeneration
     setLoading(true); setFailure(undefined)
     // The provider check in usage.open can take seconds, so the recorded reading shows first.
-    void queryView(view(), id, scope, profileId, { preview: true })
+    void queryView(view(), request, { preview: true })
     void (async () => {
       let failed: UsageReadFailure | undefined
       try {
@@ -167,46 +177,45 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
         if (!("ok" in opened) || !opened.ok) failed = readFailure("error" in opened ? opened.error : "Invalid usage response")
       } catch (cause) { failed = readFailure(cause) }
       // A view switch replaces the request id while the check runs, so the open outlives it and shows the view selected now.
-      if (modalGeneration !== generation || !isCurrent(scope, profileId)) return
+      if (modalGeneration !== generation || !isCurrent(request)) return
       if (failed !== undefined) { setLoading(false); setFailure(failed); return }
       // A new request id retires the preview, so a late recorded reading never replaces the checked one.
-      const checked = ++requestId
+      const checked = nextRequest()
       setLoading(true)
-      await queryView(view(), checked, scope, profileId, { preserveScroll: true })
+      await queryView(view(), checked, { preserveScroll: true })
     })()
   }
   function closeUsageModal(): void { if (resetAttempt().kind === "busy") return; entry?.close(); currentScroll.reset(); spendScroll.reset() }
   async function refreshRecordedUsage(): Promise<void> {
     if (entry?.isOpen() !== true || loading() || refreshing || resetAttempt().kind === "busy") return
-    const id = ++requestId; const scope = activeScope; const profileId = activeProfileId
+    const request = nextRequest()
     refreshing = true
     try {
-      const metadata = await deps.appService.query({ type: "usage.metadata", scope })
-      if (!isLive(id, scope, profileId) || metadata.profileId !== profileId) return
+      const metadata = await deps.appService.query({ type: "usage.metadata", scope: request.scope })
+      if (!isLive(request) || metadata.profileId !== request.profileId) return
       const displayed = view() === "accounts" ? accounts() : view() === "spend" ? spend() : history()
-      if (displayed?.revision === metadata.revision && displayed.authorityIncarnation === metadata.authorityIncarnation && displayed.generation === metadata.generation) { settleCheck(id, scope, profileId, false); return }
-      await queryView(view(), id, scope, profileId, { preserveScroll: true, background: true })
-    } catch { settleCheck(id, scope, profileId, true) }
+      if (displayed?.revision === metadata.revision && displayed.authorityIncarnation === metadata.authorityIncarnation && displayed.generation === metadata.generation) { settleCheck(request, false); return }
+      await queryView(view(), request, { preserveScroll: true, background: true })
+    } catch { settleCheck(request, true) }
     finally { refreshing = false }
   }
   function refreshUsage(): void {
     if (entry?.isOpen() !== true || loading() || resetAttempt().kind === "busy") return
-    const id = ++requestId; const scope = activeScope; const profileId = activeProfileId
+    const request = nextRequest()
     setLoading(true); setFailure(undefined)
     void (async () => {
       try {
-        const refreshed = await deps.appService.dispatch({ type: "usage.refresh", scope })
-        if (!isLive(id, scope, profileId)) return
-        if (!("ok" in refreshed) || !refreshed.ok) { fail(id, scope, profileId, readFailure("error" in refreshed ? refreshed.error : "Invalid usage response")); return }
-        await queryView(view(), id, scope, profileId)
-      } catch (cause) { fail(id, scope, profileId, readFailure(cause)) }
+        const refreshed = await deps.appService.dispatch({ type: "usage.refresh", scope: request.scope })
+        if (!isLive(request)) return
+        if (!("ok" in refreshed) || !refreshed.ok) { fail(request, readFailure("error" in refreshed ? refreshed.error : "Invalid usage response")); return }
+        await queryView(view(), request)
+      } catch (cause) { fail(request, readFailure(cause)) }
     })()
   }
   function setUsageView(next: UsageModalView): void {
     if (next === view() || resetAttempt().kind === "busy") return
     setView(next); currentScroll.reset(); spendScroll.reset()
-    const id = ++requestId; const scope = activeScope; const profileId = activeProfileId
-    setLoading(true); setFailure(undefined); void queryView(next, id, scope, profileId)
+    setLoading(true); setFailure(undefined); void queryView(next, nextRequest())
   }
   function setSelectedSourceId(sourceId: string): void {
     if (!sourceIds().includes(sourceId) || sourceId === selectedSourceId() || resetAttempt().kind === "busy") return
@@ -220,11 +229,11 @@ export function useUsageModal(deps: UsageModalDeps): UsageModalHook {
   }
   function setSpendRange(range: UsageHistoryRange): void {
     setSpendRangeSignal(range)
-    if (view() === "spend") { const id = ++requestId; setLoading(true); void queryView("spend", id, activeScope, activeProfileId) }
+    if (view() === "spend") { const request = nextRequest(); setLoading(true); void queryView("spend", request) }
   }
   function setHistoryRange(range: UsageHistoryRange): void {
     setHistoryRangeSignal(range)
-    if (view() === "history") { const id = ++requestId; setLoading(true); void queryView("history", id, activeScope, activeProfileId) }
+    if (view() === "history") { const request = nextRequest(); setLoading(true); void queryView("history", request) }
   }
   function selectedResetReview() {
     const source = accounts()?.sources.find((candidate) => candidate.sourceId === selectedSourceId())

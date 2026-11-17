@@ -11,9 +11,13 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_ACCOUNTS = 128;
 const MAX_IDENTITY_BYTES = 1024;
 
-interface SavedProviderModelCatalog {
+/** One exact account lineage: a provider account and the lineage of the credential that it holds. */
+export interface AccountLineage {
   readonly account: AccessProviderAccountIdentity;
   readonly lineage: string;
+}
+
+interface SavedProviderModelCatalog extends AccountLineage {
   readonly rows: readonly CatalogCanonicalRow[];
   readonly audit?: ProviderModelAudit;
   readonly refusals?: SavedModelRefusals;
@@ -45,7 +49,7 @@ export function liveModelRefusals(refusals: SavedModelRefusals, now: number): Sa
   return Object.fromEntries(Object.entries(refusals).filter(([, refusal]) => Math.abs(now - refusal.at) < MODEL_REFUSAL_LIFETIME_MS));
 }
 
-/** Everything saved for one exact account generation. `rows` is absent when no catalog is saved. */
+/** Everything saved for one exact account lineage. `rows` is absent when no catalog is saved. */
 export interface SavedProviderModels {
   readonly rows: readonly CatalogCanonicalRow[] | undefined;
   readonly audit: ProviderModelAudit | undefined;
@@ -54,10 +58,8 @@ export interface SavedProviderModels {
 
 export type ProviderModelAccessOutcome = "completed" | "refused";
 interface ProviderModelAccessOutcomes { readonly [modelId: string]: ProviderModelAccessOutcome }
-/** Settled access checks transferred with the credential generation that proved them. No catalog rows or probe authority are carried. */
-export interface ProviderModelAccessSnapshot {
-  readonly account: AccessProviderAccountIdentity;
-  readonly lineage: string;
+/** Settled access checks transferred with the account lineage that proved them. No catalog rows or probe authority are carried. */
+export interface ProviderModelAccessSnapshot extends AccountLineage {
   readonly outcomes: ProviderModelAccessOutcomes;
 }
 interface ProviderModelAudit {
@@ -78,20 +80,20 @@ export interface CatalogProfile {
   readonly currentLineage: (account: AccessProviderAccountIdentity) => string | undefined;
 }
 
-function savedEntry(document: CatalogDocument | undefined, account: AccessProviderAccountIdentity, lineage: string): SavedProviderModelCatalog | undefined {
+function savedEntry(document: CatalogDocument | undefined, { account, lineage }: AccountLineage): SavedProviderModelCatalog | undefined {
   const key = accessProviderAccountKey(account);
   return document?.accounts.find((entry) => accessProviderAccountKey(entry.account) === key && entry.lineage === lineage);
 }
 
-/** The entry fields that every rewrite of one account generation keeps. */
+/** The entry fields that every rewrite of one account lineage keeps. */
 function keptEvidence(entry: SavedProviderModelCatalog | undefined): Pick<SavedProviderModelCatalog, "audit" | "refusals"> {
   return { ...(entry?.audit === undefined ? {} : { audit: entry.audit }), ...(entry?.refusals === undefined ? {} : { refusals: entry.refusals }) };
 }
 
-/** Reads the saved catalog, audit, and refusals of one exact account generation with one read of the file.
+/** Reads the saved catalog, audit, and refusals of one exact account lineage with one read of the file.
  *  Malformed documents are ignored as a whole. */
-export function readSavedProviderModels(access: AuthProfileAccess, account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits): SavedProviderModels | undefined {
-  const entry = savedEntry(readDocument(access, limits), account, lineage);
+export function readSavedProviderModels(access: AuthProfileAccess, accountLineage: AccountLineage, limits: CatalogLimits): SavedProviderModels | undefined {
+  const entry = savedEntry(readDocument(access, limits), accountLineage);
   if (entry === undefined) return undefined;
   return { rows: entry.rows.length === 0 ? undefined : entry.rows, audit: entry.audit, refusals: entry.refusals ?? {} };
 }
@@ -99,7 +101,8 @@ export function readSavedProviderModels(access: AuthProfileAccess, account: Acce
 /** Replaces the candidate basis without resetting settled outcomes: a candidate that the basis adds with no outcome
  *  becomes due, and a completed one stays settled. A refused one is checked again by every audit
  *  (`runAccessAudit`), and a manual recheck makes every candidate due. */
-export async function writeProviderModelCandidates({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, rows: readonly CatalogCanonicalRow[], candidateIds: readonly string[], limits: CatalogLimits, manual = false): Promise<boolean> {
+export async function writeProviderModelCandidates({ access, currentLineage }: CatalogProfile, accountLineage: AccountLineage, rows: readonly CatalogCanonicalRow[], candidateIds: readonly string[], limits: CatalogLimits, manual = false): Promise<boolean> {
+  const { account, lineage } = accountLineage;
   const validated = validateCanonicalRows(rows, limits);
   if (validated.kind !== "valid" || candidateIds.length > MAX_CANDIDATES || new Set(candidateIds).size !== candidateIds.length || candidateIds.some((id) => !boundedIdentity(id))) return false;
   return access.withLock(() => {
@@ -107,7 +110,7 @@ export async function writeProviderModelCandidates({ access, currentLineage }: C
     const document = readDocument(access, limits);
     if (!document) return false;
     const key = accessProviderAccountKey(account);
-    const saved = savedEntry(document, account, lineage);
+    const saved = savedEntry(document, accountLineage);
     const previous = saved?.audit;
     const basis = [...candidateIds].sort();
     const changed = previous === undefined || basis.length !== previous.candidateIds.length || basis.some((id, index) => id !== previous.candidateIds[index]);
@@ -127,15 +130,15 @@ export async function writeProviderModelCandidates({ access, currentLineage }: C
  * saved refusal of its wire model that a request proved (PI-MODEL-066); a pass of a model that was not refused keeps
  * that refusal.
  */
-export async function recordProviderModelAccess({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, generation: number, modelId: string, wireModelId: string, outcome: ProviderModelAccessOutcome, limits: CatalogLimits): Promise<boolean> {
+export async function recordProviderModelAccess({ access, currentLineage }: CatalogProfile, accountLineage: AccountLineage, auditGeneration: number, modelId: string, wireModelId: string, outcome: ProviderModelAccessOutcome, limits: CatalogLimits): Promise<boolean> {
   return access.withLock(() => {
-    if (currentLineage(account) !== lineage) return false;
+    if (currentLineage(accountLineage.account) !== accountLineage.lineage) return false;
     const document = readDocument(access, limits);
     if (!document) return false;
-    const entry = savedEntry(document, account, lineage);
+    const entry = savedEntry(document, accountLineage);
     const previous = entry?.audit?.outcomes[modelId];
     const due = entry?.audit?.dueIds.includes(modelId) === true;
-    if (!entry?.audit || entry.audit.generation !== generation || (!due && previous !== "refused") || (outcome !== "completed" && outcome !== "refused")) return false;
+    if (!entry?.audit || entry.audit.generation !== auditGeneration || (!due && previous !== "refused") || (outcome !== "completed" && outcome !== "refused")) return false;
     const audit: ProviderModelAudit = { ...entry.audit, dueIds: entry.audit.dueIds.filter((id) => id !== modelId), outcomes: { ...entry.audit.outcomes, [modelId]: outcome } };
     const { [wireModelId]: ended, ...kept } = entry.refusals ?? {};
     const refusals = previous === "refused" && outcome === "completed" && ended !== undefined ? { refusals: kept } : {};
@@ -144,22 +147,23 @@ export async function recordProviderModelAccess({ access, currentLineage }: Cata
 }
 
 /**
- * Saves what a served request proved: the account generation refuses one wire model, or its extended window. The
+ * Saves what a served request proved: the account lineage refuses one wire model, or its extended window. The
  * refusal replaces an earlier one of the same wire model, and refusals that no longer apply are dropped. An account
  * with no saved entry gets one that holds only the refusal. Returns false, and writes nothing, when the lineage is
  * no longer the account's current credential or the refusal is malformed.
  */
-export async function recordProviderModelRefusal({ access, currentLineage }: CatalogProfile, account: AccessProviderAccountIdentity, lineage: string, wireModelId: string, refusal: SavedModelRefusal, limits: CatalogLimits): Promise<boolean> {
+export async function recordProviderModelRefusal({ access, currentLineage }: CatalogProfile, accountLineage: AccountLineage, wireModelId: string, refusal: SavedModelRefusal, limits: CatalogLimits): Promise<boolean> {
+  const { account, lineage } = accountLineage;
   if (!boundedIdentity(wireModelId) || decodeRefusal(refusal) === undefined) return false;
   return access.withLock(() => {
     if (currentLineage(account) !== lineage) return false;
     const document = readDocument(access, limits);
     if (!document) return false;
-    const entry = savedEntry(document, account, lineage);
+    const entry = savedEntry(document, accountLineage);
     const live = Object.entries(liveModelRefusals(entry?.refusals ?? {}, refusal.at)).filter(([id]) => id !== wireModelId);
     const refusals: SavedModelRefusals = Object.fromEntries([...live.slice(-(MAX_CANDIDATES - 1)), [wireModelId, refusal]]);
     const key = accessProviderAccountKey(account);
-    // An earlier credential generation of the account can never be read again, so the new entry replaces it.
+    // An earlier credential lineage of the account can never be read again, so the new entry replaces it.
     const accounts = document.accounts.filter((candidate) => accessProviderAccountKey(candidate.account) !== key);
     return writeDocument(access, { version: VERSION, accounts: [...accounts, { account, lineage, rows: entry?.rows ?? [], ...keptEvidence(entry), refusals }] }, limits);
   });
@@ -174,14 +178,14 @@ function writeDocument(access: AuthProfileAccess, document: CatalogDocument, lim
   return true;
 }
 
-/** Atomically replaces one exact account generation after reading auth.json under the profile lock. */
+/** Atomically replaces one exact account lineage after reading auth.json under the profile lock. */
 export async function writeProviderModelCatalog(
   { access, currentLineage }: CatalogProfile,
-  account: AccessProviderAccountIdentity,
-  lineage: string,
+  accountLineage: AccountLineage,
   rows: readonly CatalogCanonicalRow[],
   limits: CatalogLimits,
 ): Promise<boolean> {
+  const { account, lineage } = accountLineage;
   const validated = validateCanonicalRows(rows, limits);
   if (validated.kind !== "valid" || validated.rows.length === 0) return false;
   return access.withLock(() => {
@@ -190,18 +194,18 @@ export async function writeProviderModelCatalog(
     if (current === undefined) return false;
     const key = accessProviderAccountKey(account);
     const accounts = current.accounts.filter((entry) => accessProviderAccountKey(entry.account) !== key);
-    accounts.push({ account, lineage, rows: validated.rows, ...keptEvidence(savedEntry(current, account, lineage)) });
+    accounts.push({ account, lineage, rows: validated.rows, ...keptEvidence(savedEntry(current, accountLineage)) });
     return writeDocument(access, { version: VERSION, accounts }, limits);
   });
 }
 
-/** Deletes one rejected account generation without removing a newer reconnect generation. */
+/** Deletes one rejected account lineage without removing the newer lineage of a reconnect. */
 export async function deleteProviderModelCatalog(
   { access, currentLineage }: CatalogProfile,
-  account: AccessProviderAccountIdentity,
-  lineage: string,
+  accountLineage: AccountLineage,
   limits: CatalogLimits,
 ): Promise<boolean> {
+  const { account, lineage } = accountLineage;
   return access.withLock(() => {
     if (currentLineage(account) !== lineage) return false;
     const current = readDocument(access, limits);

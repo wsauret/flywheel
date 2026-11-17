@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Effect, Exit, Scope } from "effect";
 import { Log } from "../../../infra/log.js";
 import { errorMessage } from "../../../infra/error-message.js";
+import type { StartupDirectories } from "../../../infra/directory-authorities.js";
 import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { RuntimeEvent } from "../../../infra/runtime-event-types.js";
 import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js";
@@ -59,16 +60,19 @@ interface LearningReviewOneShotRequest {
   readonly onAttempt?: (attempt: ServingAttempt) => void;
 }
 
-interface LearningReviewChildRequest extends Omit<LearningReviewOneShotRequest, "onAttempt"> {
-  readonly onAttempt?: () => void;
+/** The model a review runs on, with its effort and provider options. */
+interface LearningReviewModelSetting {
   readonly model: string;
   readonly effort?: string;
   readonly providerOptions?: ProviderRequestOptions;
+}
+
+/** The directories a review child runs in. */
+type LearningReviewRoots = Pick<StartupDirectories, "projectRoot" | "userDataRoot" | "accountHome" | "executionCwd">;
+
+interface LearningReviewChildRequest extends Omit<LearningReviewOneShotRequest, "onAttempt">, LearningReviewModelSetting, LearningReviewRoots {
+  readonly onAttempt?: () => void;
   readonly interactionProfile: ModelInteractionProfile;
-  readonly projectRoot: string;
-  readonly userDataRoot: string;
-  readonly accountHome: string;
-  readonly executionCwd: string;
   readonly treeRootSessionId?: string;
   readonly signal?: AbortSignal;
   readonly onBudgetEvent?: (event: RuntimeEvent) => void;
@@ -94,14 +98,7 @@ class LearningReviewRequestError extends Error {
 }
 
 /** Resolve each review request from one profile capture and retain its admitted runtime through settlement. */
-export function createLearningReviewExecution(deps: {
-  readonly model?: string;
-  readonly effort?: string;
-  readonly providerOptions?: ProviderRequestOptions;
-  readonly projectRoot: string;
-  readonly userDataRoot: string;
-  readonly accountHome: string;
-  readonly executionCwd: string;
+export function createLearningReviewExecution(deps: Partial<LearningReviewModelSetting> & LearningReviewRoots & {
   readonly moduleSelection: import("../../modules.js").FirstPartyModuleComposition;
   readonly signal?: AbortSignal;
   readonly onBudgetEvent?: (event: RuntimeEvent) => void;

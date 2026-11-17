@@ -322,7 +322,7 @@ test("preserves contributor-only relationships through fresh, fallback, and save
   const authDir = access.authDirectory;
   const account = { kind: "singleton", providerId: "delayed" } as const;
   writeFileSync(join(authDir, "auth.json"), JSON.stringify({ delayed: { lineageId: LINEAGE, credential: { type: "api_key", key: "key" } } }));
-  expect(await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), account, LINEAGE, [{
+  expect(await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account, lineage: LINEAGE }, [{
     modelId: "stale",
     offerings: [{ wireModelId: "provider/gpt-contributor", metadata: null, dataUse: "standard" }],
   }], TEST_CATALOG_LIMITS)).toBe(true);

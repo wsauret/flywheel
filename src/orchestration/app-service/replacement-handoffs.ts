@@ -65,7 +65,7 @@ export interface ReplacementHandoffs {
    *  surface to serve again (PI-REMOTE-013). A project the phone held awake
    *  at the cut that hands commands over is named as held awake too.
    *  Answers true only when the recorded row still names the project. */
-  stopped(projectRoot: string, rows: SuccessorRows): Promise<boolean>
+  recordProjectStopped(projectRoot: string, rows: SuccessorRows): Promise<boolean>
   /** Synchronously reads whether this service's persisted handoff still names the project. */
   recoveryPending(projectRoot: string): boolean
   /** Predecessors whose handoff still names this project, excluding our own. */
@@ -167,7 +167,7 @@ export function createReplacementHandoffs(options: ReplacementHandoffsOptions): 
   // which waits for this process to stop serving the named projects, reads
   // it. A project whose stop never answers, after a crash or at its stop's
   // deadline, stays named, and a service that dies first leaves the whole row.
-  const stopped = async (projectRoot: string, rows: SuccessorRows): Promise<boolean> => {
+  const recordProjectStopped = async (projectRoot: string, rows: SuccessorRows): Promise<boolean> => {
     if (own === undefined) return false
     if (rows.handovers > 0 && own.awakeAtCut.has(projectRoot)) {
       own.phoneAwakeRoots.add(projectRoot)
@@ -267,7 +267,7 @@ export function createReplacementHandoffs(options: ReplacementHandoffsOptions): 
     await Promise.all([...roots].map((root) => duty(root)))
   }
 
-  return { handOff, join, stopped, recoveryPending, predecessorPids: (root) => pendingFor(root).map((row) => row.predecessorPid), continueAll, dispose: () => disposal.abort() }
+  return { handOff, join, recordProjectStopped, recoveryPending, predecessorPids: (root) => pendingFor(root).map((row) => row.predecessorPid), continueAll, dispose: () => disposal.abort() }
 }
 
 /** Waits while the process that left `handoff` still serves a project the

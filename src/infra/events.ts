@@ -5,9 +5,6 @@ import { MessageSenderSchema } from "./output-blocks.js";
 import { SESSION_NOTICE_PRESENTATION_IDS } from "./error-presentation.js";
 import type { SessionNoticeOperation } from "./session-notice.js";
 
-type EventId = string;
-type SessionId = string;
-
 type EventActor = "agent" | "flywheel" | "provider" | "user" | "workflow";
 
 interface EventDefinition<
@@ -27,10 +24,10 @@ function defineEvent<const T extends string, const S extends { readonly Type: un
 }
 
 type FlywheelEventEnvelope<T extends string, D> = {
-  readonly id: EventId;
+  readonly id: string;
   readonly type: T;
   readonly version?: number;
-  readonly sessionId: SessionId;
+  readonly sessionId: string;
   readonly timestamp: number;
   readonly data: D;
 };

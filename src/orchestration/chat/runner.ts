@@ -193,9 +193,9 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
     const sessionMessaging = createSessionMessaging({ manager: deps.manager, projectionReader: resources.projectionReader, eventWriter: resources.eventWriter }, deps.childSessions)
     const subagentSessions = installedChildSessionHistory().createAuthority({
       manager: deps.manager,
-      eventStore: resources.eventStore,
+      reader: resources.eventStore,
       projectionReader: resources.projectionReader,
-      eventWriter: resources.eventWriter,
+      writer: resources.eventWriter,
       projectRoot,
       recall: deps.recall,
       attachProjection: deps.attachChildProjection,

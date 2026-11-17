@@ -83,8 +83,7 @@ test("preference mutations retain enriched canonical metadata and release dates"
   });
   service.publish(service.prepare({
     profileId: "work",
-    authRevision: "auth",
-    preferenceRevision: "preferences",
+    inputRevision: { auth: "auth", preferences: "preferences" },
     catalogs: new Map([["openrouter", models]]),
     accountCatalogs: new Map([[ACCOUNT_KEY, models]]),
     inventoryCandidates: new Map([[ACCOUNT_KEY, {

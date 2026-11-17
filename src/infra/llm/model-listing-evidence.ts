@@ -1,8 +1,8 @@
 /** The saved evidence of one model listing client's profile: catalog rows, access audit, and refusals. */
 import { AuthProfileDirectoryNotFoundError } from "../auth/auth-profile-store.js";
-import { readSavedProviderModels, recordProviderModelRefusal, type CatalogProfile, type ModelRefusal, type SavedProviderModels } from "../auth/provider-model-catalog-store.js";
+import { readSavedProviderModels, recordProviderModelRefusal, type AccountLineage, type CatalogProfile, type ModelRefusal, type SavedProviderModels } from "../auth/provider-model-catalog-store.js";
 import { Log } from "../log.js";
-import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "./access-provider.js";
+import { accessProviderAccountKey } from "./access-provider.js";
 import type { CatalogCanonicalRow, CatalogLimits } from "./model-catalog-resolution.js";
 
 const log = Log.create({ service: "model-listing" });
@@ -14,72 +14,72 @@ interface SavedListingEvidenceOptions {
 }
 
 /**
- * The listing reads each exact account generation's saved entry once, and its own writes keep the entry current.
+ * The listing reads each exact account lineage's saved entry once, and its own writes keep the entry current.
  * Another process's write is read after this process's credential or listing generation changes. Saved evidence is
  * optional: a profile or file that this process cannot read is absent evidence, so the listing falls back to
  * models.dev and continues.
  */
 export interface SavedListingEvidence {
-  read(account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits): Promise<SavedProviderModels | undefined>;
+  read(accountLineage: AccountLineage, limits: CatalogLimits): Promise<SavedProviderModels | undefined>;
   /** Keeps the rows that this process just saved, beside the audit and refusals already read. */
-  keepRows(account: AccessProviderAccountIdentity, lineage: string, rows: readonly CatalogCanonicalRow[]): void;
+  keepRows(accountLineage: AccountLineage, rows: readonly CatalogCanonicalRow[]): void;
   /** Forgets an entry that this process deleted, or changed with a write that the evidence did not make, such as an
    *  access audit result that ended a refusal. */
-  forget(account: AccessProviderAccountIdentity, lineage: string): void;
+  forget(accountLineage: AccountLineage): void;
   /** Saves a refusal that a request proved, timed now. Resolves false when the store refused it or the write
    *  failed; a failed write is a warning. */
-  recordRefusal(account: AccessProviderAccountIdentity, lineage: string, wireModelId: string, refusal: ModelRefusal, limits: CatalogLimits): Promise<boolean>;
+  recordRefusal(accountLineage: AccountLineage, wireModelId: string, refusal: ModelRefusal, limits: CatalogLimits): Promise<boolean>;
 }
 
 export function createSavedListingEvidence(options: SavedListingEvidenceOptions): SavedListingEvidence {
-  /** One read per exact account generation, shared by every candidate of the account that lists at the same time. */
+  /** One read per exact account lineage, shared by every candidate of the account that lists at the same time. */
   const entries = new Map<string, Promise<SavedProviderModels | undefined>>();
   /** Keys whose unreadable file was reported once. */
   const unreadable = new Set<string>();
-  const keyOf = (account: AccessProviderAccountIdentity, lineage: string) => `${accessProviderAccountKey(account)}\0${lineage}`;
-  const readOnce = async (key: string, account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits): Promise<SavedProviderModels | undefined> => {
+  const keyOf = ({ account, lineage }: AccountLineage) => `${accessProviderAccountKey(account)}\0${lineage}`;
+  const readOnce = async (key: string, accountLineage: AccountLineage, limits: CatalogLimits): Promise<SavedProviderModels | undefined> => {
     try {
-      const saved = await options.withProfile(({ access }) => readSavedProviderModels(access, account, lineage, limits));
+      const saved = await options.withProfile(({ access }) => readSavedProviderModels(access, accountLineage, limits));
       unreadable.delete(key);
       return saved;
     } catch (error) {
       // A credential from the environment has no profile directory, and so no saved evidence.
       if (!(error instanceof AuthProfileDirectoryNotFoundError) && !unreadable.has(key)) {
         unreadable.add(key);
-        log.warn("saved provider models are unreadable and treated as absent", { providerId: account.providerId, error: error instanceof Error ? error.name : "unknown" });
+        log.warn("saved provider models are unreadable and treated as absent", { providerId: accountLineage.account.providerId, error: error instanceof Error ? error.name : "unknown" });
       }
       return undefined;
     }
   };
   return {
-    read(account, lineage, limits) {
-      const key = keyOf(account, lineage);
+    read(accountLineage, limits) {
+      const key = keyOf(accountLineage);
       const cached = entries.get(key);
       if (cached !== undefined) return cached;
-      const reading = readOnce(key, account, lineage, limits);
+      const reading = readOnce(key, accountLineage, limits);
       entries.set(key, reading);
       // Absent evidence is read again by the next listing, which can follow another process's first write.
       void reading.then((saved) => { if (saved === undefined && entries.get(key) === reading) entries.delete(key); });
       return reading;
     },
-    keepRows(account, lineage, rows) {
-      const key = keyOf(account, lineage);
+    keepRows(accountLineage, rows) {
+      const key = keyOf(accountLineage);
       const previous = entries.get(key) ?? Promise.resolve(undefined);
       entries.set(key, previous.then((cached) => ({ rows, audit: cached?.audit, refusals: cached?.refusals ?? {} })));
     },
-    forget(account, lineage) {
-      entries.delete(keyOf(account, lineage));
+    forget(accountLineage) {
+      entries.delete(keyOf(accountLineage));
     },
-    async recordRefusal(account, lineage, wireModelId, refusal, limits) {
+    async recordRefusal(accountLineage, wireModelId, refusal, limits) {
       let saved: boolean;
       try {
-        saved = await options.withProfile((profile) => recordProviderModelRefusal(profile, account, lineage, wireModelId, { ...refusal, at: options.now() }, limits));
+        saved = await options.withProfile((profile) => recordProviderModelRefusal(profile, accountLineage, wireModelId, { ...refusal, at: options.now() }, limits));
       } catch (error) {
-        log.warn("a model refusal that a request proved was not saved", { providerId: account.providerId, error: error instanceof Error ? error.name : "unknown" });
+        log.warn("a model refusal that a request proved was not saved", { providerId: accountLineage.account.providerId, error: error instanceof Error ? error.name : "unknown" });
         return false;
       }
       // The next listing reads the entry again, so it holds what was just written.
-      if (saved) entries.delete(keyOf(account, lineage));
+      if (saved) entries.delete(keyOf(accountLineage));
       return saved;
     },
   };

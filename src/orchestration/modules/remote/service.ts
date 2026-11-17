@@ -30,7 +30,7 @@ export function createRemoteService(services: AccountProjectModuleServices, fact
   let closed = false
   let tail = Promise.resolve()
   const access = () => !closed && services.enabled() && active?.admitted() ? active.access : undefined
-  const apply = async (selected: boolean): Promise<void> => {
+  const reconcileRemoteAccess = async (selected: boolean): Promise<void> => {
     const wanted = selected && started && !closed && services.enabled()
     if (active && !wanted) {
       const old = active
@@ -82,7 +82,7 @@ export function createRemoteService(services: AccountProjectModuleServices, fact
   const reconcile = (): Promise<void> => {
     const selected = services.enabled()
     if (!selected || closed) active?.retire()
-    const pending = tail.then(() => apply(selected))
+    const pending = tail.then(() => reconcileRemoteAccess(selected))
     tail = pending.catch((error: unknown) => log.warn("remote selection failed", { error: error instanceof Error ? error.message : String(error) }))
     return pending
   }

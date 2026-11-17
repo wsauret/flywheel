@@ -321,11 +321,12 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
           }
         }
 
-        if (command.kind === "commit") {
+        const action = runnableAction(command)
+        if (action === "commit") {
           current = await commitTransition(current)
           interruptStoppedChildren()
-        } else if (command.kind === "prepare_attempt" && stops.length === 0) current = await prepareAttempt(current)
-        else if (command.kind === "run_attempts") current = startAttempt(current)
+        } else if (action === "prepare") current = await prepareAttempt(current)
+        else if (action === "start") current = startAttempt(current)
         else if (children.inFlight().size > 0) {
           // Every attempt that can start runs; wait for the first to end.
           recordAdmission()
@@ -436,13 +437,22 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
     return disposePromise
   }
 
+  /** The action the host takes on its own for `command`, or undefined when it
+   *  can only wait for an attempt in flight, a held stop, or an input. */
+  function runnableAction(command: DrivenTransition["result"]["command"]): "commit" | "prepare" | "start" | undefined {
+    if (command.kind === "commit") return "commit"
+    if (command.kind === "prepare_attempt") return stops.length === 0 ? "prepare" : undefined
+    if (command.kind === "run_attempts") return "start"
+    return undefined
+  }
+
   function hasRunnableWork(): boolean {
     if (stopping) return false
     if (!current) return true
     const command = current.result.command
-    if (command.kind === "commit") return true
-    if (command.kind === "prepare_attempt") return stops.length === 0
-    return command.kind === "run_attempts" && command.attempts.some(({ attemptId }) => !children.inFlight().has(attemptId))
+    // A worker starts inside `children.fork`, before `current` leaves the start command it was forked from.
+    if (command.kind === "run_attempts") return command.attempts.some(({ attemptId }) => !children.inFlight().has(attemptId))
+    return runnableAction(command) !== undefined
   }
 
   return { preflight, run, abort, dispose, hasRunnableWork }

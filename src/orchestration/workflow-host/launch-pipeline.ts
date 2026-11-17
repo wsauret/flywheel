@@ -4,7 +4,7 @@ import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
 import type { PublishedWorkflowLaunch } from "../agent-runtime/tools/workflow-tool.js"
 import type { RetainedOperationCell, RetainedOperationCommitResult } from "../module-seams.js"
-import { WorkflowParentRefusal, type WorkflowLaunchBinding } from "../session/child-session-publication.js"
+import { WorkflowParentRefusal } from "../session/child-session-publication.js"
 import { turnEndEntryId } from "../session/conversation/turn-end-record.js"
 import { workflowRunReader, workflowRunWriter } from "../module-catalog.js"
 import { executionCwdFromSession, requireSessionExecutionCwd } from "../session/session-execution-directory.js"
@@ -288,7 +288,7 @@ export function createWorkflowLaunchPipeline(
       childSessionId = await publishWorkflow({
         manager,
         prepared: launch.prepared,
-        launchedFrom: binding(launch.workflow.id, request.description, parentSessionId, origin.conversationId, origin.toolUseId),
+        launchedFrom: { parentSessionId, conversationId: origin.conversationId, workflowDefinitionId: launch.workflow.id, description: request.description, toolUseId: origin.toolUseId },
         ...(launch.capabilityBoundary ? { capabilityBoundary: launch.capabilityBoundary } : {}),
         ...(request.summary !== undefined ? { summary: request.summary } : {}),
         ...(launch.executionCwd ? { executionCwd: launch.executionCwd } : {}),
@@ -368,8 +368,4 @@ export function createWorkflowLaunchPipeline(
   return { launchModel, commitLaunch }
 }
 
-/** The parent chat call a published workflow belongs to. */
-function binding(workflowDefinitionId: string, description: string, parentSessionId: string, conversationId: string, toolUseId: string): WorkflowLaunchBinding {
-  return { parentSessionId, conversationId, workflowDefinitionId, description, toolUseId }
-}
 

@@ -21,8 +21,7 @@ export async function saveModelAssignment(
 /** What resolving the current roles reads: the config source, the account root
  *  tier resolution derives from, and the listing to check models against. No
  *  credential is read here, so no key resolver is needed. */
-type RoleResolutionDeps = Pick<ModelConfigDeps, "userDataRoot" | "config" | "availableModels" | "modelInfos" | "modelsClient"> & { readonly authProfileId?: () => string };
-type CurrentRoleResolutionDeps = Omit<RoleResolutionDeps, "config"> & (
+type CurrentRoleResolutionDeps = Pick<ModelConfigDeps, "userDataRoot" | "availableModels" | "modelInfos" | "modelsClient"> & { readonly authProfileId?: () => string } & (
   | { readonly config: Pick<FlywheelConfig, "profiles">; readonly profileRoles?: never }
   | { readonly config?: never; readonly profileRoles: FlywheelConfig["profiles"][string]["roles"] }
 ) & { readonly additionalRoleIds?: Iterable<string> };

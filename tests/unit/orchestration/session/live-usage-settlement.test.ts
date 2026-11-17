@@ -37,7 +37,7 @@ test("child request spend reaches parent before tool completion and attempt clos
   const sessionId = "parent-session"
   const program = Effect.scoped(Effect.gen(function* () {
     const resources = yield* acquireSessionResources({ sessionId, projectRoot: "/test-project", emitter: createEmit(bus), eventBus: bus, projectionReader: asAsyncEventReadSurface(store) })
-    const wiring = wireSessionSubscribers(bus, resources, (patch) => { metrics.push(patch) })
+    const wiring = wireSessionSubscribers(bus, resources, sessionId, (patch) => { metrics.push(patch) })
     yield* Effect.promise(async () => {
       const settlement = createSessionUsageSettlement({
         owner: { kind: "session", sessionId }, reader: asAsyncEventReadSurface(store), writer: resources.sessionEventWriter,
@@ -117,7 +117,7 @@ test.each([false, true])("settled child requests update parent metrics before ch
   const sessionId = "parent-session"
   const program = Effect.scoped(Effect.gen(function* () {
     const resources = yield* acquireSessionResources({ sessionId, projectRoot: "/test-project", emitter: createEmit(bus), eventBus: bus, projectionReader: asAsyncEventReadSurface(store) })
-    const wiring = wireSessionSubscribers(bus, resources, (patch) => { metrics.push(patch) })
+    const wiring = wireSessionSubscribers(bus, resources, sessionId, (patch) => { metrics.push(patch) })
     yield* Effect.promise(async () => {
       const settlement = createSessionUsageSettlement({
         owner: { kind: "session", sessionId },

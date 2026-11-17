@@ -10,7 +10,7 @@ export function createCrashReport(props: TuiErrorReportProps): TuiErrorReport {
   let alive = true
   onCleanup(() => { alive = false })
   onMount(() => {
-    void submitTuiReport(props.client, "crash", props.error, props.sessionId).then((receipt) => {
+    void submitTuiReport(props.client, { kind: "crash", error: props.error, sessionId: props.sessionId }).then((receipt) => {
       if (alive) setResult(receipt)
     })
   })
@@ -30,10 +30,12 @@ export function createCrashReport(props: TuiErrorReportProps): TuiErrorReport {
 /** Sends a client error through the account service. Transport failures become a displayable result. */
 export async function submitTuiReport(
   client: Pick<RuntimeClient, "dispatch">,
-  kind: BugReportInput["kind"],
-  error: Pick<Error, "name" | "message" | "stack">,
-  sessionId?: string,
-  note?: string,
+  { kind, error, sessionId, note }: {
+    readonly kind: BugReportInput["kind"]
+    readonly error: Pick<Error, "name" | "message" | "stack">
+    readonly sessionId?: string | undefined
+    readonly note?: string | undefined
+  },
 ): Promise<BugReportResult> {
   try {
     const input = sanitizeBugReportInput({

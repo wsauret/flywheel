@@ -510,7 +510,7 @@ function tryQuarantineProposal(globalRoot: string, proposalId: string, reason: s
   }
 }
 
-function quarantineRecord(globalRoot: string, kind: string, path: string, id: string, reason: string): void {
+function quarantineRecord(globalRoot: string, kind: "manifest" | "proposal", path: string, id: string, reason: string): void {
   if (!RECORD_ID_PATTERN.test(id)) throw new Error(`refusing to quarantine ${id}: not a record identity`);
   const target = quarantineDir(globalRoot, `${kind}-${Date.now()}-${id}.json`);
   try {
@@ -543,7 +543,7 @@ export function proposalRecordIds(globalRoot: string): readonly string[] {
 /** Read the proposal set used by startup and admission. Each record is measured,
  * read, decoded, and verified from one open descriptor while sharing one byte
  * budget across the walk. No later path reopen can enlarge this work. */
-export function readProposalRecordsForReconciliation(globalRoot: string): readonly ProposalRecord[] {
+export function readProposalRecordsQuarantiningUnusable(globalRoot: string): readonly ProposalRecord[] {
   const ids = recordIds(proposalsDir(globalRoot), "proposal", (proposalId) => {
     tryQuarantineProposal(globalRoot, proposalId, `proposal area exceeded its ${MAX_AREA_RECORDS} record bound`);
   });

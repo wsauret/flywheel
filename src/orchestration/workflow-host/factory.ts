@@ -132,7 +132,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     recall: (contract) => input.recall(childRunId, contract),
   })
   const subagentSessions = installedChildSessionHistory().createAuthority({
-    manager: input.manager, eventStore: input.eventStore, projectionReader: input.projectionReader, eventWriter: input.eventWriter, projectRoot, recall: input.recall,
+    manager: input.manager, reader: input.eventStore, projectionReader: input.projectionReader, writer: input.eventWriter, projectRoot, recall: input.recall,
     attachProjection: input.attachChildProjection,
   })
   const sessionMessaging = deps.childSessions ? createSessionMessaging({ manager: input.manager, projectionReader: input.projectionReader, eventWriter: input.eventWriter }, deps.childSessions) : undefined
@@ -250,7 +250,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     },
     onPostPreflight: async () => {
       await input.onDefinitionAccepted?.()
-      const sessionSubscribers = wireSessionSubscribers(eventBus, infra, undefined, sessionId)
+      const sessionSubscribers = wireSessionSubscribers(eventBus, infra, sessionId)
       awaitDurableFacts = sessionSubscribers.awaitDurableFacts
       await input.onPostPreflight?.()
     },

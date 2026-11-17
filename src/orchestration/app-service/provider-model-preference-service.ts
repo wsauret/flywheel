@@ -1,4 +1,4 @@
-import type { ProviderModelPreferenceState } from "../../infra/auth/provider-model-preference-store.js"
+import type { EligibilityInputRevision, ProviderModelPreferenceState } from "../../infra/auth/provider-model-preference-store.js"
 import { accessProviderAccountKey, type AccessProviderAccountIdentity, type AccessProviderModelEligibility } from "../../infra/llm/access-provider.js"
 import { resolveAccountProviderModelPreferences, transitionProviderAutoEnableNewModels, type ProviderModelCatalog, type ResolvedProviderModels } from "../../infra/llm/provider-model-preferences.js"
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
@@ -18,8 +18,7 @@ interface ProviderModelEligibilityInput {
   readonly catalogs: ReadonlyMap<string, ResolvedProviderModels>
   readonly accountCatalogs: ReadonlyMap<string, ResolvedProviderModels>
   readonly inventoryCandidates: ReadonlyMap<string, ProviderModelInventoryCandidate>
-  readonly authRevision: string
-  readonly preferenceRevision: string
+  readonly inputRevision: EligibilityInputRevision
 
   /** ISO release date per model id, from models.dev metadata; models without a
    *  known date sort after dated ones. */
@@ -55,48 +54,36 @@ export interface ProviderModelEligibilitySnapshotDeps {
   readonly publish?: (state: ProviderModelEligibilityState) => void
 }
 
+/** What every preference write of one profile carries: the accounts it may target and the inputs it read. */
+interface ProviderModelPreferenceWrite {
+  readonly profileId: string
+  readonly currentAccounts: readonly AccessProviderAccountIdentity[]
+  readonly expected: EligibilityInputRevision
+}
+
 export interface ProviderModelPreferenceServiceDeps extends ProviderModelEligibilitySnapshotDeps {
   readonly allowTrainingRoutes: (profileId: string) => boolean
-  readonly persist: (mutation: {
-    readonly profileId: string
+  readonly persist: (mutation: ProviderModelPreferenceWrite & {
     readonly account: AccessProviderAccountIdentity
-    readonly currentAccounts: readonly AccessProviderAccountIdentity[]
-    readonly expectedAuthRevision: string
-    readonly expectedPreferenceRevision: string
     readonly modelId: string
     readonly checked: boolean
     readonly state: ProviderModelPreferenceState
   }) => Promise<string>
-  readonly persistAllDeselected: (mutation: {
-    readonly profileId: string
+  readonly persistAllDeselected: (mutation: ProviderModelPreferenceWrite & {
     readonly account: AccessProviderAccountIdentity
-    readonly currentAccounts: readonly AccessProviderAccountIdentity[]
-    readonly expectedAuthRevision: string
-    readonly expectedPreferenceRevision: string
     readonly modelIds: readonly string[]
   }) => Promise<string>
-  readonly persistAutoEnableNewModels: (mutation: {
-    readonly profileId: string
-    readonly currentAccounts: readonly AccessProviderAccountIdentity[]
-    readonly expectedAuthRevision: string
-    readonly expectedPreferenceRevision: string
+  readonly persistAutoEnableNewModels: (mutation: ProviderModelPreferenceWrite & {
     readonly enabled: boolean
     readonly accountCatalogs: ReadonlyMap<string, { readonly account: AccessProviderAccountIdentity; readonly effectiveModelIds: readonly string[]; readonly catalogModelIds: readonly string[] }>
   }) => Promise<string>
-  readonly persistFreeRoutes: (mutation: {
-    readonly profileId: string
+  readonly persistFreeRoutes: (mutation: ProviderModelPreferenceWrite & {
     readonly account: AccessProviderAccountIdentity
-    readonly currentAccounts: readonly AccessProviderAccountIdentity[]
-    readonly expectedAuthRevision: string
-    readonly expectedPreferenceRevision: string
     readonly enabled: boolean
   }) => Promise<string>
   /** Called after the request is validated against the current snapshot. Queues the owned recheck of the exact account and returns without waiting for probes. Throws on stale inputs. */
-  readonly recheckAccount: (request: {
-    readonly profileId: string
+  readonly recheckAccount: (request: Omit<ProviderModelPreferenceWrite, "currentAccounts"> & {
     readonly account: AccessProviderAccountIdentity
-    readonly expectedAuthRevision: string
-    readonly expectedPreferenceRevision: string
   }) => void
 }
 
@@ -136,8 +123,7 @@ export function createProviderModelEligibilitySnapshots(deps: ProviderModelEligi
         revision,
         catalogs,
         accountCatalogs,
-        authRevision: input.authRevision,
-        preferenceRevision: input.preferenceRevision,
+        inputRevision: input.inputRevision,
         inventoryCandidates,
         enabledCandidates: decision.enabledCandidates,
         picker: decision.picker,
@@ -195,13 +181,13 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       const models = before.accountCatalogs.get(accessProviderAccountKey(account))
       if (!models?.catalog.has(mutation.modelId)) throw new Error(`provider model is not available: ${account.providerId}/${mutation.modelId}`)
       const preference = preferenceState(models, mutation.modelId, mutation.checked, before.autoEnableNewModels)
-      const preferenceRevision = await deps.persist({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision, modelId: mutation.modelId, checked: mutation.checked, state: preference })
+      const preferenceRevision = await deps.persist({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expected: before.inputRevision, modelId: mutation.modelId, checked: mutation.checked, state: preference })
 
       const live = requireState(current(mutation.queriedProfileId))
       const accountCatalogs = withAccountPreference(live.accountCatalogs, account, mutation.modelId, preference, live.autoEnableNewModels)
       const inventoryCandidates = withCandidatePreference(live.inventoryCandidates, account, accountCatalogs.get(accessProviderAccountKey(account)))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
-      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, authRevision: live.authRevision, preferenceRevision, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
+      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, inputRevision: { ...live.inputRevision, preferences: preferenceRevision }, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
       commit(next)
       const view = next.membership.get(targetKey(mutation.target))
       if (!view) return hiddenMutationResult(next, mutation.target)
@@ -229,7 +215,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       const models = before.accountCatalogs.get(key)
       if (!models) throw new Error("provider account catalog is unavailable")
       const modelIds = [...models.catalog]
-      const preferenceRevision = await deps.persistAllDeselected({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision, modelIds })
+      const preferenceRevision = await deps.persistAllDeselected({ profileId: before.profileId, account, currentAccounts: [...before.targetAccounts.values()], expected: before.inputRevision, modelIds })
       const live = requireState(current(mutation.queriedProfileId))
       const accountCatalogs = new Map(live.accountCatalogs)
       const currentModels = accountCatalogs.get(key)
@@ -241,7 +227,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       }
       const inventoryCandidates = withCandidatePreference(live.inventoryCandidates, account, accountCatalogs.get(key))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
-      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, authRevision: live.authRevision, preferenceRevision, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
+      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, inputRevision: { ...live.inputRevision, preferences: preferenceRevision }, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
       commit(next)
       const view = next.membership.get(targetKey(mutation.target))
       if (!view) return hiddenMutationResult(next, mutation.target)
@@ -265,14 +251,13 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
         profileId: before.profileId,
         account,
         currentAccounts: [...before.targetAccounts.values()],
-        expectedAuthRevision: before.authRevision,
-        expectedPreferenceRevision: before.preferenceRevision,
+        expected: before.inputRevision,
         enabled: mutation.enabled,
       })
       const live = requireState(current(mutation.queriedProfileId))
       const inventoryCandidates = withFreeRoutePreference(live.inventoryCandidates, account, mutation.enabled, live.accountCatalogs.get(accessProviderAccountKey(account)))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
-      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, authRevision: live.authRevision, preferenceRevision, catalogs, accountCatalogs: live.accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
+      const next = prepare({ profileId: live.profileId, autoEnableNewModels: live.autoEnableNewModels, inputRevision: { ...live.inputRevision, preferences: preferenceRevision }, catalogs, accountCatalogs: live.accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
       commit(next)
       const view = next.membership.get(targetKey(mutation.target))
       if (!view) return hiddenMutationResult(next, mutation.target)
@@ -296,8 +281,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       const preferenceRevision = await deps.persistAutoEnableNewModels({
         profileId: before.profileId,
         currentAccounts: [...before.targetAccounts.values()],
-        expectedAuthRevision: before.authRevision,
-        expectedPreferenceRevision: before.preferenceRevision,
+        expected: before.inputRevision,
         enabled: mutation.enabled,
         accountCatalogs: accountSnapshots,
       })
@@ -306,7 +290,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       let inventoryCandidates = live.inventoryCandidates
       for (const account of live.targetAccounts.values()) inventoryCandidates = withCandidatePreference(inventoryCandidates, account, accountCatalogs.get(accessProviderAccountKey(account)))
       const catalogs = deriveProviderCatalogs(inventoryCandidates)
-      const next = prepare({ profileId: live.profileId, autoEnableNewModels: mutation.enabled, authRevision: live.authRevision, preferenceRevision, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
+      const next = prepare({ profileId: live.profileId, autoEnableNewModels: mutation.enabled, inputRevision: { ...live.inputRevision, preferences: preferenceRevision }, catalogs, accountCatalogs, inventoryCandidates, releaseDates: live.releaseDates })
       commit(next)
       return { profileId: next.profileId, eligibilityRevision: next.revision, autoEnableNewModels: next.autoEnableNewModels }
     })
@@ -323,7 +307,7 @@ export function createProviderModelPreferenceService(deps: ProviderModelPreferen
       const account = before.targetAccounts.get(targetKey(mutation.target))
       const candidate = account === undefined ? undefined : before.inventoryCandidates.get(accessProviderAccountKey(account))
       if (account === undefined || candidate?.audit === undefined) throw new Error("provider-model recheck target is unavailable")
-      deps.recheckAccount({ profileId: before.profileId, account, expectedAuthRevision: before.authRevision, expectedPreferenceRevision: before.preferenceRevision })
+      deps.recheckAccount({ profileId: before.profileId, account, expected: before.inputRevision })
       const view = before.membership.get(targetKey(mutation.target))
       return view === undefined ? hiddenMutationResult(before, mutation.target) : projectTrainingRouteAvailability(before, mutation.target, view, deps.allowTrainingRoutes(before.profileId))
     })

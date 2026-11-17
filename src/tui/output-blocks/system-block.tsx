@@ -17,9 +17,6 @@ import type { DiffColorMode } from "../../orchestration/config/schema.js"
 interface SystemBlockProps {
   block: SystemBlockType
   diffColors?: Accessor<DiffColorMode>
-  /** Lazy full-body fetch for a wire-truncated notice: invoked with the block's
-   *  durable identity while a disclosed body has remote-omitted lines. */
-  onHydrateBody?: (blockId: string) => void
 }
 
 export function SystemBlock(props: SystemBlockProps) {

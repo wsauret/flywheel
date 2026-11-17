@@ -15,7 +15,7 @@ export function createSendReport(host: Pick<TuiControllerHost, "client" | "foreg
     }
     const error = { name: "", message: "", stack: "" }
     const sessionId = host.foregroundId()
-    const result = await submitTuiReport(host.client, "manual", error, sessionId, note)
+    const result = await submitTuiReport(host.client, { kind: "manual", error, sessionId, note })
     let message = reportStatus(result, "manual")
     if (!result.ok) {
       try {

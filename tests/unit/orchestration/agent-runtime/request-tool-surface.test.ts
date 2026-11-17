@@ -329,7 +329,7 @@ describe("request tool surface", () => {
       return { content: "executed", outcome: "ok" as const };
     } };
     const owner = await createRequestToolSurface(
-      (snapshot) => plan(snapshot.enabledModuleIds.includes("learning") ? [memory] : []),
+      ({ moduleSnapshot: snapshot }) => plan(snapshot.enabledModuleIds.includes("learning") ? [memory] : []),
       () => composeRealmModuleSnapshot({ moduleIds: learning ? ["learning"] : [] }),
       testRuntimeConfigCapture,
     );
@@ -363,7 +363,7 @@ describe("request tool surface", () => {
     let learning = true;
     const modules = () => composeRealmModuleSnapshot({ moduleIds: learning ? SHIPPED_MODULES.map((module) => module.id) : [] });
     const owner = await createRequestToolSurface(
-      (snapshot) => plan(snapshot.enabledModuleIds.includes("learning") ? [fakeTool("memory")] : [], snapshot.enabledModuleIds.includes("learning") ? [] : [{ name: "memory", reason: "Learning is disabled" }]),
+      ({ moduleSnapshot: snapshot }) => plan(snapshot.enabledModuleIds.includes("learning") ? [fakeTool("memory")] : [], snapshot.enabledModuleIds.includes("learning") ? [] : [{ name: "memory", reason: "Learning is disabled" }]),
       modules,
       testRuntimeConfigCapture,
     );

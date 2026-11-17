@@ -1,3 +1,8 @@
+// Protobuf field numbers of the signature envelope.
+const SIGNATURE_METADATA_FIELD = 2;
+const METADATA_HEADER_FIELD = 1;
+const HEADER_BLOCK_KIND_FIELD = 8;
+
 /** Identifies nonempty public narration without changing the signed provider block.
  * Unknown, redacted, and unreadable signatures retain ordinary thinking treatment. */
 export function isAnthropicNarration(block: { thinking?: unknown; signature?: unknown; redacted?: unknown }): boolean {
@@ -9,12 +14,11 @@ export function isAnthropicNarration(block: { thinking?: unknown; signature?: un
     return false;
   }
   const bytes = Uint8Array.from(decoded, character => character.charCodeAt(0));
-  // The signature envelope's field 2 contains metadata; its field 1 holds block_kind in field 8.
-  const metadata = bytesField(bytes, 2);
+  const metadata = bytesField(bytes, SIGNATURE_METADATA_FIELD);
   if (metadata === undefined) return false;
-  const header = bytesField(metadata, 1);
+  const header = bytesField(metadata, METADATA_HEADER_FIELD);
   if (header === undefined) return false;
-  const kind = bytesField(header, 8);
+  const kind = bytesField(header, HEADER_BLOCK_KIND_FIELD);
   return kind !== undefined && decoder.decode(kind) === "narration";
 }
 

@@ -206,9 +206,9 @@ test("a settled child releases the conversation tree its writer held in the exec
     // resources resolve from the runtime, and the session store's reader.
     const authority = installedChildSessionHistory().createAuthority({
       manager: kernel.manager,
-      eventStore: kernel.runtime.runSync(EventReaderService),
+      reader: kernel.runtime.runSync(EventReaderService),
       projectionReader: kernel.projectionReader,
-      eventWriter: kernel.eventWriter,
+      writer: kernel.eventWriter,
       projectRoot: f.paths.projectRoot,
       recall: async () => ({ hits: [] }),
     })

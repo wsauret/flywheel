@@ -155,18 +155,20 @@ function selfTest(launch: (launch: QueryLaunch) => LaunchedQuery, config: SelfTe
         session: { kind: "fresh", id: bridgeSessionId() }, wireModelId: config.wireModelId, contextLimit: config.contextLimit,
         thinking: { type: "disabled" }, extraBody: { max_tokens: 1_000 }, eagerInputStreaming: true, promptCaching: true, onStderrLine: () => {},
       });
-      const reader = Effect.runPromise(readSdkMessages(launched.query, acks, (input) => {
+      const reader = Effect.runPromiseExit(readSdkMessages(launched.query, acks, (input) => {
         if (input.kind === "init") versions.push(input.cliVersion);
       }));
       return { launched, reader };
     }, catch: asError });
-    /** Writes one frame and waits for the turn result that names it. */
-    const answered = (frame: Extract<CliFrame, { type: "user" }>) => Effect.gen(function* () {
-      const answer = acks.expect(frame.uuid);
-      write(frame);
-      yield* answer;
-    });
-    const use = ({ launched }: { readonly launched: LaunchedQuery }) => Effect.gen(function* () {
+    const use = ({ launched, reader }: { readonly launched: LaunchedQuery; readonly reader: Promise<Exit.Exit<void, Error>> }) => Effect.gen(function* () {
+      /** Writes one frame and waits for the turn result that names it. A wait fails only once the reader ended, so
+       *  the reader's exit is at hand and says whether the stream failed. */
+      const answered = (frame: Extract<CliFrame, { type: "user" }>) => Effect.gen(function* () {
+        const answer = acks.expect(frame.uuid);
+        write(frame);
+        yield* answer.pipe(Effect.catch((ended: Error) => Effect.flatMap(Effect.promise(() => reader), (exit) =>
+          Effect.fail(Exit.isFailure(exit) ? new SelfTestStreamFailure(Cause.squash(exit.cause)) : ended))));
+      });
       const first = randomUUID();
       stepGate.arm("turn-start");
       yield* answered({ type: "user", uuid: first, parent_tool_use_id: null, message: { role: "user", content: [{ type: "text", text: "Self-test one." }] } });
@@ -184,7 +186,7 @@ function selfTest(launch: (launch: QueryLaunch) => LaunchedQuery, config: SelfTe
       yield* answered({ type: "user", uuid: randomUUID(), parent_tool_use_id: null, message: { role: "user", content: [{ type: "text", text: "Self-test three." }] } });
       return selfTestVerdict(host.bodies, versions, cliVersion);
     });
-    const release = ({ launched, reader }: { readonly launched: LaunchedQuery; readonly reader: Promise<unknown> }) => Effect.gen(function* () {
+    const release = ({ launched, reader }: { readonly launched: LaunchedQuery; readonly reader: Promise<Exit.Exit<void, Error>> }) => Effect.gen(function* () {
       yield* Queue.end(prompt);
       yield* launched.stop(false);
       yield* Effect.promise(() => launched.close());
@@ -262,6 +264,13 @@ function selfTestHost(): SelfTestHost {
   return { url: `http://127.0.0.1:${server.port}`, bodies, stop: () => { void server.stop(true); } };
 }
 
+/** The CLI's message stream failed during the self-test. The name is the inconclusive reason that the test records. */
+class SelfTestStreamFailure extends Error {
+  override readonly name = "stream-failed";
+  constructor(cause: unknown) {
+    super("The Claude CLI message stream failed during the self-test", { cause });
+  }
+}
 
 function asError(value: unknown): Error {
   return value instanceof Error ? value : new Error(String(value));
