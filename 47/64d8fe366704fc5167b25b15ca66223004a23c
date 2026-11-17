@@ -1,0 +1,28 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 528-531
+src/agent-skills/data-integrity-review-principles/SKILL.md
+  h_4b47e9e4a8b456 3,20
+src/agent-skills/elegance-review-principles/SKILL.md
+  h_4b47e9e4a8b456 3,66
+src/agent-skills/mechanism-verification/SKILL.md
+  h_4b47e9e4a8b456 3,10
+src/agent-skills/performance-review-principles/SKILL.md
+  h_4b47e9e4a8b456 3,20
+src/agent-skills/security-review-principles/SKILL.md
+  h_4b47e9e4a8b456 3,20
+src/agent-skills/uat/SKILL.md
+  h_4b47e9e4a8b456 3
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 14,81-94,463-466,571,574,576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4764d8fe366704fc5167b25b15ca66223004a23c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
