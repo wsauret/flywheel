@@ -1,7 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
@@ -13,6 +11,7 @@ import { initializeWorkflow, replayWorkflow, transitionWorkflow } from "../../..
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import histories from "./golden/committed-v2-histories.json";
 import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const handoff = { outcome: { state: "blocked", reason: "The required contract is missing", evidence: "The referenced contract does not exist in the repository" } };
 const review = { step: "review", when: null, then: null } as const;
@@ -125,7 +124,7 @@ function runRepeat(
   const list = { type: "list", optional: true, description: "Items.", of: { type: "object", fields: { id: { type: "string", description: "Id." } } } };
   const { optional: _optional, ...requiredList } = list;
   const output = { summary: "Done.", fields: { findings: list } };
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const workflow = loadedWorkflow({
     id: "loop", name: "Loop",
     phases: [
       { phase: "source", brief: "Plan.", name: "source", output: { summary: "Plan.", fields: { items: { ...requiredList, ...(source.bounds ?? { max: 2, unique: "id" }) } } }, writes: [] },

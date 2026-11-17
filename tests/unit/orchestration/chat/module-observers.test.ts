@@ -2,7 +2,7 @@ import { expect, test } from "bun:test"
 import { createModuleChatObservers } from "../../../../src/orchestration/chat/module-observers.js"
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js"
 import type { ModuleChatObserverContext } from "../../../../src/orchestration/module-seams.js"
-import type { AgentStreamEvent } from "../../../../src/orchestration/agent-runtime/types.js"
+import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures.js"
 
 function context(): ModuleChatObserverContext {
@@ -18,27 +18,48 @@ test("all declared chat observers receive hooks and independent failures are con
     { seam: "chat", observer: () => ({ onTurnComplete: async () => { calls.push("first"); throw new Error("hook failed") }, dispose: () => { calls.push("first-disposed") } }) },
     { seam: "chat", observer: () => ({ onTurnComplete: async () => { calls.push("second") }, dispose: () => { calls.push("second-disposed") } }) },
   ] }
-  const observers = createModuleChatObservers(() => selection, context())
+  const observers = createModuleChatObservers(() => selection, context(), new EventBus())
   await observers.onTurnComplete("turn_end")
   await observers.dispose()
   expect(calls).toEqual(["first", "second", "first-disposed", "second-disposed"])
 })
 
-test("the selection is read at construction and turn boundaries, never per stream event", async () => {
+test("the selection is read at construction and turn boundaries, never per tool input", async () => {
   const base = composeFirstPartyModules([])
   let reads = 0
-  const events: string[] = []
+  let selected = true
+  const toolInputs: string[] = []
+  const declaration = { seam: "chat" as const, observer: () => ({ onToolInput: (toolUse: { readonly id: string }) => { toolInputs.push(toolUse.id) } }) }
   const selection: FirstPartyModuleComposition = { ...base, get observers() {
     reads += 1
-    return [{ seam: "chat" as const, observer: () => ({ onEvent: (event: AgentStreamEvent) => { events.push(event.type) } }) }]
+    return selected ? [declaration] : []
   } }
-  const observers = createModuleChatObservers(() => selection, context())
-  observers.onEvent({ type: "text" })
-  observers.onEvent({ type: "result" })
-  expect(events).toEqual(["text", "result"])
+  const bus = new EventBus()
+  const emit = createEmit(bus)
+  const toolInput = (id: string): void => { emit("tool.input.completed", { sessionId: "observer-fixture", data: { tool_use: { id, name: "read", input: {} } } }) }
+  const subscriptions: string[] = []
+  const observers = createModuleChatObservers(() => selection, context(), {
+    subscribeToType(type, listener, options) {
+      subscriptions.push(`open:${type}`)
+      const unsubscribe = bus.subscribeToType(type, listener, options)
+      return () => { subscriptions.push(`close:${type}`); unsubscribe() }
+    },
+  })
+  toolInput("first")
+  toolInput("second")
+  await bus.drain()
+  expect(toolInputs).toEqual(["first", "second"])
   expect(reads).toBe(1)
+  // A selection with no reader closes the subscription at the turn boundary.
+  selected = false
   await observers.onTurnComplete("turn_end")
   expect(reads).toBe(2)
+  expect(subscriptions).toEqual(["open:tool.input.completed", "close:tool.input.completed"])
+  toolInput("third")
+  await bus.drain()
+  expect(toolInputs).toEqual(["first", "second"])
+  await observers.dispose()
+  await bus.dispose()
 })
 
 test("selection generations construct on demand and disposal joins admitted hooks before resources", async () => {
@@ -51,7 +72,7 @@ test("selection generations construct on demand and disposal joins admitted hook
     return { onTurnComplete: async () => { calls.push("start"); await gate.promise; calls.push("settled") }, dispose: () => { calls.push("disposed") } }
   } }
   let selection: FirstPartyModuleComposition = base
-  const observers = createModuleChatObservers(() => selection, context())
+  const observers = createModuleChatObservers(() => selection, context(), new EventBus())
   await observers.onTurnComplete("turn_end")
   expect(generation).toBe(0)
   selection = { ...base, observers: [declaration] }

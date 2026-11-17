@@ -126,9 +126,11 @@ export async function executeHeadlessBenchmark(input: HeadlessBenchmarkInput): P
             input.sessionId !== undefined && input.sessionId !== record.sessionId) throw new Error("unexpected subject ready record");
         sessionId = record.sessionId;
         stage = "settings";
+        // The chat seat of a session lives in its role snapshot, not in the
+        // profile config, so this save compares no profile entry.
         await send({ version: 1, type: "dispatch", id: "settings", command: {
           type: "model.save_effort", scope: { kind: "session", sessionId },
-          slot: { kind: "role", roleId: "chat" }, model, effort: input.effort,
+          slot: { kind: "role", roleId: "chat" }, model, effort: input.effort, expected: { kind: "absent" },
         } });
         break;
       case "result":

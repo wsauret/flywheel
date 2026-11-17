@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 
-export const RuntimeCursorDescriptorSchema = Schema.Struct({
+const RuntimeCursorDescriptorSchema = Schema.Struct({
   scope: Schema.String,
   domain: Schema.String,
   sessionId: Schema.optionalKey(Schema.String),

@@ -9,9 +9,7 @@ import { apiKeyRejectionReason, type AccessProviderDefinition } from "../../../.
 import { AUTH_OPERATIONS, runAuth, type AuthCommandDependencies } from "../../../../src/cli/auth.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import type { AccessProviderFactory } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
-import { projectRuntimeConfig } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
 import { providerLoginFlow } from "../../../../src/orchestration/auth/auth-actions.js"
-import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js"
 import { anthropicApiModule } from "../../../../src/orchestration/modules/provider-anthropic-api/module.js"
 import { composeFirstPartyModules, installedProviderSettings, type FirstPartyModule } from "../../../../src/orchestration/modules.js"
 import { testDirectories } from "../../../helpers/directories.js"
@@ -27,7 +25,6 @@ const keyDefinition = {
   displayName: "Probe API Key",
   shortName: "Probe",
   rank: 90,
-  supportedFamilies: ["openai"],
   configHints: [],
   catalogId: undefined,
   cli: { flag: "probe-key", name: "Probe" },
@@ -42,7 +39,6 @@ const seatDefinition = {
   displayName: "Probe Seat",
   shortName: "Probe",
   rank: 91,
-  supportedFamilies: ["openai"],
   configHints: [],
   catalogId: undefined,
   cli: { flag: "probe-seat", name: "Probe seat" },
@@ -61,7 +57,6 @@ const probeKeyModule = {
     { domain: "settings", id: `provider-probe-key:${REQUEST_CAP.key}`, value: REQUEST_CAP },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -73,7 +68,6 @@ const probeSeatModule = {
     { domain: "providers", id: seatDefinition.id, value: { definition: seatDefinition, createClient: neverBuilt } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -114,24 +108,10 @@ describe("a synthetic provider under the provider contract", () => {
     expect(providerLoginFlow("probe_key", definitions)).toBeUndefined()
   })
 
-  it("carries its numeric setting into every profile of the config view under its own table", () => {
-    const declared = installedProviderSettings([probeKeyModule, probeSeatModule])
-    expect(declared).toEqual([{ ...REQUEST_CAP, providerId: "probe_key" }])
-    const view = projectRuntimeConfig({
-      revision: 1,
-      config: {
-        ...CONFIG_DEFAULTS,
-        profiles: {
-          work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { probe_key: { request_cap: 12 } } },
-          home: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: {} },
-        },
-      },
-      warnings: [],
-      diagnostics: [],
-      sourceIdentity: "probe",
-      status: { kind: "valid" },
-    }, "/scratch/project", declared)
-    expect(view.values.profiles.work?.providers).toEqual({ probe_key: { request_cap: 12 } })
-    expect(view.values.profiles.home?.providers).toEqual({ probe_key: { request_cap: REQUEST_CAP.defaultValue } })
+  it("declares its numeric setting under its own provider table", () => {
+    // The production config view fills each profile's provider table from
+    // these declarations; runtime-config-projection.test.ts proves that fill
+    // for an installed provider, because this process's catalog is fixed.
+    expect(installedProviderSettings([probeKeyModule, probeSeatModule])).toEqual([{ ...REQUEST_CAP, providerId: "probe_key" }])
   })
 })

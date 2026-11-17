@@ -19,6 +19,7 @@ const WEB_TOOL_CONTRIBUTION = {
   personaBaseline: true,
   personaOrder: 7,
   registryOrder: 18,
+  shortForm: { trees: "always", summary: "Research the public web: search, open pages, find text in them, and follow links." },
   registrations: {
     web: {
       capabilities: [],
@@ -43,6 +44,5 @@ export const webModule = {
     { domain: "settings", id: "web", value: { control: "binary", label: "Web", description: "Allow agents to search and retrieve public web content" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

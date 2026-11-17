@@ -102,6 +102,7 @@ interface LogRecord {
 /** The account's side of each executor channel, which shows `observe` each
  *  frame the executor sends and each frame the account sends before it
  *  passes on. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message over the executor internal process channel
 function observeExecutorChannels(observe: { readonly received?: (message: unknown) => void; readonly sent?: (message: unknown) => void }): typeof listenInternalProcessChannel {
   return (options) => listenInternalProcessChannel({
     ...options,

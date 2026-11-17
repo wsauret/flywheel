@@ -23,7 +23,8 @@ import { randomUUID } from "node:crypto"
 import { lstat, readdir, readFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 import { decodeGitDirectory } from "../../infra/git-metadata.js"
-import { ContainedDirectory } from "../../infra/descriptor-directory.js"
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js"
+import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../infra/directory-authorities.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
@@ -126,7 +127,7 @@ export function sweepBreadcrumbs(projectRoot: string, now: number): void {
  *  into again where it stands: this is a single directory removal against the
  *  held parent, never a recursive deletion of whatever the tree holds now. */
 function removeEmptiedBreadcrumbTree(projectRoot: string, sessionId: string): void {
-  const outputs = ContainedDirectory.openExisting(projectRoot, directoryComponents(AGENT_OUTPUTS_DIR), OWNED_ROOT)
+  const outputs = openExistingContainedDirectory(projectRoot, directoryComponents(AGENT_OUTPUTS_DIR), OWNED_ROOT)
   if (!outputs) return
   try {
     outputs.removeEmptyChild(requireSessionIdComponent(sessionId))
@@ -137,7 +138,7 @@ function removeEmptiedBreadcrumbTree(projectRoot: string, sessionId: string): vo
 
 /** Remove the aged breadcrumbs of one tree and report how many entries remain. */
 function sweepBreadcrumbTree(projectRoot: string, sessionId: string, cutoff: number): number {
-  const directory = ContainedDirectory.openExisting(projectRoot, directoryComponents(breadcrumbRelativeDir(sessionId)), OWNED_ROOT)
+  const directory = openExistingContainedDirectory(projectRoot, directoryComponents(breadcrumbRelativeDir(sessionId)), OWNED_ROOT)
   if (!directory) return 0
   let remaining = 0
   try {
@@ -294,7 +295,7 @@ export async function sweepIdleScratch(input: { readonly projectRoot: string; re
     }
   }
   const sweepSession = async (sessionId: string): Promise<void> => {
-    const scratch = ContainedDirectory.openExisting(input.projectRoot, directoryComponents(`${sessionRelativeDir(sessionId)}/scratch`), OWNED_ROOT)
+    const scratch = openExistingContainedDirectory(input.projectRoot, directoryComponents(`${sessionRelativeDir(sessionId)}/scratch`), OWNED_ROOT)
     if (!scratch) return
     try {
       for (const name of scratch.entryNames()) {
@@ -420,7 +421,7 @@ export function deleteWorkflowArtifacts(workflowId: string, projectRoot: string)
 
 /** The entry names one contained directory holds, or none when it is absent. */
 function childNames(baseDir: string, relativeDir: string): ReadonlySet<string> {
-  const directory = ContainedDirectory.openExisting(baseDir, directoryComponents(relativeDir), OWNED_ROOT)
+  const directory = openExistingContainedDirectory(baseDir, directoryComponents(relativeDir), OWNED_ROOT)
   if (!directory) return new Set()
   try {
     // Directories only: a session id names a tree, and a stray regular file in

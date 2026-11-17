@@ -109,12 +109,13 @@ export function createReservations(bridge: ReservationBridge) {
 
   /** The first field in which a request of `view` and `plan` of the admitted `window` differs from `reserved`: a launch value, the window, the history, the reminders, or the delivery. Undefined when the
    *  request would start the reserved engine as it is. */
-  const reservationDifference = (reserved: Reservation, view: CliView, plan: StartPlan, window: AdmittedWindow): string | undefined =>
-    reserved.contextLimit !== windowOf(window) ? "context-limit"
-      : !sameCliValue(reserved.history, plan.history) ? "history"
-      : !sameCliValue(reserved.reminders, plan.reminders) ? "reminders"
-      : reserved.delivery !== plan.delivery ? "delivery"
-      : identityDifference(reserved.identity, view.identity);
+  const reservationDifference = (reserved: Reservation, view: CliView, plan: StartPlan, window: AdmittedWindow): string | undefined => {
+    if (reserved.contextLimit !== windowOf(window)) return "context-limit";
+    if (!sameCliValue(reserved.history, plan.history)) return "history";
+    if (!sameCliValue(reserved.reminders, plan.reminders)) return "reminders";
+    if (reserved.delivery !== plan.delivery) return "delivery";
+    return identityDifference(reserved.identity, view.identity);
+  };
 
   /** The reservation that a request of `view` and `plan` takes, if any. A reservation that differs from the request
    *  (`reservationDifference`) ends, because the request starts its own engine. */

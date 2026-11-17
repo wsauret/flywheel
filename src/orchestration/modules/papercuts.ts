@@ -71,6 +71,5 @@ export const papercutsModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

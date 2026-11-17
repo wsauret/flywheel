@@ -1,10 +1,10 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
-import { DebugLog } from "../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../src/infra/debug-log.js"
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { createProjectStateSessionManager, createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state-sessions.js"
-import { createSessionAutoDelete, sweepUnusedSessions } from "../../../../src/orchestration/app-service/session-auto-delete.js"
+import { createSessionAutoDelete } from "../../../../src/orchestration/app-service/session-auto-delete.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { publishTestSubagent } from "../session/_session-manager-fixtures.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
@@ -13,6 +13,37 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import { fakeProjections } from "./app-service-doubles.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { loadSessionView } from "../../../../src/orchestration/session-store/view.js"
+
+type AutoDeletePorts = Parameters<typeof createSessionAutoDelete>[0]
+
+/** Runs the first pass that the production owner makes once it is admitted,
+ *  and answers how many chats the pass deleted, with the records it wrote.
+ *  A pass with a positive age ends with its sweep record. */
+async function sweepOnce(ports: AutoDeletePorts): Promise<{ readonly deleted: number; readonly records: readonly DebugLogRecordInput[] }> {
+  const records: DebugLogRecordInput[] = []
+  const swept = Promise.withResolvers<number>()
+  const record = spyOn(DebugLog, "record").mockImplementation((input) => {
+    records.push(input)
+    if (input.type === "session.auto_delete.swept" && typeof input.payload === "object" && input.payload !== null && "deleted" in input.payload) swept.resolve(Number(input.payload.deleted))
+  })
+  const owner = createSessionAutoDelete(ports)
+  try {
+    owner.start()
+    return { deleted: await swept.promise, records }
+  } finally {
+    record.mockRestore()
+    await owner.dispose()
+  }
+}
+
+/** Admits the production owner while its age setting is off, and lets its
+ *  first pass run. The pass ends before it reads the catalog. */
+async function sweepWhileOff(ports: AutoDeletePorts): Promise<void> {
+  const owner = createSessionAutoDelete(ports)
+  owner.start()
+  await new Promise((resolve) => setTimeout(resolve, 1))
+  await owner.dispose()
+}
 
 describe("automatic session deletion", () => {
   test("deletes old chats and owned children, keeps recent or active chats and independent forks, and does nothing while off", async () => {
@@ -23,7 +54,6 @@ describe("automatic session deletion", () => {
     const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), manager })
     const now = Date.now()
     const old = now - 14 * 86_400_000
-    const record = spyOn(DebugLog, "record")
     const age = (id: string, timestamp: number, lifecycleState: "active" | "inactive") => ctx.store.append({
       aggregateId: `session:${id}`, sessionId: id, type: "session.lifecycle.changed", version: 1,
       actor: "flywheel", timestamp, payload: { lifecycleState, lastUpdated: new Date(timestamp).toISOString() },
@@ -48,21 +78,23 @@ describe("automatic session deletion", () => {
         if (!result.ok) throw new Error(result.error)
         return result.sessionRemoved === true
       }, now: () => now }
-      expect(await sweepUnusedSessions(ports)).toBe(0)
+      await sweepWhileOff(ports)
       expect(await ctx.manager.read("old")).not.toBeNull()
       expect((await config.mutate("autoDeleteSessionDays", 0, 14)).ok).toBe(true)
-      expect(await sweepUnusedSessions({ ...ports, deleteSession: async () => { throw new Error("Store unavailable") } })).toBe(0)
-      expect(record.mock.calls.map(([input]) => input)).toContainEqual({ type: "session.auto_delete.failed", sessionId: "old", notable: true, payload: { stage: "delete", thresholdDays: 14 } })
-      expect(await sweepUnusedSessions(ports)).toBe(1)
+      const failed = await sweepOnce({ ...ports, deleteSession: async () => { throw new Error("Store unavailable") } })
+      expect(failed.deleted).toBe(0)
+      expect(failed.records).toContainEqual({ type: "session.auto_delete.failed", sessionId: "old", notable: true, payload: { stage: "delete", thresholdDays: 14 } })
+      const pass = await sweepOnce(ports)
+      expect(pass.deleted).toBe(1)
       expect(await ctx.manager.read("old")).toBeNull()
       expect(await ctx.manager.read("child")).toBeNull()
       for (const id of ["recent", "active", fork]) expect(await ctx.manager.read(id)).not.toBeNull()
-      const deletions = record.mock.calls.map(([input]) => input).filter((input) => input.type === "session.auto_delete.deleted")
+      const deletions = pass.records.filter((input) => input.type === "session.auto_delete.deleted")
       expect(deletions).toEqual([{ type: "session.auto_delete.deleted", sessionId: "old", payload: { inactiveDays: 14, thresholdDays: 14 } }])
-      expect(await sweepUnusedSessions(ports)).toBe(0)
-      expect(record.mock.calls.filter(([input]) => input.type === "session.auto_delete.deleted")).toHaveLength(1)
+      const again = await sweepOnce(ports)
+      expect(again.deleted).toBe(0)
+      expect(again.records.filter((input) => input.type === "session.auto_delete.deleted")).toHaveLength(0)
     } finally {
-      record.mockRestore()
       await config.dispose()
       await supervisor.disposeAll()
       await disposeSupervisorTestContext(ctx)
@@ -79,12 +111,12 @@ describe("automatic session deletion", () => {
       await ctx.manager.updateLifecycleState("child", "inactive")
       ctx.store.append({ aggregateId: "session:parent", sessionId: "parent", type: "session.lifecycle.changed", version: 1, actor: "flywheel", timestamp: 1, payload: { lifecycleState: "inactive", lastUpdated: "2000-01-01T00:00:00.000Z" } })
       expect((await config.mutate("autoDeleteSessionDays", 0, 1)).ok).toBe(true)
-      expect(await sweepUnusedSessions({ config, sessions: ctx.manager, deleteSession: supervisor.deleteSession })).toBe(0)
+      expect((await sweepOnce({ config, sessions: ctx.manager, deleteSession: supervisor.deleteSession })).deleted).toBe(0)
       expect(await ctx.manager.read("parent")).not.toBeNull()
       expect(await ctx.manager.read("child")).not.toBeNull()
       expect(supervisor.ownedSessionIds()).toEqual([])
       const admission = spyOn(ctx.manager, "admitDeletion").mockRejectedValueOnce(new Error("Admission unavailable"))
-      expect(await sweepUnusedSessions({ config, sessions: ctx.manager, deleteSession: supervisor.deleteSession })).toBe(0)
+      expect((await sweepOnce({ config, sessions: ctx.manager, deleteSession: supervisor.deleteSession })).deleted).toBe(0)
       expect(supervisor.ownedSessionIds()).toEqual([])
       admission.mockRestore()
     } finally {

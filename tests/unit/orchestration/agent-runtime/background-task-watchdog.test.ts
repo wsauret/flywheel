@@ -73,7 +73,6 @@ describe("background task stall watchdog", () => {
     } finally {
       done.resolve({ status: "completed", content: "ok" });
       await done.promise;
-      registry.flushSettledNotifications();
       jest.useRealTimers();
     }
   });

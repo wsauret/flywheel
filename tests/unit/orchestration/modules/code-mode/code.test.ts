@@ -114,9 +114,9 @@ describe("code tool", () => {
       kernel: testKernelToolDeps({ moduleSnapshot: composeFirstPartyModules(undefined, ["mcp", "bash"]) }),
       modules: composeModuleRuntimes([["code-mode", codeModeRuntimeOver(codeModeService())]]),
     });
-    const code = planned.tools.get("code");
-    const text = [code?.description, ...code?.promptGuidelines ?? []].join("\n");
-    expect(code?.description).toBe([
+    // Every tree offers code in short form, so its contract carries its description and guidelines (ARCH-CONTEXT-038).
+    const text = planned.tools.get("code")?.contract?.() ?? "";
+    expect(text).toContain([
       "Run JavaScript in a confined Code Mode runtime to compute and compose results.",
       "Imports, direct filesystem access, timers, and `fetch` are unavailable.",
       "Prefer an explicit `return`; if omitted, the final top-level expression becomes the result.",
@@ -241,15 +241,17 @@ describe("code tool", () => {
     expect(result.content).toBe("done\n\nLogs:\nbefore\n[redacted secret]\nafter\n\n");
   });
 
-  it("refuses unresolved names with the host's callable-map diagnostic", async () => {
-    const run = fixture([]);
-    const result = await run.tool.execute({ source: "return await tools.missing({})" }, run.context);
+  it("answers a name that does not resolve with the interpreter's UnknownTool diagnostic, which names no callable tool", async () => {
+    const names = Array.from({ length: 40 }, (_, index) => `server${index % 2}.tool_${index}`);
+    const run = fixture(names.map((name) => runtimeTool(name, async () => ({ content: "unused", outcome: "ok" }))));
+    const result = await run.tool.execute({ source: "return await tools.nope({})" }, run.context);
 
-    expect(result.outcome).toBe("error");
-    expect(result.content).toContain("Unknown tool 'missing'");
-    expect(result.content).toContain("not registered in the current session");
+    // The suggestion line is the UnknownTool diagnostic's own; a refused call's ToolFailure has none.
+    expect(result).toEqual({ outcome: "error", content: "Unknown tool 'nope'.\nThe tool may have been removed or renamed. Use searchCatalog to find available tools." });
     expect(run.facts).toEqual(["validation:outer#1"]);
-    expect(result.details).toBeUndefined();
+
+    const caught = await run.tool.execute({ source: "try { await tools.nope({}) } catch (error) { return error.message }" }, run.context);
+    expect(caught).toEqual({ outcome: "ok", content: "Unknown tool 'nope'." });
   });
 
   it("appends warnings and logs as labelled sections", async () => {
@@ -435,7 +437,7 @@ describe("code tool", () => {
     const run = fixture([own], {}, service);
     expect(await run.tool.execute({ source: "unused by the scripted guest" }, run.context)).toEqual({ outcome: "ok", content: "done" });
     expect(replies).toEqual([
-      { kind: "refused", message: expect.stringContaining("Unknown tool 'other.secret'") },
+      { kind: "unresolved" },
       { kind: "ok", outcome: "error", content: expect.stringContaining("not an object") },
     ]);
     expect(dispatched).toBe(0);
@@ -446,7 +448,11 @@ describe("code tool", () => {
     const inputs: unknown[] = [];
     const read = runtimeTool("demo.lookup", async input => { inputs.push(input); return { content: "ran", outcome: "ok" }; });
     read.inputSchema = { type: "object", properties: { count: { type: "number" } }, required: ["count"] };
-    const run = fixture([read]);
+    const bash = runtimeTool("bash", async () => ({ content: "shell ran", outcome: "ok" }));
+    const run = fixture([read, bash]);
+    const shell = JSON.parse(String((await run.tool.execute({ source: "return await tools.Bash({})" }, run.context)).content));
+    expect(shell).toEqual({ outcome: "ok", content: "Note: tool 'Bash' was read as 'bash'.\nshell ran" });
+    run.facts.length = 0;
     const result = await run.tool.execute({ source: `return await tools.demo.Lookup('{"count":"2"}')` }, run.context);
     expect(result.outcome).toBe("ok");
     const reply = JSON.parse(String(result.content));

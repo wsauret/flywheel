@@ -1,8 +1,9 @@
+import { HashMap } from "effect"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { RuntimeBackgroundSummaryResult } from "../../protocol/runtime-protocol-schemas.js"
 import { buildDurableSessionCatalog, sessionCatalogStatsFromSummary, sessionMetadataCatalogFromState } from "../session/session-catalog-read.js"
 import { projectSessionCatalogRow } from "../session/session-catalog-row.js"
-import { createSessionMetadataProjection } from "../session/session-metadata-projection.js"
+import { createSessionMetadataProjection, sessionMetadataStateOf } from "../session/session-metadata-projection.js"
 import type { SessionSummaryIndex } from "../session/session-summary-index.js"
 
 export interface RuntimeBackgroundSnapshotProjector {
@@ -26,19 +27,13 @@ export function createRuntimeBackgroundSnapshotProjector(
     read: SessionSummaryIndex["readImmediate"] | SessionSummaryIndex["waitForTotals"],
     requested?: readonly string[],
   ): Promise<RuntimeBackgroundSummaryResult> {
-    const completeMetadata = await sessionMetadataCatalogFromState(await metadata.replay(), reader)
-    let selectedMetadata = completeMetadata
-    if (requested !== undefined) {
-      const entriesById = new Map(completeMetadata.entries.map((entry) => [entry.id, entry]))
-      const requestedIds = new Set(requested)
-      selectedMetadata = {
-        entries: requested.flatMap((sessionId) => {
-          const entry = entriesById.get(sessionId)
-          return entry ? [entry] : []
-        }),
-        errors: completeMetadata.errors.filter((error) => requestedIds.has(error.sessionId)),
-      }
-    }
+    const state = await metadata.replay()
+    // A scoped request reads its own sessions from the fold, so a refresh of
+    // a few sessions costs those sessions, not the workspace's.
+    const selected = requested === undefined
+      ? state
+      : { bySession: HashMap.fromIterable(requested.map((sessionId) => [sessionId, sessionMetadataStateOf(state, sessionId)] as const)) }
+    const selectedMetadata = await sessionMetadataCatalogFromState(selected, reader)
     const ids = selectedMetadata.entries.map((entry) => entry.id)
     const summary = await read(ids)
     const list = buildDurableSessionCatalog(

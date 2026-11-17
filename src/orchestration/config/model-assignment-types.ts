@@ -53,7 +53,7 @@ export interface ModelConfigDeps {
   readonly moduleSelection: FirstPartyModuleSnapshot;
   /** Immutable config captured by the owning runtime or one-shot boundary. */
   readonly config: FlywheelConfig;
-  /** Authored session and fixed launch fields, kept distinct from profile policy. */
+  /** Authored session fields and workflow defaults, kept distinct from profile policy. */
   readonly sessionRoleAssignments?: RoleAssignmentSnapshot;
   /** For a workflow agent's session, the persona roles that each agent record of its run reads. */
   readonly agentPersonas?: AgentPersonaRoles;

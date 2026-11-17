@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
-import { committedUsageEvent, makeSessionBudgetStore } from "./_budget-store-fixtures";
+import { committedUsageEvent, contextEvent, makeSessionBudgetStore } from "./_budget-store-fixtures";
 
 const TMP_ROOT = path.join(
   os.tmpdir(),
@@ -62,7 +62,6 @@ describe("SessionBudgetStore metrics", () => {
 
     expect(await budgetStore.metrics()).toEqual({ ...zero, cost: 0.04, billedCost: 0.04, tokens: 1900 });
     expect(await budgetStore.getTokensUsed()).toBe(1900);
-    expect(await budgetStore.getOutputTokensUsed()).toBe(700);
 
     budgetStore.dispose();
   });
@@ -103,7 +102,7 @@ describe("SessionBudgetStore metrics", () => {
     const budgetStore = makeSessionBudgetStore(makeTmpDir(), newSessionId());
 
     await budgetStore.recordRuntimeEvent(resultEvent(0.02, 10, 5));
-    await budgetStore.recordContextUtilization(90_000, 1_000_000);
+    await budgetStore.recordRuntimeEvent(contextEvent(90_000, 1_000_000));
 
     expect(await budgetStore.metrics()).toEqual({ ...zero, cost: 0.02, billedCost: 0.02, tokens: 15, contextPercent: 9, contextPromptTokens: 90_000 });
 

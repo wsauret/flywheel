@@ -1,7 +1,7 @@
 import { createHash, type Hash } from "node:crypto";
 import { basename, dirname, join } from "node:path";
-import { ContainedDirectory, ContainedPathError } from "../infra/descriptor-directory.js";
-import type { ContainedDirectoryContract, ContainedOwnedFile } from "../infra/descriptor-directory-contract.js";
+import { ContainedPathError, type ContainedDirectory, type ContainedOwnedFile } from "../infra/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../infra/descriptor-directory.js";
 import { renderCapabilityText, type CapabilityCheck } from "../infra/capability-text.js";
 import type {
   SkillAuthority,
@@ -29,7 +29,7 @@ export interface SkillDirectoryEntry {
   readonly type: "directory" | "file" | "symlink" | "other";
 }
 
-export type SkillDirectoryEntries = (directory: ContainedDirectoryContract) => Iterable<SkillDirectoryEntry>;
+export type SkillDirectoryEntries = (directory: ContainedDirectory) => Iterable<SkillDirectoryEntry>;
 
 /** One skill root, opened for the duration of one scan. */
 export interface ResolvedStepRoot {
@@ -41,7 +41,7 @@ export interface ResolvedStepRoot {
 
 /** The contained authority exposes names and directory names separately. The
  * remaining entries are classified through metadata, without reading bytes. */
-function containedEntries(directory: ContainedDirectoryContract): readonly SkillDirectoryEntry[] {
+function containedEntries(directory: ContainedDirectory): readonly SkillDirectoryEntry[] {
   const directories = new Set(directory.directoryEntryNames());
   const entries: SkillDirectoryEntry[] = [];
   for (const name of directory.entryNames()) {
@@ -67,7 +67,7 @@ export function withSkillRoot<T>(
   use: (root: ResolvedStepRoot) => T,
   entriesOf: SkillDirectoryEntries = containedEntries,
 ): T {
-  const root = ContainedDirectory.open(rootDir, []);
+  const root = openContainedDirectory(rootDir, []);
   try {
     return use({
       listPackageDirs: (limit) => listPackageDirs(root, rootDir, entriesOf, limit),
@@ -83,7 +83,7 @@ function rootChanged(cause?: unknown): Error {
 }
 
 function listPackageDirs(
-  root: ContainedDirectoryContract,
+  root: ContainedDirectory,
   rootDir: string,
   entriesOf: SkillDirectoryEntries,
   limit: number,
@@ -114,9 +114,9 @@ function listPackageDirs(
  *  package binds to the target's canonical path and identity, so every later
  *  read refuses a link below the package exactly as it does in an installed
  *  one. A link that names no directory is a package failure, never a skip. */
-function bindPackage(root: ContainedDirectoryContract, rootDir: string, name: string): SkillPackageBinding | undefined {
+function bindPackage(root: ContainedDirectory, rootDir: string, name: string): SkillPackageBinding | undefined {
   const packageDir = join(rootDir, name);
-  let child: ContainedDirectoryContract | undefined;
+  let child: ContainedDirectory | undefined;
   let linked = false;
   try {
     child = root.openExistingChild(name);
@@ -124,7 +124,7 @@ function bindPackage(root: ContainedDirectoryContract, rootDir: string, name: st
     if (!(error instanceof ContainedPathError)) throw error;
     linked = true;
     try {
-      child = ContainedDirectory.open(packageDir, []);
+      child = openContainedDirectory(packageDir, []);
     } catch (cause) {
       throw new TypeError("package entry is a link that names no directory", { cause });
     }
@@ -396,15 +396,15 @@ interface AdmittedPackage {
 function withBoundPackage<T>(
   binding: SkillPackageBinding,
   subject: string,
-  use: (root: ContainedDirectoryContract) => T,
+  use: (root: ContainedDirectory) => T,
 ): T | undefined {
-  let parent: ContainedDirectoryContract;
+  let parent: ContainedDirectory;
   try {
-    parent = ContainedDirectory.open(dirname(binding.canonicalDir), []);
+    parent = openContainedDirectory(dirname(binding.canonicalDir), []);
   } catch (error) {
     throw containmentFailure(subject, error);
   }
-  let root: ContainedDirectoryContract | undefined;
+  let root: ContainedDirectory | undefined;
   try {
     root = parent.openExistingChild(basename(binding.canonicalDir));
   } catch (error) {
@@ -434,12 +434,12 @@ function withBoundPackage<T>(
   }
 }
 
-function readContainedFile(root: ContainedDirectoryContract, path: string, maxBytes: number): Buffer | undefined {
+function readContainedFile(root: ContainedDirectory, path: string, maxBytes: number): Buffer | undefined {
   const components = path.split("/");
   const file = components.pop();
   if (file === undefined) return undefined;
-  const children: ContainedDirectoryContract[] = [];
-  let current: ContainedDirectoryContract = root;
+  const children: ContainedDirectory[] = [];
+  let current: ContainedDirectory = root;
   try {
     for (const component of components) {
       assertSafePathComponent(component);
@@ -455,12 +455,12 @@ function readContainedFile(root: ContainedDirectoryContract, path: string, maxBy
   }
 }
 
-function readContainedOwnedFile(root: ContainedDirectoryContract, path: string, maxBytes: number): ContainedOwnedFile | undefined {
+function readContainedOwnedFile(root: ContainedDirectory, path: string, maxBytes: number): ContainedOwnedFile | undefined {
   const components = path.split("/");
   const file = components.pop();
   if (file === undefined) return undefined;
-  const children: ContainedDirectoryContract[] = [];
-  let current: ContainedDirectoryContract = root;
+  const children: ContainedDirectory[] = [];
+  let current: ContainedDirectory = root;
   try {
     for (const component of components) {
       assertSafePathComponent(component);
@@ -479,7 +479,7 @@ function readContainedOwnedFile(root: ContainedDirectoryContract, path: string, 
 function withAdmittedPackage<T>(
   binding: SkillPackageBinding,
   admission: { readonly entriesOf?: SkillDirectoryEntries; readonly skillFileCap: number | undefined },
-  use: (root: ContainedDirectoryContract, admitted: AdmittedPackage) => T,
+  use: (root: ContainedDirectory, admitted: AdmittedPackage) => T,
 ): T | undefined {
   return withBoundPackage(binding, SKILL_FILE, (root) => {
     const skillFile = readResolvedStepFile(root, admission.skillFileCap);
@@ -502,7 +502,7 @@ export function holdsSkillFile(binding: SkillPackageBinding): boolean {
   }
 }
 
-function identifyPackage(root: ContainedDirectoryContract, admitted: AdmittedPackage, skillFileCap: number | undefined): string {
+function identifyPackage(root: ContainedDirectory, admitted: AdmittedPackage, skillFileCap: number | undefined): string {
   if (readResolvedStepFile(root, skillFileCap) !== admitted.skillFile) throw generationChanged(SKILL_FILE);
   const digest = openPackageDigest(admitted.skillFile);
   visitDeclaredFiles(root, admitted, (path, bytes) => {
@@ -513,7 +513,7 @@ function identifyPackage(root: ContainedDirectoryContract, admitted: AdmittedPac
 }
 
 function visitDeclaredFiles(
-  root: ContainedDirectoryContract,
+  root: ContainedDirectory,
   admitted: AdmittedPackage,
   read: (path: string, bytes: Buffer) => void,
 ): void {
@@ -537,7 +537,7 @@ function generationChanged(subject: string): Error {
   return new Error(`${subject} changed while the package was read; the package is refused rather than served as a mix of two installs`);
 }
 
-function readResolvedStepFile(root: ContainedDirectoryContract, maxBytes: number | undefined): string | undefined {
+function readResolvedStepFile(root: ContainedDirectory, maxBytes: number | undefined): string | undefined {
   try {
     const bytes = readContainedFile(root, SKILL_FILE, maxBytes ?? SKILL_LIMITS.packageBytes);
     return bytes === undefined ? undefined : decodeUtf8(SKILL_FILE, bytes);
@@ -617,7 +617,7 @@ interface ResourceWalk {
   examined: number;
 }
 
-function collectResources(walk: ResourceWalk, directory: ContainedDirectoryContract, prefix: string, depth: number): void {
+function collectResources(walk: ResourceWalk, directory: ContainedDirectory, prefix: string, depth: number): void {
   if (depth > MAX_RESOURCE_DEPTH) return;
   for (const entry of walk.entriesOf(directory)) {
     if (walk.resources.length > SKILL_LIMITS.resources) return;
@@ -643,7 +643,7 @@ function collectResources(walk: ResourceWalk, directory: ContainedDirectoryContr
   }
 }
 
-function declareContainedFile(walk: ResourceWalk, directory: ContainedDirectoryContract, name: string, path: string): void {
+function declareContainedFile(walk: ResourceWalk, directory: ContainedDirectory, name: string, path: string): void {
   let owned: ContainedOwnedFile | undefined;
   try {
     owned = readContainedOwnedFile(directory, name, SKILL_LIMITS.packageBytes);

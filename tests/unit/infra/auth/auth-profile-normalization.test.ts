@@ -9,7 +9,7 @@ const temporaryDirectory = temporaryDirectories();
 /** A provider that declares one conversion in each phase and records when each runs. */
 function converting(id: string, order: string[]): AccessProviderDefinition {
   return {
-    id, displayName: id, shortName: id, billing: "subscription", rank: 1, supportedFamilies: ["anthropic"], configHints: [], catalogId: undefined, cli: { name: id },
+    id, displayName: id, shortName: id, billing: "subscription", rank: 1, configHints: [], catalogId: undefined, cli: { name: id },
     auth: { kind: "api_key", statusRank: 1 },
     profileConversions: [
       { phase: "after-decode", convert: async () => { order.push(`${id} after`); } },

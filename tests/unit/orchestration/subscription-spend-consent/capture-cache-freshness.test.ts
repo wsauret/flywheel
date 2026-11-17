@@ -19,7 +19,7 @@ describe("consent memoization is independent of usage", () => {
     const usage = createSubscriptionUsageService({
       profile: () => ({ id: "default", directory }),
       registry: () => registry(definitions, new Map<string, SubscriptionUsageReader>([
-        ...["older", "fresh"].map((id) => [id, async () => ({ kind: "success" as const, report: { ...report(id, id === "older" ? 10_000 : 10_100), spendSources: [{ kind: "prepaid" as const, availability: "funded" as const, remaining: { kind: "count" as const, value: 10, unit: "credits", provenance: "provider" as const, precision: "exact" as const } }] } })] as const),
+        ...["older", "fresh"].map((id) => [id, async () => ({ kind: "success" as const, report: { ...report(id, id === "older" ? now - 100 : now), spendSources: [{ kind: "prepaid" as const, availability: "funded" as const, remaining: { kind: "count" as const, value: 10, unit: "credits", provenance: "provider" as const, precision: "exact" as const } }] } })] as const),
         ["failure", async () => ({ kind: "fetch-failure" as const })],
         ["stale", async () => ({ kind: "fetch-failure" as const })],
       ])),

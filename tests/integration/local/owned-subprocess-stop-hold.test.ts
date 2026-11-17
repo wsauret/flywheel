@@ -3,7 +3,7 @@ import { rmSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 import { onTermination } from "../../../src/infra/process-container.js"
-import { createProcessSupervisor } from "../../../src/infra/process-supervisor.js"
+import { createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { payloadThatRunsForever } from "../../helpers/payload.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 
@@ -35,8 +35,8 @@ describe("owned subprocess stop hold", () => {
     const lock = scratch.file(".oauth_refresh.lock")
     await Bun.write(lock, "refreshing")
     const hostSource = [
-      `import { createProcessSupervisor } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
-      `const supervisor = createProcessSupervisor()`,
+      `import { createProcessSupervisor, guardianCommand } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
+      `const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })`,
       `await supervisor.spawnOwned([${JSON.stringify(process.execPath)}, ${JSON.stringify(TARGET)}, ${JSON.stringify(marker)}], { stopHold: { path: ${JSON.stringify(lock)}, boundMs: 20_000 } })`,
       `await new Promise(() => {})`,
     ].join("\n")
@@ -64,7 +64,7 @@ describe("owned subprocess stop hold", () => {
     const kills: string[] = []
     const stopWatching = onTermination((decision) => { kills.push(decision.reason) })
     try {
-      const supervisor = createProcessSupervisor()
+      const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
       const running = await supervisor.spawnOwned(payloadThatRunsForever(), { stopHold: { path: lock, boundMs: 20_000 } })
       scratch.guard(running.pid)
       const started = performance.now()

@@ -2,6 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { DebugLog } from "../../../src/infra/debug-log.js"
 import { inWindow, readDebugLogRecords } from "../../release/lib/debug-log-reader.js"
 
 // The "filters" block creates its workspace while the file loads, so the
@@ -38,14 +39,17 @@ describe("readDebugLogRecords", () => {
     expect(records.map((record) => record.ts)).toEqual([100, 200])
   })
 
-  test("names each record's writing process from its file name", () => {
+  test("names each record's writing process from the name the sink gave its file", async () => {
     const workDir = temporaryWorkspace("fw-release-writer-")
-    const logDir = join(workDir, ".flywheel", "log")
-    mkdirSync(logDir, { recursive: true })
-    const line = JSON.stringify({ ts: 100, type: "log.debug", payload: { service: "event-loop-lag" } })
-    writeFileSync(join(logDir, "2026-10-02T120000000Z-4242-0-123e4567-e89b-12d3-a456-426614174000.jsonl"), line)
-    writeFileSync(join(logDir, "unrecognized-name.jsonl"), line)
-    expect(readDebugLogRecords(workDir).map((record) => record.writer)).toEqual([{ pid: "4242", writer: "4242:0" }, undefined])
+    try {
+      await DebugLog.init({ dir: workDir })
+      DebugLog.record({ type: "startup.finished", payload: {} })
+    } finally {
+      await DebugLog.close()
+    }
+    writeFileSync(join(workDir, ".flywheel", "log", "unrecognized-name.jsonl"), JSON.stringify({ ts: 0, type: "log.debug" }))
+
+    expect(readDebugLogRecords(workDir).map((record) => record.pid)).toEqual([undefined, String(process.pid)])
   })
 
   test("a workspace without a log directory answers no records", () => {

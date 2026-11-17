@@ -6,8 +6,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from "@modelcontextprotocol/sdk/types.js";
 import { enginePath } from "../../src/infra/claude-engine.js";
 import { osAccount } from "../../src/infra/os-account.js";
-import { createLauncherScope, createProcessSupervisor } from "../../src/infra/process-supervisor.js";
-import { createMcpClaudeEngine } from "../../src/orchestration/modules/mcp/claude-engine.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../src/infra/process-supervisor.js";
+import { processClaudeEngine } from "../../src/orchestration/modules/mcp/claude-engine.js";
 import { launchClaudeEngineSession } from "../../src/orchestration/modules/mcp/claude-engine-session.js";
 import { McpOutcomeUnknownError } from "../../src/orchestration/modules/mcp/errors.js";
 import { createMcpManager } from "../../src/orchestration/modules/mcp/manager.js";
@@ -85,7 +85,7 @@ const listener = Bun.serve({
     return new Response("not found", { status: 404 });
   },
 });
-const supervisor = createProcessSupervisor();
+const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
 const launcher = createLauncherScope(supervisor);
 afterAll(async () => {
   await listener.stop(true);
@@ -115,13 +115,11 @@ describe("the bundled Claude engine as an MCP client", () => {
     const configDir = join(root, "engine");
     const base = `http://127.0.0.1:${listener.port}`;
     const callbackPort = await freePort();
-    const engine = createMcpClaudeEngine({
-      launch: () => launchClaudeEngineSession({
-        host: { enginePath: enginePath(), account: osAccount(), platform: process.platform, hostEnvironment: process.env, timeZone: undefined, temporaryDirectory: join(root, "tmp") },
-        configDir,
-        launcher,
-      }),
-    });
+    const engine = processClaudeEngine(() => launchClaudeEngineSession({
+      host: { enginePath: enginePath(), account: osAccount(), platform: process.platform, hostEnvironment: process.env, timeZone: undefined, temporaryDirectory: join(root, "tmp") },
+      configDir,
+      launcher,
+    }));
     const manager = createMcpManager({
       servers: {
         echo: { url: `${base}/mcp`, headers: {}, client: "claude", enabled: true },

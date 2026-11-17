@@ -406,7 +406,7 @@ function cardCut(status: CardStatus): boolean {
  *  skipped; an agent of a card that an interrupt holds reads parked; and a
  *  parked agent of a card whose resumed run goes on reads running, unless
  *  its own interrupt (`interrupted`, from its live value) still holds it. */
-export function workflowCardDisplayState(state: WorkflowAgentState, status: CardStatus, interrupted = false): WorkflowAgentState {
+function workflowCardDisplayState(state: WorkflowAgentState, status: CardStatus, interrupted = false): WorkflowAgentState {
   if ((status === "stopped" || status === "cancelled") && !settledState(state)) return "skipped"
   if (state === "running" && (cardCut(status) || interrupted)) return "parked"
   if (state === "parked" && isAgentInFlight(status) && !interrupted) return "running"
@@ -418,7 +418,7 @@ export interface WorkflowCardBarPart extends SummaryPart {
   readonly short: string
 }
 
-export interface WorkflowCardBar {
+interface WorkflowCardBar {
   readonly counts: WorkflowUnitCounts
   readonly label: readonly WorkflowCardBarPart[]
 }
@@ -613,7 +613,7 @@ export function workflowCardTime(item: WorkflowActiveTime & { readonly state: Wo
  *  that ran; in a run that goes on, the units that their own interrupt
  *  holds count as interrupted, as the phase line and the agent view's band
  *  count them. */
-export function workflowCardBar(card: WorkflowCard, status: CardStatus): WorkflowCardBar {
+function workflowCardBar(card: WorkflowCard, status: CardStatus): WorkflowCardBar {
   const settled = workflowCardSettled(status)
   const cut = cardCut(status)
   const running = settled || cut ? 0 : card.running

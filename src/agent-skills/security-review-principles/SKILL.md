@@ -1,5 +1,6 @@
 ---
 description: Add trust-boundary and exploitability scrutiny to one active code or plan review.
+disable-model-invocation: true
 ---
 
 # Security Review Principles

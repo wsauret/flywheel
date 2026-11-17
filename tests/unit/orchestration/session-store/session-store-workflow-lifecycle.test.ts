@@ -7,9 +7,8 @@ import type { WorkflowRunner, WorkflowResult } from "../../../../src/orchestrati
 import { createSessionStoreTestContext } from "./_session-store-fixtures.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { makeWorkflowDeps } from "../workflow-host/_workflow-controller-fixtures.js"
-import { parseSchema } from "../../../helpers/schema-assertions.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const dirs = temporaryDirectories()
 let context: ReturnType<typeof createSessionStoreTestContext>
@@ -79,7 +78,7 @@ function options() {
     sessionId: "workflow", description: "Workflow", startMode: "launch" as const,
     projectRoot: root, executionCwd: root,
     manager: createSessionManager({ projectRoot: root, executionCwd: root, projectionReader: reader, writer: context.runtime.runSync(EventStoreWriterService) }),
-    workflow: parseSchema(WorkflowDefinitionSchema, { id: "test", name: "Test", phases: [{ phase: "work", name: "Work", brief: "Do work.", writes: [] }] }),
+    workflow: loadedWorkflow({ id: "test", name: "Test", phases: [{ phase: "work", name: "Work", brief: "Do work.", writes: [] }] }),
     workflowDeps: { ...deps, definitionRevision: deps.definitions.captureRevision() },
     recall: async () => ({ hits: [] }),
   }

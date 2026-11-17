@@ -1,4 +1,4 @@
-import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, GuardedAppendResult, GuardedEventStoreAppend, InFlightSwap, StoredFact } from "./event-store-types.js"
+import type { EventStoreAppend, EventStoreItemSettlement, EventStoreWriteItem, GuardedAppendResult, GuardedEventStoreAppend, InFlightSwap, StoredFact, InFlightPayload } from "./event-store-types.js"
 import type { SessionContentNodeRow } from "./session-content.js"
 import type { DurableOwner } from "./durable-owner.js"
 
@@ -92,11 +92,11 @@ export interface EventStoreWriterLane {
   appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
   /** Writes or retires a standalone recovery cell through the bounded lane.
    * Resolves after commit; rejection means the change was not durable. */
-  putInFlight(sessionId: string, kind: string, key: string, payload: unknown): Promise<void>
+  putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): Promise<void>
   dropInFlight(sessionId: string, kind: string, key: string): Promise<void>
   /** Guarded in-flight transition ordered with all fact appends. The payload is
    * serialized before admission and its bytes participate in lane limits. */
-  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): Promise<boolean>
+  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
   swapInFlightBatch(sessionId: string, swaps: readonly InFlightSwap[]): Promise<boolean>
   /** Installs, once, the admission that every later append of a fact or an
    *  in-flight cell passes before the lane accepts it. Content staging alone

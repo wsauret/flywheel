@@ -1,39 +1,45 @@
-import { Clock, Duration, Effect } from "effect";
+import type { StreamLivenessOptions } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
 
+type LivenessClock = NonNullable<StreamLivenessOptions["clock"]>;
+
+/** A liveness clock that moves only when the test advances it. `advance` fires
+ *  each due timer at its own due time, in order, including timers that a fired
+ *  timer arms within the advanced span. */
 export function controlledClock() {
   let now = 1;
-  let sleepCalls = 0;
-  const sleepers = new Set<{ at: number; resume: (effect: Effect.Effect<void>) => void }>();
-  const clock: Clock.Clock = {
-    currentTimeMillisUnsafe: () => now,
-    currentTimeMillis: Effect.sync(() => now),
-    currentTimeNanosUnsafe: () => BigInt(now) * 1_000_000n,
-    currentTimeNanos: Effect.sync(() => BigInt(now) * 1_000_000n),
-    monotonicTimeNanosUnsafe: () => BigInt(now) * 1_000_000n,
-    monotonicTimeNanos: Effect.sync(() => BigInt(now) * 1_000_000n),
-    sleep: (duration) => Effect.callback<void>((resume) => {
-      sleepCalls += 1;
-      const sleeper = { at: now + Duration.toMillis(duration), resume };
-      sleepers.add(sleeper);
-      return Effect.sync(() => { sleepers.delete(sleeper); });
-    }),
+  let timersSet = 0;
+  let order = 0;
+  const timers = new Set<{ at: number; order: number; callback: () => void }>();
+  const clock: LivenessClock = {
+    now: () => now,
+    setTimer: (callback, delayMs) => {
+      timersSet += 1;
+      const timer = { at: now + delayMs, order: order++, callback };
+      timers.add(timer);
+      return () => { timers.delete(timer); };
+    },
   };
   const flush = async (): Promise<void> => {
     await Promise.resolve();
     await Promise.resolve();
   };
+  const nextDue = (until: number) => [...timers]
+    .filter((timer) => timer.at <= until)
+    .sort((a, b) => a.at - b.at || a.order - b.order)[0];
   return {
     clock,
-    get sleepCalls() { return sleepCalls; },
-    get pendingSleeps() { return sleepers.size; },
+    /** How many timers the clock armed. */
+    get sleepCalls() { return timersSet; },
+    get pendingSleeps() { return timers.size; },
     async advance(ms: number): Promise<void> {
       await flush();
-      now += ms;
-      for (const sleeper of sleepers) {
-        if (sleeper.at > now) continue;
-        sleepers.delete(sleeper);
-        sleeper.resume(Effect.void);
+      const until = now + ms;
+      for (let timer = nextDue(until); timer; timer = nextDue(until)) {
+        timers.delete(timer);
+        now = timer.at;
+        timer.callback();
       }
+      now = until;
       await flush();
     },
   };

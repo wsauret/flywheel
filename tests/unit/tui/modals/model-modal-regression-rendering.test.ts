@@ -147,6 +147,35 @@ test("catalog publication keeps model renderables and the top visible model afte
     }
   } finally { result.renderer.destroy(); }
 });
+test("the picker says it is loading, then opens with the current row in view", async () => {
+  const [{ testRender }, { createComponent }, { ThemeProvider }, { ModelModal }] = await Promise.all([
+    import("@opentui/solid"), import("solid-js/web"),
+    import("../../../../src/tui/context/theme.js"), import("../../../../src/tui/modals/model-modal.js"),
+  ]);
+  const options: ModelOptionRow[] = Array.from({ length: 160 }, (_, index) => ({
+    slot: roleSlot("chat"), model: `model-${index}`, label: `model-${index}`,
+    selectable: true, efforts: ["low", "high"], effort: "high", current: index === 50, providers: [],
+  }));
+  const [state, setState] = createSignal<ModelModalState>({
+    view: { kind: "models", displayLabel: "build", direct: true }, scope: "session", scopeToggleAvailable: false,
+    assignmentItems: [], modelOptions: [], query: "", pendingEfforts: new Map(), cursor: 0, loading: true, confirmReset: false,
+  });
+  const result = await testRender(() => createComponent(ThemeProvider, {
+    mode: "dark",
+    get children() { return createComponent(ModelModal, { get state() { return state(); }, onClose() {}, onSelect() {} }); },
+  }), { width: 100, height: 30 });
+  try {
+    await result.renderOnce();
+    const loadingFrame = result.captureCharFrame();
+    expect(loadingFrame).toContain("Loading models...");
+    expect(loadingFrame).not.toContain("No models available.");
+    // The rows replace the shorter loading list in a later frame, as the runtime's reply does.
+    setState((previous) => ({ ...previous, modelOptions: options, cursor: 50, loading: false }));
+    await result.renderOnce();
+    expect(result.captureCharFrame()).toMatch(/> model-50\s/);
+    expect(result.captureCharFrame()).not.toContain("model-159");
+  } finally { result.renderer.destroy(); }
+});
 describe("model modal rendering structure", () => {
   test("assignment context does not label the inheritance glyph", () => {
     expect(contextLine({
@@ -179,6 +208,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "explicit",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     } as const;
     const content = styledTextContent(modelAssignmentText(matchingPair, false, theme, 12, 32));
 
@@ -195,6 +225,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "inherited",
       matchesInheritedPair: false,
+      configured: { kind: "absent" },
     } as const;
     const content = styledTextContent(modelAssignmentText(differentPair, false, theme, 12, 32));
 
@@ -334,6 +365,7 @@ describe("model modal rendering structure", () => {
       effort: "low",
       modelSource: "explicit",
       matchesInheritedPair: false,
+      configured: { kind: "absent" },
     } as const;
     const text = modelAssignmentText(row, true, theme, 12, 52, "heading");
     const content = styledTextContent(text);
@@ -357,6 +389,7 @@ describe("model modal rendering structure", () => {
       effort: "medium",
       modelSource: "inherited",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 26, 48));
 
     expect(content).toBe("  審査🚀 Implementation ... gpt-6.1-sol Medium ↳");
@@ -371,6 +404,7 @@ describe("model modal rendering structure", () => {
       effort: "medium",
       modelSource: "default",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 12, 52));
 
     expect(content).toContain("checking provider models");
@@ -384,6 +418,7 @@ describe("model modal rendering structure", () => {
       slot: roleSlot("chat"), label: "Chat", model: "powerful", effort: "medium",
       modelSource: "default",
       matchesInheritedPair: true,
+      configured: { kind: "absent" },
     }, false, theme, 12, 52, "heading", {
       providers: [{
         providerId: "chatgpt", kind: "subscription", source: "oauth", expired: false,

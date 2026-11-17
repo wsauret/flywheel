@@ -1,7 +1,7 @@
 import { copyFile, mkdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 const CARGO_TIMEOUT_MS = 180000;
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   await Promise.all(Object.entries(cargoEnv)
     .filter(([key]) => key !== "CARGO_NET_OFFLINE")
     .map(([, directory]) => mkdir(directory, { recursive: true })));
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

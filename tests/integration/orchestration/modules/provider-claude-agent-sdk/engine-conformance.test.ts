@@ -25,6 +25,7 @@ import { formatRuntimeNotification } from "../../../../../src/orchestration/agen
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
 import { formatWaitNoopNotification } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createQueryLauncher, type LaunchedQuery } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
@@ -453,7 +454,7 @@ describe("the shipped engine sends what the native Anthropic route sends", () =>
       for (const route of routes) {
         const captured: unknown[] = [];
         const [handoffCall] = streamedToolCalls(route);
-        const prepared = prepareToolCall({ id: handoffCall?.id ?? "", name: handoffCall?.name ?? "", input: { summary: "done", verdict: "passed" } }, new Map([["handoff", handoff]]));
+        const prepared = prepareToolCall({ id: handoffCall?.id ?? "", name: handoffCall?.name ?? "", input: { summary: "done", verdict: "passed" } }, new Map([["handoff", handoff]]), admitEveryTool);
         const result = await executePreparedTool(prepared, makeContext({ handoff: { onContent: (content) => { captured.push(content); } } }));
         expect(handoffCall?.input).toEqual({ summary: "done", verdict: "passed" });
         expect(result.outcome).toBe("ok");

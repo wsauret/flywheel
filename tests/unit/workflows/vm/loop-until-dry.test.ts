@@ -12,6 +12,7 @@ import { workflowTree } from "../../../../src/workflows/vm/view-tree.js";
 import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js";
 import { attemptOf, DRY_FILES, DRY_LOOP, dryAnswer, dryDefinition, dryFinding, dryRound, dryStage, dryWorkflow, mapSkills, type DryOptions } from "./_map-fixtures.js";
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const drivers: SqliteVmDriver[] = [];
 
@@ -47,7 +48,7 @@ async function runDry(maxIterations: number, verify = false, fails: (attemptId: 
  *  its launch input. */
 function compileDry(options: DryOptions = {}, files: readonly { readonly path: string }[] = DRY_FILES) {
   const workflow: WorkflowDefinition = {
-    ...Schema.decodeUnknownSync(WorkflowDefinitionSchema)(dryDefinition(options)),
+    ...loadedWorkflow(dryDefinition(options)),
     provenance: { layer: "session", filePath: "scratch/workflows/dry.workflow.yaml", id: "dry" },
   };
   const limits = launchGuardrailLimits(workflow, 50);

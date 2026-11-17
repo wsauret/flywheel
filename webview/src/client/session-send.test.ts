@@ -7,9 +7,10 @@ import type { FrontendEvent } from "../../../src/protocol/app-service-types.js"
 import { CONNECTED_PROVIDER, settle } from "./session-connection-fixture.js"
 import { selectionConnection, waitForSelection } from "./session-selection-fixture.js"
 import { RuntimeLaneLost } from "../../../src/protocol/client/connection-failures.js"
-import { WAITING_RECALL } from "../../../src/protocol/client/chat-submissions.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
+
+const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
 
 test("a refused message to a workflow agent rejects and keeps the words to be recalled", async () => {
   const connection = selectionConnection([], "Invocation budget exhausted (1/1)")

@@ -590,23 +590,23 @@ const READ_INPUT_SCHEMA = {
   properties: {
     path: {
       type: "string",
-      description: "Absolute or relative path to the file to read",
+      description: "Absolute or relative path",
     },
     offset: {
       type: "number",
-      description: "0-based line offset to start reading from (default: 0). Only applies to text files.",
+      description: "0-based first line",
     },
     limit: {
       type: "number",
-      description: "Maximum number of lines to return (default: 2000). Only applies to text files.",
+      description: "Maximum lines to return",
     },
     map: {
       type: "boolean",
-      description: "Include a structural map of the file's symbols (functions, classes, types with line ranges). Mutually exclusive with symbol.",
+      description: "Add an outline of the file's symbols with their line ranges. Do not combine with symbol.",
     },
     symbol: {
       type: "string",
-      description: "Read only the named symbol (function, class, etc). Supports dot notation: \"ClassName.methodName\". Mutually exclusive with offset, limit, and map.",
+      description: "Read only this function, class, or other symbol; members use dot notation, as in Class.method.",
     },
   },
   required: ["path"],
@@ -620,11 +620,11 @@ function searchRequested(input: Readonly<RuntimeToolInput>): boolean {
   return SEARCH_KEYS.some((key) => Object.hasOwn(input, key));
 }
 
-const READ_DESCRIPTION_HEAD = "Read a file's contents; given a directory, read returns its entries. Text files are returned with ordinary one-based decimal line numbers followed by | (for example, 42|const x = 1). Append :raw to the path for verbatim content without line numbers. Append line ranges to the path: path:5-16, path:50+20 (20 lines from 50), or path:5-16,960-973 (multi-range); selectors compound, as in path:5-16:raw. Use symbol: \"functionName\" to read just that function (dot notation supported: \"Class.method\"). Use map: true to see the file's structural outline (functions, classes, types with line ranges).";
-const READ_DESCRIPTION_TAIL = "When a file is truncated, a structural map is auto-appended. Image files (PNG, JPG, GIF, WebP) are returned as base64-encoded data. You can read multiple files in parallel; always parallelize when exploring related files.";
+const READ_DESCRIPTION_HEAD = "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw.";
+const READ_DESCRIPTION_TAIL = "Images (PNG, JPG, GIF, WebP) are returned as images.";
 /** One text for both default-read behaviors, so the tool reads the same for
  *  every agent (ARCH-CONTEXT-018). */
-const DEFAULT_READ_DESCRIPTION = `A read without a selector or read option returns the file from its first line, up to ${DEFAULT_LINE_LIMIT} lines or the size limit of one tool result, or a large supported code file as its structural summary; summary rows keep their original line numbers and the footer gives exact ranges for each elided body, so re-read its cited ranges to recover them.`;
+const DEFAULT_READ_DESCRIPTION = `Without a suffix or option, a read returns up to ${DEFAULT_LINE_LIMIT} lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read.`;
 
 interface ReadDefinitionOptions {
   readonly operations?: ReadOperations;

@@ -43,7 +43,6 @@ test.each([
     });
     return {
       send() {},
-      end() {},
       abort() {},
       done: authorityProof.then(() => ({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" as const } })),
     };

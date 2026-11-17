@@ -210,7 +210,7 @@ test("an internal stop silently removes a failed preview without trying another 
         },
         onStreamAbandoned(reason) {
           reasons.push(reason);
-          projector.apply({ type: "abandon-tool-inputs", reason });
+          projector.apply({ type: "abandon-tool-inputs" });
         },
       }),
       execute: (_candidate, fold) => fold({}, async (attempt) => {

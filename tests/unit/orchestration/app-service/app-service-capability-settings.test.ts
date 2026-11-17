@@ -6,6 +6,7 @@ import { createFrontendProjection } from "../../../../src/orchestration/app-serv
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { createModuleProjection } from "../../../../src/orchestration/app-service/module-projection.js"
 import { createModulePolicy } from "../../../../src/orchestration/config/module-policy.js"
+import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import type { RuntimeModulesView } from "../../../../src/protocol/module-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
@@ -21,9 +22,10 @@ describe("FlywheelAppService capability settings", () => {
     const store = fakeSessionStore(new Map())
     const manager = fakeManager()
     const published: RuntimeModulesView[] = []
-    const capabilities = await createModuleProjection({
+    const capabilities = createModuleProjection({
       location: { configPath },
       capabilities: await createModulePolicy({ configPath }),
+      runtimeConfig: await createRuntimeConfigOwner({ configPath, watch: false }),
       publish: (input: RuntimeUiPatchInput) => {
         if (input.payload.kind === "modules.changed") published.push(input.payload.capabilities)
       },
@@ -60,9 +62,10 @@ describe("FlywheelAppService capability settings", () => {
     const configPath = join(temporaryDirectory("flywheel-app-service-capabilities-"), "flywheel.toml")
     writeFileSync(configPath, FULL_SELECTION)
     const published: RuntimeModulesView[] = []
-    const capabilities = await createModuleProjection({
+    const capabilities = createModuleProjection({
       location: { configPath },
       capabilities: await createModulePolicy({ configPath }),
+      runtimeConfig: await createRuntimeConfigOwner({ configPath, watch: false }),
       persistentProcesses: { persisted: false, effective: true, forcedByCli: true },
       publish: (input) => { if (input.payload.kind === "modules.changed") published.push(input.payload.capabilities) },
       settlePublication: async () => {},

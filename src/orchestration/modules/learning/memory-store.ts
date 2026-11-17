@@ -37,11 +37,8 @@ import { acquireLockIn, releaseLockIn } from "../../../infra/ownership-file-lock
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import { firstThreatMessage, scanForThreats } from "../../../infra/threat-patterns.js";
 import { withMutationQueueKey } from "../../../infra/file-mutation-queue.js";
-import {
-  type ContainedDirectory,
-  ContainedPathError,
-  withContainedDirectory,
-} from "../../../infra/descriptor-directory.js";
+import { ContainedPathError, type ContainedDirectory } from "../../../infra/descriptor-directory-contract.js";
+import { withContainedDirectory } from "../../../infra/descriptor-directory.js";
 import {
   directoryComponents,
   readFileUnder,

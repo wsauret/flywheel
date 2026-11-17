@@ -46,7 +46,7 @@ describe("turn-end records", () => {
       expect(turnEndOfEntry(message("user", { id: turnEndEntryId(end, "k"), origin: "system" }))).toEqual(end)
     }
     expect(turnEndOfEntry(message("assistant"))).toBeUndefined()
-    expect(turnEndOfEntry({ kind: "label", id: "itb-crash-k" })).toBeUndefined()
+    expect(turnEndOfEntry({ kind: "session_info", id: "itb-crash-k" })).toBeUndefined()
   })
 
   test("an exchange the runtime answered itself is a recorded, visible turn end that Resume never continues", () => {
@@ -121,7 +121,7 @@ describe("turn-end records", () => {
     const result = (interrupted: boolean): TurnEndEntry => ({ kind: "message", id: "r", message: { kind: "toolResult", content: [], ...(interrupted ? { interrupted: true } : {}) } })
     const record = message("user", { id: turnEndEntryId({ reason: "paused", pausedBy: "person" }, "k"), origin: "system" })
     expect(cutRunningToolCall([message("user"), message("assistant"), result(false), result(true)])).toBe(true)
-    expect(cutRunningToolCall([message("assistant"), result(true), message("user", { origin: "system" }), message("system"), { kind: "label", id: "l" }])).toBe(true)
+    expect(cutRunningToolCall([message("assistant"), result(true), message("user", { origin: "system" }), message("system"), { kind: "session_info", id: "l" }])).toBe(true)
     expect(cutRunningToolCall([message("assistant"), result(false)])).toBe(false)
     expect(cutRunningToolCall([message("assistant"), result(true), message("user")])).toBe(false)
     expect(cutRunningToolCall([message("assistant"), result(true), record, message("user", { origin: "system" })])).toBe(false)
@@ -205,8 +205,8 @@ describe("the turn end a branch tail reads", () => {
     expect(chatTurnEndOf([user(), ask, result("read-1"), result("ask-1")])).toEqual({ end: { reason: "crash" }, recorded: false })
   })
 
-  test("notices and labels after the record do not hide it", () => {
-    expect(chatTurnEndOf([user(), paused(), notice(), { kind: "label", id: "n1" }, { kind: "session_info", id: "s1" }])).toEqual({ end: { reason: "paused", pausedBy: "person" }, recorded: true })
+  test("notices and topology entries after the record do not hide it", () => {
+    expect(chatTurnEndOf([user(), paused(), notice(), { kind: "session_info", id: "s1" }])).toEqual({ end: { reason: "paused", pausedBy: "person" }, recorded: true })
   })
 
   test("a notification or a Resume's continuation after an interrupt or an unexpected exit does not hide it: the session still waits for the person", () => {

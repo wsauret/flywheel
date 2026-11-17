@@ -1,5 +1,60 @@
 # Explorer persona model benchmark results
 
+## 2026-11-13 hard-question mini sweep
+
+Runs: `explorer-2026-11-13T21-20-04-158Z` (OpenAI settings) and `explorer-2026-11-13T21-20-06-290Z` (Anthropic settings), run in parallel on the Personal profile. Twelve hard tracing questions with answer keys, one repeat each: the three kept questions in `bench/tasks/explorer/` and nine drafts from the second pilot, restored as temporary task folders pinned to `74d097f9c`. The drafts `compaction-during-capacity-wait` and `hosted-task-model-access-change` were left out because their answer keys were defective. The answer-key judge was gpt-6.1-sol at xhigh effort. Every candidate and the judge ran on subscriptions; billed spend was $0. Estimated list-price spend was about $11.76 (a lower bound, because nine runs were partly unpriced) for the 96 agent runs and about $3.65 for judging.
+
+Fact recall is the share of answer-key facts that the judge found in the answer. Trap rate is the share of questions on which the explorer asserted a planted wrong answer. Quality is fact recall minus trap rate, in points, so a false alarm counts against the setting. Valid citations is the mechanical check that a cited `path:line` exists at the pin. Cost is the mean estimated list price per question. Latency is the median wall time per question.
+
+| Setting | Tier | Fact recall | Trap rate | Quality | Valid citations | Cost per question | Median latency |
+|---|---|---:|---:|---:|---:|---:|---:|
+| gpt-6.1-sol low | mid | 61/70 (87.1%) | 0/12 (0.0%) | 87.1 | 349/349 (100%) | $0.183 (lower bound, 2 runs partly unpriced) | 84 s |
+| claude-sonnet-5.5 medium | mid | 60/70 (85.7%) | 1/12 (8.3%) | 77.4 | 311/375 (82.9%) | $0.243 | 49 s |
+| claude-sonnet-5.5 low | mid | 54/70 (77.1%) | 0/12 (0.0%) | 77.1 | 248/308 (80.5%) | $0.185 | 39 s |
+| gpt-6.1-sol medium | mid | 57/70 (81.4%) | 1/12 (8.3%) | 73.1 | 370/377 (98.1%) | $0.217 (lower bound, 5 runs partly unpriced) | 110 s |
+| gpt-6-luna xhigh | cheap | 51/70 (72.9%) | 0/12 (0.0%) | 72.9 | 198/203 (97.5%) | $0.029 | 306 s |
+| gpt-6-luna high (previous OpenAI default) | cheap | 50/70 (71.4%) | 0/12 (0.0%) | 71.4 | 162/167 (97.0%) | $0.010 (lower bound, 2 runs partly unpriced) | 83 s |
+| claude-haiku-5.5 medium | cheap | 56/70 (80.0%) | 2/12 (16.7%) | 63.3 | 347/395 (87.8%) | $0.047 | 105 s |
+| claude-haiku-5.5 high (previous Anthropic default) | cheap | 57/70 (81.4%) | 3/12 (25.0%) | 56.4 | 478/524 (91.2%) | $0.067 | 163 s |
+
+Reference only, from the earlier pilots on the same twelve questions (`explorer-2026-11-13T15-02-17-783Z` and `explorer-2026-11-13T16-36-24-333Z`): claude-opus-5.5 medium recalled 59/70 (84.3%) with a trap rate of 1/12, quality 76.0, at $0.770 and 78 s.
+
+### Composite score
+
+Each axis is min-max scaled to 0..1 across the eight sweep settings. Quality: higher is better, range 56.4 to 87.1. Cost: lower is better, scaled on the natural log of cost per question, range $0.010 to $0.243. Latency: lower is better, range 39 s to 306 s. Composite = 0.6 x quality + 0.2 x cost + 0.2 x latency.
+
+| Setting | Quality scaled | Cost scaled (log) | Latency scaled | Composite |
+|---|---:|---:|---:|---:|
+| gpt-6.1-sol low | 1.000 | 0.087 | 0.831 | 0.784 |
+| gpt-6-luna high | 0.488 | 1.000 | 0.835 | 0.660 |
+| claude-sonnet-5.5 low | 0.674 | 0.085 | 1.000 | 0.622 |
+| claude-sonnet-5.5 medium | 0.682 | 0.000 | 0.963 | 0.602 |
+| gpt-6.1-sol medium | 0.543 | 0.035 | 0.734 | 0.479 |
+| gpt-6-luna xhigh | 0.535 | 0.666 | 0.000 | 0.454 |
+| claude-haiku-5.5 medium | 0.225 | 0.514 | 0.753 | 0.388 |
+| claude-haiku-5.5 high | 0.000 | 0.400 | 0.536 | 0.187 |
+
+Example: gpt-6.1-sol low = 0.6 x (87.1 - 56.4) / (87.1 - 56.4) + 0.2 x (ln 0.243 - ln 0.183) / (ln 0.243 - ln 0.010) + 0.2 x (306 - 84) / (306 - 39) = 0.600 + 0.017 + 0.166 = 0.784.
+
+### Findings
+
+1. The best OpenAI setting is gpt-6.1-sol at low effort (composite 0.784, the top of the sweep). It had the highest recall, asserted no trap, and every citation was valid. Its cost is a lower bound, but at the highest observed cost ($0.243) its composite would still be 0.766, the top score.
+2. The best Anthropic setting is claude-sonnet-5.5 at low effort (composite 0.622). Sonnet medium recalled 8.6 points more but asserted one trap, so its quality is almost the same (77.4 against 77.1), and it costs 31% more. The two differ by 0.020, which one asserted trap decides.
+3. The order puts OpenAI first, because the top OpenAI setting (0.784) scores higher than the top Anthropic setting (0.622).
+4. The previous Anthropic default, haiku high, asserted a planted wrong answer on 3 of 12 questions and has the lowest composite (0.187). The previous OpenAI default, luna high, is the cheapest setting and asserted no trap, but it missed 29% of the facts (composite 0.660).
+5. More effort did not help: luna xhigh cost about three times as much as luna high and took nearly four times as long for 1.5 more points of quality, and sol medium scored lower quality than sol low.
+6. Only sol low is within 0.05 of the top composite (0.734 or more). Its tier is mid, so the fallback tier is mid, and its effort is low, so the fallback effort is low.
+7. Blind pairwise judging, a secondary score, disagrees within the Anthropic settings. Of 36 pairs each, haiku high won 33, haiku medium 25, sonnet medium 11, and sonnet low 3. Among the OpenAI settings, sol low and sol medium won 28 each, luna xhigh 13, and luna high 1 (two of the 72 OpenAI pairs produced no verdict). The pairwise judge rewards fuller answers and does not check the answer key, so it does not see haiku's asserted traps. The composite follows the answer key.
+8. Pooling the pilot cells of luna high and haiku high on the same questions does not change any choice: sol low 0.784, sonnet low 0.626, the same single best performer. The tables above are not pooled, because the pilots ran from a different source revision and pooling gives two settings twice the samples of the others.
+
+### Decision
+
+Proposed explorer preferences, in order: gpt-6.1-sol low (OpenAI, composite 0.784), then claude-sonnet-5.5 low (Anthropic, composite 0.622), then the mid tier at low effort. Changing the coded defaults waits for the separate unit that makes the preference order per role.
+
+### Caveats
+
+One repeat per cell, so a difference of two or three facts (three to four points of recall), or one asserted trap (8.3 points of quality), is within noise. The cost of three settings is a lower bound because some attempts reported incomplete usage. The judge is one model. All questions trace this repository.
+
 ## 2026-09-21 expanded matrix
 
 Run: `explorer-2026-09-21T19-55-44-726Z`. Seven variants, the same three read-only research tasks, 2 repeats each, and blinded round-robin judging by gpt-5.6-sol.

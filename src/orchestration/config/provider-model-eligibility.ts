@@ -24,23 +24,11 @@ type AvailableProviderModelEnabledCandidate = ProviderModelEnabledCandidate & {
   readonly catalog: Extract<ProviderCatalogDiscovery, { readonly kind: "available" }>;
 };
 
-interface WorkerProviderModelEligibilityState {
-  readonly profileId?: string;
-  readonly revision?: number;
-  readonly catalogs: ReadonlyMap<string, ProviderCatalogEligibility>;
-  readonly enabledCandidates: ReadonlyMap<string, ProviderModelEnabledCandidate>;
-}
-
 export interface ProviderModelEligibilityDecisionInput {
   readonly profileId: string;
   readonly revision: number;
   readonly catalogs: ReadonlyMap<string, ProviderCatalogEligibility>;
   readonly enabledCandidates: ReadonlyMap<string, ProviderModelEnabledCandidate>;
-}
-
-export interface WorkerProviderModelEligibility extends AccessProviderModelEligibility {
-  readonly profileId?: string;
-  readonly revision?: number;
 }
 
 export interface PickerModelEligibility {
@@ -55,13 +43,13 @@ export interface ProviderModelEligibilityDecision {
   readonly enabledCandidates: ReadonlyMap<string, ProviderModelEnabledCandidate>;
   readonly picker: ReadonlyMap<string, PickerModelEligibility>;
   readonly availability: ReadonlyMap<string, ReadonlyMap<string, PickerModelEligibility>>;
-  readonly worker: WorkerProviderModelEligibility;
+  readonly worker: AccessProviderModelEligibility;
 }
 
 /** Makes one immutable decision for display and exact-candidate admission. */
 export function providerModelEligibilityDecision(input: ProviderModelEligibilityDecisionInput): ProviderModelEligibilityDecision {
   const enabledCandidates = input.enabledCandidates;
-  const worker = buildWorkerProviderModelEligibility({ profileId: input.profileId, revision: input.revision, catalogs: input.catalogs, enabledCandidates });
+  const worker = buildWorkerProviderModelEligibility(input);
   const availability = new Map<string, Map<string, PickerModelEligibility>>();
   const picker = new Map<string, PickerModelEligibility>();
   for (const entry of enabledCandidates.values()) {
@@ -84,20 +72,16 @@ export function providerModelEligibilityDecision(input: ProviderModelEligibility
 }
 
 /** Builds the immutable profile-bound eligibility captured by one request. */
-export function workerProviderModelEligibilityFromState(state: WorkerProviderModelEligibilityState): WorkerProviderModelEligibility {
-  return buildWorkerProviderModelEligibility(state);
-}
-
-function buildWorkerProviderModelEligibility(state: WorkerProviderModelEligibilityState): WorkerProviderModelEligibility {
-  const catalogs = new Map([...state.catalogs].map(([providerId, catalog]) => [providerId, {
+function buildWorkerProviderModelEligibility(input: ProviderModelEligibilityDecisionInput): AccessProviderModelEligibility {
+  const catalogs = new Map([...input.catalogs].map(([providerId, catalog]) => [providerId, {
     effective: new Set(catalog.effective),
     enabled: new Set(catalog.enabled),
   }]));
-  const enabledCandidates = state.enabledCandidates;
+  const enabledCandidates = input.enabledCandidates;
   return Object.freeze({
     modelIds: new Set([...enabledCandidates.values()].flatMap((entry) => [...entry.enabledOfferings?.keys() ?? []])),
-    ...(state.profileId === undefined ? {} : { profileId: state.profileId }),
-    ...(state.revision === undefined ? {} : { revision: state.revision }),
+    profileId: input.profileId,
+    revision: input.revision,
     modelUnavailableReason(provider: string, model: string) {
       return catalogs.get(provider)?.effective.has(model) === true
         ? undefined
@@ -114,10 +98,6 @@ function buildWorkerProviderModelEligibility(state: WorkerProviderModelEligibili
       return accountCatalog !== undefined && isAvailableCandidate(accountCatalog) && accountCatalog.enabledOfferings.has(model)
         ? undefined
         : `${candidate.providerId} account ${candidate.kind === "subscription" ? candidate.instanceId : "singleton"} cannot serve ${model}.`;
-    },
-    candidateOffering(candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) {
-      const accountCatalog = enabledCandidates.get(accessProviderAccountKey(candidate));
-      return accountCatalog === undefined ? undefined : selectCandidateOfferings(accountCatalog, model, allowTrainingRoutes)[0];
     },
     candidateOfferings(candidate: AccessProviderCandidate, model: string, allowTrainingRoutes: boolean) {
       const accountCatalog = enabledCandidates.get(accessProviderAccountKey(candidate));

@@ -166,7 +166,7 @@ function lexicalScopes(root: Node): Map<number, Scope> {
   return scopes;
 }
 
-function resolve(node: Node, scopes: ReadonlyMap<number, Scope>): Node | undefined {
+function resolveBinding(node: Node, scopes: ReadonlyMap<number, Scope>): Node | undefined {
   for (let scope = scopes.get(node.id); scope; scope = scope.parent) {
     if (scope.bindings.has(node.text)) return scope.bindings.get(node.text) ?? undefined;
   }
@@ -179,7 +179,7 @@ function definedValue(value: Node, scopes: ReadonlyMap<number, Scope>, seen = ne
   const visited = new Set([...seen, node.id]);
   if (node.type === "undefined" || (node.type === "unary_expression" && node.childForFieldName("operator")?.text === "void")) return false;
   if (node.type === "identifier" || node.type === "shorthand_property_identifier") {
-    const bound = resolve(node, scopes);
+    const bound = resolveBinding(node, scopes);
     return bound ? definedValue(bound, scopes, visited) : true;
   }
   if (node.type === "ternary_expression") {
@@ -204,7 +204,7 @@ function queryAlternatives(expression: Node | undefined, scopes: ReadonlyMap<num
   const node = unwrap(expression);
   if (seen.has(node.id)) return undefined;
   const visited = new Set([...seen, node.id]);
-  if (node.type === "identifier") return queryAlternatives(resolve(node, scopes), scopes, visited);
+  if (node.type === "identifier") return queryAlternatives(resolveBinding(node, scopes), scopes, visited);
   if (node.type === "ternary_expression") {
     return ["consequence", "alternative"].flatMap((field) => queryAlternatives(node.childForFieldName(field) ?? undefined, scopes, visited) ?? [OPAQUE_QUERY]);
   }

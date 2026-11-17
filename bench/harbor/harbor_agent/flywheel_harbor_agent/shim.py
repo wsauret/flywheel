@@ -631,6 +631,11 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
             evidence_withheld=withheld,
             debug_evidence=debug_evidence,
         )
+        if child is not None:
+            # The evidence holds the store and logs, so the graded tree loses only Flywheel's own state, whose scratch
+            # scripts a grader that walks the workspace would judge as the task's files. This runs before the answer
+            # reaches Harbor, which grades only after it. rmtree refuses a link, so a planted `.flywheel` link stays.
+            shutil.rmtree(project_root / ".flywheel", ignore_errors=True)
         if relay is not None:
             relay.release()
         shutil.rmtree(work / "home", ignore_errors=True)

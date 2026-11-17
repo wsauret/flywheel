@@ -18,7 +18,6 @@ describe("shared benchmark judge factory", () => {
             type: "model.assistant_message.recorded",
             message: { content: [{ type: "text", text: "graded" }] },
           })),
-          end: () => undefined,
           abort: () => undefined,
           done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" as const } }),
         };

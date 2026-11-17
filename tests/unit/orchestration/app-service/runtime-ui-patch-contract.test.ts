@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { RuntimeUiPatchPayloadSchema, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { stringDiscriminatorLiterals } from "../../../../src/protocol/schema-union.js"
+import { isGlobalRuntimeInvalidation, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
 import { runtimeUiPatchFixtures } from "../../protocol/runtime-ui-patch-fixtures.js"
 
 describe("runtime UI patch contract", () => {
@@ -66,12 +68,17 @@ describe("runtime UI patch contract", () => {
     expect(decoded).toEqual({ ...patch, payload: { ...patch.payload, delta: { ...patch.payload.delta, blocks: [{ ...patch.payload.delta.blocks[0], block: card }] } } })
   })
 
-  test("carries protocol violation invalidations", () => {
-    const patch = {
-      cursor: { scope: "workspace", domain: "runtime" }, position: 0, prevPosition: 0,
-      payload: { kind: "runtime.invalidate", reason: "protocol_violation" },
-    } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+  test("overflow, reconnect_required, and rebase invalidations decode and classify as before", () => {
+    for (const reason of ["overflow", "reconnect_required", "rebase"] as const) {
+      const patch: RuntimeUiPatch = {
+        cursor: { scope: "workspace", domain: "runtime" }, position: 0, prevPosition: 0,
+        payload: { kind: "runtime.invalidate", reason },
+      }
+      const decoded = Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)
+      expect(decoded).toEqual(patch)
+      expect(isGlobalRuntimeInvalidation(decoded)).toBe(true)
+      expect(isLaneBreak(decoded)).toBe(reason === "reconnect_required")
+    }
   })
 
   test("has one exact fixture for every canonical direct patch leaf", () => {

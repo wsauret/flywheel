@@ -10,6 +10,7 @@ import { resolveEventStoreDbFile } from "../src/infra/paths.js"
 import { installedWorkspaceMigrations } from "../src/orchestration/modules.js"
 import { migrateAgentInputAnswers } from "../src/orchestration/migrations/agent-input-answer.js"
 import { createSessionDetailProjection } from "../src/orchestration/app-service/session-detail-projection.js"
+import { createTranscriptProjectionCache } from "../src/orchestration/app-service/transcript-projection-cache.js"
 import { createOutputProjection } from "../src/orchestration/app-service/output-projection.js"
 import { createShippedOutput } from "../src/orchestration/app-service/shipped-output.js"
 import { createRuntimeUiPatchSequencer } from "../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
@@ -330,9 +331,17 @@ async function projectArtifacts(corpusCase: CorpusCase, requested: readonly stri
   try {
     if (requested.length === 1 && requested[0] === "decorationOutcomes") return object(sanitizable({ decorationOutcomes: await decorationFailureOutcomes(store, corpusCase) }))
     const metadata = await readSessionMetadata(asAsyncEventReadSurface(store), corpusCase.sessionId)
+    const sessionStore = { get: () => undefined }
+    const transcriptCache = createTranscriptProjectionCache({ sessionStore, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), projectRoot: root })
     const projection = createSessionDetailProjection({
       projectRoot: root,
-      sessionStore: { get: () => undefined },
+      sessionStore,
+      transcriptCache,
+      // The corpus reads transcripts only: totals stay loading, every read
+      // serves as it is, and no shell command is held.
+      summaries: { admit: async () => {}, view: () => ({ totalsLoading: true }), subscribe: () => () => {}, settled: async () => {}, dispose() {} },
+      shipped: { serve: (_sessionId, read) => read() },
+      processorHolds: { heldToolCallIds: () => [] },
       manager: {
         read: async (id) => id === corpusCase.sessionId
           ? (corpusCase.source.kind === "inline"
@@ -497,7 +506,7 @@ async function liveArtifacts(corpusCase: CorpusCase, root: string): Promise<Sani
   const sessionStore = createSessionStore(runtime, runtime.runSync(EventReaderService))
   sessionStore.openSessionRuntime({ sessionId: corpusCase.sessionId, conversationId: corpusCase.conversationId })
   const sequencer = createRuntimeUiPatchSequencer(); const patches: RuntimeUiPatch[] = []
-  const outputProjection = createOutputProjection({ sessionStore, shipped: createShippedOutput({ publish: (input) => { const patch = sequencer.publish(input); patches.push(patch); return patch } }) })
+  const outputProjection = createOutputProjection({ sessionStore, projectBlock: async (_sessionId, block) => block, onStored: () => () => {}, onContinuationRetired: () => () => {}, keptOutput: { liveOutput: () => ({}) }, shipped: createShippedOutput({ publish: (input) => { const patch = sequencer.publish(input); patches.push(patch); return patch } }) })
   const output = createOutputSession({ sessionId: corpusCase.sessionId, executionCwd: SANITIZED_PROJECT_DIR, updateEntry: (patch) => sessionStore.updateChatEntry(corpusCase.sessionId, patch) })
   try {
     patches.length = 0

@@ -6,7 +6,6 @@ import type { ConversationMessage, StreamOptions, ToolDef } from "../../../../..
 import { applyContentRepairs } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
 import { projectToolHistory } from "../../../../../src/orchestration/agent-runtime/llm/tool-history-projection.js";
 import type { SystemPromptTiers } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import type { HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { assistantMessage, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";
 import { declaredTools, type FakeReply, type RecordedRequest } from "./_fake-host.js";
 import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
@@ -136,9 +135,4 @@ export function effortOf(request: RecordedRequest): string | undefined {
 /** The dispatcher requests that a hosted request's transport record names. */
 export function hiddenRequests(result: StreamResult) {
   return result.events.flatMap((event) => event.kind === "transport_context" ? event.context.hiddenRequests : []);
-}
-
-/** A registry that forwards to the test's current registry, read when the client asks, so each case's own registry serves it. */
-export function registryProxy(current: () => HostRegistry): HostRegistry {
-  return { lease: (...input) => current().lease(...input), drain: (...input) => current().drain(...input) };
 }

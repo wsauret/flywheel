@@ -21,7 +21,7 @@ test("serializes MCP import with a settings mutation without losing either updat
     await Bun.stdin.text()
     const result = process.env.OP === "import"
       ? await (await import(process.env.MCP_URL)).runMcp(["add", "work", "--url", "https://mcp.example"], { userDataRoot: process.env.DIR, accountHome: process.env.DIR, projectRoot: process.env.DIR, executionCwd: process.env.DIR }, { configPath: process.env.CONFIG_PATH }).then(() => ({ ok: process.exitCode !== 1 }))
-      : writer.updateShowThinking(true, { configPath: process.env.CONFIG_PATH })
+      : writer.updateDefinedSetting("showThinking", true, { configPath: process.env.CONFIG_PATH })
     if (!result.ok) throw new Error("the write was refused")
   `
   const spawn = (op: "import" | "setting") => Bun.spawn({

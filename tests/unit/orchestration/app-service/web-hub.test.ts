@@ -2,12 +2,10 @@ import { describe, expect, spyOn, test } from "bun:test"
 
 import {
   createAccountHubHandler,
-  hubBindFailure,
   startAccountHub,
   type AccountHubProject,
 } from "../../../../src/orchestration/app-service/web-serving/hub"
 import { brandTileSvg } from "../../../../src/protocol/client/brand"
-import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake"
 
 const request = (headers: HeadersInit = {}, path = "/") => new Request(`http://127.0.0.1:41000${path}`, { headers })
 
@@ -316,24 +314,29 @@ describe("the hub's browser posture", () => {
 })
 
 describe("the hub's fixed port", () => {
-  // Bun.serve reports a port that another program holds with this error.
-  test("names a port that another program holds as the start's refusal, and no other bind error", () => {
-    const held = Object.assign(new Error("Failed to start server. Is port 41000 in use?"), { code: "EADDRINUSE", syscall: "listen" })
-    const failure = hubBindFailure(held, 41000)
-    expect(failure).toBeInstanceOf(ServeStartupFailure)
-    expect(failure).toMatchObject({ message: held.message, refusal: { kind: "port-in-use", port: 41000 } })
-    expect(hubBindFailure(Object.assign(new Error("Failed to start server"), { code: "EACCES" }), 41000)).toBeUndefined()
-    expect(hubBindFailure(new Error("Failed to start server"), 41000)).toBeUndefined()
-    expect(hubBindFailure("EADDRINUSE", 41000)).toBeUndefined()
-  })
-
   // Bun.serve stands in for the bind, because the lanes' fixed ports belong
   // to the services that run on this machine.
+  test("throws every other bind error unchanged", () => {
+    for (const other of [Object.assign(new Error("Failed to start server"), { code: "EACCES" }), new Error("Failed to start server"), "EADDRINUSE"]) {
+      const bind = spyOn(Bun, "serve").mockImplementation(() => { throw other })
+      let thrown: unknown
+      try {
+        startAccountHub({ lane: "installed", listProjects: async () => [], openProject: async () => "", forgetProject: async () => {}, credential: "a".repeat(48) })
+      } catch (error) {
+        thrown = error
+      } finally {
+        bind.mockRestore()
+      }
+      expect(thrown).toBe(other)
+    }
+  })
+
   test.each([["installed", 41000], ["dev", 40999]] as const)("the %s lane's hub fails with its own port as the refusal when another program holds that port", (lane, port) => {
-    const bind = spyOn(Bun, "serve").mockImplementation(() => { throw Object.assign(new Error(`Failed to start server. Is port ${port} in use?`), { code: "EADDRINUSE" }) })
+    const message = `Failed to start server. Is port ${port} in use?`
+    const bind = spyOn(Bun, "serve").mockImplementation(() => { throw Object.assign(new Error(message), { code: "EADDRINUSE" }) })
     try {
       expect(() => startAccountHub({ lane, listProjects: async () => [], openProject: async () => "", forgetProject: async () => {}, credential: "a".repeat(48) }))
-        .toThrow(expect.objectContaining({ name: "ServeStartupFailure", refusal: { kind: "port-in-use", port } }))
+        .toThrow(expect.objectContaining({ name: "ServeStartupFailure", message, refusal: { kind: "port-in-use", port } }))
     } finally {
       bind.mockRestore()
     }

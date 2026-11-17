@@ -4,7 +4,8 @@ import { prepareAnthropicRequest } from "../../../../../../src/orchestration/age
 import type { ConversationMessage, StreamOptions } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { cliView, type QueryIdentity } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { CLAUDE_AGENT_SDK_PROVIDER_ID } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
-import { conversationTierEntry, createHostedAgentEntries, DISPATCH_TEXT, ENGINE_INSTRUCTIONS, hostedTransportContext, hostedView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { createHostedAgentEntries, DISPATCH_TEXT, hostedTransportContext, hostedView } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { AGENT_APPENDIX, AGENT_IDENTITY, conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../../helpers/hosted-engine-text.js";
 
 const brief: ConversationMessage = { kind: "user", origin: "human", content: "Do the work." };
 const TIERS = { stable: "Stable.", session: "Session.", conversation: "# Session identity\n\nYou are session one." };
@@ -17,6 +18,14 @@ const identity = (systemPrompt: readonly string[]): QueryIdentity => ({
 });
 
 describe("the hosted agent's request entries", () => {
+  test("the engine's system text is its identity line and appendix, and a conversation tier is a system reminder", () => {
+    expect(AGENT_IDENTITY).toBe("You are a Claude agent, built on Anthropic's Claude Agent SDK.");
+    expect(AGENT_APPENDIX).toStartWith("\n\nMessages from the agent that launched you \u2014 your task and any mid-task course corrections \u2014 direct your work.");
+    expect(AGENT_APPENDIX).toEndWith("(Files written as input to another tool are fine; this note is about report files.)");
+    expect(ENGINE_INSTRUCTIONS).toBe(`${AGENT_IDENTITY}${AGENT_APPENDIX}`);
+    expect(TIER_ENTRY).toBe(`<system-reminder>\n${TIERS.conversation}\n</system-reminder>`);
+  });
+
   test("a dispatch adds the conversation tier and the engine's system text once per context and one wrapper after the newest input", () => {
     const entries = createHostedAgentEntries(() => true);
     const first = entries(request([brief]));

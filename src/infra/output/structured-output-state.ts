@@ -1,5 +1,5 @@
 import type { AnyBlock, QuestionBlock, QuestionEntry, ToolEntry, UserMessageBlock } from "../output-blocks.js";
-import { appendToolToAgentChildren, insertBlockBeforePinnedTail, rebuildBlockIndexes } from "./structured-output-helpers.js";
+import { insertBlockBeforePinnedTail, rebuildBlockIndexes } from "./structured-output-helpers.js";
 
 const CAP_EVICTION_HEADROOM = 512;
 
@@ -82,19 +82,6 @@ export function enforceOutputBlockCap(state: OutputBuilderIndexes, blockCap: num
   return removed;
 }
 
-// Child entries are referenced by absolute index from trackedTools, so we never
-// evict them; slicing the array would shift those indices and corrupt the
-// status updates that arrive later. Total children per agent is bounded by the
-// subagent's maxTurns × tools-per-turn (typically <500); the render layer caps
-// what's visible.
-export function appendAgentChild(
-  state: OutputBuilderIndexes,
-  agentId: string,
-  tool: ToolEntry,
-): number {
-  return appendToolToAgentChildren(state.blocks, state.agentIndexById, agentId, tool);
-}
-
 export function resolveUnresolvedChildren(children: ToolEntry[]): ToolEntry[] {
   return children.map((child) => (
     child.status === "completed" || child.status === "error" || child.status === "interrupted" || child.status === "blocked" ? child : { ...child, status: "completed" }
@@ -108,25 +95,6 @@ function applyToolPatch(tool: ToolEntry, patch: Partial<ToolEntry>): ToolEntry {
     else Object.assign(updated, { [key]: value });
   }
   return updated;
-}
-
-export function patchAgentChildTool(
-  blocks: AnyBlock[],
-  agentIndexById: Map<string, number>,
-  agentId: string,
-  childIndex: number,
-  patch: Partial<ToolEntry>,
-): number | null {
-  const idx = agentIndexById.get(agentId);
-  if (idx === undefined) return null;
-  const agent = blocks[idx];
-  if (!agent || agent.kind !== "agentGroup") return null;
-  const child = agent.children[childIndex];
-  if (!child) return null;
-  const updatedChildren = [...agent.children];
-  updatedChildren[childIndex] = applyToolPatch(child, patch);
-  blocks[idx] = { ...agent, children: updatedChildren };
-  return idx;
 }
 
 export function patchStandaloneTool(

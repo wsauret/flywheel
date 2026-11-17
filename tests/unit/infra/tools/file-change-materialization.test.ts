@@ -107,17 +107,11 @@ describe("file change materialization", () => {
     expect(tool(success)).not.toHaveProperty("invocationBody");
   });
 
-  test("direct builder and child settlement clear proposal fields on success", () => {
+  test("direct builder settlement clears proposal fields on success", () => {
     const proposal = { files: [{ id: "file-0", path: "a.ts", action: "add" as const, hunks: [] }] };
     const builder = new StructuredOutputBuilder();
     const index = builder.pushStandaloneToolEntry({ kind: "tool", id: "direct", name: "write", presentation: { name: "Write", detail: "a.ts" }, timestamp: 1, status: "pending", fileChangeKind: "create", proposedDiff: proposal });
     builder.completeTool(index, { fileChangeKind: undefined, proposedDiff: undefined });
     expect(builder.getBlocks()[index]).not.toHaveProperty("proposedDiff");
-
-    builder.startAgent("agent", { containerKind: "subagent", label: "Agent", description: "" }, 2, "parent");
-    builder.pushToolRowToAgent("agent", { kind: "tool", id: "child", name: "write", presentation: { name: "Write", detail: "a.ts" }, timestamp: 3, status: "pending", fileChangeKind: "create", proposedDiff: proposal });
-    builder.completeAgentChildTool("agent", 0, { fileChangeKind: undefined, proposedDiff: undefined });
-    const group = builder.getBlocks().find((block) => block.kind === "agentGroup");
-    expect(group?.kind === "agentGroup" ? group.children[0] : undefined).not.toHaveProperty("proposedDiff");
   });
 });

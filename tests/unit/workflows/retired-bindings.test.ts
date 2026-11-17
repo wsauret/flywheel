@@ -9,7 +9,6 @@ import { createProjectDefinitionRegistry } from "../../../src/workflows/definiti
 import { loadWorkflowDefinitions } from "../../helpers/workflow-files.js"
 import { retiredHandoffContract } from "../../../src/workflows/retired-handoff-contracts.js"
 import { decodeRetiredBinding, formerStepSkillWarnings, retiredBindingSha256 } from "../../../src/workflows/retired-bindings.js"
-import { workflowBriefs } from "../../../src/workflows/brief.js"
 import { agentRecords, type WorkflowDefinition } from "../../../src/workflows/workflow-schema.js"
 import type { StepGrammarWorkflow } from "../../../src/workflows/retired-step-grammar/schema.js"
 import { temporaryDirectories, testDirectories } from "../../helpers/directories.js"
@@ -112,8 +111,8 @@ describe("a saved workflow file in the retired bindings form", () => {
     expect(records.get("reassess")?.keys).not.toHaveProperty("output")
     expect(Object.values(stepView(workflow).steps).some((step) => "selfReview" in step)).toBe(false)
     expect(workflow.phases).toContainEqual(expect.objectContaining({ repeat: { each: "spec-review.milestones", reassess: "reassess" } }))
-    expect(workflowBriefs(workflow).get("reassess")?.reassesses).toBe(true)
-    expect(workflowBriefs(workflow).get("implement")?.briefId).toBe("gsd.implement")
+    expect(workflow.briefs.get("reassess")?.reassesses).toBe(true)
+    expect(workflow.briefs.get("implement")?.briefId).toBe("gsd.implement")
   })
 
   it("refuses a retained external binding with the inline-brief alternative", () => {
@@ -168,7 +167,7 @@ describe("a saved file in a shape the last pre-cutover build loaded", () => {
     expect(result.errors).toEqual([])
     const workflow = result.results.get("custom-flow")
     if (!workflow) throw new Error("custom-flow did not load")
-    const contents = workflowBriefs(workflow)
+    const contents = workflow.briefs
     expect(stepView(workflow).retiredBindings?.get("plan")).toMatchObject({ name: "" })
     expect(contents.get("plan")).toMatchObject({ procedure: { name: "my.plan" } })
     expect(contents.get("work")).toMatchObject({ procedure: { name: "Fix" } })
@@ -180,7 +179,7 @@ describe("a saved file in a shape the last pre-cutover build loaded", () => {
     const workflow = result.results.get("custom-flow")
     if (!workflow) throw new Error("custom-flow did not load")
     expect(agentRecords(workflow).get("plan")?.keys).toMatchObject({ brief: "" })
-    expect(workflowBriefs(workflow).get("plan")).toMatchObject({ procedure: { body: "" } })
+    expect(workflow.briefs.get("plan")).toMatchObject({ procedure: { body: "" } })
   })
 
   it("keeps a bound skill body verbatim, with a reference marker that names no shared reference", () => {
@@ -188,14 +187,14 @@ describe("a saved file in a shape the last pre-cutover build loaded", () => {
     const result = loadSaved(["bindings:", "  plan: { skill: my.plan }", "steps:", "  - step: plan"], testSkillRevision([testSkill("my.plan", { body })]))
     expect(result.errors).toEqual([])
     const workflow = result.results.get("custom-flow")
-    expect(workflow && workflowBriefs(workflow).get("plan")).toMatchObject({ procedure: { body } })
+    expect(workflow && workflow.briefs.get("plan")).toMatchObject({ procedure: { body } })
   })
 
   it("expands a reference marker that names a shared reference, as the last pre-cutover build did at prompt time", () => {
     const result = loadSaved(["bindings:", "  plan: { skill: my.plan }", "steps:", "  - step: plan"], testSkillRevision([testSkill("my.plan", { body: "Review.\n\n{{ref:reviewer-protocol}}" })]))
     expect(result.errors).toEqual([])
     const workflow = result.results.get("custom-flow")
-    const content = workflow && workflowBriefs(workflow).get("plan")
+    const content = workflow && workflow.briefs.get("plan")
     const body = content?.procedure.body ?? ""
     expect(body.startsWith("Review.\n\n")).toBe(true)
     expect(body).not.toContain("{{ref:")

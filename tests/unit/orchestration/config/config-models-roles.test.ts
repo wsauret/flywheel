@@ -6,10 +6,10 @@ import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { listEffortOptionsForSlot, listModelAssignments, listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
 import { defaultRoleSlots, resolveWorkflowAgentRole, resolveSubagentRole, roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js";
-import { roleModelPreferences } from "../../../../src/orchestration/config/role-model-defaults.js";
+import { roleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
 import { resolveRoles as resolveProfileRoles } from "../../../../src/orchestration/config/role-resolution.js";
 import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
-import { updateModelAssignment, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
+import { updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { fakeModelInfos, fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { step, tierOptions as baseTierOptions, USER_DATA_ROOT, withTempDir, NO_CREDENTIALS } from "./_config-models-fixtures.js";
 import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
@@ -33,14 +33,14 @@ describe("roles config parsing and resolution", () => {
       const available = new Map([["openai", new Set(["gpt-6.1-sol", "gpt-6-astra"])] as const]);
       const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions, undefined, additional);
       expect(roles.get("custom-auditor")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
-      expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" });
+      expect(roles.get("reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("brief.custom-step.persona.reviewer-custom")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
       expect(roles.get("reviewer-elegance")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" });
 
       const tierFallback = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), tierAvailableModels, tierOptions, undefined, additional);
       expect(tierFallback.get("custom-auditor")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
-      expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "high" });
+      expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "medium" });
     });
   });
   it("defaults every unassigned role to an eligible custom provider model that carries no catalog metadata", async () => {
@@ -49,7 +49,7 @@ describe("roles config parsing and resolution", () => {
     const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
 
     for (const roleId of Object.keys(DEFAULT_ROLES)) expect(roles.get(roleId)?.model).toBe("fixture-model");
-    expect(roles.get("advisor")?.effort).toBe(roleModelPreferences("advisor")[0].effort);
+    expect(roles.get("advisor")?.effort).toBe(roleModelDefault("advisor").preferences[0].effort);
   });
 
   it("keeps tiered catalog models ahead of custom provider models without metadata", async () => {
@@ -353,8 +353,8 @@ describe("roles config parsing and resolution", () => {
 describe("model assignment writer", () => {
   it("clears a step role section when all assignment fields are removed", async () => {
     await withTempDir(async (dir) => {
-      await updateModelAssignment(roleSlot("brief.plan"), { model: "gpt-5-mini", effort: "low" }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
-      await updateModelAssignment(roleSlot("brief.plan"), { model: null, effort: null }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan"), patch: { model: "gpt-5-mini", effort: "low" } }] }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan"), patch: { model: null, effort: null } }] }, { configPath: join(dir, "flywheel.toml"), authProfileId: () => "personal" });
       const text = await readFile(join(dir, "flywheel.toml"), "utf8");
       expect(text).not.toContain("brief.plan");
     });
@@ -363,8 +363,8 @@ describe("model assignment writer", () => {
   it("removes an empty Learning Review section like other profile roles", async () => {
     await withTempDir(async (dir) => {
       const configPath = join(dir, "flywheel.toml");
-      await updateModelAssignment(roleSlot("learning-review"), { model: "gpt-5-mini", effort: "low" }, { configPath, authProfileId: () => "personal" });
-      await updateModelAssignment(roleSlot("learning-review"), { model: null, effort: null }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("learning-review"), patch: { model: "gpt-5-mini", effort: "low" } }] }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("learning-review"), patch: { model: null, effort: null } }] }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       expect(text).not.toContain('roles.learning-review');
       expect(text).not.toContain("model =");

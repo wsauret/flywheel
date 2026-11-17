@@ -101,7 +101,7 @@ export function createWorkflowLaunchLifecycle(deps: WorkflowControllerDeps): Wor
       interruption: tracked.interruption,
       hostClose: "detach",
       meta: {
-        id, type: "workflow", description, toolUseId: binding.toolUseId, settlementOwner: "child_session",
+        id, type: "workflow", description, toolUseId: binding.toolUseId,
       },
     })
   }

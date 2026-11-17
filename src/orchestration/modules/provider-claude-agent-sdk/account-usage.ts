@@ -168,7 +168,7 @@ interface UsageReading {
  * request for usage starts a CLI while the account serves requests here. The bridges and the usage reader of one
  * runtime share a process.
  */
-export interface UsageReadings {
+interface UsageReadings {
   record(account: UsageAccount, windows: UsageWindows, observedAtMs: number): void;
   /** Records the model windows that a usage reply stated, which name the unnamed model window of later events. A
    *  reply that states nothing about them keeps the last ones. Returns the account's model windows at `nowMs`. */
@@ -198,7 +198,7 @@ function eventModelWindows(stated: readonly ModelWindow[] | undefined, named: re
  */
 const RECENT_READING_MS = 5 * 60_000;
 
-export function usageReadings(): UsageReadings {
+function usageReadings(): UsageReadings {
   const readings = new Map<string, UsageReading>();
   const namedModels = new Map<string, readonly ModelWindow[]>();
   const key = ({ configDir, accountId }: UsageAccount) => `${configDir}\0${accountId}`;

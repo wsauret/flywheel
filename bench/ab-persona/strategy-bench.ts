@@ -28,8 +28,8 @@ import { runningSourceIdentity, structuredIdentity } from "../../src/orchestrati
 import { withSnapshotWorkspace } from "../../src/orchestration/modules/development/benchmark/snapshot-workspace.js";
 import type { BenchmarkAccounting } from "../../src/orchestration/modules/development/benchmark/evidence.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
+import { createPersonaStore } from "../../src/orchestration/modules/development/benchmark/persona-store.js";
 import {
-  createRunStore,
   judgeScoreIdentityKey,
   runKey,
   scoreRecordIdentityKey,
@@ -50,7 +50,7 @@ const CATALOG = createBenchmarkCatalog(REPO_ROOT);
 /** The research protocol whose facet brief the facets arm dispatches. */
 export const RESEARCH_PROTOCOL_PATH = join(REPO_ROOT, "src/agent-skills/references/research-protocol.md");
 
-/** Where one results directory lives, for the run store. */
+/** Where one results directory lives, for the persona campaign store. */
 function storeLocation(directory: string): { resultsRoot: string; directory: string } {
   return { resultsRoot: dirname(resolve(directory)), directory: resolve(directory) };
 }
@@ -172,7 +172,7 @@ export async function parseArgs(argv: readonly string[]): Promise<CliArgs> {
   let storedConfig: RunConfig | undefined;
   // An operator names the directory to resume, so its own parent is the root it
   // must stay inside: the directory itself still has to be real, not a link.
-  if (resultsDir) storedConfig = await (await createRunStore(storeLocation(resultsDir))).loadConfig();
+  if (resultsDir) storedConfig = await (await createPersonaStore(storeLocation(resultsDir))).loadConfig();
   if (storedConfig && storedConfig.persona !== STRATEGY_PERSONA) {
     throw new Error(`Results persona ${storedConfig.persona} is not a strategy benchmark`);
   }
@@ -411,7 +411,9 @@ export async function main(
     scoringVersion,
     ...(recordedSource === undefined ? {} : { sourceIdentity: recordedSource }),
   };
-  const store = args.operation === "run" ? await createRunStore(location, config) : await createRunStore(location);
+  const store = args.operation === "run"
+    ? await createPersonaStore(location, config, PLAN_TASKS.map((task) => task.id))
+    : await createPersonaStore(location);
   if (args.operation !== "run") {
     const stored = await store.loadConfig();
     if (stored.taskIdentity !== config.taskIdentity) throw new Error(RESEARCH_TASKS_CHANGED);

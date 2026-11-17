@@ -2,7 +2,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { Schema } from "effect"
 import { createRoot, createSignal } from "solid-js"
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
-import { projectNotificationsDomain, RuntimeProjectNotificationSnapshotResultSchema, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
+import { projectNotificationsDomain, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
 import { createModalScrollController } from "../../../../../src/tui/components/modal-scroll-controller.js"
 import { projectNotificationsTui } from "../../../../../src/tui/modules/project-notifications/index.js"
 import { notificationCursor, resetNotificationCursor } from "../../../../../src/tui/modules/project-notifications/list.js"
@@ -90,7 +90,7 @@ describe("the notifications surface", () => {
   })
 
   it("rejects fields outside the closed provider-only protocol action", () => {
-    const decode = Schema.decodeUnknownSync(RuntimeProjectNotificationSnapshotResultSchema, { onExcessProperty: "error" })
+    const decode = Schema.decodeUnknownSync(projectNotificationsDomain.snapshot.result, { onExcessProperty: "error" })
     for (const field of ["credentials", "accountSubject", "path", "command", "extra"]) {
       expect(() => decode({
         snapshotPosition: 1,

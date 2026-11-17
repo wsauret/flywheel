@@ -71,6 +71,5 @@ export const bashModule = {
     { domain: "settings", id: "bash", value: { control: "binary", group: "Tools", label: "Bash", description: "Warning: disabling Bash removes subprocess execution." } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

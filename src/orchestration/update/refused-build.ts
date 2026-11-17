@@ -13,7 +13,8 @@
 import { randomBytes } from "node:crypto";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { type BuildRef, BuildRefSchema } from "../../infra/update/build-identity.js";
@@ -46,7 +47,7 @@ const reportedUnknown = new Set<string>();
 export function refusedBuild(userDataRoot: string): BuildRef | undefined {
   let raw: Buffer | undefined;
   try {
-    const directory = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot), UPDATE_DIR]);
+    const directory = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot), UPDATE_DIR]);
     if (!directory) return undefined;
     try {
       raw = directory.readFile(RECORD_NAME, RECORD_MAX_BYTES);

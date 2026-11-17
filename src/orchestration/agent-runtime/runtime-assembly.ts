@@ -14,12 +14,12 @@ import type { AgentLoopOptions } from "./agent-loop-types.js";
 import type { ContentBlock as LLMContentBlock } from "./llm/types.js";
 import { createExecutionNotesHook } from "./execution-notes.js";
 import type { AgentOptions, RunnableAgentOptions } from "./types.js";
-import { createThinkingAccumulator, emitTurnAssistant, emitUser } from "./emit.js";
+import { emitTurnAssistant, emitUser } from "./emit.js";
 import { prepareRuntimeUsage } from "./runtime-usage.js";
 import type { UsageSettlement } from "./usage-settlement.js";
 import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-conversation.js";
 import { composeAttributionAudit, createRequestAttribution } from "./request-attribution.js";
-import { createRuntimeStreamEventHandler } from "./runtime-stream-events.js";
+import { createRuntimeStreamEvents } from "./runtime-stream-events.js";
 import { workflowPromptPrefixHold } from "./prompt-prefix-hold.js";
 import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { openRequestInputs, type RequestInputsSource } from "./request-inputs.js";
@@ -97,24 +97,22 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
   const requestAudit = composeAttributionAudit(createRuntimeRequestAudit(options, conversation), requestAttribution);
   const background = runtimeSurfaces.background;
   const loadedBundledSkillIds = input.loadedBundledSkillIds;
-  const thinking = createThinkingAccumulator();
   const runtimeEventParentToolUseId = parentId;
   // A child with its own conversation writes durable facts under that
   // conversation's identity. The parent dispatch id remains render routing.
   const durableToolParentUseId = conversationAggregateId ? undefined : parentId;
-  const onEvent = createRuntimeStreamEventHandler({
+  const streamEvents = createRuntimeStreamEvents({
     options,
     contextWindow: () => toolSurface.current().providerRuntime?.plannedAttempt.contextLimit ?? inputs.planned.contextLimit,
     costTracker: usageTracker,
     providerSessionKey: conversation.providerSessionKey,
     sessionId,
     parentToolUseId: runtimeEventParentToolUseId,
-    thinking,
     surface: toolSurface,
   });
 
   const onTurnAssistantMessage = (content: LLMContentBlock[], entryId?: string): void => {
-    thinking.take();
+    streamEvents.assistantCommitted();
     emitTurnAssistant(options.onEvent, content, usageTracker, runtimeEventParentToolUseId, entryId);
   };
 
@@ -139,9 +137,8 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
     signal,
     disposalSignal: input.disposalSignal,
     background,
-    onEvent: conversation.requestAccounting
-      ? (event) => { if (event.kind !== "context_update") onEvent(event); }
-      : onEvent,
+    onEvent: streamEvents.onEvent,
+    ...(conversation.requestAccounting ? { hidesContextUsage: true } : {}),
     onSystemMessage: options.onSystemMessage,
     onNotice: options.onNotice,
     onNotification: options.onNotification,

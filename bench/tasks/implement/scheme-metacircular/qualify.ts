@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { ownedCommandRunner } from "../../../../src/infra/owned-command.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../src/infra/process-supervisor.js";
 import { createBenchmarkCatalog } from "../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { captureImplementation, provisionTaskSandbox } from "../../../../src/orchestration/modules/development/benchmark/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   if (output === task.taskDir || output.startsWith(`${task.taskDir}/`)) throw new Error("evidence must not change fixture identity");
   await mkdir(join(output, "tmp"), { recursive: true });
   process.env.TMPDIR = join(output, "tmp");
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const scope = createLauncherScope(supervisor);
   const run = ownedCommandRunner({
     async spawnOwned(command, options) {
@@ -76,7 +76,7 @@ async function main(): Promise<void> {
         assert.equal(grade.evidence.programs.length, 63);
         assert.equal(grade.evidence.observations.length, 131);
         assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 10).length, 63);
-        assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 60).length, 68);
+        assert.equal(grade.evidence.observations.filter((row: { timeout: number }) => row.timeout === 180).length, 68);
         assert.equal(grade.evidence.restored["interp.py"], ledger["original/environment/tests/interp.py"]!.sha256);
         for (const [source, hash] of Object.entries(grade.evidence.restored)) {
           if (source.startsWith("original/")) assert.equal(hash, ledger[source]!.sha256);

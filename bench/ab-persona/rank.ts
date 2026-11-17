@@ -9,7 +9,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { selectStartupDirectories } from "../../src/infra/directory-authorities.js";
 import { modelPriceTier } from "../../src/orchestration/config/model-tiers.js";
-import { ROLE_MODEL_DEFAULTS, roleModelPreferences } from "../../src/orchestration/config/role-model-defaults.js";
+import { ROLE_MODEL_DEFAULTS, roleModelDefault } from "../../src/orchestration/config/role-model-defaults.js";
 import { loadAllCampaignRecords } from "../../src/orchestration/modules/development/benchmark/benchmark-records.js";
 import { benchmarkMode, createBenchmarkCatalog } from "../../src/orchestration/modules/development/benchmark/catalog.js";
 import { planTasks, scoringVersion } from "../../src/orchestration/modules/development/benchmark/persona-benchmark.js";
@@ -69,7 +69,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2), proj
       }
       return { family: undefined, tier: undefined };
     },
-    entryOf: (role) => Object.entries(ROLE_MODEL_DEFAULTS).find(([, entry]) => entry === roleModelPreferences(role))![0],
+    entryOf: (role) => Object.entries(ROLE_MODEL_DEFAULTS).find(([, entry]) => entry === roleModelDefault(role))![0],
     ...(args.roles.length > 0 ? { roles: args.roles } : {}),
     ...(args.judge ? { judge: args.judge } : {}),
   });

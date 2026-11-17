@@ -234,14 +234,14 @@ describe("durable availability authority", () => {
     }));
     expect(availability.chatGptStanding(CHATGPT).kind).toBe("suppressed");
 
-    availability.observeChatGptUsage(CHATGPT, primary(1), NOW_MS - 1);
+    availability.observeUsage(CHATGPT, primary(1), NOW_MS - 1);
     expect(availability.chatGptStanding(CHATGPT).kind).toBe("suppressed");
 
-    availability.observeChatGptUsage(CHATGPT, primary(0), NOW_MS + 1);
+    availability.observeUsage(CHATGPT, primary(0), NOW_MS + 1);
     expect(availability.chatGptStanding(CHATGPT).kind).toBe("live");
     expect(rowsFor(other, SUBJECT)).toEqual([expect.objectContaining({ window: "primary", state: "live", source: "chatgpt-usage-report", observedAtMs: NOW_MS + 1 })]);
 
-    availability.observeChatGptUsage(CHATGPT, primary(1), NOW_MS);
+    availability.observeUsage(CHATGPT, primary(1), NOW_MS);
     expect(availability.chatGptStanding(CHATGPT).kind).toBe("live");
   });
 

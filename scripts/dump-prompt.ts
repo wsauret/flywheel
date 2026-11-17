@@ -41,6 +41,8 @@ import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import { composeFirstPartyModules } from "../src/orchestration/modules.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capability-checks.js";
+import { grantedSubagentTypes, personaToolNames } from "../src/workflows/agents/subagent-reachability.js";
 import { planPromptRequest, plannedCapabilities, promptParts, type PlanInput, type PlannedRequest, type PromptAssembly } from "./prompt-assembly.js";
 
 const repoRoot = resolve(import.meta.dir, "..");
@@ -151,7 +153,6 @@ async function buildSubagentPrompt(agentType: string): Promise<PromptResult> {
     process.exit(1);
   }
 
-  const granted = [...agent.tools, "handoff"];
   const purpose: AgentPurpose = { kind: "subagent", renderAs: "subagent", parentToolUseId: "dump" };
   // A persona child sees a step's tools; its task names the ones it may call.
   const planned = await planTools({
@@ -161,18 +162,23 @@ async function buildSubagentPrompt(agentType: string): Promise<PromptResult> {
     askUser: false,
   });
 
+  // The system prompt is tree-wide, but the persona's own text reads the
+  // child's check: the tools of its grant that the plan can run, and the
+  // agent types it may dispatch, as dispatch preparation plans them.
+  // Otherwise the dump reports instructions that no child receives.
+  const availability = planned.kernel.definitionAvailability.live;
+  const planHas = plannedCapabilities(planned);
+  const granted = personaToolNames(agent, availability.availablePersonas).filter((tool) => planHas(tool));
+  const has = agentCapabilityCheck(new Set(granted), availability, grantedSubagentTypes(agent, availability.availablePersonas));
   // Dispatch composes the persona's declared packages ahead of its role
-  // instructions, so the dump mirrors that order or it reports a prompt no
-  // child receives.
-  const has = plannedCapabilities(planned);
+  // instructions, so the dump mirrors that order.
   const instructions = personaInstructions(agent, skills, has);
 
   return {
     label: `SUBAGENT: ${agentType} (granted: ${granted.join(", ")})`,
     ...await compile(purpose, planned),
     // The child's task is the turn after the parent's assignment.
-    // The task's rules name only tools, which the child may call when its grant holds them.
-    userPrompt: buildSubagentTask(instructions, (term) => has(term) && granted.includes(term), agent.maxTurns),
+    userPrompt: buildSubagentTask(instructions, has, agent.maxTurns),
   };
 }
 

@@ -108,7 +108,7 @@ Not: Commits from before the public history, private folders, or snapshot archiv
 
 ## ARCH-DIRECTORIES-020: Benchmark records are the public ledger of scored cells
 
-Each benchmark campaign publishes one compact append-only record file in the public repository: every scored cell with its task identity, output, accounting, duration, and source, and each judge's absolute scores of it. It also holds each regrade of an implementer cell's stored diff by a changed task grader. Raw trial evidence, including full grader reports, stays on the machine that ran it. Rankings, rejudging, and regrading read only record files, so every clone reproduces them.
+Each benchmark campaign publishes one compact append-only record file in the public repository: every scored cell with its task identity, output, accounting, duration, and source, and each judge's absolute scores of it. It also holds each implementer cell that timed out, each other failed attempt, and each regrade of an implementer cell's stored diff by a changed task grader. Raw trial evidence stays on the machine that ran it. Rankings, rejudging, and regrading read only record files, so every clone reproduces them.
 
 Because: A new model must take its place among stored results without a rerun of older settings.
 Not: Publishing results folders, or keeping records private.
@@ -116,3 +116,10 @@ Not: Publishing results folders, or keeping records private.
 ## ARCH-DIRECTORIES-021: A ranking pools records by task content and scoring contract
 
 A benchmark ranking pools every recorded cell whose task content matches the current corpus and that one named judge scored under the current scoring contract. An implementer cell whose task changed only in grading pools through its grade by the current grader, never through the grade it recorded. It ranks a role on absolute per-cell measures only; pairwise preference stays in campaign reports. It reports every record it does not pool with the reason, and never drops one silently.
+
+## ARCH-DIRECTORIES-022: A ranking reads one suite per role and counts a timeout as a failure
+
+Each benchmarked persona ranks on one committed suite of tasks: its whole catalog corpus, unless the ranking names a narrower list. Coverage, pooling, and averaging read only the suite, and a cell of another task is reported as not pooled. The implementer's suite is hosted-thinking-row-wait, recall-punctuated-words, httpx-streaming-json-iteration, and scheme-metacircular. An implementer cell that timed out ranks as a failed attempt: no hidden test passes, its latency is the limit, and its cost is what it spent. Every other failed attempt stays out of the measures and is listed to retry.
+
+Because: A failure that a ranking leaves out flatters the setting that failed.
+Not: Coverage against every catalog task, or a timed-out cell that is retried until it passes.

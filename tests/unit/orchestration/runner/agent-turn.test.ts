@@ -11,18 +11,22 @@ import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/create-session-infra.js"
 import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 
-type MockRunnerContext = Agent & { sendCalled: Array<string | AgentLoopWakeInput>; endCalled: boolean }
+type MockRunnerContext = Agent & { sendCalled: Array<string | AgentLoopWakeInput> }
 
 function createMockContext(result: AgentRunResult | Promise<AgentRunResult>): MockRunnerContext {
   const ctx: MockRunnerContext = {
     sendCalled: [],
-    endCalled: false,
     send(input: string | AgentLoopWakeInput): void { ctx.sendCalled.push(input) },
     abort(): void {},
-    end(): void { ctx.endCalled = true },
     done: Promise.resolve(result),
   }
   return ctx
+}
+
+/** Counts the turn's release of each context it created. */
+function settledContexts() {
+  const settled: Agent[] = []
+  return { settled, onContextSettled: (context: Agent) => { settled.push(context) } }
 }
 
 describe("runAgentTurn", () => {
@@ -34,12 +38,13 @@ describe("runAgentTurn", () => {
     const recover = mock(async () => ({ requestContext: "retry" }))
     const pushSystemMessage = mock((_message: string, _level?: "info" | "error") => {})
     const resilience = { onNotice: (operation: SessionNoticeOperation) => notices.push(operation), recover, pushSystemMessage }
-    const result = await runAgentTurn({ createContext: () => ctx, message: "hello", resilience })
+    const contexts = settledContexts()
+    const result = await runAgentTurn({ createContext: () => ctx, message: "hello", resilience, onContextSettled: contexts.onContextSettled })
     expect(result.terminal).toEqual({ kind: "local_persistence_error", error })
     expect(recover).not.toHaveBeenCalled()
     expect(pushSystemMessage.mock.calls).toEqual([["Local persistence limit exceeded. Flywheel could not save this operation: its encoded request is 129 bytes; the limit is 128 bytes. No file changes were applied.", "error"]])
     expect(notices.filter((operation) => operation.type === "upsert")).toEqual([])
-    expect(ctx.endCalled).toBe(true)
+    expect(contexts.settled).toEqual([ctx])
     await runAgentTurn({ createContext: () => createMockContext({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }), message: "done", resilience })
     expect(diagnostic.mock.calls.filter(([record]) => record.type === "runtime.persistence_write.refused")).toHaveLength(1)
     diagnostic.mockRestore()
@@ -75,18 +80,17 @@ describe("runAgentTurn", () => {
     subscription.unsubscribe()
     await bus.dispose()
   })
-  it("returns callback failures with the run's served requests and closes the context once", async () => {
+  it("returns callback failures with the run's served requests and settles the context once", async () => {
     const callbacks = {
       classifyResult: { classifyResult: () => { throw new Error("callback failed") } },
       onAttemptFailure: { onAttemptFailure: async () => { throw new Error("callback failed") } },
     }
     for (const callback of Object.values(callbacks)) {
       const ctx = createMockContext({ durationMs: 1, servedRequests: 3, terminal: { kind: "stream_stalled", message: "stalled", attribution: { kind: "unattributed" } } })
-      let ends = 0
-      ctx.end = () => { ends += 1 }
-      const result = await runAgentTurn({ createContext: (_attempt, run) => { run.tally.served = 3; return ctx }, message: "start", resilience: {}, ...callback })
+      const contexts = settledContexts()
+      const result = await runAgentTurn({ createContext: (_attempt, run) => { run.tally.served = 3; return ctx }, message: "start", resilience: {}, onContextSettled: contexts.onContextSettled, ...callback })
       expect(result).toEqual({ durationMs: 0, servedRequests: 3, terminal: { kind: "api_error", message: "callback failed", recovery: { kind: "retry" } } })
-      expect(ends).toBe(1)
+      expect(contexts.settled).toEqual([ctx])
     }
   })
   it("continues the turn's call budget in each recovered run, also after a run that rejected, and serves its progress to recovery", async () => {
@@ -111,30 +115,33 @@ describe("runAgentTurn", () => {
     expect(served).toEqual([1, 0])
     expect(result.terminal).toEqual({ kind: "completed" })
   })
-  it("preserves an unowned runtime AbortError as an aborted turn and closes once", async () => {
-    let ends = 0;
+  it("preserves an unowned runtime AbortError as an aborted turn and settles once", async () => {
+    const contexts = settledContexts();
     const result = await runAgentTurn({
-      createContext: () => ({ send() {}, abort() {}, end() { ends++; }, done: Promise.reject(new DOMException("aborted", "AbortError")) }),
+      createContext: () => ({ send() {}, abort() {}, done: Promise.reject(new DOMException("aborted", "AbortError")) }),
       message: "continue",
       resilience: {},
+      onContextSettled: contexts.onContextSettled,
     });
     expect(result.terminal).toEqual({ kind: "aborted" });
-    expect(ends).toBe(1);
+    expect(contexts.settled).toHaveLength(1);
   });
   it("calls createContext and sends the message", async () => {
     const expectedResult: AgentRunResult = { servedRequests: 0, durationMs: 100, terminal: { kind: "completed" } }
     const ctx = createMockContext(expectedResult)
     const createContext = mock(() => ctx)
+    const contexts = settledContexts()
 
     const agentResult = await runAgentTurn({
       createContext,
       message: "hello",
       resilience: { setConnectionState: () => {}, pushSystemMessage: () => {} },
+      onContextSettled: contexts.onContextSettled,
     })
 
     expect(createContext).toHaveBeenCalledTimes(1)
     expect(ctx.sendCalled).toEqual(["hello"])
-    expect(ctx.endCalled).toBe(true)
+    expect(contexts.settled).toEqual([ctx])
     expect(agentResult).toEqual(expectedResult)
   })
 
@@ -161,28 +168,31 @@ describe("runAgentTurn", () => {
     expect(createContextCalls).toEqual([{ resumeId: "resume-id", isRetry: false }])
   })
 
-  it("calls ctx.end() even when ctx.done rejects", async () => {
+  it("settles the context even when ctx.done rejects", async () => {
     const ctx = createMockContext(Promise.reject(new Error("stream died")))
     const createContext = mock(() => ctx)
+    const contexts = settledContexts()
 
     const agentResult = await runAgentTurn({
       createContext,
       message: "hello",
       resilience: { setConnectionState: () => {}, pushSystemMessage: () => {} },
+      onContextSettled: contexts.onContextSettled,
     })
 
-    expect(ctx.endCalled).toBe(true)
+    expect(contexts.settled).toEqual([ctx])
     expect(agentResult.terminal.kind).toBe("api_error")
   })
 
-  it("lets an exhausted handoff correction escape, not as a provider api_error, and still closes the context", async () => {
+  it("lets an exhausted handoff correction escape, not as a provider api_error, and still settles the context", async () => {
     const exhausted = new HandoffCorrectionExhausted({ message: "handoff failed 3 consecutive attempts" })
     const ctx = createMockContext(Promise.reject(exhausted))
+    const contexts = settledContexts()
 
-    const turn = runAgentTurn({ createContext: () => ctx, message: "hello", resilience: {} })
+    const turn = runAgentTurn({ createContext: () => ctx, message: "hello", resilience: {}, onContextSettled: contexts.onContextSettled })
 
     await expect(turn).rejects.toBe(exhausted)
-    expect(ctx.endCalled).toBe(true)
+    expect(contexts.settled).toEqual([ctx])
   })
 
   it("handles AgentTurnAborted from createContext", async () => {
@@ -197,10 +207,9 @@ describe("runAgentTurn", () => {
     expect(agentResult.terminal.kind).toBe("aborted")
   })
 
-  it("applies classifyResult before ending the context", async () => {
+  it("applies classifyResult to the run result", async () => {
     const ctx = createMockContext({ servedRequests: 0, durationMs: 100, terminal: { kind: "completed" } })
     const classifyResult = mock((result: AgentRunResult): AgentRunResult => {
-      expect(ctx.endCalled).toBe(false)
       return {
         ...result,
         terminal: { kind: "api_error", message: "sentinel", recovery: { kind: "none" } },
@@ -215,7 +224,6 @@ describe("runAgentTurn", () => {
     })
 
     expect(classifyResult).toHaveBeenCalledTimes(1)
-    expect(ctx.endCalled).toBe(true)
     expect(agentResult.terminal).toEqual({ kind: "api_error", message: "sentinel", recovery: { kind: "none" } })
   })
 

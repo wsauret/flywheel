@@ -4,7 +4,7 @@ Generated from bun.lock, exact reviewed upstream legal sources, and committed na
 
 Sharp distributes libvips 8.18.7 and its dependency set as separately replaceable shared libraries through sharp-libvips 1.3.4. Exact corresponding source: https://github.com/lovell/sharp-libvips/tree/v1.3.4
 
-OpenTUI 0.8.2 statically links FFmpeg 9.0.2 under LGPL-2.1-or-later into its native library, which ships as the separately replaceable libopentui shared library. Exact corresponding source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (SHA-256 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e). OpenTUI source and relink instructions: https://github.com/anomalyco/opentui/tree/v0.8.2
+OpenTUI 0.9.0 statically links FFmpeg 9.0.2 under LGPL-2.1-or-later into its native library, which ships as the separately replaceable libopentui shared library. Exact corresponding source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (SHA-256 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e). OpenTUI source and relink instructions: https://github.com/anomalyco/opentui/tree/v0.9.0
 
 The flywheel binary embeds the Bun 1.4.4 runtime, which statically links JavaScriptCore and WebKit under LGPL-2 and tinycc under LGPL-2.1. Exact corresponding source: https://github.com/oven-sh/WebKit/tree/d6375c72affe0f70222cdcb45012b10f0bf3a9d5 and https://github.com/oven-sh/tinycc/tree/05f0fafaa3be31e31d7b4b5c17dc60f62c991171. Bun's own source and relink instructions: https://github.com/oven-sh/bun/tree/bun-v1.4.4. The runtime also contains the other third-party code that Bun's license file names; each has a "bun@1.4.4 component" section below. Bun names no version for the code it ports from other projects, so the source of such a section is the upstream commit whose texts were reviewed.
 
@@ -26786,11 +26786,11 @@ License source: published package @opentelemetry/api@1.9.1
    limitations under the License.
 
 ================================================================================
-@opentui/core-darwin-arm64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-darwin-arm64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -26813,7 +26813,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -27317,7 +27317,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -27351,7 +27351,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -27375,7 +27375,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -27494,7 +27494,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -27518,7 +27518,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27550,7 +27550,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -27589,7 +27589,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -27768,7 +27768,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -27793,7 +27793,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -27868,11 +27868,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-darwin-x64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-darwin-x64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -27895,7 +27895,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -28399,7 +28399,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -28433,7 +28433,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -28457,7 +28457,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -28576,7 +28576,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -28600,7 +28600,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -28632,7 +28632,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -28671,7 +28671,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -28850,7 +28850,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -28875,7 +28875,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -28950,11 +28950,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-linux-arm64-musl@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-linux-arm64-musl@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -28977,7 +28977,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -29481,7 +29481,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -29515,7 +29515,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -29539,7 +29539,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -29658,7 +29658,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -29682,7 +29682,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -29714,7 +29714,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -29753,7 +29753,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -29932,7 +29932,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -29957,7 +29957,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -30032,11 +30032,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-linux-arm64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-linux-arm64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -30059,7 +30059,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -30563,7 +30563,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -30597,7 +30597,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -30621,7 +30621,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -30740,7 +30740,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -30764,7 +30764,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30796,7 +30796,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -30835,7 +30835,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -31014,7 +31014,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -31039,7 +31039,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -31114,11 +31114,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-linux-x64-musl@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-linux-x64-musl@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -31141,7 +31141,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -31645,7 +31645,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -31679,7 +31679,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -31703,7 +31703,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -31822,7 +31822,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -31846,7 +31846,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31878,7 +31878,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -31917,7 +31917,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -32096,7 +32096,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -32121,7 +32121,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -32196,11 +32196,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-linux-x64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-linux-x64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -32223,7 +32223,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -32727,7 +32727,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -32761,7 +32761,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -32785,7 +32785,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -32904,7 +32904,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -32928,7 +32928,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -32960,7 +32960,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -32999,7 +32999,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -33178,7 +33178,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -33203,7 +33203,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -33278,11 +33278,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-win32-arm64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-win32-arm64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -33305,7 +33305,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -33809,7 +33809,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -33843,7 +33843,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -33867,7 +33867,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -33986,7 +33986,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -34010,7 +34010,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -34042,7 +34042,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -34081,7 +34081,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -34260,7 +34260,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -34285,7 +34285,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -34360,11 +34360,11 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core-win32-x64@0.8.2
-License source: https://github.com/anomalyco/opentui/tree/v0.8.2
+@opentui/core-win32-x64@0.9.0
+License source: https://github.com/anomalyco/opentui/tree/v0.9.0
 ================================================================================
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE ---
 MIT License
 
 Copyright (c) 2025 opentui
@@ -34387,7 +34387,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-FFMPEG ---
                   GNU LESSER GENERAL PUBLIC LICENSE
                        Version 2.1, February 1999
 
@@ -34891,7 +34891,7 @@ necessary.  Here is a sample; alter the names:
 
 That's all there is to it!
 
---- third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/FFMPEG-SOURCE.md ---
 # FFmpeg
 
 Native video statically links a minimal decode-only FFmpeg 9.0.2 build: MOV/MP4 demuxing, H.264 video decoding,
@@ -34925,7 +34925,7 @@ tests fail.
 The FFmpeg source is unmodified; OpenTUI integrates it only through `src/video-shim.c`. The OpenTUI source, the build
 script, and the pinned FFmpeg source provide what is needed to rebuild and relink `libopentui` with a modified FFmpeg.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-ZLIB ---
 Copyright notice:
 
  (C) 1995-2026 Jean-loup Gailly and Mark Adler
@@ -34949,7 +34949,7 @@ Copyright notice:
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-GHOSTTY ---
 MIT License
 
 Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors
@@ -35068,7 +35068,7 @@ not be used in advertising or otherwise to promote the sale, use or other
 dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2 ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LCMS2 ---
 MIT License
 
 Copyright (c) 2023 Marti Maria Saguer
@@ -35092,7 +35092,7 @@ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-LIBWEBP ---
 Copyright (c) 2010, Google Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35124,7 +35124,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-STB ---
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT License
@@ -35163,7 +35163,7 @@ AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
 ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/LICENSE-WUFFS ---
 
                                  Apache License
                            Version 2.0, January 2004
@@ -35342,7 +35342,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
    END OF TERMS AND CONDITIONS
 
---- third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/PATENTS-LIBWEBP ---
 Additional IP Rights Grant (Patents)
 ------------------------------------
 
@@ -35367,7 +35367,7 @@ patent infringement, then any patent rights granted to you under this License
 for these implementations of WebM shall terminate as of the date such
 litigation is filed.
 
---- third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP ---
+--- third-party/reviewed/npm/opentui-core-0.9.0/AUTHORS-LIBWEBP ---
 Contributors:
 - Aidan O'Loan (aidanol at gmail dot com)
 - Alan Browning (browning at google dot com)
@@ -35442,8 +35442,8 @@ Contributors:
 - Zhi An Ng (zhin at chromium dot org)
 
 ================================================================================
-@opentui/core@0.8.2
-License source: published package @opentui/core@0.8.2
+@opentui/core@0.9.0
+License source: published package @opentui/core@0.9.0
 ================================================================================
 
 --- LICENSE ---
@@ -35470,8 +35470,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@opentui/solid@0.8.2
-License source: published package @opentui/solid@0.8.2
+@opentui/solid@0.9.0
+License source: published package @opentui/solid@0.9.0
 ================================================================================
 
 --- LICENSE ---
@@ -41418,57 +41418,6 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ================================================================================
-marked@17.0.1
-License source: published package marked@17.0.1
-================================================================================
-
---- LICENSE.md ---
-# License information
-
-## Contribution License Agreement
-
-If you contribute code to this project, you are implicitly allowing your code
-to be distributed under the MIT license. You are also implicitly verifying that
-all code is your original work. `</legalese>`
-
-## Marked
-
-Copyright (c) 2018+, MarkedJS (https://github.com/markedjs/)
-Copyright (c) 2011-2018, Christopher Jeffrey (https://github.com/chjj/)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-## Markdown
-
-Copyright © 2004, John Gruber
-http://daringfireball.net/
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-* Neither the name “Markdown” nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-
-This software is provided by the copyright holders and contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall the copyright owner or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
-
-================================================================================
 marked@18.1.3
 License source: published package marked@18.1.3
 ================================================================================
@@ -43675,8 +43624,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-solid-js@1.9.18
-License source: published package solid-js@1.9.18
+solid-js@1.9.19
+License source: published package solid-js@1.9.19
 ================================================================================
 
 --- LICENSE ---

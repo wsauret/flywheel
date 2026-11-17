@@ -10,7 +10,7 @@ import type { PickerCorruptRow, PickerSessionRow, SelectablePickerRow } from "./
 const HORIZONTAL_PADDING = "  "
 const TITLE_ELLIPSIS = "…"
 
-export interface BuildSessionRowChunksInput {
+interface BuildSessionRowChunksInput {
   row: SelectablePickerRow
   theme: TuiTheme
   rowWidth: number
@@ -28,7 +28,7 @@ interface SessionPickerRowProps extends BuildSessionRowChunksInput {
   onRowClick: (rowIndex: number) => void
 }
 
-export function buildSessionRowChunks(input: BuildSessionRowChunksInput): TextChunk[] {
+function buildSessionRowChunks(input: BuildSessionRowChunksInput): TextChunk[] {
   const width = Math.max(0, input.rowWidth)
   if (width === 0) return []
   const chunks = input.row.kind === "corrupt"

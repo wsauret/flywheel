@@ -7,7 +7,7 @@ import { withStreamAttempt } from "../../../../src/orchestration/agent-runtime/l
 import { stableSystemPrompt, type SystemPromptTiers } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { FUNCTION_TOOL_PRESENTATION, type CacheRetention, type Claim, type LLMClient, type ProviderStreamEvent, type ServingAttempt, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js"
-import { PREFIX_HOLD_CAP_MS, PREFIX_WARM_MS, PromptPrefixHold, type PrefixHoldClock } from "../../../../src/orchestration/agent-runtime/prompt-prefix-hold.js"
+import { PromptPrefixHold, type PrefixHoldClock } from "../../../../src/orchestration/agent-runtime/prompt-prefix-hold.js"
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../helpers/request-tool-surface.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
@@ -33,6 +33,12 @@ function fakeClock() {
     },
   }
 }
+
+/** A follower waits at most five seconds for its leader's first response. */
+const HOLD_CAP_MS = 5_000
+/** A key stays warm for four and a half minutes after its leader's first response, inside the shortest provider
+ *  cache lifetime of five minutes. */
+const WARM_MS = 270_000
 
 async function settle(): Promise<void> {
   for (let index = 0; index < 5; index += 1) await Bun.sleep(0)
@@ -81,7 +87,9 @@ describe("prompt prefix hold", () => {
 
     // A warm key holds nobody, and it turns cold once its window ends.
     expect(await hold.enter("prefix-a")).toMatchObject({ leader: false, waitedMs: 0 })
-    await advance(PREFIX_WARM_MS)
+    await advance(WARM_MS - 1)
+    expect(await hold.enter("prefix-a")).toMatchObject({ leader: false, waitedMs: 0 })
+    await advance(1)
     expect((await hold.enter("prefix-a")).leader).toBe(true)
   })
 
@@ -90,14 +98,14 @@ describe("prompt prefix hold", () => {
     const hold = new PromptPrefixHold(clock)
     const leader = await hold.enter("prefix-a")
     const follower = tracked(hold.enter("prefix-a"))
-    await advance(PREFIX_HOLD_CAP_MS - 1)
+    await advance(HOLD_CAP_MS - 1)
     expect(follower.settled).toBe(false)
     await advance(1)
-    expect(follower.value).toMatchObject({ leader: false, waitedMs: PREFIX_HOLD_CAP_MS })
+    expect(follower.value).toMatchObject({ leader: false, waitedMs: HOLD_CAP_MS })
     expect(records).toEqual([])
 
     leader.responded()
-    expect(records[0]?.payload).toMatchObject({ releasedBy: "response", followers: 1, releasedByCap: 1, maxWaitMs: PREFIX_HOLD_CAP_MS })
+    expect(records[0]?.payload).toMatchObject({ releasedBy: "response", followers: 1, releasedByCap: 1, maxWaitMs: HOLD_CAP_MS })
   })
 
   test("a leader that ends before any response releases its followers", async () => {

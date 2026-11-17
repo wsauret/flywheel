@@ -32,10 +32,10 @@ test("gives each record the record it parsed, so a reader need not parse it agai
 test("relays a record at the level its writer gave it, with the time its writer recorded it", () => {
   const relayed: Array<[string, unknown, unknown]> = []
   const logger = {
-    debug: (message: unknown, extra?: unknown) => { relayed.push(["debug", message, extra]) },
-    info: (message: unknown, extra?: unknown) => { relayed.push(["info", message, extra]) },
-    warn: (message: unknown, extra?: unknown) => { relayed.push(["warn", message, extra]) },
-    error: (message: unknown, extra?: unknown) => { relayed.push(["error", message, extra]) },
+    debug: (message: string, extra?: { readonly [key: string]: unknown }) => { relayed.push(["debug", message, extra]) },
+    info: (message: string, extra?: { readonly [key: string]: unknown }) => { relayed.push(["info", message, extra]) },
+    warn: (message: string, extra?: { readonly [key: string]: unknown }) => { relayed.push(["warn", message, extra]) },
+    error: (message: string, extra?: { readonly [key: string]: unknown }) => { relayed.push(["error", message, extra]) },
   }
   const read = createProcessDiagnosticReader((_line, record) => { if (record) relayProcessDiagnostic(logger, record, { supervisorPid: 7 }) })
   read([

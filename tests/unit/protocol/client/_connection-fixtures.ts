@@ -219,6 +219,7 @@ export async function heartbeatRuntime(options: { readonly identity?: string; re
   ))
   return {
     client,
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a frame that the fake runtime socket delivers to the client
     emit: (event: unknown) => Effect.runPromise(Queue.offer(events, event)),
     reports,
     /** The client identity each event attach stated, in order. */

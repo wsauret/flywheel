@@ -27,6 +27,9 @@ const GuestLimits = Schema.Struct({
 const CallReplySchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("ok"), outcome: Schema.Literals(TOOL_OUTCOME_VALUES), content: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("refused"), message: Schema.String }),
+  /** The dispatcher resolved the name to no tool of the callable map, so the
+   *  guest answers with its interpreter's own UnknownTool diagnostic. */
+  Schema.Struct({ kind: Schema.Literal("unresolved") }),
 ])
 export type CallReply = typeof CallReplySchema.Type
 

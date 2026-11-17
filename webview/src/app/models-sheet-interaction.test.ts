@@ -354,6 +354,8 @@ for (const kind of ["model", "models"] as const) {
         await mounted.ready()
         assert.deepEqual(mounted.mutations().at(-1)?.scope, { kind: "session", sessionId: "session-a" })
         assert.deepEqual(mounted.mutations().at(-1)?.slot, { kind: "role", roleId })
+        // The save expects the profile entry of the row the sheet read, so the runtime can refuse it as stale.
+        assert.deepEqual(mounted.mutations().at(-1)?.expected, { kind: "value", value: { model: "gpt-5", effort: "medium" } })
       } finally { mounted.dispose() }
     })
   }

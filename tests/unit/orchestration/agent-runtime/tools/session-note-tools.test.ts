@@ -8,7 +8,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import { createConversationCheckpointOwner, emptyConversationCheckpoint, readConversationCheckpoint, renderApprovedCheckpointIntent } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/checkpoint-note-conversion.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { testKernelToolDeps, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { prepareToolCall, executePreparedTool } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { makeContext } from "./_fixtures.js";
@@ -43,7 +43,7 @@ describe("conversation checkpoint tools", () => {
     const { root, owner, reader, plan } = fixture();
     const tools = (await plan()).tools;
     const context = makeContext({ executionCwd: root, capabilities: promptCapabilities([{ name: "skill" }]) });
-    const run = (name: string, input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: name, name, input }, tools), context);
+    const run = (name: string, input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: name, name, input }, tools, admitEveryTool), context);
     expect((await run("checkpoint_replace", { section: "designIntent", value: { text: "Keep all decisions.", approved: true } })).outcome).toBe("ok");
     expect((await run("checkpoint_decide", { date: "2026-10-21", words: "Use the exact words.", replaces: "Summarize the decision." })).outcome).toBe("ok");
     expect((await run("checkpoint_replace", { section: "nextStep", value: "Run the focused check." })).outcome).toBe("ok");
@@ -55,7 +55,7 @@ describe("conversation checkpoint tools", () => {
     expect(read.content).toContain("# Relevant skills");
     expect(read.content).toContain("# Working notes");
     // An agent that cannot load skills reads no empty Relevant skills section; every other section stays.
-    const unskilled = await executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input: {} }, tools), makeContext({ executionCwd: root, capabilities: promptCapabilities([]) }));
+    const unskilled = await executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input: {} }, tools, admitEveryTool), makeContext({ executionCwd: root, capabilities: promptCapabilities([]) }));
     expect(unskilled.content).not.toContain("# Relevant skills");
     expect(unskilled.content).toContain("# References");
     expect(await run("checkpoint_read", { section: "nextStep" })).toMatchObject({ outcome: "ok", content: JSON.stringify("Run the focused check.") });
@@ -71,7 +71,8 @@ describe("conversation checkpoint tools", () => {
   it("saves a design intent without an approval as a draft that no child inherits", async () => {
     const { root, owner, plan } = fixture();
     const tools = (await plan()).tools;
-    const run = (value: unknown) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input: { section: "designIntent", value } }, tools), makeContext({ executionCwd: root }));
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: model-written tool input, in several shapes on purpose
+    const run = (value: unknown) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input: { section: "designIntent", value } }, tools, admitEveryTool), makeContext({ executionCwd: root }));
     // A design intent sent as JSON text is read as its object, not saved as that text.
     for (const value of [{ text: "Draft the plan." }, "Draft the plan.", JSON.stringify({ text: "Draft the plan." })]) {
       await owner.replace("designIntent", { text: "Approved earlier.", approved: true });
@@ -84,7 +85,7 @@ describe("conversation checkpoint tools", () => {
   it("reads a structured section sent as JSON text and keeps JSON-looking text sections as written", async () => {
     const { root, owner, plan } = fixture();
     const tools = (await plan()).tools;
-    const run = (input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input }, tools), makeContext({ executionCwd: root }));
+    const run = (input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: "replace", name: "checkpoint_replace", input }, tools, admitEveryTool), makeContext({ executionCwd: root }));
     expect(await run({ section: "designIntent", value: JSON.stringify({ text: "Keep all decisions.", approved: "false" }) })).toMatchObject({ outcome: "ok", content: "Note: the text value of `value` was read as an object.\nNote: the text value of `value.approved` was read as a boolean.\nCheckpoint saved." });
     expect((await run({ section: "references", value: "[\"entry-1\"]" })).content).toBe("Note: the text value of `value` was read as a list.\nCheckpoint saved.");
     expect(await run({ section: "workingNotes", value: "{\"raw\": true}" })).toMatchObject({ outcome: "ok", content: "Checkpoint saved." });
@@ -128,7 +129,7 @@ describe("conversation checkpoint tools", () => {
     expect((await owner.read())?.workingNotes).toBe(imported);
     const tools = (await plan()).tools;
     const context = makeContext({ executionCwd: root, capabilities: promptCapabilities([]) });
-    const read = (input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input }, tools), context);
+    const read = (input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input }, tools, admitEveryTool), context);
     const overview = await read({});
     expect(overview.outcome).toBe("ok");
     if (typeof overview.content !== "string") throw new Error("expected a text checkpoint overview");

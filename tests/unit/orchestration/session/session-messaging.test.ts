@@ -5,10 +5,8 @@ import type { ConversationMessage } from "../../../../src/orchestration/agent-ru
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
 import { createListSessionsTool } from "../../../../src/orchestration/agent-runtime/tools/list-sessions"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/message-session"
-import { buildSystemPrompt, type PromptKind } from "../../../../src/orchestration/agent-runtime/system-prompt"
-import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers"
 import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
-import { turnHopOf } from "../../../../src/orchestration/agent-runtime/turn-hop"
+import { trackTurnHop } from "../../../../src/orchestration/agent-runtime/turn-hop"
 import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
@@ -29,7 +27,6 @@ import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../
 import { fourLaneControl, wideBindings } from "../../workflows/vm/_tree-fixtures"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 import { openAIResponsesTarget } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 afterEach(() => {
   cleanupTmpRoot()
@@ -48,6 +45,12 @@ function project() {
       return producer?.kind === "session" ? [producer] : []
     })
   return { root, store, manager, reader, messaging, producers, counter }
+}
+
+/** The hop of the turn that `input` starts in an idle chat, as the loop reads it from the history that the input begins. */
+function startedHop(input: ChatInput): number {
+  const history: ConversationMessage[] = [{ kind: "user", content: input.text, ...(input.producer ? { producer: input.producer } : {}) }]
+  return trackTurnHop(() => history).current()
 }
 
 function context(sessionId: string, toolUseId: string, history: readonly ConversationMessage[] = [], hop = 0): ToolContext {
@@ -78,21 +81,17 @@ function person(text: string): ConversationMessage {
 }
 
 describe("message_session prompting", () => {
-  test("allows one needed message and forbids acknowledgements, status, and requests to be told later, for every runner", () => {
+  test("allows one needed message and forbids acknowledgements, status, and requests to be told later", () => {
     const { messaging } = project()
     const tool = createMessageSessionTool(messaging)
-    const kinds: PromptKind[] = ["chat", "subagent", "workflow-agent", "headless"]
-    for (const promptKind of kinds) {
-      const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ tools: [tool], promptKind })))
-      expect(prompt).toContain("One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send.")
-      expect(prompt).toContain("Never acknowledge, confirm, promise a later update, or report status.")
-      expect(prompt).toContain("Return delegated results through handoff, not message_session.")
-    }
+    expect(tool.description).toContain('Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as "I will notify you when", requests such as "tell me when it lands", "are you done?" checks, or news that you finished: a completion notice tells your parent.')
     expect(tool.description).toContain("Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you.")
-    expect(tool.description).toContain('requests such as "tell me when it lands"')
     // A step that cannot answer its child's question passes it up, because
     // that child cannot wait on any session above its parent.
-    expect(tool.description).toContain("When your own child asks a question that you cannot answer, ask your parent in your own words.")
+    expect(tool.description).toContain("When you cannot answer a question that your child asked, ask only that question, in your own words, of your parent, or of your person if you have no parent.")
+    // A root chat directs its workflow through the workflow id; a message to one agent stays with that agent.
+    expect(tool.description).toContain("To direct a workflow that you launched, target its workflow id; a message to an agent session reaches only that agent and never becomes workflow direction.")
+    expect(JSON.stringify(tool.inputSchema)).toContain("Find your own work with process(action='list') and other targets with list_sessions.")
     expect(JSON.stringify(tool.inputSchema)).toContain("Wait for a reply from your parent session or your own child session, only when you cannot continue without it.")
     // Shorthand such as "Idleoriginal80ff0276a53ledger" told the recipient
     // nothing until it asked again.
@@ -100,7 +99,7 @@ describe("message_session prompting", () => {
     // The person already reads every message row, so a restatement repeats
     // it. A root chat still asks its person the question that a child could
     // not answer.
-    expect(tool.description).toContain("Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When a message needs a decision from your person, ask only that question, in your own words.")
+    expect(tool.description).toContain("Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks.")
     expect(tool.description).toContain("A session that does not reply has not agreed to anything, so do not act as if it had.")
   })
 })
@@ -164,7 +163,7 @@ describe("wake chains", () => {
       state: async () => "idle",
       deliver: async (input: ChatInput, decide) => {
         const outcome = decide("idle")
-        if (outcome.status === "delivered") turnHops.set(sessionId, turnHopOf([{ kind: "user", content: input.text, ...(input.producer ? { producer: input.producer } : {}) }]))
+        if (outcome.status === "delivered") turnHops.set(sessionId, startedHop(input))
         return outcome
       },
       notify: async () => false,
@@ -192,7 +191,7 @@ describe("wake chains", () => {
 
   test("the assignment that launched a subagent starts its first turn at hop 0", () => {
     const launch = { kind: "launch" as const, sessionId: "parent", toolUseId: "call-launch", name: "Root" }
-    expect(turnHopOf([{ kind: "user", content: "Inspect the parser", producer: launch }])).toBe(0)
+    expect(trackTurnHop(() => [{ kind: "user", content: "Inspect the parser", producer: launch }]).current()).toBe(0)
   })
 })
 

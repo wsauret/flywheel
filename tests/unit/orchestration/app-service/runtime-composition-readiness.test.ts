@@ -9,7 +9,8 @@ import { durableBranchHasUserMessage } from "../../../../src/orchestration/sessi
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/chat-runner-loader.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/planned-session-continuation.js"
-import { createDeferred, mockRunner, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { createDeferred, mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules } from "../../../helpers/request-tool-surface.js"
 import { fakeProjections } from "./app-service-doubles.js"
@@ -74,10 +75,11 @@ describe("runtime chat kernel readiness", () => {
       manager: kernel.manager,
       directories: paths,
       runtime: kernel.runtime,
-      store: kernel.eventReader,
       projectionReader: kernel.projectionReader,
       writer: kernel.eventWriter,
       transcriptCache: kernel.transcriptCache,
+      sessionViewLoader: createSessionViewLoader({ reader: kernel.projectionReader, projectionReader: kernel.projectionReader, writer: kernel.eventWriter }),
+      ...quietSupervisorCollaborators(),
       runnerCapabilities: () => capabilities.promise,
       authProfileId: () => "default",
       lifecycle: { settleSessionStore: async () => {}, settleAuthAdmission: async () => {} },

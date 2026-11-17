@@ -40,11 +40,12 @@ export interface SettledCompaction {
 }
 
 const RECALL_HINT = "Use the read-only `recall` tool to recover missing details from recorded history; use `expand` for a known durable entry ID.";
+const SKILL_RELOAD_HINT = "Reload the listed relevant skills that still apply with the `skill` tool.";
 
 /** The text that opens a fresh context: the checkpoint or its absence, the
  *  standing brief, and one recovery instruction chosen by the save state. It
  *  never points to a checkpoint that does not exist. */
-export function renderCompactionOpening(input: {
+function renderCompactionOpening(input: {
   readonly checkpoint: ConversationCheckpoint | undefined;
   readonly brief: string | undefined;
   readonly saved: boolean;
@@ -53,11 +54,16 @@ export function renderCompactionOpening(input: {
   readonly capabilities: CapabilityCheck;
 }): string {
   const recall = input.recallAvailable ? [RECALL_HINT] : [];
-  const recovery = input.checkpoint && input.saved ? [...recall, "Continue the task from the checkpoint above."]
-    : input.checkpoint ? ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...recall, "Then continue the task."]
-    : input.brief ? [...recall, "Continue the task from the brief above."]
-    : input.recallAvailable ? ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."]
-    : ["Ask the person what to continue."];
+  const restore = input.checkpoint && input.checkpoint.relevantSkills.length > 0 && input.capabilities("skill")
+    ? [...recall, SKILL_RELOAD_HINT] : recall;
+  const recoveryLines = (): string[] => {
+    if (input.checkpoint && input.saved) return [...restore, "Continue the task from the checkpoint above."];
+    if (input.checkpoint) return ["This reset came before a checkpoint save, so the checkpoint above may not include the latest work.", ...restore, "Then continue the task."];
+    if (input.brief) return [...recall, "Continue the task from the brief above."];
+    if (input.recallAvailable) return ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."];
+    return ["Ask the person what to continue."];
+  };
+  const recovery = recoveryLines();
   return [
     input.checkpoint ? renderConversationCheckpoint(input.checkpoint, input.capabilities) : "No checkpoint has been saved.",
     ...(input.brief ? [`# Brief\n\n${input.brief}`] : []),

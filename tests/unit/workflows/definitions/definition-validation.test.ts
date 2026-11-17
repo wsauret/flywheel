@@ -5,6 +5,7 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolutio
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 /** The packages a fixture agent may depend on. */
 const SKILLS: SkillRegistryRevision = testSkillRevision([testSkill("planning"), testSkill("review-method")]);
@@ -16,7 +17,7 @@ interface AuthoredObject {
 /** Decode one authored workflow strictly, as the loader does, and present it as
  *  the loaded set of one. */
 function workflowSet(raw: AuthoredObject): ReadonlyMap<string, WorkflowDefinition> {
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })({
+  const workflow = loadedWorkflow({
     id: "wf",
     name: "Workflow",
     ...raw,
@@ -103,10 +104,16 @@ describe("validateDefinitionSet", () => {
     expect(phaseMessages([phase("plan"), { phase: "again", runs: "plan", brief: "Also." }])).toEqual([
       'Workflow "wf": Phase "again" runs stands beside brief; a record runs a named brief or states its own, not both',
     ]);
-    expect(phaseMessages([{ phase: "self", runs: "self" }])).toContain('Workflow "wf": Phase "self" runs names "self", the brief that the record runs without it; remove runs');
-    expect(phaseMessages([phase("plan"), { phase: "again", runs: "absent" }])).toEqual([
-      'Workflow "wf" agent "again": runs brief "absent", which this file does not hold; write the brief inline, or run a brief that another phase of this file states',
+    expect(phaseMessages([{ phase: "self", runs: "self", brief: "Do it." }])).toEqual([
+      'Workflow "wf": Phase "self" runs stands beside brief; a record runs a named brief or states its own, not both',
+      'Workflow "wf": Phase "self" runs names "self", the brief that the record runs without it; remove runs',
     ]);
+    // Without its own brief, the load refuses the record before validation
+    // reads it.
+    expect(() => phaseMessages([{ phase: "self", runs: "self" }])).toThrow('Workflow "wf" agent "self": runs brief "self", which this file does not hold');
+    expect(() => phaseMessages([phase("plan"), { phase: "again", runs: "absent" }])).toThrow(
+      'Workflow "wf" agent "again": runs brief "absent", which this file does not hold; write the brief inline, or run a brief that another phase of this file states',
+    );
   });
 
   it("keeps a reused inline brief's output with its declaration", () => {

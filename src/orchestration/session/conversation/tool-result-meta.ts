@@ -3,7 +3,7 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import { heldProjection } from "../../../infra/projection-registry.js"
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js"
 import type { AgentFailureDisplay, ToolEntry } from "../../../infra/output-blocks.js"
-import { extractDisplayMeta, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
+import { extractDisplayMeta, resultReadContract, resultStatusMessage, resultTargetName, type ToolResultIdentity } from "../../../infra/output/structured-event-tool-results.js"
 import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js"
 import type { ContentResolver } from "../../../infra/tool-content.js"
 import type { ToolResultAction } from "../../../infra/tool-result-action.js"
@@ -47,6 +47,8 @@ export interface ToolResultDisplayMeta {
   /** The line of an ok result whose work now waits, such as a held message:
    *  its row settles as waiting with this line. */
   readonly statusMessage?: string
+  /** The call read a short-form tool's contract (PI-AGENT-131). */
+  readonly contractRead?: true
   /** When the background command the call started ended, from its settled
    *  background index record. */
   readonly endedAt?: number
@@ -488,6 +490,7 @@ function applyToolResultMetaEvents(
             ...extractDisplayMeta(fact.payload.details, identity),
             ...canonicalDisplayContent(fact.payload.details),
             ...(statusMessage !== undefined ? { statusMessage } : {}),
+            ...(resultReadContract(fact.payload.details) ? { contractRead: true as const } : {}),
           }
         : failedResultEvidence(fact.payload.details, identity)),
       ...(targetName !== undefined ? { targetName } : {}),
@@ -501,6 +504,7 @@ function applyToolResultMetaEvents(
  *  edits a shell command landed before it failed, since a timed-out `mutates`
  *  command still publishes its changes. A failed direct edit published
  *  nothing, so its details carry no mutation, conflict markers, or refused changes. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the recorded tool_result details of a stored fact, which `extractDisplayMeta` decodes
 function failedResultEvidence(details: unknown, identity: ToolResultIdentity): ToolResultDisplayMeta {
   const { agentFailure, mutationEvidence } = extractDisplayMeta(details, identity)
   return {

@@ -33,7 +33,7 @@ const log = Log.create({ service: "account-project-registry" })
  *  absent after an unexpected exit. `phoneAwakeRoots` names the projects the
  *  phone held awake at the cut that handed commands over, which the
  *  successor holds awake the same way. */
-export interface ReplacementHandoff {
+export type ReplacementHandoff = {
   readonly version: 2
   readonly handoffId: string
   readonly requestedAt: number

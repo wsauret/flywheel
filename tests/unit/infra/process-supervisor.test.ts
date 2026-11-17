@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { join } from "node:path"
 
 import { handoverChannelAddress, writeOutcomeRecord, type CommandHandover } from "../../../src/infra/command-handover.js"
-import type { HandoverAcknowledgement } from "../../../src/infra/owned-command-control.js"
+import type { ControlledContainer } from "../../../src/infra/owned-command-control.js"
 import type { OwnedExitStatus, OwnedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
 import type { OwnedProcess, OwnedProcessExit, OwnershipSettlement } from "../../../src/infra/owned-subprocess.js"
 import { createLauncherScope, createProcessSupervisor, type GuardianLease, type ProcessSupervisor } from "../../../src/infra/process-supervisor.js"
@@ -301,7 +301,7 @@ describe("handing over an owned command", () => {
  *  answers an adoption's lease; `unservedEmpty` is whether a container nothing
  *  serves is proven empty. */
 function handoverHarness(script: {
-  readonly acknowledgement?: HandoverAcknowledgement
+  readonly acknowledgement?: Awaited<ReturnType<ControlledContainer["handOver"]>>
   readonly served?: "nothing" | "adopted" | "refused" | "gone"
   readonly lease?: "adopted" | "token-retired" | "not-a-container" | "silent"
   readonly unservedEmpty?: boolean

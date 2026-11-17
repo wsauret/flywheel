@@ -91,18 +91,18 @@ export function createChildExecution(options: {
   readonly acquireSlot: SubagentDispatchDeps["childSlots"]["acquire"];
 }): Promise<ReturnType<SubagentDispatchDeps["childSlots"]["acquire"]>> {
   const { context, deps: suppliedDeps, continuation, published, childRunId, childSessionId, childConversationId, parentConversationId, toolUseId, descriptionText, acquireSlot } = options;
+  const { executionCwd, agentType, prompt, agent, access, model: modelString, effort: effortForRunner, providerOptions: providerOptionsForRunner } = options.preparation;
+  const { toolNames, withheldTools, promptKind: promptKindForRunner, task: subagentTask, maxTurns, grantedTypes } = options.tools;
+  const modelRequestId = context.modelRequestId;
+  const capabilityAccess = continuation ? withCapabilityGrant(access, continuation.capabilityGrant) : access;
   const summarize = suppliedDeps.failureSummarizerForChild?.({
     sessionId: childSessionId, conversationId: childConversationId, eventWriter: published.eventWriter, reader: published.projectionReader,
-    projectRoot: context.projectRoot, executionCwd: options.preparation.executionCwd,
+    projectRoot: context.projectRoot, executionCwd, capabilityAccess,
   }) ?? suppliedDeps.summarizeOnFailure;
   const deps = summarize ? {
     ...suppliedDeps,
     summarizeOnFailure: summarize,
   } : suppliedDeps;
-  const { executionCwd, agentType, prompt, agent, access, model: modelString, effort: effortForRunner, providerOptions: providerOptionsForRunner } = options.preparation;
-  const { toolNames, withheldTools, promptKind: promptKindForRunner, task: subagentTask, maxTurns, grantedTypes } = options.tools;
-  const modelRequestId = context.modelRequestId;
-  const capabilityAccess = continuation ? withCapabilityGrant(access, continuation.capabilityGrant) : access;
   const stats = createSubagentStats();
   const runStartedAtMs = Date.now();
   const textState = { finalAssistantText: "" };
@@ -169,7 +169,6 @@ export function createChildExecution(options: {
   const backgroundMeta = {
     id: childRunId,
     type: "subagent",
-    settlementOwner: "child_session" as const,
     description: descriptionText,
     ...(toolUseId ? { toolUseId } : {}),
     ...(context.parentToolUseId ? { parentToolUseId: context.parentToolUseId } : {}),

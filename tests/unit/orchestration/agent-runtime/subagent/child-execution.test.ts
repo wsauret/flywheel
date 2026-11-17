@@ -10,6 +10,7 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
+import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 
@@ -53,7 +54,6 @@ describe("child execution liveness and interruption", () => {
               (error) => { rejected = error; requestFinished.resolve(); done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
             );
           },
-          end() {},
           abort() { aborts += 1; firstAbort.resolve(); controller.abort(stop); done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
           done: done.promise,
         }),
@@ -132,7 +132,6 @@ describe("child execution liveness and interruption", () => {
               reject(abortError);
             }, 0);
           },
-          end() {},
           abort() {},
           done: promise,
         };
@@ -185,7 +184,7 @@ describe("child execution liveness and interruption", () => {
         childOptions = options;
         onEvent = options.onEvent;
         background = options.runtimeSurfaces?.background?.tasks;
-        return { send() {}, end() {}, abort() {}, done: promise };
+        return { send() {}, abort() {}, done: promise };
       };
       const sessionDir = path.join(os.tmpdir(), `subagent-test-${Date.now()}`);
       const deps = makeDeps({
@@ -204,7 +203,7 @@ describe("child execution liveness and interruption", () => {
       await delay(25);
       expect(bumps).toBe(0);
 
-      background!.track({ done: work.promise, meta: { id: "awaited-child", type: "subagent", description: "awaited work" } });
+      background!.track({ done: work.promise, meta: { id: "awaited-child", type: "background_command", description: "awaited work" } });
       bumps = 0;
       const backgroundBumpedThrice = () => bumps >= 3;
       for (let attempt = 0; attempt < 500 && !backgroundBumpedThrice(); attempt++) await delay(5);
@@ -292,7 +291,7 @@ describe("child execution liveness and interruption", () => {
       const sessionDir = temporary("child-command-wait-");
       const deps = makeDeps({
         sessionDir,
-        createRunner: (agentOptions) => { options = agentOptions; return { send() {}, end() {}, abort() {}, done: promise }; },
+        createRunner: (agentOptions) => { options = agentOptions; return { send() {}, abort() {}, done: promise }; },
         backgroundTasks: fakeRegistry,
         keepAliveIntervalMs: 5,
       });
@@ -343,7 +342,7 @@ describe("child execution liveness and interruption", () => {
         const done = new Promise<AgentRunResult>((resolve) => {
           finishChild = () => resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } });
         });
-        return { send() {}, end() {}, abort() {}, done };
+        return { send() {}, abort() {}, done };
       };
       const deps = makeDeps({
         sessionDir,
@@ -396,7 +395,7 @@ describe("child execution liveness and interruption", () => {
         createRunner: (options) => {
           childOptions = options;
           const done = new Promise<AgentRunResult>((resolve) => { finishChild = () => resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }); });
-          return { send() {}, end() {}, abort() {}, done };
+          return { send() {}, abort() {}, done };
         },
         onRenderEvent: (event) => parentEvents.push(event),
         onChildRenderEvent: (childSessionId, event) => childEvents.push({ childSessionId, event }),
@@ -475,7 +474,6 @@ function scriptedDispatch(script: ReadonlyArray<AgentRunResult["terminal"] | "ho
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: step === "complete" ? { kind: "completed" } : step });
           }, 0);
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
         done: done.promise,
       };
@@ -541,6 +539,20 @@ describe("child execution recovery", () => {
       expect(run.runs()).toBe(2);
       expect(run.notices.at(-1)).toEqual(expect.objectContaining({ data: { operation: expect.objectContaining({ type: "resolve" }) } }));
     } finally { release.resolve(); waits.restore(); clock.mockRestore(); }
+  });
+
+  // ARCH-CONTEXT-038: a failed child's summary is a side call of the child's tree, so it carries the child's boundary
+  // and with it the tree's attendance, which fixes the tool forms of every agent of the tree.
+  it("gives a failed child's summary the child's capability boundary", async () => {
+    const run = scriptedDispatch([{ kind: "api_error", message: "provider broke", recovery: { kind: "none" } }]);
+    const unattended = makeCapabilityAccess({ grant: grantOf(["subagents"]), unattended: true });
+    const summarized: CapabilityAccess[] = [];
+    await createSubagentDispatch({ ...run.deps, failureSummarizerForChild: ({ capabilityAccess }) => {
+      summarized.push(capabilityAccess);
+      return async () => "summary";
+    } }).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext({ capabilityAccess: unattended }));
+    expect((await run.settled).status).toBe("failed");
+    expect(summarized.map((access) => access.unattended)).toEqual([true]);
   });
 
   // No person can end the wait of an unattended run, whose chat waits on the child's work (PI-AGENT-074).

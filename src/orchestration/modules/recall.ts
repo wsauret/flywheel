@@ -27,6 +27,5 @@ export const recallModule = {
     { domain: "settings", id: "recall", value: { control: "binary", group: "Tools", label: "Recall", description: "Allow agents to recall earlier conversation context" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

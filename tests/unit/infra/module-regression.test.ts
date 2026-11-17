@@ -14,6 +14,7 @@ const providerIds = accessProviderRegistry(composeFirstPartyModules()).selection
 function providerTripwire(provider: AccessProviderId): boolean {
   switch (provider) {
     case "anthropic_api":
+    case "baseten":
     case "chatgpt":
     case "claude_agent_sdk":
     case "deepseek":
@@ -43,7 +44,7 @@ describe("capability module regression baseline", () => {
     // The vocabulary also names the development module, which only the source entry installs.
     expect(canonicalOutput).toEqual(MODULE_IDS.filter((id) => id !== "development"));
     expect(reorderedOutput).toEqual(canonicalOutput);
-    expect(providerIds.map(providerTripwire)).toEqual([true, true, true, true, true, true, true, true, true, true, true]);
+    expect(providerIds.map(providerTripwire)).toEqual([true, true, true, true, true, true, true, true, true, true, true, true]);
   });
 
   test("characterizes the production workflow observer chain", async () => {

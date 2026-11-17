@@ -110,7 +110,7 @@ describe("subagent durable conversation", () => {
       createRunner: (options) => {
         attempts.push(options)
         const done = Promise.withResolvers<AgentRunResult>()
-        return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+        return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
       },
     }))
     const context = makeContext({ projectRoot: harness.projectRoot, executionCwd: harness.projectRoot, conversationId: "root-conversation" })
@@ -189,7 +189,7 @@ describe("subagent durable conversation", () => {
     const createRunner = (options: AgentOptions): Agent => {
       attempts.push(options)
       const done = Promise.withResolvers<AgentRunResult>()
-      return { send() {}, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
+      return { send() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) }, done: done.promise }
     }
     const shared = { sessionId: "root", sessionDir: harness.projectRoot, sessionEventStore: reader, backgroundTasks: notification.backgroundTasks, createRunner }
     const context = makeContext({ projectRoot: harness.projectRoot, executionCwd: harness.projectRoot, conversationId: "root-conversation" })
@@ -222,7 +222,6 @@ describe("subagent durable conversation", () => {
       const done = Promise.withResolvers<AgentRunResult>()
       return {
         send(): void { done.resolve(completed()) },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }
@@ -317,7 +316,6 @@ describe("subagent durable conversation", () => {
       const done = Promise.withResolvers<AgentRunResult>()
       return {
         send(): void { done.resolve(completed()) },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }
@@ -370,7 +368,6 @@ describe("subagent durable conversation", () => {
             done.resolve(completed())
           })().catch(done.reject)
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }
@@ -479,7 +476,6 @@ describe("subagent durable conversation", () => {
             done.reject(error)
           })
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }
@@ -528,7 +524,6 @@ describe("subagent durable conversation", () => {
               done.resolve(completed())
             })().catch(done.reject)
           },
-          end() {},
           abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
           done: done.promise,
         }
@@ -579,7 +574,6 @@ describe("subagent durable conversation", () => {
           options.conversation.append({ kind: "user", content: "pending cancellation marker" })
           started.resolve()
         },
-        end() {},
         abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }) },
         done: done.promise,
       }

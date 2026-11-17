@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightPut, InFlightRecord, InFlightSwap, InFlightWrite } from "../../../infra/event-store-types.js"
 import { redactMessage } from "../../agent-runtime/agent-loop-history.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { QueuedUserInputDestination } from "./queued-user-inputs.js"
@@ -62,7 +62,7 @@ export function heldBackgroundNotification(destination: HeldNotificationDestinat
 /** The write that holds `text` for `destination` under `key`, carried by a
  *  caller's own append or written alone. A repeat of the same notice
  *  overwrites its hold, so a retried write converges on one notice. */
-export function heldBackgroundNotificationPut(destination: HeldNotificationDestination, text: string, key: string): Extract<InFlightWrite, { op: "put" }> {
+export function heldBackgroundNotificationPut(destination: HeldNotificationDestination, text: string, key: string): InFlightPut {
   return { op: "put", kind: QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, key, payload: heldPayload(destination, text) }
 }
 

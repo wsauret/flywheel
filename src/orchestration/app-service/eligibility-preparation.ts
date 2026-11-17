@@ -1,5 +1,5 @@
 import { resolveAuthContext, type AuthContext } from "../../infra/auth/auth-context.js"
-import { AUTH_STORE_FILE, authStoreObservedRevision, loadAuthStoreWithDiagnostics, type AuthStoreLoadResult } from "../../infra/auth/auth-store.js"
+import { AUTH_STORE_FILE, authStoreObservedRevision, type AuthStoreLoadResult } from "../../infra/auth/auth-store.js"
 import { openExistingAuthProfileDirectory } from "../../infra/auth/auth-profile-store.js"
 import { PROVIDER_MODEL_PREFERENCES_FILE, providerModelPreferencesRevision } from "../../infra/auth/provider-model-preference-store.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
@@ -7,9 +7,8 @@ import type { LauncherScope } from "../../infra/process-supervisor.js"
 import { resolveProviderModelCatalog } from "../config/model-assignment-providers.js"
 import type { ProviderCatalogDiscovery } from "../../protocol/provider-model-preference-protocol-types.js"
 import type { FirstPartyModuleSnapshot, FirstPartyModuleComposition } from "../modules.js"
-import { installedCredentialProviderIds } from "../credential-provider-modules.js"
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
-import type { ProfileBoundProviderModelPreferenceService, ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./provider-model-preference-service.js"
+import type { ProviderModelEligibilitySnapshots, ProviderModelEligibilityState, ProviderModelInventoryCandidate } from "./provider-model-preference-service.js"
 import { idleFreePlanAccounts, type IdleFreePlanMark, type PlanAccount, type PlanEvidence } from "../../infra/llm/free-plan-accounts.js"
 import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage-authority.js"
 import type { SubscriptionUsagePublishedSnapshot } from "../auth/provider-observations/subscription-usage-service.js"
@@ -41,9 +40,9 @@ interface EligibilityPreparationDeps {
   /** The owner's launch authority, for a provider whose listing runs a local process. */
   readonly launcher?: LauncherScope
   readonly moduleSelection: FirstPartyModuleSnapshot
-  readonly prepare: ProfileBoundProviderModelPreferenceService["prepare"]
-  readonly publish: ProfileBoundProviderModelPreferenceService["publish"]
-  readonly current: ProfileBoundProviderModelPreferenceService["state"]
+  readonly prepare: ProviderModelEligibilitySnapshots["prepare"]
+  readonly publish: ProviderModelEligibilitySnapshots["publish"]
+  readonly current: ProviderModelEligibilitySnapshots["state"]
   readonly inputRevision: (profile: EligibilityProfile) => EligibilityInputRevision
   readonly resolveAuth?: (profile: EligibilityProfile, signal: AbortSignal) => Promise<AuthContext>
   readonly resolveCatalog?: typeof resolveProviderModelCatalog
@@ -53,7 +52,7 @@ interface EligibilityPreparationDeps {
   readonly openUsage?: (profile: EligibilityProfile) => Pick<UsageAuthority, "current" | "dispose">
   /** Brings the profile's files to the shape this release writes before any read. */
   readonly normalizeProfile?: (profile: EligibilityProfile, signal: AbortSignal) => Promise<void>
-  readonly observeAuth?: (profile: EligibilityProfile) => AuthStoreLoadResult
+  readonly observeAuth: (profile: EligibilityProfile) => AuthStoreLoadResult
   /** Saves a refusal that a request proved; the process-shared listing of the profile by default. Resolves false
    *  when nothing was saved. */
   readonly saveModelRefusal?: (record: ModelRefusalRecord) => Promise<boolean>
@@ -207,8 +206,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   let closed = false
   let disposal: Promise<void> | undefined
   const cadence = createDiscoveryCadence<EligibilityProfile>(now, (profile) => run.scheduleRefresh(profile), (profile) => deps.holdsProfile?.(profile) === true, deps.backgroundDiscoveryIntervalMs)
-  const observe = (profile: EligibilityProfile) => deps.observeAuth?.(profile) ?? loadAuthStoreWithDiagnostics(profile.directory, installedCredentialProviderIds(), credentialSlotClassifier(deps.moduleSelection()), false)
-  const resolveAuth = (profile: EligibilityProfile, signal: AbortSignal, composition: FirstPartyModuleComposition, load = observe(profile)) =>
+  const resolveAuth = (profile: EligibilityProfile, signal: AbortSignal, composition: FirstPartyModuleComposition, load = deps.observeAuth(profile)) =>
     deps.resolveAuth?.(profile, signal) ?? resolveAuthContext({ authDir: profile.directory, resolveKey: deps.resolveKey, load, definitions: accessProviderRegistry(composition).selection.definitions, credentialSlotClassifier: credentialSlotClassifier(composition) })
   const definitionOf = (composition: FirstPartyModuleComposition) => {
     const { definitions } = accessProviderRegistry(composition).selection
@@ -244,7 +242,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     for (let attempt = 0; attempt < PROFILE_INPUT_PREPARATION_ATTEMPTS; attempt += 1) {
       signal.throwIfAborted()
       const initialState = deps.current(profile.id)
-      const observed = observe(profile)
+      const observed = deps.observeAuth(profile)
       if (observed.conditions.length === 0) await deps.normalizeProfile?.(profile, signal)
       signal.throwIfAborted()
       const inputRevision = deps.inputRevision(profile)

@@ -1,8 +1,7 @@
-import { closeSync, existsSync, fstatSync, ftruncateSync, mkdirSync, openSync, readSync, statSync, writeSync } from "node:fs"
-import { join } from "node:path"
+import { existsSync, mkdirSync } from "node:fs"
 import { isatty } from "node:tty"
 
-import { AccountHomeRefusal, canonicalAccountHome, environmentAccountHome, FLYWHEEL_DIR_NAME, selectInteractiveStartupDirectories, selectStartupDirectories, type AccountDirectories, type StartupDirectories, type StartupDirectoryFallback, type StartupDirectoryFallbackCandidate } from "../infra/directory-authorities.js"
+import { AccountHomeRefusal, type AccountDirectories, type StartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
 import type { LaunchState } from "../infra/launch-state.js"
 import { Log } from "../infra/log.js"
@@ -19,6 +18,8 @@ import { installAccountCrashPolicy } from "./fatal-exit.js"
 import { chooseStartupDirectory, PromptCancelled, promptCancelledExitCode, promptFromReadline } from "./readline-prompt.js"
 import type { RootCliAction } from "./root-args.js"
 import type { AccountRuntimeAttach, AccountRuntimeAttachOptions, RuntimeIdentity } from "./runtime-attach.js"
+import { keepServiceErrorLogBounded } from "./service-error-log.js"
+import { selectRunDirectories, shouldSelectStartupInteractively, type AnotherMachine } from "./startup-directories.js"
 import { subcommandDispatch, type SubcommandDispatch } from "./subcommands.js"
 import { createTerminalHandoff, LAUNCH_STATE_ENV, REMOTE_HANDOFF_ENV, type TerminalHandoff, type TerminalHandoffSeams, type TerminalSuccessor } from "./terminal-handoff.js"
 
@@ -51,14 +52,6 @@ export interface CliStartup {
   readonly timeline?: ReturnType<typeof createStartupTimeline>
 }
 
-/** A terminal launch that opens a project on another machine instead of one
- *  here: asked for with `--remote`, chosen at the project prompt, or started
- *  in the account home of a paired terminal. */
-interface AnotherMachine {
-  readonly kind: "another-machine"
-  readonly account: AccountDirectories
-}
-
 /** The process boundaries the startup sequence crosses, so a test can prove
  *  the order without selecting real directories, writing a log, or launching
  *  a service. */
@@ -86,66 +79,6 @@ export interface StartupBoundaries {
   readonly admitServiceStart: (userDataRoot: string) => Promise<"serve" | "rolled-back">
   /** How the terminal becomes a successor build; the live process image. */
   readonly handoffSeams?: TerminalHandoffSeams
-}
-
-/** Whether the run opens the project its directories select: a terminal or
- *  headless launch, which has no subcommand, and `flywheel web`. Every other
- *  subcommand works on the account or reads a store, so the account home
- *  stays a valid place to run it (PI-INTERACTION-069). */
-export function opensProject(args: readonly string[]): boolean {
-  const first = args[0]
-  return first === undefined || first.startsWith("-") || first === "web"
-}
-
-/** Whether startup asks the person which project root to open. Only a run
- *  that opens a project on a terminal asks: an account or store command has
- *  no project to choose, and an established `.flywheel` directory is found
- *  without a question. */
-export function shouldSelectStartupInteractively(
-  args: readonly string[],
-  stdinIsTty: boolean,
-  stdoutIsTty: boolean,
-): boolean {
-  return opensProject(args) && !args.includes("--headless") && stdinIsTty && stdoutIsTty
-}
-
-/** Whether this run is the terminal on a project: a launch with no
- *  subcommand. `flywheel web` opens a project too, but in the web client, so
- *  only the terminal offers a project on another machine. */
-export function opensTerminal(args: readonly string[]): boolean {
-  const first = args[0]
-  return first === undefined || first.startsWith("-")
-}
-
-/** What directory selection reads of this process. */
-export interface DirectorySelectionIo {
-  readonly env: { readonly [name: string]: string | undefined }
-  readonly cwd: string
-  /** Whether this run asks the person (`shouldSelectStartupInteractively`). */
-  readonly interactive: boolean
-  readonly choose: (candidates: readonly StartupDirectoryFallbackCandidate[], options: { readonly pairedMachines: number }) => Promise<StartupDirectoryFallback | "another-machine">
-  /** How many machines this account's terminal is paired with. */
-  readonly pairedMachines: (userDataRoot: string) => Promise<number>
-}
-
-/** Selects the run's directories, or a project on another machine: asked
- *  for with `--remote`, chosen at the project prompt, or the terminal in the
- *  account home of a terminal paired with a machine, where a local launch is
- *  refused (PI-INTERACTION-069). Only a terminal launch that is about to ask the person,
- *  or to refuse the account home, reads this terminal's device store; an
- *  established project opens without reading it. */
-export async function selectRunDirectories(action: RunCliAction, io: DirectorySelectionIo): Promise<StartupDirectories | AnotherMachine> {
-  if (action.remote === true) return anotherMachine(environmentAccountHome(io.env))
-  const selection = { projectRootOption: action.projectRootOption, env: io.env, cwd: io.cwd, opensProject: opensProject(action.args) }
-  if (!io.interactive) return selectStartupDirectories(selection)
-  const paired = async (): Promise<number> => opensTerminal(action.args) ? await io.pairedMachines(join(environmentAccountHome(io.env), FLYWHEEL_DIR_NAME)) : 0
-  try {
-    const selected = await selectInteractiveStartupDirectories<"another-machine">(selection, async (candidates) => await io.choose(candidates, { pairedMachines: await paired() }))
-    return selected === "another-machine" ? anotherMachine(environmentAccountHome(io.env)) : selected
-  } catch (error) {
-    if (error instanceof AccountHomeRefusal && await paired() > 0) return anotherMachine(error.accountHome)
-    throw error
-  }
 }
 
 /** Counts the paired machines only when the terminal ever paired as a
@@ -189,7 +122,7 @@ const liveBoundaries: StartupBoundaries = {
   initLog: (options) => Log.init(options),
   installCrashPolicy: installAccountCrashPolicy,
   createAttach: async (options) => (await import("./runtime-attach.js")).createAccountRuntimeAttach(options),
-  boundServiceErrorLog: (userDataRoot) => keepServiceErrorLogBounded(accountServeErrorLogPath(userDataRoot)),
+  boundServiceErrorLog: (userDataRoot) => keepServiceErrorLogBounded(accountServeErrorLogPath(userDataRoot), 2),
   admitServiceStart: async (userDataRoot) => (await import("../orchestration/update/service-start.js")).admitServiceStart({ userDataRoot, nowMs: Date.now() }),
 }
 
@@ -321,11 +254,6 @@ export async function prepareCliStartup(rootAction: Exclude<RootCliAction, { kin
   return { action: rootAction, directories, subcommand, allowPersistentProcesses, output, withdrawLiveBuild, attach, attached, handoff, launchState, timeline }
 }
 
-function anotherMachine(accountHome: string): AnotherMachine {
-  const home = canonicalAccountHome(accountHome)
-  return { kind: "another-machine", account: { accountHome: home, userDataRoot: join(home, FLYWHEEL_DIR_NAME) } }
-}
-
 /** The terminal run mode for a project on a remote machine (PI-REMOTE-016).
  *  It asks for the project, or takes the one a predecessor handed it, and
  *  follows the machine's release: a later release is installed and this
@@ -406,50 +334,6 @@ async function prepareRelayTerminal(action: RunCliAction, account: AccountDirect
   const handoff = createTerminalHandoff({ lane, userDataRoot: account.userDataRoot, projectRoot: stateRoot, remote: remote.handoff, allowPersistentProcesses, printLogs, incoming: launchState }, boundaries.handoffSeams)
   handoff.release(withdrawLiveBuild)
   return { action, directories, subcommand: undefined, allowPersistentProcesses, output: undefined, withdrawLiveBuild, attach: undefined, attached: undefined, handoff, launchState, timeline, remote }
-}
-
-/** The size past which a start trims the service's error log, and the tail
- *  it keeps: the file stays at most about 1 MiB and never loses the output
- *  of the latest starts. */
-const SERVICE_ERROR_LOG_BOUND_BYTES = 1024 * 1024
-const SERVICE_ERROR_LOG_KEPT_BYTES = 256 * 1024
-
-/** Keeps the file that launchd appends the service's standard error to
- *  (StandardErrorPath) bounded, because launchd itself never trims it. It
- *  acts only when `fd` writes to the file at `path` itself, so the error
- *  output of a person's own redirect or of another manager stays as it is.
- *  Past the bound it keeps the last 256 KiB in place: it never renames or
- *  replaces the file that launchd holds open. launchd opens the file for
- *  appending, so the next write through `fd` follows the kept tail. A trim
- *  that fails is recorded and never fails the start. */
-export function keepServiceErrorLogBounded(path: string, fd = 2): void {
-  let bytes: number
-  try {
-    const held = fstatSync(fd)
-    if (!held.isFile() || held.size <= SERVICE_ERROR_LOG_BOUND_BYTES) return
-    const named = statSync(path)
-    if (named.dev !== held.dev || named.ino !== held.ino) return
-    bytes = held.size
-  } catch {
-    // boundary: no descriptor 2 or no file at `path` means this start writes its error output elsewhere
-    return
-  }
-  try {
-    // launchd opens the file write-only, so the tail is read through its path.
-    const tail = Buffer.alloc(SERVICE_ERROR_LOG_KEPT_BYTES)
-    const reader = openSync(path, "r")
-    let kept: number
-    try {
-      kept = readSync(reader, tail, 0, tail.length, bytes - tail.length)
-    } finally {
-      closeSync(reader)
-    }
-    ftruncateSync(fd, 0)
-    writeSync(fd, tail, 0, kept)
-    Log.Default.info("the account service's error log passed its bound; this start kept its last bytes", { bytes, kept })
-  } catch (error) {
-    Log.Default.warn("the account service's error log could not be trimmed", { error: errorMessage(error) })
-  }
 }
 
 /** Reads the place a predecessor terminal handed over. A place this build

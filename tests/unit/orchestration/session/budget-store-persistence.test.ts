@@ -16,6 +16,7 @@ import {
   noopEmitter,
   makeSessionBudgetStore,
   makeSessionStores,
+  contextEvent,
 } from "./_budget-store-fixtures";
 
 afterEach(() => {
@@ -78,7 +79,7 @@ describe("SessionBudgetStore durable projection", () => {
       recorder: async () => null,
     });
 
-    expect(await budgetStore.getTotalCost()).toBeCloseTo(0.25, 10);
+    expect((await budgetStore.metrics()).cost).toBeCloseTo(0.25, 10);
     expect(await budgetStore.getTokensUsed()).toBe(11000);
     expect(await budgetStore.getInvocationsUsed()).toBe(2);
     expect(await budgetStore.getContextUtilization()).toEqual({
@@ -176,7 +177,7 @@ describe("SessionBudgetStore durable projection", () => {
     const sessionId = newSessionId();
     const budgetStore = makeSessionBudgetStore(baseDir, sessionId);
 
-    await budgetStore.recordContextUtilization(90_000, 1_000_000);
+    await budgetStore.recordRuntimeEvent(contextEvent(90_000, 1_000_000));
 
     expect(await readBudgetSummary(sessionId, baseDir)).toMatchObject({
       contextPromptTokens: 90_000,
@@ -190,7 +191,7 @@ describe("SessionBudgetStore durable projection", () => {
     const sessionId = newSessionId();
     const budgetStore = makeSessionBudgetStore(baseDir, sessionId);
 
-    await budgetStore.recordContextUtilization(90_000, 1_000_000);
+    await budgetStore.recordRuntimeEvent(contextEvent(90_000, 1_000_000));
     await budgetStore.recordRuntimeEvent({
       type: "model.context.measured",
       data: {

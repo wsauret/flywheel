@@ -5,11 +5,11 @@ import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from 
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
 import type { AccumulatedContext } from "../../../../src/workflows/context-bundle/context.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js"
 import { createMemoryStore, initialFacts, testHost } from "./host-test-support.js"
 import { testDirectories, fileTemporaryDirectory } from "../../../helpers/directories.js"
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 // Fixture packages live under a temp root this suite's own definition owner
 // reads, so a hot reload can be simulated without touching the developer's
@@ -36,11 +36,11 @@ function installSkill(body: string, dependencies: readonly string[] = []): void 
 
 /** One step that composes the installed `alpha` package. The launch pins the
  *  revision the step composes, so a mid-run publication cannot reach it. */
-const workflow: WorkflowDefinition = {
+const workflow = loadedWorkflow({
   id: "host-test",
   name: "Host test",
   phases: [{ phase: "work", brief: "Follow the alpha method.", name: "Work", dependencies: ["alpha"], writes: [] }],
-}
+})
 
 function boundWork(): ResolvedAgent {
   const step = resolveWorkflowAgents(workflow).get("work")

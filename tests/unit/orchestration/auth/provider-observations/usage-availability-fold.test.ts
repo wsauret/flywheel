@@ -14,8 +14,8 @@ function primaryWindow(usedFraction: number): SubscriptionUsageMetric {
 function published(accounts: SubscriptionUsagePublishedSnapshot["accounts"]): SubscriptionUsagePublishedSnapshot {
   return { generation: 1, profileId: "Personal", profileDirectory: "/scratch/personal", checkedAtMs: NOW_MS, thresholds: [], accounts }
 }
-function report(providerId: string, instanceId: string, usedFraction: number) {
-  return { providerId, instanceId, subjectDigest: "digest", providerStatus: "ok" as const, observedAtMs: NOW_MS, readerGeneration: 1, metrics: [primaryWindow(usedFraction)], spendSources: [] }
+function report(providerId: string, instanceId: string, usedFraction: number, observedAtMs = NOW_MS) {
+  return { providerId, instanceId, subjectDigest: "digest", providerStatus: "ok" as const, observedAtMs, readerGeneration: 1, metrics: [primaryWindow(usedFraction)], spendSources: [] }
 }
 const candidate = (providerId: string, instanceId: string): AccessProviderCandidate => ({ kind: "subscription", providerId, instanceId, spendMode: "included" })
 
@@ -34,5 +34,24 @@ describe("usage availability fold", () => {
     expect(view.chatGptStanding(fresh).kind).toBe("live")
     expect(view.chatGptStanding(unread).kind).toBe("live")
     expect(view.genericQuotaStanding(copilot).kind).toBe("live")
+  })
+
+  test("a reading taken after a spent mark lifts the mark when no window reads full, for an account whose provider has one quota row", () => {
+    let nowMs = NOW_MS
+    const owner = createProviderAvailability({ now: () => nowMs })
+    const reset = candidate("claude_agent_sdk", "reset"); const full = candidate("claude_agent_sdk", "full"); const stale = candidate("claude_agent_sdk", "stale"); const unread = candidate("claude_agent_sdk", "unread")
+    const view = owner.forCandidates("Personal", [reset, full, stale, unread])
+    for (const account of [reset, full, stale, unread]) view.markQuotaExhausted(account, RESET_MS)
+    nowMs = NOW_MS + 60_000
+    foldSubscriptionUsageIntoAvailability(owner, published([
+      { kind: "supported", account: { providerId: "claude_agent_sdk", instanceId: "reset" }, snapshot: report("claude_agent_sdk", "reset", 0.02, nowMs) },
+      { kind: "supported", account: { providerId: "claude_agent_sdk", instanceId: "full" }, snapshot: report("claude_agent_sdk", "full", 1, nowMs) },
+      { kind: "supported", account: { providerId: "claude_agent_sdk", instanceId: "stale" }, snapshot: report("claude_agent_sdk", "stale", 0.02, NOW_MS) },
+      { kind: "unsupported", account: { providerId: "claude_agent_sdk", instanceId: "unread" } },
+    ]))
+    expect(view.genericQuotaStanding(reset)).toEqual({ kind: "live" })
+    expect(view.genericQuotaStanding(full).kind).toBe("suppressed")
+    expect(view.genericQuotaStanding(stale).kind).toBe("suppressed")
+    expect(view.genericQuotaStanding(unread).kind).toBe("suppressed")
   })
 })

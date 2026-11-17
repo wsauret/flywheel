@@ -13,6 +13,8 @@ import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orches
 import type { ProjectDefinitionRegistryRevision } from "../../src/workflows/definition-registry.js";
 import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
+import type { ExecutionAdmission } from "../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import type { FirstPartyModuleComposition } from "../../src/orchestration/modules.js";
 const toolRegistrations = Object.fromEntries(createToolRegistry());
 
 
@@ -89,6 +91,26 @@ export async function fixedRequestToolSurface(tools: ReadonlyMap<string, Runtime
     },
   };
 }
+
+/** The capability admission of a request that plans `tools` under `moduleSnapshot`, as
+ *  `RequestToolSurface.executionAdmission` decides it: a name that the snapshot's registry does not hold is refused,
+ *  and so is a tool whose registration needs a module that the snapshot does not enable. */
+export async function requestAdmission(tools: ReadonlyMap<string, RuntimeTool>, moduleSnapshot: FirstPartyModuleComposition = testCapabilityModules()): Promise<ExecutionAdmission> {
+  const owner = await createRequestToolSurface(() => ({
+    eligibleTools: tools,
+    tools,
+    omitted: [],
+    usable: new Set(tools.keys()), turnedOff: [],
+    registrationIds: new Map([...tools].map(([name, tool]) => [tool.name, name])),
+    registrationIdentities: new Map([...tools].map(([name, tool]) => [tool.name, name])),
+    definitionAvailability: testDefinitionAvailability(),
+  }), () => moduleSnapshot, testRuntimeConfigCapture);
+  return (await owner.resolve()).executionAdmission;
+}
+
+/** The admission of a request that plans every tool a test hands it, for a test that does not exercise capability
+ *  policy. */
+export const admitEveryTool: ExecutionAdmission = () => ({ ok: true });
 
 /** Pins the first request's surface before the loop starts, as the runtime
  *  assembly does. A loop that reads its surface before any request, such as a

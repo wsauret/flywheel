@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { installCustomProviders } from "../../../../src/infra/llm/custom-provider-registry.js";
+import { installCustomProviders } from "../../../helpers/custom-providers.js";
 import { captureProviderConnection, type AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import type { AccessProviderModelEligibility } from "../../../../src/infra/llm/access-provider.js";
 import { getAuthStatusWithDiagnostics } from "../../../../src/orchestration/auth/auth-actions.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth-status-projection.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js";
@@ -13,6 +12,7 @@ import { installedCredentialProviderIds } from "../../../../src/orchestration/cr
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { authProviders } from "../../../helpers/auth-context.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { testEligibility } from "../../../helpers/provider-authority.js";
 // End-to-end over the provider seams: a [custom_providers] entry becomes a
 // composed provider contribution, joins the credential vocabulary, and the
 // chain plan admits exactly the right provider for its declared models.
@@ -34,14 +34,13 @@ function authWith(overrides: Partial<AuthContext>): AuthContext {
   };
 }
 
-const eligibility: AccessProviderModelEligibility = {
-  modelUnavailableReason: () => undefined,
-  candidateOffering: (candidate, model) => model === "llama-3.3-70b" && candidate.providerId === "local_llama"
-    ? { candidate, wireModelId: model, dataUse: "standard", transport: "openai-completions" }
+const eligibility = testEligibility({
+  candidateOfferings: (candidate, model) => model === "llama-3.3-70b" && candidate.providerId === "local_llama"
+    ? [{ candidate, wireModelId: model, dataUse: "standard", transport: "openai-completions" }]
     : model === "gpt-4o"
-      ? { candidate, wireModelId: model, dataUse: "standard", transport: candidate.providerId === "local_llama" ? "openai-completions" : "openai-responses" }
-      : undefined,
-};
+      ? [{ candidate, wireModelId: model, dataUse: "standard", transport: candidate.providerId === "local_llama" ? "openai-completions" : "openai-responses" }]
+      : [],
+});
 
 const temporaryDirectory = temporaryDirectories();
 

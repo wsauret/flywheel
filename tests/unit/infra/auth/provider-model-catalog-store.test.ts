@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthProfileStore, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../../../src/infra/auth/auth-profile-store.js";
 import { normalizeAuthProfile } from "../../../../src/infra/auth/auth-profile-normalization.js";
-import { adoptPreviousProviderModelCatalogs, deleteProviderModelCatalog, liveModelRefusals, MODEL_REFUSAL_LIFETIME_MS, readSavedProviderModels, recordProviderModelAccess, recordProviderModelRefusal, writeProviderModelCatalog, writeProviderModelCandidates } from "../../../../src/infra/auth/provider-model-catalog-store.js";
+import { adoptPreviousProviderModelCatalogs, deleteProviderModelCatalog, liveModelRefusals, readSavedProviderModels, recordProviderModelAccess, recordProviderModelRefusal, writeProviderModelCatalog, writeProviderModelCandidates } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import type { AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import type { CatalogCanonicalRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
@@ -14,6 +14,9 @@ import { installedCredentialProviderIds } from "../../../../src/orchestration/cr
 import { TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
+
+/** A saved model refusal applies for one day. */
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const roots: string[] = [];
 const composition = composeFirstPartyModules();
@@ -276,13 +279,13 @@ describe("provider model catalog store", () => {
 
   test("a refusal applies for its lifetime, and a later refusal drops the ones that ended", async () => {
     const access = await profile();
-    const at = 5 * MODEL_REFUSAL_LIFETIME_MS;
+    const at = 5 * ONE_DAY_MS;
     expect(await recordProviderModelRefusal(catalog(access), account, lineage, "old", { kind: "model", at }, TEST_CATALOG_LIMITS)).toBe(true);
     const saved = readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)?.refusals ?? {};
-    expect(Object.keys(liveModelRefusals(saved, at + MODEL_REFUSAL_LIFETIME_MS - 1))).toEqual(["old"]);
-    expect(liveModelRefusals(saved, at + MODEL_REFUSAL_LIFETIME_MS)).toEqual({});
-    expect(liveModelRefusals(saved, at - MODEL_REFUSAL_LIFETIME_MS)).toEqual({});
-    expect(await recordProviderModelRefusal(catalog(access), account, lineage, "new", { kind: "model", at: at + MODEL_REFUSAL_LIFETIME_MS }, TEST_CATALOG_LIMITS)).toBe(true);
+    expect(Object.keys(liveModelRefusals(saved, at + ONE_DAY_MS - 1))).toEqual(["old"]);
+    expect(liveModelRefusals(saved, at + ONE_DAY_MS)).toEqual({});
+    expect(liveModelRefusals(saved, at - ONE_DAY_MS)).toEqual({});
+    expect(await recordProviderModelRefusal(catalog(access), account, lineage, "new", { kind: "model", at: at + ONE_DAY_MS }, TEST_CATALOG_LIMITS)).toBe(true);
     expect(Object.keys(readSavedProviderModels(access, account, lineage, TEST_CATALOG_LIMITS)?.refusals ?? {})).toEqual(["new"]);
     access.close();
   });

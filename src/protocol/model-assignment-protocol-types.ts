@@ -1,5 +1,6 @@
 import type { EffortSchema } from "../infra/workflow-types.js"
 import type { AccessProviderCandidate, ModelUnavailableMissing } from "../infra/llm/access-provider.js"
+import type { RuntimeConfigExpected } from "./runtime-config-protocol-types.js"
 
 /** The one seat vocabulary: every model assignment addresses a role. The
  *  role id is open text because roles are user- and workflow-defined; the
@@ -11,11 +12,12 @@ export interface RuntimeSessionModelPlanQuery {
   readonly slots: readonly ModelSelectionSlot[]
 }
 
-/** An inspection snapshot, not a request reservation or a guarantee of provider availability. */
+/** An inspection snapshot, not a request reservation or a guarantee of provider availability. Its rows state what
+ *  serves, not what a write expects, so they carry no `configured` entry. */
 export interface RuntimeSessionModelPlanResult {
   readonly sessionId: string
   readonly profile: { readonly persistedId: string; readonly effectiveId: string }
-  readonly assignments: readonly ModelAssignmentRow[]
+  readonly assignments: readonly Omit<ModelAssignmentRow, "configured">[]
   readonly plans: readonly (
     | { readonly kind: "available"; readonly model: string; readonly candidates: readonly (AccessProviderCandidate & { readonly wireModelId: string })[] }
     | { readonly kind: "unavailable"; readonly model: string; readonly reason: string; readonly missing: ModelUnavailableMissing }
@@ -23,6 +25,18 @@ export interface RuntimeSessionModelPlanResult {
 }
 
 export type ModelSelectionEffort = typeof EffortSchema.Type
+
+/** One role's entry in the active profile's config file, as it is written
+ *  there: a model id or tier, an effort, or both. */
+interface ModelAssignmentEntry {
+  readonly model: string | null
+  readonly effort: ModelSelectionEffort | null
+}
+
+/** The profile-config entry that a model-assignment write expects for its
+ *  role. Only a write that changes the config file compares it; a write to a
+ *  session's role snapshot does not. */
+export type ModelAssignmentExpected = RuntimeConfigExpected<ModelAssignmentEntry>
 
 export interface ModelAssignmentPatch {
   model?: string | null
@@ -42,6 +56,9 @@ export interface ModelAssignmentRow {
   matchesInheritedPair: boolean
   /** Authored model skipped by resolution. It is context, never a picker choice. */
   savedModel?: string
+  /** The row's own entry in the active profile's config file. A client that
+   *  writes this role states it as the write's expected value. */
+  configured: ModelAssignmentExpected
 }
 
 export interface ModelOptionRow {
@@ -121,11 +138,19 @@ export interface RuntimeSaveModelEffortMutation {
   readonly slot: ModelSelectionSlot
   readonly model: string | null
   readonly effort: ModelAssignmentPatch["effort"]
+  /** The `configured` value of the row that the client showed. A save that
+   *  changes the config file refuses a stale one. */
+  readonly expected: ModelAssignmentExpected
 }
 
 export interface RuntimeResetModelAssignmentsMutation {
   readonly scope: RuntimeModelAssignmentWriteScope
   readonly slots: readonly ModelSelectionSlot[]
+  /** The `configured` value of each row that the client showed, by role id.
+   *  A reset of the config file clears only the roles that `slots` names, and
+   *  compares each of them with its entry here; a role with no entry is
+   *  expected to hold none. */
+  readonly expected: { readonly [roleId: string]: ModelAssignmentExpected }
 }
 
 export interface RuntimeSaveModelEffortResult {

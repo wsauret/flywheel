@@ -10,8 +10,7 @@ import type { UsageAuthorityGeneration, UsageSettlementAuthorityLease } from "..
 import { createProfileRequestService, type ProfileRequestWorkflowPreparation } from "../auth/profile-request-service.js"
 import { createAuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../app-service/eligibility-preparation.js"
-import { createProviderModelPreferenceService } from "../app-service/provider-model-preference-service.js"
-import { providerModelPreferencePersistence } from "../app-service/provider-model-preference-persistence.js"
+import { createProviderModelEligibilitySnapshots } from "../app-service/provider-model-preference-service.js"
 import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
 import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
@@ -166,10 +165,8 @@ export async function withHeadlessProfileRuntime<T>(
 /** Owns one finite, exact profile-request generation for a headless host. */
 export async function createHeadlessProfileRuntime(options: HeadlessProfileRuntimeOptions): Promise<HeadlessProfileRuntime> {
   const authConditions = createAuthConditionOwner()
-  const providerModels = createProviderModelPreferenceService({
+  const providerModels = createProviderModelEligibilitySnapshots({
     displayName: (providerId) => accessProviderRegistry(options.moduleSelection()).selection.displayName(providerId),
-    allowTrainingRoutes: () => options.allowTrainingRoutes,
-    ...providerModelPreferencePersistence(() => options.profile.directory),
   })
   const prepareEligibility = createEligibilityPreparation({
     allowTrainingRoutes: () => options.allowTrainingRoutes,

@@ -13,7 +13,11 @@ import {
 } from "../../../../src/orchestration/agent-runtime/llm/shared-provider-availability.js"
 import { runAccountShutdownBarrier, runRuntimeShutdownBarrier } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
 import type { RuntimeShutdownOwner, RuntimeShutdownRequest, RuntimeShutdownResult } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
-import { truncateWireError } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
+import { Cause, Effect, Exit } from "effect"
+import { RpcTest } from "effect/rpc"
+import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
+import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
+import { RuntimeProtocolError, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { diagnosticTier, isRegisteredDiagnostic } from "../../../../src/infra/diagnostics-registry.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 
@@ -342,19 +346,32 @@ describe("runRuntimeShutdownBarrier interruption and settlement", () => {
   })
 })
 
-describe("truncateWireError", () => {
-  test("truncates a 10KB error message to at most 1024 chars plus a marker", () => {
-    const huge = "x".repeat(10_000)
-    const truncated = truncateWireError(huge)
+/** The error message a client reads when the project's query fails with
+ *  `message`, as the registered runtime RPC carries it. */
+async function wireErrorOf(message: string): Promise<string> {
+  const failing = async (): Promise<never> => { throw new Error(message) }
+  const project = { client: { subscribe: () => () => {}, query: failing, dispatch: failing, disconnect: () => {} }, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }
+  const exit = await Effect.runPromiseExit(Effect.scoped(Effect.gen(function*() {
+    const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
+    return yield* client.RuntimeQuery({ type: "snapshot" })
+  })).pipe(Effect.provide(runtimeHandlers(project, { debug() {}, info() {}, error() {}, warn() {} }, { version: "0.1.0" }))))
+  if (!Exit.isFailure(exit)) throw new Error("the query did not fail")
+  const error = Cause.squash(exit.cause)
+  if (!(error instanceof RuntimeProtocolError)) throw new Error("the query did not fail with a protocol error")
+  return error.message
+}
+
+describe("a protocol error on the wire", () => {
+  test("truncates a 10KB error message to at most 1024 chars plus a marker", async () => {
+    const truncated = await wireErrorOf("x".repeat(10_000))
     expect(truncated.length).toBeLessThanOrEqual(1024 + 32)
     expect(truncated.startsWith("x".repeat(1024))).toBe(true)
     expect(truncated).toContain("truncated")
   })
 
-  test("passes a short message through unchanged", () => {
-    expect(truncateWireError("short error")).toBe("short error")
+  test("passes a short message through unchanged", async () => {
+    expect(await wireErrorOf("short error")).toBe("short error")
   })
-
 })
 
 describe("shared availability authority lifecycle", () => {

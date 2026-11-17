@@ -44,10 +44,16 @@ const log = Log.create({ service: "agent-loop" });
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopTerminal> {
   await prepareLocalTokenizer();
   const { instruction, executionCwd, handoff, signal } = options;
-  // A context measurement states the trigger of the next automatic reset, so
-  // a client shows the distance that the plan owner decides, never its own
-  // reading of the configured count.
-  const onEvent: AgentLoopOptions["onEvent"] = (event) => options.onEvent(event.kind === "context_update" ? { ...event, compactionTriggerTokens: compactionState.effectiveTrigger() } : event);
+  // The run's one publisher, which every event of the run passes, a streamed
+  // chunk included, and which alone decides a context measurement: it
+  // states the trigger of the next automatic reset, so a client shows the
+  // distance that the plan owner decides, never its own reading of the
+  // configured count, and a run that hides its context usage drops it.
+  const onEvent: AgentLoopOptions["onEvent"] = (event) => {
+    if (event.kind !== "context_update") return options.onEvent(event);
+    if (options.hidesContextUsage) return;
+    options.onEvent({ ...event, compactionTriggerTokens: compactionState.effectiveTrigger() });
+  };
 
   const persistence = options.persistence; const historySink = persistence.history;
   const lifecycle = options.lifecycle;
@@ -449,8 +455,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           background: options.background, afterToolCall: options.afterToolCall, turn: ownedTurn,
           onTurnAssistantMessage: options.onTurnAssistantMessage,
           reserveMessageId: historySink.reserveId, releaseMessageId: historySink.releaseId,
-          pushMessage, pushUser, pushToolResults,
-          flushCanonicalMessages: options.flushCanonicalMessages,
+          pushAssistant, pushUser, pushToolResults,
+          flushCanonicalMessages: options.flushCanonicalMessages, awaitDurableFacts: options.awaitDurableFacts,
         });
         if (exhausted.handoffWritten) {
           terminal = { kind: "budget_exhausted" };
@@ -551,10 +557,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             observedCalls = [...observedCalls, registeredCall];
             return registeredCall;
           },
-          onEvent: (event) => {
-            onEvent(event);
-            streamedEditTurn.observe(event);
-          },
+          observeToolInput: streamedEditTurn.observe,
           onStreamAbandoned: (reason) => onEvent({ kind: "stream_abandoned", reason }),
         }, async (attempt) => {
       const attemptSettled = await ownedTurn.settle<SettledTurn<AssistantTurnResult>, PersistenceWriteRefused>((publishSettlement) => settleTurn({

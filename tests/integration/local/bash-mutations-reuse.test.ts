@@ -1,8 +1,13 @@
-import { beforeAll, expect, test } from "bun:test"
+import { beforeAll, expect, spyOn, test } from "bun:test"
 import { existsSync, mkdirSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { DebugLog } from "../../../src/infra/debug-log.js"
+import type { ContainerProbe } from "../../../src/infra/process-container.js"
+import { asRecord } from "../../../src/infra/record.js"
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
-import { hostGuard, powerShellWrite, repositoryHarness } from "./_bash-mutation-repository.js"
+import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
+import { privateCopyRemovals } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy.js"
+import { hostGuard, powerShellWrite, repositoryHarness, type CopyCommand } from "./_bash-mutation-repository.js"
 
 /** A session's consecutive mutating commands against a real Git repository,
  *  real clones, real processes, and the host's real guard: each command sees
@@ -154,3 +159,156 @@ for (const [index, writer] of detachedWriters.entries()) {
     })
   }, 60_000)
 }
+
+/** A pool whose process table holds no process newer than any launch, so every
+ *  copy whose landing passed goes back to it on every platform, and these cases
+ *  decide only what the private Git directory of a reused copy holds. */
+function settledPool(): PrivateCopyPool {
+  const probe: ContainerProbe = {
+    signal: () => undefined,
+    groupExists: () => false,
+    libproc: {
+      query: pid => ({ kind: "process", pgid: pid, ppid: 1, identity: `${pid}`, start: "100" }),
+      group: () => [],
+      pids: () => [],
+      children: () => [],
+      executable: () => ({ kind: "unavailable" }),
+      processArguments: () => undefined,
+      environment: () => undefined,
+      bootSession: () => undefined,
+      footprintBytes: () => undefined,
+      runnableThreads: () => undefined,
+    },
+  }
+  return createPrivateCopyPool({ probe })
+}
+
+/** Runs `command` in a copy of `pool` and answers its output with the payload of its `agent.bash.mutation.applied` record. */
+async function pooled(copyCommand: CopyCommand, pool: PrivateCopyPool, command: string) {
+  const record = spyOn(DebugLog, "record")
+  try {
+    const content = await copyCommand(command, { pool })
+    const applied = record.mock.calls.map(([event]) => event).filter(event => event.type === "agent.bash.mutation.applied")
+    expect(applied).toHaveLength(1)
+    return { content, record: asRecord(applied[0]!.payload) ?? {} }
+  } finally {
+    record.mockRestore()
+  }
+}
+
+/** What a command reads of its repository: HEAD, every ref, the index entries, and the stash. */
+const INSPECT: ReadonlyArray<readonly string[]> = [["rev-parse", "HEAD"], ["for-each-ref", "--format=%(refname) %(objectname)"], ["ls-files", "--stage"], ["stash", "list", "--format=%gs"]]
+const INSPECT_IN_COPY = INSPECT.map(args => `git ${args.map(argument => `'${argument}'`).join(" ")}`).join(" && ")
+
+const moves: ReadonlyArray<{ readonly name: string; readonly before?: (git: (...args: string[]) => Promise<string>, root: string) => Promise<void>; readonly move: (git: (...args: string[]) => Promise<string>, root: string) => Promise<void> }> = [
+  { name: "a commit moved HEAD", move: async (git, root) => { writeFileSync(join(root, "b.txt"), "b\n"); await git("add", "b.txt"); await git("commit", "-qm", "moved") } },
+  { name: "a branch was created and a tag deleted", before: async git => { await git("tag", "v1") }, move: async git => { await git("branch", "feature"); await git("tag", "-d", "v1") } },
+  { name: "a file was staged", move: async (git, root) => { writeFileSync(join(root, "c.txt"), "c\n"); await git("add", "c.txt") } },
+  { name: "a change was stashed", move: async (git, root) => { writeFileSync(join(root, "gone.txt"), "stashed\n"); await git("stash", "push", "-qm", "saved") } },
+  { name: "a soft reset moved HEAD back", before: async (git, root) => { writeFileSync(join(root, "b.txt"), "b\n"); await git("add", "b.txt"); await git("commit", "-qm", "undone") }, move: async git => { await git("reset", "--soft", "HEAD~1") } },
+]
+
+test.skipIf(process.platform === "win32")("a reused copy keeps its private Git directory while the real repository stands still", async () => {
+  await inRepository(async ({ root, copyCommand, git }) => {
+    const pool = settledPool()
+    try {
+      expect((await pooled(copyCommand, pool, "true")).record).toMatchObject({ copy: "taken", fate: "pooled" })
+      const second = await pooled(copyCommand, pool, "printf 'edited\\n' > a.txt")
+      expect(second.record).toMatchObject({ copy: "refreshed", reseeded: false, status: "completed", fate: "pooled" })
+      expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("edited\n")
+      expect(await git("status", "--porcelain")).toBe(" M a.txt\n")
+    } finally {
+      pool.close()
+      await privateCopyRemovals()
+    }
+  })
+}, 60_000)
+
+for (const { name, before, move } of moves) {
+  test.skipIf(process.platform === "win32")(`a reused copy is seeded again after ${name} between commands, shows the real state, and lands its edit without changing it`, async () => {
+    await inRepository(async ({ root, copyCommand, git }) => {
+      const pool = settledPool()
+      try {
+        await before?.(git, root)
+        expect((await pooled(copyCommand, pool, "true")).record).toMatchObject({ copy: "taken", fate: "pooled" })
+        await move(git, root)
+        const real = async () => (await Promise.all(INSPECT.map(args => git(...args)))).join("")
+        const expected = await real()
+        const head = await git("symbolic-ref", "HEAD")
+        const second = await pooled(copyCommand, pool, `${INSPECT_IN_COPY} && printf 'edited\\n' > a.txt`)
+
+        expect(second.record).toMatchObject({ copy: "refreshed", reseeded: true, status: "completed", fate: "pooled" })
+        expect(second.content).toStartWith(expected)
+        expect(second.content).toContain("Updated a.txt")
+        // Landing publishes file contents only, as from a fresh copy: HEAD, refs, index, and stash stay as the move left them.
+        expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("edited\n")
+        expect(await real()).toBe(expected)
+        expect(await git("symbolic-ref", "HEAD")).toBe(head)
+      } finally {
+        pool.close()
+        await privateCopyRemovals()
+      }
+    })
+  }, 60_000)
+}
+
+for (const write of ["commit -q --allow-empty -m private", "add a.txt", "stash push -q"]) {
+  test.skipIf(process.platform === "win32")(`a command that runs git ${write.split(" ")[0]} in its copy is refused, lands nothing, and its copy is retained, taken or reused`, async () => {
+    await inRepository(async ({ root, realGit, copyCommand, gitState }) => {
+      const pool = settledPool()
+      try {
+        const before = await gitState()
+        const command = `printf 'private\\n' > a.txt && ${JSON.stringify(realGit)} ${write}`
+        // The first refused copy is taken; the command after it leaves a pooled copy that the second one reuses.
+        for (const copy of ["taken", "refreshed"]) {
+          const refused = await pooled(copyCommand, pool, command)
+          expect(refused.record).toMatchObject({ copy, status: "repository_changed", fate: "retained" })
+          expect(refused.content).toContain("A Git command changed the repository inside this mutating command")
+          expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("one\n")
+          // A retained copy never went back to the pool, so the next command takes a new one.
+          expect((await pooled(copyCommand, pool, "true")).record).toMatchObject({ copy: "taken", fate: "pooled" })
+        }
+        expect(await gitState()).toEqual(before)
+      } finally {
+        pool.close()
+        await privateCopyRemovals()
+      }
+    })
+  }, 60_000)
+}
+
+test.skipIf(process.platform === "win32")("an index flag that a command set in its copy does not reach the next command's index", async () => {
+  await inRepository(async ({ realGit, copyCommand }) => {
+    const pool = settledPool()
+    try {
+      // Index flags leave `ls-files --stage` unchanged, so the landing passes and the copy goes back to the pool.
+      const first = await pooled(copyCommand, pool, `${JSON.stringify(realGit)} update-index --assume-unchanged a.txt && git ls-files -v a.txt`)
+      expect(first.record).toMatchObject({ status: "unchanged", fate: "pooled" })
+      expect(first.content).toStartWith("h a.txt\n")
+      const second = await pooled(copyCommand, pool, "git ls-files -v a.txt")
+      expect(second.record).toMatchObject({ copy: "refreshed", reseeded: false })
+      expect(second.content).toStartWith("H a.txt\n")
+    } finally {
+      pool.close()
+      await privateCopyRemovals()
+    }
+  })
+}, 60_000)
+
+test.skipIf(process.platform === "win32")("a git config write in a copy lands with its file edit and does not reach the next command's private config", async () => {
+  await inRepository(async ({ root, realGit, copyCommand }) => {
+    const pool = settledPool()
+    try {
+      const first = await pooled(copyCommand, pool, `printf 'edited\\n' > a.txt && ${JSON.stringify(realGit)} config user.name x && git config --get user.name`)
+      expect(first.record).toMatchObject({ status: "completed", fate: "pooled" })
+      expect(first.content).toStartWith("x\n")
+      expect(readFileSync(join(root, "a.txt"), "utf8")).toBe("edited\n")
+      const second = await pooled(copyCommand, pool, "git config --get user.name")
+      expect(second.record).toMatchObject({ copy: "refreshed", reseeded: false })
+      expect(second.content).toStartWith("Mutations\n")
+    } finally {
+      pool.close()
+      await privateCopyRemovals()
+    }
+  })
+}, 60_000)

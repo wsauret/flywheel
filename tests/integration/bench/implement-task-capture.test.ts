@@ -60,6 +60,16 @@ test("captures the final candidate tree after commits and rejects a missing base
     await checked(["git", "-c", "user.email=bench@flywheel.dev", "-c", "user.name=bench", "commit", "-qm", "candidate"], sandbox);
     await Bun.write(join(sandbox, "added.ts"), "export const added = true;\n");
     await rm(join(sandbox, "removed.ts"));
+    // Cargo tags its target folder as a cache; a candidate can commit one or leave one untracked.
+    for (const [cache, commit] of [["target", false], ["crate/target", true]] as const) {
+      await mkdir(join(sandbox, cache, "debug"), { recursive: true });
+      await Bun.write(join(sandbox, cache, "CACHEDIR.TAG"), "Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag created by cargo.\n");
+      await Bun.write(join(sandbox, cache, "debug", "probe"), new Uint8Array([0, 1, 2, 3]));
+      if (commit) {
+        await checked(["git", "add", cache], sandbox);
+        await checked(["git", "-c", "user.email=bench@flywheel.dev", "-c", "user.name=bench", "commit", "-qm", "cache"], sandbox);
+      }
+    }
     await mkdir(join(sandbox, ".flywheel"), { recursive: true });
     await Bun.write(join(sandbox, ".flywheel", "state"), "excluded\n");
     await mkdir(join(sandbox, ".bench-home"), { recursive: true });
@@ -78,6 +88,7 @@ test("captures the final candidate tree after commits and rejects a missing base
     expect(captured.diff).toContain("diff --git a/removed.ts b/removed.ts");
     expect(captured.diff).not.toContain("excluded");
     expect(captured.diff).not.toContain("__pycache__");
+    expect(captured.diff).not.toContain("target");
     expect(captured.diffStats).toEqual({ linesAdded: 2, linesRemoved: 2, filesTouched: 3 });
 
     await checked(["git", "update-ref", "-d", "refs/flywheel/benchmark-baseline"], sandbox);

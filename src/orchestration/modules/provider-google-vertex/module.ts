@@ -28,7 +28,6 @@ const definition = {
   id: "google_vertex",
   displayName: "Google Vertex",
   shortName: "Vertex",
-  supportedFamilies: ["google"],
   defaultChatTransport: "google",
   configHints: ["flywheel auth login --google-vertex"],
   cli: { flag: "google-vertex", name: "Google Vertex" },
@@ -82,5 +81,5 @@ export const googleVertexModule = {
     { domain: "providers", id: "google_vertex", value: { definition, createClient } },
     { domain: "settings", id: "provider-google-vertex", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Gemini models through a Vertex AI express API key" } },
   ],
-  observers: [], transformers: [], gates: [],
+  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

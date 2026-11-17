@@ -252,12 +252,27 @@ describe("compileOutput instructions", () => {
     const instructions = compileOutput({ ...contract, commands: { min: 1 } }).instructions(true);
     expect(instructions).toMatchSnapshot();
     expect(instructions).not.toContain("exitCode");
+    // A contract without declared fields shows its required fields, and the
+    // optional citation list too, because the example is the only place that
+    // shows the shape of a citation.
     for (const simple of [compileOutput({}), compileOutput({ commands: { min: 1 } })]) {
       const json = /```json\n([\s\S]*?)\n```/u.exec(simple.instructions(true))?.[1];
       if (!json) throw new Error("Missing handoff example");
       const example = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(JSON.parse(json));
-      expect(simple.toolInput.required).toEqual(Object.keys(example));
+      expect(Object.keys(example)).toEqual(["summary", "commands_run"]);
+      expect(example.commands_run).toEqual([{ toolUseId: "toolu_abc123", observation: "12 tests passed" }]);
     }
+  });
+
+  test("states each authored example once: in the full example, else on its field line", () => {
+    const instructions = compileOutput({ fields: {
+      choice: { type: "variant", tag: "kind", cases: { ok: { note: { type: "string", example: "first-case" } }, repair: { remedy: { type: "string", example: "second-case" } } } },
+      wrapper: { type: "object", example: { inner: "outer" }, fields: { inner: { type: "string", example: "hidden-inner" } } },
+    } }).instructions(true);
+    expect(instructions).toContain("  - **remedy** (REQUIRED, string)\n      Example: \"second-case\"\n");
+    expect(instructions).toContain("  - **inner** (REQUIRED, string)\n    Example: \"hidden-inner\"\n");
+    expect(instructions.split("first-case")).toHaveLength(2);
+    expect(instructions.split("outer")).toHaveLength(2);
   });
 
   test("lets the key of a field without a description state its meaning in the postamble and the tool schema", () => {
@@ -273,7 +288,7 @@ describe("compileOutput instructions", () => {
     expect(instructions).toContain('call `handoff` with only `{"path": "<absolute path of that file>"}`');
     // The file goes where the handoff accepts it: the agent's own scratchpad.
     expect(instructions).toContain("named `output.json` directly inside your scratchpad directory");
-    expect(instructions).not.toContain("Command execution is recorded");
+    expect(instructions).not.toContain("fabricate evidence");
     expect(instructions).not.toContain("commands_run");
   });
 });
@@ -282,14 +297,14 @@ describe("compileOutput instructions without a shell", () => {
   test("leave out commands_run, its example, and the citation rule, and keep the schema", () => {
     const compiled = compileOutput(contract);
     const withShell = compiled.instructions(true);
-    expect(withShell).toContain("- **commands_run** (optional, list of object): The Bash commands whose results prove");
+    expect(withShell).toContain("- **commands_run** (optional, list of object): The Bash calls whose results prove");
     expect(withShell).toContain('"toolUseId": "toolu_abc123"');
-    expect(withShell).toContain("Command execution is recorded from the calls you cite");
+    expect(withShell).toContain("Never improve, infer, or fabricate evidence");
 
     const withoutShell = compiled.instructions(false);
     expect(withoutShell).not.toContain("commands_run");
     expect(withoutShell).not.toContain("toolUseId");
-    expect(withoutShell).not.toContain("Command execution is recorded");
+    expect(withoutShell).not.toContain("fabricate evidence");
     expect(withoutShell).toContain("- **files_modified** (optional, list of string)");
     // An agent without a shell may still send an optional commands_run.
     expect(compiled.toolInput).toHaveProperty(["properties", "commands_run"]);

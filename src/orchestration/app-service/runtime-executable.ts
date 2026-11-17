@@ -45,7 +45,7 @@ export function sourceRuntimeCommand(): readonly [string, ...string[]] {
 }
 
 /** The build identity of a runtime started from a source checkout. */
-export function sourceBuildId(protocolVersion: number): string {
+function sourceBuildId(protocolVersion: number): string {
   return `source:protocol-${protocolVersion}`
 }
 
@@ -55,7 +55,7 @@ export function sourceBuildId(protocolVersion: number): string {
  *  start. Reading source text is a boundary read of the developer's own
  *  tree: a shape it does not recognize is no answer, which leaves a source
  *  runtime up as it always was. */
-export function checkoutProtocolVersion(): number | undefined {
+function checkoutProtocolVersion(): number | undefined {
   try {
     const source = readFileSync(join(sourceCheckout(), "src", "protocol", "runtime-liveness.ts"), "utf8")
     const declared = /^export const RUNTIME_PROTOCOL_VERSION = (\d+)$/m.exec(source)?.[1]
@@ -98,24 +98,23 @@ export type RunningBuild =
   | { readonly kind: "installed"; readonly buildId: string; readonly buildDir: string }
   | { readonly kind: "unknown" }
 
-/** Reads what `host`'s executable says it is now: the protocol a source run
- *  was loaded with, or the build directory it runs from. It is never read
- *  from `current`, which an install can move to a newer build at any
- *  moment. */
-export function readRunningBuild(host: { readonly execPath: string } = process): RunningBuild {
-  if (runsThroughBun(host.execPath)) return { kind: "source" }
-  const build = executableBuild(host.execPath)
-  return build === undefined ? { kind: "unknown" } : { kind: "installed", ...build }
-}
-
 let processBuild: RunningBuild | undefined
 
 /** The build this process executes, read once and kept. The CLI entry reads
  *  it first, so every later question about this process's build is answered
- *  by that one read of an immutable build directory. */
+ *  by that one read of an immutable build directory. It is what the
+ *  executable says it is: the protocol a source run was loaded with, or the
+ *  build directory it runs from, never `current`, which an install can move
+ *  to a newer build at any moment. */
 export function processRunningBuild(): RunningBuild {
   processBuild ??= readRunningBuild()
   return processBuild
+}
+
+function readRunningBuild(): RunningBuild {
+  if (runsThroughBun(process.execPath)) return { kind: "source" }
+  const build = executableBuild(process.execPath)
+  return build === undefined ? { kind: "unknown" } : { kind: "installed", ...build }
 }
 
 /** The code identity of this process for a person to read, or null when it

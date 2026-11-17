@@ -1,4 +1,5 @@
-import type { ContainedDirectory } from "../descriptor-directory.js";
+import { join } from "node:path";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
 import { requireAuthProfileName } from "../paths.js";
 
 export const AUTH_PROFILE_RETIREMENTS_FILE = ".profile-retirements.json";
@@ -12,7 +13,7 @@ interface AuthProfileSuccessors {
 export type AuthProfileRetirements = Readonly<AuthProfileSuccessors>;
 
 /** The ledger is authoritative. An unreadable ledger must never mean no transfers. */
-export class AuthProfileRetirementsError extends Error {
+class AuthProfileRetirementsError extends Error {
   readonly _tag = "AuthProfileRetirementsError" as const;
   constructor(readonly path: string, cause: unknown) {
     super(`Cannot read auth profile transfers at ${path}. Repair the file or restore it from backup before changing profiles.`, { cause });
@@ -38,7 +39,7 @@ export function readAuthProfileRetirements(auth: ContainedDirectory): AuthProfil
     }
     return Object.freeze(canonical);
   } catch (cause) {
-    throw new AuthProfileRetirementsError(`${auth.canonicalPath()}/${AUTH_PROFILE_RETIREMENTS_FILE}`, cause);
+    throw new AuthProfileRetirementsError(join(auth.canonicalPath(), AUTH_PROFILE_RETIREMENTS_FILE), cause);
   }
 }
 

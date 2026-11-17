@@ -120,15 +120,12 @@ describe("standalone benchmark admission", () => {
             ...capture,
             eligibility: {
               ...base, revision,
-              candidateOffering: (candidate, model, policy) => {
-                const offering = base.candidateOffering?.(candidate, model, policy);
-                return offering ? {
-                  ...offering, wireModelId: `${offering.wireModelId}${wireSuffix}`,
-                  ...(omitReasoning && offering.resolvedModelMetadata ? {
-                    resolvedModelMetadata: { ...offering.resolvedModelMetadata, cost: { ...offering.resolvedModelMetadata.cost, reasoning: undefined } },
-                  } : {}),
-                } : undefined;
-              },
+              candidateOfferings: (candidate, model, policy) => base.candidateOfferings(candidate, model, policy).map((offering) => ({
+                ...offering, wireModelId: `${offering.wireModelId}${wireSuffix}`,
+                ...(omitReasoning && offering.resolvedModelMetadata ? {
+                  resolvedModelMetadata: { ...offering.resolvedModelMetadata, cost: { ...offering.resolvedModelMetadata.cost, reasoning: undefined } },
+                } : {}),
+              })),
             },
           }),
         }, seats);
@@ -165,7 +162,7 @@ describe("standalone benchmark admission", () => {
     expect(spy.captures).toBe(1);
     expect(spy.admitted?.has("gpt-6-luna")).toBe(true);
     expect(JSON.parse(output[0] ?? "{}").providerPlans).toMatchObject([
-      { role: "candidate", model: "gpt-6-luna", effort: "high" },
+      { role: "candidate", model: "gpt-6.1-sol", effort: "low" },
       { role: "candidate", model: "gpt-6-luna", effort: "high" },
       { role: "judge", model: "gpt-6.1-sol", effort: "high" },
     ]);

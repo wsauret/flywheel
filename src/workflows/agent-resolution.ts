@@ -1,5 +1,5 @@
 import type { ArtifactContractsFrontmatterSchema } from "./artifact-contracts.js";
-import { workflowBriefs, type BriefOutputRole, type LoadedBrief } from "./brief.js";
+import type { BriefOutputRole, LoadedBrief } from "./brief.js";
 import { retiredStepReads, type RetiredReadSource } from "./retired-step-grammar/reads.js";
 import { agentReads, agentRecords, type AgentRead, type AgentRecordRef, type WorkflowDefinition } from "./workflow-schema.js";
 
@@ -48,7 +48,7 @@ interface ResolvedAgentBrief {
 export function resolveWorkflowAgents(
   workflow: WorkflowDefinition,
 ): ReadonlyMap<string, ResolvedAgent> {
-  const briefs = workflowBriefs(workflow);
+  const briefs = workflow.briefs;
   const resolved = new Map<string, ResolvedAgent>();
   for (const record of agentRecords(workflow).values()) {
     const brief = briefs.get(record.definitionId);

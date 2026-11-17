@@ -23,10 +23,6 @@ function recordingAudit() {
     recordResponse(handle, input) {
       responses.push({ requestId: handle.requestId, outcome: input.outcome, tag: input.error?.tag });
     },
-    recordAbandonedResponse(handle, input) {
-      responses.push({ requestId: handle.requestId, outcome: input.outcome, tag: input.error?.tag });
-      return Promise.resolve();
-    },
     recordUsage(handle, input) { usages.push({ requestId: handle.requestId, inputTokens: input.inputTokens }); },
     recordStreamStarted(handle) { streamStarts.push(handle.requestId); },
     recordStreamEvent() {},

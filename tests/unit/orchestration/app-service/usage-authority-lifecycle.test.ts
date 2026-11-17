@@ -1,13 +1,15 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import type { UsageAuthority } from "../../../../src/infra/llm/usage-authority.js"
 import type { UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
-import { createUsageSettlement, type UsageSettlementDraft } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSessionUsageSettlement, type UsageSettlementAuthorityLease, type UsageSettlementDraft } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { createSubscriptionUsageService, type SubscriptionUsageProfile, type SubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { registry } from "../auth/provider-observations/_service-fixtures.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
 
 const entry: UsageEntry = {
   attemptId: "00000000-0000-4000-8000-000000000001",
@@ -29,6 +31,23 @@ const draft: UsageSettlementDraft = {
   requestId: "request",
   identity: { providerSessionKey: "provider-session", conversationId: "conversation" },
   turn: 1,
+}
+
+/** A session's settlement over a real store in `directory`, whose publication first runs `beforePublication`. */
+function sessionSettlement(directory: string, acquireAuthority: (profileId: string) => Promise<UsageSettlementAuthorityLease>, beforePublication: () => void | Promise<void>) {
+  const store = createSqliteEventStore(join(directory, "events.sqlite"))
+  const writer = createSessionFactWriter({ sessionId: "session", writer: asAsyncEventWriter(store) })
+  const options = {
+    owner: { kind: "session" as const, sessionId: "session" },
+    reader: asAsyncEventReadSurface(store),
+    writer: { ...writer, transaction: async (publication: () => void) => { await beforePublication(); await writer.transaction(publication) } },
+    acquireAuthority,
+  }
+  return {
+    options,
+    cells: () => store.readInFlight("session", "usage.settlement"),
+    close: () => { writer.dispose(); store.close() },
+  }
 }
 
 function service(profile: SubscriptionUsageProfile, appended: string[], close: () => Promise<void>): SubscriptionUsageService {
@@ -57,8 +76,10 @@ function service(profile: SubscriptionUsageProfile, appended: string[], close: (
 }
 
 describe("usage authority lifecycle", () => {
+  const temporaryDirectory = temporaryDirectories()
+
   test.each(["settle", "recover"] as const)("keeps a captured append alive across refresh and drains %s before deletion", async (mode) => {
-    const directory = mkdtempSync(join(tmpdir(), "usage-authority-lifecycle-"))
+    const directory = temporaryDirectory("usage-authority-lifecycle-")
     const pool = createSubscriptionUsageServicePool({
       create: (profile) => createSubscriptionUsageService({
         profile: () => profile,
@@ -71,32 +92,24 @@ describe("usage authority lifecycle", () => {
     if (!authority) throw new Error("Usage authority did not open")
     const acquired = Promise.withResolvers<void>()
     const resumeAppend = Promise.withResolvers<void>()
-    const checkpoints = new Map<string, unknown>()
     let publications = 0
-    const options: Parameters<typeof createUsageSettlement>[0] = {
-      putInFlight: async (_kind, key, payload) => { checkpoints.set(key, payload) },
-      retire: async (retirement) => { checkpoints.delete(retirement.key) },
-      acquireAuthority: async (profileId) => {
-        const lease = await pool.acquireSettlement({ id: profileId, directory })
-        const captured = lease.service.store()
-        if (!captured) { await lease.release(); throw new Error("Usage authority did not open") }
-        const append = captured.append
-        acquired.resolve()
-        await resumeAppend.promise
-        return { profileId, authorityIncarnation: captured.incarnation(), append, release: lease.release }
-      },
-      publish: async (_draft, retirement) => {
-        expect(authority.rangeEntries({ startMs: Date.parse(entry.occurredAt), endMs: Date.parse(entry.occurredAt) + 1 }).groups).toMatchObject([{ attempts: 1 }])
-        expect(checkpoints.has(entry.attemptId)).toBe(true)
-        expect(resident.service.store()).toBe(authority)
-        publications += 1
-        checkpoints.delete(retirement.key)
-        return { kind: "published" }
-      },
-    }
-    const settlement = createUsageSettlement(options)
+    const session = sessionSettlement(directory, async (profileId) => {
+      const lease = await pool.acquireSettlement({ id: profileId, directory })
+      const captured = lease.service.store()
+      if (!captured) { await lease.release(); throw new Error("Usage authority did not open") }
+      const append = captured.append
+      acquired.resolve()
+      await resumeAppend.promise
+      return { profileId, authorityIncarnation: captured.incarnation(), append, release: lease.release }
+    }, () => {
+      expect(authority.rangeEntries({ startMs: Date.parse(entry.occurredAt), endMs: Date.parse(entry.occurredAt) + 1 }).groups).toMatchObject([{ attempts: 1 }])
+      expect(session.cells().map((cell) => cell.key)).toEqual([entry.attemptId])
+      expect(resident.service.store()).toBe(authority)
+      publications += 1
+    })
+    const settlement = createSessionUsageSettlement(session.options)
     await settlement.checkpoint(draft)
-    const pending = mode === "settle" ? settlement.settle(entry.attemptId, { served: true }) : createUsageSettlement(options).recover(checkpoints.get(entry.attemptId))
+    const pending = mode === "settle" ? settlement.settle(entry.attemptId, { served: true }) : createSessionUsageSettlement(session.options).recover(session.cells()[0]?.payload ?? {})
     try {
       await acquired.promise
       const generation = resident.service.generation()?.generation
@@ -107,12 +120,12 @@ describe("usage authority lifecycle", () => {
       await Promise.resolve()
       expect(removed).toBe(false)
       expect(publications).toBe(0)
-      expect(checkpoints.size).toBe(1)
+      expect(session.cells()).toHaveLength(1)
       resumeAppend.resolve()
       await expect(pending).resolves.toBeUndefined()
       const finish = await removal
       expect(publications).toBe(1)
-      expect(checkpoints.size).toBe(0)
+      expect(session.cells()).toHaveLength(0)
       expect(() => authority.revision()).toThrow("Usage authority is disposed")
       finish()
     } finally {
@@ -120,7 +133,7 @@ describe("usage authority lifecycle", () => {
       await pending.catch(() => {})
       await resident.release()
       await pool.settled()
-      rmSync(directory, { recursive: true, force: true })
+      session.close()
     }
   })
 
@@ -132,40 +145,40 @@ describe("usage authority lifecycle", () => {
     const pool = createSubscriptionUsageServicePool({ create: (profile) => service(profile, appended, async () => { if (blockClose) await closeGate }) })
     let publish!: () => void
     const publication = new Promise<void>((resolve) => { publish = resolve })
-    const settlement = createUsageSettlement({
-      putInFlight: async () => {},
-      retire: async () => {},
-      acquireAuthority: async (profileId) => {
-        if (profileId !== "a") throw new Error(`unexpected profile ${profileId}`)
-        const lease = await pool.acquireSettlement({ id: profileId, directory: "/profiles/a" })
-        const authority = lease.service.store()
-        if (!authority) { await lease.release(); throw new Error(`usage authority is unavailable for profile ${profileId}`) }
-        return { profileId, authorityIncarnation: authority.incarnation(), append: authority.append, release: lease.release }
-      },
-      publish: async () => { await publication; return { kind: "published" } },
-    })
+    const directory = temporaryDirectory("usage-authority-publication-")
+    const session = sessionSettlement(directory, async (profileId) => {
+      if (profileId !== "a") throw new Error(`unexpected profile ${profileId}`)
+      const lease = await pool.acquireSettlement({ id: profileId, directory: "/profiles/a" })
+      const authority = lease.service.store()
+      if (!authority) { await lease.release(); throw new Error(`usage authority is unavailable for profile ${profileId}`) }
+      return { profileId, authorityIncarnation: authority.incarnation(), append: authority.append, release: lease.release }
+    }, () => publication)
+    const settlement = createSessionUsageSettlement(session.options)
+    try {
+      await settlement.checkpoint(draft)
+      const pendingSettlement = settlement.settle(entry.attemptId, { served: true })
+      await Bun.sleep(0)
+      blockClose = true
+      const pendingRemoval = pool.closeProfile("a")
+      let removed = false
+      void pendingRemoval.then(() => { removed = true })
+      await Bun.sleep(0)
+      expect(removed).toBe(false)
+      expect(appended).toEqual(["a"])
 
-    await settlement.checkpoint(draft)
-    const pendingSettlement = settlement.settle(entry.attemptId, { served: true })
-    await Bun.sleep(0)
-    blockClose = true
-    const pendingRemoval = pool.closeProfile("a")
-    let removed = false
-    void pendingRemoval.then(() => { removed = true })
-    await Bun.sleep(0)
-    expect(removed).toBe(false)
-    expect(appended).toEqual(["a"])
+      publish()
+      expect(removed).toBe(false)
+      unblockClose()
+      await pendingSettlement
+      const finishRemoval = await pendingRemoval
+      finishRemoval()
 
-    publish()
-    expect(removed).toBe(false)
-    unblockClose()
-    await pendingSettlement
-    const finishRemoval = await pendingRemoval
-    finishRemoval()
-
-    const fresh = await pool.acquire({ id: "a", directory: "/profiles/a" })
-    expect(fresh.service.generation()?.profileId).toBe("a")
-    await fresh.release()
+      const fresh = await pool.acquire({ id: "a", directory: "/profiles/a" })
+      expect(fresh.service.generation()?.profileId).toBe("a")
+      await fresh.release()
+    } finally {
+      session.close()
+    }
   })
 
 })

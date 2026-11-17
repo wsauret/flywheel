@@ -217,6 +217,12 @@ Candidate order is a fixed, pure function of spend mode, provider rank, and incl
 Because: Source order is not policy.
 Not: List-position routing.
 
+## ARCH-PROVIDERS-081: A model host is a direct API provider
+
+A provider that serves open-weight models on its own infrastructure spends as a direct API. It ranks after the API of the model's developer and before every aggregator.
+Because: The host bills the request itself and routes it to no third party, and the developer's own endpoint is the reference route for its model.
+Not: An aggregator class for every provider that is not the model's developer.
+
 ## ARCH-PROVIDERS-032: The admitted request's walk is the only retry owner
 
 One admitted request owns the ordered walk over its candidates and every retry and failover inside the request, and adapters make one wire attempt each time they are asked. Each exact route is selected at most once, and in-place retries and same-account login recovery keep that selection. Cancellation and local safety or durability failures stop the request, and an explicit model reassignment is a separate runner transition.

@@ -78,12 +78,11 @@ describe("runtime background Worker lane", () => {
     }
     const projector = createRuntimeBackgroundSnapshotProjector(counter.reader, index, root)
     const detail = createSessionDetailReader({
-      sessionStore: { get: () => undefined },
       manager: { read: (sessionId) => readSessionMetadata(counter.reader, sessionId) },
       reader: counter.reader,
       projectionReader: counter.reader,
       projectRoot: root,
-      summaryIndex: index,
+      source: { kind: "background", summaryIndex: index },
     })
     const lane = createRuntimeBackgroundLane(root, {
       createClient: () => backgroundClient({

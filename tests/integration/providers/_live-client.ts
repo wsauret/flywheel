@@ -21,7 +21,7 @@ import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-norma
 import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/auth/resolve-key.js";
 import { selectStartupDirectories } from "../../../src/infra/directory-authorities.js";
-import { createLauncherScope, createProcessSupervisor, type LauncherScope } from "../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand, type LauncherScope } from "../../../src/infra/process-supervisor.js";
 import { createAgentRuntime } from "../../../src/orchestration/agent-runtime/factory.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
@@ -47,6 +47,8 @@ import { createSubscriptionSpendConsentCaptureCache } from "../../../src/orchest
 import type { SubscriptionSpendConsentCapture } from "../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { installedPersonaToolEntries } from "../../../src/orchestration/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../src/workflows/definition-registry.js";
+import { unusedProviderModelWrites } from "../../helpers/provider-model-writes.js";
+import { diskAuthObservation } from "../../helpers/profile-auth-observation.js";
 
 /** The auth profile every live test resolves its routes from: the one that
  *  `LIVE_AUTH_PROFILE_SETTING` names. The active profile is never consulted,
@@ -111,7 +113,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
   const releases: Array<() => void | Promise<void>> = [];
   const served: string[] = [];
   try {
-    const supervisor = createProcessSupervisor();
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     releases.push(() => supervisor.dispose());
     const launcher = createLauncherScope(supervisor);
     releases.push(async () => { await launcher.close(); });
@@ -127,7 +129,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
     acquireSharedProviderAvailability(liveDirectories.userDataRoot, installedAccessProviderIds());
     releases.push(() => disposeSharedProviderAvailability());
 
-    const providerModels = createProviderModelPreferenceService({
+    const providerModels = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (providerId) => providers.selection.displayName(providerId),
       allowTrainingRoutes: () => requestConfig.allowTrainingRoutes,
       ...providerModelPreferencePersistence(() => profile.directory),
@@ -137,7 +139,7 @@ export async function withLiveClient<T>(label: string, use: (run: LiveRun) => Pr
       allowTrainingRoutes: () => requestConfig.allowTrainingRoutes,
       userDataRoot: liveDirectories.userDataRoot,
       resolveKey,
-      moduleSelection: () => composition,
+      moduleSelection: () => composition, observeAuth: diskAuthObservation(() => composition),
       prepare: providerModels.prepare,
       publish: providerModels.publish,
       current: providerModels.state,

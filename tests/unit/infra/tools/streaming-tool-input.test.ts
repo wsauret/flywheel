@@ -1,10 +1,13 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, spyOn } from "bun:test";
 import { MAX_STREAMING_TOOL_INPUT_BYTES } from "../../../../src/infra/output/partial-json.js";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector.js";
 import { OutputProjector } from "../../../../src/infra/output/output-projector.js";
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js";
+import { StreamingToolInputs, type StreamingInputUpdate } from "../../../../src/infra/output/streaming-tool-inputs.js";
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js";
+import { parseShell, ShellScanner } from "../../../../src/infra/tools/shell-words.js";
 
 // ---------------------------------------------------------------------------
 // StructuredOutputBuilder new methods
@@ -74,20 +77,18 @@ describe("RuntimeEventProjector streaming tool input", () => {
     });
   }
 
-  function toolExecutionOutputEvent(toolUseId: string, output: string, parentToolUseId?: string): RuntimeEvent {
+  function toolExecutionOutputEvent(toolUseId: string, output: string): RuntimeEvent {
     return createRuntimeEvent("tool.execution_output.delta", {
       type: "tool.execution_output.delta",
       tool_use_id: toolUseId,
       output,
-      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     });
   }
 
-  function toolInputCompleteEvent(id: string, name: string, input: { [key: string]: unknown }, parentToolUseId?: string): RuntimeEvent {
+  function toolInputCompleteEvent(id: string, name: string, input: { [key: string]: unknown }): RuntimeEvent {
     return createRuntimeEvent("tool.input.completed", {
       type: "tool.input.completed",
       tool_use: { id, name, input },
-      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     });
   }
 
@@ -291,26 +292,6 @@ describe("RuntimeEventProjector streaming tool input", () => {
     expect(projector.snapshot().streamingToolText).toEqual({});
   });
 
-  test("parented execution output follows the routed child tool id", () => {
-    const projector = new OutputProjector({ executionCwd: "/workspace" });
-    const parser = new RuntimeEventProjector(projector);
-
-    parser.dispatch(assistantEvent([
-      { type: "tool_use", id: "agent-tool", name: "subagent", input: { description: "work" } },
-    ]));
-    parser.dispatch(toolInputCompleteEvent("bash-child", "bash", { command: "echo child" }, "agent-tool"));
-    parser.dispatch(toolExecutionOutputEvent("bash-child", "child\n", "agent-tool"));
-
-    const agentBlock = projector.getBlocks().find(b => b.kind === "agentGroup");
-    expect(agentBlock).toBeDefined();
-    if (agentBlock?.kind === "agentGroup") {
-      expect(agentBlock.children).toHaveLength(1);
-      expect(agentBlock.children[0]?.id).toBe("bash-child");
-      expect(agentBlock.children[0]?.status).toBe("pending");
-    }
-    expect(projector.snapshot().streamingToolText["bash-child"]?.content).toBe("child\n");
-  });
-
   test("tool_input_delta streams an incomplete content string", () => {
     const projector = new OutputProjector({ executionCwd: "/workspace" });
     const parser = new RuntimeEventProjector(projector);
@@ -490,7 +471,7 @@ describe("RuntimeEventProjector streaming tool input", () => {
     });
   });
 
-  test("interruption retains visible proposals and reset keeps child rows compact", () => {
+  test("interruption retains visible proposals", () => {
     const topLevel = new OutputProjector({ executionCwd: "/workspace" });
     const topLevelEvents = new RuntimeEventProjector(topLevel);
     topLevelEvents.dispatch(assistantEvent([{ type: "tool_use", id: "write-interrupted", name: "write", input: {} }]));
@@ -503,19 +484,6 @@ describe("RuntimeEventProjector streaming tool input", () => {
       proposedDiff: { files: [{ path: "top.ts", action: "add" }] },
     });
 
-    const child = new OutputProjector({ executionCwd: "/workspace" });
-    const childEvents = new RuntimeEventProjector(child);
-    childEvents.dispatch(assistantEvent([{ type: "tool_use", id: "agent", name: "subagent", input: { description: "work" } }]));
-    child.apply({ type: "tool-use", toolUseId: "child-write", name: "write", input: {}, timestamp: 2, parentToolUseId: "agent" });
-    child.apply({ type: "tool-input-delta", toolUseId: "child-write", partialJson: '{"path":"child.ts","content":"draft', parentToolUseId: "agent" });
-    child.resetTracking();
-    const group = child.getBlocks().find(b => b.kind === "agentGroup");
-    expect(group?.kind === "agentGroup" ? group.children[0] : undefined).toMatchObject({
-      fileChangeKind: "create",
-      presentation: { name: "Write", detail: "child.ts" },
-    });
-    expect(group?.kind === "agentGroup" ? group.children[0] : undefined).not.toHaveProperty("proposedDiff");
-    expect(child.snapshot().streamingToolText).toEqual({});
   });
 
   test("immediate edit input stays pending without a provisional diff", () => {
@@ -554,4 +522,196 @@ describe("RuntimeEventProjector streaming tool input", () => {
     ]);
   });
 
+});
+
+// ---------------------------------------------------------------------------
+// StreamingToolInputs: rows derived from each delta
+// ---------------------------------------------------------------------------
+describe("StreamingToolInputs row derivation", () => {
+  type StreamedRow = NonNullable<Extract<StreamingInputUpdate, { kind: "decoded" }>["row"]>;
+
+  /** Streams a call's JSON input `deltaLength` characters at a time and
+   *  returns the row after each delta that changed a presentation field. */
+  function streamRows(name: string, input: { [key: string]: unknown }, deltaLength = 1, cwd = "/workspace"): StreamedRow[] {
+    const inputs = new StreamingToolInputs(cwd);
+    inputs.start("call", name);
+    const json = JSON.stringify(input);
+    const rows: StreamedRow[] = [];
+    for (let at = 0; at < json.length; at += deltaLength) {
+      const update = inputs.append("call", json.slice(at, at + deltaLength));
+      if (update?.kind === "decoded" && update.row) rows.push(update.row);
+    }
+    return rows;
+  }
+
+  interface MeteredSpy {
+    readonly mock: { readonly calls: readonly (readonly unknown[])[]; readonly contexts: readonly unknown[] };
+    mockClear(): void;
+    mockRestore(): void;
+  }
+
+  /** Far below what one delta reads when it reads the input streamed before it. */
+  const DELTA_READ_BOUND = 500;
+
+  interface DeltaReads {
+    readonly most: number;
+    readonly rows: StreamedRow[];
+  }
+
+  /** A call whose input streams: each delta answers the call's row after it. */
+  interface DeltaStream {
+    readonly append: (delta: string) => StreamedRow | undefined;
+  }
+
+  /** Streams a call's input into a transcript. */
+  function projectorStream(name: string): DeltaStream {
+    const projector = new OutputProjector({ executionCwd: "/workspace" });
+    const parser = new RuntimeEventProjector(projector);
+    parser.dispatch(createRuntimeEvent("model.assistant_message.recorded", {
+      type: "model.assistant_message.recorded",
+      message: { content: [{ type: "tool_use", id: "call", name, input: {} }] },
+    }));
+    return {
+      append: (delta) => {
+        parser.dispatch(createRuntimeEvent("tool.input.delta", { type: "tool.input.delta", tool_use_id: "call", partial_json: delta }));
+        const block = projector.getBlocks().find((candidate) => candidate.kind === "tool");
+        return block?.kind === "tool" && block.sentence ? { presentation: block.presentation, sentence: block.sentence } : undefined;
+      },
+    };
+  }
+
+  /** Streams a call's input through `StreamingToolInputs` alone. */
+  function decoderStream(name: string): DeltaStream {
+    const inputs = new StreamingToolInputs("/workspace");
+    inputs.start("call", name);
+    return {
+      append: (delta) => {
+        const update = inputs.append("call", delta);
+        return update?.kind === "decoded" ? update.row : undefined;
+      },
+    };
+  }
+
+  /** Meters the characters that string and regular-expression reads touch:
+   *  one per character read, and the searched text for a call that scans a
+   *  string. Returns the most that one delta read while `name` streamed
+   *  `input` one character per delta, and the rows. A delta that reads the
+   *  input streamed before it reads more with each delta. */
+  function mostReadByOneDelta(name: string, input: { [key: string]: unknown }, through: "decoder" | "transcript" = "decoder"): DeltaReads {
+    const length = (value: unknown): number => typeof value === "string" ? value.length : 0;
+    const offset = (value: unknown, size: number): number => {
+      const at = typeof value === "number" ? value : 0;
+      return at < 0 ? Math.max(0, size + at) : Math.min(at, size);
+    };
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the receiver of a spied built-in method
+    const meters: { readonly spy: MeteredSpy; readonly cost: (self: unknown, args: readonly unknown[]) => number }[] = [
+      { spy: spyOn(String.prototype, "charAt"), cost: () => 1 },
+      { spy: spyOn(String.prototype, "charCodeAt"), cost: () => 1 },
+      // A slice shares the characters of the string it cuts, so it reads none.
+      { spy: spyOn(String.prototype, "slice"), cost: () => 1 },
+      { spy: spyOn(String.prototype, "indexOf"), cost: (self, [, from]) => length(self) - offset(from, length(self)) },
+      ...(["replace", "replaceAll", "trim", "trimEnd", "search", "split", "match", "matchAll", "includes", "startsWith", "endsWith"] as const)
+        .map((key) => ({ spy: spyOn(String.prototype, key), cost: (self: unknown) => length(self) })),
+      { spy: spyOn(RegExp.prototype, "exec"), cost: (_self, [text]) => length(text) },
+      { spy: spyOn(RegExp.prototype, "test"), cost: (_self, [text]) => length(text) },
+    ];
+    const read = (): number => {
+      let total = 0;
+      for (const { spy, cost } of meters) {
+        for (const [call, args] of spy.mock.calls.entries()) total += cost(spy.mock.contexts[call], args);
+        spy.mockClear();
+      }
+      return total;
+    };
+    const stream = through === "decoder" ? decoderStream(name) : projectorStream(name);
+    const rows: StreamedRow[] = [];
+    let most = 0;
+    try {
+      for (const char of JSON.stringify(input)) {
+        read();
+        const row = stream.append(char);
+        most = Math.max(most, read());
+        // A delta that read too much already fails the bound; stop before the rest reads ever more.
+        if (most >= DELTA_READ_BOUND) break;
+        if (row) rows.push(row);
+      }
+    } finally {
+      for (const { spy } of meters) spy.mockRestore();
+    }
+    return { most, rows };
+  }
+
+  test("a bash command streamed one character per delta shows each prefix as its visible command after each delta", () => {
+    const command = 'rg -n "TODO" src | head -n 5 && git status --short';
+    const rows = streamRows("bash", { command });
+    expect(rows.slice(0, command.length).map((row) => row.presentation.detail)).toEqual([...command].map((_, index) => command.slice(0, index + 1).trimEnd()));
+    expect(rows.every((row) => row.presentation.name === "Bash")).toBe(true);
+  });
+
+  test.each([
+    ["a heredoc", { command: "cat > /workspace/notes.md <<'EOF'\n# Notes\nrun ./build.sh; rg TODO\nEOF\nwc -l notes.md" }],
+    ["a multi-line script with cd", { command: "cd /workspace/web\n./build.sh --fast\ncat /workspace/web/out.txt | head -n 3\n" }],
+    ["a pipeline", { command: "rg --files src | xargs wc -l | sort -n" }],
+    ["control characters", { command: "\u001b[31mecho\u001b[0m ‎hi\r\n\u0007ls\u2028 src\t\t" }],
+    ["a declared mutation", { mutates: true, command: "sed -i s/a/b/ /workspace/f.txt && ./fix.sh" }],
+    ["an escape string open across a script's start", { command: "printf '\u001b]0;';./a.sh x\u0007; ls" }],
+    ["scripts in and after a substitution", { command: "echo $(./x.sh) ./y.sh; ./z.sh" }],
+  ])("after the last delta, a streamed bash row with %s equals the settled row", (_case, input) => {
+    for (const deltaLength of [1, 3, 64]) {
+      expect(streamRows("bash", input, deltaLength).at(-1)).toEqual(resolveToolRowPresentation("bash", input, "/workspace"));
+    }
+  });
+
+  test.each([
+    ["a V4A patch", { input: "*** Begin Patch\n*** Update File: /workspace/src/a.ts\n@@ function a()\n-old\n+new\n*** Add File: src/b.ts\n+b\n*** End Patch" }],
+    ["one file", { input: "*** Begin Patch\r\n*** Update File: src/a.ts  \r\n+x\r\n*** End Patch" }],
+    ["a hashline section", { input: "@@ src/old.ts\n+x" }],
+    ["an explicit path", { path: "/workspace/src/c.ts", old_string: "a", new_string: "b" }],
+  ])("after the last delta, a streamed edit row with %s equals the settled row", (_case, input) => {
+    for (const deltaLength of [1, 5]) {
+      expect(streamRows("edit", input, deltaLength).at(-1)).toEqual(resolveToolRowPresentation("edit", input, "/workspace"));
+    }
+  });
+
+  test("a streamed bash sentence changes only when a command is read, and a heredoc body never shows in it", () => {
+    const command = `cat > notes.md <<'EOF'\n${Array.from({ length: 20 }, (_, line) => `line ${line}`).join("\n")}\nEOF\nrg TODO src`;
+    const sentences = streamRows("bash", { command }).map((row) => row.sentence)
+      .filter((sentence, index, all) => index === 0 || JSON.stringify(sentence) !== JSON.stringify(all[index - 1]));
+    expect(sentences).toEqual([
+      { name: "Ran", detail: "" },
+      { name: "Wrote", detail: "notes.md" },
+      { name: "Wrote", detail: "notes.md; Searched TODO in src" },
+    ]);
+  });
+
+  test("over a 2,000-line heredoc streamed one character per delta, no delta reads the command streamed before it, in the decoder or the transcript row, and each command completes once", () => {
+    const body = Array.from({ length: 2000 }, (_, line) => `line ${line} ${"x".repeat(30)}`).join("\n");
+    const command = `cat > out.txt <<'EOF'\n${body}\nEOF\n./publish.sh out.txt`;
+    expect(command.length).toBeGreaterThan(80_000);
+    for (const through of ["decoder", "transcript"] as const) {
+      const { most, rows } = mostReadByOneDelta("bash", { command }, through);
+      // One delta that read the command streamed before it would read tens of thousands.
+      expect(most).toBeLessThan(DELTA_READ_BOUND);
+      expect(rows.at(-1)).toEqual(resolveToolRowPresentation("bash", { command }, "/workspace"));
+    }
+
+    const scanner = new ShellScanner();
+    const completed = [...command].flatMap((char) => scanner.advance(char).complete);
+    completed.push(...scanner.finish().complete);
+    expect(completed).toEqual([...parseShell(command)]);
+  });
+
+  // The transcript adds the row's own work to the decoder's, so a patch far
+  // longer than the bound proves it there at a quarter of the metered time.
+  test.each([
+    ["200 KB", "decoder", 2000],
+    ["50 KB", "transcript", 500],
+  ] as const)("over a %s V4A patch streamed one character per delta, no delta reads the patch streamed before it, through the %s", (_size, through, lineCount) => {
+    const lines = Array.from({ length: lineCount }, (_, line) => `+${String(line).padEnd(99, "z")}`);
+    const input = `*** Begin Patch\n*** Update File: src/a.ts\n${lines.join("\n")}\n*** End Patch`;
+    expect(input.length).toBeGreaterThan(lineCount * 100);
+    const { most, rows } = mostReadByOneDelta("edit", { input }, through);
+    expect(most).toBeLessThan(DELTA_READ_BOUND);
+    expect(rows.at(-1)).toEqual({ presentation: { name: "Edit", detail: "src/a.ts" }, sentence: { name: "Edited", detail: "a.ts" } });
+  });
 });

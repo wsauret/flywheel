@@ -19,6 +19,7 @@ import { temporaryDirectories } from "../../../helpers/directories.js"
 import type { AuthProfileResolution } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { processLoginObservations } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js"
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 
 function provider(overrides: Partial<AuthProviderStatus> = {}): AuthProviderStatus {
   return {
@@ -189,7 +190,7 @@ describe("provider-model auth publication", () => {
     }
     const bus = createRuntimeUiBus()
     const completed = Promise.withResolvers<void>()
-    const models = createProviderModelPreferenceService({
+    const models = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
       displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next",
       publish: createProviderModelAuthPublisher({
         resolveProfile: () => profile,

@@ -88,14 +88,17 @@ const RETIRED_SCENARIO_BUDGET: RetiredPersonaText = new Map([
   ]],
 ])
 
-/** The persona as it read before the `retiredText` clauses were rewritten, or undefined when it never carried any. */
+/** The persona as it read before the `retiredText` clauses were rewritten, or undefined when it never carried any.
+ *  The general agent has no system prompt, so only its description can carry a clause. */
 function withRetiredText(persona: AgentDefinition, retiredText: RetiredPersonaText): AgentDefinition | undefined {
   const clauses = retiredText.get(persona.name)
-  if (persona.kind !== "persona" || !clauses) return undefined
-  const { description, systemPrompt } = persona
-  if (!clauses.every(([current]) => description.includes(current) || systemPrompt.includes(current))) return undefined
+  if (!clauses) return undefined
+  const texts = persona.kind === "persona" ? [persona.description, persona.systemPrompt] : [persona.description]
+  if (!clauses.every(([current]) => texts.some((text) => text.includes(current)))) return undefined
   const restore = (text: string) => clauses.reduce((restored, [current, retired]) => restored.replace(current, retired), text)
-  return { ...persona, description: restore(description), systemPrompt: restore(systemPrompt) }
+  return persona.kind === "persona"
+    ? { ...persona, description: restore(persona.description), systemPrompt: restore(persona.systemPrompt) }
+    : { ...persona, description: restore(persona.description) }
 }
 
 /** The persona as it reads now and, when the workflow lexicon rewrote some of its clauses, as it read before. A build
@@ -361,14 +364,47 @@ const EXPLORER_MODEL_CLAIM: BundledPersonaEdit = {
   ]),
 }
 
-/** Every edit of the bundled personas since persona identity covered the bundled mark, newest first. */
-const BUNDLED_PERSONA_EDITS = [EXPLORER_MODEL_CLAIM, UAT_SCRATCHPAD_RULE, AGENT_TYPE_MARKERS, CAPABILITY_MARKERS] as const
+/** 2026-11-14: the lean-prompt edit shortened the catalog descriptions of explorer, reviewer-mechanism, reviewer-uat,
+ *  and the general agent, and dropped from the implementer instructions the rules that the subagent closure, the
+ *  handoff contract, and the composed skills already state. Remove after 2027-05-14. */
+const LEAN_PERSONA_TEXT: BundledPersonaEdit = {
+  retired: new Map([
+    ["explorer", [
+      [
+        "Fast investigation: codebase questions, git history, and targeted external lookups such as documentation. It answers a targeted question and stops early, or researches exhaustively when the brief asks for full coverage.",
+        "Fast read-only investigation. Answers codebase questions, digs through git history, and makes targeted external lookups such as documentation. Cannot modify files. The brief selects one of two modes, targeted question-answering with early stopping (the default) or exhaustive enumerate-then-read facet research when the brief asks for full coverage.",
+      ],
+    ]],
+    ["implementer", [[
+      "- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n- Start with one batched read of every file and test your task names; never read one file per turn.",
+      "Beyond the method composed ahead of these instructions:\n\n- The part of your brief labeled Design intent is fixed. Everything else in the brief is implementation design you may revise when the code requires it; record each deviation in your result.\n- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n\nExecution discipline:\n\n- Start with one batched read of every file and test your task names; never read one file per turn.\n- Work in focused read, edit, and test batches. Revisit files when new evidence or a revised approach requires it.\n{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}\n- Track the files you change yourself and report them in files_modified; never consult git for this.\n\nWhen evidence contradicts the Design intent, or an explicit prohibition of the person or a missing external prerequisite prevents every viable next action, message your parent with message_session and wait for its reply. Never hand off unfinished work as complete.\n\nWhen finished, submit your structured result using the completion tool provided by your environment. Include these fields:\n- summary: outcomes, material plan deviations with evidence and rationale, any work that is not done, and any remaining follow-ups for parent review\n- files_modified: files created or changed\n- commands_run: commands executed with exit codes and the result each proved",
+    ]]],
+    ["reviewer-mechanism", [[
+      "Verifies the runtime claims that a plan or review relies on, such as what survives a crash, what races, what runs when, whether a path is reachable, and whether a write is durable, by tracing each claim to the code. Runs after the domain reviewers, on the premises they tagged UNVERIFIED and the runtime claims of the plan, and returns one verdict with file:line per claim.",
+      "Use this agent to verify the BEHAVIORAL and RUNTIME claims a plan or review relies on - what survives a crash, what races what, what executes when, whether a code path is reachable, whether a write is durable - by tracing them to ground truth in the code instead of reasoning from plausibility. It runs as a second wave after the domain reviewers, on the premises they tagged UNVERIFIED plus any runtime claim the plan itself asserts. It has no severity opinions; it returns one verdict per claim using the reviewer protocol's verdict vocabulary, each with a file:line.",
+    ]]],
+    ["reviewer-uat", [[
+      "User acceptance testing: exercises the live system against the acceptance criteria without reading source, to catch criteria never exercised, cross-cutting regressions, and error paths that fail in practice. Use it when the change touches an exercisable surface (CLI, UI, HTTP, file output), not for internal refactors.",
+      "User acceptance testing (UAT) from outside the code surface: exercises the live system against the ticket's acceptance criteria without reading source. Catches what code-reading reviewers cannot: criteria never actually exercised, cross-cutting regressions, error paths that fail badly in practice. Include when the change touches an exercisable surface (CLI, UI, HTTP, file output); skip for pure internal refactors.",
+    ]]],
+    ["general", [[
+      "A clone of you. Use it when",
+      "A clone of the dispatching agent that uses your model and system instructions with registry-approved tools derived from your current surface. It also receives its child handoff and declared nested-role tools. Use it when",
+    ], [
+      "only its conclusion in your context.",
+      "only its conclusion in your context. Set fork: true to also copy your conversation.",
+    ]]],
+  ]),
+}
 
-/** `persona` as it read before `edit`, with `edit` and every later edit undone, when it is a bundled persona that
- *  `edit` names; an edit that marks names every bundled persona. Undefined for any other persona, or when its text
+/** Every edit of the bundled personas since persona identity covered the bundled mark, newest first. */
+const BUNDLED_PERSONA_EDITS = [LEAN_PERSONA_TEXT, EXPLORER_MODEL_CLAIM, UAT_SCRATCHPAD_RULE, AGENT_TYPE_MARKERS, CAPABILITY_MARKERS] as const
+
+/** `persona` as it read before `edit`, with `edit` and every later edit undone, when it is a built-in agent: a
+ *  bundled persona or the general agent, which no file can shadow. Undefined for any other agent, or when its text
  *  lacks a clause that one of those edits rewrote. */
-function bundledPersonaBefore(persona: AgentDefinition, edit: BundledPersonaEdit): AgentDefinition | undefined {
-  if (persona.kind !== "persona" || persona.bundled !== true || !(edit.marks || edit.retired.has(persona.name))) return undefined
+function builtInBefore(persona: AgentDefinition, edit: BundledPersonaEdit): AgentDefinition | undefined {
+  if (persona.kind === "persona" && persona.bundled !== true) return undefined
   const undone = BUNDLED_PERSONA_EDITS.slice(0, BUNDLED_PERSONA_EDITS.indexOf(edit) + 1)
   const form = undone.reduce<AgentDefinition | undefined>((earlier, { retired }) => earlier && retired.has(earlier.name) ? withRetiredText(earlier, retired) : earlier, persona)
   if (form?.kind !== "persona" || !undone.some(({ marks }) => marks)) return form
@@ -376,10 +412,17 @@ function bundledPersonaBefore(persona: AgentDefinition, edit: BundledPersonaEdit
   return unmarked
 }
 
-/** The personas as they read before `edit`: each bundled persona with `edit` and every later edit undone, and any
+/** `builtInBefore` for a built-in agent that `edit` names; an edit that marks names every bundled persona. Undefined
+ *  for any other agent, so a proof of `edit` adopts no hash that a different edit produced. */
+function bundledPersonaBefore(persona: AgentDefinition, edit: BundledPersonaEdit): AgentDefinition | undefined {
+  const named = edit.retired.has(persona.name) || (edit.marks === true && persona.kind === "persona")
+  return named ? builtInBefore(persona, edit) : undefined
+}
+
+/** The personas as they read before `edit`: each built-in agent with `edit` and every later edit undone, and any
  *  other persona as it is. */
 function personasBefore(personas: ReadonlyMap<string, AgentDefinition>, edit: BundledPersonaEdit): ReadonlyMap<string, AgentDefinition> {
-  return new Map([...personas].map(([name, persona]) => [name, bundledPersonaBefore(persona, edit) ?? persona]))
+  return new Map([...personas].map(([name, persona]) => [name, builtInBefore(persona, edit) ?? persona]))
 }
 
 /** `adoptProvenPersonas` over the personas as they read before the bundled mark, which every proof of an older edit
@@ -434,6 +477,15 @@ export function withoutExplorerModelClaim<Identity extends DefinitionIdentity>(
   personas: ReadonlyMap<string, AgentDefinition>,
 ): Identity {
   return adoptBefore(identity, personas, [EXPLORER_MODEL_CLAIM])
+}
+
+/** The recorded identity with each built-in agent hash that the text before the lean-prompt edit produced replaced
+ *  by the current identity hash (refer to `adoptBefore`). Remove after 2027-05-14. */
+export function withLeanPersonaText<Identity extends DefinitionIdentity>(
+  identity: Identity,
+  personas: ReadonlyMap<string, AgentDefinition>,
+): Identity {
+  return adoptBefore(identity, personas, [LEAN_PERSONA_TEXT])
 }
 
 /** The result of `adopt`, a proof that compares the recorded persona hashes with the personas it receives, as it

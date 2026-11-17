@@ -13,15 +13,6 @@ export function canonicalMutationPath(filePath: string): string {
 }
 
 
-/** Order the in-process mutations of one target, keyed by `filePath`'s
- *  canonical identity. */
-export function withFileMutationQueue<T>(
-  filePath: string,
-  fn: () => Promise<T>,
-): Promise<T> {
-  return withMutationQueueKey(canonicalMutationPath(filePath), fn);
-}
-
 /** Order the in-process mutations of one target named by a logical key. A writer
  *  that holds its target directory open names the target it holds, whose identity
  *  must not change when a component of the path it was reached by is replaced, so

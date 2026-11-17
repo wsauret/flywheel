@@ -20,7 +20,8 @@ import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 import { lstatSync, watch } from "node:fs";
 import { withLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
-import { ContainedDirectory, type ContainedFileSnapshot } from "../../infra/descriptor-directory.js";
+import type { ContainedDirectory, ContainedFileSnapshot } from "../../infra/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { globalConfigFile } from "../../infra/paths.js";
@@ -103,7 +104,7 @@ export function readConfigAt(location: ConfigFileLocation): ConfigReadResult {
   const resolved = path.resolve(configFilePath(location));
   let directory: ContainedDirectory | undefined;
   try {
-    directory = ContainedDirectory.openExisting(path.dirname(path.dirname(resolved)), [path.basename(path.dirname(resolved))]);
+    directory = openExistingContainedDirectory(path.dirname(path.dirname(resolved)), [path.basename(path.dirname(resolved))]);
     return directory ? readHeldFile(directory, path.basename(resolved)) : { kind: "missing" };
   } catch {
     return REFUSED;
@@ -185,7 +186,7 @@ function openConfigDirectory(location: ConfigFileLocation): HeldConfigFile {
   const configPath = path.resolve(configFilePath(location));
   const configDir = path.dirname(configPath);
   return {
-    directory: ContainedDirectory.open(path.dirname(configDir), [path.basename(configDir)], { privateDirectories: true }),
+    directory: openContainedDirectory(path.dirname(configDir), [path.basename(configDir)], { privateDirectories: true }),
     directoryPath: configDir,
     fileName: path.basename(configPath),
   };

@@ -40,7 +40,7 @@ export function childBodyProps(): Pick<ChildSessionBodyProps, "layoutSlot" | "cr
     sessionIntro: { runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
       branchName: () => undefined, modelLabel: () => undefined, profileName: () => undefined,
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },
-    showThinking: false, diffColors: () => "theme", roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
+    showThinking: () => false, diffColors: () => "theme", roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
     modelLabel: () => undefined, onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, followBackground: () => () => {},
   }
 }

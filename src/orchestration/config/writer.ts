@@ -2,13 +2,13 @@ import { configurationReferenceFile } from "../../infra/paths.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/llm/model-id.js";
 import { withConfigOwnership, withConfigOwnershipBlocking, type ConfigOwnership } from "./config-file.js";
-import type { ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
+import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, type RoleId } from "./roles.js";
 import { parseBriefRoleId } from "../../protocol/brief-role-id.js";
 import { canonicalRoleId, retiredBriefSeatWorkflow, patchRetiredConfigKeys } from "./retired-config-names.js";
 import { retireConfigTables } from "./retired-config-tables.js";
 import { persistedDisabledModuleIds } from "../../protocol/module-ids.js";
-import { CONFIG_DEFAULTS, type DiffColorMode } from "./schema.js";
+import { CONFIG_DEFAULTS, type FlywheelConfig } from "./schema.js";
 import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./setting-definitions.js";
 import { configLines, findFieldIndex, findSectionEnd, patchSemanticAssignment, removeAssignment, removeSection, escapeTomlString, quoteTomlKey, removeSemanticSubtree, replaceAssignment, rootEndIndex, sectionHasKeyLines, upsertSemanticAssignment } from "./config-assignment.js";
 import { installedConfigSections } from "../module-catalog.js";
@@ -59,11 +59,17 @@ interface RoleWriteOptions extends UpdateModelSelectionOptions {
 interface ModelAssignmentMutation {
   slot: ModelSelectionSlot;
   patch: ModelAssignmentPatch;
+  /** The role's profile entry that the person's client showed. A write with
+   *  no client view, such as the setup of a new home, states none. */
+  expected?: ModelAssignmentExpected;
 }
 
 export interface ConfigValidity {
   /** Complete registered persona role ids, never a query's selected rows. */
   roleIds?: ReadonlySet<RoleId>;
+  /** Persona files that failed to load. Their roles are unknown, so while any remain the
+   *  role ids are not complete and no role section is pruned (ARCH-RUNTIME-069). */
+  unloadedPersonaFiles?: readonly string[];
 }
 
 interface BatchModelAssignmentPatch {
@@ -73,63 +79,20 @@ interface BatchModelAssignmentPatch {
 
 type UnknownObject = { [K in string]: unknown };
 
-export function updateModelAssignment(
-  slot: ModelSelectionSlot,
-  patch: ModelAssignmentPatch,
-  options: RoleWriteOptions,
-): void {
-  updateModelAssignments({ mutations: [{ slot, patch }] }, options);
-}
-
 export function pruneStaleConfig(validity: ConfigValidity, options: RoleWriteOptions): void {
   updateModelAssignments({ validity }, options);
 }
 
-export function updateThemeSelection(themeName: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("theme", themeName, options);
+/** Set one canonical project root binding without normalizing unrelated config text. `expected` is the binding
+ *  that the caller read, or undefined for none; a file that binds the project otherwise refuses the write as stale. */
+export function setAuthProjectProfile(projectRoot: string, profile: string, expected: string | undefined, options: UpdateModelSelectionOptions): ConfigWriteResult {
+  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, expected, profile), options);
 }
 
-/** Reset settings owned by the Settings modal in one validated config commit. */
-export function resetModalSettings(options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => PERSISTED_SETTING_DEFINITIONS.reduce(
-    (next, definition) => definition.reset === undefined ? next : patchDefinedSetting(next, definition, definition.reset),
-    source,
-  ), options);
-}
-
-export function updateShowThinking(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("showThinking", value, options);
-}
-
-/** Persist the account intent that controls future persistent-process admission. */
-export function updateAllowPersistentProcesses(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("allowPersistentProcesses", value, options);
-}
-
-/** Account-global binary auto-update (ARCH-DISTRIBUTION-022). The activation path re-reads
- *  this value under the same config ownership lock this write takes, so a
- *  committed `false` revokes every later activation. */
-export function updateAutoInstall(value: boolean, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("autoInstall", value, options);
-}
-
-export function updateDiffColors(value: DiffColorMode, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("diffColors", value, options);
-}
-
-export function updateProactiveCompactionThreshold(value: number, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateDefinedSetting("proactiveCompactionThreshold", value, options);
-}
-
-
-/** Set one canonical project root binding without normalizing unrelated config text. */
-export function setAuthProjectProfile(projectRoot: string, profile: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, profile), options);
-}
-
-/** Remove one canonical project root binding without changing the rest of its table. */
-export function removeAuthProjectProfile(projectRoot: string, options: UpdateModelSelectionOptions): ConfigWriteResult {
-  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, undefined), options);
+/** Remove one canonical project root binding without changing the rest of its table. `expected` is the binding
+ *  that the caller read; a file that binds the project otherwise refuses the write as stale. */
+export function removeAuthProjectProfile(projectRoot: string, expected: string | undefined, options: UpdateModelSelectionOptions): ConfigWriteResult {
+  return updateConfigText((source) => patchAuthProjectProfile(source, projectRoot, expected, undefined), options);
 }
 
 /** Transfer only bindings to the retired id and remove its complete settings subtree in one commit. */
@@ -137,12 +100,10 @@ export function retireAuthProfileConfig(profile: string, successorId: string, op
   return updateConfigText((source) => removeSemanticSubtree(patchAuthProjectProfileBindings(source, profile, successorId), ["profiles", profile]), options);
 }
 
-
-
 /** Materialize seeded defaults and migrate exact retired seed values. */
 export function seedConfigDefaults(options: UpdateModelSelectionOptions): ConfigWriteResult {
   return updateConfigText((source) => {
-    const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+    const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
     const seededModules = installedConfigSections().reduce((next, section) => (section.seeds ?? []).reduce((text, seed) => {
       const path = [section.key, seed.key];
       const authored = configValueAtPath(parsed, path);
@@ -167,7 +128,7 @@ export function migrateModelAssignments(options: UpdateModelSelectionOptions): C
 
 
 function patchModelMigrations(source: string): string {
-  const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+  const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
   if (!isRecord(parsed)) throw new ConfigWriteError("flywheel.toml must contain a TOML table");
   return modelAssignmentPaths(parsed).reduce((next, { path, model }) => {
     const canonical = migrateModelId(model);
@@ -205,7 +166,7 @@ export async function migrateLegacyModelSpellings(options: UpdateModelSelectionO
   if (![...current.values()].some((model) => model !== undefined)) return { ok: true, rewritten: false };
   let rewritten = false;
   const result = await updateConfigTextAwaited((source) => {
-    const parsed: unknown = source.length > 0 ? Bun.TOML.parse(source) : {};
+    const parsed: ParsedToml = source.length > 0 ? Bun.TOML.parse(source) : {};
     if (!isRecord(parsed)) throw new ConfigWriteError("flywheel.toml must contain a TOML table");
     const next = modelAssignmentPaths(parsed).reduce((text, { path, model }) => {
       const target = renamed(model);
@@ -232,7 +193,7 @@ function roleTables(config: UnknownObject): Array<{ readonly path: readonly stri
   return tables;
 }
 
-function hasConfigPath(parsed: unknown, path: readonly string[]): boolean {
+function hasConfigPath(parsed: ParsedToml, path: readonly string[]): boolean {
   let node: unknown = parsed;
   for (const segment of path.slice(0, -1)) {
     if (!isRecord(node)) return false;
@@ -242,8 +203,8 @@ function hasConfigPath(parsed: unknown, path: readonly string[]): boolean {
   return field !== undefined && isRecord(node) && field in node;
 }
 
-function configValueAtPath(config: unknown, path: readonly string[]): TomlValue | undefined {
-  let value = config;
+function configValueAtPath(config: ParsedToml, path: readonly string[]): TomlValue | undefined {
+  let value: unknown = config;
   for (const segment of path) {
     if (!isRecord(value)) return undefined;
     value = value[segment === "disabled_modules" ? "modules" : segment];
@@ -252,9 +213,6 @@ function configValueAtPath(config: unknown, path: readonly string[]): TomlValue 
   return isTomlValue(value) ? value : undefined;
 }
 
-export function updateFontTipDismissed(value: boolean, options: UpdateModelSelectionOptions): void {
-  unwrapConfigWrite(updateDefinedSetting("fontTipDismissed", value, options));
-}
 
 
 export function updateModelAssignments(
@@ -265,16 +223,41 @@ export function updateModelAssignments(
     // A save writes the current role ids, so the file must not keep a
     // retired spelling of the same seat beside them.
     const current = patchRetiredConfigKeys(source);
+    const profileId = options.authProfileId();
+    const stated = (batch.mutations ?? []).flatMap(({ slot, expected }) => expected === undefined ? [] : [{ roleId: slot.roleId, expected }]);
+    if (stated.length > 0) {
+      const config = decodeConfigText(current, options.userDataRoot);
+      if (stated.some(({ roleId, expected }) => !sameExpectation(configuredRoleAssignment(config, profileId, roleId), expected))) throw new ConfigStaleWriteError();
+    }
     let next = batch.validity ? patchModelMigrations(current) : current;
     for (const mutation of batch.mutations ?? []) {
-      next = patchModelAssignment(next, mutation.slot, mutation.patch, options.authProfileId());
+      next = patchModelAssignment(next, mutation.slot, mutation.patch, profileId);
     }
-    if (batch.validity) next = patchPrunedConfig(next, batch.validity, options.authProfileId());
+    if (batch.validity) next = patchPrunedConfig(next, batch.validity, profileId);
     return next;
   }, options));
 }
 
-function updateDefinedSetting(id: string, value: TomlValue, options: UpdateModelSelectionOptions): ConfigWriteResult {
+/** The role's model and effort in one profile of a decoded config. A row that a
+ *  client shows carries this value of the published config, and a write of the
+ *  role compares it with this value of the fresh bytes, so both sides read the
+ *  one decode. */
+export function configuredRoleAssignment(config: FlywheelConfig, profileId: string, roleId: string): ModelAssignmentExpected {
+  const role = config.profiles[profileId]?.roles[canonicalRoleId(roleId)];
+  const model = role?.model ?? null;
+  const effort = role?.effort ?? null;
+  return model === null && effort === null ? { kind: "absent" } : { kind: "value", value: { model, effort } };
+}
+
+function sameExpectation(actual: ModelAssignmentExpected, expected: ModelAssignmentExpected): boolean {
+  if (actual.kind === "absent" || expected.kind === "absent") return actual.kind === expected.kind;
+  return actual.value.model === expected.value.model && actual.value.effort === expected.value.effort;
+}
+
+/** Commits one persisted setting, named by its definition id, at the path its
+ *  definition declares. An unknown id throws; a value that fails to decode is a
+ *  typed failure, and the file is left as it was. */
+export function updateDefinedSetting(id: string, value: TomlValue, options: UpdateModelSelectionOptions): ConfigWriteResult {
   const definition = persistedSettingDefinition(id);
   return updateConfigText((source) => patchDefinedSetting(source, definition, value), options);
 }
@@ -289,18 +272,6 @@ export function patchDefinedSetting(source: string, definition: { readonly path:
   if (field === undefined) return source;
   return patchSectionField(source, [root, ...nested.slice(0, -1)].join("."), field, value);
 }
-
-export const PERSISTED_SETTING_WRITERS = new Map(
-  PERSISTED_SETTING_DEFINITIONS
-    .filter((definition) => definition.ownership === "generated-writer")
-    .map((definition) => [
-      definition.id,
-      (value: TomlValue, options: UpdateModelSelectionOptions) => updateConfigText(
-        (source) => patchDefinedSetting(source, definition, value),
-        options,
-      ),
-    ] as const),
-);
 
 /** Commits one text patch of the global config under file ownership: the
  *  patched document must decode, or the file is left as it was. */
@@ -334,29 +305,30 @@ export async function updateConfigTextAwaited(
  *  fails to parse or decode is refused before the file is touched. */
 function commitConfigText(config: ConfigOwnership, patch: (source: string) => string, options: UpdateModelSelectionOptions): ConfigWriteResult {
   const { userDataRoot } = options;
-  const read = retireConfigTables(config, (candidate) => loadConfigFromText(candidate, userDataRoot), options);
+  const read = retireConfigTables(config, (candidate) => decodeConfigText(candidate, userDataRoot), options);
   if (read.kind === "failure") throw new ConfigWriteError("Config file was refused or unreadable");
   const source = read.kind === "text" ? read.text : "";
   const next = patch(source);
   if (next === source) return { ok: true };
   Bun.TOML.parse(next);
-  loadConfigFromText(next, userDataRoot);
+  decodeConfigText(next, userDataRoot);
   const durability = config.write(next);
   return durability ? { ok: true, durabilityError: new ConfigWriteError(errorMessage(durability)) } : { ok: true };
 }
 
-/** The model-assignment and font-tip writers reach us from non-UI flows whose
- *  callers expect a loud failure (a save-effort result contract, a fire-and-forget
- *  dismissal), so they collapse the typed result back to a throw at their seam. */
+/** The model-assignment writers reach us from non-UI flows whose callers expect
+ *  a loud failure (a save-effort result contract), so they collapse the typed
+ *  result back to a throw at their seam. */
 function unwrapConfigWrite(result: ConfigWriteResult): void {
   if (!result.ok) throw result.error;
 }
 
-function loadConfigFromText(text: string, userDataRoot?: string): void {
+function decodeConfigText(text: string, userDataRoot?: string): FlywheelConfig {
   const parsed = Bun.TOML.parse(text);
   if (!isRecord(parsed)) throw new ConfigWriteError("Config file is not a table");
   const decoded = decodeConfigObject(parsed, [], configurationReferenceFile(userDataRoot ?? resolveConfigRoot()));
   if (decoded.moduleError) throw new ConfigWriteError(decoded.moduleError);
+  return decoded.config;
 }
 
 function resolveConfigRoot(): string {
@@ -395,7 +367,7 @@ function patchModelAssignment(source: string, slot: ModelSelectionSlot, patch: M
 }
 
 function patchPrunedConfig(source: string, validity: ConfigValidity, profileId: string): string {
-  if (!validity.roleIds) return source;
+  if (!validity.roleIds || (validity.unloadedPersonaFiles?.length ?? 0) > 0) return source;
   const lines = configLines(source);
   for (let i = 0; i < lines.length - 1;) {
     const section = sectionFromHeader(lines[i]?.trim() ?? "", profileId);
@@ -544,7 +516,7 @@ export function patchProfileProviderSetting(source: string, profileId: string, p
  *  The retired root spelling `false` means off, which profiles spell 0. */
 export function migrateRootProviderSettings(profileIds: readonly string[], options: UpdateModelSelectionOptions): ConfigWriteResult {
   return updateConfigText((source) => {
-    const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+    const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
     const providers = isRecord(parsed) ? parsed.providers : undefined;
     if (!isRecord(providers)) return source;
     let next = source;
@@ -574,7 +546,8 @@ export function migrateRootProviderSettings(profileIds: readonly string[], optio
   }, options);
 }
 
-function patchAuthProjectProfile(source: string, projectRoot: string, profile: string | undefined): string {
+function patchAuthProjectProfile(source: string, projectRoot: string, expected: string | undefined, profile: string | undefined): string {
+  if (projectBinding(source, projectRoot) !== expected) throw new ConfigStaleWriteError();
   const lines = configLines(source);
   const start = lines.findIndex((line) => line.trim() === "[auth.project_profiles]");
   if (start < 0) return profile === undefined ? source : patchSectionField(source, "auth.project_profiles", quoteTomlKey(projectRoot), profile);
@@ -587,8 +560,17 @@ function patchAuthProjectProfile(source: string, projectRoot: string, profile: s
 }
 
 
+/** The profile id that `source` binds to `projectRoot`, if any. */
+function projectBinding(source: string, projectRoot: string): string | undefined {
+  const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
+  const auth = isRecord(parsed) ? parsed.auth : undefined;
+  const bindings = isRecord(auth) ? auth.project_profiles : undefined;
+  const bound = isRecord(bindings) ? bindings[projectRoot] : undefined;
+  return typeof bound === "string" ? bound : undefined;
+}
+
 function patchAuthProjectProfileBindings(source: string, profile: string, successorId: string): string {
-  const parsed: unknown = source.length === 0 ? {} : Bun.TOML.parse(source);
+  const parsed: ParsedToml = source.length === 0 ? {} : Bun.TOML.parse(source);
   const auth = isRecord(parsed) ? parsed.auth : undefined;
   const bindings = isRecord(auth) ? auth.project_profiles : undefined;
   if (!isRecord(bindings)) return source;
@@ -611,6 +593,9 @@ function escapeRegex(value: string): string {
 type TomlScalar = string | number | boolean;
 
 /** Every value these writers publish. Lists stay on one line so repeated setting changes do not move unrelated bytes. */
+/** A TOML document as `Bun.TOML.parse` returns it. */
+type ParsedToml = ReturnType<typeof Bun.TOML.parse>
+
 type TomlValue = TomlScalar | readonly (string | number)[];
 
 function isTomlValue(value: unknown): value is TomlValue {

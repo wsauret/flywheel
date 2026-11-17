@@ -59,6 +59,8 @@ export type ToolCallEnded = {
 export type ToolCallHooks<R = never> = {
   readonly onToolCallStart?: ((call: ToolCallStarted) => Effect.Effect<void, never, R>) | undefined
   readonly onToolCallEnd?: ((call: ToolCallEnded) => Effect.Effect<void, never, R>) | undefined
+  /** Resolves a name that the trie does not hold at the host. A host that cannot resolve it fails with
+   *  `unknownTool(name)`, which reaches the program as this runtime's own UnknownTool diagnostic. */
   readonly onUnknownTool?: ((name: string, input: unknown) => Effect.Effect<unknown, unknown, R>) | undefined
 }
 
@@ -118,12 +120,20 @@ export class ToolRuntimeError extends Error {
   }
 }
 
-const runHost = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, ToolError, R> =>
+/** The diagnostic for a name that resolves to no tool. It names no other tool, so a mistyped path never lists the
+ *  catalog into the program; the program finds tools through `searchCatalog`. */
+export const unknownTool = (name: string): ToolRuntimeError =>
+  new ToolRuntimeError("UnknownTool", `Unknown tool '${name}'.`, [
+    "The tool may have been removed or renamed. Use searchCatalog to find available tools.",
+  ])
+
+const runHost = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, ToolError | ToolRuntimeError, R> =>
   effect.pipe(
     Effect.catchCause((cause) => {
       if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt
       const error = Cause.squash(cause)
-      return Effect.fail(error instanceof ToolError ? error : toolError("Tool execution failed", error))
+      // The runtime's own diagnostics, such as a host's unknownTool answer, keep their kind.
+      return Effect.fail(error instanceof ToolError || error instanceof ToolRuntimeError ? error : toolError("Tool execution failed", error))
     }),
   )
 
@@ -477,9 +487,7 @@ const resolve = <R>(root: ToolNode<R>, path: ReadonlyArray<string>, onUnknownToo
       output: Schema.Unknown,
       execute: (input) => onUnknownTool(segments.join("."), input),
     }
-    throw new ToolRuntimeError("UnknownTool", `Unknown tool '${segments.join(".")}'.`, [
-      "The tool may have been removed or renamed. Use searchCatalog to find available tools.",
-    ])
+    throw unknownTool(segments.join("."))
   }
   if (node.tool === undefined) {
     throw new ToolRuntimeError("UnknownTool", `Tool '${segments.join(".")}' is not callable.`)

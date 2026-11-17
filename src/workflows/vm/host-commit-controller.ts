@@ -65,7 +65,6 @@ export function createWorkflowHostCommitController(deps: CommitControllerDeps): 
    *  so its key joins `held` first: the running agent that read it live
    *  records it only once, through its address. */
   async function heldAddressed(held: Set<string>): Promise<{ readonly messages: readonly AddressedAddendum[]; readonly record: readonly AddressedAddendum[] }> {
-    if (!deps.host.addressedMessages) return { messages: [], record: [] }
     let messages: readonly AddressedAddendum[]
     try {
       messages = await deps.host.addressedMessages.read()
@@ -81,7 +80,7 @@ export function createWorkflowHostCommitController(deps: CommitControllerDeps): 
   }
 
   async function retireAddressed(keys: readonly string[]): Promise<void> {
-    if (keys.length === 0 || !deps.host.addressedMessages) return
+    if (keys.length === 0) return
     try {
       await deps.host.addressedMessages.retire(keys)
     } catch (error) {

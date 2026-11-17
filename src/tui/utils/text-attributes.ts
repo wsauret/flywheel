@@ -3,7 +3,7 @@ import { createTextAttributes, link, type StylableInput, type TextChunk } from "
 export const BOLD = createTextAttributes({ bold: true })
 export const ITALIC = createTextAttributes({ italic: true })
 export const UNDERLINE = createTextAttributes({ underline: true })
-export const STRIKETHROUGH = createTextAttributes({ strikethrough: true })
+const STRIKETHROUGH = createTextAttributes({ strikethrough: true })
 
 /** Total character count across chunks. Char count, not terminal display
  *  width — use chunkDisplayWidth (tool-row-wrap.ts) when wide glyphs matter. */

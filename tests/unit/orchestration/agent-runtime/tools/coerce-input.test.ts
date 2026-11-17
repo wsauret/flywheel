@@ -1,8 +1,39 @@
 import { describe, expect, test } from "bun:test";
 import type { ToolInputRepair } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { coerceToolInput } from "../../../../../src/orchestration/agent-runtime/tools/coerce-input.js";
+import { coerceToolCallInput, coerceToolInput } from "../../../../../src/orchestration/agent-runtime/tools/coerce-input.js";
 import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
+
+describe("coerceToolCallInput", () => {
+  const schema = { type: "object", properties: { n: { type: "number" } }, required: ["n"] };
+
+  test("validates an input that coercion repairs once, and keeps the first pass's problems for a refusal", () => {
+    const repaired = coerceToolCallInput({ n: "42" }, schema, () => {}, {});
+    expect(repaired.input).toEqual({ n: 42 });
+    expect(repaired.problems).toEqual([]);
+
+    const valid = { n: 1 };
+    expect(coerceToolCallInput(valid, schema, () => {}, {})).toEqual({ input: valid, problems: [], originalProblems: [] });
+
+    const failed = coerceToolCallInput({ n: "abc", extra: true }, schema, () => {}, {});
+    expect(failed.problems.length).toBeGreaterThan(0);
+    expect(failed.originalProblems).toEqual([
+      "An unexpected parameter `extra` was provided",
+      "The parameter `n` type is expected as `number` but provided as `string`",
+    ]);
+  });
+
+  test("converts one schema object once for every call that uses it", () => {
+    let reads = 0;
+    const counted = { type: "object", get properties() { reads += 1; return { n: { type: "number" } }; } };
+    coerceToolCallInput({ n: "1" }, counted, () => {}, {});
+    const conversion = reads;
+    coerceToolCallInput({ n: "2" }, counted, () => {}, {});
+    coerceToolInput({ n: "3" }, counted);
+    expect(conversion).toBeGreaterThan(0);
+    expect(reads).toBe(conversion);
+  });
+});
 
 describe("coerceToolInput", () => {
   test("returns input unchanged when schema has no properties", () => {

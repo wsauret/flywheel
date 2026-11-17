@@ -153,6 +153,10 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   let lastError: string | null = null
   let relayUrl = options.relayUrl ?? readRelayUrl()
   let devices: readonly PairedDevice[] = []
+  // The device ids the last store read held, which the paired-device notice
+  // compares against. Undefined until the first read, which seeds it without a
+  // notice: a device paired before this placement opened is not news here.
+  let readDeviceIds: ReadonlySet<string> | undefined
   let subscriptions: ReadonlyMap<string, RemotePushSubscription> = new Map()
   let projects: Awaited<ReturnType<typeof projectRegistry.list>> = []
   let processInitiation: RuntimeRemoteView["processInitiation"]
@@ -335,6 +339,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       const before = devices.map((device) => device.id).join(",")
       projects = listed
       relayUrl = options.relayUrl ?? store.relayUrl ?? DEFAULT_RELAY_URL
+      noticePairings(store.devices)
       refreshPushState(store)
       if (before !== devices.map((device) => device.id).join(",")) channel.send({ type: "devices", devices: devices.map((device) => device.id) })
       for (const live of channels) if (!devices.some((device) => device.id === live.deviceId)) live.ws.close(1008, "device revoked")
@@ -347,6 +352,21 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     }
     publish()
     channel.reconcile("no paired devices")
+  }
+
+  /** Raises the paired-device notice for each device that `paired`, one store
+   *  read, adds to the previous read. Every pairing reaches the store through
+   *  `mutateRemotePairingStore`, which wakes this reload in every open
+   *  placement, so a pairing through this placement's window, the account's
+   *  `flywheel remote pair`, or the terminal remote raises it alike. */
+  function noticePairings(paired: readonly PairedDevice[]): void {
+    const previous = readDeviceIds
+    readDeviceIds = new Set(paired.map((device) => device.id))
+    if (previous === undefined) return
+    for (const device of paired) {
+      if (previous.has(device.id)) continue
+      options.notify?.({ type: "raise", occurrence: { sourceId: `remote.paired.${device.id}`, title: "Remote device paired", message: `${device.label} can now open this account's projects through ${relayUrl}.`, severity: "warning", action: { kind: "open-settings" } } })
+    }
   }
 
   const stopFollowing: (() => void)[] = []
@@ -500,7 +520,6 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
         refreshPushState()
         log.info("remote device paired", { device: device.id, label: device.label })
         channel.send({ type: "devices", devices: devices.map((paired) => paired.id) })
-        options.notify?.({ type: "raise", occurrence: { sourceId: `remote.paired.${device.id}`, title: "Remote device paired", message: `${device.label} can now open this account's projects through ${relayUrl}.`, severity: "warning", action: { kind: "open-settings" } } })
       }
       await Effect.runPromise(exchangePairing({ userDataRoot: options.userDataRoot, lane: options.lane, relayUrl, identity: runtimeIdentity, window, streams, now, claim, onCommitted }), { signal })
     } catch (error) {

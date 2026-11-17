@@ -1,10 +1,8 @@
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { SessionManager } from "../session/manager.js"
 import type { ReplayedSession } from "../session/schemas.js"
-import type { SessionEntry, SessionStore } from "../session-store/types.js"
+import type { SessionStore } from "../session-store/types.js"
 import { type SessionView, toSessionView } from "../session-store/view.js"
-import { readBudgetSummaryFromReader, type BudgetSummary } from "../session/budget-summary.js"
-import { readSessionDurationFromReader } from "../session/session-duration-projection.js"
 import { projectSessionView } from "./frontend-projection.js"
 import { readRecordedExecutionCwd } from "../session/session-execution-directory.js"
 import type { RuntimeSessionDetailView, RuntimeSessionDetailResult } from "../../protocol/session-detail-protocol-types.js"
@@ -16,7 +14,7 @@ import type { ShippedOutput } from "./shipped-output.js"
 import { indexOutputBlocks } from "../session/conversation/branch-history-builder.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import type { CommandKeeper } from "./command-keeper.js"
-import { createTranscriptProjectionCache, type TranscriptProjectionCache } from "./transcript-projection-cache.js"
+import type { TranscriptProjectionCache } from "./transcript-projection-cache.js"
 import type {
   HydratedOutputRange,
   HydratedOutputGroupChildrenBatch,
@@ -47,31 +45,44 @@ export interface SessionDetailProjection {
   outputRange(sessionId: string, request: OutputRangeRequest): Promise<HydratedOutputRange>
   outputGroupChildren(sessionId: string, request: OutputGroupChildrenRequest): Promise<HydratedOutputGroupChildrenBatch>
   outputBlockBody(sessionId: string, request: OutputBlockBodyRequest): Promise<HydratedOutputBlockBody>
-  dispose(): Promise<void>
 }
 
-interface SessionDetailReaderDeps {
+/** The executor's detail source: the sessions it holds, the runtime
+ *  summaries every detail's totals come from, and the shell commands that
+ *  processor admission holds. */
+interface LiveDetailSource {
+  readonly kind: "live"
   readonly sessionStore: Pick<SessionStore, "get"> & Partial<Pick<SessionStore, "revision">>
+  readonly summaries: RuntimeSummaryProjection
+  readonly processorHolds: Pick<ProcessorClaims, "heldToolCallIds">
+}
+
+/** The account history's detail source: it holds no session and owns no
+ *  shell container, so totals come from the summary index alone. */
+interface BackgroundDetailSource {
+  readonly kind: "background"
+  readonly summaryIndex: Pick<SessionSummaryIndex, "readImmediate">
+}
+
+type SessionDetailSource = LiveDetailSource | BackgroundDetailSource
+
+interface SessionDetailReaderDeps {
   readonly manager: Pick<SessionManager, "read">
-  readonly readSession?: SessionManager["read"]
   readonly reader: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
   readonly projectRoot: string
-  readonly summaryIndex?: Pick<SessionSummaryIndex, "readImmediate">
-  readonly summaries?: RuntimeSummaryProjection
-  /** The shell commands of each session that processor admission holds.
-   *  Absent in a process that owns no shell container, whose details show
-   *  none held. */
-  readonly processorHolds?: Pick<ProcessorClaims, "heldToolCallIds">
+  readonly source: SessionDetailSource
 }
 
-interface SessionDetailProjectionDeps extends SessionDetailReaderDeps {
-  readonly transcriptCache?: TranscriptProjectionCache
+/** The executor's detail and transcript reads. The caller owns the lifetime
+ *  of the transcript cache. */
+interface SessionDetailProjectionDeps extends Omit<SessionDetailReaderDeps, "source">, Omit<LiveDetailSource, "kind"> {
+  readonly transcriptCache: TranscriptProjectionCache
   /** The keeper that carries the live output of commands no host holds. */
   readonly keptOutput?: Pick<CommandKeeper, "liveOutput">
   /** The owner of what the output cursor's clients hold, which learns what
-   *  each output read serves. A process that publishes no output has none. */
-  readonly shipped?: Pick<ShippedOutput, "serve">
+   *  each output read serves. */
+  readonly shipped: Pick<ShippedOutput, "serve">
 }
 
 /** One session's detail: its metadata, summaries, status, and admitted
@@ -92,31 +103,23 @@ export function createSessionDetailReader(deps: SessionDetailReaderDeps): (sessi
     return { view: unchanged ? view : { ...view, status: { ...view.status, ...turn, activityStartedAt: turn.waitingOnBackgroundWork ? view.status.activityStartedAt : null } } }
   }
 
-  const shellCalls = (sessionId: string, entry: Pick<SessionEntry, "activeForegroundBashToolCallIds">): ShellCalls => ({
-    activeForegroundBashToolCallIds: entry.activeForegroundBashToolCallIds,
-    processorHeldToolCallIds: deps.processorHolds?.heldToolCallIds(sessionId) ?? [],
-  })
-
   async function projectedDetail(sessionId: string, continuationOwed: boolean): Promise<RuntimeSessionDetailView | null> {
-    const read = deps.readSession ?? deps.manager.read
-    const metadata = await read(sessionId)
-    const entry = deps.sessionStore.get(sessionId)
+    const { source } = deps
+    const metadata = await deps.manager.read(sessionId)
     if (!metadata || metadata.kind === "workflow") return null
     const executionCwd = await readRecordedExecutionCwd(metadata, deps.projectRoot, deps.reader)
-    await deps.summaries?.admit([sessionId])
+    if (source.kind === "live") await source.summaries.admit([sessionId])
     // The status reads the waits the session stores, as the executor's status
     // stream does, so no owner that serves a status can show a wait missing.
-    const replyWaits = await readReplyWaitViews(deps.projectionReader, read, sessionId)
-    if (entry) {
+    const replyWaits = await readReplyWaitViews(deps.projectionReader, deps.manager.read, sessionId)
+    const entry = source.kind === "live" ? source.sessionStore.get(sessionId) : undefined
+    if (source.kind === "live" && entry) {
       const view = toSessionView(sessionId, entry, metadata.lifecycleState, metadata.kind === "workflow-agent" ? metadata.workflowMembership : undefined)
       // A turn that runs shows its own state; only a session at rest shows
       // the capacity wait its row owes.
       const evidence = await sessionActionEvidence(reads, sessionId, view.kind, view.conversationId, continuationOwed, metadata, view.activity !== "idle" && view.activity !== "absent")
-      if (deps.summaries) {
-        return projectLiveHistorySessionView(view, metadata, executionCwd, shellCalls(sessionId, entry), deps.summaries.view(sessionId), evidence, replyWaits)
-      }
-      const budget = await readBudgetSummaryFromReader(deps.projectionReader, sessionId)
-      return projectLiveHistorySessionView(view, metadata, executionCwd, shellCalls(sessionId, entry), { totalsLoading: false, row: { ...budget, durationMs: view.accumulatedActiveMs } }, evidence, replyWaits)
+      const shell = { activeForegroundBashToolCallIds: entry.activeForegroundBashToolCallIds, processorHeldToolCallIds: source.processorHolds.heldToolCallIds(sessionId) }
+      return projectLiveHistorySessionView(view, metadata, executionCwd, shell, source.summaries.view(sessionId), evidence, replyWaits)
     }
     return await projectDurableHistorySessionView(sessionId, metadata, deps, reads, executionCwd, continuationOwed, replyWaits)
   }
@@ -132,14 +135,13 @@ const WORKFLOW_HAS_NO_TRANSCRIPT: TranscriptUnavailable = {
 }
 
 export function createSessionDetailProjection(deps: SessionDetailProjectionDeps): SessionDetailProjection {
-  const transcriptCache = deps.transcriptCache ?? createTranscriptProjectionCache(deps)
-  const outputSequenceDeps = { ...deps, transcriptCache }
-  const sessionDetail = createSessionDetailReader(deps)
+  const { transcriptCache } = deps
+  const sessionDetail = createSessionDetailReader({ ...deps, source: { kind: "live", sessionStore: deps.sessionStore, summaries: deps.summaries, processorHolds: deps.processorHolds } })
 
   async function readRange(sessionId: string, request: OutputRangeRequest): Promise<{ readonly sequence: OutputSequence | null; readonly range: HydratedOutputRange }> {
     const session = await deps.manager.read(sessionId)
     if (session?.kind === "workflow") return { sequence: null, range: unavailableHydratedOutputRange(request.anchor, WORKFLOW_HAS_NO_TRANSCRIPT) }
-    const sequence = await readOutputSequence(sessionId, session, outputSequenceDeps)
+    const sequence = await readOutputSequence(sessionId, session, deps)
     if (!sequence) return { sequence, range: unavailableHydratedOutputRange(request.anchor, sessionHistoryUnavailable(sessionId)) }
     const range = await hydrateDerivedOutputRange(sequence, request)
     return { sequence, range: range.kind === "ok" ? { ...range, streamingToolText: sequence.streamingToolText, streamingOutputChars: sequence.streamingOutputChars } : range }
@@ -148,7 +150,7 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
   /** A range that a client installs. The owner of the output cursor serves
    *  it, because the read can hold changes no delta has shipped yet. */
   function servedRange(sessionId: string, request: OutputRangeRequest) {
-    return deps.shipped ? deps.shipped.serve(sessionId, () => readRange(sessionId, request), (read) => read.range) : readRange(sessionId, request)
+    return deps.shipped.serve(sessionId, () => readRange(sessionId, request), (read) => read.range)
   }
 
   async function outputWindow(sessionId: string, request: OutputRangeRequest): Promise<{ readonly totalBlocks: number; readonly visibleMessageCount: number; readonly range: HydratedOutputRange }> {
@@ -162,7 +164,7 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
 
   async function outputGroupChildren(sessionId: string, request: OutputGroupChildrenRequest): Promise<HydratedOutputGroupChildrenBatch> {
     const session = await deps.manager.read(sessionId)
-    const sequence = await readOutputSequence(sessionId, session, outputSequenceDeps)
+    const sequence = await readOutputSequence(sessionId, session, deps)
     if (!sequence || !session) throw new Error(`Session ${sessionId} has no readable history: it is not in the workspace session catalog.`)
     const requested = new Set(request.groupBlockIds)
     const groups = [...requested].map((id) => ({ id, index: sequence.indexOf(id) })).sort((a, b) => a.index - b.index)
@@ -180,7 +182,7 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
     // `indexOutputBlocks`.
     const live = deps.sessionStore.get(sessionId)?.outputBlocks().findLast((block) => blockIdentity(block) === request.blockId)
     if (live) return hydrateDerivedOutputBlockBody(indexOutputBlocks([await transcriptCache.projectBlock(sessionId, live)]), request)
-    const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), outputSequenceDeps)
+    const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), deps)
     if (!sequence) throw new Error(`Session ${sessionId} has no readable history: it is not in the workspace session catalog.`)
     return hydrateDerivedOutputBlockBody(sequence, request)
   }
@@ -193,12 +195,8 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
     }
   }
 
-  return { sessionDetail, outputWindow, outputRange, outputGroupChildren, outputBlockBody, dispose: async () => { if (!deps.transcriptCache) await transcriptCache.dispose() } }
+  return { sessionDetail, outputWindow, outputRange, outputGroupChildren, outputBlockBody }
 }
-
-/** A live session's totals: its summary, or, where no summary owner
- *  serves the detail, its durable budget beside its live duration. */
-type LiveTotals = RuntimeSummaryView | { readonly totalsLoading: false; readonly row: BudgetSummary & { readonly durationMs: number } }
 
 /** A live session's running shell calls: those its turn holds, and those
  *  processor admission holds. */
@@ -209,7 +207,7 @@ function projectLiveHistorySessionView(
   metadata: ReplayedSession,
   executionCwd: string,
   shell: ShellCalls,
-  totals: LiveTotals,
+  totals: RuntimeSummaryView,
   evidence: SessionActionEvidence,
   replyWaits: readonly OpenReplyWaitView[],
 ): RuntimeSessionDetailView {
@@ -287,17 +285,16 @@ async function sessionActionEvidence({ reader, projectionReader }: EvidenceReads
 }
 
 async function projectDurableHistorySessionView(sessionId: string, session: Exclude<ReplayedSession, { kind: "workflow" }>, deps: SessionDetailReaderDeps, reads: EvidenceReads, executionCwd: string, continuationOwed: boolean, replyWaits: readonly OpenReplyWaitView[]): Promise<RuntimeSessionDetailView> {
-  const runtimeSummary = deps.summaries?.view(sessionId)
-  const indexed = runtimeSummary === undefined && deps.summaryIndex ? await deps.summaryIndex.readImmediate([sessionId]) : undefined
+  const { source } = deps
+  const runtimeSummary = source.kind === "live" ? source.summaries.view(sessionId) : undefined
+  const indexed = source.kind === "background" ? await source.summaryIndex.readImmediate([sessionId]) : undefined
   const summary = indexed?.status === "ready" ? indexed.summaries.get(sessionId) : undefined
   if (indexed?.status === "ready" && !summary) throw new Error(`Session summary index omitted requested session ${sessionId}`)
   const runtimeReady = runtimeSummary?.totalsLoading === false ? runtimeSummary : undefined
   const runtimeReadyRow = runtimeReady?.row
-  const budget = runtimeReadyRow ?? (runtimeSummary ? undefined : indexed === undefined ? await readBudgetSummaryFromReader(deps.projectionReader, sessionId) : summary?.budget)
-  const duration = runtimeReadyRow
-    ? { accumulatedActiveMs: runtimeReadyRow.durationMs }
-    : runtimeSummary ? undefined : indexed === undefined ? await readSessionDurationFromReader(deps.projectionReader, sessionId) : summary?.duration
-  const diffStats = runtimeReadyRow?.diffStats ?? (runtimeSummary ? undefined : indexed === undefined ? undefined : summary?.diffStats)
+  const budget = runtimeReadyRow ?? summary?.budget
+  const duration = runtimeReadyRow ? { accumulatedActiveMs: runtimeReadyRow.durationMs } : summary?.duration
+  const diffStats = runtimeReadyRow?.diffStats ?? summary?.diffStats
   const speed = runtimeReady?.averageGenerationTokensPerSecond ?? summary?.averageGenerationTokensPerSecond
   const accumulatedActiveMs = duration?.accumulatedActiveMs ?? 0
   const totalsLoading = runtimeSummary?.totalsLoading === true || indexed?.status === "loading"
@@ -339,7 +336,7 @@ async function projectDurableHistorySessionView(sessionId: string, session: Excl
       // shows with its Stop, which the keeper answers.
       activeBackgroundCommands: await keptCommandsOf(deps.reader, sessionId),
       activeForegroundBashToolCallIds: [],
-      processorHeldToolCallIds: deps.processorHolds?.heldToolCallIds(sessionId) ?? [],
+      processorHeldToolCallIds: source.kind === "live" ? source.processorHolds.heldToolCallIds(sessionId) : [],
       waitingOnBackgroundWork: false,
       startedAt,
       streamingStartedAt: null,

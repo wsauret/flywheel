@@ -119,7 +119,6 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
     const createLauncher = seams.createLauncher ?? createQueryLauncher;
     const launchQuery = createLauncher(launch.config);
     const login = build.connection.subscriptionCredentials.get(candidate.providerId)?.find((entry) => entry.instanceId === candidate.instanceId);
-    const readings = seams.usageReadings ?? processUsageReadings;
     const selfTest: SelfTestConfig = { launcher: launch.config, launchQuery: createLauncher, wireModelId: build.wireModelId, contextLimit };
     const config: BridgeConfig = {
       launchQuery, configDir: launch.config.configDir, inPlace: (seams.inPlaceGate ?? selfTestedGate)(selfTest),
@@ -135,7 +134,7 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
       onExtraUsageStop: (stop) => {
         build.notify({ type: "raise", occurrence: extraUsageNotice(stop, { providerId: candidate.providerId, instanceId: candidate.instanceId, configDir: launch.config.configDir, name: login?.label ?? login?.identity ?? CLAUDE_AGENT_SDK_LABEL }) });
       },
-      recordUsage: (windows) => { readings.record({ configDir: launch.config.configDir, accountId: candidate.instanceId }, windows, Date.now()); },
+      recordUsage: (windows) => { processUsageReadings.record({ configDir: launch.config.configDir, accountId: candidate.instanceId }, windows, Date.now()); },
       recordOutcome: (outcome) => { observationsOf(seams).recordRequest({ configDir: launch.config.configDir, accountId: candidate.instanceId }, outcome); },
       providerSessionKey: lifetime.providerSessionKey,
       ...(lifetime.demand === undefined ? {} : { demand: lifetime.demand }),

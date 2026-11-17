@@ -4,7 +4,7 @@ import { describe, test } from "node:test"
 import { importBuiltModule } from "../test-support/import-built-module.js"
 import { loadSolidFixture } from "../test-support/solid-transform.js"
 
-import type { ModuleRow } from "../../../src/protocol/protocol-module.js"
+import type { McpStatusRow } from "../../../src/protocol/modules/mcp.js"
 
 const build = await Bun.build({
   entrypoints: [fileURLToPath(new URL("module-rows-fixture.ts", import.meta.url))],
@@ -23,12 +23,21 @@ const javascript = build.outputs.find((output) => output.kind === "entry-point")
 if (javascript === undefined) throw new Error("SSR build produced no JavaScript entry point")
 const { renderIntroCard, renderRowHosts }: typeof import("./module-rows-fixture.js") = await importBuiltModule(javascript)
 
-/** The rows the terminal card and modal tests render, so both clients are
- *  checked against one description. */
-const ROWS: readonly ModuleRow[] = [
-  { id: "papercuts", label: "papercuts", value: "10 logged", action: { kind: "command", id: "papercuts" } },
-  { id: "definition-overrides", label: "overrides", value: "2 with upstream updates", hint: "ask to review them" },
-  { id: "synthetic", label: "bench", value: "1 failing", tone: "warning" },
+const failedServer: McpStatusRow = { name: "server", status: "failed", toolCount: 0, definitionScope: "global", enabledScope: "global", enabled: true, hasGlobalFallback: false, expected: "reviewed" }
+
+/** One frame whose module views yield a command row, a row with a hint, and a
+ *  warning row, with the labels and values those rows carry. */
+const FRAME = {
+  papercuts: { undisposedCount: 10 },
+  definitionStaleness: { overrides: [], diagnostics: [], reviewCount: 2 },
+  experiment_view: null, mcp: { servers: [failedServer], claudeAiConnectors: false },
+  project_notifications: null, remote: null, "side-question": null, "side-question-request": null,
+  workflow_detail: null, workflow_live: null, workflow_view: null,
+}
+const ROWS = [
+  { label: "papercuts", value: "10 logged" },
+  { label: "overrides", value: "2 with upstream updates" },
+  { label: "mcp", value: "1 needs attention" },
 ]
 
 describe("web row hosts", () => {
@@ -64,7 +73,7 @@ describe("web row hosts", () => {
   })
 
   test("both hosts render one row description with the same labels, values, and actions", () => {
-    const { intro, status } = renderRowHosts(ROWS)
+    const { intro, status } = renderRowHosts(FRAME)
     for (const row of ROWS) {
       assert.match(intro, new RegExp(row.label))
       assert.match(status, new RegExp(row.label))

@@ -12,8 +12,8 @@ import {
   type ProviderRequestAuditOmittedTool,
   type HistoricalProviderRequestAuditTool,
   type ProviderRequestAuditTool,
+  type RecordedTransformerApplication,
 } from "./provider-request-audit-types.js"
-import type { ModuleTransformerApplication } from "../module-hooks.js"
 
 interface ResolvedToolSurface {
   tools: readonly (ProviderRequestAuditTool | HistoricalProviderRequestAuditTool)[]
@@ -21,7 +21,7 @@ interface ResolvedToolSurface {
 }
 
 interface ContextApplicationEvidence {
-  applications: ModuleTransformerApplication[]
+  applications: RecordedTransformerApplication[]
   applicationCount: number
   sequenceDigest: string
   manifestEvent: StoredFact

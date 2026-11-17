@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import type { StoredFact } from "../../../../src/infra/event-store-types"
 import type { BackgroundIndexPart, BackgroundIndexSink, BackgroundIndexTree } from "../../../../src/orchestration/app-service/background-index"
-import { createBackgroundIndexOwner } from "../../../../src/orchestration/app-service/background-index-publisher"
+import { createBackgroundIndexOwner, type BackgroundIndexOwnerDeps } from "../../../../src/orchestration/app-service/background-index-publisher"
+import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestration/agent-runtime/background-work"
 import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types"
+import { countStateRequests } from "../../../helpers/state-requests"
 import { chatEntry } from "./app-service-doubles"
 
 /** The sessions each fake tree holds: a chat that started a workflow and a
@@ -13,8 +15,13 @@ const ROW: BackgroundWorkRow = { id: "toolu_test", kind: "command", title: "bun 
 /** The record of a command, as a session stores it. */
 const COMMAND = { type: "tool.background_command.recorded", payload: { toolUseId: "toolu_test", processId: "bash-1", description: "bun test", startedAtMs: 1, state: "running" } } as const
 
-/** An owner over fake trees and the change feeds, all in the test's hand. */
-function owner() {
+/** The commands of a session with none, one array as the store's entry holds it. */
+const NO_COMMANDS: readonly ActiveBackgroundCommandDescriptor[] = []
+
+/** An owner over fake trees and the change feeds, all in the test's hand.
+ *  The store holds `sessionIds`, each with its own live command array, which
+ *  a change of its commands replaces as the store does. */
+function owner(sessionIds: readonly string[] = ["chat"]) {
   const stored = new Set<(events: readonly StoredFact[]) => void>()
   const published: RuntimeUiPatchInput[] = []
   const updates: BackgroundIndexPart[] = []
@@ -24,7 +31,7 @@ function owner() {
   let liveChanged: ((changed: ReadonlySet<string> | undefined) => void) | undefined
   let keptChanged: ((sessionId: string) => void) | undefined
   let waitsChanged: ((sessionId: string) => void) | undefined
-  let live: readonly { readonly id: string; readonly toolUseId: string; readonly model?: string }[] = []
+  const live = new Map<string, readonly ActiveBackgroundCommandDescriptor[]>()
   let workflowParent = "chat"
   let failBuild: Error | undefined
   let failUpdate: Error | undefined
@@ -51,6 +58,11 @@ function owner() {
       },
     }
   }
+  const sessionStore = countStateRequests<BackgroundIndexOwnerDeps["sessionStore"]>({
+    onChange: (listener) => { liveChanged = listener; return () => {} },
+    get: (sessionId) => chatEntry({ activeBackgroundCommands: live.get(sessionId) ?? NO_COMMANDS }),
+    allIds: () => [...sessionIds],
+  })
   const handle = createBackgroundIndexOwner({
     index: { tree },
     workflowPlacements: { parent: async (workflowId) => workflowId === "workflow" ? workflowParent : undefined, observe: () => {} },
@@ -58,25 +70,26 @@ function owner() {
     publish: (input) => { published.push(input) },
     snapshotPosition: () => published.length,
     childRunFactTypes: ["subagent.completed"],
-    sessionStore: {
-      onChange: (listener) => { liveChanged = listener; return () => {} },
-      get: () => chatEntry({ activeBackgroundCommands: live.map((command) => ({ ...command, description: command.id, startedAtMs: 0 })) }),
-      allIds: () => ["chat"],
-    },
+    sessionStore: sessionStore.reader,
     onKeptChange: (listener) => { keptChanged = listener; return () => {} },
     onReplyWaitsChange: (listener) => { waitsChanged = listener; return () => {} },
   })
   const settle = () => Bun.sleep(1)
   return {
-    handle, published, updates, builds, callResults, sinks, settle,
+    handle, published, updates, builds, callResults, sinks, settle, sessionStore,
     failBuild(error: Error | undefined) { failBuild = error },
     failUpdate(error: Error | undefined) { failUpdate = error },
     moveWorkflow(parentSessionId: string): void { workflowParent = parentSessionId },
-    async changeLive(commands: typeof live): Promise<void> {
-      live = commands
+    async changeLive(commands: readonly { readonly id: string; readonly toolUseId: string; readonly model?: string }[]): Promise<void> {
+      live.set("chat", commands.map((command) => ({ ...command, description: command.id, startedAtMs: 0 })))
       liveChanged?.(new Set(["chat"]))
       await settle()
     },
+    /** Places `commands` as the session's array without a word of change. */
+    seedLive(sessionId: string, commands: readonly ActiveBackgroundCommandDescriptor[]): void { live.set(sessionId, commands) },
+    /** A store change of `changed` sessions that leaves their commands alone,
+     *  such as a streamed delta; `undefined` names every session. */
+    async touch(changed: ReadonlySet<string> | undefined): Promise<void> { liveChanged?.(changed); await settle() },
     async changeKept(sessionId: string): Promise<void> { keptChanged?.(sessionId); await settle() },
     async changeWaits(sessionId: string): Promise<void> { waitsChanged?.(sessionId); await settle() },
     async store(...facts: Array<Pick<StoredFact, "type" | "sessionId"> & { readonly aggregateId?: string; readonly payload?: StoredFact["payload"]; readonly version?: number }>): Promise<void> {
@@ -203,6 +216,46 @@ describe("the background index owner", () => {
     expect(fixture.updates).toEqual([])
     await fixture.changeLive([])
     expect(fixture.updates).toEqual(changed)
+    fixture.handle.dispose()
+  })
+
+  test("a command that starts while no index is held and ends after a hold is reported as ended", async () => {
+    const fixture = owner()
+    await fixture.changeLive([{ id: "reviewer", toolUseId: "toolu_reviewer", model: "model" }])
+    await fixture.touch(new Set(["chat"]))
+    await fixture.handle.snapshot("chat")
+
+    await fixture.changeLive([])
+
+    expect(fixture.updates).toEqual([{ kind: "commands", sessionId: "chat", toolUseIds: new Set(["toolu_reviewer"]) }, { kind: "child", sessionId: "reviewer" }])
+    fixture.handle.dispose()
+  })
+
+  test.each([2, 200])("store changes over %d sessions whose commands stay the same read one entry per change and none of its commands", async (members) => {
+    const sessionIds = Array.from({ length: members }, (_, index) => `session-${index}`)
+    const fixture = owner(sessionIds)
+    await fixture.handle.snapshot("chat")
+    let commandReads = 0
+    const countedCommands = (sessionId: string): ActiveBackgroundCommandDescriptor[] => new Proxy([{ id: `bash-${sessionId}`, toolUseId: `toolu_${sessionId}`, description: "bun test", startedAtMs: 0 }], {
+      get(target, key, receiver) {
+        commandReads += 1
+        // oxlint-disable-next-line anti-slop/no-reflect-get -- boundary: a Proxy trap forwards an arbitrary property key to its target
+        return Reflect.get(target, key, receiver)
+      },
+    })
+    for (const sessionId of sessionIds) fixture.seedLive(sessionId, countedCommands(sessionId))
+    // The owner learns each session's commands once.
+    await fixture.touch(undefined)
+    fixture.sessionStore.take()
+    commandReads = 0
+
+    const changes = 10
+    for (let change = 0; change < changes; change += 1) await fixture.touch(new Set([sessionIds[change % members]!]))
+    expect(fixture.sessionStore.take().map((request) => request.method)).toEqual(Array.from({ length: changes }, () => "get"))
+    await fixture.touch(undefined)
+
+    expect(commandReads).toBe(0)
+    expect(fixture.updates).toEqual([])
     fixture.handle.dispose()
   })
 

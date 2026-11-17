@@ -5,8 +5,9 @@ import { createMemo, createRoot } from "solid-js"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import type { DebugLogRecordInput } from "../../../../src/infra/debug-log.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
-import { WAITING_RECALL } from "../../../../src/protocol/client/chat-submissions.js"
 import { createTerminalChatSubmissions } from "../../../../src/tui/hooks/create-chat-submissions.js"
+
+const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
 
 /** A resident window that reaches the session's first block. */
 const WHOLE = { startBlockIndex: 0 }

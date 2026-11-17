@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os"
 import { describe, expect, it } from "bun:test"
-import { captureForkMessages, createLoopUserWriter, seedResumedTurn } from "../../../../src/orchestration/agent-runtime/agent-loop-history.js"
+import { captureForkMessages, createLoopMessageWriters, seedAgentLoopTurn } from "../../../../src/orchestration/agent-runtime/agent-loop-history.js"
 import { emitUser } from "../../../../src/orchestration/agent-runtime/emit.js"
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types.js"
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
@@ -55,48 +55,55 @@ describe("captureForkMessages", () => {
   })
 })
 
-describe("seedResumedTurn", () => {
+/** Seeds a resume life over `messages`, as the loop seeds one, and echoes its trailing user turn to `onUserMessage`. */
+async function seedResume(messages: ConversationMessage[], onUserMessage: Parameters<typeof seedAgentLoopTurn>[0]["onUserMessage"]): Promise<void> {
+  await seedAgentLoopTurn({ seed: { kind: "resume", priorMessages: messages }, messages, instruction: null, onUserMessage, pushUser: () => { throw new Error("a resume seed appends no user message") } })
+}
+
+describe("resume-seeded turn echo", () => {
   it("carries the recorded message's identities through the live user event, including seeded turns", async () => {
     const events: RuntimeEvent[] = []
     const observe = (content: Parameters<typeof emitUser>[1], origin: "user" | "system", identity?: { submissionIds?: readonly string[]; dispatchIds?: readonly string[] }) => emitUser((event) => events.push(event), content, origin, undefined, identity)
-    const input: ConversationMessage = { kind: "user", content: "Work.", submissionIds: ["client"], dispatchIds: ["cell"] }
-    const push = createLoopUserWriter(async () => input, observe)
-    await push("Work.", true, { dispatchIds: ["cell"], origin: "human", submissionIds: ["client"] })
-    seedResumedTurn([input], observe)
+    const recorded: ConversationMessage[] = []
+    const writers = createLoopMessageWriters({
+      messages: () => recorded, history: { append: () => {} }, onUserMessage: observe, onSystemMessage: undefined, assistantContentCommitted: () => {},
+    })
+    await writers.pushUser("Work.", true, { dispatchIds: ["cell"], origin: "human", submissionIds: ["client"] })
+    await seedResume([...recorded], observe)
     expect(events.flatMap((event) => event.type === "model.user_message.recorded" ? [event.data.message] : [])).toEqual([
       { content: [{ type: "text", text: "Work." }], origin: "user", submissionIds: ["client"], dispatchIds: ["cell"] },
       { content: [{ type: "text", text: "Work." }], origin: "user", submissionIds: ["client"], dispatchIds: ["cell"] },
     ])
   })
-  it("echoes a seeded trailing user turn so the opening message of a life is recorded", () => {
+  it("echoes a seeded trailing user turn so the opening message of a life is recorded", async () => {
     const messages: ConversationMessage[] = [
       { kind: "assistant", content: [{ type: "text", text: "done" }] },
       { kind: "user", content: "reply with exactly: second life works", origin: "system" },
     ]
     const echoed: unknown[] = []
-    seedResumedTurn(messages, (content, origin) => echoed.push({ content, origin }))
+    await seedResume(messages, (content, origin) => echoed.push({ content, origin }))
     expect(echoed).toEqual([{ content: "reply with exactly: second life works", origin: "system" }])
   })
 
-  it("echoes the trailing user turn past transcript-only system notices", () => {
+  it("echoes the trailing user turn past transcript-only system notices", async () => {
     const messages: ConversationMessage[] = [
       { kind: "user", content: "resume question" },
       { kind: "system", content: "learning reconciliation notice" },
     ]
     const echoed: unknown[] = []
-    seedResumedTurn(messages, (content, origin) => echoed.push({ content, origin }))
+    await seedResume(messages, (content, origin) => echoed.push({ content, origin }))
     expect(echoed).toEqual([{ content: "resume question", origin: "user" }])
   })
 
-  it("stays silent when the seeded conversation does not end in a user turn", () => {
+  it("stays silent when the seeded conversation does not end in a user turn", async () => {
     const messages: ConversationMessage[] = [
       { kind: "user", content: "hi" },
       { kind: "assistant", content: [{ type: "text", text: "hello" }] },
     ]
     const echoed: unknown[] = []
-    seedResumedTurn(messages, (content) => echoed.push(content))
+    await seedResume(messages, (content) => echoed.push(content))
     expect(echoed).toEqual([])
-    seedResumedTurn([], (content) => echoed.push(content))
+    await seedResume([], (content) => echoed.push(content))
     expect(echoed).toEqual([])
   })
 })

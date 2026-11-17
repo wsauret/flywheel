@@ -39,7 +39,7 @@ function rateTier([inputCell, cacheReadCell, cacheWriteCell, outputCell]: readon
 }
 
 /** Parses only OpenAI's named Standard table. Any structural drift fails closed. */
-export function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string, OpenAiRateCard> {
+function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string, OpenAiRateCard> {
   const start = markdown.indexOf("### Standard pricing data");
   if (start < 0) return new Map();
   const rest = markdown.slice(start);
@@ -61,7 +61,7 @@ export function parseOpenAiStandardPricing(markdown: string): ReadonlyMap<string
   return result;
 }
 
-export async function fetchOpenAiStandardPricing(signal: AbortSignal): Promise<ReadonlyMap<string, OpenAiRateCard>> {
+async function fetchOpenAiStandardPricing(signal: AbortSignal): Promise<ReadonlyMap<string, OpenAiRateCard>> {
   try {
     const response = await fetch(PRICING_URL, { signal });
     if (!response.ok || response.headers.get("content-type")?.startsWith("text/markdown") !== true) return new Map();
@@ -137,18 +137,18 @@ function rateTierMetadata(tier: OpenAiRateTier) {
 }
 
 export function openAiPricingFromMetadata(value: unknown, model: string): ModelPricing | undefined {
-  if (!record(value) || !record(value.standardPricing)) return undefined;
+  if (!isRecord(value) || !isRecord(value.standardPricing)) return undefined;
   const rate = value.standardPricing;
   if (!nonNegative(rate.input) || !nonNegative(rate.output)
     || !optionalNonNegative(rate.cacheRead) || !optionalNonNegative(rate.cacheWrite) || !optionalNonNegative(rate.reasoning)) return undefined;
-  if (rate.highContext !== undefined && (!record(rate.highContext)
+  if (rate.highContext !== undefined && (!isRecord(rate.highContext)
     || !positiveInteger(rate.highContext.threshold)
     || !nonNegative(rate.highContext.input)
     || !nonNegative(rate.highContext.output)
     || !optionalNonNegative(rate.highContext.cacheRead)
     || !optionalNonNegative(rate.highContext.cacheWrite)
     || !optionalNonNegative(rate.highContext.reasoning))) return undefined;
-  const high = record(rate.highContext) ? rate.highContext : undefined;
+  const high = isRecord(rate.highContext) ? rate.highContext : undefined;
   const highThreshold = high?.threshold;
   const highInput = high?.input;
   const highOutput = high?.output;
@@ -177,7 +177,7 @@ export function openAiPricingFromMetadata(value: unknown, model: string): ModelP
 
 interface UnknownRecord { readonly [key: string]: unknown }
 
-function record(value: unknown): value is UnknownRecord {
+function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

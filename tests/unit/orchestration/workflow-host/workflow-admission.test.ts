@@ -16,6 +16,7 @@ import prePhaseLineage from "./golden/pre-phase-lineage.json"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { moduleDisabledReason } from "../../../../src/protocol/module-ids"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const reviewer: AgentDefinition = {
   kind: "persona",
@@ -31,12 +32,12 @@ const reviewer: AgentDefinition = {
  *  requirement closure is wider than the workflow transport itself. */
 const revision = testSkillRevision([testSkill("delegating", { agents: ["reviewer"] })])
 const workflows = new Map<string, WorkflowDefinition>([
-  ["delegating-flow", {
+  ["delegating-flow", loadedWorkflow({
     id: "delegating-flow",
     name: "delegating-flow",
     description: "delegating-flow",
     phases: [{ phase: "delegating", brief: "Do the delegating work.", name: "delegating", dependencies: ["delegating"], writes: [] }],
-  }],
+  })],
 ])
 
 /** The admission boundary over a selection a case can change, plus the record
@@ -92,7 +93,7 @@ describe("workflow admission", () => {
     ["runs as", { phase: "review", persona: "reviewer", brief: "Review the change.", name: "review", writes: [] }],
     ["dispatches", { phase: "review", subagents: ["reviewer"], brief: "Review the change.", name: "review", writes: [] }],
   ] as const)("refuses a workflow whose agent %s a type that is off, and admits it with the type on", async (_, phase) => {
-    const workflow: WorkflowDefinition = { id: "review-flow", name: "review-flow", description: "review-flow", phases: [phase] }
+    const workflow = loadedWorkflow({ id: "review-flow", name: "review-flow", description: "review-flow", phases: [phase] })
     const admit = async (disabledTypes: readonly string[]) => {
       const wired = await harness(FULL, undefined, disabledTypes)
       return admitWorkflowOperation({ capabilities: wired.capabilities, availability: wired.availability, operation: "the review-flow workflow", resolve: () => ({ ok: true, workflow }) })
@@ -106,7 +107,7 @@ describe("workflow admission", () => {
   })
 
   test("admits a workflow whose agents run as no persona while every agent type is off", async () => {
-    const workflow: WorkflowDefinition = { id: "plain-flow", name: "plain-flow", description: "plain-flow", phases: [{ phase: "work", brief: "Do the work.", name: "work", writes: [] }] }
+    const workflow = loadedWorkflow({ id: "plain-flow", name: "plain-flow", description: "plain-flow", phases: [{ phase: "work", brief: "Do the work.", name: "work", writes: [] }] })
     const wired = await harness(FULL, undefined, ["general", "reviewer", "advisor", "explorer", "implementer", "ship"])
 
     expect((await admitWorkflowOperation({ capabilities: wired.capabilities, availability: wired.availability, operation: "the plain-flow workflow", resolve: () => ({ ok: true, workflow }) })).ok).toBe(true)

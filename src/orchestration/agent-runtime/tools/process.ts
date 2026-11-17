@@ -12,13 +12,13 @@ export const PROCESS_TOOL_NAME = "process";
 /** The targeting rules that a child with addresses states beside them in its status, so they reach only an agent
  *  that has such a child (ARCH-CONTEXT-033). */
 const CHILD_ADDRESS_GUIDANCE = "These addresses name item keys and named-agent ids for targeted direction, and agent session ids for direct messages and replies. Never substitute an agent session id for this child's process id. When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";
-const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "Only for interrupt or resume of a child whose status lists addresses: item keys or agent ids from that status. Omit for the whole child. Unknown or finished targets refuse with valid alternatives." } as const;
+const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "interrupt or resume: item keys or agent ids from the child's status. Omit for the whole child." } as const;
 export const DEFAULT_WAIT_SECONDS = 240;
 /** Every wait ends after at most one hour, so that the agent reassesses
- *  the work it waits on (PI-AGENT-080). */
+ *  the work it waits on (PI-AGENT-080). The schema's maximum states it. */
 const WAIT_CEILING_SECONDS = 3600;
-const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: WAIT_CEILING_SECONDS, description: `Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all managed work. Omitted: 240 seconds. At most ${WAIT_CEILING_SECONDS} (one hour); a larger value waits ${WAIT_CEILING_SECONDS}. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait.` } as const;
-const PROCESS_WAIT_GUIDANCE = `When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; one wait lasts at most one hour (${WAIT_CEILING_SECONDS} seconds). Without an estimate the wait lasts at most four minutes. The turn's other calls run first. Completion or expiry consumes this one wait without stopping work. After a notification, expiry, or status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.`;
+const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: WAIT_CEILING_SECONDS, description: `wait: seconds, from your estimate of the remaining work. Default ${DEFAULT_WAIT_SECONDS}.` } as const;
+const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout from your estimate of all remaining managed work; never poll, sleep, or stop or restart a command to wait. Completion or expiry wakes you once without stopping the work. After a wake or a status check, if nothing needs action or a reply, wait again with a fresh estimate and no visible text; do not send status chatter.";
 
 /** The duration of a native wait: the four-minute default without an
  *  estimate, the estimate up to the one-hour ceiling, or undefined for an
@@ -49,19 +49,23 @@ export function isParkingWaitCall(call: { readonly name: string; readonly input:
   return processWaitSeconds(call.input) !== undefined;
 }
 
-const PROCESS_INPUT_SCHEMA = {
-  type: "object",
-  properties: {
-    process_id: { type: "string", description: "A process ID from action='list'; a child uses the id that list returns. Required for stop, interrupt, resume, and read_output. Status without it lists every process; list and wait ignore it." },
-    action: { type: "string", enum: ["list", "status", "wait", "stop", "interrupt", "resume", "read_output"], default: "status" },
-    soft_timeout: PROCESS_WAIT_TIMEOUT_SCHEMA,
-    targets: PROCESS_TARGETS_SCHEMA,
-    offset: { type: "integer", minimum: 0, description: "Optional retained-output line offset for action='read_output'. Omit to read the tail." },
-    limit: { type: "integer", minimum: 1, description: "Optional maximum lines returned by action='read_output'. Defaults to 100." },
-    query: { type: "string", minLength: 1, description: "Optional case-sensitive literal search for action='read_output'. Returns matching retained-output lines within limit." },
-  },
-  additionalProperties: false,
-} as const;
+/** The input schema. Only a workflow child has addresses, so `targets` is left
+ *  out where no workflow target exists (see `processToolDefinition`). */
+function processInputSchema(workflowTargets: boolean) {
+  return {
+    type: "object",
+    properties: {
+      process_id: { type: "string", description: "An id from action='list'. Required for stop, interrupt, resume, and read_output." },
+      action: { type: "string", enum: ["list", "status", "wait", "stop", "interrupt", "resume", "read_output"], default: "status" },
+      soft_timeout: PROCESS_WAIT_TIMEOUT_SCHEMA,
+      ...(workflowTargets ? { targets: PROCESS_TARGETS_SCHEMA } : {}),
+      offset: { type: "integer", minimum: 0, description: "read_output: first line. Omit for the tail." },
+      limit: { type: "integer", minimum: 1, description: `read_output: maximum lines. Default ${OUTPUT_LIMIT_DEFAULT}.` },
+      query: { type: "string", minLength: 1, description: "read_output: only lines that contain this literal, case-sensitive text." },
+    },
+    additionalProperties: false,
+  } as const;
+}
 
 
 const NOTHING_PENDING_GUIDANCE = "A launch mentioned in older conversation history is not live work. Only a successful launch acknowledgement from this runtime creates waitable work. Do not wait again until a new process is acknowledged; continue working or deliver your final response.";
@@ -252,23 +256,25 @@ function processId(input: RuntimeToolInput, action: string): string | ToolResult
 const CONTROL_ACTIONS: ReadonlySet<unknown> = new Set(["stop", "interrupt", "resume"]);
 
 const PROCESS_SCOPE = "Manage the work that you started: your managed commands and your children.";
-const PROCESS_ACTIONS = "Use one action: list returns the ids that the other actions take (never guess an id from a log suffix); status inspects one process without waiting, or lists them all when no process_id is given, and for a child it gives its state, who interrupted it, its progress, and the addresses that its work takes. wait parks the loop until the next process completes or soft_timeout seconds expire (the turn's other tool calls run first; it waits on every process, so a process_id is ignored; expiry does not stop work; no wait parks on a child that you or the runtime interrupted); stop requests cancellation (termination is confirmed only when the host reports it; an unsettled result means ownership remains managed, so do not release or relaunch the process), and a stopped child shows as Canceled; interrupt cuts a running child so that its work can continue later; resume continues your own interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt; and read_output reads retained output of a command.";
+const PROCESS_ACTIONS = "list returns the ids of your work; never guess an id from a log suffix. status shows one process, with a child's state and progress, or lists all without process_id. wait parks after the turn's other tool calls until the next process completes or soft_timeout expires; it waits on every process, but never on a child that you or the runtime interrupted. stop requests cancellation. interrupt cuts a running child so that its work can continue later. resume continues your interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt. read_output reads a command's retained output.";
 
 /** The advertised form of the native process tool. It names no background
  *  owner, so an agent without one advertises the same bytes. An unattended
  *  chat lists no session that it did not start and has no person who reads
- *  its transcript (PI-AGENT-121), so its form names neither. */
-export function processToolDefinition(unattendedChat: boolean): AdvertisedTool {
+ *  its transcript (PI-AGENT-121), so its form names neither.
+ *  `workflowTargets` is false only for a tree that no person reads and whose
+ *  capture has no workflow tool, where no child has addresses (ARCH-CONTEXT-033). */
+export function processToolDefinition(unattendedChat: boolean, workflowTargets: boolean): AdvertisedTool {
   return {
     name: PROCESS_TOOL_NAME,
     action: "ui_meta",
     description: unattendedChat
       ? `${PROCESS_SCOPE} ${PROCESS_ACTIONS}`
-      : `${PROCESS_SCOPE} Sessions that you did not start are in list_sessions. ${PROCESS_ACTIONS} The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there.`,
+      : `${PROCESS_SCOPE} Sessions that you did not start are in list_sessions. ${PROCESS_ACTIONS} The person sees each interrupt, resume, and stop of a child.`,
     promptGuidelines: [
       PROCESS_WAIT_GUIDANCE,
     ],
-    inputSchema: PROCESS_INPUT_SCHEMA,
+    inputSchema: processInputSchema(workflowTargets),
     validatesOwnInput: true,
     isConcurrencySafe: (input) => !CONTROL_ACTIONS.has(input.action),
     // A crash never leaves an interrupt, a resume, or a stop of a child
@@ -282,10 +288,11 @@ export function processToolDefinition(unattendedChat: boolean): AdvertisedTool {
  *  project's session authority. A run without that authority, such as a
  *  headless task, starts no children, so it has none to list or control.
  *  `unattendedChat` selects the form and the list text of an unattended chat,
- *  which names no list_sessions. */
-export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, children?: ChildSessionControl, unattendedChat = false): RuntimeTool {
+ *  which names no list_sessions. `workflowTargets` is described at
+ *  `processToolDefinition`. */
+export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, children?: ChildSessionControl, unattendedChat = false, workflowTargets = true): RuntimeTool {
   return {
-    ...processToolDefinition(unattendedChat),
+    ...processToolDefinition(unattendedChat, workflowTargets),
     async execute(input, context): Promise<ToolResult> {
       if (input.action === undefined) {
         const result = await this.execute({ ...input, action: "status" }, context);
@@ -338,7 +345,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
         const persistent = await persistentRecord(context, id);
         if (persistent && context.persistentProcesses) {
           const result = await context.persistentProcesses.stop(id);
-          if (result === "unsettled") return { content: `Termination was not confirmed for process '${id}'. ownership remains managed; descendant processes may still be running.`, outcome: "error" };
+          if (result === "unsettled") return { content: `Termination was not confirmed for process '${id}'. ownership remains managed; descendant processes may still be running. Do not release or relaunch it.`, outcome: "error" };
           return { content: result === "already_exited" ? `Process '${id}' already exited.` : `Stop requested for process '${id}'.`, outcome: "ok" };
         }
         return { content: `No active process has ID '${id}'. It may already have settled or been stopped.\n${await processList(backgroundTasks, context, children, unattendedChat)}`, outcome: "error" };

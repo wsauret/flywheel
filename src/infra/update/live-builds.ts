@@ -25,7 +25,8 @@
 
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
-import { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../descriptor-directory.js";
 import { errorMessage } from "../error-message.js";
 import { Log } from "../log.js";
 import { liveBuildsDir, versionsDir } from "../paths.js";
@@ -70,7 +71,7 @@ export function executableBuild(execPath: string = process.execPath): Executable
   } catch {
     return undefined;
   }
-  const directory = ContainedDirectory.openExisting(path.dirname(buildDir), [path.basename(buildDir)]);
+  const directory = openExistingContainedDirectory(path.dirname(buildDir), [path.basename(buildDir)]);
   if (!directory) return undefined;
   try {
     const raw = directory.readFile(BUILD_METADATA_FILE, METADATA_READ_BYTES);
@@ -187,7 +188,7 @@ export function liveBuildIds(userDataRoot: string): ReadonlySet<string> {
  *  claims no mode over the account root itself. */
 function openRegistry(userDataRoot: string): ContainedDirectory {
   const names = registryNames(userDataRoot);
-  const accountData = ContainedDirectory.open(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   try {
     const updateDir = accountData.openChild(names.update, { privateDirectories: true });
     try {
@@ -205,7 +206,7 @@ function openRegistry(userDataRoot: string): ContainedDirectory {
  *  writing to answer its own question. */
 function openExistingRegistry(userDataRoot: string): ContainedDirectory | undefined {
   const names = registryNames(userDataRoot);
-  const accountData = ContainedDirectory.openExisting(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
+  const accountData = openExistingContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)]);
   if (!accountData) return undefined;
   try {
     const updateDir = accountData.openExistingChild(names.update);

@@ -1,5 +1,5 @@
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "../../../infra/review-notice.js";
-import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect";
+import { Effect, Schema, SchemaGetter, SchemaIssue, SchemaTransformation } from "effect";
 import { LlmToolOutputPartSchema } from "../../../infra/llm/tool-output-part-schema.js";
 import { ToolContentReferencePartSchema } from "../../../infra/tool-content.js";
 import { AccessProviderIdSchema } from "../../../infra/llm/access-provider.js";
@@ -16,6 +16,13 @@ const baseEntryFields = {
   parentId: Schema.NullOr(Schema.NonEmptyString),
   timestamp: DateTimeStringSchema,
 };
+
+/** A key that an earlier build stored and that no reader uses. Decode accepts
+ *  it and drops it, and no writer can set it. Recovered history reads every
+ *  stored shape for its whole life, so this has no removal date. */
+function droppedKey<S extends Schema.Top>(schema: S) {
+  return Schema.optionalKey(schema).pipe(Schema.decodeTo(Schema.optionalKey(Schema.Never), { decode: SchemaGetter.omit(), encode: SchemaGetter.omit() }));
+}
 
 const TextContentSchema = Schema.Struct({
   type: Schema.Literal("text"),
@@ -305,8 +312,6 @@ function entrySchemas<P extends Schema.Codec<typeof CurrentProducerSchema.Type, 
   const messageEntryFields = {
     ...baseEntryFields,
     kind: Schema.Literal("message"),
-    /** Durable request-ledger key for a post-workflow follow-up user turn. */
-    followUpRequestSequence: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
     /** When true, the entry is persisted for diagnostic/UI inspection but is
      *  omitted from the model-visible context the next provider request sees.
      *  Used for system-internal messages (errors, diagnostics) that should be
@@ -319,11 +324,24 @@ function entrySchemas<P extends Schema.Codec<typeof CurrentProducerSchema.Type, 
     message: PersistedAgentMessageSchema,
   });
 
-  const StoredMessageEntrySchema = Schema.Struct({
+  /** Earlier builds stored `followUpRequestSequence`, the request-ledger key
+   *  of a user turn that followed a finished workflow. No build writes it and
+   *  no reader needs it. */
+  const historicalMessageEntryFields = {
     ...messageEntryFields,
+    followUpRequestSequence: droppedKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))),
+  };
+
+  const RecoveredMessageEntrySchema = Schema.Struct({
+    ...historicalMessageEntryFields,
+    message: PersistedAgentMessageSchema,
+  });
+
+  const StoredMessageEntrySchema = Schema.Struct({
+    ...historicalMessageEntryFields,
     message: StoredPersistedAgentMessageSchema,
   });
-  return { PersistedAgentMessageSchema, MessageEntrySchema, StoredMessageEntrySchema };
+  return { PersistedAgentMessageSchema, MessageEntrySchema, RecoveredMessageEntrySchema, StoredMessageEntrySchema };
 }
 
 const current = entrySchemas(CurrentProducerSchema, AssistantAgentMessageSchema, Schema.Union([SystemAgentMessageSchema, ReferenceSystemAgentMessageSchema, ContentRepairSystemAgentMessageSchema]));
@@ -350,10 +368,16 @@ const compactionEntryFields = {
   sourceLeafId: Schema.NonEmptyString,
   tokensBefore: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   tokensAfter: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
-  details: Schema.optionalKey(Schema.Unknown),
-  fromHook: Schema.optionalKey(Schema.Boolean),
+  /** Earlier builds could store `details` and `fromHook`; no build writes
+   *  them and no reader uses them. */
+  details: droppedKey(Schema.Unknown),
+  fromHook: droppedKey(Schema.Boolean),
 };
 
+/** The reset is the compaction that current builds write. The summary
+ *  compaction is historical: no build writes it, but recovered history keeps
+ *  it, because its summary and retained input are the provider context of its
+ *  branch and a fork copies it. */
 export const CompactionEntrySchema = Schema.Union([
   Schema.Struct({ ...compactionEntryFields, mode: Schema.Literal("reset") }),
   Schema.Struct({ ...compactionEntryFields, mode: Schema.optionalKey(Schema.Literal("summary")), summary: Schema.String, retainedMessages: Schema.Array(RetainedUserMessageSchema) }),
@@ -364,22 +388,37 @@ export const BranchSummaryEntrySchema = Schema.Struct({
   kind: Schema.Literal("branch_summary"),
   fromId: Schema.NonEmptyString,
   summary: Schema.String,
-  details: Schema.optionalKey(Schema.Unknown),
-  fromHook: Schema.optionalKey(Schema.Boolean),
+  details: droppedKey(Schema.Unknown),
+  fromHook: droppedKey(Schema.Boolean),
 });
 
-export const LabelEntrySchema = Schema.Struct({
+/** A place in the tree with no content: what recovery keeps of a `label` or
+ *  `session_info` entry. No build creates either kind, but a later entry can
+ *  name one as its parent, so its parentage stays. It keeps the stored
+ *  `session_info` kind: a fork that copies recovered history writes this
+ *  shape, which every build reads, and decode drops the name that an earlier
+ *  build stored. */
+const TopologyEntrySchema = Schema.Struct({
+  ...baseEntryFields,
+  kind: Schema.Literal("session_info"),
+  name: droppedKey(Schema.UndefinedOr(Schema.String)),
+});
+
+/** A `label` entry decodes into a topology entry. Its target and text have no
+ *  reader. No writer encodes one. */
+const StoredLabelEntrySchema = Schema.Struct({
   ...baseEntryFields,
   kind: Schema.Literal("label"),
   targetId: Schema.NonEmptyString,
   label: Schema.optionalKey(Schema.UndefinedOr(Schema.String)),
 });
-
-const SessionInfoEntrySchema = Schema.Struct({
-  ...baseEntryFields,
-  kind: Schema.Literal("session_info"),
-  name: Schema.optionalKey(Schema.UndefinedOr(Schema.String)),
-});
+const HistoricalLabelEntrySchema = StoredLabelEntrySchema.pipe(Schema.decodeTo(
+  Schema.toType(TopologyEntrySchema),
+  SchemaTransformation.transformEffect<typeof TopologyEntrySchema.Type, typeof StoredLabelEntrySchema.Type>({
+    decode: ({ id, parentId, timestamp }) => Effect.succeed({ id, parentId, timestamp, kind: "session_info" }),
+    encode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "no build writes a label entry" })),
+  }),
+));
 
 export const LeafEntrySchema = Schema.Struct({
   ...baseEntryFields,
@@ -387,37 +426,42 @@ export const LeafEntrySchema = Schema.Struct({
   targetId: Schema.NullOr(Schema.NonEmptyString),
 });
 
-const otherEntrySchemas = [CompactionEntrySchema, BranchSummaryEntrySchema, LabelEntrySchema, SessionInfoEntrySchema, LeafEntrySchema] as const;
+const otherEntrySchemas = [CompactionEntrySchema, BranchSummaryEntrySchema, TopologyEntrySchema, LeafEntrySchema] as const;
 
+/** Every other entry kind that a stored history holds, including the kinds
+ *  that recovery normalizes. */
+const storedOtherEntrySchemas = [...otherEntrySchemas, HistoricalLabelEntrySchema] as const;
+
+/** The entry that a current writer appends and the fold hands on. */
 export const ConversationEntrySchema = Schema.Union([current.MessageEntrySchema, ...otherEntrySchemas]);
 
-/** The current stored entry union: identical to
- *  ConversationEntrySchema except that toolResult content parts may be
- *  tool-content references. The fold hydrates this one back to
- *  ConversationEntry before anything downstream sees it. */
-const StoredConversationEntrySchema = Schema.Union([current.StoredMessageEntrySchema, ...otherEntrySchemas]);
+/** The current stored entry union: the entries of ConversationEntrySchema,
+ *  except that toolResult content parts may be tool-content references, plus
+ *  the historical shapes that decode into it. The fold hydrates this one back
+ *  to ConversationEntry before anything downstream sees it. */
+const StoredConversationEntrySchema = Schema.Union([current.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Version 8 also stores content-repair decisions. */
-export const StoredConversationEntryV8Schema = Schema.Union([v8.StoredMessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV8Schema = Schema.Union([v8.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Version 7 retains review evidence as one bounded manifest, never inline patches. */
-export const StoredConversationEntryV7Schema = Schema.Union([v7.StoredMessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV7Schema = Schema.Union([v7.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Inline mutation evidence written before 2026-10-16 is normalized at the family recovery boundary. Remove this conversion after 2027-04-16. */
-export const StoredConversationEntryV6Schema = Schema.Union([v6.StoredMessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV6Schema = Schema.Union([v6.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Version 5 of the stored entry union: the current shape with no launch
  *  producer. */
-export const StoredConversationEntryV5Schema = Schema.Union([v5.StoredMessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV5Schema = Schema.Union([v5.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Version 4 of the stored entry union: the version 5 shape whose session
  *  producer carries no envelope. */
-export const StoredConversationEntryV4Schema = Schema.Union([v4.StoredMessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV4Schema = Schema.Union([v4.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 /** Version 3 of the stored entry union: the current shape with the earlier
  *  producer vocabulary, decoded into the current one. */
-export const StoredConversationEntryV3Schema = Schema.Union([v3.StoredMessageEntrySchema, ...otherEntrySchemas]);
-const ConversationEntryV3Schema = Schema.Union([v3.MessageEntrySchema, ...otherEntrySchemas]);
+export const StoredConversationEntryV3Schema = Schema.Union([v3.StoredMessageEntrySchema, ...storedOtherEntrySchemas]);
+const ConversationEntryV3Schema = Schema.Union([v3.RecoveredMessageEntrySchema, ...storedOtherEntrySchemas]);
 
 export type StoredConversationEntry = typeof StoredConversationEntrySchema.Type;
 

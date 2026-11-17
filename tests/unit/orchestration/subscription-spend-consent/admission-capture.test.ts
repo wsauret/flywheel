@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
-import { CHATGPT_RATE_LIMIT_RESET_TYPE, type SubscriptionUsageMetric, type SubscriptionUsageResetCredits } from "../../../../src/infra/llm/subscription-usage.js"
+import type { SubscriptionUsageMetric, SubscriptionUsageResetCredits } from "../../../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionUsageService } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createSubscriptionUsageServicePool } from "../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js"
 import { captureSubscriptionAdmission } from "../../../../src/orchestration/subscription-spend-consent/admission-capture.js"
@@ -16,7 +16,7 @@ describe("subscription admission capture", () => {
     const resolved = { id: "default", directory: profile("banked-reset-admission") }
     const chatgpt = definition("chatgpt")
     writeAccounts(resolved.directory, [chatgpt])
-    let resetCredits: SubscriptionUsageResetCredits = { availableCount: 1, credits: [{ id: "reset-1", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" }] }
+    let resetCredits: SubscriptionUsageResetCredits = { availableCount: 1, credits: [{ id: "reset-1", resetType: "codex_rate_limits", status: "available" }] }
     const providers = registry([chatgpt], new Map([[chatgpt.id, async () => ({ kind: "success" as const, report: { ...report(chatgpt.id, Date.now()), resetCredits } })]]))
     const pool = createSubscriptionUsageServicePool({ create: () => createSubscriptionUsageService({ profile: () => resolved, registry: () => providers, thresholds: () => [] }) })
     const residentLease = await pool.acquire(resolved)

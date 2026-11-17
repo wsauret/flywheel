@@ -1,4 +1,4 @@
-import type { ChildSessionRow, FrontendEvent } from "../../../src/protocol/app-service-types.js"
+import type { ChildSessionRow, FrontendEvent, FrontendMutation } from "../../../src/protocol/app-service-types.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import type { RuntimeSessionDetailSnapshotResult } from "../../../src/protocol/session-detail-protocol-types.js"
 import { runtimeDispatch, runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
@@ -9,7 +9,7 @@ import { fakeClient, fakeClientActions } from "./client-context-fixture.js"
 
 /** A real held-detail owner behind a scripted transport for mounted cards. */
 export function agentGroupClient(admittedActions: readonly ("subagent.interrupt" | "subagent.resume")[], failDetail: boolean) {
-  const mutations: unknown[] = []
+  const mutations: FrontendMutation[] = []
   const failures: unknown[] = []
   const detailReads: string[] = []
   let failNextDetail = failDetail
@@ -17,7 +17,7 @@ export function agentGroupClient(admittedActions: readonly ("subagent.interrupt"
   let position = 0
   const base = selectionConnection()
   const listeners = new Set<(event: FrontendEvent) => void>()
-  const control = async (mutation: unknown) => { mutations.push(mutation); return { ok: true as const } }
+  const control = async (mutation: FrontendMutation) => { mutations.push(mutation); return { ok: true as const } }
   const row = (): ChildSessionRow => ({
     id: "child", kind: "subagent", admittedActions: actions, parentSessionId: "cold-chat",
     title: "Child", shortTitle: "Child", lifecycleState: "active", notices: [],

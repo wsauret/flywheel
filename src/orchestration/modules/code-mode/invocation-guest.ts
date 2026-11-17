@@ -1,6 +1,7 @@
 import { Effect, Schema } from "effect"
 import { CodeMode } from "../../../infra/code-mode/index.js"
 import { toolError, type ToolError } from "../../../infra/code-mode/tool-error.js"
+import { unknownTool, type ToolRuntimeError } from "../../../infra/code-mode/tool-runtime.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { redactDeep, redactSecrets } from "../../../infra/redact-secrets.js"
 import { CodeToolResultSchema, toolTrie, type CodeToolResult } from "./descriptors.js"
@@ -31,8 +32,9 @@ function parseJsonDocument(content: string): string | JsonDocument {
   }
 }
 
-function replyEffect(reply: CallReply): Effect.Effect<CodeToolResult, ToolError> {
+function replyEffect(name: string, reply: CallReply): Effect.Effect<CodeToolResult, ToolError | ToolRuntimeError> {
   if (reply.kind === "refused") return Effect.fail(toolError(reply.message))
+  if (reply.kind === "unresolved") return Effect.fail(unknownTool(name))
   // Parse before redacting: JSON escapes can hide a credential from the text
   // redactor and re-materialize it after JSON.parse.
   return Effect.sync(() => Schema.decodeUnknownSync(CodeToolResultSchema)({ outcome: reply.outcome, content: redactDeep(parseJsonDocument(reply.content)) }))
@@ -84,7 +86,7 @@ function heapLimitResult(maxHeapDeltaBytes: number, bash: boolean): CodeMode.Res
   }
 }
 
-type Resume = (effect: Effect.Effect<CodeToolResult, ToolError>) => void
+type Resume = (reply: CallReply) => void
 
 /** The state of the one invocation a guest runs. It exists from `start`
  *  until the next `reset`, and nothing in it survives that reset. */
@@ -116,9 +118,10 @@ export function runGuest(port: GuestPort): () => void {
 
   const run = async (start: Extract<HostMessage, { type: "start" }>, current: Invocation): Promise<void> => {
     const logs = createLogStream(port)
-    const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError>((resume) => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
+    const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError | ToolRuntimeError>((resume) => {
       const id = nextCallId++
-      current.pending.set(id, resume)
+      current.pending.set(id, (reply) => resume(replyEffect(name, reply)))
       logs.flush()
       port.postMessage({ type: "call", id, name, input })
       // An interrupted call is dropped here; the host's nested batch owns
@@ -162,7 +165,7 @@ export function runGuest(port: GuestPort): () => void {
     if (message.type === "call-result") {
       const resume = invocation?.pending.get(message.id)
       invocation?.pending.delete(message.id)
-      resume?.(replyEffect(message.reply))
+      resume?.(message.reply)
       return
     }
     if (message.type === "reset") return reset()

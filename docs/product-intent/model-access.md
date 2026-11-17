@@ -62,6 +62,10 @@ Contributor routes are ineligible unless the active auth profile explicitly allo
 
 OpenRouter free routes are off by default. For an exact OpenRouter account that includes them, Flywheel shows free variants under the same model choices, prefers an eligible free route, and retains that account's paid route as fallback. This preference does not grant contributor or training-route permission.
 
+## PI-MODEL-089: Baseten API key provider
+
+A person connects a Baseten API key in Authentication. Flywheel lists the models that Baseten's own model list states for that key with Baseten's listed prices, and each joins the model choice that other providers of the same model use. A variant that Baseten lists under its own name at its own price, such as a fast tier, is a separate model choice.
+
 ## PI-MODEL-014: Automatic session naming resumes after access recovery
 
 When a recoverable authentication or provider-configuration condition blocks automatic session naming, Flywheel keeps the immediate quick title and retries naming after that environment refreshes, without delaying chat work.
@@ -152,7 +156,7 @@ Opening model selection or provider model controls shows saved choices at once a
 
 ## PI-MODEL-016: Every agent role has an eligible default
 
-Flywheel resolves each agent role per request against the active auth profile's reachable models. It uses the role's saved pair when reachable, then its coded preferences in the order its benchmark results set. Then it uses the newest reachable model in the first preference's price tier, at its effort. When that tier is empty, it uses the nearest populated tier, then a reachable unranked model. For an agent that is not a chat, a model whose included quota is spent is unreachable until its known reset (PI-MODEL-087). An unsupported effort maps to the nearest supported effort.
+Flywheel resolves each agent role per request against the active auth profile's reachable models. It uses the saved pair, then the coded preferences in benchmark order, then the newest model of the role's fallback tier at its fallback effort. A benchmarked role's fallback is the average price tier, rounded toward cheaper, and the most common effort, ties to higher, of its settings that pass the benchmark filters. Another role uses its first preference's tier and effort. An empty tier yields to the nearest populated tier, then an unranked model. An unsupported effort maps to the nearest supported effort.
 
 ## PI-MODEL-087: An agent uses its next model while its model's quota is spent
 
@@ -280,13 +284,13 @@ At the start of each conversation context, the Anthropic Subscription and API-ke
 
 Reminders stay in model history but hidden from the transcript. They survive resume and forks, reset with the active context, and stay across a provider switch. On a Claude login the engine also gives the model the account's email address, which Flywheel does not record and the API-key provider never sends. A shared Claude engine also gives each agent the engine's identity line, agent instructions, environment, and resume lines, which Flywheel records hidden in that agent's history. On Windows with Git for Windows, the engine names the shell bash, but Flywheel's shell tool description, which says PowerShell, is the authority.
 
-## PI-MODEL-028: A workflow file can set each agent's model
+## PI-MODEL-028: A workflow file can set each agent's default model
 
-A workflow file can fix the model, the effort, or both for each of its agents. The run keeps only those fixed fields. Fields that the file does not fix follow the current settings of the run's auth profile, also after Resume. Model availability or an unsupported effort never refuses a launch, and a fixed effort stays in force when its model is unreachable.
+A workflow file or its launch can set the model, the effort, or both as an agent's default for the run. Fields that neither sets follow the current settings of the run's auth profile, also after Resume. Model availability or an unsupported effort never refuses a launch, and a default effort stays in force when its model is unreachable.
 
 ## PI-MODEL-040: A workflow agent's own settings come first when its model resolves
 
-Each request from a workflow agent resolves its model and effort from its session's settings and the current settings of the run's auth profile. The narrowest saved session setting wins as a whole, then the profile's persona or Workflow Agent setting, then the role's coded preferences and tier. A setting that names only an effort keeps the default model. The chat that launches a workflow never chooses an agent's model.
+Each request from a workflow agent resolves its model and effort from its session's settings and the current settings of the run's auth profile. The narrowest setting that a person saved, for the agent or its workflow, wins as a whole. Then come the workflow's default for that agent, the profile's persona or Workflow Agent setting, then the role's coded preferences and tier. A setting that names only an effort keeps the default model. The chat that launches a workflow never chooses an agent's model.
 
 ## PI-MODEL-041: Briefs have no model defaults
 
@@ -294,11 +298,11 @@ The default model picker does not list briefs. A defaults save to a brief is ref
 
 ## PI-MODEL-042: A model change in a workflow reaches only the sessions that inherit it
 
-An edit or a choice of inheritance in an agent's view changes only that agent's session, and only the fields that the workflow file did not fix. A workflow-wide change reaches only unfixed fields, in sessions that still inherit the workflow's choice. Resume and recovery keep an agent's own choice, and a fresh retry or round uses the workflow's current choice. Resetting the workflow's choice keeps the fixed fields and does not remove an agent's own override.
+A person can always change any agent's model and effort, also when the workflow file set them. An edit or a choice of inheritance in an agent's view changes only that agent's session. A workflow-wide change reaches sessions that still inherit the workflow's choice. Resume and recovery keep an agent's own choice, and a fresh retry or round uses the workflow's current choice. Resetting an agent's choice returns it to the workflow's default.
 
 ## PI-MODEL-043: Workflow surfaces show each agent's effective model
 
-The workflow card, the workflow view, and each agent view show each agent's current effective model and effort. An edit in an agent view updates that agent's card row at once. The model picker marks the fields that the workflow file fixed. A launch reports each agent's current selection, or that no model is reachable or that access is still being checked.
+The workflow card, the workflow view, and each agent view show each agent's current effective model and effort. An edit in an agent view updates that agent's card row at once. A launch reports each agent's current selection, or that no model is reachable or that access is still being checked.
 
 ## PI-MODEL-029: An agent can list the models its session can use
 
@@ -351,3 +355,7 @@ When no role preference of an agent can serve until a stated time, such as a usa
 ## PI-MODEL-063: Capacity wait status and end
 
 While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
+
+## PI-MODEL-088: A usage reading corrects a spent account's reset time
+
+The time until which Flywheel passes over a spent account only spares requests while nothing newer is known. Every usage reading checks it: the reading at startup and each refresh in Usage. When a reading taken after the account was marked spent shows capacity in every window, the next request can use that account at once.

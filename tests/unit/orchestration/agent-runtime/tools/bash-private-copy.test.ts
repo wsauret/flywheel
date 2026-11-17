@@ -12,6 +12,7 @@ import { readRepositoryRefs, readReftableStack } from "../../../../../src/orches
 import { observeFileState, sameObservedState } from "../../../../../src/orchestration/file-edits/file-state.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { runPrivateCopyJob } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
+import type { PrivateCopyPool, ReusableCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 
 const createDirectory = temporaryDirectories();
 
@@ -56,7 +57,7 @@ describe("private project copy", () => {
       ["new.txt", undefined, "6e65770a"],
       ["checkpoint.md", "6265666f72650a", "6265666f72650a61667465720a"],
     ]);
-    expect(await detectCopyChanges(adopted.copy)).toEqual({ changes: [], unsupported: [], removedDirectories: [] });
+    expect(await detectCopyChanges(adopted.copy)).toEqual({ changes: [], unsupported: [], removedDirectories: [], listings: expect.any(Map) });
     fs.unlinkSync(path.join(home, "scratch-source"));
     expect(await runPrivateCopyJob({ kind: "session", home, projectRoot: root })).toEqual(observed);
     fs.rmSync(path.join(home, "session-before"), { recursive: true });
@@ -308,6 +309,29 @@ describe("private project copy", () => {
       path.join("nested", "adjacent.txt"),
     ]);
     expect(changes.unsupported.map(change => change.path)).toEqual(caseInsensitive ? [path.join("nested", ".GIT")] : []);
+  });
+
+  it("copies a file that the real tree changes between commands fresh at the next take of the same copy", async () => {
+    const root = fs.realpathSync(createDirectory("bash-private-copy-real-drift-"));
+    fs.mkdirSync(path.join(root, "src"));
+    fs.writeFileSync(path.join(root, "src", "a.ts"), "one\n");
+    fs.writeFileSync(path.join(root, "src", "b.ts"), "bee\n");
+    const first = await copyOf(root);
+    const { listings } = await detectCopyChanges(first, first.reuse.state.base.listings);
+    fs.writeFileSync(path.join(root, "src", "a.ts"), "two\n");
+    fs.writeFileSync(path.join(root, "src", "c.ts"), "sea\n");
+    const { state } = first.reuse;
+    const idle: ReusableCopy[] = [{ ...first.reuse, state: { ...state, tree: { ...state.tree, listings } } }];
+    const pool: PrivateCopyPool = { checkout: () => idle.pop(), launchStamp: () => undefined, release: () => "slot", close: () => undefined };
+
+    const second = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "two"), runGit: notGit, guard: "none", pool });
+
+    expect(second.home).toBe(first.home);
+    for (const tree of [second.copyRoot, second.baseRoot]) {
+      expect(["a.ts", "b.ts", "c.ts"].map(name => fs.readFileSync(path.join(tree, "src", name), "utf8"))).toEqual(["two\n", "bee\n", "sea\n"]);
+    }
+    expect(sameObservedState(observeFileState(path.join(root, "src", "a.ts")), second.files.get(path.join("src", "a.ts"))!.real)).toBe(true);
+    expect(await detectCopyChanges(second, second.reuse.state.base.listings)).toMatchObject({ changes: [], unsupported: [], removedDirectories: [] });
   });
 
   it("records the copy in its home when it is taken, and the record reads back as the copy its landing reads", async () => {

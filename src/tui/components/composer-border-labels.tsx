@@ -139,6 +139,9 @@ function promptTopRightLabel(theme: TuiTheme, layout: ComposerBorderLayout) {
   return { chunks: joined, controls }
 }
 
+/** The clickable bottom-right hints, by the label each one shows. */
+const hintLabelActions = new Map<string, ComposerBorderControl["action"]>([["new", "new"], ["close tab", "close"], ["switch", "switch"], ["resume", "resume"]])
+
 function promptHintsDisplay(theme: TuiTheme, layout: ComposerBorderLayout) {
   if (layout.hints.length === 0) return { chunks: [], controls: [] }
   const chunks: TextChunk[] = [stFg(theme.border)(" ")]
@@ -153,17 +156,7 @@ function promptHintsDisplay(theme: TuiTheme, layout: ComposerBorderLayout) {
     }
     const text = keyHintPlainText([hint])
     const hintChunks = [stFg(theme.textMuted)(text)]
-    const action = hint === layout.sessionsClickHint
-      ? "sessions"
-      : hint.label === "new"
-        ? "new"
-        : hint.label === "close tab"
-          ? "close"
-          : hint.label === "switch"
-            ? "switch"
-            : hint.label === "resume"
-              ? "resume"
-              : undefined
+    const action = hint === layout.sessionsClickHint ? "sessions" : hintLabelActions.get(hint.label)
     if (action) controls.push({ action, label: "bottomRight", offset, chunks: hintChunks })
     chunks.push(...hintChunks)
     offset += chunksLength(hintChunks)

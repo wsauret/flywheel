@@ -20,15 +20,13 @@ const UNKNOWN_ID_CANDIDATES = 20;
  *  the package containment checks. */
 const RESOURCE_WINDOW_BYTES = 64_000;
 
-const BASE_DESCRIPTION = `Read installed skill packages. A skill is an authored package of instructions, plus optional files, for one kind of work. The complete catalog of installed skills sits in your system prompt as \`id: trigger\` rows.
+const BASE_DESCRIPTION = `Read an installed skill: instructions, plus optional files, for one kind of work.
 
-- action:"load": return one skill's instructions verbatim, with its reach, source, write ownership, version, and content and package identities.
-- action:"resource": return one file that the loaded skill declares, one ${RESOURCE_WINDOW_BYTES}-byte window at a time.
-- action:"child-run": execute exactly one granted child package script with JSON input and output. Only an agent whose work grants a child skill can run it; any other call is refused.
+- action:"load": return the skill's instructions. Loading does not run the skill; you follow its instructions yourself.
+- action:"resource": return one file that the loaded skill declares, one window at a time.
+- action:"child-run": run one script of a child skill that your work grants, with JSON input and output.`;
 
-Load and resource are read-only. Loading a skill does not activate it; you carry out its instructions yourself in this conversation.`;
-
-const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work in front of you, call skill with action:"load" first and follow the loaded instructions, because the skill defines how that work is done here. A skill whose context already appears in this conversation (its `# Skill: <id>` block) needs no repeat load to follow it; load it again only when a tool refusal asks for that load. Read a file the instructions name with action:"resource".';
+const SCAN_THEN_LOAD_GUIDANCE = 'Scan the skill triggers before you start work and again whenever the work changes mode. A trigger is a pointer, never enough to act on: when one matches the work, load the skill with action:"load" first and follow it, because it defines how that work is done here. A skill whose `# Skill: <id>` block is already in this conversation needs no load, unless a tool refusal asks for one.';
 
 const INPUT_SCHEMA = {
   type: "object",
@@ -36,24 +34,23 @@ const INPUT_SCHEMA = {
     action: {
       type: "string",
       enum: ["load", "resource", "child-run"],
-      description: "load: return instructions. resource: return a declared file. child-run: execute a granted child package script with structured input.",
     },
     skill_id: {
       type: "string",
-      description: "Skill package id, exactly as advertised in the catalog. Required for every action.",
+      description: "Skill id, exactly as the catalog lists it.",
     },
     path: {
       type: "string",
-      description: "Package-relative resource path, exactly as listed by load. Required for resource.",
+      description: "Resource path, exactly as load lists it. Required for resource.",
     },
     offset: {
       type: "number",
-      description: "0-based byte offset for action:resource. Default 0. A resource larger than one window reports the offset to call next.",
+      description: "Byte offset for resource. Default 0.",
     },
-    script: { type: "string", description: "Declared executable resource path. Required for child-run." },
-    input: { description: "JSON-compatible structured input passed to the child script. Required for child-run." },
+    script: { type: "string", description: "Granted script path. Required for child-run." },
+    input: { description: "JSON input for the script. Required for child-run." },
   },
-  required: ["action"],
+  required: ["action", "skill_id"],
 } as const;
 
 interface StringListsByName {
@@ -143,7 +140,7 @@ export function createSkillTool(deps: SkillToolDeps): RuntimeTool {
 function buildPromptGuidelines(catalog: readonly SkillDefinition[]): readonly string[] {
   const lines = catalog.map((skill) => `- ${skill.id}: ${skill.trigger}`);
   return [
-    `Installed skills, trigger descriptions only:\n${lines.join("\n")}`,
+    `Installed skills:\n${lines.join("\n")}`,
     SCAN_THEN_LOAD_GUIDANCE,
   ];
 }

@@ -51,17 +51,12 @@ function stored(fact: SessionRuntimeFact, position: number): StoredFact {
 
 function budgetStore(applied: StoredFact[]): SessionBudgetStore {
   return {
-    recordRuntimeEvent: async () => {},
     applyStoredFact: async (event) => { applied.push(event) },
-    getTotalCost: async () => 0,
     recordInvocation: async () => {},
     getInvocationsUsed: async () => 0,
     getTokensUsed: async () => 0,
-    getOutputTokensUsed: async () => 0,
     metrics: async () => ({ tokens: 0, cost: 0, billedCost: 0, priceUnavailable: false, contextPercent: 0, contextPromptTokens: 0 }),
-    recordContextUtilization: async () => {},
     getContextUtilization: async () => ({ promptTokens: 0, contextWindow: 0, percent: 0 }),
-    isExhausted: async () => false,
     dispose() {},
     recordProcessStarted: async () => {},
   }

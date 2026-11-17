@@ -8,7 +8,6 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { prepareWorkflowLaunch, WorkflowInputRejectedError } from "../../../../src/orchestration/workflow-host/publish.js"
 import { INPUT_GROUP, inputBranch, inputMapWorkflow, itemList, items } from "./_map-fixtures.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { cleanupProjectRoots, composeModules, createCapabilities, createFixtureLaunchPort, createMockSessionStore, fixtureSource, FULL_AVAILABILITY, launchingController, makeWorkflowDeps, noConversationRecall, until } from "../../orchestration/workflow-host/_workflow-controller-fixtures.js"
@@ -22,6 +21,7 @@ import { createSessionAuthAdmission } from "../../../../src/orchestration/sessio
 import { createMockWorkflowHosts } from "../../orchestration/workflow-host/_workflow-host-fixtures.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const roots: string[] = []
 
@@ -233,7 +233,7 @@ describe("workflow VM launch atomicity", () => {
     const deps = makeWorkflowDeps()
     const captured = deps.definitions.captureRevision()
     // A contract whose fields are all optional admits a launch without input.
-    const optional: WorkflowDefinition = { ...inputMapWorkflow, id: "input-optional", input: { fields: { items: { ...itemList(3), optional: true } } } }
+    const optional = loadedWorkflow({ ...inputMapWorkflow, id: "input-optional", input: { fields: { items: { ...itemList(3), optional: true } } } }, { id: "input-optional" })
     const definitionRevision = captured
     const launch = (workflowDefinitionId: string, input: unknown) => prepareWorkflowLaunch({
       workflow: workflowDefinitionId === optional.id ? optional : workflowDefinitionId === inputMapWorkflow.id ? inputMapWorkflow : workflowIn(captured, workflowDefinitionId), description: "input launch", deps, authProfileId: "default", projectRoot: root, definitionRevision,

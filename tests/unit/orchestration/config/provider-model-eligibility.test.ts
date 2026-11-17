@@ -7,9 +7,13 @@ import { authProviders } from "../../../helpers/auth-context.js"
 import {
   providerModelEligibilityDecision,
   providerModelsCanServeRequest,
-  workerProviderModelEligibilityFromState,
+  type ProviderModelEligibilityDecisionInput,
   type ProviderModelEnabledCandidate,
 } from "../../../../src/orchestration/config/provider-model-eligibility.js"
+
+/** The exact-candidate admission of one decision, for cases that read no picker evidence or revision. */
+const workerEligibility = (input: Omit<ProviderModelEligibilityDecisionInput, "profileId" | "revision"> & { readonly profileId?: string }) =>
+  providerModelEligibilityDecision({ profileId: "default", revision: 1, ...input }).worker
 
 const standard = (wireModelId: string, metadata: CatalogCanonicalRow["offerings"][number]["metadata"] = null) =>
   [Object.freeze({ wireModelId, metadata, dataUse: "standard" as const })]
@@ -27,7 +31,7 @@ describe("worker provider model eligibility", () => {
   test("prefers a standard offering within each exact candidate", () => {
     const first: AccessProviderCandidate = { kind: "subscription", providerId: "subscription", instanceId: "first", spendMode: "included" }
     const second: AccessProviderCandidate = { kind: "singleton", providerId: "api", spendMode: "direct_api" }
-    const eligibility = workerProviderModelEligibilityFromState({
+    const eligibility = workerEligibility({
       profileId: "work",
       catalogs: new Map([
         ["subscription", { effective: new Set(["model"]), enabled: new Set(["model"]) }],
@@ -39,20 +43,20 @@ describe("worker provider model eligibility", () => {
       ]),
     })
 
-    expect(eligibility.candidateOffering?.(first, "model", true)).toEqual({
+    expect(eligibility.candidateOfferings(first, "model", true)[0]).toEqual({
       candidate: first,
       wireModelId: "model-standard",
       dataUse: "standard",
       catalogMetadata: { source: "first-standard" },
       catalogProvenance: "live",
     })
-    expect(eligibility.candidateOffering?.(second, "model", true)?.wireModelId).toBe("api-standard")
+    expect(eligibility.candidateOfferings(second, "model", true)[0]?.wireModelId).toBe("api-standard")
   })
 
   test("admits contributor-only offerings only when training routes are allowed", () => {
     const subscription: AccessProviderCandidate = { kind: "subscription", providerId: "subscription", instanceId: "first", spendMode: "included" }
     const api: AccessProviderCandidate = { kind: "singleton", providerId: "api", spendMode: "direct_api" }
-    const eligibility = workerProviderModelEligibilityFromState({
+    const eligibility = workerEligibility({
       profileId: "work",
       catalogs: new Map([
         ["subscription", { effective: new Set(["model"]), enabled: new Set(["model"]) }],
@@ -64,9 +68,9 @@ describe("worker provider model eligibility", () => {
       ]),
     })
 
-    expect(eligibility.candidateOffering?.(subscription, "model", false)).toBeUndefined()
-    expect(eligibility.candidateOffering?.(subscription, "model", true)?.wireModelId).toBe("subscription-contributor")
-    expect(eligibility.candidateOffering?.(api, "model", false)?.wireModelId).toBe("api-standard")
+    expect(eligibility.candidateOfferings(subscription, "model", false)[0]).toBeUndefined()
+    expect(eligibility.candidateOfferings(subscription, "model", true)[0]?.wireModelId).toBe("subscription-contributor")
+    expect(eligibility.candidateOfferings(api, "model", false)[0]?.wireModelId).toBe("api-standard")
   })
 
   test("keeps free routes out by default and prefers them before the paid sibling when enabled", () => {
@@ -75,20 +79,20 @@ describe("worker provider model eligibility", () => {
       { wireModelId: "vendor/model", metadata: null, dataUse: "standard" },
       { wireModelId: "vendor/model:free", metadata: null, dataUse: "standard", routeKind: "free" },
     ]
-    const decision = (preferFreeRoutes: boolean) => workerProviderModelEligibilityFromState({
+    const decision = (preferFreeRoutes: boolean) => workerEligibility({
       catalogs: new Map([["openrouter", { effective: new Set(["model"]), enabled: new Set(["model"]) }]]),
       enabledCandidates: new Map([[accessProviderAccountKey(openrouter), candidateState(openrouter, offerings, "models-dev-live", preferFreeRoutes)]]),
     })
 
-    expect(decision(false).candidateOfferings?.(openrouter, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model"])
-    expect(decision(true).candidateOfferings?.(openrouter, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model:free", "vendor/model"])
+    expect(decision(false).candidateOfferings(openrouter, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model"])
+    expect(decision(true).candidateOfferings(openrouter, "model", false).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model:free", "vendor/model"])
   })
 
   test("keeps contributor-only fallback independent from the free-route preference", () => {
     const openrouter: AccessProviderCandidate = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" }
     const pending: AccessProviderCandidate = { kind: "singleton", providerId: "pending", spendMode: "direct_api" }
     const contributor = { wireModelId: "vendor/model-contributor", metadata: null, dataUse: "contributor" as const }
-    const decision = (preferFreeRoutes: boolean) => workerProviderModelEligibilityFromState({
+    const decision = (preferFreeRoutes: boolean) => workerEligibility({
       catalogs: new Map([["openrouter", { effective: new Set(["model"]), enabled: new Set(["model"]) }]]),
       enabledCandidates: new Map([
         [accessProviderAccountKey(openrouter), candidateState(openrouter, [contributor], "models-dev-live", preferFreeRoutes)],
@@ -96,15 +100,15 @@ describe("worker provider model eligibility", () => {
       ]),
     })
 
-    expect(decision(false).candidateOfferings?.(openrouter, "model", true).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model-contributor"])
-    expect(decision(true).candidateOfferings?.(openrouter, "model", true).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model-contributor"])
-    expect(decision(true).candidateOfferings?.(openrouter, "model", false)).toEqual([])
-    expect(decision(false).accessPending?.(false)).toBe(true)
-    expect(decision(false).accessPending?.(true)).toBe(false)
+    expect(decision(false).candidateOfferings(openrouter, "model", true).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model-contributor"])
+    expect(decision(true).candidateOfferings(openrouter, "model", true).map(({ wireModelId }) => wireModelId)).toEqual(["vendor/model-contributor"])
+    expect(decision(true).candidateOfferings(openrouter, "model", false)).toEqual([])
+    expect(decision(false).accessPending(false)).toBe(true)
+    expect(decision(false).accessPending(true)).toBe(false)
   })
 
   test("builds a profile-bound and account-bound eligibility predicate", () => {
-    const eligibility = workerProviderModelEligibilityFromState({
+    const eligibility = workerEligibility({
       profileId: "work",
       catalogs: new Map([
         ["github_copilot", { effective: new Set(["gpt-a", "gpt-b"]), enabled: new Set(["gpt-a", "gpt-b"]) }],
@@ -129,8 +133,8 @@ describe("worker provider model eligibility", () => {
 
     expect(eligibility.profileId).toBe("work")
     expect(eligibility.modelUnavailableReason("github_copilot", "gpt-a")).toBeUndefined()
-    expect(eligibility.candidateModelUnavailableReason?.({ kind: "subscription", providerId: "github_copilot", instanceId: "account-a", spendMode: "included" }, "gpt-a")).toBeUndefined()
-    expect(eligibility.candidateModelUnavailableReason?.({ kind: "subscription", providerId: "github_copilot", instanceId: "account-b", spendMode: "included" }, "gpt-a")).toContain("cannot serve")
+    expect(eligibility.candidateModelUnavailableReason({ kind: "subscription", providerId: "github_copilot", instanceId: "account-a", spendMode: "included" }, "gpt-a")).toBeUndefined()
+    expect(eligibility.candidateModelUnavailableReason({ kind: "subscription", providerId: "github_copilot", instanceId: "account-b", spendMode: "included" }, "gpt-a")).toContain("cannot serve")
   })
 
   test("refuses an idle free-plan account and keeps its paid sibling serving (PI-MODEL-038)", () => {
@@ -141,10 +145,10 @@ describe("worker provider model eligibility", () => {
       [accessProviderAccountKey(paid), candidateState(paid, standard("model"), "models-dev-live")],
       [accessProviderAccountKey(free), idle],
     ])
-    const eligibility = workerProviderModelEligibilityFromState({ profileId: "work", catalogs: new Map([["chatgpt", { effective: new Set(["model"]), enabled: new Set(["model"]) }]]), enabledCandidates })
+    const eligibility = workerEligibility({ profileId: "work", catalogs: new Map([["chatgpt", { effective: new Set(["model"]), enabled: new Set(["model"]) }]]), enabledCandidates })
 
-    expect(eligibility.candidateModelUnavailableReason?.(paid, "model")).toBeUndefined()
-    expect(eligibility.candidateModelUnavailableReason?.(free, "model")).toContain("only paid accounts rotate")
+    expect(eligibility.candidateModelUnavailableReason(paid, "model")).toBeUndefined()
+    expect(eligibility.candidateModelUnavailableReason(free, "model")).toContain("only paid accounts rotate")
     expect(providerModelsCanServeRequest([idle], false)).toBe(false)
   })
 
@@ -177,8 +181,8 @@ describe("worker provider model eligibility", () => {
     expect(decision.revision).toBe(7)
     expect(decision.picker.get("gpt-live")).toEqual(expect.objectContaining({ explicitlyEnabled: true, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }))
     expect(decision.picker.has("gpt-lkg")).toBe(false)
-    expect(decision.worker.candidateModelUnavailableReason?.({ kind: "subscription", providerId: "github_copilot", instanceId: "removed", spendMode: "included" }, "gpt-lkg")).toContain("current connection")
-    expect(decision.worker.candidateOffering?.({ kind: "subscription", providerId: "github_copilot", instanceId: "current", spendMode: "included" }, "gpt-live", false)?.wireModelId).toBe("wire-gpt-live")
+    expect(decision.worker.candidateModelUnavailableReason({ kind: "subscription", providerId: "github_copilot", instanceId: "removed", spendMode: "included" }, "gpt-lkg")).toContain("current connection")
+    expect(decision.worker.candidateOfferings({ kind: "subscription", providerId: "github_copilot", instanceId: "current", spendMode: "included" }, "gpt-live", false)[0]?.wireModelId).toBe("wire-gpt-live")
     expect(decision.enabledCandidates.get(accessProviderAccountKey({ kind: "subscription", providerId: "github_copilot", instanceId: "removed", spendMode: "included" }))?.catalog).toEqual({ kind: "available", provenance: "models-dev-archive", liveOutcome: "discovery-failed" })
   })
 
@@ -201,8 +205,8 @@ describe("worker provider model eligibility", () => {
     expect(decision.picker.get("muse-1.3")).toEqual(expect.objectContaining({
       explicitlyEnabled: true,
     }))
-    expect(decision.worker.candidateOffering?.(candidate, "muse-1.3", false)).toBeUndefined()
-    expect(decision.worker.candidateOffering?.(candidate, "muse-1.3", true)?.wireModelId).toBe("muse-1.3-contributor")
+    expect(decision.worker.candidateOfferings(candidate, "muse-1.3", false)[0]).toBeUndefined()
+    expect(decision.worker.candidateOfferings(candidate, "muse-1.3", true)[0]?.wireModelId).toBe("muse-1.3-contributor")
   })
 
   test("consolidates Fable identity while retaining each provider wire id", () => {
@@ -224,8 +228,8 @@ describe("worker provider model eligibility", () => {
     })
 
     expect([...decision.picker.keys()]).toEqual([canonical])
-    expect(decision.worker.candidateOffering?.(anthropic, canonical, false)?.wireModelId).toBe("claude-fable-5-1")
-    expect(decision.worker.candidateOffering?.(openrouter, canonical, false)?.wireModelId).toBe("anthropic/claude-fable-5.1")
+    expect(decision.worker.candidateOfferings(anthropic, canonical, false)[0]?.wireModelId).toBe("claude-fable-5-1")
+    expect(decision.worker.candidateOfferings(openrouter, canonical, false)[0]?.wireModelId).toBe("anthropic/claude-fable-5.1")
   })
 
   test("isolates exact-account decisions and derives provider availability as their union", () => {
@@ -241,8 +245,8 @@ describe("worker provider model eligibility", () => {
       ]),
     })
 
-    expect(decision.worker.candidateModelUnavailableReason?.(accountA, "gpt-x")).toBeUndefined()
-    expect(decision.worker.candidateModelUnavailableReason?.(accountB, "gpt-x")).toContain("cannot serve")
+    expect(decision.worker.candidateModelUnavailableReason(accountA, "gpt-x")).toBeUndefined()
+    expect(decision.worker.candidateModelUnavailableReason(accountB, "gpt-x")).toContain("cannot serve")
     expect(decision.worker.modelUnavailableReason("github_copilot", "gpt-x")).toBeUndefined()
     expect(decision.availability.get("github_copilot")?.has("gpt-x")).toBe(true)
     expect(decision.picker.get("gpt-x")).toEqual(expect.objectContaining({ explicitlyEnabled: true, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }))
@@ -269,8 +273,8 @@ describe("worker provider model eligibility", () => {
       ]),
     })
     const definitions: AccessProviderDefinition[] = [
-      { id: "provider-a", displayName: "A", shortName: "A", rank: 1, supportedFamilies: ["openai"], defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "metered", spendMode: "direct_api" },
-      { id: "provider-b", displayName: "B", shortName: "B", rank: 2, supportedFamilies: ["openai"], defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "subscription" },
+      { id: "provider-a", displayName: "A", shortName: "A", rank: 1, defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "metered", spendMode: "direct_api" },
+      { id: "provider-b", displayName: "B", shortName: "B", rank: 2, defaultChatTransport: "openai-responses", configHints: [], catalogId: undefined, auth: { kind: "api_key", statusRank: 1 }, cli: { name: "test" }, staticModelUnavailableReason: () => undefined, billing: "subscription" },
     ]
     providerBRows.set(model, Object.freeze({ modelId: model, offerings: standard("wire-b", Object.freeze({ price: 99 })) }))
     const auth: AuthContext = {
@@ -293,7 +297,7 @@ describe("worker provider model eligibility", () => {
       expect.objectContaining({ candidate: providerB, wireModelId: "wire-b", catalogProvenance: "last-known-good", catalogMetadata: rowB.offerings[0]?.metadata, eligibilityProfileId: "profile", eligibilityRevision: 11 }),
       expect.objectContaining({ candidate: providerA, wireModelId: "wire-a", catalogProvenance: "live", catalogMetadata: rowA.offerings[0]?.metadata, eligibilityProfileId: "profile", eligibilityRevision: 11 }),
     ])
-    expect(decision.worker.candidateOffering?.(sibling, model, false)).toBeUndefined()
+    expect(decision.worker.candidateOfferings(sibling, model, false)[0]).toBeUndefined()
     expect(plan.candidateAttributions[0]?.catalogMetadata).toBe(rowB.offerings[0]?.metadata)
     expect(Object.isFrozen(plan.candidateAttributions[0])).toBe(true)
   })
@@ -318,8 +322,8 @@ describe("worker provider model eligibility", () => {
     expect(decision.enabledCandidates).toHaveLength(2)
     expect(decision.picker.get("model-left")).toEqual(expect.objectContaining({ explicitlyEnabled: true, catalog: available }))
     expect(decision.picker.get("model-right")).toEqual(expect.objectContaining({ explicitlyEnabled: true, catalog: available }))
-    expect(decision.worker.candidateModelUnavailableReason?.(left, "model-left")).toBeUndefined()
-    expect(decision.worker.candidateModelUnavailableReason?.(right, "model-right")).toBeUndefined()
-    expect(decision.worker.candidateModelUnavailableReason?.(left, "model-right")).toContain("cannot serve")
+    expect(decision.worker.candidateModelUnavailableReason(left, "model-left")).toBeUndefined()
+    expect(decision.worker.candidateModelUnavailableReason(right, "model-right")).toBeUndefined()
+    expect(decision.worker.candidateModelUnavailableReason(left, "model-right")).toContain("cannot serve")
   })
 })

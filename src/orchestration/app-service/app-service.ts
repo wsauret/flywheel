@@ -135,20 +135,20 @@ export interface FlywheelAppServiceDeps {
    *  definition resolution, so no client ever renders a package body. */
   readonly commandCatalog: CommandCatalogProjection
   readonly historyProjection: SessionDetailProjection
-  /** The project's files for a person to mention; absent in a composition
-   *  without a project tree (a test double), which answers none. */
-  readonly projectFiles?: ProjectFilesService
-  readonly modelAssignments?: AdmittedModelAssignmentService
-  readonly providerModels?: ProviderModelPreferenceService
+  /** The project's files for a person to mention. */
+  readonly projectFiles: ProjectFilesService
+  readonly modelAssignments: AdmittedModelAssignmentService
+  readonly providerModels: ProviderModelPreferenceService
   /** Read-only optimization for durable queries. This lane returns unpositioned
    * domain data; the app-service bus remains the publication authority. */
   readonly backgroundLane: RuntimeBackgroundLane
 
-  readonly authProfileSelection?: Pick<RuntimeAuthProfileSelectionService, "mutate" | "refresh" | "previewDelete"> & { settle(profileId: string, operationId: string): Promise<void> }
-  /** Present when this host can connect providers without a terminal. */
-  readonly authLogin?: AuthLoginService
-  readonly scheduleCatalogRefresh?: (scope: RuntimeModelCatalogRefreshScope) => Promise<void>
-  readonly subscriptionSpendConsent?: { mutate(mutation: SubscriptionSpendConsentMutation): Promise<SubscriptionSpendConsentMutationResult> }
+  readonly authProfileSelection: Pick<RuntimeAuthProfileSelectionService, "mutate" | "refresh" | "previewDelete"> & { settle(profileId: string, operationId: string): Promise<void> }
+  /** Every client's provider login, disconnect, and rename, in the runtime
+   *  that owns the credentials. */
+  readonly authLogin: AuthLoginService
+  readonly scheduleCatalogRefresh: (scope: RuntimeModelCatalogRefreshScope) => Promise<void>
+  readonly subscriptionSpendConsent: { mutate(mutation: SubscriptionSpendConsentMutation): Promise<SubscriptionSpendConsentMutationResult> }
   /** The runtime's one capability publication and mutation owner. Required: the
    *  client holds no selection of its own, so a runtime without this projection
    *  could not answer a Settings row. */
@@ -160,12 +160,12 @@ export interface FlywheelAppServiceDeps {
   /** Executes built-in commands in this composition, the one that published their descriptors. */
   readonly commandInvoke: CommandInvokeService
   readonly runtimeSupervisor: RuntimeSupervisor
-  /** Optional tool preparation, shared with initial background warming and
-   * joined by the mutation shutdown barrier. */
-  readonly warmTools?: () => Promise<void>
-  /** Optional machine-owned reference files, published by the initial warm
-   * after runtime readiness and joined by the mutation shutdown barrier. */
-  readonly publishReferences?: () => Promise<void>
+  /** Tool preparation, shared with initial background warming and joined by
+   *  the mutation shutdown barrier. */
+  readonly warmTools: () => Promise<void>
+  /** Machine-owned reference files, published by the initial warm after
+   *  runtime readiness and joined by the mutation shutdown barrier. */
+  readonly publishReferences: () => Promise<void>
   /** The hoisted patch transport. The session store and runtime supervisor
    *  publish output through the same bus, so the app-service closes over it for
    *  snapshot/subscribe/publish rather than minting a second sequencer. */
@@ -244,7 +244,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       case "outputWindow": return { snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: outputCursor(request.sessionId) }), ...await historyProjection.outputWindow(request.sessionId, request.request.range) }
       case "outputRange": return historyProjection.outputRange(request.sessionId, request.request)
       case "transcriptSearch": return deps.backgroundLane.transcriptSearch(request.request)
-      case "projectFiles": return deps.projectFiles?.search(request.request) ?? { entries: [], total: 0 }
+      case "projectFiles": return deps.projectFiles.search(request.request)
       case "outputGroupChildren": return historyProjection.outputGroupChildren(request.sessionId, request.request)
       case "outputBlockBody": return historyProjection.outputBlockBody(request.sessionId, request.request)
       case "statusSnapshot": return sessionViews(request.sessionIds, "status", (sessionId) => statusProjection.snapshot(sessionId))
@@ -263,10 +263,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
         const snapshotPosition = bus.snapshotPosition({ kind: "cursor", cursor: authStatusCursor(request.scope) })
         return { auth: await authStatusProjection.snapshot(request.scope), snapshotPosition }
       }
-      case "authProfileDeletionPreview": {
-        if (!deps.authProfileSelection) throw new Error("Auth profile selection is unavailable")
-        return deps.authProfileSelection.previewDelete(request.id)
-      }
+      case "authProfileDeletionPreview": return deps.authProfileSelection.previewDelete(request.id)
       // Updates are account-wide work, so the account service answers them and
       // never forwards them to a project executor (ARCH-PROTOCOL-043).
       case "updateSnapshot": throw new Error(ACCOUNT_UPDATES_ONLY)
@@ -281,16 +278,16 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
           const status = await statusProjection.snapshot(request.sessionId)
           if (status !== null) return { view: { ...localResult.view, status } }
         }
-        return localResult.view || await deps.projection.liveCatalogRow(request.sessionId) ? localResult : deps.backgroundLane ? deps.backgroundLane.sessionDetail(request) : localResult
+        return localResult.view || await deps.projection.liveCatalogRow(request.sessionId) ? localResult : deps.backgroundLane.sessionDetail(request)
       }
       case "recallQueuedMessage": return deps.runtimeSupervisor.recallQueuedMessage(request.sessionId)
       case "commandCatalog": return { ...deps.commandCatalog.snapshot(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: commandCatalogCursor() }) }
-      case "modelAssignments": return requireModelAssignments(deps).loadAssignments(request)
-      case "sessionModelPlan": return requireModelAssignments(deps).loadSessionModelPlan(request)
-      case "modelOptions": return requireModelAssignments(deps).listModelOptions(request)
-      case "effortOptions": return requireModelAssignments(deps).listEffortOptions(request)
-      case "modelRoles": return requireModelAssignments(deps).modelRoles()
-      case "provider_models.query": return requireProviderModels(deps).query(request.profileId, request.target)
+      case "modelAssignments": return deps.modelAssignments.loadAssignments(request)
+      case "sessionModelPlan": return deps.modelAssignments.loadSessionModelPlan(request)
+      case "modelOptions": return deps.modelAssignments.listModelOptions(request)
+      case "effortOptions": return deps.modelAssignments.listEffortOptions(request)
+      case "modelRoles": return deps.modelAssignments.modelRoles()
+      case "provider_models.query": return deps.providerModels.query(request.profileId, request.target)
     }
   }
 
@@ -301,11 +298,11 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       backgroundWarm ??= admission.admit(async () => {
         ensureCatalogSubscription()
         deps.backgroundLane.start()
-        const results = await Promise.allSettled([deps.runtimeSupervisor.warmChatRunner(), deps.warmTools?.()])
+        const results = await Promise.allSettled([deps.runtimeSupervisor.warmChatRunner(), deps.warmTools()])
         const failures = results.flatMap((result) => result.status === "rejected" ? [result.reason] : [])
         if (failures.length === 1) throw failures[0]
         if (failures.length > 1) throw new AggregateError(failures, "Runtime warm failed")
-        await deps.publishReferences?.()
+        await deps.publishReferences()
       })?.catch((error: unknown) => {
         backgroundWarm = undefined
         throw error
@@ -313,19 +310,16 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       return backgroundWarm
     }
     if (mutation.type === "subscription_spend_consent.save") {
-      return admission.admit(async () => {
-        if (!deps.subscriptionSpendConsent) return { kind: "storage-failure" }
-        return deps.subscriptionSpendConsent.mutate(mutation)
-      }) ?? { kind: "contention" }
+      return admission.admit(() => deps.subscriptionSpendConsent.mutate(mutation)) ?? { kind: "contention" }
     }
     if (mutation.type === "command_usage.record") return admission.admit(async () => (deps.commandUsage.record(mutation.name) ? { ok: true } : { ok: false, error: `"/${mutation.name}" is not a slash command` })) ?? { ok: false, error: ADMISSION_CLOSED_ERROR }
-    if (mutation.type === "model.save_effort") return admission.admit(() => requireModelAssignments(deps).saveEffort(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "model.reset_assignments") return admission.admit(() => requireModelAssignments(deps).resetDefaults(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_model.set") return admission.admit(() => requireProviderModels(deps).set(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.deselect_all") return admission.admit(() => requireProviderModels(deps).deselectAll(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.recheck") return admission.admit(() => requireProviderModels(deps).recheck(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.set_auto_enable") return admission.admit(() => requireProviderModels(deps).setAutoEnableNewModels(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_free_routes.set") return admission.admit(() => requireProviderModels(deps).setFreeRoutes(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "model.save_effort") return admission.admit(() => deps.modelAssignments.saveEffort(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "model.reset_assignments") return admission.admit(() => deps.modelAssignments.resetDefaults(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "provider_model.set") return admission.admit(() => deps.providerModels.set(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "provider_models.deselect_all") return admission.admit(() => deps.providerModels.deselectAll(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "provider_models.recheck") return admission.admit(() => deps.providerModels.recheck(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "provider_models.set_auto_enable") return admission.admit(() => deps.providerModels.setAutoEnableNewModels(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
+    if (mutation.type === "provider_free_routes.set") return admission.admit(() => deps.providerModels.setFreeRoutes(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
     if (mutation.type === "session.changes.set_viewed") return admission.admit(async () => (await deps.sessionChanges()).setViewed(mutation)) ?? { status: "refused", message: "Runtime is closing" }
     if (mutation.type === "session.changes.undo") return admission.admit(() => dispatchMutation(mutation)) ?? { status: "refused", message: "Runtime is closing" }
     return admission.admit(() => dispatchMutation(mutation)) ?? moduleMutationRefusal(mutation, ADMISSION_CLOSED_ERROR) ?? { ok: false, error: ADMISSION_CLOSED_ERROR }
@@ -366,7 +360,6 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
           shutdownOwner("mutation-admission", () => admission.settled()),
           shutdownOwner("session-runners", () => deps.runtimeSupervisor.disposeAll()),
         ],
-        "flush-durable-state": [shutdownOwner("history-projection", () => historyProjection.dispose())],
         "drain-clients": [shutdownOwner("runtime-ui-bus", () => bus.drain())],
         "close-client-streams": [shutdownOwner("frontend-projection", async () => {
           deps.outputProjection.dispose()
@@ -438,16 +431,6 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
 
     return undefined
   }
-}
-
-function requireModelAssignments(deps: FlywheelAppServiceDeps): AdmittedModelAssignmentService {
-  if (!deps.modelAssignments) throw new Error("Model assignment service is unavailable")
-  return deps.modelAssignments
-}
-
-function requireProviderModels(deps: FlywheelAppServiceDeps): ProviderModelPreferenceService {
-  if (!deps.providerModels) throw new Error("Provider-model preference service is unavailable")
-  return deps.providerModels
 }
 
 

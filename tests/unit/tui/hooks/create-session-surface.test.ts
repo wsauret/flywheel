@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, setSystemTime } from "bun:test"
+import { describe, expect, it, jest, mock, setSystemTime } from "bun:test"
 import { createEffect, createRoot, createSignal } from "solid-js"
 import type { AttachedRuntimeClient, ChildSessionRow, RuntimeClient, FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { budgetCursor, type BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
@@ -434,6 +434,44 @@ describe("createSessionSurface", () => {
       expect(detailReleases.get(detailQuery)).toEqual(["child"])
       dispose()
     })
+  })
+
+  it("a terminal session surface whose detail read fails once shows the detail after the retry with no new lane", async () => {
+    jest.useFakeTimers()
+    const flush = async (): Promise<void> => { for (let turn = 0; turn < 10; turn += 1) await Promise.resolve() }
+    try {
+      await createRoot(async (dispose) => {
+        const view: RuntimeSessionDetailView = {
+          id: "chat", source: "durable", kind: "chat", conversationId: "conv", budget: null, row: catalogRow("chat", "Recovered"), status: {
+            activity: "absent", activityStartedAt: null, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, activeBackgroundCommands: [],
+            activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], waitingOnBackgroundWork: false, startedAt: 0, streamingStartedAt: null,
+            accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [],
+          },
+        }
+        let reads = 0
+        const detailQuery = runtimeQuery({ sessionDetail: () => {
+          reads += 1
+          if (reads === 1) throw new Error("detail read timed out")
+          return { view }
+        } })
+        const surface = createSessionSurface({
+          appService: { query: detailQuery },
+          transcriptCache: transcriptCache().cache,
+          statusCache: emptyCache, budgetCache: emptyCache, questionCache: emptyCache,
+          row: () => undefined, now: () => 0, hydrateToHead: async () => {}, onTranscriptFailure: () => {},
+        }, () => "chat")
+        await flush()
+        expect(reads).toBe(1)
+        expect(surface.loadResult()).toMatchObject({ id: "chat", loadError: "detail read timed out" })
+        // The longest first backoff; the fake lanes open no new lane.
+        jest.advanceTimersByTime(250)
+        await flush()
+        expect(reads).toBe(2)
+        expect(surface.loadResult()?.loadError).toBeUndefined()
+        expect(surface.detail()?.row.title).toBe("Recovered")
+        dispose()
+      })
+    } finally { jest.useRealTimers() }
   })
 
   it("reads a stopped workflow member from its ordinary detail and admits no Resume", async () => {

@@ -10,6 +10,8 @@ import { resolveToolPresentation } from "../../../../../../src/infra/tools/tool-
 import { createSkillManageTool, type SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { CapabilityAccess, RuntimeTool, ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
+import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
 import { capabilityAccessHolding, makeContext as makeToolContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
 import { publishSkillRevision } from "../../../../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
@@ -396,23 +398,24 @@ describe("skill_manage under capability policy", () => {
     return join(CWD, ".flywheel", "skills", "provider-quirks", "SKILL.md");
   }
 
-  function dispatch(capabilityAccess: CapabilityAccess): Promise<{ outcome: string; content: unknown }> {
+  /** Dispatches under a request admitted with `moduleIds` enabled, while the live selection is `capabilityAccess`. */
+  async function dispatch(moduleIds: readonly string[], capabilityAccess: CapabilityAccess): Promise<{ outcome: string; content: unknown }> {
     const tools = new Map<string, RuntimeTool>([["skill_manage", makeTool()]]);
-    const prepared = prepareToolCall({ id: "skill-manage-call", name: "skill_manage", input: SAVE }, tools);
+    const prepared = prepareToolCall({ id: "skill-manage-call", name: "skill_manage", input: SAVE }, tools, await requestAdmission(tools, composeRealmModuleSnapshot({ moduleIds })));
     return executePreparedTool(prepared, { ...makeContext(), capabilityAccess });
   }
 
-  it("refuses a stale call before the package is written", async () => {
-    const result = await dispatch(capabilityAccessHolding(["skills"]));
+  it("refuses a call whose request turned skills off before the package is written", async () => {
+    const result = await dispatch(["learning"], capabilityAccessHolding(["learning", "skills"]));
 
     expect(result.outcome).toBe("error");
-    expect(result.content).toContain("learning is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml");
+    expect(result.content).toContain("skills is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml");
     expect(existsSync(packageFile())).toBe(false);
     expect(recorded).toHaveLength(0);
   });
 
-  it("writes for an admitted review whose grant outlives the disable", async () => {
-    const result = await dispatch(capabilityAccessHolding([], testGrant("the self-improvement review", ["learning", "skills"])));
+  it("writes for an admitted review whose request outlives the disable", async () => {
+    const result = await dispatch(["learning", "skills"], capabilityAccessHolding([], testGrant("the self-improvement review", ["learning", "skills"])));
 
     expect(result.outcome).toBe("ok");
     expect(existsSync(packageFile())).toBe(true);

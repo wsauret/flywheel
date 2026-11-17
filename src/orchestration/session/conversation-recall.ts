@@ -112,7 +112,7 @@ function compareRecallEntries(left: RecallEntry, right: RecallEntry): number {
 }
 
 function isRecallable(entry: ConversationEntry): boolean {
-  if (entry.kind === "leaf" || entry.kind === "label" || entry.kind === "session_info") return false
+  if (entry.kind === "leaf" || entry.kind === "session_info") return false
   if (entry.kind === "message" && entry.displayOnly === true) return false
   return true
 }

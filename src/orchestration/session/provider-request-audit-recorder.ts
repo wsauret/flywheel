@@ -1,16 +1,15 @@
 import { DebugLog } from "../../infra/debug-log.js"
 import { parseProviderRequestAuditFact, PROVIDER_REQUEST_DIAGNOSTIC_TYPES, type ProviderRequestAuditFact } from "./provider-request-audit-facts.js"
 import { hashAgentPrompt, hashSystemPrompt, hashToolSurface } from "./provider-request-audit-hash.js"
-import {
-  digestProviderRequestContextApplications,
-  type ProviderRequestAuditRequestInput,
-  type ProviderRequestIdentity,
-  type ProviderRequestAuditResponseInput,
-  type ProviderRequestUsageInput,
-  type ProviderStreamSummary,
-  type ProviderStreamTelemetryCompletedInput,
-  type ProviderStreamTelemetryEventInput,
-  type ProviderStreamTelemetryStartedInput,
+import type {
+  ProviderRequestAuditRequestInput,
+  ProviderRequestIdentity,
+  ProviderRequestAuditResponseInput,
+  ProviderRequestUsageInput,
+  ProviderStreamSummary,
+  ProviderStreamTelemetryCompletedInput,
+  ProviderStreamTelemetryEventInput,
+  ProviderStreamTelemetryStartedInput,
 } from "./provider-request-audit-types.js"
 import type { SessionFactWriter } from "./session-fact-writer.js"
 import { durableOwnerId, type DurableOwner } from "../../infra/durable-owner.js"
@@ -25,13 +24,9 @@ export interface ProviderRequestAuditContext {
   observe?: (fact: ProviderRequestAuditFact) => void
 }
 
-// One transformer application can be active across contiguous provider
-// failover attempts. Replacing this marker bounds retention to one identity.
 export interface ConversationDedup {
   systemPromptHash?: string
   toolSurfaceHash?: string
-  contextApplicationIdentity?: string
-  contextApplicationDigest?: string
 }
 
 export interface ProviderRequestFacts {
@@ -51,10 +46,8 @@ function hasPresentationAudit(tool: ProviderRequestAuditRequestInput["tools"][nu
 }
 
 /** Builds the audit evidence facts for one provider request: the prompt, any
- *  first-seen tool surface or transformer manifest, and the model request.
- *  Pure construction so the live recorder and historical test fixtures share
- *  one shape. Throws when a context-application identity names a different
- *  transformer sequence than the dedup register recorded. */
+ *  first-seen tool surface, and the model request. Pure construction so the
+ *  live recorder and historical test fixtures share one shape. */
 export function buildProviderRequestFacts(
   input: ProviderRequestAuditRequestInput,
   dedup: ConversationDedup,
@@ -67,20 +60,8 @@ export function buildProviderRequestFacts(
     messages: input.messages,
     tools: input.tools,
   })
-  const contextApplicationSignature = input.contextApplication
-    ? digestProviderRequestContextApplications(input.contextApplication.applications)
-    : undefined
-  const recordedContextApplication = input.contextApplication?.identity === dedup.contextApplicationIdentity
-    ? dedup.contextApplicationDigest
-    : undefined
-  if (recordedContextApplication !== undefined && recordedContextApplication !== contextApplicationSignature) {
-    throw new Error(`Context application identity ${input.contextApplication?.identity} names a different transformer sequence`)
-  }
-
   const systemPromptChanged = dedup.systemPromptHash !== systemPromptHash
   const toolSurfaceChanged = dedup.toolSurfaceHash !== toolSurfaceHash
-  const contextApplicationChanged = input.contextApplication !== undefined
-    && recordedContextApplication === undefined
 
   const promptAssembled: ProviderRequestAuditFact = {
     type: "prompt.assembled",
@@ -107,7 +88,6 @@ export function buildProviderRequestFacts(
         ? { treeLeafEntryId: input.treeLeafEntryId }
         : {}),
       ...(input.parentToolUseId ? { parentToolUseId: input.parentToolUseId } : {}),
-      ...(input.contextApplication ? { contextApplicationId: input.contextApplication.identity } : {}),
       ...(input.staleMasking ? { staleMasking: input.staleMasking } : {}),
       ...(input.toolHistoryProjection ? { toolHistoryProjection: input.toolHistoryProjection } : {}),
       ...(input.historyLowering ? { historyLowering: input.historyLowering } : {}),
@@ -140,42 +120,6 @@ export function buildProviderRequestFacts(
       })
     }
   }
-  if (contextApplicationChanged && input.contextApplication) {
-    const recordedSequenceDigest = digestProviderRequestContextApplications(input.contextApplication.applications)
-    facts.push({
-      type: "context.application.recorded",
-      version: 2,
-      actor: "flywheel",
-      payload: {
-        requestId,
-        identity: input.identity,
-        turn: input.turn,
-        contextApplicationId: input.contextApplication.identity,
-        applicationCount: input.contextApplication.applications.length,
-        sequenceDigest: recordedSequenceDigest,
-      },
-    })
-    for (const application of input.contextApplication.applications) {
-      facts.push({
-        type: "context.transformer.applied",
-        version: 2,
-        actor: "flywheel",
-        payload: {
-          requestId,
-          identity: input.identity,
-          turn: input.turn,
-          contextApplicationId: input.contextApplication.identity,
-          applicationId: application.applicationId,
-          transformerId: application.transformerId,
-          seam: application.seam,
-          order: application.order,
-          outcome: application.outcome,
-          inputHash: application.inputHash,
-          outputHash: application.outputHash,
-        },
-      })
-    }
-  }
 
   const modelRequestedPayload = {
     requestId,
@@ -204,9 +148,6 @@ export function buildProviderRequestFacts(
   const dedupAdvance: ConversationDedup = {
     ...(systemPromptChanged ? { systemPromptHash } : {}),
     ...(toolSurfaceChanged ? { toolSurfaceHash } : {}),
-    ...(contextApplicationChanged && input.contextApplication && contextApplicationSignature !== undefined
-      ? { contextApplicationIdentity: input.contextApplication.identity, contextApplicationDigest: contextApplicationSignature }
-      : {}),
   }
 
   return { requestId, facts, dedupAdvance }

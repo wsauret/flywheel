@@ -1,8 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { createMemoryStore, initialFacts, recordProposal, sequentialWorkflow, testHost } from "./host-test-support.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 // A later step shows the file edits of an earlier attempt from every
 // conversation that the attempt's tool calls ran in. The host names them from
@@ -39,7 +38,7 @@ describe("workflow host attempt conversations", () => {
   })
 
   it("names the conversations of the attempts that a retry replaced, oldest first", async () => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...sequentialWorkflow,
       phases: sequentialWorkflow.phases.map((phase) => "phase" in phase && phase.phase === "work" ? { ...phase, retry: { max: 2, stuck: false } } : phase),
     })

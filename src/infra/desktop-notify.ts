@@ -2,10 +2,7 @@ import { redactSecrets } from "./redact-secrets.js"
 
 const MAX_BODY = 200
 
-/** Builds the terminal bytes without writing them. The production wrapper writes
- * to a real TTY, so byte-level escaping and injection invariants cannot be
- * observed through that I/O boundary. */
-export function buildOsc777(title: string, body: string, opts: { tmux: boolean }): string {
+function buildOsc777(title: string, body: string, opts: { tmux: boolean }): string {
   const osc777 = `\x1b]777;notify;${sanitizeField(title)};${sanitizeField(truncate(body))}\x07`
   return opts.tmux ? `\x1bPtmux;\x1b${osc777}\x1b\\` : osc777
 }

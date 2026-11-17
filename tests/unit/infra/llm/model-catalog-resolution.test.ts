@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
 import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import { groupedOfferingIndex, normalizeCatalogRows, normalizeDecodedCatalogRows, normalizeResolvedCatalogRows, recordUnresolvedModelRelationships, resolveModelCatalog, validateCanonicalRows, type CatalogDiscovery, type CatalogJsonValue, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import { groupedOfferingIndex, normalizeResolvedCatalogRows, recordUnresolvedModelRelationships, resolveModelCatalog, validateCanonicalRows, type CatalogDiscovery, type CatalogJsonValue, type CatalogSourceRow, type ModelCatalogContribution, type ResolvedModelCatalog } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { createModelListingClient, fetchCatalog } from "../../../../src/infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../../src/infra/llm/provider-model-info.js";
 import { canonicalTestRow, TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
@@ -16,6 +16,8 @@ const contribution: ModelCatalogContribution = {
   modelsDevCatalogIds: ["test"],
 };
 const row = (id: string) => ({ id });
+/** Rows after the test contribution's decoder, which drops a row it cannot read. */
+const decoded = (rows: readonly unknown[]): CatalogSourceRow[] => rows.flatMap((candidate) => canonicalTestRow(candidate) ?? []);
 const bundled = [row("bundled"), row("blocked-model"), row("wrong-family-model")];
 
 test("unresolved relationship diagnostics bound retained IDs", () => {
@@ -38,26 +40,27 @@ test("unresolved relationship diagnostics bound retained IDs", () => {
 });
 
 function resolve(live: CatalogDiscovery, fallback: readonly unknown[] | undefined = bundled): ResolvedModelCatalog {
-  const normalized = fallback === undefined ? undefined : normalizeCatalogRows(fallback, contribution);
+  const normalized = fallback === undefined ? undefined : normalizeResolvedCatalogRows(decoded(fallback), contribution.limits);
   return resolveModelCatalog({ authenticated: true, live, canonicalFallback: normalized?.kind === "valid" ? normalized.rows : undefined, contribution });
 }
 
 describe("model catalog resolution", () => {
   test("passes canonical-shaped raw rows through the exact provider decoder", () => {
     const decoderCalls: unknown[] = [];
-    const normalized = normalizeCatalogRows([{
-      modelId: "bypass",
-      wireModelId: "bypass",
-      metadata: null,
-    }], {
-      ...contribution,
-      canonicalize: (candidate) => {
-        decoderCalls.push(candidate);
-        return undefined;
+    const resolved = resolveModelCatalog({
+      authenticated: true,
+      live: { kind: "rows", rows: [{ modelId: "bypass", wireModelId: "bypass", metadata: null }] },
+      canonicalFallback: undefined,
+      contribution: {
+        ...contribution,
+        canonicalize: (candidate) => {
+          decoderCalls.push(candidate);
+          return undefined;
+        },
       },
     });
     expect(decoderCalls).toHaveLength(1);
-    expect(normalized).toEqual({ kind: "valid", rows: [] });
+    expect(resolved).toEqual({ kind: "unavailable", reason: "unusable" });
   });
 
   test("uses enriched first-party rows before eligible models.dev fallback", () => {
@@ -75,7 +78,7 @@ describe("model catalog resolution", () => {
   });
 
   test("valid live rows, fresh or saved, are the whole catalog: a models.dev row they omit never joins it", () => {
-    const fallback = normalizeCatalogRows([row("bundled"), row("older")], contribution);
+    const fallback = normalizeResolvedCatalogRows(decoded([row("bundled"), row("older")]), contribution.limits);
     if (fallback.kind !== "valid") throw new Error("fixture rows must be valid");
     const live = { modelId: "newest", offerings: [{ wireModelId: "newest", metadata: { endpoint: "cli" }, dataUse: "standard" as const }] };
     const overlap = { modelId: "bundled", offerings: [{ wireModelId: "bundled", metadata: { endpoint: "cli" }, dataUse: "standard" as const }] };
@@ -184,7 +187,7 @@ describe("model catalog resolution", () => {
   });
 
   test("preserves paid and free routes for one canonical model", () => {
-    expect(normalizeDecodedCatalogRows([
+    expect(normalizeResolvedCatalogRows([
       { modelId: "model", wireModelId: "vendor/model", metadata: null },
       { modelId: "model", wireModelId: "vendor/model:free", metadata: null, routeKind: "free" },
     ], TEST_CATALOG_LIMITS)).toEqual({
@@ -213,30 +216,32 @@ describe("model catalog resolution", () => {
   });
 
   test("filters malformed rows before cardinality and rejects valid overflow whole", () => {
-    expect(normalizeCatalogRows([row("one"), {}, {}, row("two"), row("three")], contribution)).toEqual({ kind: "valid", rows: [
+    const live = (rows: readonly unknown[]) => resolveModelCatalog({ authenticated: true, live: { kind: "rows", rows }, canonicalFallback: undefined, contribution });
+    expect(live([row("one"), {}, {}, row("two"), row("three")])).toEqual({ kind: "catalog", provenance: "first-party", liveOutcome: "valid", rows: [
       { modelId: "one", offerings: [{ wireModelId: "one", metadata: null, dataUse: "standard" }] },
       { modelId: "two", offerings: [{ wireModelId: "two", metadata: null, dataUse: "standard" }] },
       { modelId: "three", offerings: [{ wireModelId: "three", metadata: null, dataUse: "standard" }] },
     ] });
-    expect(normalizeCatalogRows([row("one"), row("two"), row("three"), row("four")], contribution)).toEqual({ kind: "rejected", reason: "too-many-rows" });
+    expect(live([row("one"), row("two"), row("three"), row("four")])).toEqual({ kind: "unavailable", reason: "unusable" });
+    expect(normalizeResolvedCatalogRows(decoded([row("one"), row("two"), row("three"), row("four")]), contribution.limits)).toEqual({ kind: "rejected", reason: "too-many-rows" });
   });
 
   test("consolidates punctuation aliases without owning discovery diagnostics", () => {
     const record = spyOn(DebugLog, "record").mockImplementation(() => {});
     try {
-      expect(normalizeCatalogRows([row("gpt-6.1-sol"), row("gpt-6-1-sol")], contribution)).toEqual({ kind: "valid", rows: [
+      expect(normalizeResolvedCatalogRows(decoded([row("gpt-6.1-sol"), row("gpt-6-1-sol")]), contribution.limits)).toEqual({ kind: "valid", rows: [
         { modelId: "gpt-6.1-sol", offerings: [{ wireModelId: "gpt-6-1-sol", metadata: null, dataUse: "standard" }] },
       ] });
       expect(record).not.toHaveBeenCalled();
     } finally {
       record.mockRestore();
     }
-    expect(normalizeCatalogRows([row("x".repeat(33))], contribution)).toEqual({ kind: "rejected", reason: "model-id-too-long" });
-    expect(normalizeCatalogRows([
+    expect(normalizeResolvedCatalogRows(decoded([row("x".repeat(33))]), contribution.limits)).toEqual({ kind: "rejected", reason: "model-id-too-long" });
+    expect(normalizeResolvedCatalogRows(decoded([
       { id: "gpt-6.1-sol", endpoint: "one" },
       { id: "gpt-6.1-sol", endpoint: "two" },
-    ], contribution)).toEqual({ kind: "rejected", reason: "duplicate-model" });
-    expect(normalizeCatalogRows([row("gpt-6-1-sol-contributor"), row("gpt-6.1-sol-contributor"), row("gpt-6-1-sol")], contribution)).toEqual({
+    ]), contribution.limits)).toEqual({ kind: "rejected", reason: "duplicate-model" });
+    expect(normalizeResolvedCatalogRows(decoded([row("gpt-6-1-sol-contributor"), row("gpt-6.1-sol-contributor"), row("gpt-6-1-sol")]), contribution.limits)).toEqual({
       kind: "valid",
       rows: [{
         modelId: "gpt-6.1-sol",
@@ -259,8 +264,6 @@ describe("model catalog resolution", () => {
         metadata: null,
       }));
       const limits = { ...TEST_CATALOG_LIMITS, canonicalRows: 10_000, modelIdLength: 512 };
-      expect(normalizeDecodedCatalogRows(longRows, limits).kind).toBe("valid");
-      expect(record).not.toHaveBeenCalled();
       expect(normalizeResolvedCatalogRows(longRows, limits).kind).toBe("valid");
       expect(record).not.toHaveBeenCalled();
     } finally {
@@ -276,7 +279,7 @@ describe("model catalog resolution", () => {
       { modelId: "gpt-6-1-sol", wireModelId: "gpt-6-1-sol", metadata: null, resolvedMetadata: dashed },
     ];
     for (const ordered of [rows, rows.toReversed()]) {
-      const normalized = normalizeDecodedCatalogRows(ordered, contribution.limits);
+      const normalized = normalizeResolvedCatalogRows(ordered, contribution.limits);
       expect(normalized).toMatchObject({
         kind: "valid",
         rows: [{ offerings: [{ wireModelId: "gpt-6-1-sol", resolvedMetadata: { provider: "openai", id: "gpt-6-1-sol" } }] }],
@@ -292,11 +295,11 @@ describe("model catalog resolution", () => {
       { modelId: older.id, wireModelId: older.id, metadata: null, resolvedMetadata: older },
       { modelId: newer.id, wireModelId: newer.id, metadata: null, resolvedMetadata: newer },
     ];
-    expect(normalizeDecodedCatalogRows(datedRows, contribution.limits)).toMatchObject({
+    expect(normalizeResolvedCatalogRows(datedRows, contribution.limits)).toMatchObject({
       kind: "valid",
       rows: [{ modelId: "claude-opus-4.6", offerings: [{ wireModelId: newer.id, resolvedMetadata: { modelFamily: "newer" } }] }],
     });
-    expect(normalizeDecodedCatalogRows([...datedRows, {
+    expect(normalizeResolvedCatalogRows([...datedRows, {
       modelId: stable.id,
       wireModelId: stable.id,
       metadata: null,
@@ -305,7 +308,7 @@ describe("model catalog resolution", () => {
       kind: "valid",
       rows: [{ modelId: "claude-opus-4.6", offerings: [{ wireModelId: stable.id, resolvedMetadata: { modelFamily: "stable" } }] }],
     });
-    expect(normalizeDecodedCatalogRows([
+    expect(normalizeResolvedCatalogRows([
       ...datedRows,
       { modelId: "gpt-6-1-sol-20260101", wireModelId: "gpt-6-1-sol-20260101", metadata: null, resolvedMetadata: older },
       { modelId: "gpt-6-1-sol-20260201-contributor", wireModelId: "gpt-6-1-sol-20260201-contributor", metadata: null, dataUse: "contributor", resolvedMetadata: newer },
@@ -344,17 +347,16 @@ describe("model catalog resolution", () => {
   });
 
   test("iteratively rejects metadata beyond its depth and node bounds", () => {
-    const bounded = (metadata: CatalogJsonValue): ModelCatalogContribution => ({
-      ...contribution,
-      limits: { ...TEST_CATALOG_LIMITS, metadataDepth: 4, metadataNodes: 6 },
-      canonicalize: (): CatalogSourceRow => ({ modelId: "bounded", wireModelId: "bounded", metadata }),
-    });
+    const bounded = (metadata: CatalogJsonValue) => normalizeResolvedCatalogRows(
+      [{ modelId: "bounded", wireModelId: "bounded", metadata }],
+      { ...TEST_CATALOG_LIMITS, metadataDepth: 4, metadataNodes: 6 },
+    );
     let deep: CatalogJsonValue = {};
     for (let index = 0; index < 10_000; index += 1) deep = { child: deep };
 
-    expect(normalizeCatalogRows([{}], bounded(deep))).toEqual({ kind: "rejected", reason: "invalid-canonical-row" });
-    expect(normalizeCatalogRows([{}], bounded([1, 2, 3, 4, 5, 6]))).toEqual({ kind: "rejected", reason: "invalid-canonical-row" });
-    expect(normalizeCatalogRows([{}], bounded({ billing: { multiplier: 1 } }))).toMatchObject({ kind: "valid" });
+    expect(bounded(deep)).toEqual({ kind: "rejected", reason: "invalid-canonical-row" });
+    expect(bounded([1, 2, 3, 4, 5, 6])).toEqual({ kind: "rejected", reason: "invalid-canonical-row" });
+    expect(bounded({ billing: { multiplier: 1 } })).toMatchObject({ kind: "valid" });
   });
 
   test("does not memoize fresh discovery inside a listing client", async () => {
@@ -370,7 +372,6 @@ describe("model catalog resolution", () => {
         displayName: "OpenAI",
         shortName: "OpenAI",
         rank: 1,
-        supportedFamilies: ["openai"],
         configHints: [],
         catalogId: undefined,
         dynamicCatalog: {

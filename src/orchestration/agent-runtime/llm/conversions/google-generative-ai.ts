@@ -78,12 +78,12 @@ function convertAssistantBlock(
 ): Part | undefined {
   if (block.type === "text" && block.text.trim()) {
     const sig = sameProvider && isValidThoughtSignature(block.signature) ? block.signature : undefined;
-    return { text: sanitizeSurrogates(block.text), ...(sig && { thoughtSignature: sig }) };
+    return { text: sanitizeSurrogates(block.text), ...(sig ? { thoughtSignature: sig } : {}) };
   }
   // Lowering left thinking only on this target's own turns (`lowerProviderHistory`).
   if (block.type === "thinking" && block.thinking.trim() && !block.redacted && sameProvider) {
     const sig = isValidThoughtSignature(block.signature) ? block.signature : undefined;
-    return { thought: true, text: sanitizeSurrogates(block.thinking), ...(sig && { thoughtSignature: sig }) };
+    return { thought: true, text: sanitizeSurrogates(block.thinking), ...(sig ? { thoughtSignature: sig } : {}) };
   }
   if (block.type === "tool_use") {
     const sig = sameProvider && isValidThoughtSignature(block.thoughtSignature) ? block.thoughtSignature : undefined;
@@ -93,7 +93,7 @@ function convertAssistantBlock(
         args: block.input,
         ...(requiresToolCallId(modelId) ? { id: normalizeToolCallId(modelId, block.id) } : {}),
       },
-      ...(sig && { thoughtSignature: sig }),
+      ...(sig ? { thoughtSignature: sig } : {}),
     };
   }
   return undefined;

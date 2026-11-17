@@ -6,7 +6,7 @@ import { Redacted } from "effect";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
 import { readSavedProviderModels } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
-import { createModelListingClient, type AccessAuditProgress } from "../../../../src/infra/llm/model-listing.js";
+import { createModelListingClient, type AccessAuditProgressListener } from "../../../../src/infra/llm/model-listing.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { testCapabilityModules, testProviderSelection } from "../../../helpers/provider-authority.js";
@@ -124,7 +124,7 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
     if (body.model === "grok-flaky" && flaky !== 200) return new Response(null, { status: flaky });
     return Response.json({ status: "completed" });
   }, { preconnect: originalFetch.preconnect });
-  const progress: AccessAuditProgress[] = [];
+  const progress: Parameters<AccessAuditProgressListener>[0][] = [];
   const modelsClient = createModelsClient(join(root, "models.json"));
   await modelsClient.refresh(new AbortController().signal);
   const client = createModelListingClient({

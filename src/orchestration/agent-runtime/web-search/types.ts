@@ -43,7 +43,7 @@ export interface WebSearchResponse {
   results: readonly WebSearchResult[];
 }
 
-export interface WebSearchRunOptions {
+interface WebSearchRunOptions {
   /** Stable retrieval identity: the scope `ref_id`s resolve in, whichever
    *  side of the wire holds that state. */
   retrievalSessionId: string;

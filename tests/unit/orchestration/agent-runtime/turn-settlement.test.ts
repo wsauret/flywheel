@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Effect, Exit, Fiber, Scope } from "effect"
-import type { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js"
+import type { PersistenceWriteRefused, InFlightPayload } from "../../../../src/infra/event-store-types.js"
 
 import { createTurnDispatcher, type SettledToolBatch } from "../../../../src/orchestration/agent-runtime/agent-loop-tools.js"
 import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js"
@@ -45,7 +45,7 @@ function harness(input: {
   tools: RuntimeTool[]
   signal?: AbortSignal
   stream?: () => Promise<void>
-  checkpoint?: (kind: string, key: string, payload: unknown) => Promise<void>
+  checkpoint?: (kind: string, key: string, payload: InFlightPayload) => Promise<void>
   displayBarrier?: () => Promise<void>
   commitConversationSavePoint?: (calls: readonly ToolCall[]) => Promise<void>
   closeAttempt?: () => Promise<void>

@@ -10,7 +10,7 @@
 
 import type { ConfigFileLocation } from "../config/config-file.js"
 import type { ModulePolicy } from "../config/module-policy.js"
-import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../config/runtime-config-owner.js"
+import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { ConfigStaleWriteError, type ConfigWriteResult } from "../config/writer.js"
 import { applyModulePreset, updateModuleMember, updatePersistentProcessPermission, updateWorkflowsMode } from "../config/module-selection-writer.js"
 import { persistentProcessPolicy, type PersistentProcessPolicy } from "../config/persistent-process-policy.js"
@@ -46,20 +46,20 @@ export interface ModuleProjection {
   dispose(): Promise<void>
 }
 
-export async function createModuleProjection(options: {
+export function createModuleProjection(options: {
   readonly location: ConfigFileLocation
   readonly capabilities: ModulePolicy
   readonly persistentProcesses: PersistentProcessPolicy
-  readonly runtimeConfig?: RuntimeConfigOwner
+  /** The runtime's one config owner, whose changes refresh the projection. The caller owns its lifetime. */
+  readonly runtimeConfig: RuntimeConfigOwner
   readonly publish: (input: RuntimeUiPatchInput) => void
   /** Activate selected process services before their surface is published. */
   readonly preparePublication?: () => void
   /** Settle every projection derived from the committed descriptor before a mutation resolves. */
   readonly settlePublication: () => Promise<void>
   readonly notify?: (episode: NotificationEpisodeInput) => void
-}): Promise<ModuleProjection> {
-  const runtimeConfig = options.runtimeConfig ?? await createRuntimeConfigOwner({ ...options.location, watch: false })
-  const ownsRuntimeConfig = options.runtimeConfig === undefined
+}): ModuleProjection {
+  const runtimeConfig = options.runtimeConfig
   let persistentProcesses = options.persistentProcesses
   const build = (): RuntimeModulesView => {
     // One descriptor, decoded once by the policy: the published selection and
@@ -151,12 +151,8 @@ export async function createModuleProjection(options: {
     setPersistentProcesses: (expected, enabled) => commit(() => updatePersistentProcessPermission(expected, enabled, options.location), true),
     refresh,
     dispose: async () => {
-      try {
-        unsubscribe()
-        await unsubscribeConfig()
-      } finally {
-        if (ownsRuntimeConfig) await runtimeConfig.dispose()
-      }
+      unsubscribe()
+      await unsubscribeConfig()
     },
   }
 }

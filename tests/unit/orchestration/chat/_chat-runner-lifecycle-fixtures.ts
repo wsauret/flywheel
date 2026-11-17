@@ -34,7 +34,7 @@ export function makeLifecycle(selection?: Pick<ChatSessionDeps, "moduleSelection
     background = options.runtimeSurfaces?.background
     sends.push(sent)
     const done = new Promise<AgentRunResult>((resolve) => { resolvers.push(resolve) })
-    return { send(text: Parameters<Agent["send"]>[0]) { sent.push(text); runnerStarted.resolve() }, end() {}, abort() {}, done }
+    return { send(text: Parameters<Agent["send"]>[0]) { sent.push(text); runnerStarted.resolve() }, abort() {}, done }
   }
   const deps = createTestChatSessionDeps({
     sessionId: "session-respawn",

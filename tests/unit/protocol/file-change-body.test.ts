@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { ToolStreamingTextSchema, type ProvisionalDiff } from "../../../src/infra/output-blocks.js"
-import { conflictMarkersNotice, notAppliedNotice, fileDiffFiles, parseMutationDiffRows, rowPresentation, rowWritePolicy, SHELL_MUTATION_RUNNING, selectFileChangeBody, showsShellMutationOutput } from "../../../src/protocol/client/file-change-body.js"
+import { conflictMarkersNotice, notAppliedNotice, fileDiffFiles, rowPresentation, rowWritePolicy, selectFileChangeBody, showsShellMutationOutput } from "../../../src/protocol/client/file-change-body.js"
 import { buildMutationEvidence, buildMutationFileEvidence, type MutationEvidence, type MutationFileEvidence } from "../../../src/infra/mutation-evidence.js"
 import type { FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js"
@@ -118,7 +118,7 @@ describe("file change body protocol", () => {
     const declared = { declaresMutation: true as const, status: "completed" as const, presentation: { name: "Bash", detail: "bun generate.ts" } }
     const added = { path: "src/new.ts", change: "added" as const, unifiedDiff: "--- /dev/null\n+++ b/src/new.ts\n@@ -0,0 +1 @@\n+const created = true\n" }
     const modified = { path: "src/old.ts", change: "modified" as const, unifiedDiff: "--- a/src/old.ts\n+++ b/src/old.ts\n@@ -1 +1 @@\n-old\n+new\n" }
-    const running = { name: "Edit", detail: SHELL_MUTATION_RUNNING }
+    const running = { name: "Edit", detail: "bash command is running…" }
     for (const status of ["pending", "streaming"] as const) expect(rowPresentation({ ...declared, status }, false)).toEqual(running)
     // Detached or background work still runs after the call itself settled.
     expect(rowPresentation(declared, true)).toEqual(running)
@@ -259,7 +259,7 @@ describe("file change body protocol", () => {
   })
 
   it("parses canonical mutation rows with true coordinates and source marker text", () => {
-    const rows = parseMutationDiffRows({
+    const [file] = fileDiffFiles({ kind: "net", diff: {
       version: 1,
       files: [{
         path: "src/a.ts",
@@ -267,13 +267,13 @@ describe("file change body protocol", () => {
         unifiedDiff: "--- a/src/a.ts\n+++ b/src/a.ts\n@@ -10,3 +20,4 @@\n context\n--- source marker\n+++ target marker\n-old\n+new",
       }],
       omissions: [],
-    })
-    expect(rows).toEqual([
-      { path: "src/a.ts", kind: "context", text: "context", oldLine: 10, newLine: 20 },
-      { path: "src/a.ts", kind: "remove", text: "-- source marker", oldLine: 11 },
-      { path: "src/a.ts", kind: "add", text: "++ target marker", newLine: 21 },
-      { path: "src/a.ts", kind: "remove", text: "old", oldLine: 12 },
-      { path: "src/a.ts", kind: "add", text: "new", newLine: 22 },
+    } })
+    expect(file?.rows).toEqual([
+      { id: "src/a.ts:0", partial: false, kind: "context", text: "context", oldLine: 10, newLine: 20 },
+      { id: "src/a.ts:1", partial: false, kind: "remove", text: "-- source marker", oldLine: 11 },
+      { id: "src/a.ts:2", partial: false, kind: "add", text: "++ target marker", newLine: 21 },
+      { id: "src/a.ts:3", partial: false, kind: "remove", text: "old", oldLine: 12 },
+      { id: "src/a.ts:4", partial: false, kind: "add", text: "new", newLine: 22 },
     ])
   })
 

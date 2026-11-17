@@ -34,7 +34,7 @@ function scenario(options: { readonly paid?: boolean; readonly copilot?: boolean
   const capture = roleCapture(["gpt-6-astra", "gpt-6.1-sol", "claude-opus-5.5"])
   const resolve = async (setting: RoleSetting = { model: "gpt-6-astra", effort: "high" }, agent = true): Promise<CapturedRoleSelection> => {
     judged.length = 0
-    return await resolveCapturedRole("implementer", setting, {
+    return await resolveCapturedRole("workflow-agent", setting, {
       selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: true,
     }, "/scratch", agent ? standing : undefined)
   }

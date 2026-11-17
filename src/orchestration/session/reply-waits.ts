@@ -7,7 +7,7 @@ import { escapeXml, formatRuntimeNotification } from "../agent-runtime/runtime-n
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "./conversation/queued-background-notifications.js"
 import { readUnreadSessionMessages } from "./conversation/addressed-workflow-messages.js"
 import { dropReplyWait, holdReplyWait, isReplyWaitNoticeKey, readReplyWaits, REPLY_WAIT_IN_FLIGHT_KIND, replyWaitCellsOf, replyWaitNoticeKey, type ReplyWaitCell } from "./conversation/reply-wait-cells.js"
-import { liveSessionControl, liveWorkflowControl, onLiveSessionRemoved, onLiveWorkChanged, type RecipientState } from "./live-session-control.js"
+import { liveSessionControl, liveWorkflowControl, onLiveSessionRemoved, onLiveWorkChanged, type LiveWorkKey, type RecipientState } from "./live-session-control.js"
 import { sessionDisplayName, type ReplayedSession } from "./schemas.js"
 import type { ReplyWaitView } from "../../protocol/status-protocol-types.js"
 import type { PausedBy } from "../../infra/output-blocks.js"
@@ -112,11 +112,18 @@ interface WaitBook {
    *  a new book. */
   suspended: boolean
   readonly parks: Map<string, ParkedYield>
+  /** The parks that read each live-work key, so a change wakes only them. */
+  readonly parksByRead: Map<LiveWorkKey, Set<ParkedYield>>
   readonly unsubscribe: () => void
 }
 
 interface ParkedYield {
   readonly subscriptions: Map<WorkTasks, () => void>
+  /** Every live-work key that an evaluation of this park read. The set only
+   *  grows until the park ends: a key that the latest walk no longer reads
+   *  costs at most one more evaluation, and a pruned key could miss a change
+   *  that an evaluation in flight reads. */
+  readonly reads: Set<LiveWorkKey>
   changed(): void
 }
 
@@ -132,9 +139,9 @@ function bookOf(store: AsyncEventStateReadSurface): WaitBook {
   // A session that leaves this process may no longer read: its run
   // settled, or its runner was released.
   const stopRemoval = onLiveSessionRemoved(store, (sessionId) => { observeSessionResumed(store, sessionId); void observeSessionChanged(store, sessionId) })
-  const stopWork = onLiveWorkChanged(store, () => { for (const park of book.parks.values()) park.changed() })
+  const stopWork = onLiveWorkChanged(store, (key) => { wakeParks(book, key) })
   const unsubscribe = () => { stopRemoval(); stopWork() }
-  const book: WaitBook = { waits: new Map(), ended: new Set(), parks: new Map(), store, suspended: false, unsubscribe }
+  const book: WaitBook = { waits: new Map(), ended: new Set(), parks: new Map(), parksByRead: new Map(), store, suspended: false, unsubscribe }
   books.set(store, book)
   return book
 }
@@ -158,9 +165,26 @@ function tellListeners(store: AsyncEventStateReadSurface, waiterSessionId: strin
   for (const listener of changeListeners.get(store) ?? []) listener(waiterSessionId)
 }
 
-function tellObservers(book: WaitBook, waiterSessionId: string): void {
+/** Wakes each park whose evaluation read `key`. */
+function wakeParks(book: WaitBook, key: LiveWorkKey): void {
+  for (const park of book.parksByRead.get(key) ?? []) park.changed()
+}
+
+function dependOn(book: WaitBook, park: ParkedYield, key: LiveWorkKey): void {
+  if (park.reads.has(key)) return
+  park.reads.add(key)
+  const parks = book.parksByRead.get(key) ?? new Set<ParkedYield>()
+  book.parksByRead.set(key, parks)
+  parks.add(park)
+}
+
+/** The waits of `waiterSessionId` changed. A park reads them as the waits of
+ *  its walk's sessions, and a wait on `addresseeSessionId` is a wait on that
+ *  parked session. */
+function tellObservers(book: WaitBook, waiterSessionId: string, addresseeSessionId?: string): void {
   tellListeners(book.store, waiterSessionId)
-  for (const park of book.parks.values()) park.changed()
+  wakeParks(book, `session:${waiterSessionId}`)
+  if (addresseeSessionId !== undefined) wakeParks(book, `session:${addresseeSessionId}`)
 }
 
 const UNAVAILABLE_TEXT = {
@@ -253,9 +277,9 @@ function track(book: WaitBook, deps: ReplyWaitDeps, input: TrackedWait): OpenWai
       if (SELF_RETIRING_ENDS.has(end.kind)) {
         void dropReplyWait(deps.eventWriter, waiter.sessionId, cell).catch((error: unknown) => {
           log.warn("an ended reply wait kept its cell; the next run of the waiter restores it and applies the end rules again", { waiterSessionId: waiter.sessionId, end: end.kind, error: errorMessage(error) })
-        }).finally(() => { tellObservers(book, waiter.sessionId) })
+        }).finally(() => { tellObservers(book, waiter.sessionId, addressee.sessionId) })
       } else {
-        tellObservers(book, waiter.sessionId)
+        tellObservers(book, waiter.sessionId, addressee.sessionId)
       }
       const notice = end.kind === "yielded" || end.kind === "unavailable" ? endNotice(addressee, end) : ""
       done.resolve({ status: end.kind === "reply" || notice ? "completed" : "cancelled", content: notice, ...(end.kind === "yielded" ? { runtimeNotice: true as const } : {}) })
@@ -264,7 +288,7 @@ function track(book: WaitBook, deps: ReplyWaitDeps, input: TrackedWait): OpenWai
   const byAddressee = book.waits.get(waiter.sessionId) ?? new Map<string, OpenWait>()
   book.waits.set(waiter.sessionId, byAddressee)
   byAddressee.set(addressee.sessionId, wait)
-  tellObservers(book, waiter.sessionId)
+  tellObservers(book, waiter.sessionId, addressee.sessionId)
   waiter.tasks.track({
     done: done.promise,
     meta: {
@@ -477,6 +501,7 @@ export async function observeSessionYield(store: AsyncEventStateReadSurface, par
     let dirty = false
     const park: ParkedYield = {
       subscriptions: new Map(),
+      reads: new Set(),
       changed() {
         dirty = true
         if (checking) return
@@ -494,12 +519,20 @@ export async function observeSessionYield(store: AsyncEventStateReadSurface, par
       },
     }
     book.parks.set(sessionId, park)
+    // A wait that opens or ends on the parked session changes what it yields to.
+    dependOn(book, park, `session:${sessionId}`)
   }
-  const observe = (tasks: WorkTasks): void => {
-    const park = book.parks.get(sessionId)
-    if (park && !park.subscriptions.has(tasks)) park.subscriptions.set(tasks, tasks.observeWorkChanges(park.changed))
+  const walk: ParkWalk = {
+    observe(tasks) {
+      const park = book.parks.get(sessionId)
+      if (park && !park.subscriptions.has(tasks)) park.subscriptions.set(tasks, tasks.observeWorkChanges(park.changed))
+    },
+    read(key) {
+      const park = book.parks.get(sessionId)
+      if (park) dependOn(book, park, key)
+    },
   }
-  if (parked.tasks) observe(parked.tasks)
+  if (parked.tasks) walk.observe(parked.tasks)
   const currentPark = book.parks.get(sessionId)
   const waits = waitsOn(book, sessionId)
   if (waits.length === 0) return
@@ -508,7 +541,7 @@ export async function observeSessionYield(store: AsyncEventStateReadSurface, par
   const unread = new Set((await readUnreadSessionMessages(deps.projectionReader, sessionId)).map((cell) => cell.key))
   for (const wait of waits) {
     if (wait.sending || (wait.readKey && unread.has(wait.readKey))) continue
-    if (work && await wakesWithout(book, deps, work, wait, observe)) continue
+    if (work && await wakesWithout(book, deps, work, wait, walk)) continue
     if (yieldInput.waitRequested && book.parks.get(sessionId) !== currentPark) return
     if (book.suspended) return
     wait.end({ kind: "yielded", ...(yieldInput.lastText ? { lastText: yieldInput.lastText } : {}) })
@@ -517,17 +550,34 @@ export async function observeSessionYield(store: AsyncEventStateReadSurface, par
 
 /** Clears progress subscriptions when the turn resumes or ends. */
 export function observeSessionResumed(store: AsyncEventStateReadSurface, sessionId: string): void {
-  const parks = books.get(store)?.parks
-  const park = parks?.get(sessionId)
-  parks?.delete(sessionId)
-  for (const stop of park?.subscriptions.values() ?? []) stop()
+  const book = books.get(store)
+  const park = book?.parks.get(sessionId)
+  if (!book || !park) return
+  book.parks.delete(sessionId)
+  for (const stop of park.subscriptions.values()) stop()
+  for (const key of park.reads) {
+    const parks = book.parksByRead.get(key)
+    parks?.delete(park)
+    if (parks?.size === 0) book.parksByRead.delete(key)
+  }
 }
 
-async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly WorkReference[], waiter: OpenWait, observe: (tasks: WorkTasks) => void): Promise<boolean> {
+/** What one evaluation of a park records of its walk: the task registries
+ *  whose changes wake the park, and the live-work keys it read. */
+interface ParkWalk {
+  observe(tasks: WorkTasks): void
+  read(key: LiveWorkKey): void
+}
+
+/** Whether work that `work` references can wake the parked session without
+ *  `waiter`. Each key the walk reads goes to `walk` before the read, so the
+ *  park wakes for a change of any key that its answer rests on, also when
+ *  the walk stops at its first live witness. */
+async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly WorkReference[], waiter: OpenWait, walk: ParkWalk): Promise<boolean> {
   const lineage = new Set(await deps.lineage(waiter.waiterSessionId))
-  const seen = new Set<string>()
+  const seen = new Set<LiveWorkKey>()
   async function tasksWake(tasks: WorkTasks): Promise<boolean> {
-    observe(tasks)
+    walk.observe(tasks)
     const waits = [...book.waits.values()].flatMap((byAddressee) => [...byAddressee.values()]).filter((wait) => wait.tasks === tasks)
     return any([
       ...tasks.liveWorkReferences(),
@@ -537,16 +587,18 @@ async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly 
   async function wakes(ref: WorkReference): Promise<boolean> {
     if (ref.kind === "command") return true
     const id = ref.kind === "session" ? ref.sessionId : ref.workflowId
-    const key = `${ref.kind}:${id}`
+    const key: LiveWorkKey = `${ref.kind}:${id}`
     if (seen.has(key)) return false
     seen.add(key)
+    walk.read(key)
     const control = ref.kind === "workflow" ? liveWorkflowControl(book.store, id) : liveSessionControl(book.store, id)
     if (ref.kind === "workflow" && control?.workProgress) {
       const progress = await control.workProgress()
       if (progress.runnable) return true
       for (const member of progress.members) {
+        walk.read(`session:${member.sessionId}`)
         if (member.tasks) {
-          observe(member.tasks)
+          walk.observe(member.tasks)
           const waiting = [...book.waits.values()].some((waits) => [...waits.values()].some((wait) => wait.tasks === member.tasks))
           if ((waiting || member.state === "waiting_on_work") && await tasksWake(member.tasks)) return true
           if (waiting) continue

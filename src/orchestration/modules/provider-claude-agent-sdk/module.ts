@@ -60,7 +60,6 @@ function providerDefinition(seams: ClaudeAgentSdkSeams) {
     id: CLAUDE_AGENT_SDK_PROVIDER_ID,
     displayName: CLAUDE_AGENT_SDK_LABEL,
     shortName: "Anthropic Sub",
-    supportedFamilies: ["anthropic"],
     defaultChatTransport: "anthropic-messages",
     configHints: [CLAUDE_AGENT_SDK_LOGIN_COMMAND],
     cli: { flag: CLAUDE_AGENT_SDK_CLI_FLAG, name: CLAUDE_AGENT_SDK_LABEL },
@@ -178,7 +177,6 @@ export function createClaudeAgentSdkModule(seams: ClaudeAgentSdkSeams = {}) {
     ],
     sessionHistory: { framing: historicalEngineFraming },
     observers: [],
-    transformers: [],
     gates: [],
   } as const satisfies FirstPartyModule;
 }

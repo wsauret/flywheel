@@ -142,7 +142,7 @@ async function readJsonLines<T>(path: string, parse: (value: unknown) => T, torn
 }
 
 /** Append one record durably. */
-export async function appendJsonLine(path: string, value: unknown): Promise<void> {
+async function appendJsonLine(path: string, value: unknown): Promise<void> {
   // Read and append share one handle: the tail this checks must be the tail it
   // writes onto, and O_APPEND keeps concurrent appends whole.
   let handle = await openNoFollow(path, constants.O_RDWR | constants.O_APPEND | O_NOFOLLOW);

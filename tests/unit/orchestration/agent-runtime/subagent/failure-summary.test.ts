@@ -47,7 +47,6 @@ function makeFailingRunnerFactory(opts: FailingRunnerOpts) {
       send(_text: string): void {
         timer = setTimeout(() => runFailingRunnerScript(opts, options, parentToolUseId, resolve), 0);
       },
-      end() { clearTimeout(timer); },
       abort() { clearTimeout(timer); resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
       done: promise,
     };

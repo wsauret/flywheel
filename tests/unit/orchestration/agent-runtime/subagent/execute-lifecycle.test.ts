@@ -14,6 +14,7 @@ import { createOutputSession } from "../../../../../src/orchestration/runner/out
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
 import type { ResolvedRoles } from "../../../../../src/orchestration/config/roles.js";
+import { processSettled } from "../../../../helpers/process-settled.js";
 
 function parseRecord(json: string): UnknownRecord {
   const value: unknown = JSON.parse(json);
@@ -99,7 +100,6 @@ describe("subagent tool — execute lifecycle", () => {
         const done = Promise.withResolvers<AgentRunResult>();
         return {
           send(_text: string): void {},
-          end() {},
           abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); },
           done: done.promise,
         };
@@ -162,7 +162,7 @@ describe("subagent tool — execute lifecycle", () => {
         sessionEventWriter,
         onRenderEvent: (event) => output.dispatchRuntimeEvent(event),
         createRunner: (options) => ({
-          send() {}, end() {},
+          send() {},
           abort() {
             options.onEvent(createRuntimeEvent("budget.stream.completed", { parent_tool_use_id: "nested-dispatch" }));
             done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } });
@@ -184,7 +184,7 @@ describe("subagent tool — execute lifecycle", () => {
       if (typeof processId !== "string") throw new Error("dispatch did not return a process id");
       if (authority === "agent") expect(backgroundTasks.terminateProcess(processId, "agent")).toBe("requested");
       else expect(backgroundTasks.terminate("dispatch-call")).toBe(true);
-      expect(await backgroundTasks.waitProcess(processId)).toBe(true);
+      expect(await processSettled(backgroundTasks, processId)).toBe(true);
       expect(facts).toContainEqual(expect.objectContaining({
         type: "budget.stream.completed", payload: { parentToolUseId: "nested-dispatch" },
       }));
@@ -354,7 +354,7 @@ describe("subagent tool — execute lifecycle", () => {
         onRenderEvent: (event) => renderedEvents.push(event),
         createRunner: (options) => {
           onEvent = options.onEvent;
-          return { send() {}, end() {}, abort() {}, done: promise };
+          return { send() {}, abort() {}, done: promise };
         },
       }));
 
@@ -391,7 +391,7 @@ describe("subagent tool — execute lifecycle", () => {
         onRenderEvent: (event) => renderedEvents.push(event),
         createRunner: (options) => {
           onEvent = options.onEvent;
-          return { send() {}, end() {}, abort() {}, done: promise };
+          return { send() {}, abort() {}, done: promise };
         },
       }));
 

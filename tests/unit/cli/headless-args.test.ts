@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HEADLESS_USAGE, hasHeadlessAcpFlag, hasHeadlessJsonlFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
+import { HEADLESS_USAGE, hasHeadlessAcpFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
 
 describe("headless CLI args", () => {
   it("accepts bare headless chat", () => {
@@ -91,12 +91,6 @@ describe("headless CLI args", () => {
       expect(() => headlessDeadlineSeconds(["--headless", "--task", "x", `--deadline-seconds=${value}`])).toThrow("positive finite number")
     }
     expect(() => headlessDeadlineSeconds(["--task", "x", "--deadline-seconds=1"])).toThrow("only valid with --headless")
-  })
-
-  it("accepts JSONL only for headless launches", () => {
-    expect(hasHeadlessJsonlFlag(["--headless", "--task", "x", "--jsonl"])).toBe(true)
-    expect(hasHeadlessJsonlFlag(["--headless", "--task", "x"])).toBe(false)
-    expect(() => hasHeadlessJsonlFlag(["--jsonl"])).toThrow("only valid with --headless")
   })
 
   it("ignores the root persistent-process override when it reads headless payloads", () => {

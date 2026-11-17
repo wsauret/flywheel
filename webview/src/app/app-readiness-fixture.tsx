@@ -10,6 +10,7 @@ import type { ClientCommand } from "../../../src/protocol/client/host-contract.j
 import { createClientActions } from "../client/actions.js"
 import type { RemoteHostSnapshot, RemoteHostCapability } from "../host.js"
 import type { WebModule } from "../web-module.js"
+import type { HistoryEntryState } from "./screen-stack.js"
 import { App, type AppProps } from "./app.js"
 import { WEB_MODULES } from "../modules.js"
 import type { ModuleId } from "../../../src/protocol/module-ids.js"
@@ -139,8 +140,8 @@ export function mountAppReadiness(options: Parameters<typeof createAppReadiness>
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     history: {
       get state() { return entries[entryIndex] },
-      replaceState(state: unknown) { entries[entryIndex] = state },
-      pushState(state: unknown) { entries.splice(++entryIndex, entries.length, state) },
+      replaceState(state: HistoryEntryState) { entries[entryIndex] = state },
+      pushState(state: HistoryEntryState) { entries.splice(++entryIndex, entries.length, state) },
       back() {
         if (entryIndex === 0) return
         entryIndex -= 1

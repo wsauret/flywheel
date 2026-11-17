@@ -35,7 +35,7 @@ test.each([
   // place four times over, each attempt settled and abandoned the same way.
   ["quota", () => new QuotaExhaustedError("cap"), 1],
   ["idle", () => new StreamIdleTimeoutError("idle", "idle"), 4],
-  ["thinking", () => new ThinkingStallError({ elapsedMs: 45000, summary: "stalled" }), 4],
+  ["thinking", () => new ThinkingStallError({ elapsedMs: 45000 }), 4],
 ] as const)("settles partial work and clears only previews before %s replacement", async (_name, error, attempts) => {
   const order: string[] = [];
   const builds: string[] = [];

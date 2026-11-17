@@ -28,7 +28,7 @@ async function gradeStoredDiff(projectRoot: string, task: ImplementTask, diff: s
 /** Regrade every recorded implementer cell whose task changed only in grading since the cell ran: run the current
  *  grader on the cell's stored diff, and append one grade line keyed by the task's grader identity. Earlier lines
  *  stay as they are, and no candidate or judge runs. A cell whose task is gone or changed what the candidate answered
- *  is skipped, because its diff answers another task. A grader failure throws, as in a campaign, and the grades
+ *  is skipped, because its diff answers another task, and a timed-out cell is never graded. A grader failure throws, as in a campaign, and the grades
  *  appended before it stay. */
 export async function regradeRecords(catalog: BenchmarkCatalog, run: OwnedCommandRunner): Promise<{ graded: number; current: number; skipped: number }> {
   const tasks = new Map((await catalog.implementTasks()).map((task) => [task.id, task]));
@@ -37,6 +37,8 @@ export async function regradeRecords(catalog: BenchmarkCatalog, run: OwnedComman
   let skipped = 0;
   for (const campaign of (await loadAllCampaignRecords(catalog.recordsRoot)).filter(({ header }) => header.mode === "implement")) {
     for (const cell of campaign.cells) {
+      // A timed-out cell is a failed attempt under every grader: it has no change to grade.
+      if (cell.output.kind === "timed-out") continue;
       const task = tasks.get(cell.task);
       if (!task || cell.output.kind !== "implementation" || cell.output.candidateIdentity !== task.candidateIdentity) {
         skipped++;
@@ -48,7 +50,7 @@ export async function regradeRecords(catalog: BenchmarkCatalog, run: OwnedComman
       }
       const acceptance = await gradeStoredDiff(catalog.projectRoot, task, withoutBytecodeCaches(cell.output.diff), run);
       const grade: GradeLine = { kind: "grade", graderIdentity: task.graderIdentity, variant: cell.variant, task: cell.task, repeat: cell.repeat, ...acceptance };
-      await appendCampaignRecords(campaign.file, campaign.header, [], [], [grade]);
+      await appendCampaignRecords(campaign.file, campaign.header, { grades: [grade] });
       graded++;
     }
   }

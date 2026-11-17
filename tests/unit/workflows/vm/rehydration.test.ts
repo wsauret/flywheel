@@ -2,8 +2,6 @@ import { afterEach, describe, expect, it } from "bun:test"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { attemptOf, inputMapWorkflow, inputStage, items, mapSkills } from "./_map-fixtures.js"
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js"
@@ -13,6 +11,7 @@ import { loadWorkflowFile } from "../../../../src/workflows/workflow-file.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js"
 import { makeEntry } from "../queue/_context-accumulator-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -31,7 +30,7 @@ const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id, writes:
 
 /** A workflow whose phase build has the named agents left and right, and
  *  whose phase ship runs after it. */
-const phaseWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const phaseWorkflow = loadedWorkflow({
   id: "sqlite-phases",
   name: "SQLite phases",
   phases: [{ phase: "build", agents: [{ agent: "left", ...record("left") }, { agent: "right", ...record("right") }] }, { phase: "ship", ...record("ship") }],
@@ -283,7 +282,7 @@ describe("SQLite workflow VM replay", () => {
     expect(views.control).toEqual(fresh.context.committed)
     expect(views.queue?.attempts[0]?.id).toBe(fresh.context.committed.attempts[0]?.id)
     expect(views.queue?.attempts.map(({ status }) => status)).toEqual(["completed", "pending"])
-    expect(views.context?.entries[0]?.handoff).toEqual({ summary: "facts only" })
+    expect((await vm.context())?.entries[0]?.handoff).toEqual({ summary: "facts only" })
     expect(views.handoffs[0]?.validationStatus).toBe("passed")
     expect(views.lineage.compiledWorkflow?.workflowDefinitionId).toBe("sqlite-acceptance")
     expect(prepared.command).toMatchObject({

@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { reasoningRepetitionDetector, type DegenerateRepetitionError } from "../../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js";
 import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
+import { throwIfLivenessFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
 import type { RepetitionGuard } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const root = join(import.meta.dir, "../../../../..");
@@ -23,7 +23,7 @@ const fixture = (name: string): string => readFileSync(join(root, "tests/fixture
 async function streamReasoning(text: string, repetitionGuard: RepetitionGuard): Promise<{ streamed: number; disableReasoning: boolean | undefined; error: unknown }> {
   let streamed = 0;
   const stream = withStreamAttempt(async function* (attempt) {
-    const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
+    const liveness = attempt.armLiveness({ label: "test", provider: "Test", telemetry: undefined });
     try {
       liveness.begin("reasoning:0");
       for (let at = 0; at < text.length; at += 64) {

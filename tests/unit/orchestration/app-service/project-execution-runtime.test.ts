@@ -5,27 +5,21 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createPersistentProcessManager } from "../../../../src/infra/persistent-process-manager.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
-import { createRuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { installedChildSessionHistory } from "../../../../src/orchestration/session/module-session-operations.js"
 import { createProjectExecutionRuntime, createProjectExecutionKernel } from "../../../../src/orchestration/app-service/project-execution-composition.js"
-import { createProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
-import { decodeProjectStateRequest, encodeProjectStateResponseFrame, operationUnits, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
-import { createProjectStateService } from "../../../../src/orchestration/app-service/project-state-worker.js"
-import { createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state-sessions.js"
-import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/chat-runner-loader.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/planned-session-continuation.js"
 import { durableBranchHasUserMessage } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { mockRunner, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules } from "../../../helpers/request-tool-surface.js"
 import { fakeProjections } from "./app-service-doubles.js"
-import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
+import { servedProjectState } from "./_served-project-state-fixture.js"
 import { ACCOUNT_UPDATES_ONLY } from "../../../../src/orchestration/app-service/settings-mutations.js"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
@@ -37,47 +31,11 @@ function fixture() {
   const userDataRoot = join(accountHome, ".flywheel")
   mkdirSync(projectRoot, { recursive: true })
   mkdirSync(userDataRoot, { recursive: true })
-  const prepared = prepareWorkspaceState({ projectRoot, accountHome, userDataRoot })
-  const store = createRuntimeEventStore(resolveEventStoreDbFile(projectRoot))
-  let response: ((frame: ProjectStateResponseFrame) => boolean) | undefined
-  let stored: ((value: readonly StoredFact[]) => void) | undefined
-  let changed: ((value: SessionMetadataChange) => void) | undefined
-  const requests: string[] = []
-  const service = createProjectStateService({
-    reader: store,
-    recover: async () => { throw new Error("unexpected recovery") },
-    owedRecoveries: () => [],
-    settleRecovery: async () => {},
-    appendWriteItem: store.writerLane.appendWriteItem,
-    pruneSupersededEvents: store.pruneSupersededEvents,
-    pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents!(aggregate, type, key),
-    pruneRetiredFamilyChunk: () => { throw new Error("unexpected retired-family prune") },
-    dropRetiredIndexes: () => { throw new Error("unexpected retired-index drop") },
-    retireFinalizedCheckpointPage: () => { throw new Error("unexpected checkpoint maintenance") },
-    sessions: createProjectStateSessionsService(createSessionManager({ projectRoot, executionCwd: projectRoot, store, writer: store })),
-    notifySessionChange: (change) => changed?.(change),
-    onStored: store.onStored,
-    notifyStored: (events) => stored?.(events),
-    close: () => store.close(),
-  })
-  const state = createProjectStateClient({
-    send(request, encoded) {
-      const decoded = decodeProjectStateRequest(structuredClone(encoded), request.lane)
-      if (!decoded) throw new Error("Invalid state request")
-      requests.push(decoded.operation.kind)
-      void service.enqueue(decoded.lane, decoded.operation, { bytes: encoded.byteLength, units: operationUnits(decoded.operation) }).then((served) => {
-        if (response?.(encodeProjectStateResponseFrame({ id: decoded.id, ...served })) === false) throw new Error("Invalid state response")
-      })
-    },
-    onResponse(listener) { response = listener },
-    onClose() {},
-    onStored(listener) { stored = listener; return () => { stored = undefined } },
-    onSessionChange(listener) { changed = listener; return () => { changed = undefined } },
-    close: () => service.close(),
-  })
+  const served = servedProjectState({ projectRoot, accountHome, userDataRoot })
   return {
-    paths: { projectRoot, executionCwd: projectRoot, accountHome, userDataRoot }, state, store, requests,
-    async close() { await state.close(); prepared.generation.release(); rmSync(root, { recursive: true, force: true }) },
+    ...served,
+    paths: { projectRoot, executionCwd: projectRoot, accountHome, userDataRoot },
+    async close() { await served.close(); rmSync(root, { recursive: true, force: true }) },
   }
 }
 
@@ -196,8 +154,10 @@ test("remote kernel uses the existing supervisor and chat runner delivery path",
   const supervisor = createRuntimeSupervisor({
     undoChanges: async () => { throw new Error("Undo is not used") },
     sessionStore: kernel.sessionStore, workflowHosts: kernel.workflowHosts, manager: kernel.manager, directories: f.paths,
-    runtime: kernel.runtime, projectionReader: kernel.projectionReader,
+    runtime: kernel.runtime, projectionReader: kernel.projectionReader, writer: kernel.eventWriter,
     transcriptCache: kernel.transcriptCache,
+    sessionViewLoader: createSessionViewLoader({ reader: kernel.projectionReader, projectionReader: kernel.projectionReader, writer: kernel.eventWriter }),
+    ...quietSupervisorCollaborators(),
     runnerCapabilities: async () => ({
       runnerLoader: createChatRunnerLoader({ authAdmission, createRunner: async (options) => mockRunner(options.sessionId, {
         deliverCommitted: (input) => { delivered.push(typeof input === "string" ? input : input.text); return true },

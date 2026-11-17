@@ -1,5 +1,5 @@
 ---
-description: Use when confirming and tracing a reported problem before any edit.
+description: Use when diagnosing the cause of a reported problem without fixing it or editing code.
 ---
 
 # Root-Cause Analysis
@@ -8,13 +8,13 @@ Start with the reported symptom, expected behavior, available runtime evidence, 
 
 Read focused tests and nearby examples to learn the intended contract. Supplied session, run, request, trace, or error identifiers point at the owning event store, trace store, or logs; persisted runtime evidence is a valid confirmation source.
 
-Confirm the symptom with the strongest safe evidence. Trace backward from symptom to trigger across every causal edge. List assumptions at external and state boundaries, rank falsifiable hypotheses, test one prediction at a time, and update the causal chain only from observed evidence. Require a gap-free explanation before recommending a fix.
+When the report names several defects, list all symptoms first, then diagnose each. Confirm each symptom with the strongest safe evidence. Where a cause is not yet clear, trace backward from symptom to trigger across every causal edge. List assumptions at external and state boundaries, rank falsifiable hypotheses, test one prediction at a time, and update the causal chain only from observed evidence. Require a gap-free explanation before recommending a fix.
 
 Use fresh observations from the current investigation to decide each hypothesis. Past observations guide hypotheses only, never current acceptance; do not assume they remain valid. Run the smallest fresh deciding experiment or inspection, including when the predicted result is that no change is needed.
 
 Stop with one result:
 
-- `confirmed`: trigger-to-symptom chain with evidence for every edge.
+- `confirmed`: trigger-to-symptom chain with evidence for every edge of each defect.
 - `no-defect`: decisive evidence that the reported defect does not exist or that the requested behavior is already satisfied, including the inspected paths, observations, and why they settle the report.
 - `blocked`: the exact missing evidence when the report cannot be confirmed.
 - `exhausted`: hypotheses tested, observations, remaining uncertainty, and the next discriminating trace when further tests yield no new information.

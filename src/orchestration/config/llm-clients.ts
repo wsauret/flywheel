@@ -73,9 +73,3 @@ export function clearSharedModelListingClients(authDirectory?: string): void {
     if (key.includes(segment)) listingClients.delete(key);
   }
 }
-
-/** Resets all process-shared clients. Production refresh paths must not call this. */
-export function resetSharedLlmClients(): void {
-  listingClients.clear();
-  modelsClients.clear();
-}

@@ -128,7 +128,6 @@ function createControls(interruptResult: boolean, turnState: ChatPorts["turnStat
   state.attachRunner({
     send() {},
     abort() {},
-    end() {},
     interruptGeneration() { return false },
     done: new Promise(() => {}),
   })
@@ -481,7 +480,6 @@ describe("createChatControls", () => {
     const runner: Agent = {
       send() {},
       abort() { calls.push("runnerAbort") },
-      end() {},
       interruptGeneration() { return true },
       done: new Promise(() => {}),
     }

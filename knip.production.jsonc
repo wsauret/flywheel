@@ -39,6 +39,7 @@
       "ignoreDependencies": ["cloudflare"],
     }
   },
-  // The grammar loader resolves these assets from runtime strings.
-  "ignoreDependencies": ["@vscode/tree-sitter-wasm"]
+  // The grammar loader resolves these assets from runtime strings, and oxlint
+  // loads the decision-model plugin that imports the others by path.
+  "ignoreDependencies": ["@vscode/tree-sitter-wasm", "@ai-sdk/openai", "@ai-sdk/typesafe-ai", "ai", "synckit"]
 }

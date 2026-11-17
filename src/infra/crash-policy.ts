@@ -31,20 +31,16 @@ export interface CrashPolicyOptions {
   /** Records a fatal failure and ends the process. It runs at most once. */
   readonly fatal: (error: unknown, kind: UncaughtKind) => void | Promise<void>
   /** Ends the process without the fatal function: when the fatal function
-   *  fails, and when a second fatal failure arrives while it runs. */
-  readonly exitNow: () => void
+   *  fails, and when a second fatal failure arrives while it runs. A role
+   *  that names none exits 1 at once. */
+  readonly exitNow?: () => void
   /** The window for the repeats of a contained abort. A test shortens it. */
   readonly repeatWindowMs?: number
 }
 
-export interface CrashPolicy {
-  uncaughtException(error: unknown): void
-  unhandledRejection(reason: unknown): void
-}
-
-/** Builds the two process handlers without installing them, so that a test
- *  can drive them without touching the test runner's own process events. */
-export function makeCrashPolicy(options: CrashPolicyOptions): CrashPolicy {
+/** Installs the policy on this process's or this Worker's events. */
+export function installCrashPolicy(options: CrashPolicyOptions): void {
+  const exitNow = options.exitNow ?? (() => { process.exit(1) })
   const aborts = coalesceRepeats<ErrorDetail>({
     windowMs: options.repeatWindowMs ?? ABORT_REPEAT_WINDOW_MS,
     first: (_condition, detail) => { options.log.warn(`${options.role} abort rejection contained`, { error: detail.message, errorDetail: detail }) },
@@ -53,36 +49,25 @@ export function makeCrashPolicy(options: CrashPolicyOptions): CrashPolicy {
     },
   })
   let failing = false
-  const fail = (failure: unknown, kind: UncaughtKind): void => {
+  const fail = (cause: unknown, kind: UncaughtKind): void => {
     if (failing) {
-      options.exitNow()
+      exitNow()
       return
     }
     failing = true
     // The process ends, so the count of repeats in the window is reported now.
     aborts.end()
-    void (async () => { await options.fatal(failure, kind) })().catch(() => { options.exitNow() })
+    void (async () => { await options.fatal(cause, kind) })().catch(() => { exitNow() })
   }
-  return {
-    uncaughtException: (error) => { fail(error, "uncaught exception") },
-    unhandledRejection: (reason) => {
-      if (!isAbortError(reason)) {
-        fail(reason, "unhandled rejection")
-        return
-      }
-      const detail = errorDetail(reason)
-      aborts.observe(abortCondition(detail), detail)
-    },
-  }
-}
-
-/** Installs the policy on this process's or this Worker's events. A role
- *  that names no `exitNow` exits 1 at once when its fatal function fails or
- *  a second fatal failure arrives. */
-export function installCrashPolicy(options: Omit<CrashPolicyOptions, "exitNow" | "repeatWindowMs"> & { readonly exitNow?: CrashPolicyOptions["exitNow"] }): void {
-  const policy = makeCrashPolicy({ ...options, exitNow: options.exitNow ?? (() => { process.exit(1) }) })
-  process.on("uncaughtException", policy.uncaughtException)
-  process.on("unhandledRejection", policy.unhandledRejection)
+  process.on("uncaughtException", (error) => { fail(error, "uncaught exception") })
+  process.on("unhandledRejection", (reason) => {
+    if (!isAbortError(reason)) {
+      fail(reason, "unhandled rejection")
+      return
+    }
+    const detail = errorDetail(reason)
+    aborts.observe(abortCondition(detail), detail)
+  })
 }
 
 /** Records a failure that ends its process: one ERROR named by its kind,

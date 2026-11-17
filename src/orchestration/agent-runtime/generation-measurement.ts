@@ -7,32 +7,47 @@ export interface GenerationMeasurementTokenizer {
   tokenizer(): LocalTokenizer
 }
 
-interface OutputBlock {
-  chunks: string[]
+/** The settled text of the response's text block that streamed under a block key, or undefined when the response
+ *  holds no such block. */
+export type SettledTextOf = (blockKey: string) => string | undefined
+
+interface OutputTiming {
   chunkCount: number
-  terminal?: string
   first?: number
   last?: number
 }
 
-/** Collects original output for one request at monotonic observation times. Completion counts assembled blocks and releases all content. Preparation rejection yields unavailable; counting errors reject. */
+interface ToolInputOutput extends OutputTiming {
+  chunks: string[]
+}
+
+/** Times the original output of one request at monotonic observation times. A text block keeps only its timing, and
+ *  completion counts its settled text from `textOf`, which the turn result holds. A tool input keeps its original
+ *  chunks, because the provider's generated text exists nowhere else. Completion releases all content. Preparation
+ *  rejection yields unavailable; counting errors reject. */
 export function createGenerationMeasurement(deps: GenerationMeasurementTokenizer = {
   prepare: prepareLocalTokenizer,
   tokenizer: commonLocalTokenizer,
 }) {
-  const blocks = new Map<string, OutputBlock>()
-  const block = (key: string): OutputBlock => {
-    let output = blocks.get(key)
+  const texts = new Map<string, OutputTiming>()
+  const tools = new Map<string, ToolInputOutput>()
+  const textTiming = (blockKey: string): OutputTiming => {
+    let output = texts.get(blockKey)
     if (!output) {
-      output = { chunks: [], chunkCount: 0 }
-      blocks.set(key, output)
+      output = { chunkCount: 0 }
+      texts.set(blockKey, output)
     }
     return output
   }
-  const append = (key: string, text: string, first: number, last = first, chunks = 1): void => {
-    if (!text) return
-    const output = block(key)
-    output.chunks.push(text)
+  const toolInput = (toolUseId: string): ToolInputOutput => {
+    let output = tools.get(toolUseId)
+    if (!output) {
+      output = { chunkCount: 0, chunks: [] }
+      tools.set(toolUseId, output)
+    }
+    return output
+  }
+  const time = (output: OutputTiming, first: number, last = first, chunks = 1): void => {
     output.chunkCount += chunks
     output.first ??= first
     output.last = last
@@ -40,25 +55,34 @@ export function createGenerationMeasurement(deps: GenerationMeasurementTokenizer
   return {
     observe(event: ProviderStreamEvent, at: number): void {
       switch (event.kind) {
-        case "text_delta": append(`text:${event.blockKey}`, event.text, at); break
-        case "tool_input_delta":
-          append(`tool:${event.toolUseId}`, event.generationText ?? event.partialJson, event.generationTiming?.first ?? at, event.generationTiming?.last ?? at, event.generationTiming?.chunks ?? 1)
+        case "text_delta":
+          if (event.text) time(textTiming(event.blockKey), at)
           break
+        case "tool_input_delta": {
+          const text = event.generationText ?? event.partialJson
+          if (!text) break
+          const output = toolInput(event.toolUseId)
+          output.chunks.push(text)
+          time(output, event.generationTiming?.first ?? at, event.generationTiming?.last ?? at, event.generationTiming?.chunks ?? 1)
+          break
+        }
         case "text_terminal":
-          if (event.content || blocks.has(`text:${event.blockKey}`)) block(`text:${event.blockKey}`).terminal = event.content
+          if (event.content) textTiming(event.blockKey)
           break
-        case "tool_use": block(`tool:${event.toolCall.id}`); break
+        case "tool_use": toolInput(event.toolCall.id); break
       }
     },
-    async complete(): Promise<GenerationMeasurement> {
+    async complete(textOf: SettledTextOf): Promise<GenerationMeasurement> {
       try {
         const eligible: { text: string; first: number; last: number }[] = []
-        for (const output of blocks.values()) {
-          if (output.chunkCount >= 2 && output.first !== undefined && output.last !== undefined && output.last > output.first) {
-            eligible.push({ text: output.terminal ?? output.chunks.join(""), first: output.first, last: output.last })
-          }
+        const measure = (output: OutputTiming, text: () => string | undefined): void => {
+          if (output.chunkCount < 2 || output.first === undefined || output.last === undefined || output.last <= output.first) return
+          const measured = text()
+          if (measured !== undefined) eligible.push({ text: measured, first: output.first, last: output.last })
         }
-        const excludedBlocks = blocks.size - eligible.length
+        for (const [blockKey, output] of texts) measure(output, () => textOf(blockKey))
+        for (const output of tools.values()) measure(output, () => output.chunks.join(""))
+        const excludedBlocks = texts.size + tools.size - eligible.length
         if (!eligible.length) return { kind: "recorded", basis: "O200kBase", outputTokens: 0, durationMs: 0, measuredBlocks: 0, excludedBlocks }
         try {
           await deps.prepare()
@@ -77,7 +101,8 @@ export function createGenerationMeasurement(deps: GenerationMeasurementTokenizer
         }
         return { kind: "recorded", basis: "O200kBase", outputTokens, durationMs, measuredBlocks: eligible.length, excludedBlocks }
       } finally {
-        blocks.clear()
+        texts.clear()
+        tools.clear()
       }
     },
   }

@@ -5,11 +5,11 @@ import { asAsyncEventReadSurface, type EventStore } from "../../../../src/infra/
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createFrontendProjection, type SessionChange } from "../../../../src/orchestration/app-service/frontend-projection"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail"
 import { cleanupTmpRoot, makeTmpDir } from "../session/_session-manager-fixtures"
 import { chatEntry, fakeSessionStore, fileChanged } from "./_frontend-projection-fixtures"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const ownedStores: EventStore[] = []
 afterEach(() => {
@@ -42,7 +42,7 @@ describe("frontend projection on an agent-launched workflow", () => {
     expect(batches.flat()).toEqual([])
     expect((await projection.snapshot()).rows.map((row) => row.id)).toEqual([parentId])
     const reader = asAsyncEventReadSurface(eventStore)
-    const detail = createSessionDetailProjection({ projectRoot: baseDir, sessionStore, manager, reader, projectionReader: reader })
+    const detail = testSessionDetailProjection({ projectRoot: baseDir, sessionStore, manager, reader, projectionReader: reader })
     expect((await detail.sessionDetail(workflowId)).view).toBeNull()
     expect(await createWorkflowDetailReader({ projectRoot: baseDir, manager, reader })(workflowId)).toMatchObject({ workflowId, title: "Implement the thing", launchedFrom: { parentSessionId: parentId } })
     expect((await manager.read(parentId))?.childSessionIds ?? []).toEqual([])

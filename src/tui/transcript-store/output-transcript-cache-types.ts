@@ -27,7 +27,7 @@ type OutputTranscriptSource =
 /** The client-side transcript window: the server's block-window metadata plus
  *  the TUI-owned row estimate. Rows are a layout concern the client measures
  *  and refines locally (the height index); the server never estimates them. */
-export interface TranscriptWindow extends RuntimeTranscriptWindow {
+interface TranscriptWindow extends RuntimeTranscriptWindow {
   readonly estimatedRows: number
 }
 

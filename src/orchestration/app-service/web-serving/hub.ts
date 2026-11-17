@@ -38,8 +38,9 @@ export interface AccountHubOptions {
 }
 
 /** Starts the account-owned wake surface on its lane's fixed loopback
- *  address. When another program holds that port, it throws the failure
- *  that `hubBindFailure` gives. It throws any other bind error unchanged. */
+ *  address. When another program holds that port, it throws a
+ *  `ServeStartupFailure` whose refusal is `{ kind: "port-in-use", port }`.
+ *  It throws any other bind error unchanged. */
 export function startAccountHub(options: AccountHubOptions): Hub {
   const origin = accountHubOrigin(options.lane)
   const handler = createAccountHubHandler(options, origin)
@@ -60,7 +61,7 @@ export function startAccountHub(options: AccountHubOptions): Hub {
  *  program holds, or none for any other error. A held port is the host's
  *  state and not this build's failure, so the start names it as its refusal,
  *  with the port, and a client shows the remedy that works. */
-export function hubBindFailure(error: unknown, port: number): ServeStartupFailure | undefined {
+function hubBindFailure(error: unknown, port: number): ServeStartupFailure | undefined {
   return error instanceof Error && "code" in error && error.code === "EADDRINUSE"
     ? new ServeStartupFailure(error.message, { kind: "port-in-use", port })
     : undefined

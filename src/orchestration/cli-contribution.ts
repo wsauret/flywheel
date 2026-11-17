@@ -1,7 +1,7 @@
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherContext } from "../infra/process-supervisor.js"
 import type { PersistentProcessManager } from "../infra/persistent-process-manager.js"
-import type { AccountModuleRequest } from "../protocol/account-attach.js"
+import type { AccountModuleAnswerHandler, AccountModuleRequest } from "../protocol/account-attach.js"
 
 /** The process-lifetime resources a command that composes a runtime needs.
  *  Utility verbs ignore them; only a run mode reaches this far. */
@@ -26,7 +26,7 @@ export interface CliCommandContext {
    *  replaces a superseded one. The attach opens no project. The request
    *  ends at the service when this process exits. Rejects with the reason
    *  when no service can serve it. */
-  readonly accountRequest: (request: AccountModuleRequest, onAnswer: (answer: unknown) => void) => Promise<void>
+  readonly accountRequest: (request: AccountModuleRequest, onAnswer: AccountModuleAnswerHandler) => Promise<void>
 }
 
 /** One verb as the root help and the generated CLI reference list it. */

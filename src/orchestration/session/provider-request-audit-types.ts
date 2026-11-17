@@ -3,7 +3,6 @@ import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from ".
 import { Schema } from "effect"
 import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js"
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js"
-import type { ModuleTransformerApplication } from "../module-hooks.js"
 import type { ModelInteractionProfileId } from "../agent-runtime/model-interaction-profile.js"
 
 /** Profile ids that only recorded requests hold: builds before 2026-10-30 served gpt-6-luna through them. */
@@ -338,12 +337,20 @@ export type ProviderTransportContext = typeof ProviderTransportContextSchema.Typ
 export type ProviderTransportAddition = typeof ProviderTransportAdditionSchema.Type
 export type ProviderTransportHiddenRequest = typeof ProviderTransportHiddenRequestSchema.Type
 
-export interface ProviderRequestAuditContextApplication {
-  readonly identity: string
-  readonly applications: readonly ModuleTransformerApplication[]
+/** One module transformer application as a `context.transformer.applied` fact
+ *  recorded it. Builds before 2026-11-16 wrote these facts; the current build
+ *  writes none and only folds retained history. */
+export interface RecordedTransformerApplication {
+  readonly applicationId: string
+  readonly transformerId: string
+  readonly seam: string
+  readonly order: number
+  readonly outcome: "applied" | "error"
+  readonly inputHash: string
+  readonly outputHash: string
 }
 
-export function digestProviderRequestContextApplications(applications: readonly ModuleTransformerApplication[]): string {
+export function digestProviderRequestContextApplications(applications: readonly RecordedTransformerApplication[]): string {
   return createHash("sha256").update(JSON.stringify(applications)).digest("hex")
 }
 
@@ -380,7 +387,6 @@ export interface ProviderRequestAuditRequestInput {
   historyLowering?: PromptHistoryLowering
   /** Request-only user context, stored only in the audit fact for exact reconstruction. */
   requestContext?: string
-  contextApplication?: ProviderRequestAuditContextApplication
 }
 
 export interface ProviderRequestAuditResponseInput {
@@ -446,7 +452,7 @@ export interface ProviderStreamTelemetryCompletedInput {
   stallCount: number
 }
 
-export interface ProviderStreamTelemetryEvent {
+interface ProviderStreamTelemetryEvent {
   sequence: number
   timestamp: number
   source: ProviderStreamTelemetrySource
@@ -502,7 +508,7 @@ export interface ProviderRequestAuditEntry {
     readonly tools: readonly (ProviderRequestAuditTool | HistoricalProviderRequestAuditTool)[]
     readonly omittedTools: readonly ProviderRequestAuditOmittedTool[]
   }
-  contextApplications?: ModuleTransformerApplication[]
+  contextApplications?: RecordedTransformerApplication[]
   request?: {
     model: string
     accessProvider: string

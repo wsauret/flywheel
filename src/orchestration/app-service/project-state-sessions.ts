@@ -68,7 +68,6 @@ const catalogFields = {
   branch: OptionalString,
   conversationId: OptionalString,
   providerConversationId: OptionalString,
-  workflowState: Schema.optionalKey(Schema.Literals(["idle", "running", "paused", "completed", "failed"])),
   parentSessionId: OptionalString,
   childSessionIds: Schema.optionalKey(Schema.Array(Schema.String)),
   launchedFrom: Schema.optionalKey(LaunchedFromSchema),
@@ -132,8 +131,6 @@ export const EventStoreAppendSchema = Schema.Struct({
   sessionId: Schema.String,
   payload: Schema.Record(Schema.String, Schema.Unknown),
   runId: Schema.optionalKey(Schema.String),
-  parentEventId: Schema.optionalKey(Schema.String),
-  causedByEventId: Schema.optionalKey(Schema.String),
   expectedSeq: Schema.optionalKey(Natural),
   aggregateGuards: Schema.optionalKey(Schema.Array(Schema.Struct({ aggregateId: Id, expectedSeq: Natural }))),
   payloadJson: Schema.optionalKey(Schema.String),
@@ -334,10 +331,11 @@ const decodeChange = Schema.decodeUnknownSync(SessionMetadataChangeSchema, { onE
 
 export interface ProjectStateSessionsTransport {
   request(command: ProjectStateSessionCommand): Promise<ProjectStateSessionResult>
-  subscribe(listener: (change: unknown) => void): () => void
+  subscribe(listener: (change: SessionMetadataChange) => void): () => void
 }
 
 export interface ProjectStateSessionsService {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a session command that the project state Worker received over its channel, decoded again here
   request(value: unknown): Promise<ProjectStateSessionResult>
   subscribe(listener: (change: SessionMetadataChange) => void): () => void
 }
@@ -376,6 +374,7 @@ export function createProjectStateSessionsService(manager: SessionManager, work:
     }
   }
   return {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a session command that the project state Worker received over its channel, decoded again here
     async request(value: unknown): Promise<ProjectStateSessionResult> {
       const command = decodeCommand(value)
       switch (command.kind) {

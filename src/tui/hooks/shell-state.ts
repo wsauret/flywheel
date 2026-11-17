@@ -1,6 +1,6 @@
 import { createBackgroundIndexFollower, type BackgroundIndexView } from "./create-background-index.js"
 import type { Accessor } from "solid-js"
-import { batch, createEffect, createMemo, createSignal, untrack } from "solid-js"
+import { batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import type { BackoffOptions } from "../../infra/backoff.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { ToolStreamingText } from "../../infra/output-blocks.js"
@@ -16,20 +16,19 @@ import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"
 import type { UpdateStatusView } from "../../protocol/update-protocol-types.js"
 import type { RuntimeModulesView } from "../../protocol/module-protocol-types.js"
-import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigPatchPayload, type RuntimeConfigSnapshotResult, type RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
-import { gitAiAttributionCursor, type GitAiAttributionPatchPayload, type GitAiAttributionStatus, type RuntimeGitAiAttributionSnapshotResult } from "../../protocol/git-ai-attribution-protocol-types.js"
-import { gitCursor, type GitPatchPayload, type GitView, type RuntimeGitSnapshotResult } from "../../protocol/git-protocol-types.js"
+import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
+import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
+import { gitCursor, type GitView } from "../../protocol/git-protocol-types.js"
 import type { RuntimeIdentity } from "../../protocol/client/runtime-identity.js"
 import type { ChatSubmissionWindow } from "../../protocol/client/chat-submissions.js"
 import type { CommandCatalogReadiness } from "../../protocol/client/slash-route.js"
-import { commandUsageCursor, type CommandUsagePatchPayload, type CommandUsageView, type RuntimeCommandUsageSnapshotResult } from "../../protocol/command-usage-protocol-types.js"
+import { commandUsageCursor, type CommandUsageView } from "../../protocol/command-usage-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
 import type { SessionLifecycleState } from "../../orchestration/session/types.js"
-import type { RuntimeDomainIntakeBindings, RuntimeUiPatch } from "../../protocol/runtime-ui-protocol-types.js"
-import { runtimeSnapshotScopeKey } from "../../protocol/client/family-intake.js"
+import type { RuntimeDomainIntakeBindings } from "../../protocol/runtime-ui-protocol-types.js"
+import { createHeldView } from "../../protocol/client/held-view.js"
 import { childCardStatus, type ChildCardStatus } from "../../protocol/client/session-controls.js"
 import { runtimeHealth as deriveRuntimeHealth } from "../../protocol/client/runtime-health.js"
-import { createOrderedPatchReceiver } from "./create-ordered-patch-receiver.js"
 import { createOutputTranscriptCache } from "../transcript-store/create-output-transcript-cache.js"
 import { createBudgetCache } from "./create-budget-cache.js"
 import { createModuleDomainIntakes, ensureModuleSessionDomains, type ModuleDomainIntakes } from "./create-module-domain-intakes.js"
@@ -258,29 +257,40 @@ export async function mutateRuntimeConfig(
  * providers so all settings consumers observe the same snapshot and patches. */
 export function createRuntimeConfigCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }): RuntimeConfigCache {
   const [view, setView] = createSignal<RuntimeConfigView | undefined>()
-  const cursor = runtimeConfigCursor()
-  const scope = { kind: "cursor", cursor } as const
   let closed = false
-  const receiver = createOrderedPatchReceiver<typeof scope, RuntimeConfigSnapshotResult, RuntimeUiPatch & { payload: RuntimeConfigPatchPayload }>({
+  const settlements = new Set<() => void>()
+  const wake = (): void => { for (const settle of settlements) settle() }
+  const held = createHeldView<RuntimeConfigView>({
     client: deps.appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== "config") return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return patch.payload.kind === "config.changed" ? { cursor, scope, patch: { ...patch, payload: patch.payload } } : null
+    cursor: runtimeConfigCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "configSnapshot" })
+      return { view: snapshot.config, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => deps.appService.query({ type: "configSnapshot" }),
-    applySnapshot(snapshot) { setView(snapshot.config); return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] } },
-    applyPayload(patch) { setView(patch.payload.config) },
-    onDispose() { closed = true },
+    adopt: (payload) => (payload.kind === "config.changed" ? payload.config : undefined),
+    changed: (next) => { setView(next); wake() },
+    label: "configuration",
+  })
+  onCleanup(() => {
+    closed = true
+    held.dispose()
+    wake()
   })
   return {
     view,
     async settlePublication(command, revision) {
       if (publishedMutation(view(), command, revision)) return true
-      if (closed) return false
-      await receiver.resnapshot(scope)
+      await held.refresh()
+      // The write committed, so its revision reaches this cache: a failed read
+      // retries, and a patch or a later lane's read lands it. Only closing the
+      // cache ends the wait before the revision arrives.
+      const answered = (): boolean => closed || (view()?.revision ?? -1) >= revision
+      while (!answered()) {
+        await new Promise<void>((resolve) => {
+          const settle = (): void => { settlements.delete(settle); resolve() }
+          settlements.add(settle)
+        })
+      }
       return !closed && publishedMutation(view(), command, revision)
     },
   }
@@ -288,62 +298,52 @@ export function createRuntimeConfigCache(deps: { appService: Pick<AttachedRuntim
 
 function createGitAiAttributionCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
   const [status, setStatus] = createSignal<GitAiAttributionStatus | undefined>()
-  const cursor = gitAiAttributionCursor()
-  const scope = { kind: "cursor", cursor } as const
-  createOrderedPatchReceiver<typeof scope, RuntimeGitAiAttributionSnapshotResult, RuntimeUiPatch & { payload: GitAiAttributionPatchPayload }>({
+  const held = createHeldView<GitAiAttributionStatus>({
     client: deps.appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== "gitAiAttribution") return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return patch.payload.kind === "gitAiAttribution.changed" ? { cursor, scope, patch: { ...patch, payload: patch.payload } } : null
+    cursor: gitAiAttributionCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "gitAiAttributionSnapshot" })
+      return { view: snapshot.status, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => deps.appService.query({ type: "gitAiAttributionSnapshot" }),
-    applySnapshot(snapshot) { setStatus(snapshot.status); return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] } },
-    applyPayload(patch) { setStatus(patch.payload.status) },
+    adopt: (payload) => (payload.kind === "gitAiAttribution.changed" ? payload.status : undefined),
+    changed: (next) => setStatus(next),
+    label: "Git AI attribution status",
   })
+  onCleanup(held.dispose)
   return { status }
 }
 
 function createGitCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
   const [view, setView] = createSignal<GitView>({ directories: {} })
-  const cursor = gitCursor()
-  const scope = { kind: "cursor", cursor } as const
-  createOrderedPatchReceiver<typeof scope, RuntimeGitSnapshotResult, RuntimeUiPatch & { payload: GitPatchPayload }>({
+  const held = createHeldView<GitView>({
     client: deps.appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== "git") return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return patch.payload.kind === "git.changed" ? { cursor, scope, patch: { ...patch, payload: patch.payload } } : null
+    cursor: gitCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "gitSnapshot" })
+      return { view: snapshot.git, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => deps.appService.query({ type: "gitSnapshot" }),
-    applySnapshot(snapshot) { setView(snapshot.git); return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] } },
-    applyPayload(patch) { setView(patch.payload.git) },
+    adopt: (payload) => (payload.kind === "git.changed" ? payload.git : undefined),
+    changed: (next) => setView(next),
+    label: "Git",
   })
+  onCleanup(held.dispose)
   return { view }
 }
 
 function createCommandUsageCache(deps: { appService: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> }) {
   const [counts, setCounts] = createSignal<ReadonlyMap<string, number>>(new Map())
-  const apply = (usage: CommandUsageView) => setCounts(new Map(usage.uses.map((use) => [use.name, use.count])))
-  const cursor = commandUsageCursor()
-  const scope = { kind: "cursor", cursor } as const
-  createOrderedPatchReceiver<typeof scope, RuntimeCommandUsageSnapshotResult, RuntimeUiPatch & { payload: CommandUsagePatchPayload }>({
+  const held = createHeldView<CommandUsageView>({
     client: deps.appService,
-    connectedScope: () => scope,
-    accept(patch) {
-      if (patch.cursor.scope !== "workspace" || patch.cursor.domain !== "commandUsage") return null
-      if (patch.payload.kind === "runtime.invalidate") return { cursor, scope }
-      return patch.payload.kind === "commandUsage.changed" ? { cursor, scope, patch: { ...patch, payload: patch.payload } } : null
+    cursor: commandUsageCursor(),
+    read: async () => {
+      const snapshot = await deps.appService.query({ type: "commandUsageSnapshot" })
+      return { view: snapshot.usage, position: snapshot.snapshotPosition }
     },
-    scopeKey: runtimeSnapshotScopeKey,
-    loadSnapshot: () => deps.appService.query({ type: "commandUsageSnapshot" }),
-    applySnapshot(snapshot) { apply(snapshot.usage); return { snapshotPosition: snapshot.snapshotPosition, cursors: [cursor] } },
-    applyPayload(patch) { apply(patch.payload.usage) },
+    adopt: (payload) => (payload.kind === "commandUsage.changed" ? payload.usage : undefined),
+    changed: (usage) => setCounts(new Map(usage.uses.map((use) => [use.name, use.count]))),
+    label: "command usage",
   })
+  onCleanup(held.dispose)
   return { counts }
 }
 

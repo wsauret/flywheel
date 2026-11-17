@@ -482,7 +482,7 @@ describe("BackgroundExecutionOwner command handover", () => {
 
     expect(fixture.tasks.processRecord(row.processId)).toMatchObject({ status: "running", startedAtMs: row.startedAtMs })
     expect(fixture.tasks.activeBackgroundCommands().map((command) => command.toolUseId)).toEqual(["toolu_previous"])
-    expect(await fixture.tasks.readTaskOutput("toolu_previous", { limit: 5 })).toEqual({ ok: true, text: expect.stringContaining("watching for changes") })
+    expect(await fixture.tasks.readProcessOutput(row.processId, { limit: 5 })).toEqual({ ok: true, text: expect.stringContaining("watching for changes") })
     expect(fixture.store.readInFlight(SESSION, COMMAND_HANDOVER_IN_FLIGHT_KIND)).toEqual([])
     expect(fixture.tasks.terminate("toolu_previous")).toBe(true)
     await settled(fixture)

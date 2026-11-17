@@ -90,7 +90,7 @@ describe("dispatched subagent prompt inspectability", () => {
     const reconciled = Promise.withResolvers<void>();
     harness.authority.reconcileParentCompletion = (parentSessionId) => {
       void reconcileChildSessionCompletions({
-        parentSessionId, reader: harness.reader, writer: harness.writer,
+        parentSessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer,
       }).then(() => reconciled.resolve(), reconciled.reject);
     };
     try {
@@ -223,7 +223,7 @@ describe("dispatched subagent reset", () => {
     const harness = createHarness((options) => newTestRunner(options, async () => asModelClient(client)));
     const reconciled = Promise.withResolvers<void>();
     harness.authority.reconcileParentCompletion = (parentSessionId) => {
-      void reconcileChildSessionCompletions({ parentSessionId, reader: harness.reader, writer: harness.writer })
+      void reconcileChildSessionCompletions({ parentSessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer })
         .then(() => reconciled.resolve(), reconciled.reject);
     };
     try {
@@ -289,7 +289,7 @@ describe("dispatched subagent instruction chain", () => {
       const reconciled = Promise.withResolvers<void>();
       harness.authority.reconcileParentCompletion = (parentSessionId) => {
         void reconcileChildSessionCompletions({
-          parentSessionId, reader: harness.reader, writer: harness.writer,
+          parentSessionId, reader: harness.reader, projectionReader: harness.reader, writer: harness.writer,
         }).then(() => reconciled.resolve(), reconciled.reject);
       };
       dispatches += 1;

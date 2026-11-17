@@ -21,7 +21,6 @@ const provider: AccessProviderDefinition = {
   shortName: "Test",
   billing: "subscription",
   rank: 1,
-  supportedFamilies: ["openai"],
   configHints: [],
   catalogId: undefined,
   auth: { kind: "oauth", credentialId: "test-subscription", flow: "device-code", statusRank: 1, start: async () => { throw new Error("test provider has no login") } },

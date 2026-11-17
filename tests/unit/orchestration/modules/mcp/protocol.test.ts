@@ -11,7 +11,7 @@ import type { LauncherScope } from "../../../../../src/infra/process-supervisor.
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../../src/orchestration/config/writer.js"
 import type { McpConnection } from "../../../../../src/orchestration/modules/mcp/connection.js"
-import { McpNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/errors.js"
+import { McpNeedsAuthError, McpRegistrationRefusedError, McpSignInPortBusyError } from "../../../../../src/orchestration/modules/mcp/errors.js"
 import { createMcpManager, type McpManager } from "../../../../../src/orchestration/modules/mcp/manager.js"
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"
@@ -151,13 +151,17 @@ describe("MCP protocol runtime", () => {
 
   test("runs the closed reauthentication and answers a failure without its cause", async () => {
     const manager = createMcpManager({ executionCwd: "/scratch", authDir: AUTH_DIR, servers: {} })
-    let fail = false
+    let failure: Error | undefined
     const authenticated: string[] = []
-    const { runtime } = protocolOver(manager, { authenticate: async (server) => { if (fail) throw new Error("https://provider.example/?token=secret"); authenticated.push(server) } })
+    const { runtime } = protocolOver(manager, { authenticate: async (server) => { if (failure !== undefined) throw failure; authenticated.push(server) } })
     expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: true })
     expect(authenticated).toEqual(["work"])
-    fail = true
+    failure = new Error("https://provider.example/?token=secret")
     expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: false, error: "MCP authentication failed. Try again." })
+    failure = new McpRegistrationRefusedError("work", { cause: new Error("https://provider.example/register") })
+    expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: false, error: "MCP authentication failed. This server may accept only approved apps. You can try Use Claude as client." })
+    failure = new McpSignInPortBusyError(3118)
+    expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: false, error: "Another sign-in is using local port 3118. Finish or cancel it, then try again." })
     runtime.dispose()
     await manager.dispose()
   })

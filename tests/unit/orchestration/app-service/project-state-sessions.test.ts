@@ -53,7 +53,7 @@ function fakeManager() {
 
 function connected(manager: SessionManager, work: Parameters<typeof createProjectStateSessionsService>[1] = {}) {
   const service = createProjectStateSessionsService(manager, work)
-  let changeListener: ((change: unknown) => void) | undefined
+  let changeListener: ((change: SessionMetadataChange) => void) | undefined
   const client = createProjectStateSessionManager({
     request: (command) => service.request(structuredClone(command)),
     subscribe(listener) {

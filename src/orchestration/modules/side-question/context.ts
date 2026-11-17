@@ -1,7 +1,7 @@
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 
 /** The result text of a source call that has no result yet: the main conversation still runs it. */
-export const SIDE_QUESTION_PENDING_RESULT = "The main conversation has not received the result of this call yet, so a side question cannot read it."
+const SIDE_QUESTION_PENDING_RESULT = "The main conversation has not received the result of this call yet, so a side question cannot read it."
 
 /** Closes unresolved source calls in a request-only copy. Real results always take precedence. */
 export function sideQuestionSource(messages: readonly ConversationMessage[]): ConversationMessage[] {

@@ -36,7 +36,7 @@ import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores }
 import { createNativePersonaInvocation } from "./native-persona-invocation.js";
 import { IMPLEMENT_TRANSCRIPT_FILE, retainImplementStore } from "./implement-evidence.js";
 import { createPersonaStore } from "./persona-store.js";
-import { exportCampaignRecords } from "./benchmark-records.js";
+import { exportCampaignRecords, isScoredAttempt } from "./benchmark-records.js";
 import type { JudgeSelection } from "./admission.js";
 
 /** The scoring contract a campaign was judged under. Reviewer campaigns moved
@@ -328,7 +328,8 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   const existingStore = plan.operation === "run" ? undefined : await createPersonaStore(location);
   const stored = await existingStore?.loadConfig();
   const runRecords = await existingStore?.loadRuns() ?? [];
-  const groups = plan.operation === "rescore" ? [] : pendingGroups(plan, new Set(runRecords.map(runKey)));
+  // A scored attempt (an implementer cell at its time limit) is complete, as its record is.
+  const groups = plan.operation === "rescore" ? [] : pendingGroups(plan, new Set([...runRecords, ...(await existingStore?.loadAttempts() ?? []).filter(isScoredAttempt)].map(runKey)));
   const nativeTasks = plan.tasks.some(task => "kind" in task && task.kind === "native");
   const pendingNative = groups.some(group => group.some(cell => "kind" in cell.task && cell.task.kind === "native"));
   const nativeInvocation = deps.nativeInvocation ?? (pendingNative ? await createNativePersonaInvocation(deps.runtime, catalog) : undefined);
@@ -394,6 +395,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
 
   onEvent({ kind: "benchmark.started", resultsDir: plan.resultsDir, pendingCells: groups.reduce((total, group) => total + group.length, 0) });
 
+  let retryCells = 0;
   if (groups.length > 0) {
     const attempts = groups.map(group => group.map(cell => ({
       ...cell, directory: join(plan.resultsDir, "cells", cell.variant.id, cell.task.id, String(cell.repeat), crypto.randomUUID()),
@@ -402,7 +404,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
       const rolesFile = Bun.file(join(cell.directory, "roles.json"));
       await store.appendRoles({ kind: "cell-roles", ...cellId(cell), directory: cell.directory, profileId, authorityIncarnation, roles: await rolesFile.exists() ? await rolesFile.json() : null });
     };
-    const failedCells = await runGroups(
+    await runGroups(
       attempts,
       async (cell) => {
         onEvent({ kind: "cell.started", cell: cellId(cell) });
@@ -427,20 +429,20 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
         // Persist the accounting before the observer hears about it: events.jsonl
         // is the authority, and `cell.failed` is its projection.
         await store.appendAttempt(attemptRecord(plan, cell, error, deps.sourceIdentity));
+        if (!isScoredAttempt({ mode: plan.mode, terminal: error.terminal })) retryCells++;
         await persistRoles(cell);
         onEvent({ kind: "cell.failed", cell: cellId(cell), message: error.message });
       },
       signal,
       DEFAULT_BENCHMARK_CONCURRENCY,
     );
-    if (signal?.aborted) return await cancel(plan, scope, onEvent);
-    if (failedCells > 0) throw new Error(`${failedCells} benchmark cell${failedCells === 1 ? "" : "s"} failed; resume the run to retry them`);
   }
 
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
+  if (retryCells > 0) throw new Error(`${retryCells} benchmark cell${retryCells === 1 ? "" : "s"} failed; resume the run to retry them`);
   const report = await scoreAndRender(plan, resolvedDeps, store, results, implementResults, scope.run);
   if (signal?.aborted) return await cancel(plan, scope, onEvent);
-  if (judge) await exportCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp), { kind: "campaign", version: 1, persona: plan.persona, mode: plan.mode, stamp: plan.stamp, judge: { model: judge.model, effort: judge.effort }, scoringVersion: campaignScoringVersion, personaGuidanceIdentity }, await store.loadRuns(), await store.loadScores(), plan.tasks, catalog.projectRoot);
+  if (judge) await exportCampaignRecords(catalog.recordsFile(plan.persona, plan.stamp), { kind: "campaign", version: 1, persona: plan.persona, mode: plan.mode, stamp: plan.stamp, judge: { model: judge.model, effort: judge.effort }, scoringVersion: campaignScoringVersion, personaGuidanceIdentity }, await store.loadRuns(), await store.loadAttempts(), await store.loadScores(), plan.tasks, catalog.projectRoot);
   const reportPath = join(store.directory, "report.md");
   report.text += `\n${sourceReport(await store.loadRuns())}\n${await store.roleReport()}\nCandidate role selections are in each cell's roles.json. Judge role selections and profile IDs are in judge-requests/<profile>/<call>/roles.json.\n`;
   await store.writeArtifact("report.md", report.text);

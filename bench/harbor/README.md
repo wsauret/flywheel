@@ -7,7 +7,7 @@ The system has two entry points:
 - `run-harbor.sh` prepares and runs every trial. Do not invoke Harbor directly. The launcher resolves the command line and each task, builds and publishes the agent package of the run, writes a generated Harbor job config, validates it with Harbor's own config model, and runs Harbor only after validation.
 - `hill.ts` reads the board's data and the records of a round. It fetches and verifies the board, proposes splits, plans reruns, scans for answer-key use, records review verdicts, and scores a round.
 
-There is one execution path. Every trial, in local Docker or on Harbor Hub, runs Harbor's `acp` agent on the same agent package. The package runs `flywheel --headless --acp --unattended` in the task workspace and records the same evidence. Only the place where the trial runs is different.
+There is one execution path. Every trial, in local Docker, on Harbor Hub, or on Runta runtimes (see [Runta run](#runta-run)), runs Harbor's `acp` agent on the same agent package. The package runs `flywheel --headless --acp --unattended` in the task workspace and records the same evidence. Only the place where the trial runs is different.
 
 See [METHODOLOGY.md](METHODOLOGY.md) for the measurement rules, the evidence contracts, the scoring and projection method, and the entry of each benchmark.
 
@@ -25,6 +25,7 @@ Each descriptor pins the dataset to an exact `sha256:` ref and states the tasks 
 
 - The Harbor CLI, `harbor`, on `PATH`. The launcher uses Harbor's own Python for task resolution, config validation, and the package builder, so a dry run also needs it. A hosted run needs a Harbor Hub login and Harbor 0.25.1 or later (`0.25.1.dev202611090753` is the first build): from that version, Hub and the CLI read the secrets of an agent as selections with a name, a tag, and a variable name, and an earlier CLI refuses the generated job config at validation.
 - Docker, for a local run only.
+- A Runta credential, for a Runta run only: `RUNTA_CONFIG` or `RUNTA_TOKEN`, or the Runta config at `~/.config/runta/config.toml` (see [Runta run](#runta-run)).
 - Bun and Git. The package builder builds the Flywheel executable from the Git blobs of HEAD.
 - A public GitHub agent repository that this host can push to. Name it with `--agent-repo <owner/repo>` or `FLYWHEEL_HARBOR_AGENT_REPO`. It has no default.
 - Optionally, a Harbor Hub organization that owns hosted jobs: `--organization <name>` or `FLYWHEEL_HARBOR_HUB_ORG`. Without one, a job belongs to the signed-in Hub user.
@@ -40,10 +41,11 @@ The package carries the config. The trial installs it as `$HOME/.flywheel/flywhe
 The checked-in arms are in `configs/`:
 
 - `tb-board-deepseek-low.toml` and `tb-board-deepseek-high.toml` match the settings of the harness leaderboard. They run the September release of DeepSeek-V4.1-Flash at reasoning effort low or high, on the person's OpenRouter API key. OpenRouter is restricted to DeepInfra's fp8 endpoint with no fallback, because the board serves that model from DeepInfra. Automatic titles use the same route, so no other model runs in a trial.
+- `fh-deepseek-1017-max-baseten.toml` targets the FrontierHarness v1.1 board's model and route. Every role runs DeepSeek-V4.1-Flash-1017 at max effort through Baseten's own API, with Baseten's prices and no other provider. The launcher selects the tasks and attempts. Store the key in the run's auth profile: `printf '%s\n' "$BASETEN_API_KEY" | FLYWHEEL_AUTH_PROFILE=<profile> flywheel auth login --baseten`.
 - `tb-mini-openai.toml` runs `gpt-6.1-terra` at medium effort.
 - `tb-mini-claude.toml` runs Flywheel's Claude engine route on the person's Claude subscription. It runs on every registered benchmark, also where the agent phase is offline: Harbor installs the Claude engine in the setup phase (see [Agent package](#agent-package)).
 
-When the agent phase of a selected task has no public network, as on DeepSWE, the trial can reach only the hosts that the run allows. The launcher allows the API hosts that the arm's enabled provider modules declare, and the model metadata host `models.dev`. It refuses the run, with the name of each provider, when an enabled provider module declares no API hosts. Of the provider modules, OpenRouter (`openrouter.ai`) and the Claude engine route (`api.anthropic.com`) declare their hosts now, so only an arm that enables no other provider module can run such a task.
+When the agent phase of a selected task has no public network, as on DeepSWE, the trial can reach only the hosts that the run allows. The launcher allows the API hosts that the arm's enabled provider modules declare, and the model metadata host `models.dev`. It refuses the run, with the name of each provider, when an enabled provider module declares no API hosts. Of the provider modules, OpenRouter (`openrouter.ai`), Baseten (`inference.baseten.co`), and the Claude engine route (`api.anthropic.com`) declare their hosts now, so only an arm that enables no other provider module can run such a task.
 
 ## Launcher flags
 
@@ -57,13 +59,14 @@ When the agent phase of a selected task has no public network, as on DeepSWE, th
 | `--split <name>` or `--task-names <a,b>` | neither: every task | A split of the descriptor, or an explicit list. Give at most one of the two. A bare task name takes the benchmark's task namespace. Each name must match a task of the pinned dataset. With neither, the run takes every task of the pinned dataset except the descriptor's exclusions and measures the reserved split `all`. |
 | `--round <name>` | none | The round that an executing run joins. A run with `--split` or with no task selection joins as a measurement of its split. A run with `--task-names` joins as a measurement of the reserved split `task-list` when no run of the round has measured anything yet, and as a rerun otherwise. A dry run joins no round, but its benchmark and identity are checked against the round. The name is a lowercase slug. See [A hill-climb round](#a-hill-climb-round). |
 | `--attempts <n>` | `3` | Attempts per task. Fewer than 3 needs `--allow-low-k`. |
-| `--concurrency <n>` | `4` | Trials at the same time. On Hub, set it to the trial count to run every trial at once. |
+| `--concurrency <n>` | `4`, `8` with `--runta` | Trials at the same time. On Hub, set it to the trial count to run every trial at once. |
 | `--timeout-multiplier <x>` | `1` | Harbor's agent and verifier timeout multiplier. |
 | `--agent-setup-timeout-multiplier <x>` | `3` | Agent setup timeout multiplier. |
 | `--environment-build-timeout-multiplier <x>` | `3` | Environment build timeout multiplier. |
 | `--allow-timeout-multipliers` | off | Admits any timeout multiplier other than the defaults. |
-| `--resource-overrides '<json>'` | none | Local only: `cpus`, `memory_mb`, `storage_mb`, `gpus`, `tpu`. Needs `--allow-resource-overrides`. `--hosted` refuses them. |
+| `--resource-overrides '<json>'` | none, `{"storage_mb":32768}` with `--runta` | Local and Runta only: `cpus`, `memory_mb`, `storage_mb`, `gpus`, `tpu`. Needs `--allow-resource-overrides`, except for the Runta mode's own `storage_mb` of 32768. `--hosted` refuses them. |
 | `--hosted` | off | Runs on Harbor Hub instead of local Docker. Refuses `--prebuild` and resource overrides. |
+| `--runta` | off | Runs on Runta runtimes, driven by a local Harbor process, instead of local Docker. Refuses `--hosted` and `--prebuild`. See [Runta run](#runta-run). |
 | `--organization <name>` | `FLYWHEEL_HARBOR_HUB_ORG` | The Hub organization of a hosted job. |
 | `--agent-repo <owner/repo>` | `FLYWHEEL_HARBOR_AGENT_REPO` | The public agent repository. |
 | `--execute` | off | Authorizes provider spend and container work. Without it, the run is a dry run (`--dry-run` states that explicitly). |
@@ -74,7 +77,7 @@ When the agent phase of a selected task has no public network, as on DeepSWE, th
 
 Grades:
 
-- `leaderboard_valid`: at least 3 attempts, the default timeout multipliers, and no resource overrides.
+- `leaderboard_valid`: at least 3 attempts, the default timeout multipliers, and no resource overrides other than the Runta mode's own 32768 MB of storage.
 - `local_low_k`: fewer than 3 attempts, other timeout multipliers, or resource overrides, each admitted by its flag.
 - `debug_only`: one attempt.
 
@@ -194,6 +197,22 @@ A round of all tasks prints no projection, because it measured the full benchmar
 
 An explicit task list can also be a round of its own, such as an A/B comparison over chosen tasks: give each arm its own round, and make the task list the first run of each. That run measures the reserved split `task-list`, so `hill.ts rerun` plans its lost trials and `hill.ts score` scores the split `task-list`. Give a round one task list: a later list joins as a rerun, which adds attempts only to tasks that the round measured.
 
+### Runta run
+
+The FrontierHarness board accepts a submission only when it ran on Runta runtimes with `-e runta --override-storage-mb 32768`. `--runta` runs the same agent package in that environment: the launcher writes a Harbor job config with the environment type `runta` and `override_storage_mb: 32768`, and runs it with a local `harbor run -c <generated.json>`, as a local run does. The run has no `harbor download`, image prebuild, or verifier wheelhouse step, because Runta builds each task image itself. The trials, the finalization, the ledger, the round record, and the `hill.ts` inputs are the same as for a local run, under `harbor-jobs/<job name>/` of the artifact directory.
+
+- The 32768 MB storage is the mode's own setting, the board's, so it keeps the grade and needs no `--allow-resource-overrides`. Every other resource override keeps the rules of a local run.
+- The default concurrency is 8, the board's: Runta's trial quota is 32 vCPU and 64 GiB in total, and the largest FrontierHarness task takes 4 vCPU and 8 GiB. An explicit `--concurrency` wins.
+- Harbor's Runta environment refuses to start without `RUNTA_TOKEN` or `RUNTA_CONFIG`. The launcher passes `RUNTA_CONFIG`, `RUNTA_TOKEN`, and `RUNTA_ENDPOINT` from its own environment to Harbor, and when neither `RUNTA_CONFIG` nor `RUNTA_TOKEN` is set, it sets `RUNTA_CONFIG` to `~/.config/runta/config.toml` when that file exists. It refuses the run, also a dry run and before the package is built, when no Runta credential is available.
+- Cost: Runta bills the compute of the runtimes separately from the model spend, about $0.13 per runtime-hour at list prices.
+
+This example runs the FrontierHarness board's whole benchmark on Runta. Replace `<profile>`, `<owner/repo>`, and `<arm>`.
+
+```bash
+RUNTA_CONFIG=~/.config/runta/config.toml bash bench/harbor/run-harbor.sh --benchmark frontier-harness-1.1 --arm <arm> \
+  --auth-profile <profile> --agent-repo <owner/repo> --runta --execute
+```
+
 ## Bring-up with one task
 
 Before a round on a new arm, a new commit, or a new benchmark, run one fast task once and iterate until it passes. The run checks one complete path through the launcher, the package, Harbor, Flywheel, the verifier, and finalization. It is `debug_only` and is not benchmark evidence. Without `--round`, it joins no round.
@@ -242,7 +261,7 @@ The launcher chooses the publication path from the source identity alone, and no
 - A package of a released Flywheel version, meaning a commit that a `vX.Y.Z` tag of the public repository names and that the public repository lists as a release, goes to the agent repository's `main` branch with the tag `flywheel-<vX.Y.Z>-<build id>`. The launcher reads the tags from the public repository with `git ls-remote`, never from local tags, so a local tag with a release name on a trial commit does not make it a release.
 - Every other package, including any unreleased commit or bring-up trial, goes only to its own branch `build/<build id>`, never to `main`.
 
-The build id is the first 12 hexadecimal characters of a digest of the commit, the archive, the config, the store analysis bundle, the shim files, and the rules file, so the same inputs reuse the same published commit. Everything pushed to the agent repository is public at once. The publisher pushes only these package refs, with Git trace2 events off so that no tool that watches them pushes its own refs beside the package, and it fails when the agent repository then holds any other ref.
+The build id is the first 12 hexadecimal characters of a digest of the commit, the archive, the config, the store analysis bundle, the shim files, and the rules file, so the same inputs reuse the same published commit. Everything pushed to the agent repository is public at once. The publisher pushes only these package refs, with Git trace2 events off so that no tool that watches them pushes its own refs beside the package, and it fails when the agent repository then holds any other ref. The one exception is a `<harness>-<version>-wrapper` branch, which holds the Harbor wrapper of a reference harness for a comparison run; Harbor fetches only the ref and commit that a launch names, so a wrapper never changes which agent a trial runs.
 
 ### Claude engine
 
@@ -257,6 +276,7 @@ When a commit moves `@anthropic-ai/claude-agent-sdk` in `bun.lock`, the build re
 An executing run, and a hosted dry run, exports the trial auth snapshot on this host. It carries only the credential providers of the provider modules that the arm config leaves enabled, under the trial profile id `benchmark`, with access tokens that stay valid for the worst-case length of the job: every wave of trials at the slowest task's agent, verifier, and build timeouts, times the largest timeout multiplier, plus one hour. Its host stage is removed in every outcome, and the snapshot is then only in the launcher's memory and in the environment of the Harbor process that it starts.
 
 - On Harbor Hub, the snapshot reaches the trial only as the job secret `FLYWHEEL_AUTH_SNAPSHOT` with `credential_mode: direct`. Hub accepts a secret of at most 16,384 characters, and the launcher refuses a longer snapshot.
+- On Runta, Compose runs inside the remote runtime without Harbor's environment, so the overlay cannot deliver the snapshot. The generated config gives the agent the `env` entry `FLYWHEEL_AUTH_SNAPSHOT = "${FLYWHEEL_AUTH_SNAPSHOT}"`, a template that Harbor resolves from its own environment. Harbor writes the template, not the value, into the trial's `config.json`, and removes the value from the trial directory's text files. Runta receives the snapshot's credential values in its exec requests, and the trial's provider traffic goes through Runta's gateway, so Runta can see the credentials of the arm. Run a Runta arm on dedicated provider keys that you can revoke after the run.
 - In local Docker, the generated config names the overlay `snapshot-environment.compose.yaml`, which declares `FLYWHEEL_AUTH_SNAPSHOT` for the agent container without a value, so Docker Compose copies it from Harbor's environment when it creates the container. It is in no file, command line, or log of the host. Harbor gets only that variable and an allowlist of Docker, cache, certificate, and temporary-directory variables. The value stays in the container's environment for the container's life, which covers the setup, agent, and verifier phases and `/proc/1/environ`. On the host, anyone who can use this Docker daemon can read it with `docker inspect` until Harbor removes the container.
 
 Before it builds the agent package, every run, a dry run included, runs a quota preflight on the auth profile. It reads what the profile's own stores state about each account that the snapshot exports: the account rows of the availability authority, which a request reads to skip a spent account and which already folds the subscription usage reports. It sends no request and creates no store. It prints one line per account: out of quota until a time, no store states it out of quota, or not checked. When every account is out of quota until after now, the launcher refuses the run, because each trial would only wait for the reset until Harbor's agent timeout. A login token, such as a token of the Claude engine route, is its own account of the trial profile, which no host store has observed, so the preflight reports it as not checked, and a run with such an account is never refused.
@@ -287,7 +307,7 @@ Each run creates one timestamped artifact directory under the jobs directory, `<
 - `generated.json` is the validated Harbor job config that the run passes to Harbor.
 - `run_manifest.json` records the benchmark, the split and the round, the state (`prepared`, `launched`, `finalized`, or `refused`), seed provenance, the runtime source record (`mode: "git_commit"` and the packaged SHA), the agent package and its runtime archive digest, the hosts that an offline agent phase allows, the exact command, the denominator, the grade, and the effective settings. Its `profile_sha256` is the digest of everything that states the run: the benchmark and its dataset, the arm path and digest, the tasks, the attempts, the concurrency, the timeout multipliers, and the resource overrides. The trial records it too. The `flywheel_config` record holds the arm path, digest, and chat effort.
 - `metadata.yaml` identifies the agent and primary model.
-- `hub/<job name>/<trial>/` holds the trials of a hosted run that the launcher downloaded, and `harbor-jobs/<job name>/<trial>/` holds the trials of a local run, which Harbor writes there. The plan's `trials_directory` names the directory of the run's trials, and finalization and `hill.ts` read the trials from it.
+- `hub/<job name>/<trial>/` holds the trials of a hosted run that the launcher downloaded, and `harbor-jobs/<job name>/<trial>/` holds the trials of a local or Runta run, which Harbor writes there. The plan's `trials_directory` names the directory of the run's trials, and finalization and `hill.ts` read the trials from it.
 - `disclosure-ledger.json` is written during finalization from real Harbor trial evidence. See METHODOLOGY.md, "Failure categories and precedence".
 - Each trial's `agent/flywheel-run-summary.json` carries versioned settlement, cancellation, deadline-authority, and store identity evidence.
 - Each trial's `agent/flywheel-store-analysis.json` is the content-free analysis of Flywheel's durable event store for that trial.

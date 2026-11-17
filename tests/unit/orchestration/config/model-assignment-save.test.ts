@@ -39,6 +39,7 @@ describe("saveModelAssignment", () => {
       await expect(saveModelAssignment(
         roleSlot("chat"),
         { model: "claude-opus-4-6", effort: "high" },
+        { kind: "absent" },
         saveDeps(join(dir, "flywheel.toml"), "work"),
       )).resolves.toBeUndefined();
 
@@ -56,6 +57,7 @@ describe("saveModelAssignment", () => {
       await expect(saveModelAssignment(
         roleSlot("chat"),
         { model: "gpt-5.5", effort: "low" },
+        { kind: "value", value: { model: "gpt-5.5", effort: null } },
         saveDeps(join(dir, "flywheel.toml"), "work"),
       )).resolves.toBeUndefined();
 
@@ -72,7 +74,7 @@ describe("saveModelAssignment", () => {
       const configPath = join(dir, "flywheel.toml");
       await writeFile(configPath, `[profiles.personal.roles.chat]\nmodel = "gpt-5.5"\n\n[profiles.work.roles.chat]\nmodel = "gpt-5-mini"\neffort = "low"\n`);
 
-      await saveModelAssignment(roleSlot("chat"), { model: null, effort: null }, saveDeps(configPath, "work"));
+      await saveModelAssignment(roleSlot("chat"), { model: null, effort: null }, { kind: "value", value: { model: "gpt-5-mini", effort: "low" } }, saveDeps(configPath, "work"));
 
       const text = await readFile(configPath, "utf8");
       expect(text).toContain('[profiles.personal.roles.chat]\nmodel = "gpt-5.5"');
@@ -88,18 +90,18 @@ describe("saveModelAssignment", () => {
       const header = '[profiles."legacy\\"profile".roles.chat]';
       await writeFile(configPath, "");
 
-      await saveModelAssignment(roleSlot("chat"), { model: "gpt-5.5", effort: "low" }, options);
-      await saveModelAssignment(roleSlot("chat"), { model: "gpt-5-mini", effort: "high" }, options);
+      await saveModelAssignment(roleSlot("chat"), { model: "gpt-5.5", effort: "low" }, { kind: "absent" }, options);
+      await saveModelAssignment(roleSlot("chat"), { model: "gpt-5-mini", effort: "high" }, { kind: "value", value: { model: "gpt-5.5", effort: "low" } }, options);
 
       const updated = await readFile(configPath, "utf8");
       expect(updated.split(header)).toHaveLength(2);
       expect(updated).toContain('model = "gpt-5-mini"');
       expect(updated).not.toContain('model = "gpt-5.5"');
 
-      await saveModelAssignment(roleSlot("chat"), { effort: "medium" }, options);
+      await saveModelAssignment(roleSlot("chat"), { effort: "medium" }, { kind: "value", value: { model: "gpt-5-mini", effort: "high" } }, options);
       expect(await readFile(configPath, "utf8")).toContain('effort = "medium"');
 
-      await saveModelAssignment(roleSlot("chat"), { model: null, effort: null }, options);
+      await saveModelAssignment(roleSlot("chat"), { model: null, effort: null }, { kind: "value", value: { model: "gpt-5-mini", effort: "medium" } }, options);
       expect(await readFile(configPath, "utf8")).not.toContain(header);
     });
   });

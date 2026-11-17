@@ -9,16 +9,16 @@ export interface RuntimePapercutCountView {
   readonly undisposedCount: number
 }
 
-export interface RuntimePapercutCountSnapshotResult {
+interface RuntimePapercutCountSnapshotResult {
   readonly snapshotPosition: RuntimePosition
   readonly papercuts: RuntimePapercutCountView
 }
 
-export type PapercutPatchPayload = { readonly kind: "papercuts.changed"; readonly papercuts: RuntimePapercutCountView }
+type PapercutPatchPayload = { readonly kind: "papercuts.changed"; readonly papercuts: RuntimePapercutCountView }
 
 const RuntimePapercutCountViewSchema: Schema.Codec<RuntimePapercutCountView> = Schema.Struct({ undisposedCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)) })
-export const RuntimePapercutCountSnapshotResultSchema: Schema.Codec<RuntimePapercutCountSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, papercuts: RuntimePapercutCountViewSchema })
-export const PapercutPatchPayloadSchema: Schema.Codec<PapercutPatchPayload> = Schema.Struct({ kind: Schema.Literal("papercuts.changed"), papercuts: RuntimePapercutCountViewSchema })
+const RuntimePapercutCountSnapshotResultSchema: Schema.Codec<RuntimePapercutCountSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, papercuts: RuntimePapercutCountViewSchema })
+const PapercutPatchPayloadSchema: Schema.Codec<PapercutPatchPayload> = Schema.Struct({ kind: Schema.Literal("papercuts.changed"), papercuts: RuntimePapercutCountViewSchema })
 
 /** The backlog size at which the intro card starts to nudge, so a handful of
  *  notes never crowds a fresh session's first screen. */

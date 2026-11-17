@@ -120,7 +120,7 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
   })
   const searchEditor = createControlledTextEditor({
     value: () => state.query,
-    setValue: (query) => setState({ query, cursor: 0 }),
+    setValue: (query) => setState({ query, cursor: Math.max(0, homeOptionIndex(filterModelOptions(state.modelOptions, query))) }),
     policy: SINGLE_LINE_TEXT_ENTRY_POLICY,
   })
   let operationCounter = 0
@@ -162,9 +162,20 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
   const assignmentItems = createMemo(() => buildModelModalItems(state.assignments, new Set(state.expandedGroups)))
   const filteredModelOptions = createMemo(() => filterModelOptions(state.modelOptions))
 
-  function filterModelOptions(options: readonly ModelOptionRow[]): readonly ModelOptionRow[] {
-    const query = state.query.trim().toLowerCase()
-    return query ? options.filter((option) => option.label.toLowerCase().includes(query) || option.model?.toLowerCase().includes(query)) : options
+  function filterModelOptions(options: readonly ModelOptionRow[], query = state.query): readonly ModelOptionRow[] {
+    const needle = query.trim().toLowerCase()
+    return needle ? options.filter((option) => option.label.toLowerCase().includes(needle) || option.model?.toLowerCase().includes(needle)) : options
+  }
+
+  /** The row a fresh option list highlights, or -1 when the list lacks it:
+   *  the row in force. In Model and effort an inherited choice highlights the
+   *  model it inherits, so the arrows adjust its effort at once. */
+  function homeOptionIndex(options: readonly ModelOptionRow[]): number {
+    const current = options.findIndex((option) => option.current)
+    const row = options[current]
+    if (state.view.kind !== "models" || !state.view.direct || !row?.selectable || !row.inherit) return current
+    const inherited = options.findIndex((option) => option.selectable && !option.inherit && option.model === row.inheritModel)
+    return inherited >= 0 ? inherited : current
   }
 
   const modelModalState = createMemo<ModelModalState>(() => ({
@@ -309,24 +320,16 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
 
   /** Opens Model and effort of one session: an agent's serving seat when a
    *  target names it, pushed over its viewer, or the foreground chat's own
-   *  seat. The runtime target is captured before any request. The row in
-   *  force is selected, and an inherited choice selects the model it
-   *  inherits, so the arrows adjust its effort at once. Each continuation
-   *  after an await re-checks that this modal is still open, so an escape or
-   *  another modal opening abandons stale work. */
+   *  seat. The runtime target is captured before any request. The picker
+   *  opens on its home row (homeOptionIndex). The continuation after the
+   *  await re-checks that this modal is still open, so an escape or another
+   *  modal opening abandons stale work. */
   async function openActiveModelPicker(target?: ModelPickerTarget): Promise<void> {
     const opening = beginModelsModal(target)
     await opening.assignmentsLoaded
     if (!opening.handle.isOpen()) return
     const seat = displayedSeat(target)
     await openModelPicker(seat.slot, seat.label, true)
-    if (!opening.handle.isOpen()) return
-    const options = filteredModelOptions()
-    const current = options.find((option) => option.selectable && option.current)
-    const selected = current?.inherit
-      ? options.find((option) => option.selectable && !option.inherit && option.model === current.inheritModel)
-      : current
-    if (selected) setState("cursor", options.indexOf(selected))
   }
 
   /** Detach only this entry: with the settings root underneath, the left
@@ -372,7 +375,7 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
         assigned ? Promise.resolve(assigned) : deps.appService.query({ type: "modelAssignments", scope: currentScope(), slots: [slot] }).then((rows) => rows[0]),
       ])
       if (!settleOperation(op)) return
-      const currentIndex = filterModelOptions(options).findIndex((o) => o.current)
+      const currentIndex = homeOptionIndex(filterModelOptions(options))
       setState({
         modelOptions: options,
         ...(assignment && !assigned ? { assignments: [...state.assignments, assignment] } : {}),
@@ -411,7 +414,9 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     const displayLabel = view?.displayLabel
     const op = beginOperation("saving")
     try {
-      const result = await deps.appService.dispatch({ type: "model.save_effort", scope: writeScope(), slot, model, effort })
+      // The save expects the profile entry of the row this modal shows; a row it never read expects none.
+      const expected = state.assignments.find((row) => sameSlot(row.slot, slot))?.configured ?? { kind: "absent" } as const
+      const result = await deps.appService.dispatch({ type: "model.save_effort", scope: writeScope(), slot, model, effort, expected })
       const mirrored = result.mirrored ?? false
       deps.onModelSaved?.()
       if (!settleOperation(op)) return
@@ -433,6 +438,21 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     } catch (err) {
       if (!settleOperation(op)) return
       deps.showToast({ message: `Model selection failed: ${errorMessage(err)}`, variant: "error" })
+      void rereadAssignments([slot])
+    }
+  }
+
+  /** Reads the rows of `slots` again after a failed write, so a retry expects
+   *  the entries that the file holds now. The view and the cursor stay. */
+  async function rereadAssignments(slots: readonly ModelSelectionSlot[]): Promise<void> {
+    const generation = operationCounter
+    const handle = entry
+    try {
+      const rows = await deps.appService.query({ type: "modelAssignments", scope: currentScope(), slots })
+      if (entry !== handle || !handle?.isOpen() || generation !== operationCounter) return
+      setState("assignments", (current) => current.map((row) => rows.find((fresh) => sameSlot(fresh.slot, row.slot)) ?? row))
+    } catch {
+      // The failed write already reported; a failed read keeps the rows shown.
     }
   }
 
@@ -440,7 +460,8 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     const scope = writeScope()
     const op = beginOperation("resetting")
     try {
-      const result = await deps.appService.dispatch({ type: "model.reset_assignments", scope, slots: selectionSlots })
+      const expected = Object.fromEntries(state.assignments.map((row) => [row.slot.roleId, row.configured]))
+      const result = await deps.appService.dispatch({ type: "model.reset_assignments", scope, slots: selectionSlots, expected })
       const mirrored = result.mirrored ?? false
       if (!settleOperation(op)) return
       setState({ assignments: result.rows, view: { kind: "assignments" }, cursor: 0, confirmReset: false })
@@ -452,6 +473,7 @@ export function useModelModal(deps: ModelModalDeps): ModelModalHook {
     } catch (err) {
       if (!settleOperation(op)) return
       deps.showToast({ message: `Reset failed: ${errorMessage(err)}`, variant: "error" })
+      void rereadAssignments(selectionSlots)
     }
   }
 

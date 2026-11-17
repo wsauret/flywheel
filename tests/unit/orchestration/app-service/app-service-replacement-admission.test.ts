@@ -34,7 +34,7 @@ function harness() {
   })
   const replacement = createReplacementReport({
     projectRoot: FIXTURE_EXECUTION_CWD, projectLabel: undefined, client: service, sessionStore: store,
-    listMetadata: () => manager.listMetadata(), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
+    listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
   })
   replacement.set({ kind: "requested", blockers: [{ projectRoot: "/other", projectLabel: "other", reason: "call" }] })
   return { service, replacement, resumes }
@@ -82,7 +82,7 @@ describe("the executor's blocker question", () => {
     })
     const replacement = createReplacementReport({
       projectRoot: FIXTURE_EXECUTION_CWD, projectLabel: undefined, client: service, sessionStore: store,
-      listMetadata: () => manager.listMetadata(), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
+      listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
     })
 
     expect(await replacement.blockers()).toEqual([])
@@ -115,7 +115,7 @@ describe("the executor's blocker question", () => {
     })
     const replacement = createReplacementReport({
       projectRoot: FIXTURE_EXECUTION_CWD, projectLabel: undefined, client: service, sessionStore: store,
-      listMetadata: () => manager.listMetadata(), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
+      listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
     })
 
     expect((await replacement.blockers()).map(({ sessionId, sessionTitle, reason }) => ({ sessionId, sessionTitle, reason })))

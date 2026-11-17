@@ -4,10 +4,10 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreAppend, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
-import { createPapercutCountProjection } from "../../../../src/orchestration/modules/papercuts/protocol.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStoreAppend, type LocalSqliteEventStore, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { createPapercutsProtocol } from "../../../../src/orchestration/modules/papercuts/protocol.js"
 import { NO_MODULE_SERVICES } from "../../../../src/infra/module-service.js"
-import { composeModuleProtocolRuntimes } from "../../../../src/orchestration/app-service/module-protocol-host.js"
+import { composeModuleProtocolRuntimes, type ModuleProtocolServices } from "../../../../src/orchestration/app-service/module-protocol-host.js"
 import { papercutsModule } from "../../../../src/orchestration/modules/papercuts.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service.js"
@@ -77,11 +77,40 @@ function sink() {
   }
 }
 
+/** The live count of the module's protocol runtime over `reader`. */
+function countOver(deps: {
+  readonly reader: AsyncEventStateReadSurface
+  readonly onStored: (listener: (facts: readonly StoredFact[]) => void) => () => void
+  readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch | undefined
+}) {
+  const services: ModuleProtocolServices = {
+    eventStore: deps.reader,
+    projectionReader: deps.reader,
+    eventWriter: { append: async () => { throw new Error("The papercut count writes no fact") }, appendBatch: async () => { throw new Error("The papercut count writes no fact") }, pruneSupersededEvents: async () => 0 },
+    manager: fakeManager(),
+    sessionStore: fakeSessionStore(new Map()),
+    definitions: repoDefinitions(),
+    onStored: deps.onStored,
+    publish: deps.publish,
+    snapshotPosition: () => 0,
+    hasLiveSession: () => false,
+    background: async () => { throw new Error("The papercuts domain reads no background history") },
+    modules: NO_MODULE_SERVICES,
+    enabled: () => true,
+    interruptSession: async () => false,
+  }
+  const runtime = createPapercutsProtocol(services)
+  return {
+    snapshot: async () => (await runtime.serve.papercutCountSnapshot({ type: "papercutCountSnapshot" })).papercuts,
+    dispose: () => runtime.dispose(),
+  }
+}
+
 describe("papercut count projection", () => {
   test("subscribes before replay and deduplicates records and dispositions at the boundary", async () => {
     const { primary } = openStores()
     const output = sink()
-    const projection = createPapercutCountProjection({
+    const projection = countOver({
       reader: asAsyncEventReadSurface(primary),
       onStored: (listener) => {
         const unsubscribe = primary.onStored(listener)
@@ -100,7 +129,7 @@ describe("papercut count projection", () => {
   test("publishes same-connection commits in order and ignores rollback, unrelated facts, and unchanged counts", async () => {
     const { primary } = openStores()
     const output = sink()
-    const projection = createPapercutCountProjection({ reader: asAsyncEventReadSurface(primary), onStored: primary.onStored, publish: output.publish })
+    const projection = countOver({ reader: asAsyncEventReadSurface(primary), onStored: primary.onStored, publish: output.publish })
 
     const first = primary.append(recorded("first"))
     primary.append({ ...recorded("other"), type: "session.created", payload: {} })
@@ -129,7 +158,7 @@ describe("papercut count projection", () => {
     spyOn(DebugLog, "isOpen").mockReturnValue(true)
     const record = spyOn(DebugLog, "record").mockImplementation(() => {})
     try {
-      const projection = createPapercutCountProjection({
+      const projection = countOver({
         reader: asAsyncEventReadSurface(primary),
         onStored: (listener) => {
           const unsubscribe = primary.onStored(listener)
@@ -163,7 +192,7 @@ describe("papercut count projection", () => {
         return primary.read(query)
       },
     }
-    const projection = createPapercutCountProjection({ reader: asAsyncEventReadSurface(reader), onStored: primary.onStored, publish: sink().publish })
+    const projection = countOver({ reader: asAsyncEventReadSurface(reader), onStored: primary.onStored, publish: sink().publish })
     expect(await projection.snapshot()).toEqual({ undisposedCount: 1 })
     readsAfter.length = 0
 
@@ -179,7 +208,7 @@ describe("papercut count projection", () => {
   test("snapshot catches a second connection up without rescanning prior facts", async () => {
     const { primary, secondary } = openStores()
     const output = sink()
-    const projection = createPapercutCountProjection({ reader: asAsyncEventReadSurface(primary), onStored: primary.onStored, publish: output.publish })
+    const projection = countOver({ reader: asAsyncEventReadSurface(primary), onStored: primary.onStored, publish: output.publish })
     const first = primary.append(recorded("first"))
     await projection.snapshot()
     const readsAfter: number[] = []
@@ -191,7 +220,7 @@ describe("papercut count projection", () => {
       },
     }
     projection.dispose()
-    const observed = createPapercutCountProjection({ reader: asAsyncEventReadSurface(reader), onStored: primary.onStored, publish: output.publish })
+    const observed = countOver({ reader: asAsyncEventReadSurface(reader), onStored: primary.onStored, publish: output.publish })
     const external = secondary.append(recorded("external"))
 
     expect(await observed.snapshot()).toEqual({ undisposedCount: 2 })

@@ -15,22 +15,24 @@ interface AskUserInput {
 const OPTION_SCHEMA = {
   type: "object",
   properties: {
-    label: { type: "string", description: "Option label shown to the user (1-5 words)." },
-    description: { type: "string", description: "Optional one-sentence elaboration." },
-    recommended: { type: "boolean", description: "Mark the suggested default; renderer surfaces a hint." },
-    requires_text: { type: "boolean", description: "Require inline text when the user selects this option." },
+    label: { type: "string", description: "1-5 words." },
+    description: { type: "string", description: "One sentence." },
+    recommended: { type: "boolean", description: "Your suggested default. Put it first." },
+    requires_text: { type: "boolean", description: "The user must add text when choosing this option." },
   },
   required: ["label"],
   additionalProperties: false,
 } as const;
 
+const HEADER_FIELD = { type: "string", description: "Short tab label, at most 12 characters." } as const;
+
 const QUESTION_SCHEMA = {
   type: "object",
   properties: {
-    question: { type: "string", description: "The question to ask, phrased so it stands on its own." },
-    header: { type: "string", description: "Short chip label for the multi-question tab strip (max 12 chars)." },
+    question: { type: "string", description: "Phrase it to stand on its own." },
+    header: HEADER_FIELD,
     options: { type: "array", minItems: 1, items: OPTION_SCHEMA },
-    multi_select: { type: "boolean", description: "Allow selecting more than one option." },
+    multi_select: { type: "boolean" },
   },
   required: ["question", "options"],
   additionalProperties: false,
@@ -48,15 +50,15 @@ const DEFINITION_OVERRIDE_DECISION_FIELD = {
 const WORKFLOW_LAUNCH_DECISION_FIELD = {
   workflow_launch: {
     type: "object",
-    description: "Ask the user to approve one workflow launch. The runtime composes the question and its choices from the workflow file; an approved answer returns the confirmation_id the workflow call must carry.",
+    description: "Approve one workflow launch. Flywheel writes the question and choices from the workflow file; approval returns the confirmation_id that the workflow call must carry.",
     properties: {
       source: {
         type: "object",
-        description: "The source this launch would start, exactly as the workflow call names it.",
+        description: "Exactly as the workflow call names it.",
         properties: {
           kind: { type: "string", enum: ["path", "content"] },
           path: { type: "string", description: "Required when kind is path: the workflow file." },
-          content: { type: "string", description: "Required when kind is content: the YAML text of the workflow file, which Flywheel saves as the launch does." },
+          content: { type: "string", description: "Required when kind is content: the workflow YAML." },
         },
         required: ["kind"],
         additionalProperties: false,
@@ -78,7 +80,7 @@ function decisionSchema(deps: AskUserToolDeps): AskUserInput | undefined {
   if (Object.keys(properties).length === 0) return undefined;
   return {
     type: "object",
-    description: "Bind this question to one typed decision. Name exactly one decision kind.",
+    description: "Name exactly one typed decision that this question decides.",
     properties,
     additionalProperties: false,
   };
@@ -89,11 +91,11 @@ function askUserInputSchema(deps: AskUserToolDeps): AskUserInput {
   return {
     type: "object",
     properties: {
-      question: { type: "string", description: "Single-question shorthand for `questions[0].question`." },
-      header: { type: "string", description: "Single-question shorthand for `questions[0].header`." },
+      question: { type: "string", description: "One question, phrased to stand on its own. For 2-5 questions, use `questions` instead." },
+      header: HEADER_FIELD,
       options: { type: "array", minItems: 1, items: OPTION_SCHEMA },
       multi_select: { type: "boolean" },
-      context: { type: "string", description: "REQUIRED: everything the user needs to answer, addressed to the user. It renders as your reply text above the question and is the only text guaranteed to reach the user: prose elsewhere in your turn can land in thinking, which the user never sees. When the question decides a proposal, plan, or design, put the complete proposal in this field, not a caption of it. Never reference material the user has not received as a committed message, such as 'the design above' or 'as before'." },
+      context: { type: "string", description: "Everything the user needs to answer, addressed to the user. It renders as your reply above the question and is the only text sure to reach the user: other prose in your turn can land in thinking, which the user never sees. When the question decides a proposal, plan, or design, put the complete proposal here. Never point to material that the user has not received, such as 'the design above' or 'as before'." },
       questions: { type: "array", minItems: 1, maxItems: 5, items: QUESTION_SCHEMA },
       ...(decision === undefined ? {} : { decision }),
     },
@@ -104,22 +106,17 @@ function askUserInputSchema(deps: AskUserToolDeps): AskUserInput {
 
 /** When a chat agent may ask through the decision UI. This tool's description states it; the chat body states it
  *  only for a host that serves its own ask tool. */
-export const ASK_USER_DISCUSSION_RULE = "While the user is asking questions or discussing, reply in prose and keep the discussion going. Do not call `ask_user` then. Use `ask_user` only after the discussion has settled on something, to get a final confirmation or a decision you cannot make yourself.";
+export const ASK_USER_DISCUSSION_RULE = "While the user is asking questions or discussing, reply in prose and keep the discussion going. Call `ask_user` only after the discussion settles, for a final confirmation or a decision you cannot make yourself.";
 
 const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "unboundedDuration" | "isConcurrencySafe" | "deferUntilAssistantCommitted"> = {
   name: "ask_user",
   action: "ask_user",
   description: [
-    "Ask the user a multiple-choice question when their decision is required before continuing.",
+    "Ask the user multiple-choice questions.",
     ASK_USER_DISCUSSION_RULE,
-    "Once you need that answer before you can continue, call this tool in the same turn as your explanation. Do not end that turn with a prose request for the user to reply.",
-    "Before you ask, start all work that does not depend on the answer, so that the wait for the user does not hold it.",
-    "The user never sees your thinking, and reply prose can silently land in thinking; the required `context` field is the only guaranteed-visible carrier. It renders as your reply text above the question and must contain everything the user needs to answer, including the complete proposal, plan, or tradeoffs being decided, never a caption pointing at material outside a committed message.",
-    "Do not use for preferences you can decide safely.",
-    "Do NOT include an \"Other\" option; the UI always appends one.",
-    "Set `requires_text: true` when selecting a named option must include inline text.",
-    "If you recommend a default, put it first and set `recommended: true`.",
-    "For multi-question forms, give each question a short `header` (≤12 chars) for the navigation chips.",
+    "When you need the answer to continue, call this tool in the same turn as your explanation. Do not end that turn with a prose request for the user to reply.",
+    "Before you ask, start all work that does not depend on the answer.",
+    "The UI adds an \"Other\" option, so do not add one.",
   ].join(" "),
   // Legitimately blocks on a human, which can take far longer than any
   // other tool call; the dispatcher's generic inactivity watchdog would

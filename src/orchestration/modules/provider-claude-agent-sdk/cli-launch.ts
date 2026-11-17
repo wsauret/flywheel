@@ -7,7 +7,6 @@ import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { processEngineHost, type EngineHost } from "../../../infra/claude-engine.js";
 import { loginOwnerHome } from "./cli-environment.js";
 import type { InPlaceGate, SelfTestConfig } from "./in-place-check.js";
-import type { UsageReadings } from "./account-usage.js";
 import { processLoginObservations, type LoginObservations } from "./login-observations.js";
 import type { CliLoginDescription, CliModelProbe, CliUsage, HostLaunch, LaunchedHost, LaunchedQuery, QueryLaunch, QueryLauncherConfig } from "./query-launcher.js";
 import type { HostRegistry } from "./agent-host/host-registry.js";
@@ -33,8 +32,6 @@ export interface ClaudeAgentSdkSeams {
   readonly probeModel?: (config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal) => Promise<CliModelProbe>;
   /** Reads the usage of the engine's login for the usage reader; tests give one that starts no process. */
   readonly readUsage?: (config: QueryLauncherConfig, signal: AbortSignal) => Promise<CliUsage>;
-  /** The usage readings that the bridges record and the usage reader reads, in place of this process's. */
-  readonly usageReadings?: UsageReadings;
   /** The account the engine runs on, in place of `cliAccount`'s default. The test catalog gives the test account
    *  home, and a benchmark cell, which runs with a HOME of its own, gives the operator's account home. */
   readonly account?: () => OsAccount;

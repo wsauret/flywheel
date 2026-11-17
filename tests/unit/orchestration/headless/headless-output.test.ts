@@ -129,7 +129,7 @@ describe("headless output contract", () => {
         directories: testDirectories(createDirectory("headless-local-refusal-")),
         launcher: { spawnOwned: async () => { throw new Error("unused") }, adoptOwned: async () => { throw new Error("unused") }, open() { return this }, close: async () => ({ settled: true as const }) },
         prepareWorkflowDeps: async () => makeWorkflowDeps(() => ({
-          send() {}, abort() {}, end() {}, done: Promise.reject(error),
+          send() {}, abort() {}, done: Promise.reject(error),
         })),
       })
       expect(result.completed).toBe(false)

@@ -54,7 +54,7 @@ function deriveLiveState(deps: TabsDeps, id: string): LiveState {
  *  supplies titles and live lifecycle metadata, but global runtime
  *  `active` state is not tab membership. Busy and blocked state remain
  *  status/output-domain reads. */
-export function createTabs(deps: TabsDeps): Accessor<readonly TabInfo[]> {
+function createTabs(deps: TabsDeps): Accessor<readonly TabInfo[]> {
   const summariesById = createMemo(() => new Map(deps.sessions().map((session) => [session.id, session])))
 
   const tabIds = createMemo<readonly string[]>(() => {

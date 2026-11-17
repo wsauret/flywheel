@@ -179,7 +179,7 @@ function probeSummary(db: Database, sessionId: string): { readonly maxMs: number
 /** The executor's stall records in the window, by its own pid. */
 function executorStalls(project: MeasuredProject, startedAt: number, endedAt: number): number[] {
   return readDebugLogRecords(project.root)
-    .filter((record) => record.writer?.pid === String(project.executorPid) && record.payload?.service === "event-loop-lag"
+    .filter((record) => record.pid === String(project.executorPid) && record.payload?.service === "event-loop-lag"
       && record.payload.message === "event loop stall observed" && record.ts >= startedAt && record.ts <= endedAt)
     .map((record) => record.payload?.lagMs)
     .filter((lagMs): lagMs is number => typeof lagMs === "number")

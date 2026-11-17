@@ -24,13 +24,18 @@ import {
   emitToolResultAvailable,
   emitToolResultAck,
 
-  type ThinkingAccumulator,
   type ToolInputExecution,
 } from "./emit.js";
 import { decorateWorkflowToolCall } from "./tools/workflow-tool.js";
 import type { TurnUsageTracker } from "./turn-usage-tracker.js";
 import type { StreamEvent, ToolCall } from "./llm/types.js";
 import { runtimeToolExecution, type RuntimeTool } from "./tools/types.js";
+
+/** Whether the current response streamed a thinking delta. Its owner clears it
+ *  when the assistant message commits; a response start clears it here. */
+export interface StreamedThinking {
+  sawDelta: boolean;
+}
 
 interface StreamEventEmitContext {
   options: Pick<AgentOptions, "onEvent">;
@@ -40,14 +45,14 @@ interface StreamEventEmitContext {
   costTracker: TurnUsageTracker;
   providerSessionKey: string;
   parentToolUseId: string | undefined;
-  thinking: ThinkingAccumulator;
+  thinking: StreamedThinking;
   tools: ReadonlyMap<string, RuntimeTool>;
 }
 
 // The runtime-assembly stream handler intercepts retry telemetry and provider
 // notices before emission (they mutate session notices, not runtime events),
 // so this module never sees them.
-type EmittableStreamEvent = Exclude<StreamEvent, { kind: "stream_retry" | "stream_resample" | "stream_attempt_start" | "provider_status" }>;
+type EmittableStreamEvent = Exclude<StreamEvent, { kind: "stream_retry" | "stream_resample" | "provider_status" }>;
 
 export function emitAgentStreamEvent(
   streamEvent: EmittableStreamEvent,
@@ -65,7 +70,7 @@ export function emitAgentStreamEvent(
       }));
       return;
     case "provider_response_started":
-      context.thinking.take();
+      context.thinking.sawDelta = false;
       emitProviderResponseStarted(options.onEvent, parentToolUseId);
       return;
     case "text_delta":
@@ -89,7 +94,7 @@ export function emitAgentStreamEvent(
         parentToolUseId,
         blockKey,
       );
-      context.thinking.append(streamEvent.text);
+      if (streamEvent.text !== "") context.thinking.sawDelta = true;
       return;
     case "thinking_complete":
       if (isAnthropicNarration(streamEvent) && streamEvent.blockKey !== undefined) {
@@ -118,8 +123,9 @@ export function emitAgentStreamEvent(
           block_key: blockKey,
           ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
         }));
-      } else if (context.thinking.isEmpty()) emitContentBlockDelta(options.onEvent, { type: "thinking_delta", thinking: streamEvent.thinking }, parentToolUseId, blockKey);
-      context.thinking.replace(streamEvent.thinking);
+      } else if (!context.thinking.sawDelta) emitContentBlockDelta(options.onEvent, { type: "thinking_delta", thinking: streamEvent.thinking }, parentToolUseId, blockKey);
+      // The settled thought stands for the streamed one, so an empty thought leaves none.
+      context.thinking.sawDelta = streamEvent.thinking !== "";
       return;
     case "reasoning":
       if (!streamEvent.outputIdentity) {
@@ -210,8 +216,11 @@ export function emitAgentStreamEvent(
       }, parentToolUseId);
       return;
     }
-    // The attempt keeps a transport's context for the request's audit and never forwards it.
+    // The attempt keeps a transport's context for the request's audit and
+    // never forwards it. An attempt start is stream telemetry only
+    // (stream-telemetry.ts).
     case "transport_context":
+    case "stream_attempt_start":
       return;
     default:
       assertNever(streamEvent);

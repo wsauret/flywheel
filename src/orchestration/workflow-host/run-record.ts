@@ -1,3 +1,4 @@
+import type { StoredFact } from "../../infra/event-store-types.js"
 import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
 import type { WorkflowCapabilityBoundary, WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run-facts.js"
 import { strongestInterrupt } from "../session/child-continuation.js"
@@ -23,6 +24,9 @@ export interface WorkflowRunReader {
   readCut(workflowId: string): Promise<WorkflowRunCut | null>
   readAttempt(workflowId: string, attemptId: string): Promise<import("../../workflows/vm/graph-types.js").Attempt | null>
   read(workflowId: string): Promise<WorkflowRunRecord | null>
+  /** The run while it can still take a turn: null when it is missing,
+   *  deleted, or completed. */
+  readOpen(workflowId: string): Promise<WorkflowRunRecord | null>
   readRequest(workflowId: string): Promise<string | null>
   readCreationRequest(workflowId: string): Promise<string | null>
   /** The boundary the launch recorded, or undefined when it recorded none. */
@@ -31,6 +35,11 @@ export interface WorkflowRunReader {
   /** Current launch bindings determine which runs a chat owns, including zero-member runs. */
   listForParent(parentSessionId: string): Promise<readonly { readonly workflowId: string; readonly run: WorkflowRunRecord }[]>
   list(): Promise<readonly { readonly workflowId: string; readonly run: WorkflowRunRecord }[]>
+  /** Every run that can still take a turn, in registration order. */
+  listOpen(): Promise<readonly { readonly workflowId: string; readonly run: WorkflowRunRecord }[]>
+  /** The workflows whose run, or whether it can still take a turn, a
+   *  committed batch changes. Makes no read. */
+  changedRuns(events: readonly StoredFact[]): ReadonlySet<string>
 }
 
 /** Guarded edits of aggregate-owned settings. A concurrent control/configuration commit returns false. */

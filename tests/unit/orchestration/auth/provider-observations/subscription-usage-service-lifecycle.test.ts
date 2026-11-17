@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
-import { type SubscriptionUsageReader, type SubscriptionUsageResetConsumer, CHATGPT_RATE_LIMIT_RESET_TYPE } from "../../../../../src/infra/llm/subscription-usage.js"
+import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionUsageStore } from "../../../../../src/infra/llm/subscription-usage-store.js"
 import { createUsageAuthority } from "../../../../../src/infra/llm/usage-authority.js"
 import { createSubscriptionUsageService, SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
@@ -230,7 +230,7 @@ describe("subscription usage service lifecycle", () => {
     let providerReads = 0
     const reader: SubscriptionUsageReader = async () => ({ kind: "success", report: {
       ...report("chatgpt", 10_000 + ++providerReads),
-      resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: 20_000 }] },
+      resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available", expiresAtMs: 20_000 }] },
     } })
     const consumed: string[] = []
     const consumer: SubscriptionUsageResetConsumer = async ({ creditId }) => { consumed.push(creditId); return { kind: "nothingToReset" } }
@@ -261,7 +261,7 @@ describe("subscription usage service lifecycle", () => {
     let providerReads = 0
     const reader: SubscriptionUsageReader = async () => ({ kind: "success", report: {
       ...report(provider.id, 10_000 + ++providerReads),
-      resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" }] },
+      resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available" }] },
     } })
     const service = createSubscriptionUsageService({ profile: () => ({ id: "default", directory }), registry: () => registry([provider], new Map([[provider.id, reader]])), thresholds: () => [], now: () => 10_000 })
     await service.check({ forceRefresh: true })
@@ -277,7 +277,7 @@ describe("subscription usage service lifecycle", () => {
     const directory = profile("reset-lifecycle")
     const provider = definition("chatgpt")
     writeAccounts(directory, [provider])
-    const reader: SubscriptionUsageReader = async () => ({ kind: "success", report: { ...report(provider.id, 10_000), resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" }] } } })
+    const reader: SubscriptionUsageReader = async () => ({ kind: "success", report: { ...report(provider.id, 10_000), resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available" }] } } })
     const started = Promise.withResolvers<void>()
     const aborted = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()

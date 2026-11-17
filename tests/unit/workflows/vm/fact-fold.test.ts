@@ -1,7 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import type { StoredFact } from "../../../../src/infra/event-store-types.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { foldWorkflowControl, replayWorkflowControl, replayWorkflowControlFrom } from "../../../../src/workflows/vm/fact-fold.js"
 import { composeWorkflowProposal } from "../../../../src/workflows/vm/proposal-composition.js"
@@ -21,8 +19,9 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolutio
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { items, mapSkills, mapWorkflow } from "./_map-fixtures.js"
 import { buildDefinitionDriftRejectedFact } from "../../../../src/workflows/definition-provenance-fact-writers.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
-const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const workflow = loadedWorkflow({
   id: "workflow",
   name: "Workflow",
   phases: [{ phase: "work", brief: "Follow the work method.", name: "Work", dependencies: ["work"], writes: [] }],
@@ -51,7 +50,7 @@ function trace() {
 
 describe("workflow control fact fold", () => {
   it.each([2, 40])("advances independent companions without revisiting %i validated attempts", (members) => {
-    const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const definition = loadedWorkflow({
       id: "wide", name: "Wide",
       phases: Array.from({ length: members }, (_, index) => ({
         phase: `work${index}`, brief: "Follow the work method.", name: `Work ${index}`, dependencies: ["work"], writes: [],

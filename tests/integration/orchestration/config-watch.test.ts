@@ -155,9 +155,11 @@ describe("watchConfigFile", () => {
     const started = await startModulePolicy({ userDataRoot });
     const views: RuntimeModulesView[] = [];
     const processes = await persistentProcessPolicy({ userDataRoot, forcedByCli: false });
-    const projection = await createModuleProjection({
+    const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot, watch: false });
+    const projection = createModuleProjection({
       location: { userDataRoot },
       capabilities: started.policy,
+      runtimeConfig,
       persistentProcesses: processes,
       settlePublication: async () => {},
       publish: (patch) => { if (patch.payload.kind === "modules.changed") views.push(patch.payload.capabilities) },
@@ -174,7 +176,8 @@ describe("watchConfigFile", () => {
       expect(published?.workflowsMode).toBe("off");
       expect(readFileSync(join(userDataRoot, "flywheel.toml"), "utf8")).not.toContain("features =");
     } finally {
-      projection.dispose();
+      await projection.dispose();
+      await runtimeConfig.dispose();
     }
   });
 });

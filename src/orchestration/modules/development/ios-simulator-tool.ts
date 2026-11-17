@@ -140,7 +140,7 @@ function parseRequest(input: RuntimeToolInput): IosSimulatorRequest | string {
 }
 
 /** Executes one allowlisted operation through the development service's owned MCP process. */
-export async function executeIosSimulator(deps: IosSimulatorToolDeps, input: RuntimeToolInput, signal?: AbortSignal): Promise<ToolResult> {
+async function executeIosSimulator(deps: IosSimulatorToolDeps, input: RuntimeToolInput, signal?: AbortSignal): Promise<ToolResult> {
   if ((deps.platform ?? process.platform) !== "darwin") {
     return { content: "iOS Simulator automation requires macOS with full Xcode and an installed iOS runtime.", outcome: "error" }
   }

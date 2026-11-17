@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { PUBLIC_REPO, publishedReleaseTags } from "../../scripts/release-repo.js";
 import { command, harborPython } from "./harbor-process.js";
@@ -114,20 +115,21 @@ export function offlineAgentHosts(config: Pick<ResolvedHarborConfig, "flywheelCo
   return [...new Set([...declared, MODELS_DEV_HOST])];
 }
 
-/** The launcher-owned agent fields that both job configs share: the profile
- *  digest that the shim records, and the hosts that an offline agent phase allows. */
-function agentFields(config: ResolvedHarborConfig, allowedHosts: readonly string[]): JsonMap {
-  return { env: { [PROFILE_SHA256_ENV]: config.profileSha256 }, ...(allowedHosts.length === 0 ? {} : { extra_allowed_hosts: [...allowedHosts] }) };
+/** The launcher-owned agent fields that every job config shares: the profile
+ *  digest that the shim records, with the mode's own agent `env`, and the hosts that an offline agent phase allows. */
+function agentFields(config: ResolvedHarborConfig, allowedHosts: readonly string[], env: Readonly<Record<string, string>> = {}): JsonMap {
+  return { env: { [PROFILE_SHA256_ENV]: config.profileSha256, ...env }, ...(allowedHosts.length === 0 ? {} : { extra_allowed_hosts: [...allowedHosts] }) };
 }
 
 /** The Hub job config of a hosted run. The agent is the published package at
  *  its exact commit; its one credential is the snapshot job secret, which
  *  Harbor reads from the launcher's environment and delivers directly. */
 export function hostedJobConfig(config: ResolvedHarborConfig, publication: AgentPackagePublication, allowedHosts: readonly string[]): JsonMap {
-  if (config.hosted === undefined) throw new Error("hosted job config requires a hosted run");
+  const { execution } = config;
+  if (execution.mode !== "hosted") throw new Error("hosted job config requires a hosted run");
   return {
     job_name: config.jobName,
-    ...(config.hosted.organization === undefined ? {} : { organization: config.hosted.organization }),
+    ...(execution.organization === undefined ? {} : { organization: execution.organization }),
     credential_mode: "direct",
     agents: [{
       name: "acp",
@@ -148,27 +150,40 @@ function datasetSelection(config: ResolvedHarborConfig): JsonMap {
   return { name: config.dataset, ref: config.datasetRef, ...config.datasetFilter };
 }
 
-/** The local Docker job config of a run: the same agent as a hosted run,
- *  Harbor's `acp` agent fetching the published package at its exact commit.
- *  The snapshot reaches the trial through
- *  SNAPSHOT_COMPOSE_OVERLAY, which names the variable without a value, so
- *  Docker Compose copies it from Harbor's environment into the agent
- *  container: the snapshot is in no file, argument, or log of the host. */
-export function localJobConfig(config: ResolvedHarborConfig, publication: AgentPackagePublication, allowedHosts: readonly string[], jobsDirectory: string): JsonMap {
+/** The job config of a run that a local Harbor process drives: the same agent as a hosted run, Harbor's `acp`
+ *  agent fetching the published package at its exact commit with `agent` fields, and `environment` added to the
+ *  run's resource overrides. */
+function harborProcessJobConfig(config: ResolvedHarborConfig, publication: AgentPackagePublication, agent: JsonMap, environment: JsonMap, jobsDirectory: string): JsonMap {
   return {
     job_name: config.jobName,
     jobs_dir: jobsDirectory,
     agents: [{
       name: "acp",
       kwargs: { source: { repo_url: `https://github.com/${publication.repository}.git`, ref: publication.commit, source_dir: ".", manifest_path: PACKAGE_MANIFEST } },
-      ...agentFields(config, allowedHosts),
+      ...agent,
     }],
-    environment: { ...Object.fromEntries(Object.entries(config.resourceOverrides).map(([key, value]) => [`override_${key}`, value])), extra_docker_compose: [SNAPSHOT_COMPOSE_OVERLAY] },
+    environment: { ...Object.fromEntries(Object.entries(config.resourceOverrides).map(([key, value]) => [`override_${key}`, value])), ...environment },
     datasets: [datasetSelection(config)],
     n_attempts: config.attempts,
     n_concurrent_trials: config.concurrency,
     ...config.timeoutMultipliers,
   };
+}
+
+/** The local Docker job config of a run. The snapshot reaches the trial through
+ *  SNAPSHOT_COMPOSE_OVERLAY, which names the variable without a value, so
+ *  Docker Compose copies it from Harbor's environment into the agent
+ *  container: the snapshot is in no file, argument, or log of the host. */
+export function localJobConfig(config: ResolvedHarborConfig, publication: AgentPackagePublication, allowedHosts: readonly string[], jobsDirectory: string): JsonMap {
+  return harborProcessJobConfig(config, publication, agentFields(config, allowedHosts), { extra_docker_compose: [SNAPSHOT_COMPOSE_OVERLAY] }, jobsDirectory);
+}
+
+/** The Runta job config of a run. Compose on Runta runs inside the remote runtime without Harbor's environment,
+ *  and an overlay would force every task into compose mode, so the snapshot travels as an agent `env` template
+ *  instead: Harbor resolves `${FLYWHEEL_AUTH_SNAPSHOT}` from its own environment, writes the template, not the
+ *  value, into the trial's `config.json`, and scrubs the value from the trial's text files. */
+export function runtaJobConfig(config: ResolvedHarborConfig, publication: AgentPackagePublication, allowedHosts: readonly string[], jobsDirectory: string): JsonMap {
+  return harborProcessJobConfig(config, publication, agentFields(config, allowedHosts, { [SNAPSHOT_SECRET]: `\${${SNAPSHOT_SECRET}}` }), { type: "runta" }, jobsDirectory);
 }
 
 /** The host command that exports the trial snapshot, without its `--output`
@@ -214,6 +229,26 @@ async function macosKeychainSecret(item: string): Promise<string | undefined> {
   const child = Bun.spawn(["security", "find-generic-password", "-s", item, "-w"], { stdout: "pipe", stderr: "ignore", windowsHide: true });
   const [stdout, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
   return exitCode === 0 && stdout.trim().length > 0 ? stdout.trim() : undefined;
+}
+
+/** The variables of Runta's client that a Runta run's Harbor process keeps. */
+const RUNTA_VARIABLES = ["RUNTA_CONFIG", "RUNTA_TOKEN", "RUNTA_ENDPOINT"] as const;
+/** The Runta config path, under the home directory, that the FrontierHarness submission command names. */
+const RUNTA_DEFAULT_CONFIG = ".config/runta/config.toml";
+
+/** The Runta variables that a Runta run passes to Harbor, which refuses to start a Runta environment without
+ *  RUNTA_TOKEN or RUNTA_CONFIG. Each one set in `env` is kept; when neither credential is set, RUNTA_CONFIG names
+ *  `~/.config/runta/config.toml` if that file exists. Throws when no Runta credential is available. */
+export function runtaEnvironment(env: Record<string, string | undefined>, exists: (path: string) => boolean = existsSync): Record<string, string> {
+  const kept: Record<string, string> = {};
+  for (const name of RUNTA_VARIABLES) {
+    const value = env[name];
+    if (value !== undefined && value.length > 0) kept[name] = value;
+  }
+  if (kept.RUNTA_TOKEN !== undefined || kept.RUNTA_CONFIG !== undefined) return kept;
+  const fallback = env.HOME === undefined || env.HOME.length === 0 ? undefined : join(env.HOME, RUNTA_DEFAULT_CONFIG);
+  if (fallback === undefined || !exists(fallback)) throw new Error(`--runta needs a Runta credential: set RUNTA_CONFIG to the Runta config file or RUNTA_TOKEN to a Runta token, or put the Runta config at ~/${RUNTA_DEFAULT_CONFIG}`);
+  return { ...kept, RUNTA_CONFIG: fallback };
 }
 
 /** The Hub job id that `harbor run --launch` printed. */

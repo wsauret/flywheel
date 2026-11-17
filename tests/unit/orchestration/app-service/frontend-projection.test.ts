@@ -9,7 +9,7 @@ import {
   projectSessionView,
   type SessionChange,
 } from "../../../../src/orchestration/app-service/frontend-projection.js"
-import { createRuntimeSummaryProjection } from "../../../../src/orchestration/app-service/runtime-summary-projection.js"
+import { createRuntimeSummaryProjection, type RuntimeSummaryProjection } from "../../../../src/orchestration/app-service/runtime-summary-projection.js"
 import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { SessionEntry } from "../../../../src/orchestration/session-store/types.js"
 import { toSessionView } from "../../../../src/orchestration/session-store/view.js"
@@ -28,6 +28,12 @@ import {
 
 async function awaitProjectionFlush(): Promise<void> {
   await Bun.sleep(1)
+}
+
+/** Totals that load forever. Every projected row reads its totals once, so
+ *  `projected` names each row projection in order. */
+function countingSummaries(projected: string[]): RuntimeSummaryProjection {
+  return { admit: async () => {}, view: (id) => { projected.push(id); return { totalsLoading: true } }, subscribe: () => () => {}, settled: async () => {}, dispose() {} }
 }
 
 describe("frontend projection", () => {
@@ -376,39 +382,69 @@ describe("frontend projection", () => {
   })
 
   test("an unchanged notify re-serializes nothing; only the moved session's row is re-projected", async () => {
-    let stableReads = 0
-    const stableBase = chatEntry()
-    // A getter on a field the summary projection reads (`description`) counts how
-    // many times the unchanged session is re-projected/re-serialized per flush.
-    const stable: SessionEntry = {
-      ...stableBase,
-      get description() {
-        stableReads += 1
-        return "Stable chat"
-      },
-    }
-    const entries = new Map<string, SessionEntry>([["stable", stable], ["chat-1", chatEntry()]])
+    const entries = new Map<string, SessionEntry>([["stable", chatEntry()], ["chat-1", chatEntry()]])
     const store = fakeSessionStore(entries)
-    const projection = createFrontendProjection({ projectRoot: tmpdir(), sessionStore: store, manager: managerWithSessions([durableRow("stable"), durableRow("chat-1")]) })
+    const projected: string[] = []
+    const projection = createFrontendProjection({ projectRoot: tmpdir(), sessionStore: store, manager: managerWithSessions([durableRow("stable"), durableRow("chat-1")]), summaries: countingSummaries(projected) })
     const batches: SessionChange[][] = []
     const unsubscribe = projection.subscribe((changes) => { batches.push([...changes]) })
 
-    // Notify with nothing changed: no revision moved, so no row is re-projected.
+    // A sweep with nothing changed: no row input moved, so no row is re-projected.
     await awaitProjectionFlush()
-    const baselineReads = stableReads
+    projected.length = 0
     store.emitChange()
     await awaitProjectionFlush()
     expect(batches).toHaveLength(0)
-    expect(stableReads).toBe(baselineReads)
+    expect(projected).toEqual([])
 
-    // Move only chat-1: the stable session's revision is unchanged, so its row is
+    // Move only chat-1: the stable session's inputs are unchanged, so its row is
     // neither re-projected nor re-serialized, and only chat-1 is emitted.
     entries.set("chat-1", { ...chatEntry(), shortDescription: "Changed" })
     store.emitChange("chat-1")
     await awaitProjectionFlush()
     expect(batches).toHaveLength(1)
     expect(batches[0]).toEqual([{ kind: "updated", row: expect.objectContaining({ id: "chat-1" }) }])
-    expect(stableReads).toBe(baselineReads)
+    expect(projected).toEqual(["chat-1"])
+    unsubscribe()
+  })
+
+  test.each([1, 50])("output deltas over %i streaming sessions project and publish no catalog row; a title change publishes one", async (sessionCount) => {
+    const ids = Array.from({ length: sessionCount }, (_, index) => `chat-${index}`)
+    const store = fakeSessionStore(new Map<string, SessionEntry>(ids.map((id) => [id, chatEntry({ runnerState: "streaming", streamPhase: "generating" })])))
+    let metadataReads = 0
+    const projected: string[] = []
+    const projection = createFrontendProjection({
+      projectRoot: tmpdir(),
+      sessionStore: store,
+      manager: fakeManager({
+        listForIds: async (requested) => {
+          metadataReads += 1
+          return { sessions: requested.map((id) => durableRow(id)), errors: [] }
+        },
+      }),
+      summaries: countingSummaries(projected),
+      maxSnapshotHz: 1_000,
+    })
+    const batches: SessionChange[][] = []
+    const unsubscribe = projection.subscribe((changes) => { batches.push([...changes]) })
+    await awaitProjectionFlush()
+    projected.length = 0
+    metadataReads = 0
+
+    for (let delta = 1; delta <= 5; delta += 1) {
+      for (const id of ids) {
+        store.updateEntry(id, { streamingOutputChars: delta * 100 })
+        store.emitChange(id)
+      }
+      await awaitProjectionFlush()
+    }
+    expect({ batches: batches.length, projected: projected.length, metadataReads }).toEqual({ batches: 0, projected: 0, metadataReads: 0 })
+
+    store.updateEntry("chat-0", { description: "Renamed" })
+    store.emitChange("chat-0")
+    await awaitProjectionFlush()
+    expect(batches).toEqual([[{ kind: "updated", row: expect.objectContaining({ id: "chat-0", title: "Renamed" }) }]])
+    expect(projected).toEqual(["chat-0"])
     unsubscribe()
   })
 

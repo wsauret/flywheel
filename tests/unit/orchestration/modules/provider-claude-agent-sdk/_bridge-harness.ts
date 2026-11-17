@@ -13,7 +13,8 @@ import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/deb
 import { Log } from "../../../../../src/infra/log.js";
 import { environmentReminder, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
-import { DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
 import type { AnthropicOperations } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
 import { QuotaCoordinationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";

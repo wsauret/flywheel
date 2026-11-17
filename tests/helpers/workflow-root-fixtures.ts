@@ -1,6 +1,4 @@
 import type { StoredFact } from "../../src/infra/event-store-types.js"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../src/workflows/vm/compile.js"
 import type { CommittedWorkflowControl } from "../../src/workflows/vm/committed-control.js"
 import { buildContextInputSeededFact } from "../../src/workflows/context-bundle/context-facts.js"
@@ -8,10 +6,11 @@ import { queueFactsForState } from "../../src/workflows/view/view-diff.js"
 import { flattenWorkflowView } from "../../src/workflows/vm/view-flatten.js"
 import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact, type WorkflowSessionFact } from "../../src/workflows/vm/session-facts.js"
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "./skill-fixtures.js"
+import { loadedWorkflow } from "./workflow-files.js"
 
 const skill = testSkill("work", { name: "Work" })
 const bindings = testResolvedAgents([testResolvedAgent("work", skill)])
-const initialized = buildWorkflowControlInitializedFact(compileWorkflowControl(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const initialized = buildWorkflowControlInitializedFact(compileWorkflowControl(loadedWorkflow({
   id: "workflow",
   name: "Workflow",
   phases: [{ phase: "work", brief: "Do the work work.", name: "work", writes: [] }],

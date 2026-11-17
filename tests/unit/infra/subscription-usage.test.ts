@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 import {
-  CHATGPT_RATE_LIMIT_RESET_TYPE,
   SubscriptionUsageMetricSchema,
   SubscriptionUsageResetCreditsSchema,
   SubscriptionUsageSpendSourceSchema,
@@ -59,7 +58,7 @@ describe("subscription usage metric contract", () => {
   });
 
   test("offers the soonest available ChatGPT rate-limit reset without predicting applicability", () => {
-    const later = { id: "later", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" } as const;
+    const later = { id: "later", resetType: "codex_rate_limits", status: "available" } as const;
     const first = { ...later, id: "first", expiresAtMs: 1_800_000_000_000 };
     const spent = { ...later, id: "spent", status: "redeemed" };
     expect(selectSubscriptionUsageResetCredit({ availableCount: 2, credits: [later, spent, first] })?.id).toBe("first");

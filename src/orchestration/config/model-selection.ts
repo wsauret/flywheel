@@ -2,16 +2,19 @@ import type { ModelConfigDeps } from "./model-assignment-types.js";
 import type { ResolvedRoles } from "./roles.js";
 import { resolveRoles, resolveRolesForProfile, type RoleResolutionOptions } from "./role-resolution.js";
 import type { FlywheelConfig } from "./schema.js";
-import type { ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
+import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
 import { updateModelAssignments } from "./writer.js";
 
+/** Writes one role of the active profile when its file entry still equals `expected`; otherwise it writes nothing and
+ *  throws `ConfigStaleWriteError`. */
 export async function saveModelAssignment(
   slot: ModelSelectionSlot,
   patch: ModelAssignmentPatch,
+  expected: ModelAssignmentExpected,
   deps: ModelConfigDeps & { readonly authProfileId: () => string },
 ): Promise<void> {
   updateModelAssignments({
-    mutations: [{ slot, patch }],
+    mutations: [{ slot, patch, expected }],
   }, { userDataRoot: deps.userDataRoot, configPath: deps.configPath, authProfileId: deps.authProfileId });
 }
 

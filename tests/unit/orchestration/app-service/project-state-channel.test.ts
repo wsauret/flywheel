@@ -523,6 +523,7 @@ describe("project state channel", () => {
   })
 
   test("a broadcast reaches its listeners without meeting the response decoder", () => {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message over the project state internal process channel
     let deliver: ((message: unknown) => void | Promise<void>) | undefined
     const endpoint: InternalProcessEndpoint<unknown, unknown> = {
       closed: Promise.resolve(),

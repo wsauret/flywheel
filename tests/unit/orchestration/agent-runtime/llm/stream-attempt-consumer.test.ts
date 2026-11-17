@@ -8,8 +8,10 @@ describe("stream attempt consumer time", () => {
     const time = controlledClock();
     let timedOut = false;
     const stream = withStreamAttempt(async function* (attempt) {
-      attempt.startStreamDeadline({ idleTimeoutMs: 20, clock: time.clock, onTimeout: () => { timedOut = true; } });
-      attempt.resetStreamDeadline();
+      attempt.armLiveness({
+        label: "test", provider: "Test", idleTimeoutMs: 20, clock: time.clock,
+        telemetry: { observe: (observation) => { if (observation.kind === "timeout") timedOut = true; } },
+      }).frame();
       await time.advance(7);
       yield { kind: "text_delta", text: "first" } as const;
       await new Promise<void>((resolve) => { attempt.signal.addEventListener("abort", () => resolve(), { once: true }); });
@@ -37,8 +39,7 @@ describe("stream attempt consumer time", () => {
     const abort = new AbortController();
     const closed: string[] = [];
     const stream = withStreamAttempt(async function* (attempt) {
-      attempt.startStreamDeadline({ idleTimeoutMs: 20, clock: time.clock });
-      attempt.resetStreamDeadline();
+      attempt.armLiveness({ label: "test", provider: "Test", telemetry: undefined, idleTimeoutMs: 20, clock: time.clock }).frame();
       try {
         yield { kind: "text_delta", text: "first" } as const;
       } finally {

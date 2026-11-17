@@ -5,11 +5,11 @@ import { join } from "node:path"
 import { createTolerantReprojectionWorkspace, readSessionPayloadBytes, tolerantWorkspaceSessions } from "../../../fixtures/create-tolerant-reprojection-workspace.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 const tail = { anchor: { kind: "tail" as const }, maxBlocks: 100, maxBytes: 1024 * 1024 }
 
@@ -46,7 +46,7 @@ describe("tolerant reprojection workspace", () => {
       expect((await manager.read(tolerantWorkspaceSessions.identityOnly))?.executionCwd).toBeUndefined()
       expect(readSessionPayloadBytes(fixture.dbFile).get(tolerantWorkspaceSessions.identityOnly)).toEqual(identityBytes)
 
-      const projection = createSessionDetailProjection({ projectRoot: root, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
+      const projection = testSessionDetailProjection({ projectRoot: root, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
       for (const id of [tolerantWorkspaceSessions.legacyV1, tolerantWorkspaceSessions.legacyV2, tolerantWorkspaceSessions.retiredField]) {
         const range = await projection.outputRange(id, tail)
         expect(range.kind).toBe("ok")
@@ -67,7 +67,7 @@ describe("tolerant reprojection workspace", () => {
       store.close()
       store = createSqliteEventStore(fixture.dbFile)
       const reopenedManager = createSessionManager({ projectRoot: root, executionCwd: root, store })
-      const reopenedProjection = createSessionDetailProjection({ projectRoot: root, sessionStore: { get: () => undefined }, manager: reopenedManager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
+      const reopenedProjection = testSessionDetailProjection({ projectRoot: root, sessionStore: { get: () => undefined }, manager: reopenedManager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
       expect(await reopenedProjection.outputRange(tolerantWorkspaceSessions.legacyV1, tail)).toEqual(beforeRestart)
       expect((await reopenedManager.read(tolerantWorkspaceSessions.legacyV1))?.executionCwd).toBeUndefined()
       await reopenedProjection.dispose()

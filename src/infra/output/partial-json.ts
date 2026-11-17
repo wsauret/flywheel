@@ -1,7 +1,9 @@
+import type { JsonValue } from "../auth/bounded-json.js";
+
 type JsonObject = { [key in string]: unknown };
 interface DecodedStringFields { [key: string]: string }
 type ParsedSkippedValue =
-  | { readonly status: "parsed"; readonly value: unknown }
+  | { readonly status: "parsed"; readonly value: JsonValue }
   | { readonly status: "failed" };
 export const MAX_STREAMING_TOOL_INPUT_BYTES = 4 * 1024 * 1024;
 
@@ -60,7 +62,7 @@ export function declaredFieldName(path: string): string {
 export class TopLevelJsonStringDecoder {
   private state: DecoderState = "start";
   private key = "";
-  private valueChunks: string[] = [];
+  private value = "";
   private escaped = false;
   private unicode = "";
   private pendingHighSurrogate = "";
@@ -73,8 +75,13 @@ export class TopLevelJsonStringDecoder {
   /** Item fields that stream, by the top-level list that holds the items. */
   private readonly itemFields = new Map<string, Set<string>>();
   /** Scan of a top-level list whose item fields stream; undefined outside one. */
-  private list?: { item: number; phase: "key" | "value"; itemKey: string; text?: { readonly kind: "key" | "value" | "other"; chunks: string[] } };
+  private list?: { item: number; phase: "key" | "value"; itemKey: string; text?: { readonly kind: "key" | "value" | "other"; value: string } };
   private acceptedByteTotal = 0;
+  /** Text of the string being read that this append decoded and has not yet
+   *  added to its value. A string value grows by one append-sized segment per
+   *  append, never by one rope node per character, so a held value stays
+   *  cheap to read. */
+  private segment = "";
 
   constructor(fields: readonly string[], private readonly maxInputBytes = MAX_STREAMING_TOOL_INPUT_BYTES) {
     this.declaredFields = new Set(fields);
@@ -102,7 +109,7 @@ export class TopLevelJsonStringDecoder {
 
   field(name: string): string | boolean | undefined {
     if (!this.declaredFields.has(declaredFieldName(name))) return undefined;
-    if (this.state === "string_value" && this.key === name) return this.valueChunks.join("");
+    if (this.state === "string_value" && this.key === name) return this.value;
     const value = this.decodedFields[name];
     return typeof value === "string" || typeof value === "boolean" ? value : undefined;
   }
@@ -117,11 +124,8 @@ export class TopLevelJsonStringDecoder {
     this.acceptedByteTotal += sourceBytes;
     const additions: DecodedStringFields = {};
     const completedFields: string[] = [];
-
     const emit = (text: string): void => {
-      if (!this.declaredFields.has(this.key)) return;
-      this.valueChunks.push(text);
-      additions[this.key] = (additions[this.key] ?? "") + text;
+      if (this.declaredFields.has(this.key)) this.segment += text;
     };
 
     for (const char of source) {
@@ -147,7 +151,7 @@ export class TopLevelJsonStringDecoder {
           break;
         case "value":
           if (char === '"') {
-            this.valueChunks = [];
+            this.value = "";
             this.resetEscape();
             this.state = "string_value";
           } else {
@@ -157,8 +161,9 @@ export class TopLevelJsonStringDecoder {
         case "string_value":
           if (this.consumeStringCharacter(char, emit, "comma_or_end")) {
             this.flushPendingSurrogate(emit);
+            this.commitSegment(additions);
             if (this.declaredFields.has(this.key)) {
-              this.decodedFields[this.key] = this.valueChunks.join("");
+              this.decodedFields[this.key] = this.value;
               completedFields.push(this.key);
             }
           }
@@ -184,11 +189,31 @@ export class TopLevelJsonStringDecoder {
       }
     }
 
+    this.commitSegment(additions);
     if (this.state === "failed") {
       this.fail();
       return { additions: {}, completedFields: [], completedObject: false, acceptedBytes: sourceBytes };
     }
     return { additions, completedFields, completedObject: this.completed, acceptedBytes: sourceBytes };
+  }
+
+  /** Adds the pending segment to the string being read: a streamed item
+   *  string of a list, or a declared top-level string. */
+  private commitSegment(additions: DecodedStringFields): void {
+    const segment = this.segment;
+    if (segment === "") return;
+    this.segment = "";
+    const list = this.list;
+    const text = list?.text;
+    if (list === undefined || text === undefined) {
+      this.value += segment;
+      additions[this.key] = (additions[this.key] ?? "") + segment;
+      return;
+    }
+    text.value += segment;
+    if (text.kind !== "value") return;
+    const path = `${this.key}.${list.item}.${list.itemKey}`;
+    additions[path] = (additions[path] ?? "") + segment;
   }
 
   private consumeWhitespace(char: string): boolean {
@@ -294,16 +319,16 @@ export class TopLevelJsonStringDecoder {
     const list = this.list!;
     const text = list.text;
     if (text) {
-      const path = `${this.key}.${list.item}.${list.itemKey}`;
       const emit = (decoded: string): void => {
-        text.chunks.push(decoded);
-        if (text.kind === "value") additions[path] = (additions[path] ?? "") + decoded;
+        if (text.kind !== "other") this.segment += decoded;
       };
       if (!this.consumeStringCharacter(char, emit, "skip_value")) return true;
       this.flushPendingSurrogate(emit);
-      if (text.kind === "key") list.itemKey = text.chunks.join("");
+      this.commitSegment(additions);
+      if (text.kind === "key") list.itemKey = text.value;
       if (text.kind === "value") {
-        this.decodedFields[path] = text.chunks.join("");
+        const path = `${this.key}.${list.item}.${list.itemKey}`;
+        this.decodedFields[path] = text.value;
         completedFields.push(path);
       }
       list.text = undefined;
@@ -313,7 +338,7 @@ export class TopLevelJsonStringDecoder {
     if (char === '"') {
       this.resetEscape();
       const streamed = depth === 2 && list.phase === "value" && this.itemFields.get(this.key)?.has(list.itemKey) === true;
-      list.text = { kind: depth === 2 && list.phase === "key" ? "key" : streamed ? "value" : "other", chunks: [] };
+      list.text = { kind: depth === 2 && list.phase === "key" ? "key" : streamed ? "value" : "other", value: "" };
       return true;
     }
     if (char === "{" && depth === 1) {
@@ -325,7 +350,7 @@ export class TopLevelJsonStringDecoder {
     return false;
   }
 
-  private consumeSkippedValue(char: string, complete: (value: unknown) => void): void {
+  private consumeSkippedValue(char: string, complete: (value: JsonValue) => void): void {
     if (this.skipStack.length === 0 && (char === "," || char === "}")) {
       const parsed = this.parseSkippedValue();
       if (parsed.status === "failed") {
@@ -378,7 +403,7 @@ export class TopLevelJsonStringDecoder {
   private fail(): void {
     this.state = "failed";
     this.list = undefined;
-    this.valueChunks = [];
+    this.value = "";
     this.skippedChunks = [];
     this.decodedFields = {};
   }

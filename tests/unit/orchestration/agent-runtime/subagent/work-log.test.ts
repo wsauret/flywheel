@@ -4,7 +4,6 @@ import {
   buildFallbackSummary,
   buildSubagentWorkLog,
   createSubagentTurnLog,
-  formatSubagentToolCall,
   type SubagentToolCallRecord,
 } from "../../../../../src/orchestration/modules/subagents/execution/work-log.js";
 
@@ -13,10 +12,13 @@ const record = (overrides: Partial<SubagentToolCallRecord> & Pick<SubagentToolCa
   ...overrides,
 });
 
-describe("formatSubagentToolCall", () => {
+// One call's entry in the work log.
+const formatCall = (call: SubagentToolCallRecord): string => buildSubagentWorkLog([call]);
+
+describe("work log entry of one tool call", () => {
   it("formats bash command with truncated argument and output", () => {
     const longCmd = "echo ".repeat(60);
-    const formatted = formatSubagentToolCall(record({
+    const formatted = formatCall(record({
       toolName: "bash",
       input: { command: longCmd },
       result: "x".repeat(400),
@@ -29,7 +31,7 @@ describe("formatSubagentToolCall", () => {
   });
 
   it("formats edit with path and result", () => {
-    const formatted = formatSubagentToolCall(record({
+    const formatted = formatCall(record({
       toolName: "edit",
       input: { path: "src/foo.ts" },
       result: "@@ -1 +1 @@\n-old\n+new",
@@ -40,20 +42,20 @@ describe("formatSubagentToolCall", () => {
   });
 
   it("formats stored historical replace calls generically", () => {
-    const formatted = formatSubagentToolCall(record({
+    const formatted = formatCall(record({
       toolName: "replace",
       input: { files: ["a.sql", "b.sql"], old: "x", new: "y" },
       result: "a.sql:\n-x\n+y",
     }));
-    expect(formatted).toBe("\n### replace (done)");
+    expect(formatted).toBe("## Tool call 1\n\n### replace (done)\n\n---\n");
   });
 
   it("includes status for pending, error, and interrupted records", () => {
-    expect(formatSubagentToolCall(record({ toolName: "bash", input: { command: "ls" }, status: "pending" })))
+    expect(formatCall(record({ toolName: "bash", input: { command: "ls" }, status: "pending" })))
       .toContain("### bash (pending)");
-    expect(formatSubagentToolCall(record({ toolName: "edit", input: { path: "a.ts" }, status: "error" })))
+    expect(formatCall(record({ toolName: "edit", input: { path: "a.ts" }, status: "error" })))
       .toContain("### edit (error)");
-    expect(formatSubagentToolCall(record({ toolName: "bash", input: { command: "sleep 10" }, status: "interrupted" })))
+    expect(formatCall(record({ toolName: "bash", input: { command: "sleep 10" }, status: "interrupted" })))
       .toContain("### bash (interrupted)");
   });
 });

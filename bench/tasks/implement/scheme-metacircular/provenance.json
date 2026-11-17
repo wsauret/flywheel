@@ -30,6 +30,7 @@
     "The original Scheme read retains escape bytes. For workspace filenames containing double quotes, backslashes or line breaks, create a unique mkdtemp directory under the native macOS /private/tmp root and symlink eval.scm to the same absolute candidate file. Reads and in-place writes retain file authority. Remove the owned directory in finally on success and failure; TMPDIR and normal workspace/cache paths remain unchanged.",
     "Use Bun.$.escape for complete shell arguments and CTRF/reward redirection filenames. Actual Bash probes cover spaces, apostrophes, dollar signs, backticks, double quotes and backslashes.",
     "Restore original interp.py, visible programs, hidden programs, and test_outputs.py after captured patch application. Remove only pytest configuration and conftest files on selected test ancestor paths.",
+    "Raise the metacircular interpreter limit from the original 60 seconds to 180 seconds. A correct evaluator's slowest metacircular case took 59 to 82 seconds on the macOS arm64 host, so the original limit made a stored grade depend on host load. The direct 10-second limit is unchanged.",
     "Add observational conftest instrumentation that records original interpreter subprocess results and rethrows original timeout exceptions unchanged."
   ],
   "replacementLedger": "Every grade report retains exact removed prefix, replacement strings and occurrence counts.",
@@ -37,6 +38,7 @@
   "limits": {
     "originalDirectSeconds": 10,
     "originalMetacircularSeconds": 60,
+    "nativeMetacircularSeconds": 180,
     "originalVerifierSeconds": 2400,
     "originalContainerAgentSeconds": 2400,
     "nativeAdapterSeconds": 2700,

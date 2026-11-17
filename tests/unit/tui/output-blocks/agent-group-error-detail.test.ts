@@ -1,11 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import type { CapturedFrame } from "@opentui/core"
+import { TextAttributes, type CapturedFrame } from "@opentui/core"
 import { testRender } from "@opentui/solid"
 import { createComponent } from "solid-js/web"
 import type { AgentGroupBlock as AgentGroupBlockType } from "../../../../src/infra/output-blocks.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
-import { STRIKETHROUGH } from "../../../../src/tui/utils/text-attributes.js"
 
 const theme = resolveTheme(flywheelThemeJson, "dark")
 const LONG = "The OpenAI API key was rejected because the configured credential is invalid."
@@ -118,7 +117,7 @@ function hasSpan(frame: CapturedFrame, text: string): boolean {
 
 function hasStruckSpan(frame: CapturedFrame, text: string): boolean {
   return frame.lines.some((line) =>
-    line.spans.some((span) => span.text.includes(text) && ((span.attributes & STRIKETHROUGH) === STRIKETHROUGH))
+    line.spans.some((span) => span.text.includes(text) && ((span.attributes & TextAttributes.STRIKETHROUGH) === TextAttributes.STRIKETHROUGH))
   )
 }
 

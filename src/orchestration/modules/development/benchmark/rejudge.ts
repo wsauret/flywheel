@@ -84,7 +84,7 @@ export async function rejudgeRecords(deps: RejudgeDeps): Promise<{ evidenceDirec
       }
       counts.scored++;
       // SAFETY: `publish` receives only review, research, and trap score records, which scoreLine always converts.
-      await appendCampaignRecords(campaign.file, campaign.header, [], [scoreLine(record, judge, version)!]);
+      await appendCampaignRecords(campaign.file, campaign.header, { scores: [scoreLine(record, judge, version)!] });
     };
     const options = { onAttempt, ...(signal ? { signal } : {}) };
     if (mode === "reviewer") {
@@ -110,7 +110,7 @@ export async function rejudgeRecords(deps: RejudgeDeps): Promise<{ evidenceDirec
 }
 
 function text(cell: CellLine): string {
-  if (cell.output.kind === "implementation") throw new Error(`Cell ${cell.variant} ${cell.task} #${cell.repeat} holds an implementation, not text`);
+  if (cell.output.kind !== "review" && cell.output.kind !== "answer") throw new Error(`Cell ${cell.variant} ${cell.task} #${cell.repeat} holds an implementation attempt, not text`);
   return cell.output.text;
 }
 

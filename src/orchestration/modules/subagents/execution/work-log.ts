@@ -124,7 +124,7 @@ export function createSubagentTurnLog(): SubagentTurnLog {
   };
 }
 
-export function formatSubagentToolCall(record: SubagentToolCallRecord): string {
+function formatSubagentToolCall(record: SubagentToolCallRecord): string {
   const { toolName, input, status, result } = record;
   const parts: string[] = [`\n### ${toolName} (${status})`];
 

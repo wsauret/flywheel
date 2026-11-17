@@ -10,8 +10,8 @@ import { composeModuleRuntimes } from "../../../../src/infra/module-runtime.js";
 import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definition-availability.js";
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js";
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/capability-narrowing.js";
-import { renderCompactionOpening } from "../../../../src/orchestration/agent-runtime/agent-loop-compaction-state.js";
-import { WAIT_EXPIRED_HANDLING } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
+import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
+import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js";
 import { enforceTurnBudget, limitOutput } from "../../../../src/orchestration/agent-runtime/compaction/truncation.js";
 import { createPendingWorkNudge } from "../../../../src/orchestration/agent-runtime/pending-work-nudge.js";
 import { availableToolNames } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
@@ -35,6 +35,7 @@ import { compileOutput } from "../../../../src/workflows/output-contract/compile
 import { offeredSkillResources, readSkillResource } from "../../../../src/workflows/skill-context.js";
 import { renderSkillContext, renderSkillResourceWindow } from "../../../../src/workflows/skill-render.js";
 import { makeContext } from "./tools/_fixtures.js";
+import { resetOpening } from "./context/_loop-fixtures.js";
 
 // The render matrix of capability-aware prompt text (ARCH-CONTEXT-033). For each module configuration it renders
 // every surface that an agent reads, through the production assembly that the prompt dump uses, with a stand-in host
@@ -177,9 +178,9 @@ async function render(capture: FirstPartyModuleComposition, live: FirstPartyModu
   let nudge: string | undefined;
   await createPendingWorkNudge({ providerSessionKey: "matrix", pushUser: async (content) => { nudge = content; } }).turnEndedWithoutWait(1);
   own("pending-work nudge", nudge);
-  own("wait-expired notice", WAIT_EXPIRED_HANDLING);
-  own("reset opening", renderCompactionOpening({ checkpoint: undefined, brief: undefined, saved: false, recallAvailable: has("recall"), capabilities: has }));
-  own("reset opening with brief", renderCompactionOpening({ checkpoint: undefined, brief: "Do the task.", saved: false, recallAvailable: has("recall"), capabilities: has }));
+  own("wait-expired notice", await waitExpiredNotice());
+  own("reset opening", await resetOpening({ checkpoint: undefined, brief: undefined, saved: false, recallAvailable: has("recall"), capabilities: has }));
+  own("reset opening with brief", await resetOpening({ checkpoint: undefined, brief: "Do the task.", saved: false, recallAvailable: has("recall"), capabilities: has }));
   const truncated = await limitOutput({ content: "x".repeat(40_000), executionCwd: root, projectRoot: root, artifactScopeId: "matrix", capabilities: has });
   own("truncation notice", truncated.text.slice(-600));
   const budget = await enforceTurnBudget([{ toolUseId: "matrix", toolName: "bash", exempt: false, content: [{ type: "text", text: "y".repeat(20_000) }] }], { budgetChars: 1_000, executionCwd: root, projectRoot: root, artifactScopeId: "matrix", capabilities: has });
@@ -209,6 +210,21 @@ async function render(capture: FirstPartyModuleComposition, live: FirstPartyModu
     for (const command of ["vim notes.txt", "less notes.txt", "sleep 30", "git worktree add ../other"]) own(`bash refusal ${command}`, (await interceptBashCommand(command, { capabilities: has }))?.message);
   }
   return { rendered, planned };
+}
+
+/** The runtime notice that a park on background work consumes when its process wait expires. */
+async function waitExpiredNotice(): Promise<string> {
+  const mailbox = new ChatTurnMailbox();
+  let notice: string | undefined;
+  await createAgentLoopInputWaiter({
+    state: () => ({ turnCount: 1, handoffWritten: false, wait: { expiry: { seconds: 60, deadlineMs: Date.now() }, replyWaitIds: [] } }),
+    prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
+    scheduleWaitExpiry: (_seconds, expire) => { expire(); return () => {}; },
+    consume: async (input) => { if (input.kind === "message") notice = input.text; return "continue"; },
+    handBack: async () => {},
+  })(true, undefined);
+  if (notice === undefined) throw new Error("expected the wait-expired notice");
+  return notice;
 }
 
 /** Every surface of one configuration: a chat under each interaction profile, a subagent, and an agent of a
@@ -274,10 +290,12 @@ const sentencesOf = (text: string): string[] => text
   .map((sentence) => sentence.replace(/^[-*\d.\s]+/, "").replace(/\s+/g, " ").trim())
   .filter((sentence) => sentence.split(" ").length >= 6);
 
-// One option subschema of ask_user renders under both of its question shapes; removing the copy needs a schema-shape
-// change.
-const SHARED_OPTION_SUBSCHEMA_HOMES = "tool ask_user field options,tool ask_user field questions";
-const exempt = (homes: ReadonlySet<string>): boolean => [...homes].toSorted().join(",") === SHARED_OPTION_SUBSCHEMA_HOMES;
+// The single-question shorthand of ask_user shares its option subschema and its header field with `questions[]`, so
+// each renders under both question shapes; removing the copy needs a schema-shape change.
+const SHARED_QUESTION_FIELD_HOMES = new Set(["tool ask_user field options,tool ask_user field questions", "tool ask_user field header,tool ask_user field questions"]);
+const exempt = (homes: ReadonlySet<string>): boolean => SHARED_QUESTION_FIELD_HOMES.has([...homes].toSorted().join(","));
+// Every short-form tool's one line ends with the same call hint, because each line must stand alone (ARCH-CONTEXT-038).
+const SHORT_FORM_HINT = "Call with {} to read its full contract first.";
 
 /** The modules that a selection leaves off once dependents follow their dependencies. */
 const turnedOff = (composition: FirstPartyModuleComposition): string[] => ALL_IDS.filter((id) => !composition.enabledModuleIds.includes(id));
@@ -314,7 +332,7 @@ describe("capability render matrix", () => {
       for (const { home, text } of homes) {
         for (const sentence of sentencesOf(text)) seen.set(sentence, (seen.get(sentence) ?? new Set()).add(home));
       }
-      return [...seen].filter(([, at]) => at.size > 1 && !exempt(at)).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
+      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(at) && sentence !== SHORT_FORM_HINT).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
     }));
     expect(duplicates.flat()).toEqual([]);
   });

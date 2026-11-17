@@ -15,10 +15,11 @@ import { mountMarkdown } from "./render-ownership-loader-fixture.js"
 import { createElement, createTextNode, MemoryElement, nodes, textContent } from "./render-ownership-host-fixture.js"
 import { patchMarkdownChildren } from "./markdown-dom.js"
 import type { FrontendQuestionBlock } from "../client/question-answer.js"
+import type { ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
 
 test("replacement transfers active, inactive, and new-chat drafts without renumbering prepared files", async () => {
   const original = mountComposerSubmission()
-  let checkpoint: unknown
+  let checkpoint: ComposerCheckpoint
   try {
     original.leaveSession()
     original.type("new chat")
@@ -141,7 +142,7 @@ test("replacement adopts question text, picks, Other, and minimization without s
     ],
   }
   const original = mountComposerSubmission({ question: block })
-  let saved: unknown
+  let saved: ComposerCheckpoint
   try {
     original.clickQuestion("Named")
     original.typeQuestion("Named: Named?", "named words")

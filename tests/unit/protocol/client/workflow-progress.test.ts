@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { workflowProgress, workflowProgressCount, workflowSummaryParts, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress"
+import { coveragePart, workflowProgress, workflowProgressCount, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress"
 import { attemptOf, stage } from "../../workflows/vm/_map-fixtures.js"
 import { stepLoopControl, stepLoopBindings, drive, eachBindings, eachControl, dryBindings, dryControl, findingsBindings, findingsControl, frontendView, interrupt, items, mapBindings, mapControl, mapOutcome, startNext, surveyBindings, surveyControl, wideBindings, wideControl } from "../../workflows/vm/_tree-fixtures.js"
 import type { FrontendAttemptStatus, WorkflowTree, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types"
@@ -45,7 +45,6 @@ describe("workflow progress", () => {
       const view = frontendView(drive(stepLoopControl(outcome === "stuck"), () => ({ handoff: { summary: "Result", findings: outcome === "dry" ? [] : ["the same defect"] } })), stepLoopBindings)
       expect(view.tree.nodes.find((node) => node.kind === "repeat")?.label).toBe("Investigate → Fix")
       expect(workflowSummaryText(workflowProgress(view))).toEndWith(`round ${iteration} of at most 5 · ${words}`)
-      expect(workflowSummaryParts(workflowProgress(view)).at(-1)?.tone).toBe(outcome === "dry" ? "done" : "failed")
     }
     expect(workflowSummaryText(workflowProgress(frontendView(dryControl(), dryBindings)))).toContain("round 3 of at most 3 · dry")
   })
@@ -75,10 +74,7 @@ describe("tree workflow progress", () => {
     const settled = workflowProgress(frontendView(drive(midway, mapOutcome(items("a", "b", "c"), failing)), mapBindings))
     expect(settled).toMatchObject({ done: 8, total: 8, failed: 1 })
     expect(settled.current).toBeUndefined()
-    const parts = workflowSummaryParts(settled)
-    expect(parts.map(({ text }) => text).join("")).toBe("8/8 done, 1 failed · Review: 3/3 agents, 1 failed, joined")
-    expect(parts.find(({ text }) => text === ", 1 failed")?.tone).toBe("failed")
-    expect(parts[0]?.tone).toBe("done")
+    expect(workflowSummaryText(settled)).toBe("8/8 done, 1 failed · Review: 3/3 agents, 1 failed, joined")
   })
 
   test("counts the planned rounds of a repeat over items, one unit for each agent of each round", () => {
@@ -130,7 +126,7 @@ describe("tree workflow progress", () => {
       { id: "c", priority: "supporting", report: "fail" },
     ]), surveyBindings))
     expect(workflowSummaryText(partial)).toBe("8/8 done, 1 failed · Verify: 3/3 agents, 1 failed, joined, coverage required 1 of 2, 1 unsurveyed")
-    expect(workflowSummaryParts(partial).find(({ text }) => text.includes("coverage"))?.tone).toBe("failed")
+    expect(coveragePart(partial.lists[0]?.join)?.tone).toBe("failed")
     expect(workflowProgressCount(partial)).toBe("8/8 done, 1 failed · coverage required 1 of 2, 1 unsurveyed")
 
     const full = workflowProgress(frontendView(surveyControl([
@@ -138,7 +134,7 @@ describe("tree workflow progress", () => {
       { id: "b", priority: "supporting", report: "inaccessible" },
     ]), surveyBindings))
     expect(workflowProgressCount(full)).toBe("6/6 done · coverage required 1 of 1")
-    expect(workflowSummaryParts(full).find(({ text }) => text.includes("coverage"))?.tone).toBe("done")
+    expect(coveragePart(full.lists[0]?.join)?.tone).toBe("done")
 
     // A survey of supporting targets alone reached no required target, so
     // it never reads as done, even when every item it ran failed.
@@ -147,7 +143,7 @@ describe("tree workflow progress", () => {
       { id: "b", priority: "supporting", report: "fail" },
     ]), surveyBindings))
     expect(workflowProgressCount(unrequired)).toBe("6/6 done, 2 failed · coverage no required targets")
-    expect(workflowSummaryParts(unrequired).find(({ text }) => text.includes("coverage"))?.tone).toBe("failed")
+    expect(coveragePart(unrequired.lists[0]?.join)?.tone).toBe("failed")
 
     // An empty manifest reads as zero targets, never as a full ratio.
     const empty = workflowProgress(frontendView(surveyControl([]), surveyBindings))

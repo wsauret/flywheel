@@ -170,11 +170,10 @@ export function ThemeProvider(props: ThemeProviderProps): JSX.Element {
 
   const styles = createMemo(() => resolveStyles(themeJson()))
   const resolvedChatSyntaxColors = createMemo<SyntaxColors>(() => chatSyntaxColors(values()))
+  // A string memo, so a config publication that keeps the theme id derives no new colors.
+  const writeSyntaxTheme = createMemo(() => props.config?.()?.values.writeSyntaxTheme ?? DEFAULT_WRITE_SYNTAX_THEME_ID)
   const writeSyntaxColors = createMemo<SyntaxColors>(() => {
-    const colors = getWriteSyntaxColors(
-      props.config?.()?.values.writeSyntaxTheme ?? DEFAULT_WRITE_SYNTAX_THEME_ID,
-      mode(),
-    )
+    const colors = getWriteSyntaxColors(writeSyntaxTheme(), mode())
     return {
       text: RGBA.fromHex(colors.text),
       comment: RGBA.fromHex(colors.comment),

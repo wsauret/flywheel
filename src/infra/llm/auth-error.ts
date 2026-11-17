@@ -101,9 +101,3 @@ export function authErrorCopy(message: string, provider?: ProviderIdentity): Aut
   if (provider !== undefined) return rejectedCredentialCopy(provider);
   return AUTH_PATTERNS.some((p) => lower.includes(p)) ? rejectedCredentialCopy(undefined) : undefined;
 }
-
-/** One-string form for the tool-error laundering paths. */
-export function authErrorHeadline(message: string): string | undefined {
-  const copy = authErrorCopy(message);
-  return copy ? `${AUTH_ERROR_TITLE[copy.kind]}: ${copy.problem} ${copy.guidance}` : undefined;
-}

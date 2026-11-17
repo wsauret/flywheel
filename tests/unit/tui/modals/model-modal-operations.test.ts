@@ -153,6 +153,8 @@ describe("model modal operation identity", () => {
       await flush()
       for (const name of "ghjkl") harness.modal.input({ name, sequence: name })
       expect(harness.modelModal.modelModalState().query).toBe("ghjkl")
+      // The current row stays highlighted while the query keeps it in the list.
+      expect(harness.modelModal.modelModalState().cursor).toBe(12)
       expect(harness.modelModal.modelModalState().scope).toBe("session")
       expect(harness.modelModal.modelModalState().pendingEfforts.size).toBe(0)
       for (const [name, cursor] of [["end", 23], ["home", 0], ["pagedown", 10], ["pageup", 0]] as const) {
@@ -162,6 +164,7 @@ describe("model modal operation identity", () => {
       harness.modal.input({ name: "space", sequence: " " })
       harness.modal.input({ name: "2", sequence: "2" })
       expect(harness.modelModal.modelModalState().modelOptions.map((row) => row.model)).toEqual(["model-2", "model-20", "model-21", "model-22", "model-23"])
+      expect(harness.modelModal.modelModalState().cursor).toBe(0)
       harness.modal.input({ name: "end" })
       expect(harness.modelModal.modelModalState().cursor).toBe(4)
       harness.modal.input({ name: "x", sequence: "x" })
@@ -593,7 +596,7 @@ describe("model modal operation identity", () => {
       expect(harness.saveCalls).toHaveLength(1)
       expect(harness.commands.filter((command) => command.type.startsWith("model."))).toEqual([{
         type: "model.save_effort", scope: { kind: "session", sessionId: "session-1" },
-        slot: roleSlot("chat"), model: "gpt-y", effort: "low",
+        slot: roleSlot("chat"), model: "gpt-y", effort: "low", expected: { kind: "absent" },
       }])
       harness.saveCalls[0]!.resolve({ label: "Chat" })
       await flush()

@@ -8,14 +8,16 @@ import { createStore, reconcile } from "solid-js/store"
 import { createComponent } from "solid-js/web"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
 import { createOutputTranscriptCache } from "../../../src/tui/transcript-store/create-output-transcript-cache.js"
-import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { OutputWindowCommand } from "../../../src/tui/output-window/output-window.js"
 import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
-import { LINE_WHEEL } from "../../../src/tui/output-window/output-window-wheel.js"
+import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
 import { fakeRuntimeClient, liveView } from "./hooks/_output-transcript-cache-fixtures.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
+
+type TranscriptWindow = TranscriptSnapshot["window"]
 
 function textBlock(id: string, content: string): FrontendOutputBlock {
   return { kind: "text", id, content, timestamp: 1 }
@@ -63,7 +65,7 @@ async function renderWindow(
           transcript: view,
           running: false,
           // One row per report on every host: these tests count rows.
-          wheel: LINE_WHEEL,
+          wheel: wheelProfileFor("darwin", {}),
           captureScrollbox: (el: ScrollBoxRenderable) => { scrollbox = el },
           onNearEdge,
           get command() { return command?.() },

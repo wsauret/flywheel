@@ -12,6 +12,7 @@ export function fakeRow(roleId: string, label: string): ModelAssignmentRow {
     effort: "high",
     modelSource: "explicit",
     matchesInheritedPair: false,
+    configured: { kind: "absent" },
   };
 }
 

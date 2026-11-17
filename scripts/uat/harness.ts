@@ -8,7 +8,7 @@ import { Schema } from "effect"
 import { copyActiveBuild } from "../../tests/helpers/placed-build.js"
 import { RELEASE_HARNESS_ENVIRONMENT } from "../../tests/helpers/real-process-fixture.js"
 import { AuthProfileManager, type AuthProfileManagerOptions } from "../../src/orchestration/auth/auth-profile-manager.js"
-import { ContainedDirectory } from "../../src/infra/descriptor-directory.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../../src/infra/descriptor-directory.js"
 import { authDir, requireAuthProfileName } from "../../src/infra/paths.js"
 import { resolveInstalledBinary } from "./installed-binary.js"
 import { attachApp, INSTALLED_LAUNCH_EXCLUDED_ENV, killTmuxSession, launchApp, PanePollError, startSessionReaper, type PollOutcome, type TmuxApp } from "./tmux-driver.js"
@@ -67,7 +67,7 @@ export interface TuiUatApp extends TmuxApp {
   activateSelectedRow(expectedText: string, timeoutMs?: number): Promise<PollOutcome>
 }
 
-async function run(command: string[], cwd?: string): Promise<string> {
+async function captureCommandOutput(command: string[], cwd?: string): Promise<string> {
   const child = Bun.spawn(command, { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true })
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(child.stdout).text(),
@@ -124,13 +124,13 @@ async function writeCredentialFile(destination: string, content: Buffer | undefi
 export async function cloneAuthProfileFiles(sourceProfile: string, destination: string): Promise<void> {
   const source = resolve(sourceProfile)
   const id = requireAuthProfileName(basename(source))
-  const access = ContainedDirectory.openExisting(dirname(source), [id], { noFollowBase: true })
+  const access = openExistingContainedDirectory(dirname(source), [id], { noFollowBase: true })
   if (access === undefined) throw new Error(`auth profile does not exist: ${id}`)
   try {
     const auth = access.readFile("auth.json", 16 * 1024 * 1024)
     const profile = access.readFile("profile.json", 16 * 1024)
     await mkdir(dirname(destination), { recursive: true, mode: 0o700 })
-    const target = ContainedDirectory.open(dirname(destination), [basename(destination)], { privateDirectories: true, noFollowBase: true })
+    const target = openContainedDirectory(dirname(destination), [basename(destination)], { privateDirectories: true, noFollowBase: true })
     target.close()
     await writeCredentialFile(join(destination, "auth.json"), auth, true)
     await writeCredentialFile(join(destination, "profile.json"), profile, false)
@@ -155,7 +155,7 @@ async function cloneEffectiveAuth(options: TuiUatOptions, home: string): Promise
   const sourceUserDataRoot = join(sourceHome, ".flywheel")
   const resolution = resolveTuiUatAuthProfile(options, { userDataRoot: sourceUserDataRoot, env: process.env })
   const destination = authDir(join(home, ".flywheel"), resolution.id)
-  const account = ContainedDirectory.open(home, [".flywheel"], { privateDirectories: true, noFollowBase: true })
+  const account = openContainedDirectory(home, [".flywheel"], { privateDirectories: true, noFollowBase: true })
   account.close()
   await mkdir(join(home, ".flywheel", "auth", "profiles"), { recursive: true, mode: 0o700 })
   await chmod(join(home, ".flywheel", "auth"), 0o700)
@@ -189,9 +189,9 @@ export async function prepareTuiUatSandbox(options: TuiUatOptions): Promise<TuiU
       mkdir(project, { recursive: true, mode: 0o700 }),
       mkdir(evidence, { recursive: true, mode: 0o700 }),
     ])
-    await run(["git", "init", "--quiet"], project)
+    await captureCommandOutput(["git", "init", "--quiet"], project)
     const canonicalProject = await realpath(project)
-    const gitRoot = await realpath(await run(["git", "rev-parse", "--show-toplevel"], project))
+    const gitRoot = await realpath(await captureCommandOutput(["git", "rev-parse", "--show-toplevel"], project))
     if (gitRoot !== canonicalProject) throw new Error(`isolated git root mismatch: expected ${canonicalProject}, got ${gitRoot}`)
     const userDataRoot = join(home, ".flywheel")
     await mkdir(userDataRoot, { recursive: true, mode: 0o700 })
@@ -276,7 +276,7 @@ function decorateApp(app: TmuxApp, sandbox: TuiUatSandbox, sessionName: string, 
 export async function startTuiUat(options: TuiUatOptions): Promise<TuiUatApp> {
   requireTmuxPlatform()
   const idleTimeoutMs = Schema.decodeUnknownSync(idleTimeoutSchema)(options.idleTimeoutMs ?? 20 * 60_000)
-  await run(["tmux", "-V"])
+  await captureCommandOutput(["tmux", "-V"])
   const sandbox = await prepareTuiUatSandbox(options)
   let app: TmuxApp | undefined
   let sessionName: string | undefined

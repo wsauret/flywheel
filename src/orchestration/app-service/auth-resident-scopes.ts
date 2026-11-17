@@ -5,6 +5,7 @@ import type { RuntimeAuthStatusScope } from "../../protocol/auth-status-protocol
 import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { SubscriptionUsageServiceLease, SubscriptionUsageServicePool } from "../auth/provider-observations/subscription-usage-service-pool.js"
 import type { SessionManager } from "../session/manager.js"
+import type { WorkflowAuthOwner } from "../workflow-host/auth-owner.js"
 import { resolveSessionAuthProfile, sessionAuthFacts, type ResidentSessionAuthFacts, type WorkflowAuthRuns } from "./auth-profile-scope.js"
 
 const log = Log.create({ service: "auth-runtime" })
@@ -14,6 +15,8 @@ const log = Log.create({ service: "auth-runtime" })
 export function createResidentAuthScopes(options: {
   readonly manager: Pick<SessionManager, "read">
   readonly runs: WorkflowAuthRuns
+  /** The runs that can still take a turn: only these hold a workflow lease. */
+  readonly workflows: Pick<WorkflowAuthOwner, "list" | "resident">
   readonly userDataRoot: string
   readonly currentProfile: () => AuthProfileResolution
   readonly resolveProfile: (scope: RuntimeAuthStatusScope) => Promise<AuthProfileResolution>
@@ -72,17 +75,23 @@ export function createResidentAuthScopes(options: {
       }
     })
   }
-  const reconcileWorkflow = async (workflowId: string, profile: AuthProfileResolution | undefined): Promise<void> => {
+  const leaseWorkflow = async (workflowId: string, profile: AuthProfileResolution | undefined): Promise<void> => {
     const key = `workflow:${workflowId}`
     const previous = leases.get(key)?.lease
     if (previous && profile && previous.profile.id === profile.id && previous.profile.directory === profile.directory) return
     if (previous) { leases.delete(key); await previous.release() }
     if (profile && !options.disposed()) leases.set(key, { scope: { kind: "workflow", workflowId }, lease: await options.pool.acquire({ id: profile.id, directory: profile.directory }) })
   }
-  const reconcileWorkflows = (rows: readonly { readonly workflowId: string; readonly profile: AuthProfileResolution }[]): Promise<void> => reconciliations.run(async () => {
+  // Each resolves on the lane, so a later change of a run never lands
+  // before an earlier one.
+  const reconcileWorkflows = (): Promise<void> => reconciliations.run(async () => {
+    const rows = await options.workflows.list()
     const current = new Set(rows.map(({ workflowId }) => workflowId))
-    for (const { scope } of leases.values()) if (scope.kind === "workflow" && !current.has(scope.workflowId)) await reconcileWorkflow(scope.workflowId, undefined)
-    for (const { workflowId, profile } of rows) await reconcileWorkflow(workflowId, profile)
+    for (const { scope } of leases.values()) if (scope.kind === "workflow" && !current.has(scope.workflowId)) await leaseWorkflow(scope.workflowId, undefined)
+    for (const { workflowId, profile } of rows) await leaseWorkflow(workflowId, profile)
   })
-  return { leases, subscriptionUsage, reconcile, reconcileWorkflows, enqueue, settled: reconciliations.settled }
+  const reconcileWorkflow = (workflowId: string): Promise<void> => reconciliations.run(async () => {
+    await leaseWorkflow(workflowId, await options.workflows.resident(workflowId))
+  })
+  return { leases, subscriptionUsage, reconcile, reconcileWorkflows, reconcileWorkflow, enqueue, settled: reconciliations.settled }
 }

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { Schema } from "effect"
 import { FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -27,10 +26,12 @@ import { buildWorkflowControlInitializedFact, buildWorkflowControlRecoveredFact 
 import { buildAttemptRecoveredFact } from "../../../../src/workflows/vm/fact-drafts.js"
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten.js"
 import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/session/conversation/queued-user-inputs.js"
-import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { INPUT_GROUP, inputBranch, inputMapWorkflow, items } from "./_map-fixtures.js"
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js"
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { quietHostDeps } from "./host-test-support.js"
 
 const roots: string[] = []
 
@@ -196,6 +197,7 @@ describe("workflow recovery atomicity", () => {
       const calls: Array<{ attemptId: string; prompt: string; conversationId: string }> = []
       const request = missing === "seed" || missing === "both" || missing === "all" ? "original creation request" : "recover atomically"
       const host = createWorkflowVmHost({
+        ...quietHostDeps(asAsyncEventWriter(reopened)),
         servedConversations: async () => new Set(),
         requestAddenda: async () => [],
         startMode: "operator_resume", sessionId: fixture.sessionId, reader: projectionReader, writer: asAsyncEventWriter(reopened),
@@ -259,7 +261,7 @@ describe("workflow recovery atomicity", () => {
 
   it("repairs the old contextless v1 batch, but fences artifacts at each complete root for held and cold reads", async () => {
     // Pre-phase control contains only agents, not the repeat container.
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "implement",
       name: "Legacy recovery",
       phases: [{ phase: "work", name: "Work", brief: "Do the work.", writes: [] }],

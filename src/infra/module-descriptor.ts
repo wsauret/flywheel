@@ -21,15 +21,6 @@ type ModuleObserver<Observers extends object> = {
   };
 }[keyof Observers];
 
-type ModuleTransformer<Transformers extends object> = {
-  readonly [Seam in keyof Transformers]: {
-    readonly seam: Seam;
-    readonly id: string;
-    readonly order: number;
-    readonly transformer: Transformers[Seam];
-  };
-}[keyof Transformers];
-
 type ModuleGateDeclaration<Gates extends object> = {
   readonly [Seam in keyof Gates]: {
     readonly seam: Seam;
@@ -40,7 +31,7 @@ type ModuleGateDeclaration<Gates extends object> = {
 /** A statically registered capability and all declarations it contributes.
  * Owner layers define the concrete value and hook maps. Infra only defines
  * composition structure and does not import those values upward. */
-export interface ModuleDescriptor<Contributions extends object, Observers extends object, Transformers extends object, Gates extends object> {
+export interface ModuleDescriptor<Contributions extends object, Observers extends object, Gates extends object> {
   readonly id: string;
   readonly dependencies: readonly string[];
   readonly availability: ModuleAvailability;
@@ -48,7 +39,6 @@ export interface ModuleDescriptor<Contributions extends object, Observers extend
   readonly producesBackgroundWork?: boolean;
   readonly contributions: readonly ModuleContribution<Contributions>[];
   readonly observers: readonly ModuleObserver<Observers>[];
-  readonly transformers: readonly ModuleTransformer<Transformers>[];
   readonly gates: readonly ModuleGateDeclaration<Gates>[];
 }
 
@@ -57,7 +47,7 @@ export interface ModuleCompositionOptions<Contributions extends object> {
   readonly warnWhenEmpty?: readonly (keyof Contributions)[];
 }
 
-export interface ModuleComposition<Contributions extends object, Observers extends object, Transformers extends object, Gates extends object> {
+export interface ModuleComposition<Contributions extends object, Observers extends object, Gates extends object> {
   readonly enabledModuleIds: readonly string[];
   /** Every installed module that declares background work, enabled or not:
    *  a request explains a withheld background surface by naming them all. */
@@ -67,19 +57,18 @@ export interface ModuleComposition<Contributions extends object, Observers exten
   readonly installedContributions: readonly ComposedContribution<Contributions>[];
   readonly contributions: readonly ComposedContribution<Contributions>[];
   readonly observers: readonly ModuleObserver<Observers>[];
-  readonly transformers: readonly ModuleTransformer<Transformers>[];
   readonly gates: readonly ModuleGateDeclaration<Gates>[];
   readonly warnings: readonly string[];
 }
 
 /** Validates and composes a static module catalog. Catalog order has no
- * meaning. Contribution identity is scoped to its domain, transformer order
- * is explicit, and one gate may own each seam. */
-export function composeModules<Contributions extends object, Observers extends object, Transformers extends object, Gates extends object>(
-  modules: readonly ModuleDescriptor<Contributions, Observers, Transformers, Gates>[],
+ * meaning. Contribution identity is scoped to its domain, and one gate may own
+ * each seam. */
+export function composeModules<Contributions extends object, Observers extends object, Gates extends object>(
+  modules: readonly ModuleDescriptor<Contributions, Observers, Gates>[],
   options: ModuleCompositionOptions<Contributions> = {},
-): ModuleComposition<Contributions, Observers, Transformers, Gates> {
-  const modulesById = new Map<string, ModuleDescriptor<Contributions, Observers, Transformers, Gates>>();
+): ModuleComposition<Contributions, Observers, Gates> {
+  const modulesById = new Map<string, ModuleDescriptor<Contributions, Observers, Gates>>();
   for (const module of modules) {
     if (modulesById.has(module.id)) throw new Error(`Duplicate capability module id: ${module.id}`);
     modulesById.set(module.id, module);
@@ -100,13 +89,6 @@ export function composeModules<Contributions extends object, Observers extends o
     const key = `${String(contribution.domain)}\u0000${contribution.id}`;
     if (contributionIds.has(key)) throw new Error(`Duplicate ${String(contribution.domain)} contribution id: ${contribution.id}`);
     contributionIds.add(key);
-  }
-
-  const transformerIds = new Set<string>();
-  for (const transformer of modules.flatMap((module) => module.transformers)) {
-    const key = `${String(transformer.seam)}\u0000${transformer.id}`;
-    if (transformerIds.has(key)) throw new Error(`Duplicate transformer for seam ${String(transformer.seam)} and id: ${transformer.id}`);
-    transformerIds.add(key);
   }
 
   const gateSeams = new Set<string>();
@@ -139,23 +121,22 @@ export function composeModules<Contributions extends object, Observers extends o
   const contributions = installedContributions.filter((contribution) => enabledIds.has(contribution.module));
   const gates = enabled.flatMap((module) => module.gates).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
   const observers = enabled.flatMap((module) => module.observers).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
-  const transformers = enabled.flatMap((module) => module.transformers).toSorted((left, right) => left.order - right.order || String(left.seam).localeCompare(String(right.seam)) || left.id.localeCompare(right.id));
   const warnings = [...(options.warnWhenEmpty ?? [])]
     .filter((domain) => !contributions.some((contribution) => contribution.domain === domain))
     .map((domain) => `No ${String(domain)} contributions are enabled`)
     .sort();
 
   const backgroundWorkProducerIds = [...modulesById.values()].filter((module) => module.producesBackgroundWork === true).map((module) => module.id).toSorted();
-  return { enabledModuleIds: enabled.map((module) => module.id), backgroundWorkProducerIds, installedContributions, contributions, observers, transformers, gates, warnings };
+  return { enabledModuleIds: enabled.map((module) => module.id), backgroundWorkProducerIds, installedContributions, contributions, observers, gates, warnings };
 }
 
 function compareDeclarations(left: { readonly domain: PropertyKey; readonly id: string }, right: { readonly domain: PropertyKey; readonly id: string }): number {
   return String(left.domain).localeCompare(String(right.domain)) || left.id.localeCompare(right.id);
 }
 
-function validateDependencyDag<Contributions extends object, Observers extends object, Transformers extends object, Gates extends object>(
-  modules: readonly ModuleDescriptor<Contributions, Observers, Transformers, Gates>[],
-  modulesById: ReadonlyMap<string, ModuleDescriptor<Contributions, Observers, Transformers, Gates>>,
+function validateDependencyDag<Contributions extends object, Observers extends object, Gates extends object>(
+  modules: readonly ModuleDescriptor<Contributions, Observers, Gates>[],
+  modulesById: ReadonlyMap<string, ModuleDescriptor<Contributions, Observers, Gates>>,
 ): void {
   const visited = new Set<string>();
   const path: string[] = [];

@@ -17,13 +17,11 @@ import type {
   WorkflowVmHost,
   WorkflowVmStartMode,
 } from "../../workflows/vm/host-types.js"
-import type { ActiveBackgroundCommandDescriptor, BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 import { createObserverChain } from "../agent-runtime/batch-observers.js"
 import type { RoleResolver } from "../config/roles.js"
 import type { WorkflowAgentInputs } from "./agent-inputs.js"
 import type { AdmittedWorkflowDeps } from "./deps.js"
-import { composeWorkflowHostLifecycle, type WorkflowOuterLifecycle } from "./lifecycle.js"
-import type { MetricsWriter } from "../session/create-session-infra.js"
 import { wireSessionSubscribers } from "../session/create-session-infra.js"
 
 import type { SessionResources } from "../session/session-resources-service.js"
@@ -57,18 +55,18 @@ interface CreateWorkflowHostInput {
   eventStore: AsyncEventStateReadSurface
   projectionReader: AsyncEventStateReadSurface
   eventWriter: AsyncEventWriter
-  manager?: SessionManager
+  manager: SessionManager
   attachChildProjection?: AttachChildSessionProjection
   recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
   initializeInfra: () => SessionResources
   agentInputs: WorkflowAgentInputs
-  metricsWriter?: MetricsWriter
-  onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void
   applyNestedStoredFact: (event: StoredFact) => void | Promise<void>
   /** Runs after durable definition replay accepts the pinned revision and before any model role is resolved. */
   onDefinitionAccepted?: () => void | Promise<void>
   onPostPreflight?: () => void | Promise<void>
-  lifecycle: WorkflowOuterLifecycle
+  /** Releases what the runner holds, once the host's own resources are
+   *  disposed. */
+  disposeRemaining: () => Promise<void>
 }
 
 interface CreateWorkflowHostResult {
@@ -133,11 +131,11 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     writer: input.eventWriter,
     recall: (contract) => input.recall(childRunId, contract),
   })
-  const subagentSessions = input.manager ? installedChildSessionHistory().createAuthority({
+  const subagentSessions = installedChildSessionHistory().createAuthority({
     manager: input.manager, eventStore: input.eventStore, projectionReader: input.projectionReader, eventWriter: input.eventWriter, projectRoot, recall: input.recall,
     attachProjection: input.attachChildProjection,
-  }) : undefined
-  const sessionMessaging = input.manager && deps.childSessions ? createSessionMessaging({ manager: input.manager, projectionReader: input.projectionReader, eventWriter: input.eventWriter }, deps.childSessions) : undefined
+  })
+  const sessionMessaging = deps.childSessions ? createSessionMessaging({ manager: input.manager, projectionReader: input.projectionReader, eventWriter: input.eventWriter }, deps.childSessions) : undefined
   const observerContext = {
     getBudgetInfo: async () => {
       const { max_invocations, max_tokens } = toBudgetLimits(deps.captureRuntimeConfig().budget ?? DEFAULT_BUDGET)
@@ -157,10 +155,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
   const getWorkerCallback = (): ReturnType<typeof createWorkerCallback> => {
     if (workerCallback) return workerCallback
     const created = createWorkerCallback({
-      deactivateSession: (id) => {
-        if (!input.manager) throw new Error("Workflow execution requires session lifecycle authority")
-        return input.manager.updateLifecycleState(id, "inactive")
-      },
+      deactivateSession: (id) => input.manager.updateLifecycleState(id, "inactive"),
       createAgent: deps.createAgent,
       planCapabilities: deps.planCapabilities,
       createLLMClient: deps.createLLMClient,
@@ -182,7 +177,6 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
       sessionEventWriter: infra.sessionEventWriter,
       applyNestedStoredFact: input.applyNestedStoredFact,
       commandEvidenceSource,
-      onBackgroundCommandsChanged: input.onBackgroundCommandsChanged,
       resolvedAgents,
       skills,
       // The workflow's admitted modules and the agent types turned off now: an agent that starts after a type was
@@ -192,7 +186,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
       projectionReader: input.projectionReader,
       eventWriter: input.eventWriter,
       createChildConversation,
-      ...(subagentSessions ? { subagentSessions } : {}),
+      subagentSessions,
       ...(sessionMessaging ? { sessionMessaging } : {}),
       recall: input.recall,
       ...(deps.capabilityAccess ? { capabilityAccess: deps.capabilityAccess } : {}),
@@ -219,10 +213,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     sessionId,
     reader: input.projectionReader,
     writer: input.eventWriter,
-    commitBatch: (events) => {
-      if (!input.manager) throw new Error("Workflow execution requires structural publication authority")
-      return input.manager.commitWorkflow({ workflowId: sessionId, events })
-    },
+    commitBatch: (events) => input.manager.commitWorkflow({ workflowId: sessionId, events }),
     queueStore: infra.queueStore,
     contextStore: infra.contextStore,
     definitionRevision: revision,
@@ -259,17 +250,17 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     },
     onPostPreflight: async () => {
       await input.onDefinitionAccepted?.()
-      const sessionSubscribers = wireSessionSubscribers(eventBus, infra, input.metricsWriter, sessionId)
+      const sessionSubscribers = wireSessionSubscribers(eventBus, infra, undefined, sessionId)
       awaitDurableFacts = sessionSubscribers.awaitDurableFacts
       await input.onPostPreflight?.()
     },
-    lifecycle: composeWorkflowHostLifecycle(infra.lifecycle, {
-      ...input.lifecycle,
-      settleBackground: async () => {
-        await input.lifecycle.settleBackground?.()
-        await subagentSessions?.settleReconciliation()
-      },
-    }),
+    lifecycle: {
+      settleBackground: () => subagentSessions.settleReconciliation(),
+      drainEventBus: infra.lifecycle.drainEventBus,
+      drainWriter: infra.lifecycle.drainWriter,
+      disposeProjections: infra.lifecycle.disposeProjections,
+      disposeRemaining: input.disposeRemaining,
+    },
   })
   return {
     emitToAgent: (attemptId) => workerCallback?.emitToAgent(attemptId),

@@ -1,7 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
 
 import {
-  MIN_RECORDS_FOR_LLM_SUMMARY,
   summarizeSubagentWork,
   type SummarizeSubagentWorkInput,
 } from "../../../../../src/orchestration/modules/subagents/execution/summarize-work.js";
@@ -13,6 +12,8 @@ import { failureSummaryInput } from "./_fixtures.js";
 import { checkpointTestPersistences } from "../../../../helpers/checkpoint-store.js";
 
 const persistence = checkpointTestPersistences();
+// The fewest recorded tool calls that earn a model-written summary.
+const MIN_RECORDS_FOR_LLM_SUMMARY = 3;
 
 interface UnknownRecord { [key: string]: unknown }
 

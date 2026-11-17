@@ -21,8 +21,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, rmSync, type Dirent } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { writeFileAtomic } from "../../../infra/atomic-write.js";
-import { ContainedDirectory } from "../../../infra/descriptor-directory.js";
 import { ContainedFileTooLargeError, ContainedPathError } from "../../../infra/descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../../../infra/descriptor-directory.js";
 import { readFileUnder } from "../../../infra/write-file-under.js";
 import { LearningScopeSchema } from "../../../infra/learning-scope.js";
 import { Log } from "../../../infra/log.js";
@@ -515,10 +515,10 @@ function quarantineRecord(globalRoot: string, kind: string, path: string, id: st
   const target = quarantineDir(globalRoot, `${kind}-${Date.now()}-${id}.json`);
   try {
     using held = new DisposableStack();
-    const source = ContainedDirectory.openExisting(globalRoot, relative(globalRoot, dirname(path)).split(sep));
+    const source = openExistingContainedDirectory(globalRoot, relative(globalRoot, dirname(path)).split(sep));
     if (source) {
       held.defer(() => source.close());
-      const destination = ContainedDirectory.open(globalRoot, relative(globalRoot, dirname(target)).split(sep));
+      const destination = openContainedDirectory(globalRoot, relative(globalRoot, dirname(target)).split(sep));
       held.defer(() => destination.close());
       source.renameInto(basename(path), destination, basename(target));
     }

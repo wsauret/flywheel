@@ -261,16 +261,6 @@ export function isHandoffPath(filePath: string | undefined): boolean {
   return /(^|\/)\.flywheel\/sessions\/[^/]+\/[^/]+\.json$/.test(normalized);
 }
 
-/** The part of `filePath` below the session directory that holds it, with
- *  forward slashes, such as `scratch/workflows/review.workflow.yaml`, or
- *  undefined for a path outside every session directory. A project can sit
- *  in the scratch directory of another project's session, as a UAT fixture
- *  project does. The session directory nearest to the file holds it, so the
- *  last session directory in the path is the one that counts. */
-export function pathInSessionDir(filePath: string): string | undefined {
-  return /^(?:.*\/)?\.flywheel\/sessions\/[^/]+\/(.+)$/.exec(filePath.replaceAll("\\", "/"))?.[1];
-}
-
 /** One session's directory below the project root, and the entries Flywheel owns
  *  inside it. Every one is a relative path a contained walk resolves component by
  *  component, so `sessionId` must be exactly one path component: a session id
@@ -289,10 +279,6 @@ export function sessionRelativeDir(sessionId: string): string {
 
 export function workflowRelativeDir(workflowId: string): string {
   return `${FLYWHEEL_DIR_NAME}/workflows/${requireSessionIdComponent(workflowId)}`;
-}
-
-export function resolveWorkflowDir(workflowId: string, projectRoot: string): string {
-  return path.resolve(projectRoot, workflowRelativeDir(workflowId));
 }
 
 export function ownerPidRelativePath(id: string, scope: "session" | "workflow" = "session"): string {

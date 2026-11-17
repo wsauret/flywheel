@@ -17,6 +17,7 @@ import {
   type InFlightSwap,
   type LocalSqliteEventStore,
   type StoredFact,
+  type InFlightPayload,
 } from "./event-store-types.js"
 import { createEventStoreWriterLane } from "./event-store-writer-lane.js"
 import type { EventStoreWriterLane } from "./event-store-writer-lane-types.js"
@@ -335,7 +336,7 @@ function openSqliteEventStore(filePath: string, lockWait: "native" | "cooperativ
   /** Records in-flight recovery state for an operation that has just begun.
    *  Standalone because at that moment there is no fact to be atomic with:
    *  the outcome fact comes later and retires this state in its own commit. */
-  function putInFlight(sessionId: string, kind: string, key: string, payload: unknown): void {
+  function putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): void {
     inserter.writeInFlight(sessionId, { op: "put", kind, key, payload })
   }
 
@@ -354,7 +355,7 @@ function openSqliteEventStore(filePath: string, lockWait: "native" | "cooperativ
   /** Compare-and-swap on one in-flight cell. Local tooling uses the same exact
    * raw guard as the writer lane, but executes the single SQLite statement
    * directly because it owns this connection synchronously. */
-  function swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): boolean {
+  function swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): boolean {
     return swapInFlightBatch(sessionId, [{ op: "swap", kind, key, expectedRaw, payload }])
   }
 

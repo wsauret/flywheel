@@ -8,12 +8,13 @@ import { publishSkillRevision, type SkillDefinition, type SkillRegistryRevision 
 import { compileReassessmentOutput, compileRetiredReassessmentOutput } from "../../src/workflows/vm/reassessment-contract.js";
 import type { AgentRecordKeys, WorkflowDefinition } from "../../src/workflows/workflow-schema.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "./project-definitions.js";
+import { loadedWorkflow } from "./workflow-files.js";
 
 /** A workflow whose conditional inline brief composes two external packages. */
 export function testDependencyWorkflow(): WorkflowDefinition {
   const workflow = workflowIn(fixtureDefinitions().captureRevision(), FIXTURE_WORKFLOW_ID);
-  const { briefs: _briefs, retiredStepGrammar: _retired, inputContract: _input, ...authored } = workflow;
-  return {
+  const { briefs: _briefs, retiredStepGrammar: _retired, inputContract: _input, provenance, ...authored } = workflow;
+  return loadedWorkflow({
     ...authored,
     id: "external-fixture",
     name: "External Fixture",
@@ -35,7 +36,7 @@ export function testDependencyWorkflow(): WorkflowDefinition {
         writes: [],
       },
     ],
-  };
+  }, { ...provenance, id: "external-fixture" });
 }
 
 /** One bundled skill package as a loaded definition, without a package on disk.
@@ -129,7 +130,9 @@ export function testResolvedAgent(definitionId: string, skill: SkillDefinition, 
     id: "test-agent",
     name: "Test Agent",
     phases: [{ phase: definitionId, name, brief: skill.body, writes: [], ...policy }],
+    provenance: { layer: "project", filePath: "test-agent.workflow.yaml", id: "test-agent" },
     briefs: new Map([[definitionId, brief]]),
+    inputContract: null,
   };
   const resolved = resolveWorkflowAgents(workflow).get(definitionId);
   if (!resolved) throw new Error(`test agent "${definitionId}" did not resolve`);

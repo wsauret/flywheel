@@ -1,23 +1,49 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
 
-import { composerModel } from "./composer.js"
+import { mountComposerSubmission } from "./composer-submission-loader-fixture.js"
 
-const childRoles = {
-  assignments: { chat: { model: "wrong-chat", effort: "low" } },
-  serving: { slot: { kind: "role" as const, roleId: "brief.build.at.worker" }, selection: { model: "gpt-6-astra", effort: "medium" } },
-}
-const activeModel = { model: "gpt-6-luna", effort: "high" }
+const activeModel = { model: "session-model", effort: "low" }
 
 test("the child composer names the runtime serving selection, not its chat assignment", () => {
-  assert.deepEqual(composerModel("subagent", childRoles, activeModel), childRoles.serving.selection)
-  assert.deepEqual(composerModel("workflow-agent", childRoles, activeModel), childRoles.serving.selection)
+  const mounted = mountComposerSubmission({ activeModel })
+  try {
+    mounted.openSubagent("child")
+    assert.equal(mounted.model(), "Model: child-model, medium effort")
+  } finally { mounted.dispose() }
+})
+
+test("a workflow agent's composer names its serving selection, not the session's active model", () => {
+  const mounted = mountComposerSubmission({ activeModel })
+  try {
+    mounted.openWorkflow(true)
+    mounted.openAgent("json")
+    assert.equal(mounted.model(), "Model: gpt-6-luna, high effort")
+  } finally { mounted.dispose() }
 })
 
 test("a chat names the active model resolved for that conversation", () => {
-  assert.deepEqual(composerModel("chat", undefined, activeModel), activeModel)
+  const mounted = mountComposerSubmission({ activeModel })
+  try {
+    assert.equal(mounted.model(), "Model: session-model, low effort")
+  } finally { mounted.dispose() }
 })
 
 test("an unread child assignment does not borrow another session's active model", () => {
-  assert.equal(composerModel("workflow-agent", undefined, activeModel), undefined)
+  const mounted = mountComposerSubmission({ activeModel })
+  try {
+    // The runtime has no role reading for this child.
+    mounted.openSubagent("grandchild")
+    assert.equal(mounted.model(), undefined)
+  } finally { mounted.dispose() }
+})
+
+test("an unread workflow agent assignment does not borrow the session's active model", () => {
+  const mounted = mountComposerSubmission({ activeModel })
+  try {
+    // The runtime has no role reading for item "unread".
+    mounted.openWorkflow(true)
+    mounted.openAgent("unread")
+    assert.equal(mounted.model(), undefined)
+  } finally { mounted.dispose() }
 })

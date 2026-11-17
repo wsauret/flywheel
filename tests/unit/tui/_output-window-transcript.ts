@@ -1,5 +1,5 @@
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
-import type { OutputTranscriptView, TranscriptSnapshot, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import type { OutputTranscriptView, TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { MutationEvidenceReader } from "../../../src/protocol/client/mutation-evidence.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
@@ -12,6 +12,8 @@ import type { OutputWindowCommand } from "../../../src/tui/output-window/output-
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
 import type { WheelProfile } from "../../../src/tui/output-window/output-window-wheel.js"
+
+type TranscriptWindow = TranscriptSnapshot["window"]
 
 export function textBlock(id: string, content: string): FrontendOutputBlock {
   return { kind: "text", id, content, timestamp: 1 }

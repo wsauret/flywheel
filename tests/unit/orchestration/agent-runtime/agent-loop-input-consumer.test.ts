@@ -134,7 +134,7 @@ describe("agent loop input wait reservations", () => {
       const consumed: AgentLoopInput[] = []
       const wait = waiter({
         state: () => ({ turnCount: 1, handoffWritten: false, wait: { replyWaitIds: ["ask"] } }),
-        backgroundTasks: { awaitedTaskCount: () => 1, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => 1 },
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
         onTurnParked: (context) => { (context.userResumeRequired ? takenBack : parked).resolve() },
         recordInterruption: async () => { recorded++ },
@@ -161,7 +161,7 @@ describe("agent loop input wait reservations", () => {
       let activeBackgroundCount: number | undefined
       let park: string | undefined
       const wait = waiter({
-        backgroundTasks: { awaitedTaskCount: () => awaited, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => awaited },
         prepareWaitForInput: () => ({
           commit: async () => null,
           cancel: async () => {},
@@ -315,7 +315,7 @@ describe("agent loop input wait reservations", () => {
     const sink = {
       clearRequestContext: () => { effects.cleared += 1 },
       logicalTurnStarted: (origin: "user" | "background") => { effects.origins.push(origin) },
-      pushUser: (_content: unknown, humanTyped: boolean) => { effects.visible.push(humanTyped) },
+      pushUser: (_content: string, humanTyped: boolean) => { effects.visible.push(humanTyped) },
       admit: () => {},
       visibleReplyRequired: () => { effects.replies += 1 },
     }
@@ -378,7 +378,7 @@ describe("agent loop input wait reservations", () => {
       const wait = waiter({
         runSignal: new AbortController().signal,
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
-        backgroundTasks: { awaitedTaskCount: () => activeTasks, flushSettledNotifications: () => {} },
+        backgroundTasks: { awaitedTaskCount: () => activeTasks },
         recordInterruption: async () => { recorded += 1 },
         onTurnParked: ({ park }) => { parks.push(park) },
       })

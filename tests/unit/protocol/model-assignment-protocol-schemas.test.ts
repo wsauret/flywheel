@@ -16,6 +16,7 @@ describe("model assignment protocol schemas", () => {
       slot,
       model: "gpt-6-luna",
       effort: "high" as const,
+      expected: { kind: "value" as const, value: { model: "gpt-6-astra", effort: null } },
     };
 
     expect(Schema.decodeUnknownSync(RuntimeSaveModelEffortMutationSchema)(JSON.parse(JSON.stringify(mutation)))).toEqual(mutation);
@@ -32,6 +33,7 @@ describe("model assignment protocol schemas", () => {
       modelSource: "explicit" as const,
       matchesInheritedPair: false,
       savedModel: "lost-model",
+      configured: { kind: "value" as const, value: { model: "lost-model", effort: "xhigh" as const } },
     };
     const option = {
       slot,

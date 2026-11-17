@@ -12,67 +12,35 @@ import { Log } from "../infra/log.js"
  *  uncaught on the account service's thread. */
 type FatalKind = "thrown" | UncaughtKind
 
-/** How long a failure that arrives while the first one ends waits for the
- *  exit code that the first one decides. */
-const DECISION_BOUND_MS = 1_000
+/** The first failure's exit code, once a failure is deciding it. */
+let decision: Promise<number> | undefined
 
-/** The entry's fatal exit, in the two parts that the account's crash policy
- *  takes. */
-export interface FatalExit {
-  /** Ends the process for a fatal failure. The first failure is named,
-   *  recorded, and decided by `decide`, and the process exits with the code
-   *  that decision answers once the log is closed. Every later failure is the
-   *  same process's end, so it only waits for that code through `exitNow`. */
-  readonly fatal: (failure: unknown, kind: FatalKind) => Promise<void>
-  /** Ends the process with the code that the first failure decides, as soon
-   *  as it is decided, so a failure that cascades from the first never exits
-   *  with a code that restarts a lane the first one parked. The code is 1
-   *  when no failure is deciding, or when the decision does not come within
-   *  DECISION_BOUND_MS. */
-  readonly exitNow: () => Promise<void>
+/** Ends the process with the code that the first failure decides, as soon
+ *  as it is decided, so a failure that cascades from the first never exits
+ *  with a code that restarts a lane the first one parked. The code is 1
+ *  when no failure is deciding. The decision always comes: `fatalExitCode`
+ *  awaits only module imports, no module of `src/` awaits at its top level,
+ *  and an import that fails answers 1. */
+async function exitNow(): Promise<void> {
+  process.exit(decision === undefined ? 1 : await decision)
 }
 
-/** Builds the entry's fatal exit over `exit`. `decide` names, records, and
- *  decides a failure, and answers its exit code: `fatalExitCode` unless a
- *  test supplies another. */
-export function createFatalExit(options: {
-  readonly exit: (code: number) => void
-  readonly decide?: (failure: unknown, kind: FatalKind) => Promise<number>
-}): FatalExit {
-  const { exit, decide = fatalExitCode } = options
-  let decision: Promise<number> | undefined
-  const exitNow = async (): Promise<void> => {
-    if (decision === undefined) {
-      exit(1)
-      return
-    }
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const bound = new Promise<number>((resolve) => { timer = setTimeout(() => { resolve(1) }, DECISION_BOUND_MS) })
-    const code = await Promise.race([decision, bound])
-    clearTimeout(timer)
-    exit(code)
-  }
-  return {
-    exitNow,
-    fatal: async (failure, kind) => {
-      if (decision !== undefined) return exitNow()
-      decision = decide(failure, kind).catch(() => 1)
-      const code = await decision
-      await Log.closeGlobal().finally(() => { exit(code) })
-    },
-  }
+/** This process's one fatal exit. The first failure is named, recorded, and
+ *  decided by `fatalExitCode`, and the process exits with the code that
+ *  decision answers once the log is closed. Every later failure is the same
+ *  process's end, so it only waits for that code through `exitNow`. */
+export async function exitFatally(failure: unknown, kind: FatalKind): Promise<void> {
+  if (decision !== undefined) return exitNow()
+  decision = fatalExitCode(failure, kind).catch(() => 1)
+  const code = await decision
+  await Log.closeGlobal().finally(() => { process.exit(code) })
 }
-
-const entryExit = createFatalExit({ exit: (code) => process.exit(code) })
-
-/** This process's one fatal exit. */
-export const exitFatally = entryExit.fatal
 
 /** Contains a floating abort on the account service's thread, and sends
  *  every other uncaught failure to this process's one fatal exit, which the
  *  entry's catch shares. */
 export function installAccountCrashPolicy(): void {
-  installCrashPolicy({ role: "account-service", log: Log.Default, fatal: entryExit.fatal, exitNow: () => { void entryExit.exitNow() } })
+  installCrashPolicy({ role: "account-service", log: Log.Default, fatal: exitFatally, exitNow: () => { void exitNow() } })
 }
 
 /** Names and records a fatal failure, and answers the code it exits with.
@@ -84,7 +52,7 @@ export function installAccountCrashPolicy(): void {
  *  loud the fatal record is, and exits with the code that parks the service
  *  when the streak persists. Every other fatal failure exits 1, and so does a
  *  failure to load the modules that decide. */
-export async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
+async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
   const message = errorMessage(error)
   const record = (repeat: boolean): void => {
     const fields = { kind, error: message, errorDetail: errorDetail(error) }

@@ -2,19 +2,23 @@ import { describe, expect, it, setSystemTime } from "bun:test"
 import { createEnvCaptureResolver, localDate } from "../../../../src/infra/env-detection.js"
 import { fakeOwnedCommandRunner } from "../../../helpers/owned-command-fake.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
-import { FUNCTION_TOOL_PRESENTATION, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { PromptKind } from "../../../../src/orchestration/agent-runtime/system-prompt.js"
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js"
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
-import { completeRuntimeToolSurfaces } from "../../../../src/orchestration/agent-runtime/factory.js"
-import type { AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "../../../../src/orchestration/agent-runtime/types.js"
+import { createAgentRuntime } from "../../../../src/orchestration/agent-runtime/factory.js"
+import type { StreamingEditValidationService } from "../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
+import type { GitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
+import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { RequestProviderRuntime, RequestToolSurfaceOwner } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
-import { repoDefinitions } from "../../../helpers/project-definitions.js"
+import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js"
+import { testDirectories } from "../../../helpers/directories.js"
+import { testAuthContext } from "../../../helpers/auth-context.js"
+import { asModelClient } from "./_model-client.js"
 import { codeModeServices } from "../../../helpers/code-mode-worker.js"
 import { composeModuleServices } from "../../../../src/infra/module-service.js"
 import type { McpPorts } from "../../../../src/orchestration/modules/mcp/manager.js"
-import type { WebSearchPort } from "../../../../src/orchestration/agent-runtime/web-search/types.js"
 import { capabilityAccessFor } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
@@ -279,7 +283,7 @@ describe("universal scoped notes assembly", () => {
     for (const name of ["read", "write", "edit"]) expect(surface.tools.has(name)).toBe(false)
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected assembled prompt")
     const prompt = renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))
-    expect(prompt).toContain("use `checkpoint_read`")
+    expect(prompt).toContain("with the checkpoint tools")
     // The skill guidance follows the skill tool: chat and follow-up select no tools here, so they have none.
     expect(prompt.includes('Keep a short "Relevant skills" section')).toBe(surface.tools.has("skill"))
   })
@@ -320,7 +324,7 @@ describe("universal scoped notes assembly", () => {
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected literal prompt")
     expect(renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))).toBe("literal\nbytes\n")
     expect(assembled.initialRequestContext).toStartWith("caller context")
-    expect(assembled.initialRequestContext).toContain("use `checkpoint_read`")
+    expect(assembled.initialRequestContext).toContain("with the checkpoint tools")
     let queued = false
     await runAgentLoop({ ...assembled, inputSource: { drainPending: () => { if (queued) return null; queued = true; return compactInput() } } })
     // The empty answers never save, so the save round asks until its bound of four requests, then resets.
@@ -328,7 +332,7 @@ describe("universal scoped notes assembly", () => {
     for (const request of requests) {
       expect(renderSystemPrompt(request.systemPrompt)).toBe("literal\nbytes\n")
       expect(JSON.stringify(request.messages)).toContain("caller context")
-      expect(JSON.stringify(request.messages)).toContain("use `checkpoint_read`")
+      expect(JSON.stringify(request.messages)).toContain("with the checkpoint tools")
     }
     expect(JSON.stringify(requests[4]?.messages)).toContain("fresh context window")
   })
@@ -434,7 +438,6 @@ describe("model interaction profile provider boundary", () => {
     await surface.prepareStablePrompt(
       () => systemPrompt(runtime.plannedAttempt, runtime.interactionProfile),
       runtime.interactionProfile,
-      assembled.literalSystemPrompt,
     )
 
     const prepared = await surface.prepareAttempt(runtime.plannedAttempt)
@@ -558,26 +561,67 @@ describe("request-local skill revision", () => {
 })
 
 describe("runtime tool surface completion", () => {
-  it("preserves all generation-owned surfaces under admission", () => {
-    const moduleServices = composeModuleServices([])
-    const webSearchCapability = { available: () => true, run: async () => ({ results: [] }) } satisfies WebSearchPort
-    const webSearch = () => webSearchCapability
-    const gitAiAttribution: NonNullable<RuntimeToolSurfaces["gitAiAttribution"]> = {
-      canonicalRepositoryRoot: "/repo",
+  it("runs a runner with the generation's authorities and every runner-local surface, including a workflow attempt's child-skill grant", async () => {
+    const definitions = fixtureDefinitions()
+    const directories = testDirectories(definitions.projectRoot)
+    const openedTurns: string[] = []
+    const streamingEditValidation = {
+      openTurn: (input) => { openedTurns.push(input.executionCwd); return { start: () => {}, append: () => {}, retire: () => {}, reset: () => {} } },
+      dispose: async () => {},
+    } satisfies StreamingEditValidationService
+    const childRuns: string[] = []
+    const externalSkillChildGrant = { skillIds: ["fixture.child"], run: async (input: { skillId: string }) => { childRuns.push(input.skillId); return { skillId: input.skillId, output: {} } } }
+    const ports = {
+      servers: () => ["github"],
+      tools: () => [{ server: "github", name: "issue_get", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } }],
+      call: async () => { throw new Error("unused in this test") },
+    } satisfies McpPorts
+    const moduleServices = composeModuleServices([["mcp", { ports }], ["code-mode", codeModeService()]])
+    const attributedRequests: string[] = []
+    const gitAiAttribution: GitAiAttributionService = {
+      canonicalRepositoryRoot: definitions.projectRoot,
       status: () => ({ kind: "available" }), subscribe: () => () => {}, checkAvailability: async () => ({ kind: "available" }),
-      registerRequest: () => undefined, direct: () => {}, dispose: async () => {},
+      registerRequest: (registration) => { attributedRequests.push(registration.requestId); return registration },
+      direct: () => {}, dispose: async () => {},
     }
-    const generation = { moduleServices, webSearch, gitAiAttribution }
+    const requestedTools: string[][] = []
+    let requests = 0
+    const client = asModelClient({
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
+      async *streamWithTools(options: StreamOptions): AsyncGenerator<ProviderStreamEvent> {
+        requestedTools.push(options.tools.map((tool) => tool.name))
+        if (requests++ === 0) {
+          yield { kind: "tool_use", toolCall: { id: "child", name: "skill", input: { action: "child-run", skill_id: "fixture.child", script: "run.ts", input: {} } } }
+          yield { kind: "done", stopReason: "tool_use" }
+          return
+        }
+        yield { kind: "done", stopReason: "end_turn" }
+      },
+    })
+    const runtime = createAgentRuntime({
+      notify: () => {}, awaitModelAccessSettled: async () => {}, definitions, moduleSelection: testCapabilityModules,
+      userDataRoot: directories.userDataRoot, authDirectory: () => join(directories.userDataRoot, "auth"), profileId: "default",
+      getAuth: () => testAuthContext({}), captureRuntimeConfig: () => ({ ...testRuntimeConfigCapture(), gitAiAttribution: true }),
+      streamingEditValidation, moduleServices, gitAiAttribution,
+    })
+    const agent = runtime.createAgent({
+      model: "test", ...directories, purpose: { kind: "interactive-chat" }, agentsMd: "", onEvent: () => {}, activeProfileId: "default",
+      conversation: {
+        kind: "durable-tree", sessionId: "session-1", conversationId: "conversation-1", priorMessages: [], append: () => {},
+        reserveMessageId: async () => crypto.randomUUID(), captureCommittedForkMessages: async () => [],
+        resolveLeafId: async () => null, committedTree: async () => ({ leafId: null, entriesById: {} }),
+      },
+      lifecycle: { kind: "one-shot" },
+      runtimeSurfaces: { externalSkillChildGrant, launcher: refusingLauncher },
+      captureModelRuntime: async () => ({ generation: {}, createLLMClient: async () => client }),
+    })
+    agent.send("work")
 
-    expect(completeRuntimeToolSurfaces({}, generation)).toEqual(generation)
+    expect((await agent.done).terminal).toEqual({ kind: "completed" })
+    expect(childRuns).toEqual(["fixture.child"])
+    expect(openedTurns).toEqual([directories.executionCwd, directories.executionCwd])
+    expect(requestedTools.map((names) => names.includes("code"))).toEqual([true, true])
+    expect(attributedRequests).toHaveLength(2)
   })
-
-  it("keeps every runner-local surface, including a workflow attempt's child-skill grant", () => {
-    const externalSkillChildGrant = { skillIds: ["fixture.child"], run: async () => ({ skillId: "fixture.child", output: {} }) }
-    const local = { externalSkillChildGrant, workflowMode: () => "on" as const }
-    const generation = { moduleServices: composeModuleServices([]) }
-
-    expect(completeRuntimeToolSurfaces(local, generation)).toEqual({ ...local, ...generation })
-  })
-
 })

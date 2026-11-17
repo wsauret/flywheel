@@ -1,6 +1,4 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import {
   createMemoryStore,
   initialFacts,
@@ -8,6 +6,7 @@ import {
   testHost,
   workflow as singleWorkflow,
 } from "./host-test-support.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const retry = { max: 2, stuck: true }
 const [work, review] = sequentialWorkflow.phases
@@ -43,7 +42,7 @@ describe("workflow VM host phases in order", () => {
     { name: "phases that run one brief twice", repeated: true, failures: [], expected: ["work", "work-2", "review", "review-2"] },
     { name: "retries of phases that run one brief twice", repeated: true, failures: [0, 2, 5], expected: ["work", "work", "work-2", "work-2", "review", "review-2", "review-2"] },
   ])("completes only after its $name", async ({ repeated, failures, expected }) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...sequentialWorkflow,
       phases: repeated
         ? [{ ...work, retry }, { phase: "work-2", runs: "work", name: "Work again", writes: [], retry }, { ...review, retry }, { phase: "review-2", runs: "review", name: "Review again", writes: [], retry }]

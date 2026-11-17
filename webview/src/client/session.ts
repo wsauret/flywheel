@@ -42,7 +42,7 @@ import { createSessionInput, NEW_CHAT_ENTRIES } from "./session-input.js"
 import { openChat } from "../../../src/protocol/client/chat-open.js"
 import { adoptedBlocks, type LocalChatSubmission, type LocalRecall, type UnsentChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import { createSessionNavigation, type SessionDestination, type SessionLink, type SessionMove } from "./session-navigation.js"
-import { backgroundReads, createReadRetry } from "../../../src/protocol/client/background-reads.js"
+import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
 
 /** What the page is looking at: one selected session, its transcript, and
  *  the catalog it was chosen from.
@@ -290,6 +290,7 @@ export interface RuntimeSessionOptions {
    *  open that fails says why in the pane. The reload never shows another
    *  session on its way back. */
   readonly initialSessionId?: string
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
   /** The browser's notification surface. The page's own browser when absent. */
   readonly notifier?: DesktopNotifier
@@ -349,17 +350,10 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
   const readings = createSessionReadings({ connection, changed: emit })
   const roles = createHeldRoles({ connection })
   const { refreshStatus } = readings
-  const failedDetails = new Set<string>()
   const detailListeners = new Map<string, Set<(row: SessionRow | undefined) => void>>()
-  const detailRetry = createReadRetry(connection, "session detail", () => {
-    children.refresh(failedDetails)
-  })
   const children = createHeldSessionDetails({
     client: connection,
     onChange: (id) => {
-      if (children.state(id)?.error !== undefined) failedDetails.add(id)
-      else failedDetails.delete(id)
-      if (failedDetails.size === 0) detailRetry.succeeded()
       for (const listener of detailListeners.get(id) ?? []) listener(children.detail(id))
       listedSource = undefined
       readings.reconcile([...catalog.rows, ...children.rows])
@@ -374,7 +368,6 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       })
       emit()
     },
-    onDiagnostic: (_message, cause) => detailRetry.failed(cause),
   })
   /** The catalog rows, each with its detail's evidence when this client has
    *  read it (`withDetailEvidence`); the catalog row stays the authority for
@@ -633,7 +626,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     if (disposed || event.type !== "patch") return
     if (isGlobalRuntimeInvalidation(event.patch)) {
       // A lane break reads nothing: the next lane reads everything.
-      if (isLaneBreak(event.patch)) catalog.accept(event.patch)
+      if (isLaneBreak(event.patch)) { catalog.accept(event.patch); children.accept(event.patch) }
       else seedWorkspace()
       return
     }
@@ -842,7 +835,6 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       submissions.dispose()
       catalog.dispose()
       children.dispose()
-      detailRetry.dispose()
       roles.dispose()
       readings.dispose()
       residents.dispose()

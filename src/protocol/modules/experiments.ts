@@ -62,12 +62,12 @@ export interface FrontendExperimentView {
   readonly running: boolean
 }
 
-export interface RuntimeExperimentViewSnapshotResult {
+interface RuntimeExperimentViewSnapshotResult {
   readonly snapshotPosition: RuntimePosition
   readonly experimentView: FrontendExperimentView | null
 }
 
-export type ExperimentViewPatchPayload =
+type ExperimentViewPatchPayload =
   | { readonly kind: "experiment_view.updated"; readonly experimentView: FrontendExperimentView }
   | { readonly kind: "experiment_view.removed" }
 
@@ -99,12 +99,12 @@ const FrontendExperimentViewSchema: Schema.Codec<FrontendExperimentView> = Schem
   running: Schema.Boolean,
 })
 
-export const ExperimentViewPatchPayloadSchema: Schema.Codec<ExperimentViewPatchPayload> = Schema.Union([
+const ExperimentViewPatchPayloadSchema: Schema.Codec<ExperimentViewPatchPayload> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("experiment_view.updated"), experimentView: FrontendExperimentViewSchema }),
   Schema.Struct({ kind: Schema.Literal("experiment_view.removed") }),
 ])
-export const RuntimeExperimentViewSnapshotResultSchema: Schema.Codec<RuntimeExperimentViewSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, experimentView: Schema.NullOr(FrontendExperimentViewSchema) })
-export const RuntimeBackgroundExperimentViewSnapshotSchema: Schema.Codec<BackgroundSnapshotOf<RuntimeExperimentViewSnapshotResult>> = Schema.Struct({ experimentView: Schema.NullOr(FrontendExperimentViewSchema) })
+const RuntimeExperimentViewSnapshotResultSchema: Schema.Codec<RuntimeExperimentViewSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, experimentView: Schema.NullOr(FrontendExperimentViewSchema) })
+const RuntimeBackgroundExperimentViewSnapshotSchema: Schema.Codec<BackgroundSnapshotOf<RuntimeExperimentViewSnapshotResult>> = Schema.Struct({ experimentView: Schema.NullOr(FrontendExperimentViewSchema) })
 
 /** The module's one domain, exported so its client homes read the view by
  *  this declaration and never by a domain literal. */

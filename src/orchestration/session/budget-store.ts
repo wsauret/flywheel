@@ -1,6 +1,5 @@
 import type { StoredFact } from "../../infra/event-store-types.js"
 import { budgetExhaustionReason, type BudgetLimits } from "../../workflows/budget.js"
-import { mapRuntimeEventToSessionRuntimeFacts } from "../../infra/runtime-fact-mapper.js"
 import {
   budgetMetricsFromProjection,
   contextUtilizationFromProjection,
@@ -18,7 +17,7 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
   let lastPublished = projection.getState()
   let disposed = false
   // Emit-once latch for budget.exhausted, not a projection shadow: once we have
-  // signaled exhaustion this store-lifetime, repeated isExhausted() calls stay quiet.
+  // signaled exhaustion this store-lifetime, later metric changes stay quiet.
   let wasExhausted = false
 
   // Pull-path state: the held projection outlives this store (the registry
@@ -44,12 +43,6 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
     return event
   }
 
-  async function recordRuntimeEvent(event: Parameters<SessionBudgetStore["recordRuntimeEvent"]>[0]): Promise<void> {
-    for (const fact of mapRuntimeEventToSessionRuntimeFacts(event)) {
-      await recordFact(fact)
-    }
-  }
-
   // The writer pushes every fact it records. The projection reads only for a
   // budget fact, so the other facts of the session cost no read.
   async function applyStoredFact(event: StoredFact): Promise<void> {
@@ -70,10 +63,6 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
     })
   }
 
-  async function getTotalCost(): Promise<number> {
-    return (await fresh()).totalCost
-  }
-
   async function getInvocationsUsed(): Promise<number> {
     return (await fresh()).invocationsUsed
   }
@@ -83,32 +72,15 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
     return state.totalInputTokens + state.totalOutputTokens
   }
 
-  async function getOutputTokensUsed(): Promise<number> {
-    return (await fresh()).totalOutputTokens
-  }
-
   async function metrics(): Promise<BudgetMetrics> {
     return budgetMetricsFromProjection(await fresh())
-  }
-
-  async function recordContextUtilization(promptTokens: number, contextWindow: number): Promise<void> {
-    await recordFact({
-      type: "model.context.measured",
-      version: 1,
-      actor: "provider",
-      payload: { promptTokens, contextWindow },
-    })
   }
 
   async function getContextUtilization(): Promise<ContextUtilization> {
     return contextUtilizationFromProjection(await fresh())
   }
 
-  async function isExhausted(limits: BudgetLimits): Promise<boolean> {
-    return checkExhausted(limits, await fresh())
-  }
-
-  function checkExhausted(limits: BudgetLimits, state: BudgetProjectionState): boolean {
+  function checkExhausted(limits: BudgetLimits, state: BudgetProjectionState): void {
     const reason = limits.max_cost_usd != null && state.priceUnavailable
       ? "Cost limit cannot be enforced because committed usage has unavailable pricing"
       : budgetExhaustionReason(limits, {
@@ -122,7 +94,6 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
       emitter("budget.exhausted", { sessionId, data: { reason } })
     }
     if (reason) wasExhausted = true
-    return reason !== null
   }
 
   async function recordProcessStarted(): Promise<void> {
@@ -139,17 +110,12 @@ export function createSessionBudgetStore(deps: SessionBudgetStoreDeps): SessionB
   }
 
   return {
-    recordRuntimeEvent,
     applyStoredFact,
-    getTotalCost,
     recordInvocation,
     getInvocationsUsed,
     getTokensUsed,
-    getOutputTokensUsed,
     metrics,
-    recordContextUtilization,
     getContextUtilization,
-    isExhausted,
     dispose,
     recordProcessStarted,
   }

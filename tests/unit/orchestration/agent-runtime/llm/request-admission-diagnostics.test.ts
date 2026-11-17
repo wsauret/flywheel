@@ -8,7 +8,7 @@ import { createClient } from "../../../../../src/orchestration/agent-runtime/llm
 import { executeStream, preparedRequest } from "./_provider-chain-harness.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { testDirectories } from "../../../../helpers/directories.js";
-import { testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { modelsDevJson } from "../../../../helpers/model-catalog-fixtures.js";
 
@@ -55,15 +55,14 @@ describe("provider request admission diagnostics", () => {
       requestAdmission: async () => Object.freeze({ spendSources: () => undefined, subscriptionSpendAuthorizationFor: () => undefined }),
       projectRoot: directories.projectRoot,
       providers,
-      eligibility: {
-        modelUnavailableReason: () => undefined,
-        candidateOffering: (candidate, model) => ({
+      eligibility: testEligibility({
+        candidateOfferings: (candidate, model) => [{
           candidate,
           wireModelId: model,
           dataUse: "standard",
           transport: "openai-responses",
-        }),
-      },
+        }],
+      }),
     });
 
     await client.plannedAttempt();

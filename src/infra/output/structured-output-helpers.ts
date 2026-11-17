@@ -1,4 +1,4 @@
-import type { AnyBlock, ToolEntry } from "../output-blocks.js";
+import type { AnyBlock } from "../output-blocks.js";
 
 // Index of the first block in the pinned tail. New timeline content inserts at
 // this index, landing above queued user messages.
@@ -61,34 +61,4 @@ export function rebuildBlockIndexes(
     if (block.kind === "agentGroup") agentIndexById.set(block.id, i);
     if (block.kind === "text" || block.kind === "thinking") contentIndexById.set(contentKey(block.kind, block.id), i);
   }
-}
-
-export function appendToolToAgentChildren(
-  blocks: AnyBlock[],
-  agentIndexById: Map<string, number>,
-  agentId: string,
-  tool: ToolEntry,
-): number {
-  const agentIdx = agentIndexById.get(agentId);
-  if (agentIdx === undefined) return -1;
-
-  const agent = blocks[agentIdx];
-  if (agent?.kind !== "agentGroup") return -1;
-  const children = [...agent.children, tool];
-  const latestChild = `${tool.presentation.name}: ${tool.presentation.detail}`;
-  const totalToolCount = agent.totalToolCount + 1;
-
-  // Reactivate: if an agent was prematurely completed but new child events
-  // arrive, reopen it. The authoritative close signal is the tool_result for
-  // the subagent's tool_use_id, not the absence of activity.
-  const reactivate = agent.status === "completed";
-
-  blocks[agentIdx] = {
-    ...agent,
-    children,
-    totalToolCount,
-    latestChild,
-    ...(reactivate && { status: "active" as const, duration: undefined, totalTokens: undefined }),
-  };
-  return children.length - 1;
 }

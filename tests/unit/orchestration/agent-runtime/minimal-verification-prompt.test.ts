@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
-import { buildSystemPrompt, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt"
+import { buildSystemPrompt } from "../../../../src/orchestration/agent-runtime/system-prompt"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 
 const read = (path: string) => readFileSync(path, "utf8")
 
@@ -28,7 +28,7 @@ test("assembled prompts require the smallest complete verification", () => {
     "Run fresh checks for the current decision",
     "Avoid changing public interfaces or contracts without the approval of the user.",
     "Internal changes that the request needs, such as a new helper or a reworked private function, are not interface changes.",
-    "An input that the code accepts should continue to be accepted",
+    "keep accepting every input that the request does not name, because callers or tests that you do not know about can depend on it",
   ]) expect(compiled).toContain(rule)
   expect(compiled).not.toContain("not only the test suite")
   expect(compiled).not.toContain("Inspect the code to verify")
@@ -38,27 +38,26 @@ test("assembled prompts require the smallest complete verification", () => {
   expect(bare).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it")
   expect(bare).toContain("Settle such a claim with the tools you have, or report it as an unverified assumption.")
   expect(bare).not.toContain("throwaway script")
-  expect(bare).toContain("Session notes hold current progress, plans, handoffs, and temporary findings.")
   expect(bare).not.toContain("in memory")
   expect(bare).not.toContain("{{")
   // The rules on open ambiguity and irreplaceable inputs hold with or without a shell.
   for (const prompt of [compiled, bare]) for (const rule of [
     "An ambiguous requirement is not a claim to prove, because evidence settles how things behave, not what the user meant.",
-    "copy it first, because clients, compilers, and formatters can rewrite the files they open",
+    "or the only copy of a log, copy it first.",
   ]) expect(prompt).toContain(rule)
 })
 
 test("experiments settle external and runtime claims that code reading cannot", () => {
   const doctrine = read("src/infra/agent-assets/engineering-doctrine.md")
   expect(doctrine).toContain("run the probe and reclassify the risk from what you observed")
+  const design = read("src/agent-skills/design/SKILL.md")
+  expect(design).toContain("settled by a throwaway probe against the real thing")
   for (const skill of ["design", "implementation"]) {
-    const text = read(`src/agent-skills/${skill}/SKILL.md`)
-    expect(text).toContain("settled by a throwaway probe against the real thing")
-    expect(text).not.toMatch(/proof[- ]of[- ]concept is unnecessary/u)
+    expect(read(`src/agent-skills/${skill}/SKILL.md`)).not.toMatch(/proof[- ]of[- ]concept is unnecessary/u)
   }
-  const verification = read("src/agent-skills/verification/SKILL.md")
-  expect(verification).toContain("A test that mocks an external boundary does not prove that boundary")
-  expect(verification).not.toContain("scratch harnesses")
+  // The core prompt owns the mocked-boundary rule; the verification skill relies on it and does not restate it.
+  expect(read("src/infra/agent-assets/system-prompt.md")).toContain("A test that mocks an external boundary does not prove that boundary")
+  expect(read("src/agent-skills/verification/SKILL.md")).not.toContain("scratch harnesses")
   const subagentTool = read("src/orchestration/modules/subagents/tool.ts")
   expect(subagentTool).toContain("is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run")
 })
@@ -78,13 +77,11 @@ test("assembled prompts accept decisive no-change outcomes", () => {
 })
 
 test("verification owners require fresh minimal proof without automatic UAT", () => {
+  // The core prompt owns the sufficiency, staleness, and gate rules; the verification skill keeps only its own method.
+  const core = read("src/infra/agent-assets/system-prompt.md")
+  for (const rule of ["Tests alone are sufficient", "Add UAT beyond that only for a specific evidence gap or explicit acceptance requirement", "Assume past observations are stale", "Honor explicit repository gates"]) expect(core).toContain(rule)
   const verification = read("src/agent-skills/verification/SKILL.md")
-  expect(verification).toContain("Tests alone are sufficient")
-  expect(verification).toContain("Assume past observations are stale")
-  expect(verification).toContain("Run the selected checks yourself")
-  expect(verification).toContain("Honor explicit repository gates")
-  const implementation = read("src/agent-skills/implementation/SKILL.md")
-  expect(implementation).toContain("only for an evidence gap, explicit acceptance requirement, or explicit repository gate")
+  expect(verification).toContain("do not prove the current state. Run the selected checks yourself")
   expect(read("src/orchestration/agent-runtime/system-prompt.ts")).not.toContain("Current inspected evidence does not need a duplicate run")
   const review = read("src/agent-skills/code-review/SKILL.md")
   expect(review).toContain("A changed CLI, UI, HTTP route, or output format alone is not a trigger")

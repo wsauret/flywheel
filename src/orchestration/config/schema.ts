@@ -1,12 +1,7 @@
 import { Schema } from "effect";
 import type { FirstPartyModule } from "../modules.js";
 import { installedConfigSections, installedModules } from "../module-catalog.js";
-import {
-  DEFINITION_OWNED_SCHEMA_FIELDS,
-  PERSISTED_SETTING_DEFINITIONS,
-  RETAINED_CONFIG_SCHEMA_FIELDS,
-  RETAINED_CONFIG_SECTION_DEFINITIONS,
-} from "./setting-definitions.js";
+import { DEFINITION_OWNED_SCHEMA_FIELDS, RETAINED_CONFIG_SCHEMA_FIELDS } from "./setting-definitions.js";
 
 /** The kernel's own configuration: every root key the kernel owns. A module
  *  section rides beside these under its own key, decoded by the section's
@@ -23,16 +18,6 @@ export type WebSearchProvider = FlywheelConfig["web_search"]["provider"];
 
 
 export const CONFIG_DEFAULTS: FlywheelConfig = Schema.decodeUnknownSync(FlywheelConfigSchema)({});
-
-/** Root keys the loader recognizes, in their persisted ownership order: the
- *  kernel's, then one per config contribution of the installed catalog. */
-export function flywheelConfigKeys(modules: readonly FirstPartyModule[] = installedModules()): readonly string[] {
-  return [
-    ...new Set(PERSISTED_SETTING_DEFINITIONS.map((definition) => definition.path[0])),
-    ...RETAINED_CONFIG_SECTION_DEFINITIONS.map((definition) => definition.key),
-    ...installedConfigSections(modules).map((section) => section.key),
-  ];
-}
 
 function composeConfigSchema(modules: readonly FirstPartyModule[]) {
   return Schema.Struct({

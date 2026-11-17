@@ -7,11 +7,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { type BunRawSocketConnection, bunSocketClientLayer, bunSocketServerLayer, createBunRawSocketServer } from "../../../../src/orchestration/app-service/bun-socket-rpc.js";
+import { type BunRawSocketConnection, bunSocketClientLayer, createBunRawSocketServer } from "../../../../src/orchestration/app-service/bun-socket-rpc.js";
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/runtime-protocol-socket-server.js";
 import { createAccountSocketRouter } from "../../../../src/orchestration/app-service/account-socket-router.js";
 import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/account-attach.js";
 import { stringRequestId } from "../../../../src/protocol/rpc-request-id.js";
+import { socketRpcServerLayer } from "../../../helpers/socket-rpc-server.js";
 
 /** The socket placement of the runtime protocol server carries the three shapes
  *  the protocol itself is made of: unary calls, a typed error channel, and one
@@ -97,7 +98,7 @@ async function withProbeServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rpc
       Layer.provide(probeHandlers),
       Layer.provide(runtimeProtocolSocketServer),
       Layer.provide(RpcSerialization.layerNdjson),
-      Layer.provide(bunSocketServerLayer({ path, onListening: () => onBound?.() })),
+      Layer.provide(socketRpcServerLayer({ path, onListening: () => onBound?.() })),
     ),
   );
 
@@ -310,52 +311,35 @@ describe("runtime protocol over a Bun unix socket", () => {
     expect(received.at(-1)).toBe(20_000);
   });
 
-  test("reports the open count back to zero when a client disconnects", async () => {
-    // The idle reaper arms on this number reaching zero. `error` used to tear a
-    // connection down without decrementing while `close` decremented whether or
-    // not the socket was still held, so the two could disagree and a runtime
-    // that never saw zero would never reap.
+  test("releases a connection exactly once when its data handler fails", async () => {
+    // The account service drops a connection's project hold and admission in
+    // `onClose`. A failed data handler releases the connection and then ends
+    // the socket, whose `close` callback reports the same socket again, so a
+    // second release would drop a hold that the service no longer counts.
     const dir = mkdtempSync(join(tmpdir(), "flywheel-socket-count-"));
-    const path = join(dir, "ide.sock");
-    const counts: number[] = [];
-    let onBound: (() => void) | undefined;
-    const bound = new Promise<void>((resolve) => { onBound = resolve; });
-
-    const server = ManagedRuntime.make(
-      RpcServer.layer(ProbeRpc).pipe(
-        Layer.provide(probeHandlers),
-        Layer.provide(runtimeProtocolSocketServer),
-        Layer.provide(RpcSerialization.layerNdjson),
-        Layer.provide(bunSocketServerLayer({
-          path,
-          onListening: () => onBound?.(),
-          onConnectionCountChanged: (open) => { counts.push(open); },
-        })),
-      ),
-    );
-
+    const path = join(dir, "serve.sock");
+    const events: string[] = [];
+    const peerClosed = Promise.withResolvers<void>();
+    const server = createBunRawSocketServer({
+      path,
+      onOpen: () => { events.push("open"); },
+      onData: () => Promise.reject(new Error("handler failed")),
+      onClose: () => { events.push("close"); },
+    });
     try {
-      await server.runPromise(Effect.void);
-      await bound;
-      const client = ManagedRuntime.make(
-        RpcClient.layerProtocolSocket().pipe(
-          Layer.provide(Layer.effect(Socket.Socket)(Socket.fromTransformStream(connectStreams(path)))),
-          Layer.provide(RpcSerialization.layerNdjson),
-        ),
-      );
-      await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), (rpc) => rpc.Echo({ text: "x" }))));
-      await client.dispose();
+      const socket = await Bun.connect<undefined>({
+        unix: path,
+        socket: { data() {}, close: () => peerClosed.resolve() },
+      });
+      socket.write("frame");
+      await peerClosed.promise;
       await new Promise((resolve) => setTimeout(resolve, 25));
+      await server.dispose();
+      expect(events).toEqual(["open", "close"]);
     } finally {
       await server.dispose();
       rmSync(dir, { recursive: true, force: true });
     }
-
-    expect(counts[0]).toBe(1);
-    expect(counts.at(-1)).toBe(0);
-    // Released exactly once: no handler decrements a socket another already freed.
-    expect(counts.filter((n) => n === 0)).toHaveLength(1);
-    expect(Math.min(...counts)).toBe(0);
   });
 
   test("a per-connection protocol disposes after its listener closed the socket", async () => {

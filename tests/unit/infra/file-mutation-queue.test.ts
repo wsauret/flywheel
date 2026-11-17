@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { canonicalMutationPath, withFileMutationQueue, withMutationQueueKeys } from "../../../src/infra/file-mutation-queue.js";
+import { canonicalMutationPath, withMutationQueueKey, withMutationQueueKeys } from "../../../src/infra/file-mutation-queue.js";
 
-describe("withFileMutationQueue", () => {
+describe("withMutationQueueKey of a canonical mutation path", () => {
   const temporaryDirectory = temporaryDirectories();
 
   test("serializes calls on the same path", async () => {
@@ -13,13 +13,13 @@ describe("withFileMutationQueue", () => {
     writeFileSync(path, "");
 
     const observed: string[] = [];
-    const slow = withFileMutationQueue(path, async () => {
+    const slow = withMutationQueueKey(canonicalMutationPath(path), async () => {
       observed.push("slow-start");
       await Bun.sleep(20);
       observed.push("slow-end");
       return "slow";
     });
-    const fast = withFileMutationQueue(path, async () => {
+    const fast = withMutationQueueKey(canonicalMutationPath(path), async () => {
       observed.push("fast-start", "fast-end");
       return "fast";
     });
@@ -39,12 +39,12 @@ describe("withFileMutationQueue", () => {
     writeFileSync(b, "");
 
     const observed: string[] = [];
-    const onA = withFileMutationQueue(a, async () => {
+    const onA = withMutationQueueKey(canonicalMutationPath(a), async () => {
       observed.push("a-start");
       await Bun.sleep(20);
       observed.push("a-end");
     });
-    const onB = withFileMutationQueue(b, async () => {
+    const onB = withMutationQueueKey(canonicalMutationPath(b), async () => {
       observed.push("b-start", "b-end");
     });
 
@@ -63,12 +63,12 @@ describe("withFileMutationQueue", () => {
     symlinkSync(real, link);
 
     const observed: string[] = [];
-    const onReal = withFileMutationQueue(real, async () => {
+    const onReal = withMutationQueueKey(canonicalMutationPath(real), async () => {
       observed.push("real-start");
       await Bun.sleep(20);
       observed.push("real-end");
     });
-    const onLink = withFileMutationQueue(link, async () => {
+    const onLink = withMutationQueueKey(canonicalMutationPath(link), async () => {
       observed.push("link-start", "link-end");
     });
 
@@ -83,13 +83,13 @@ describe("withFileMutationQueue", () => {
     // Path does not exist yet -- realpath will throw, queue falls back to resolved path.
 
     const observed: string[] = [];
-    const first = withFileMutationQueue(path, async () => {
+    const first = withMutationQueueKey(canonicalMutationPath(path), async () => {
       observed.push("first-start");
       await Bun.sleep(20);
       writeFileSync(path, "now exists");
       observed.push("first-end");
     });
-    const second = withFileMutationQueue(path, async () => {
+    const second = withMutationQueueKey(canonicalMutationPath(path), async () => {
       observed.push("second-start", "second-end");
     });
 
@@ -125,13 +125,13 @@ describe("withFileMutationQueue", () => {
     writeFileSync(path, "");
 
     await expect(
-      withFileMutationQueue(path, async () => {
+      withMutationQueueKey(canonicalMutationPath(path), async () => {
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
 
     // A subsequent call must still run -- prior failure should not deadlock.
-    const result = await withFileMutationQueue(path, async () => "ok");
+    const result = await withMutationQueueKey(canonicalMutationPath(path), async () => "ok");
     expect(result).toBe("ok");
   });
 });

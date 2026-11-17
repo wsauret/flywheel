@@ -4,7 +4,7 @@ import { join } from "node:path"
 
 import { Log } from "./log.js"
 import { privateTemporaryRoot, type PrivateTemporaryRootStem } from "./private-temporary-root.js"
-import { decodeStopHold, hasExactKeys, objectFields } from "./process-guardian-protocol.js"
+import { decodeStopHold, hasExactKeys, asObjectFields } from "./process-guardian-protocol.js"
 import { decodeHolderFields, processHolders, type GoneProof } from "./process-holder.js"
 import type { StopHold } from "./stop-hold.js"
 
@@ -46,7 +46,7 @@ const LEDGER_ROOT_STEM = "flywheel-leases" satisfies PrivateTemporaryRootStem
 const RECORD_SUFFIX = ".json"
 
 /** One lease as the ledger keeps it. */
-export interface LedgerLease {
+interface LedgerLease {
   readonly token: string
   /** The pid that names the container: its supervisor, which leads its
    *  process group. */
@@ -88,12 +88,12 @@ interface LeaseRecord extends LedgerLease {
  *  It reads by hand with exact keys, as the guardian protocol reads its
  *  frames, so the guardian loads no schema library for one small record. */
 function decodeRecord(value: unknown): LeaseRecord | undefined {
-  const record = objectFields(value)
+  const record = asObjectFields(value)
   if (!record || record.v !== 1 || !hasExactKeys(record, ["v", "token", "pid", "identity", "stopHold", "guardian"])) return undefined
   const { token, pid, identity } = record
   const stopHold = decodeStopHold(record.stopHold)
   if (typeof token !== "string" || !isPid(pid) || typeof identity !== "string" || stopHold === undefined) return undefined
-  const guardian = objectFields(record.guardian)
+  const guardian = asObjectFields(record.guardian)
   if (!guardian || guardian.v !== 1 || !isPid(guardian.pid) || typeof guardian.start !== "string") return undefined
   const { boot } = guardian
   if (boot !== undefined && typeof boot !== "string") return undefined
@@ -105,17 +105,14 @@ function isPid(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 1
 }
 
-/** The ledger of this user's guardians in `temporary`. `holders` answers who
- *  this guardian is and whether a recorded guardian still runs, and `writer`
- *  is the pid of the guardian whose leases `hold` records: this process. */
-export function createGuardianLedger(
-  temporary: string = tmpdir(),
-  holders: Pick<typeof processHolders, "own" | "state"> = processHolders,
-  writer: number = process.pid,
-): GuardianLedger {
+/** The ledger of this user's guardians in the temporary directory, which
+ *  each operation reads again. `hold` records the leases of this process's
+ *  guardian. */
+function createGuardianLedger(): GuardianLedger {
+  const writer = process.pid
   let unwritable = false
   const unreadable = new Set<string>()
-  const root = (): string => privateTemporaryRoot(temporary, LEDGER_ROOT_STEM)
+  const root = (): string => privateTemporaryRoot(tmpdir(), LEDGER_ROOT_STEM)
   const recordPath = (directory: string, token: string, guardianPid: number): string => join(directory, `${encodeURIComponent(token)}.${guardianPid}${RECORD_SUFFIX}`)
 
   const remove = (path: string): void => {
@@ -129,7 +126,7 @@ export function createGuardianLedger(
   return {
     hold(lease) {
       try {
-        const own = holders.own()
+        const own = processHolders.own()
         // A record whose guardian has no start stamp could never be proven
         // gone, and one without its boot could pass for a record of this
         // boot after a restart, so neither is written.
@@ -183,7 +180,7 @@ export function createGuardianLedger(
           continue
         }
         const { guardian: { pid: guardianPid, ...identity }, ...lease } = decoded
-        const state = holders.state(decodeHolderFields(guardianPid, identity))
+        const state = processHolders.state(decodeHolderFields(guardianPid, identity))
         if (state.kind !== "gone") continue
         if (state.proof === "another-boot") {
           remove(path)

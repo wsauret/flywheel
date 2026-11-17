@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { RuntimeProtocolRpc, RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { classifyChatMutation } from "../../../../src/orchestration/app-service/session-mutation-routing.js"
+import { handleChatMutation } from "../../../../src/orchestration/app-service/chat-mutations.js"
+import { runtimeSupervisor } from "./app-service-doubles.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
 import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { RuntimeSessionDetailView } from "../../../../src/protocol/session-detail-protocol-types.js"
@@ -12,7 +13,6 @@ import { temporaryDirectories } from "../../../helpers/directories.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
@@ -20,6 +20,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 describe("runtime session protocol contract", () => {
   const tmp = temporaryDirectories()
@@ -36,7 +37,7 @@ describe("runtime session protocol contract", () => {
     if (child?.kind !== "workflow-agent") throw new Error("Missing workflow member")
     f.metadata.set("parent", durableRow("parent", { conversationId: "conversation", childSessionIds: [childId] }))
     f.metadata.set(childId, { ...durableRow(childId), ...child, kind: "workflow-agent", conversationId: child.conversationId, workflowMembership: child.workflowMembership })
-    const history = createSessionDetailProjection({
+    const history = testSessionDetailProjection({
       projectRoot, manager: f.options.state.sessions,
       sessionStore: { get: () => undefined }, reader, projectionReader: reader,
     })
@@ -238,44 +239,62 @@ describe("runtime session protocol contract", () => {
 })
 
 describe("session runtime actor command contract", () => {
-  test("question settlement, background termination, and chat.compact classify as ordered mailbox commands", () => {
-    for (const tag of ["question.answer", "question.cancel", "background.terminate", "chat.compact"] as const) {
-      const route = classifyChatMutation(tag)
-      expect(route.category).toBe("ordered")
-      if (route.category === "ordered") expect(route.mutation.kind).toBe(tag)
+  test("chat.interrupt and bash.detach take the preemptive path; every other chat mutation takes the ordered path", async () => {
+    // Every supervisor call except the two preemptive ones waits behind a
+    // held mailbox, as the calls of a session with a running turn do.
+    let release = () => {}
+    const mailbox = new Promise<void>((resolve) => { release = resolve })
+    const calls: string[] = []
+    const held = <T>(name: string, value: T) => async () => { calls.push(name); await mailbox; return value }
+    const supervisor = runtimeSupervisor({
+      interruptSession: async () => { calls.push("interruptSession"); return true },
+      releaseForegroundBash: () => { calls.push("releaseForegroundBash"); return true },
+      openSessionRuntime: held("openSessionRuntime", "new-chat"),
+      forkSession: held("forkSession", "forked-chat"),
+      activateSession: held("activateSession", true),
+      releaseSession: held("releaseSession", undefined),
+      closeChat: held("closeChat", true),
+      discardTransientChat: held("discardTransientChat", { removed: true }),
+      deleteSession: held("deleteSession", true),
+      renameSession: held("renameSession", true),
+      resumeChat: held("resumeChat", { ok: true }),
+      terminateBackgroundWork: held("terminateBackgroundWork", undefined),
+      answerQuestion: held("answerQuestion", { ok: true }),
+      cancelQuestion: held("cancelQuestion", { ok: true }),
+      compactChat: held("compactChat", true),
+    })
+
+    for (const [mutation, call] of [
+      [{ type: "chat.interrupt", sessionId: "chat-1" }, "interruptSession"],
+      [{ type: "bash.detach", sessionId: "chat-1", toolUseId: "bash-1" }, "releaseForegroundBash"],
+    ] as const) {
+      calls.length = 0
+      expect(await handleChatMutation(mutation, { supervisor })).toEqual({ ok: true, sessionId: "chat-1" })
+      expect(calls).toEqual([call])
     }
-  })
 
-  test("chat.open, session.fork, and session.activate classify as supervisor commands", () => {
-    for (const tag of ["chat.open", "session.fork", "session.activate"] as const) {
-      const route = classifyChatMutation(tag)
-      expect(route.category).toBe("supervisor")
-      if (route.category === "supervisor") expect(route.kind).toBe(tag)
-    }
-  })
-
-  test("session.close, session.delete, and session.discard_transient classify as lifecycle commands with synchronous markClosing preflight", () => {
-    for (const tag of ["session.close", "session.delete", "session.discard_transient"] as const) {
-      const route = classifyChatMutation(tag)
-      expect(route.category).toBe("lifecycle")
-      // The markClosing preflight is the type-checked metadata every lifecycle
-      // command must carry before any ordered queue wait.
-      if (route.category === "lifecycle") expect(route.mutation.preflight).toBe("markClosing")
-    }
-  })
-
-  test("chat.interrupt and bash.detach classify as preemptive signals that never enter the ordered mailbox", () => {
-    const interrupt = classifyChatMutation("chat.interrupt")
-    expect(interrupt.category).toBe("preemptive")
-    if (interrupt.category === "preemptive") expect(interrupt.signal.kind).toBe("interrupt-current-turn")
-
-    const detach = classifyChatMutation("bash.detach")
-    expect(detach.category).toBe("preemptive")
-    if (detach.category === "preemptive") expect(detach.signal.kind).toBe("release-foreground-bash")
-  })
-
-  test("session.reorder classifies as out-of-actor session-list behavior", () => {
-    const route = classifyChatMutation("session.reorder")
-    expect(route.category).toBe("out-of-actor")
+    const ordered = [
+      [{ type: "chat.open" }, "openSessionRuntime"],
+      [{ type: "chat.compact", sessionId: "chat-1" }, "compactChat"],
+      [{ type: "chat.resume", sessionId: "chat-1" }, "resumeChat"],
+      [{ type: "background.terminate", sessionId: "chat-1", toolUseId: "bash-1" }, "terminateBackgroundWork"],
+      [{ type: "session.activate", sessionId: "chat-1" }, "activateSession"],
+      [{ type: "session.release", sessionId: "chat-1" }, "releaseSession"],
+      [{ type: "session.fork", sessionId: "chat-1" }, "forkSession"],
+      [{ type: "session.close", sessionId: "chat-1" }, "closeChat"],
+      [{ type: "session.discard_transient", sessionId: "chat-1" }, "discardTransientChat"],
+      [{ type: "session.delete", sessionId: "chat-1" }, "deleteSession"],
+      [{ type: "session.rename", sessionId: "chat-1", title: "Renamed" }, "renameSession"],
+      [{ type: "question.answer", sessionId: "chat-1", toolUseId: "ask-1", answers: {} }, "answerQuestion"],
+      [{ type: "question.cancel", sessionId: "chat-1", toolUseId: "ask-1" }, "cancelQuestion"],
+    ] as const
+    calls.length = 0
+    const answered: string[] = []
+    const pending = ordered.map(([mutation]) => handleChatMutation(mutation, { supervisor }).then((result) => { answered.push(mutation.type); return result }))
+    await Bun.sleep(0)
+    expect(answered).toEqual([])
+    expect(calls).toEqual(ordered.map(([, call]) => call))
+    release()
+    for (const result of pending) expect((await result).ok).toBe(true)
   })
 })
