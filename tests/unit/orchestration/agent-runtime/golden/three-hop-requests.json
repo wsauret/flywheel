@@ -1,0 +1,1050 @@
+{
+  "anthropic": [
+    {
+      "model": "claude-sonnet-5-5",
+      "max_tokens": 32000,
+      "stream": true,
+      "system": [
+        {
+          "type": "text",
+          "text": "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists.",
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "Read records 1 and 2."
+            },
+            {
+              "type": "text",
+              "text": "<system-reminder>Route reminder.</system-reminder>",
+              "cache_control": {
+                "type": "ephemeral",
+                "ttl": "1h"
+              }
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "edit",
+          "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "edits": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "old_string": {
+                      "type": "string",
+                      "description": "Exact text to replace, copied from file content shown earlier"
+                    },
+                    "new_string": {
+                      "type": "string"
+                    },
+                    "replace_all": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "old_string",
+                    "new_string"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "path",
+              "edits"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "read",
+          "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or relative path"
+              },
+              "offset": {
+                "type": "number",
+                "description": "0-based first line"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum lines to return"
+              },
+              "map": {
+                "type": "boolean",
+                "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method."
+              }
+            },
+            "required": [
+              "path"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "write",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "content": {
+                "type": "string",
+                "description": "Complete file content"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "models",
+          "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "eager_input_streaming": true,
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ]
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "max_tokens": 32000,
+      "stream": true,
+      "system": [
+        {
+          "type": "text",
+          "text": "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists.",
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "Read records 1 and 2."
+            },
+            {
+              "type": "text",
+              "text": "<system-reminder>Route reminder.</system-reminder>"
+            }
+          ]
+        },
+        {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_1",
+              "name": "read",
+              "input": {
+                "record": "1"
+              }
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_1",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again."
+                }
+              ],
+              "is_error": true,
+              "cache_control": {
+                "type": "ephemeral",
+                "ttl": "1h"
+              }
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "edit",
+          "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "edits": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "old_string": {
+                      "type": "string",
+                      "description": "Exact text to replace, copied from file content shown earlier"
+                    },
+                    "new_string": {
+                      "type": "string"
+                    },
+                    "replace_all": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "old_string",
+                    "new_string"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "path",
+              "edits"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "read",
+          "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or relative path"
+              },
+              "offset": {
+                "type": "number",
+                "description": "0-based first line"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum lines to return"
+              },
+              "map": {
+                "type": "boolean",
+                "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method."
+              }
+            },
+            "required": [
+              "path"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "write",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "content": {
+                "type": "string",
+                "description": "Complete file content"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "models",
+          "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "eager_input_streaming": true,
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ]
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "max_tokens": 32000,
+      "stream": true,
+      "system": [
+        {
+          "type": "text",
+          "text": "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists.",
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ],
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": "Read records 1 and 2."
+            },
+            {
+              "type": "text",
+              "text": "<system-reminder>Route reminder.</system-reminder>"
+            }
+          ]
+        },
+        {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_1",
+              "name": "read",
+              "input": {
+                "record": "1"
+              }
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_1",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again."
+                }
+              ],
+              "is_error": true
+            }
+          ]
+        },
+        {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu_2",
+              "name": "read",
+              "input": {
+                "record": "2"
+              }
+            }
+          ]
+        },
+        {
+          "role": "user",
+          "content": [
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu_2",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again."
+                }
+              ],
+              "is_error": true,
+              "cache_control": {
+                "type": "ephemeral",
+                "ttl": "1h"
+              }
+            }
+          ]
+        }
+      ],
+      "tools": [
+        {
+          "name": "edit",
+          "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "edits": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "old_string": {
+                      "type": "string",
+                      "description": "Exact text to replace, copied from file content shown earlier"
+                    },
+                    "new_string": {
+                      "type": "string"
+                    },
+                    "replace_all": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "old_string",
+                    "new_string"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "path",
+              "edits"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "read",
+          "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or relative path"
+              },
+              "offset": {
+                "type": "number",
+                "description": "0-based first line"
+              },
+              "limit": {
+                "type": "number",
+                "description": "Maximum lines to return"
+              },
+              "map": {
+                "type": "boolean",
+                "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol."
+              },
+              "symbol": {
+                "type": "string",
+                "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method."
+              }
+            },
+            "required": [
+              "path"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "write",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Absolute or cwd-relative path"
+              },
+              "content": {
+                "type": "string",
+                "description": "Complete file content"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ]
+          },
+          "eager_input_streaming": true
+        },
+        {
+          "name": "models",
+          "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "eager_input_streaming": true,
+          "cache_control": {
+            "type": "ephemeral",
+            "ttl": "1h"
+          }
+        }
+      ]
+    }
+  ],
+  "claudeEngine": [
+    {
+      "identity": {
+        "cwd": "/scratch/project",
+        "eagerInputStreaming": true,
+        "extraBody": {},
+        "maxTokens": 32000,
+        "promptCaching": true,
+        "systemPrompt": [
+          "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists."
+        ],
+        "tools": [
+          {
+            "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+            "inputSchema": {
+              "properties": {
+                "edits": {
+                  "items": {
+                    "properties": {
+                      "new_string": {
+                        "type": "string"
+                      },
+                      "old_string": {
+                        "description": "Exact text to replace, copied from file content shown earlier",
+                        "type": "string"
+                      },
+                      "replace_all": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "old_string",
+                      "new_string"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "edits"
+              ],
+              "type": "object"
+            },
+            "name": "edit"
+          },
+          {
+            "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+            "inputSchema": {
+              "properties": {
+                "limit": {
+                  "description": "Maximum lines to return",
+                  "type": "number"
+                },
+                "map": {
+                  "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol.",
+                  "type": "boolean"
+                },
+                "offset": {
+                  "description": "0-based first line",
+                  "type": "number"
+                },
+                "path": {
+                  "description": "Absolute or relative path",
+                  "type": "string"
+                },
+                "symbol": {
+                  "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            "name": "read"
+          },
+          {
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "inputSchema": {
+              "properties": {
+                "content": {
+                  "description": "Complete file content",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ],
+              "type": "object"
+            },
+            "name": "write"
+          },
+          {
+            "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+            "inputSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "type": "object"
+            },
+            "name": "models"
+          }
+        ]
+      },
+      "messages": [
+        {
+          "content": [
+            {
+              "text": "Read records 1 and 2.",
+              "type": "text"
+            },
+            {
+              "text": "<system-reminder>Route reminder.</system-reminder>",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "origins": [
+        [
+          "system-input",
+          "system-input"
+        ]
+      ],
+      "reminders": []
+    },
+    {
+      "identity": {
+        "cwd": "/scratch/project",
+        "eagerInputStreaming": true,
+        "extraBody": {},
+        "maxTokens": 32000,
+        "promptCaching": true,
+        "systemPrompt": [
+          "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists."
+        ],
+        "tools": [
+          {
+            "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+            "inputSchema": {
+              "properties": {
+                "edits": {
+                  "items": {
+                    "properties": {
+                      "new_string": {
+                        "type": "string"
+                      },
+                      "old_string": {
+                        "description": "Exact text to replace, copied from file content shown earlier",
+                        "type": "string"
+                      },
+                      "replace_all": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "old_string",
+                      "new_string"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "edits"
+              ],
+              "type": "object"
+            },
+            "name": "edit"
+          },
+          {
+            "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+            "inputSchema": {
+              "properties": {
+                "limit": {
+                  "description": "Maximum lines to return",
+                  "type": "number"
+                },
+                "map": {
+                  "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol.",
+                  "type": "boolean"
+                },
+                "offset": {
+                  "description": "0-based first line",
+                  "type": "number"
+                },
+                "path": {
+                  "description": "Absolute or relative path",
+                  "type": "string"
+                },
+                "symbol": {
+                  "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            "name": "read"
+          },
+          {
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "inputSchema": {
+              "properties": {
+                "content": {
+                  "description": "Complete file content",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ],
+              "type": "object"
+            },
+            "name": "write"
+          },
+          {
+            "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+            "inputSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "type": "object"
+            },
+            "name": "models"
+          }
+        ]
+      },
+      "messages": [
+        {
+          "content": [
+            {
+              "text": "Read records 1 and 2.",
+              "type": "text"
+            },
+            {
+              "text": "<system-reminder>Route reminder.</system-reminder>",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "toolu_1",
+              "input": {
+                "record": "1"
+              },
+              "name": "mcp__runtime__read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again.",
+                  "type": "text"
+                }
+              ],
+              "is_error": true,
+              "tool_use_id": "toolu_1",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "origins": [
+        [
+          "system-input",
+          "system-input"
+        ],
+        [
+          "assistant"
+        ],
+        [
+          "tool-result"
+        ]
+      ],
+      "reminders": []
+    },
+    {
+      "identity": {
+        "cwd": "/scratch/project",
+        "eagerInputStreaming": true,
+        "extraBody": {},
+        "maxTokens": 32000,
+        "promptCaching": true,
+        "systemPrompt": [
+          "You are a helpful AI Agent.\n\n---\n\nGuidelines:\n- Calls in one turn run concurrently. Batch the calls you need that are independent: none of them can change state that another one reads. Put a call in a later turn when it needs an earlier result or reads state that an earlier call can change, such as a database that a client rewrites when it opens it. Never send the same call twice in a turn; repeat a call only when a failure, a state change, or a verification needs a fresh result. Put a progress update first in the same turn as its calls.\n- When a tool names a saved-output file, read or search that file for the part you need instead of re-running the call.\n- `[redacted secret]` in tool output usually marks a runtime redaction; the command or edit ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret, read the file through a transformed view, such as each line reversed; leave a real credential masked.\n- When a tool call is refused, for example by the user or a Flywheel policy, do not send it again; find another permitted approach. When none remains, report the refused action, what refused it, and its reason.\n\n---\n\nNo AGENTS.md file is loaded for your working directory. Before you change files in a directory below it, read the AGENTS.md file that governs it, if one exists."
+        ],
+        "tools": [
+          {
+            "description": "Replace exact text in one existing file. Each edits[] entry's old_string must identify one match in the file as it was before this call, unless its replace_all is true; entries must not overlap. All entries apply together or none do.",
+            "inputSchema": {
+              "properties": {
+                "edits": {
+                  "items": {
+                    "properties": {
+                      "new_string": {
+                        "type": "string"
+                      },
+                      "old_string": {
+                        "description": "Exact text to replace, copied from file content shown earlier",
+                        "type": "string"
+                      },
+                      "replace_all": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "old_string",
+                      "new_string"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "edits"
+              ],
+              "type": "object"
+            },
+            "name": "edit"
+          },
+          {
+            "description": "Read a file's contents; given a directory, read returns its entries. Each text line starts with its 1-based number and |, as in 42|const x = 1. Path suffixes select lines (path:5-16, path:50+20 for 20 lines from 50, path:5-16,960-973) or verbatim text without line numbers (path:raw); they combine, as in path:5-16:raw. Without a suffix or option, a read returns up to 2000 lines or one result's size limit from line 1, or a large code file as a structural summary that names the elided line ranges to re-read. Images (PNG, JPG, GIF, WebP) are returned as images.",
+            "inputSchema": {
+              "properties": {
+                "limit": {
+                  "description": "Maximum lines to return",
+                  "type": "number"
+                },
+                "map": {
+                  "description": "Add an outline of the file's symbols with their line ranges. Do not combine with symbol.",
+                  "type": "boolean"
+                },
+                "offset": {
+                  "description": "0-based first line",
+                  "type": "number"
+                },
+                "path": {
+                  "description": "Absolute or relative path",
+                  "type": "string"
+                },
+                "symbol": {
+                  "description": "Read only this function, class, or other symbol; members use dot notation, as in Class.method.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            },
+            "name": "read"
+          },
+          {
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "inputSchema": {
+              "properties": {
+                "content": {
+                  "description": "Complete file content",
+                  "type": "string"
+                },
+                "path": {
+                  "description": "Absolute or cwd-relative path",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ],
+              "type": "object"
+            },
+            "name": "write"
+          },
+          {
+            "description": "List the models this session can use now, with prices, efforts, context windows, tiers, and the Workflow Agent default. Call it before you choose a workflow agent's model or effort.",
+            "inputSchema": {
+              "additionalProperties": false,
+              "properties": {},
+              "type": "object"
+            },
+            "name": "models"
+          }
+        ]
+      },
+      "messages": [
+        {
+          "content": [
+            {
+              "text": "Read records 1 and 2.",
+              "type": "text"
+            },
+            {
+              "text": "<system-reminder>Route reminder.</system-reminder>",
+              "type": "text"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "toolu_1",
+              "input": {
+                "record": "1"
+              },
+              "name": "mcp__runtime__read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again.",
+                  "type": "text"
+                }
+              ],
+              "is_error": true,
+              "tool_use_id": "toolu_1",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        },
+        {
+          "content": [
+            {
+              "id": "toolu_2",
+              "input": {
+                "record": "2"
+              },
+              "name": "mcp__runtime__read",
+              "type": "tool_use"
+            }
+          ],
+          "role": "assistant"
+        },
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "read failed due to the following issue:\nThe parameter `` does not match any allowed schema: The required parameter `path` is missing; An unexpected parameter `record` was provided or The required parameter `path` is missing; The required parameter `pattern` is missing; An unexpected parameter `record` was provided\nThe tool was not executed. Fix the parameters and call read again.",
+                  "type": "text"
+                }
+              ],
+              "is_error": true,
+              "tool_use_id": "toolu_2",
+              "type": "tool_result"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "origins": [
+        [
+          "system-input",
+          "system-input"
+        ],
+        [
+          "assistant"
+        ],
+        [
+          "tool-result"
+        ],
+        [
+          "assistant"
+        ],
+        [
+          "tool-result"
+        ]
+      ],
+      "reminders": []
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-
 import { createRequestToolSurface } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue.js"
-import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
+import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 
@@ -19,7 +19,7 @@ function requestPlan(tool: RuntimeTool) {
     usable: new Set([tool.name]), turnedOff: [],
     registrationIds: new Map([[tool.name, tool.name]]),
     registrationIdentities: new Map([[tool.name, tool.name]]),
-    definitionAvailability: testDefinitionAvailability(),
+    kernel: testKernelToolDeps(),
   }
 }
 

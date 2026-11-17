@@ -26,8 +26,22 @@ export interface RuntimeConfigRequestCapture {
 
 export type CaptureRuntimeConfig = () => RuntimeConfigRequestCapture;
 
-/** Captures next-request policies, combining persisted permission with the invocation-only CLI override without changing config. */
+/** The captures already taken of each published snapshot, by profile id and CLI override. */
+const captures = new WeakMap<RuntimeConfigSnapshot, Map<string, RuntimeConfigRequestCapture>>();
+
+/** Captures next-request policies, combining persisted permission with the invocation-only CLI override without changing config.
+ *  A published snapshot is immutable, so every capture of one snapshot for one profile and override is the same frozen
+ *  object: each request hop reads it without cloning the configuration or parsing the environment's role overrides again. */
 export function captureRuntimeConfigRequest(snapshot: RuntimeConfigSnapshot, effectiveProfileId: string, persistentProcessesForcedByCli = false): RuntimeConfigRequestCapture {
+  const key = `${effectiveProfileId}\u0000${persistentProcessesForcedByCli}`;
+  const held = captures.get(snapshot)?.get(key);
+  if (held) return held;
+  const capture = captureRequest(snapshot, effectiveProfileId, persistentProcessesForcedByCli);
+  captures.set(snapshot, (captures.get(snapshot) ?? new Map()).set(key, capture));
+  return capture;
+}
+
+function captureRequest(snapshot: RuntimeConfigSnapshot, effectiveProfileId: string, persistentProcessesForcedByCli: boolean): RuntimeConfigRequestCapture {
   const { config } = snapshot;
   const profile = config.profiles[effectiveProfileId];
   return deepFreeze(structuredClone({

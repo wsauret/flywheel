@@ -19,7 +19,7 @@ import { stableSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { CaptureModelRuntime, LLMClientFactory } from "./factory.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { SkillDefinition } from "../../workflows/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../modules.js";
@@ -30,7 +30,7 @@ import { selectedToolNames } from "./tools/tool-dispatch.js";
 import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-exposure-planner.js";
 import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
 import type { RecallPort } from "../../protocol/conversation-recall.js";
-import type { KernelToolDeps, ServingModel } from "./tools/kernel-tool-deps.js";
+import type { ServingModel } from "./tools/kernel-tool-deps.js";
 import { defaultCacheRetention, requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
@@ -39,9 +39,9 @@ import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
 import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import { createChildSlotRegistry } from "./child-slot-registry.js";
 import { loadAgentInstructions } from "./project-instructions.js";
-import { buildSystemPrompt } from "./system-prompt.js";
+import { buildSystemPrompt, type BuildSystemPromptOptions } from "./system-prompt.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./request-system-prompt.js";
-import { turnReminders, type TurnReminderState } from "./turn-reminders.js";
+import { isPersonTurn, turnReminders, type TurnReminderState } from "./turn-reminders.js";
 import { budgetStreamIdOf, prepareRuntimeUsage } from "./runtime-usage.js";
 import { ProviderRuntimeCache, providerRuntimeRoutingKey, providerRuntimeServingKey } from "./provider-runtime-cache.js";
 import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-conversation.js";
@@ -256,6 +256,37 @@ function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRu
   };
 }
 
+/** The prompt build of a run's requests. A request whose prompt options equal the previous request's gets the same
+ *  tiers object, so the request surface reuses its rendered text and its token count; tools compare by the fields that
+ *  the prompt reads, and everything else by value, with functions such as the capability check by identity. Every
+ *  input that can change, such as a module fragment or the instructions of a new person turn, is a value of the
+ *  options, so a changed input always builds again. */
+function heldPromptBuild(): (options: BuildSystemPromptOptions) => SystemPromptTiers {
+  let held: { readonly key: unknown; readonly tiers: SystemPromptTiers } | undefined;
+  return (options) => {
+    const key = {
+      ...options,
+      tools: options.tools.map((tool) => ({
+        name: tool.name, action: tool.action, description: tool.description, promptGuidelines: tool.promptGuidelines,
+        livePromptGuidelines: tool.livePromptGuidelines?.(), promptExamples: tool.promptExamples,
+      })),
+    };
+    if (held && sameValue(held.key, key)) return held.tiers;
+    held = { key, tiers: buildSystemPrompt(options) };
+    return held.tiers;
+  };
+}
+
+/** Deep equality of plain data, with functions and other leaves compared by identity. */
+function sameValue(left: unknown, right: unknown): boolean {
+  if (left === right) return true;
+  if (typeof left !== "object" || typeof right !== "object" || left === null || right === null || Array.isArray(left) !== Array.isArray(right)) return false;
+  const leftEntries = Object.entries(left);
+  const rightEntries = new Map(Object.entries(right));
+  return leftEntries.length === rightEntries.size
+    && leftEntries.every(([key, value]) => rightEntries.has(key) && sameValue(value, rightEntries.get(key)));
+}
+
 /** Plans the tools of a run's requests: the one path that a send, a pre-start, and a capability plan
  *  (`planRunCapabilities`) take. It builds the run's module runtimes and its kernel for each request. */
 function runToolPlanner(source: RunToolsSource) {
@@ -350,23 +381,19 @@ function runToolPlanner(source: RunToolsSource) {
     },
     onSkillLoad,
   };
-  const kernelOf = (
-    { moduleSnapshot: requestModuleSnapshot, runtimeConfig, providerRuntime }: RequestCapture,
-    definitionRevision: ProjectDefinitionRegistryRevision,
-    live: FirstPartyModuleComposition = liveModules(requestModuleSnapshot),
-  ): KernelToolDeps => requestKernel(kernelRun, {
-    moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitionRevision,
-    shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
-    persistentProcessesAdvertised: tree?.allowPersistentProcesses ?? runtimeConfig.allowPersistentProcesses,
-    treeDisabledTypes: tree?.disabledTypes ?? disabledAgentTypes(runtimeConfig.moduleSections),
-    ...source.serving(providerRuntime),
-  });
   const planRequestTools = async (request: RequestCapture): Promise<PlannedRequest> => {
     const requestModuleSnapshot = request.moduleSnapshot;
     const live = liveModules(requestModuleSnapshot);
     // Read now, not captured at assembly: the skill tool must observe the
     // revision published when this request is planned.
-    const kernel = kernelOf(request, definitions.captureRevision(), live);
+    const { runtimeConfig, providerRuntime } = request;
+    const kernel = requestKernel(kernelRun, {
+      moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitions.captureRevision(),
+      shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
+      persistentProcessesAdvertised: tree?.allowPersistentProcesses ?? runtimeConfig.allowPersistentProcesses,
+      treeDisabledTypes: tree?.disabledTypes ?? disabledAgentTypes(runtimeConfig.moduleSections),
+      ...source.serving(providerRuntime),
+    });
     const plan = await planToolExposure({
       kernel,
       modules: await moduleRuntimesFor(requestModuleSnapshot),
@@ -376,9 +403,9 @@ function runToolPlanner(source: RunToolsSource) {
       ...(granted ? { granted } : {}),
       ...(options.toolProfile ? { profile: options.toolProfile } : {}),
     });
-    return { ...plan, definitionAvailability: kernel.definitionAvailability, ...(kernel.allowedSubagentTypes ? { allowedSubagentTypes: kernel.allowedSubagentTypes } : {}) };
+    return { ...plan, kernel };
   };
-  return { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources };
+  return { planRequestTools, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources };
 }
 
 /** What a capability plan reads: the run's options and conversation and the authorities that build its runs. */
@@ -557,7 +584,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       const initialRuntimeConfig = initialProviderRuntime.runtimeConfig ?? options.captureRuntimeConfig();
       const client = initialProviderRuntime.mainRoute.client;
       const planned = initialProviderRuntime.plannedAttempt;
-      const { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources } = runToolPlanner({
+      const { planRequestTools, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources } = runToolPlanner({
         input, runtimeIdentity, tree, ...(turn ? { turn } : {}),
         servingModel: {
           model: client.model,
@@ -595,10 +622,12 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       // serving attempt appends only provider interaction notes after transformation.
       const corePrompt = headlessPrompt?.kind === "assembled" ? headlessPrompt.corePrompt : loadSystemPrompt(options);
       const engineeringDoctrine = headlessPrompt?.kind === "literal" || options.engineeringDoctrine === false ? undefined : loadEngineeringDoctrine(options);
+      const buildPrompt = heldPromptBuild();
+      const literalPrompt = headlessPrompt?.kind === "literal" ? stableSystemPrompt(headlessPrompt.systemPrompt) : undefined;
       const systemPrompt = async (_attempt: ServingAttempt, interactionProfile: ReturnType<typeof resolveModelInteractionProfile>): Promise<SystemPromptTiers> => {
         const request = toolSurface.current();
-        if (headlessPrompt?.kind === "literal") return stableSystemPrompt(headlessPrompt.systemPrompt);
-        return buildSystemPrompt(await requestSystemPromptOptions({
+        if (literalPrompt) return literalPrompt;
+        return buildPrompt(await requestSystemPromptOptions({
           purpose: options.purpose,
           corePrompt,
           engineeringDoctrine,
@@ -614,7 +643,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           moduleSnapshot: request.moduleSnapshot,
           tools: request.tools,
           registrationIdentities: request.registrationIdentities,
-          kernel: kernelOf(request, request.definitionAvailability.tree.definitionRevision),
+          kernel: request.kernel,
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           memory,
         }));
@@ -627,7 +656,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
         if (headlessPrompt?.kind === "literal") return [];
         const request = toolSurface.current();
         const reminderInput = {
-          kernel: kernelOf(request, request.definitionAvailability.tree.definitionRevision),
+          kernel: request.kernel,
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           tools: request.tools,
         };
@@ -651,7 +680,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       const narrowing = treeHosted ? createCapabilityNarrowing(() => toolSurface.current().moduleSnapshot) : undefined;
       const narrowingOf = (messages: readonly ConversationMessage[]) => {
         const request = toolSurface.current();
-        const { definitionAvailability } = request;
+        const { definitionAvailability } = request.kernel;
         return narrowing?.due(messages, { moduleIds: request.turnedOff, types: agentTypesTurnedOffSince(definitionAvailability.tree, definitionAvailability.live) });
       };
       const opening = await conversation.seed();
@@ -668,8 +697,9 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           initialInteractionProfile: initialProviderRuntime.interactionProfile,
           tools: toolSurface,
           systemPrompt,
+          // Only a person turn takes a reminder, so a tool hop reads no reminder state.
           turnReminders: async (messages) => [
-            ...turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities),
+            ...isPersonTurn(messages.at(-1)) ? turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities) : [],
             ...narrowingStatements(narrowingOf(messages)),
           ],
           ...(initialRequestContext !== undefined ? { initialRequestContext } : {}),

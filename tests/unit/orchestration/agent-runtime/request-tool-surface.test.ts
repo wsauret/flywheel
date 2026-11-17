@@ -5,7 +5,7 @@ import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/to
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { NO_CAPABILITY_ACCESS } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { fixedRequestToolSurface, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js";
+import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, type FirstPartyModule } from "../../../../src/orchestration/modules.js";
 import { hashToolInputFormat } from "../../../../src/orchestration/session/provider-request-audit-hash.js";
@@ -37,7 +37,7 @@ function plan(
   registrationIdentities = new Map(tools.map((tool) => [tool.name, tool.name])),
 ): PlannedRequest {
   const eligibleTools = new Map(tools.map((tool) => [tool.name, tool]));
-  return { eligibleTools, tools: eligibleTools, omitted, usable: new Set(eligibleTools.keys()), turnedOff: [], registrationIds: new Map(tools.map((tool) => [tool.name, tool.name])), registrationIdentities, definitionAvailability: testDefinitionAvailability() };
+  return { eligibleTools, tools: eligibleTools, omitted, usable: new Set(eligibleTools.keys()), turnedOff: [], registrationIds: new Map(tools.map((tool) => [tool.name, tool.name])), registrationIdentities, kernel: testKernelToolDeps() };
 }
 
 describe("request tool surface", () => {
@@ -160,6 +160,8 @@ describe("request tool surface", () => {
   });
 
   test("reuses static token counts across request surfaces and invalidates every cache key input", async () => {
+    // A run's prompt build returns its held tiers while the prompt's inputs are equal, and a plan keeps each tool's
+    // schema object, so equal bytes arrive as the same objects.
     let countCalls = 0;
     const tokenizerSpy = spyOn(localTokenizer, "localTokenizerForModel").mockImplementation((model) => ({
       identity: model.startsWith("claude") ? "ClaudeV3" : "O200kBase",
@@ -168,15 +170,16 @@ describe("request tool surface", () => {
         return text.length;
       },
     }));
-    let prompt = "stable prompt";
+    let prompt = stableSystemPrompt("stable prompt");
+    const tools = [fakeTool("read"), fakeTool("write")];
     const owner = await createRequestToolSurface(
-      () => plan([fakeTool("read"), fakeTool("write")]),
+      () => plan(tools.map((tool) => ({ ...tool }))),
       fullModules,
       testRuntimeConfigCapture,
     );
     const prepare = async (model = "gpt-5.4") => {
       const surface = await owner.resolve();
-      await surface.prepareStablePrompt(() => stableSystemPrompt(prompt), DEFAULT_MODEL_INTERACTION_PROFILE);
+      await surface.prepareStablePrompt(() => prompt, DEFAULT_MODEL_INTERACTION_PROFILE);
       return surface.prepareAttempt({
         model,
         modelFamily: model.startsWith("claude") ? "anthropic" : "openai",
@@ -190,11 +193,59 @@ describe("request tool surface", () => {
       await prepare();
       expect(countCalls).toBe(2);
 
-      prompt = "changed prompt";
+      prompt = stableSystemPrompt("changed prompt");
       await prepare();
       expect(countCalls).toBe(4);
       await prepare("claude-sonnet-4.5");
       expect(countCalls).toBe(6);
+    } finally {
+      tokenizerSpy.mockRestore();
+    }
+  });
+
+  test("plans every hop and holds what equal plans derive: one schema materialization, one projection, one count", async () => {
+    let countCalls = 0;
+    const tokenizerSpy = spyOn(localTokenizer, "localTokenizerForModel").mockImplementation(() => ({
+      identity: "O200kBase",
+      count(text) {
+        countCalls += 1;
+        return text.length;
+      },
+    }));
+    let schemaReads = 0;
+    const read = fakeTool("read");
+    const schema = { properties: { path: { type: "string" } } };
+    read.inputSchema = { get type() { schemaReads += 1; return "object"; }, ...schema };
+    let tools = [read, fakeTool("write")];
+    let plans = 0;
+    const prompt = stableSystemPrompt("held prompt");
+    const owner = await createRequestToolSurface(() => {
+      plans += 1;
+      // A plan creates its tools again; a registration keeps each tool's schema object.
+      return plan(tools.map((tool) => ({ ...tool })));
+    }, fullModules, testRuntimeConfigCapture);
+    const hop = async () => {
+      const surface = await owner.resolve();
+      await surface.prepareStablePrompt(() => prompt, DEFAULT_MODEL_INTERACTION_PROFILE);
+      return surface.prepareAttempt({ model: "gpt-5.4", modelFamily: "openai", toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    };
+
+    try {
+      const hops = [await hop(), await hop(), await hop()];
+      expect(plans).toBe(3);
+      expect(schemaReads).toBe(1);
+      expect(countCalls).toBe(2);
+      expect(hops[1]?.tools).toBe(hops[0]?.tools);
+      expect(hops[2]?.auditTools).toBe(hops[0]?.auditTools);
+      expect(new Set(hops.map((prepared) => prepared.attemptStaticTokens)).size).toBe(1);
+
+      // A changed tool is a new definition, so the next request carries it and counts its bytes.
+      tools = [read, { ...fakeTool("write"), description: "write, changed" }];
+      const changed = await hop();
+      expect(changed.tools.map((tool) => tool.description)).toEqual(["read description", "write, changed"]);
+      expect(changed.auditTools.map((tool) => tool.description)).toEqual(["read description", "write, changed"]);
+      expect(schemaReads).toBe(1);
+      expect(countCalls).toBe(4);
     } finally {
       tokenizerSpy.mockRestore();
     }
@@ -447,7 +498,6 @@ describe("request tool surface", () => {
     expect(builds).toBe(1);
     const prepared = first.prepareAttempt({ model: "model-a", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(schemaSerializations).toBe(1);
-    expect(stable.staticContextTokens).toBe(Math.ceil(("system prompt".length + JSON.stringify(prepared.tools).length) / 4));
     expect(renderSystemPrompt(prepared.systemPrompt)).toContain("system prompt");
     expect(prepared.tools[0]?.name).toBe("read");
     expect(prepared.attemptStaticTokens).toBe(Math.ceil((renderSystemPrompt(prepared.systemPrompt).length + JSON.stringify(prepared.tools).length) / 4));
@@ -561,8 +611,9 @@ describe("request tool surface", () => {
 
     expect(repeated).toBe(prepared);
     expect(prepared.systemPrompt).toEqual(tiers);
-    expect(prepared.staticContextTokens).toBe(Math.ceil((renderSystemPrompt(prepared.systemPrompt).length + JSON.stringify(prepared.definitions).length) / 4));
-    expect(pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION }).systemPrompt).toEqual(tiers);
+    const attempt = pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });
+    expect(attempt.systemPrompt).toEqual(tiers);
+    expect(attempt.attemptStaticTokens).toBe(Math.ceil((renderSystemPrompt(tiers).length + JSON.stringify(prepared.definitions).length) / 4));
   });
 });
 

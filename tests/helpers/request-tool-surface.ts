@@ -78,7 +78,7 @@ export async function fixedRequestToolSurface(tools: ReadonlyMap<string, Runtime
     usable: new Set(tools.keys()), turnedOff: [],
     registrationIds: new Map([...tools].map(([name, tool]) => [tool.name, name])),
     registrationIdentities: new Map([...tools].map(([name, tool]) => [tool.name, name])),
-    definitionAvailability: testDefinitionAvailability(),
+    kernel: testKernelToolDeps(),
   }), testCapabilityModules, testRuntimeConfigCapture);
   return {
     async resolve() {
@@ -103,7 +103,7 @@ export async function requestAdmission(tools: ReadonlyMap<string, RuntimeTool>, 
     usable: new Set(tools.keys()), turnedOff: [],
     registrationIds: new Map([...tools].map(([name, tool]) => [tool.name, name])),
     registrationIdentities: new Map([...tools].map(([name, tool]) => [tool.name, name])),
-    definitionAvailability: testDefinitionAvailability(),
+    kernel: testKernelToolDeps(),
   }), () => moduleSnapshot, testRuntimeConfigCapture);
   return (await owner.resolve()).executionAdmission;
 }
@@ -156,8 +156,8 @@ export function testBaseTools(): ReadonlyMap<string, RuntimeTool> & RequestToolS
   return new RequestToolMap(tools);
 }
 
-/** A request plan as the request assembly hands it to its tool surface: the planner's result with the definition
- *  availability of the kernel it was planned under. */
-export async function plannedRequest(plan: ToolExposurePlan | Promise<ToolExposurePlan>, kernel: Pick<KernelToolDeps, "definitionAvailability"> = { definitionAvailability: testDefinitionAvailability() }): Promise<PlannedRequest> {
-  return { ...await plan, definitionAvailability: kernel.definitionAvailability };
+/** A request plan as the request assembly hands it to its tool surface: the planner's result with the kernel that it
+ *  was planned under. */
+export async function plannedRequest(plan: ToolExposurePlan | Promise<ToolExposurePlan>, kernel: KernelToolDeps = testKernelToolDeps()): Promise<PlannedRequest> {
+  return { ...await plan, kernel };
 }

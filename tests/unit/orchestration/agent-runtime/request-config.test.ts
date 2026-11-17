@@ -70,6 +70,15 @@ describe("runtime config request capture", () => {
     expect(Object.isFrozen(work.profileRoles)).toBe(true);
   });
 
+  test("returns one capture per published snapshot, profile, and CLI override", () => {
+    const source = snapshot(4);
+    const work = captureRuntimeConfigRequest(source, "work");
+    expect(captureRuntimeConfigRequest(source, "work")).toBe(work);
+    expect(captureRuntimeConfigRequest(source, "personal")).not.toBe(work);
+    expect(captureRuntimeConfigRequest(source, "work", true)).not.toBe(work);
+    expect(captureRuntimeConfigRequest(snapshot(4), "work")).not.toBe(work);
+  });
+
   test("uses the profile default when the effective profile has no overlay", () => {
     expect(captureRuntimeConfigRequest(snapshot(9), "unconfigured").providerSettings).toEqual({});
     expect(captureRuntimeConfigRequest(snapshot(9), "unconfigured").allowTrainingRoutes).toBe(false);
@@ -97,9 +106,8 @@ describe("runtime config request capture", () => {
       profiles: { work: { roles: {}, git_ai_attribution: false, allow_training_routes: false, providers: { github_copilot: { monthly_credit_cap: 0 } } } },
     };
     const next = captureRuntimeConfigRequest(changed, "work", false);
-    changed.config.cache_retention = { ...changed.config.cache_retention, anthropic_api: "1h" };
-    changed.config.allow_persistent_processes = false;
-    expect(captureRuntimeConfigRequest(changed, "work", false).allowPersistentProcesses).toBe(false);
+    const republished = { ...changed, revision: 3, config: { ...changed.config, cache_retention: { ...changed.config.cache_retention, anthropic_api: "1h" as const }, allow_persistent_processes: false } };
+    expect(captureRuntimeConfigRequest(republished, "work", false).allowPersistentProcesses).toBe(false);
     expect(forced.allowPersistentProcesses).toBe(true);
 
     expect(inFlight.foregroundBashHoldSeconds).toBe(CONFIG_DEFAULTS.foreground_bash_hold_seconds);

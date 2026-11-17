@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test"
+import { expect, spyOn, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
@@ -7,6 +7,7 @@ import { createSessionRoleResolver, ensureSessionRoleSnapshot, resolveSessionRol
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/role-selection.js"
+import { resolveCapturedRole } from "../../../../src/orchestration/config/role-resolution.js"
 import type { RoleSettings } from "../../../../src/orchestration/session/schemas.js"
 
 const temporaryDirectory = temporaryDirectories()
@@ -131,4 +132,24 @@ test("ranks a person's setting for the agent or its workflow above the workflow'
 
 test("returns no roles for a ready empty profile without inventing models or changing settings", async () => {
   expect(await resolveSessionRoles({ defaults: {}, overrides: { chat: { model: "lost", effort: "low" } } }, roleCapture([]), "/scratch")).toEqual(new Map())
+})
+
+test("a request's session roles and its serving role share one catalog of the capture, which plans each model once", async () => {
+  const models = ["gpt-6.1-sol", "gpt-6-luna", "claude-opus-5.5"]
+  const capture = roleCapture(models)
+  const plan = spyOn(capture.providers.selection, "plan")
+  try {
+    const access = { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: capture.runtimeConfig.allowTrainingRoutes }
+    const roles = await resolveSessionRoles({ defaults: {}, overrides: {} }, capture, "/scratch")
+    const serving = await resolveCapturedRole("chat", { model: "claude-opus-5.5", effort: "high" }, access, "/scratch")
+    expect(roles.get("chat")?.model).toBeDefined()
+    expect(serving.kind === "selected" ? serving.role.model : serving.kind).toBe("claude-opus-5.5")
+    expect(plan).toHaveBeenCalledTimes(models.length)
+
+    // A new capture of the same models is a new catalog.
+    await resolveSessionRoles({ defaults: {}, overrides: {} }, { ...capture, connection: { ...capture.connection } }, "/scratch")
+    expect(plan).toHaveBeenCalledTimes(2 * models.length)
+  } finally {
+    plan.mockRestore()
+  }
 })

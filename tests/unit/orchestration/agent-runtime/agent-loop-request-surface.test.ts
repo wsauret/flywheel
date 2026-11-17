@@ -15,7 +15,7 @@ import type { RuntimeTool, ToolAttributionIdentity } from "../../../../src/orche
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js"
+import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { chain, fakeAvailability, fakeClient, singletonCandidate, textStream } from "./llm/_provider-chain-harness.js"
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
@@ -76,7 +76,7 @@ describe("logical tool authorization", () => {
       }),
     })
     const surface = await createRequestToolSurface(
-      () => ({ eligibleTools: new RequestToolMap(), tools: new RequestToolMap(), omitted: [], usable: new Set(), turnedOff: [], registrationIds: new Map(), registrationIdentities: new Map(), definitionAvailability: testDefinitionAvailability() }), testCapabilityModules, testRuntimeConfigCapture,
+      () => ({ eligibleTools: new RequestToolMap(), tools: new RequestToolMap(), omitted: [], usable: new Set(), turnedOff: [], registrationIds: new Map(), registrationIdentities: new Map(), kernel: testKernelToolDeps() }), testCapabilityModules, testRuntimeConfigCapture,
     )
     await runAgentLoop({
       client, initialPlannedAttempt: attempt, tools: surface,
@@ -212,7 +212,7 @@ describe("per-request persistent-process policy", () => {
         usable: new Set(["bash"]), turnedOff: [],
         registrationIds: new Map([["bash", "bash"]]),
         registrationIdentities: new Map([["bash", "bash"]]),
-        definitionAvailability: testDefinitionAvailability(),
+        kernel: testKernelToolDeps(),
       }),
       testCapabilityModules,
       testRuntimeConfigCapture,
@@ -318,7 +318,7 @@ describe("per-request persistent-process policy", () => {
         usable: new Set(["skill_manage"]), turnedOff: [],
         registrationIds: new Map([["skill_manage", "skill_manage"]]),
         registrationIdentities: new Map([["skill_manage", "skill_manage"]]),
-        definitionAvailability: testDefinitionAvailability(),
+        kernel: testKernelToolDeps(),
       }),
       () => composeFirstPartyModules(undefined, ["skills"]),
       testRuntimeConfigCapture,
@@ -422,7 +422,7 @@ describe("per-request provider admission", () => {
       execute: async () => ({ content: "ok", outcome: "ok" }),
     }
     const surface = await createRequestToolSurface(
-      () => ({ eligibleTools: new RequestToolMap([["noop", noop]]), tools: new RequestToolMap([["noop", noop]]), omitted: [], usable: new Set(["noop"]), turnedOff: [], registrationIds: new Map([["noop", "noop"]]), registrationIdentities: new Map([["noop", "noop"]]), definitionAvailability: testDefinitionAvailability() }),
+      () => ({ eligibleTools: new RequestToolMap([["noop", noop]]), tools: new RequestToolMap([["noop", noop]]), omitted: [], usable: new Set(["noop"]), turnedOff: [], registrationIds: new Map([["noop", "noop"]]), registrationIdentities: new Map([["noop", "noop"]]), kernel: testKernelToolDeps() }),
       testCapabilityModules,
       testRuntimeConfigCapture,
     )

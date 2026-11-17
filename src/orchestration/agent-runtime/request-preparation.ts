@@ -97,6 +97,9 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
     }),
   });
   const entryWriter = { append: writers.pushMessage, onUserMessage: sinks.onUserMessage, flush: sinks.flush };
+  /** The attempt whose route messages and turn reminders the open cycle appended, until its first attempt input is
+   *  prepared: the walk's first candidate needs no second append, and a later failover candidate gets its own. */
+  let appendedAttempt: ServingAttempt | undefined;
   const appendProviderMessages = async (attempt: ServingAttempt): Promise<void> => {
     if (admits()) await appendProviderHistory({ ...entryWriter, attempt, messages: preparation.messages, executionCwd, capabilities: inputs.tools.current().capabilities, turnReminders: inputs.turnReminders });
   };
@@ -132,6 +135,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
         ? REASONING_EFFORTS.find((effort) => effort === providerRole.effort)
         : inputs.reasoningEffort ? await inputs.reasoningEffort() : undefined;
       await appendProviderMessages(variant.plannedAttempt);
+      appendedAttempt = variant.plannedAttempt;
       requestContext.select(cycle.surface, variant.plannedAttempt, cycle.context.preview);
       const contextTokens = requestContext.prepareCycle(cycle.surface, variant.plannedAttempt, cycle.context.consume());
       return { ...variant, turnEffort, contextTokens };
@@ -144,7 +148,8 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
     attemptInput(values: AttemptValues): (attempt: ServingAttempt) => Promise<{ readonly input: AssistantAttemptInput; readonly snapshot: OutgoingContextSnapshot }> {
       return async (attempt) => {
         preparation.planned = attempt;
-        await appendProviderMessages(attempt);
+        if (attempt !== appendedAttempt) await appendProviderMessages(attempt);
+        appendedAttempt = undefined;
         requestContext.prepare(attempt);
         requestContext.advance();
         const outbound = requestContext.active();

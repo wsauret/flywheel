@@ -10,7 +10,8 @@
  * model called back, the omission evidence recorded in the request audit, and
  * the forced budget-exhaustion turn. This owner is that single source.
  * `resolve()` captures and pins the next request; `current()` reads only the
- * request already in flight.
+ * request already in flight. What a pinned request derives from inputs that
+ * equal the previous request's is held across requests (`HeldPreparation`).
  */
 
 import { errorMessage } from "../../infra/error-message.js";
@@ -37,13 +38,33 @@ import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
 type ProviderToolDef = StreamOptions["tools"][number];
 type AuditToolDef = import("../session/provider-request-audit-types.js").ProviderRequestAuditTool;
 
-function projectProviderToolDefinitions(tools: ReadonlyMap<string, RuntimeTool>): readonly ProviderToolDef[] {
-  return [...tools.values()].map((tool) => ({
+/** The provider definitions of `tools`. When every definition equals the one at its place in `held` by identity, it
+ *  returns `held`, so the projections and token counts that the run holds for those bytes stay valid. */
+function projectProviderToolDefinitions(tools: ReadonlyMap<string, RuntimeTool>, held: readonly ProviderToolDef[] | undefined): readonly ProviderToolDef[] {
+  const definitions = [...tools.values()].map((tool): ProviderToolDef => ({
     name: tool.name,
     description: tool.description,
-    input_schema: materializeToolInputSchema(tool),
+    input_schema: materializedInputSchema(tool),
     ...(tool.wire ? { wire: tool.wire } : {}),
   }));
+  const unchanged = held?.length === definitions.length && definitions.every((definition, index) => {
+    const previous = held[index];
+    return previous?.name === definition.name && previous.description === definition.description
+      && previous.input_schema === definition.input_schema && previous.wire === definition.wire;
+  });
+  return unchanged && held ? held : definitions;
+}
+
+/** The materialized schema of each tool input schema object. A registration's schema object is immutable, and a
+ *  plan that recreates a tool keeps the schema object, so each schema is serialized and checked once. */
+const materializedSchemas = new WeakMap<object, ProviderToolDef["input_schema"]>();
+
+function materializedInputSchema(tool: RuntimeTool): ProviderToolDef["input_schema"] {
+  const held = materializedSchemas.get(tool.inputSchema);
+  if (held) return held;
+  const materialized = materializeToolInputSchema(tool);
+  materializedSchemas.set(tool.inputSchema, materialized);
+  return materialized;
 }
 
 class ToolInputSchemaMaterializationError extends Error {}
@@ -88,9 +109,7 @@ function materializeToolInputSchema(tool: RuntimeTool): ProviderToolDef["input_s
 }
 interface RequestStablePrompt {
   readonly systemPrompt: SystemPromptTiers;
-  readonly staticContextTokens: number;
   readonly definitions: readonly ProviderToolDef[];
-  readonly definitionChars: number;
   readonly interactionProfileId: ModelInteractionProfile["id"];
   readonly omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }>;
 }
@@ -151,8 +170,8 @@ interface RequestToolSurface extends RequestCapture {
   readonly usableToolNames: ReadonlySet<string>;
   /** Provider-visible tool name to its logical registration id. */
   readonly registrationIdentities: ReadonlyMap<string, string>;
-  /** The definition availability this request was planned under (`KernelToolDeps.definitionAvailability`). */
-  readonly definitionAvailability: PlannedRequest["definitionAvailability"];
+  /** The kernel that this request was planned under. The request's prompt and turn reminders read the same kernel. */
+  readonly kernel: KernelToolDeps;
   /** The agent check (ARCH-CONTEXT-033): `usableToolNames` and the availability of this agent's own selection.
    *  Text that this agent alone reads renders from it. */
   readonly capabilities: CapabilityCheck;
@@ -179,17 +198,35 @@ export interface RequestToolSurfaceOwner {
   current(): RequestToolSurface;
 }
 
-interface StaticTokenCache {
-  value?: {
-    readonly systemPrompt: string;
-    readonly serializedDefinitions: string;
+/** The tool definitions of one attempt's presentation, with the audit evidence and the serialized bytes that its
+ *  token count reads. */
+interface PresentedDefinitions {
+  readonly auditDefinitions: readonly AuditToolDef[];
+  readonly serializedDefinitions: string;
+}
+
+/**
+ * What a run's requests share across hops. Tools are planned for every request (ARCH-TOOLS-002), because a plan reads
+ * live state that no revision covers, such as the process tool's background work and the web tool's credential. What
+ * a plan derives is held by the identity of its inputs instead: the definitions of equal tools (`definitions`), the
+ * presentation of equal definitions (`presentations`), the rendered text of the prompt that the run's prompt build
+ * returns again (`prompt`), and the token count of equal bytes (`staticTokens`). A changed input is a new object and
+ * misses, so a held value is never stale.
+ */
+interface HeldPreparation {
+  definitions?: readonly ProviderToolDef[];
+  presentations: WeakMap<readonly ProviderToolDef[], WeakMap<ToolPresentation, PresentedDefinitions & { readonly registrationIds: readonly string[] }>>;
+  prompt?: { readonly tiers: SystemPromptTiers; readonly rendered: string };
+  staticTokens?: {
+    readonly tiers: SystemPromptTiers;
+    readonly definitions: PresentedDefinitions;
     readonly policyIdentity: TokenCountingPolicyIdentity | undefined;
     readonly tokens: number;
   };
 }
 
-/** One request's tool plan with the definition availability and the dispatch set its kernel was planned under. */
-export type PlannedRequest = ToolExposurePlan & Pick<KernelToolDeps, "definitionAvailability" | "allowedSubagentTypes">;
+/** One request's tool plan with the kernel that it was planned under. */
+export type PlannedRequest = ToolExposurePlan & { readonly kernel: KernelToolDeps };
 
 /** The logical identities of the tools that a planned request can call. */
 function usableIdentities(plan: PlannedRequest): ReadonlySet<string> {
@@ -199,13 +236,70 @@ function usableIdentities(plan: PlannedRequest): ReadonlySet<string> {
 /** The agent check of a planned request (ARCH-CONTEXT-033): the tools that it can call, the availability of the
  *  agent's own selection, and the personas it may dispatch. */
 export function requestCapabilities(plan: PlannedRequest): CapabilityCheck {
-  return agentCapabilityCheck(usableIdentities(plan), plan.definitionAvailability.live, plan.allowedSubagentTypes);
+  return agentCapabilityCheck(usableIdentities(plan), plan.kernel.definitionAvailability.live, plan.kernel.allowedSubagentTypes);
+}
+
+/** The presentation of `definitions` for `presentation`, held while the definitions and the registration ids that the
+ *  plan selected for them stay the same. */
+function presentedDefinitions(held: HeldPreparation, plan: PlannedRequest, definitions: readonly ProviderToolDef[], presentation: ToolPresentation): PresentedDefinitions {
+  const selected = definitions.map((definition) => {
+    const registrationId = plan.registrationIds.get(definition.name);
+    if (!registrationId) throw new Error(`Tool '${definition.name}' has no admitted executable registration identity`);
+    return { definition, registrationId };
+  });
+  let byPresentation = held.presentations.get(definitions);
+  if (!byPresentation) {
+    byPresentation = new WeakMap();
+    held.presentations.set(definitions, byPresentation);
+  }
+  const cached = byPresentation.get(presentation);
+  if (cached?.registrationIds.every((id, index) => id === selected[index]?.registrationId)) return cached;
+  const presented = {
+    registrationIds: selected.map(({ registrationId }) => registrationId),
+    auditDefinitions: selected.map(({ definition, registrationId }) => {
+      const descriptor = presentation.present(definition);
+      return {
+        name: presentation.wireName?.(definition.name) ?? definition.name,
+        description: descriptor.description,
+        input_schema: definition.input_schema,
+        registrationId,
+        executableId: definition.name,
+        kind: descriptor.kind,
+        inputFormatSha256: hashToolInputFormat(descriptor.inputFormat),
+      };
+    }),
+    serializedDefinitions: JSON.stringify(definitions.map((definition) => ({
+      ...definition, name: presentation.wireName?.(definition.name) ?? definition.name,
+    }))),
+  };
+  byPresentation.set(presentation, presented);
+  return presented;
+}
+
+/** The rendered text of `tiers`, held while the run's prompt build returns the same tiers. */
+function renderedPrompt(held: HeldPreparation, tiers: SystemPromptTiers): string {
+  if (held.prompt?.tiers !== tiers) held.prompt = { tiers, rendered: renderSystemPrompt(tiers) };
+  return held.prompt.rendered;
+}
+
+/** The static tokens of one attempt: its rendered prompt and its serialized definitions under the serving model's
+ *  counting policy. They are counted again only when the prompt, the definitions, or the policy changed. */
+function staticTokens(held: HeldPreparation, tiers: SystemPromptTiers, definitions: PresentedDefinitions, attempt: Pick<ServingAttempt, "model"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): number {
+  const policy = attempt.modelFamily === undefined ? undefined : tokenCountingPolicy(attempt.model, attempt.modelFamily, attempt.tokenizerIdentity);
+  const cached = held.staticTokens;
+  if (cached?.tiers === tiers && cached.definitions === definitions && cached.policyIdentity === policy?.identity) return cached.tokens;
+  const prompt = renderedPrompt(held, tiers);
+  const tokens = policy?.kind === "local"
+    ? policy.countText(prompt) + policy.countText(definitions.serializedDefinitions)
+    : Math.ceil((prompt.length + definitions.serializedDefinitions.length) / 4);
+  held.staticTokens = { tiers, definitions, policyIdentity: policy?.identity, tokens };
+  return tokens;
 }
 
 function pin(
   plan: PlannedRequest,
   { moduleSnapshot, runtimeConfig, providerRuntime }: RequestCapture,
-  staticTokenCache: StaticTokenCache,
+  held: HeldPreparation,
 ): RequestToolSurface {
   const tools = plan.tools;
   const enabledModuleIds = new Set(moduleSnapshot.enabledModuleIds);
@@ -213,13 +307,12 @@ function pin(
   const usableToolNames = usableIdentities(plan);
   let stablePrompt: RequestStablePrompt | undefined;
   let admittedProviderRequest: Promise<AdmittedModelRequest> | undefined;
-  const projections = new WeakMap<ToolPresentation, { definitions: readonly ProviderToolDef[]; auditDefinitions: readonly AuditToolDef[]; serializedDefinitions: string; omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }> }>();
   return {
     tools,
     registrationIds: plan.registrationIds,
     usableToolNames,
     registrationIdentities: plan.registrationIdentities,
-    definitionAvailability: plan.definitionAvailability,
+    kernel: plan.kernel,
     capabilities: requestCapabilities(plan),
     turnedOff: plan.turnedOff,
     historicalRegistrationId(name, model, provider) {
@@ -246,19 +339,13 @@ function pin(
     async prepareStablePrompt(build, profile) {
       if (stablePrompt) return stablePrompt;
       const systemPrompt = await build();
-      const definitions = projectProviderToolDefinitions(tools);
-
-      const definitionChars = JSON.stringify(definitions).length;
-      const omittedTools = plan.omitted.map((tool) => ({ ...tool }));
-
+      const definitions = projectProviderToolDefinitions(tools, held.definitions);
+      held.definitions = definitions;
       stablePrompt = {
         systemPrompt,
-        staticContextTokens: Math.ceil((renderSystemPrompt(systemPrompt).length + definitionChars) / 4),
-        definitionChars,
         definitions,
-
         interactionProfileId: profile.id,
-        omittedTools,
+        omittedTools: plan.omitted.map((tool) => ({ ...tool })),
       };
       return stablePrompt;
     },
@@ -269,59 +356,15 @@ function pin(
     },
     prepareAttempt(attempt) {
       if (!stablePrompt) throw new Error("Prepare the request-stable prompt before preparing a serving attempt");
-      let projection = projections.get(attempt.toolPresentation);
-      if (!projection) {
-        const { definitions } = stablePrompt;
-        const auditDefinitions = definitions.map((definition) => {
-          const registrationId = plan.registrationIds.get(definition.name);
-          if (!registrationId) throw new Error(`Tool '${definition.name}' has no admitted executable registration identity`);
-          const descriptor = attempt.toolPresentation.present(definition);
-          return {
-            name: attempt.toolPresentation.wireName?.(definition.name) ?? definition.name,
-            description: descriptor.description,
-            input_schema: definition.input_schema,
-            registrationId,
-            executableId: definition.name,
-            kind: descriptor.kind,
-            inputFormatSha256: hashToolInputFormat(descriptor.inputFormat),
-          };
-        });
-        projection = {
-          definitions,
-          auditDefinitions,
-          serializedDefinitions: JSON.stringify(definitions.map((definition) => ({
-            ...definition, name: attempt.toolPresentation.wireName?.(definition.name) ?? definition.name,
-          }))),
-          omittedTools: stablePrompt.omittedTools,
-        };
-        projections.set(attempt.toolPresentation, projection);
-      }
-      const systemPrompt = stablePrompt.systemPrompt;
-      const renderedPrompt = renderSystemPrompt(systemPrompt);
-      const policy = attempt.modelFamily === undefined
-        ? undefined
-        : tokenCountingPolicy(attempt.model, attempt.modelFamily, attempt.tokenizerIdentity);
-      const cachedStaticTokens = staticTokenCache.value;
-      const attemptStaticTokens = cachedStaticTokens?.systemPrompt === renderedPrompt
-        && cachedStaticTokens.serializedDefinitions === projection.serializedDefinitions
-        && cachedStaticTokens.policyIdentity === policy?.identity
-        ? cachedStaticTokens.tokens
-        : policy?.kind === "local"
-          ? policy.countText(renderedPrompt) + policy.countText(projection.serializedDefinitions)
-          : Math.ceil((renderedPrompt.length + projection.serializedDefinitions.length) / 4);
-      staticTokenCache.value = {
-        systemPrompt: renderedPrompt,
-        serializedDefinitions: projection.serializedDefinitions,
-        policyIdentity: policy?.identity,
-        tokens: attemptStaticTokens,
-      };
+      const { systemPrompt, definitions } = stablePrompt;
+      const presented = presentedDefinitions(held, plan, definitions, attempt.toolPresentation);
       return {
         systemPrompt,
-        tools: projection.definitions,
-        auditTools: projection.auditDefinitions,
-        attemptStaticTokens,
+        tools: definitions,
+        auditTools: presented.auditDefinitions,
+        attemptStaticTokens: staticTokens(held, systemPrompt, presented, attempt),
         interactionProfileId: stablePrompt.interactionProfileId,
-        omittedTools: projection.omittedTools,
+        omittedTools: stablePrompt.omittedTools,
       };
     },
   };
@@ -336,8 +379,8 @@ export async function createRequestToolSurface(
   captureSelection?: (runtimeConfig: RuntimeConfigRequestCapture, moduleSnapshot: FirstPartyModuleComposition) => Promise<RequestModelSelection>,
   initialProvider?: RequestCapture & { readonly providerRuntime: RequestProviderRuntime },
 ): Promise<RequestToolSurfaceOwner> {
-  const staticTokenCache: StaticTokenCache = {};
-  const capture = async (request: RequestCapture): Promise<RequestToolSurface> => pin(await plan(request), request, staticTokenCache);
+  const held: HeldPreparation = { presentations: new WeakMap() };
+  const capture = async (request: RequestCapture): Promise<RequestToolSurface> => pin(await plan(request), request, held);
   let initialRequest = initialProvider ? await capture(initialProvider) : undefined;
   let pinned: RequestToolSurface | undefined = initialRequest;
   const resolve = async (): Promise<RequestToolSurface> => {

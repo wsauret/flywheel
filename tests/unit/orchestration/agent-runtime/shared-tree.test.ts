@@ -139,7 +139,7 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     commit: async (message: ConversationMessage) => { await assembled.persistence.history.append(message) },
     /** Makes the next append of the agent's history reject. */
     failNextAppend: () => { failing.next = true },
-    agentCheck: surface.capabilities, availability: surface.definitionAvailability,
+    agentCheck: surface.capabilities, availability: surface.kernel.definitionAvailability,
     end: async () => { await Effect.runPromise(Scope.close(scope, Exit.void)); await background.close() },
     endRun: () => held.runScope === undefined ? Promise.resolve() : Effect.runPromise(Scope.close(held.runScope, Exit.void)),
   }

@@ -11,7 +11,7 @@ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-
 import { createRequestToolSurface } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
 import { asModelClient, fakeAttempt } from "./_model-client.js"
 import { turnDispatchHarnesses } from "./_turn-dispatch.js"
-import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
+import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { budgetCaptureSurface } from "./context/_loop-fixtures.js"
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js"
@@ -468,7 +468,7 @@ describe("per-request tool surface", () => {
   }
 
   function requestPlan(tools: RequestToolMap, omitted: ReadonlyArray<{ name: string; reason: string }> = []) {
-    return { eligibleTools: tools, tools, omitted, usable: new Set(tools.keys()), turnedOff: [], registrationIds: new Map([...tools.keys()].map((name) => [name, name])), registrationIdentities: new Map([...tools.keys()].map((name) => [name, name])), definitionAvailability: testDefinitionAvailability() }
+    return { eligibleTools: tools, tools, omitted, usable: new Set(tools.keys()), turnedOff: [], registrationIds: new Map([...tools.keys()].map((name) => [name, name])), registrationIdentities: new Map([...tools.keys()].map((name) => [name, name])), kernel: testKernelToolDeps() }
   }
   async function dynamicRequestSurface(plan: Parameters<typeof createRequestToolSurface>[0]) {
     const surface = await createRequestToolSurface(plan, testCapabilityModules, testRuntimeConfigCapture)

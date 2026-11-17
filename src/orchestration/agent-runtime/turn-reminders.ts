@@ -35,7 +35,8 @@ function statementIn(message: ConversationMessage, state: TurnReminderState): Tu
   return state.retired?.[message.content];
 }
 
-const isPersonTurn = (message: ConversationMessage | undefined): boolean =>
+/** Whether `message` starts a person turn: a user message that the runtime did not write. */
+export const isPersonTurn = (message: ConversationMessage | undefined): boolean =>
   message?.kind === "user" && message.origin !== "system";
 
 /**

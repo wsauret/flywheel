@@ -120,7 +120,44 @@ interface CapturedRoleCatalog {
   readonly resolve: (roleId: RoleId, setting: RoleSetting, standing?: ModelStandingReader) => Promise<CapturedRoleSelection>;
 }
 
+/** The catalogs already built, by the capture's selection, connection, and eligibility objects, then by the
+ *  training-route permission and the data root. Every object level is weak: a long-lived connection meets a new
+ *  eligibility object on each publication, and the catalogs of an earlier eligibility go with it. */
+const capturedCatalogs = new WeakMap<AccessProviderSelection, WeakMap<ProviderConnection, WeakMap<AccessProviderModelEligibility, Map<string, CapturedRoleCatalog>>>>();
+
+/** The role catalog of one capture. A capture's selection, connection, and eligibility are immutable, so every
+ *  resolve of one capture, such as a request's session roles and its serving role, shares one catalog and plans each
+ *  eligible model once. A new capture is a new object and builds a new catalog. A capture with no eligibility plans no
+ *  model, so its catalog is not held. */
 export function captureRoleCatalog(
+  capture: RoleAccessCapture,
+  userDataRoot: string,
+): CapturedRoleCatalog {
+  if (!capture.eligibility) return buildRoleCatalog(capture, userDataRoot);
+  let byConnection = capturedCatalogs.get(capture.selection);
+  if (!byConnection) {
+    byConnection = new WeakMap();
+    capturedCatalogs.set(capture.selection, byConnection);
+  }
+  let byEligibility = byConnection.get(capture.connection);
+  if (!byEligibility) {
+    byEligibility = new WeakMap();
+    byConnection.set(capture.connection, byEligibility);
+  }
+  let catalogs = byEligibility.get(capture.eligibility);
+  if (!catalogs) {
+    catalogs = new Map();
+    byEligibility.set(capture.eligibility, catalogs);
+  }
+  const key = `${capture.allowTrainingRoutes}\u0000${userDataRoot}`;
+  const held = catalogs.get(key);
+  if (held) return held;
+  const catalog = buildRoleCatalog(capture, userDataRoot);
+  catalogs.set(key, catalog);
+  return catalog;
+}
+
+function buildRoleCatalog(
   capture: RoleAccessCapture,
   userDataRoot: string,
 ): CapturedRoleCatalog {
