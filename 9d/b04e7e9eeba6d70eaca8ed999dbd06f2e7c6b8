@@ -1,0 +1,28 @@
+src/infra/agent-assets/session-notes.ts
+  h_4b47e9e4a8b456 20
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 14,22
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 21,259
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 39,391,393
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 87
+tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 154-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9db04e7e9eeba6d70eaca8ed999dbd06f2e7c6b8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
