@@ -1,0 +1,96 @@
+.githooks/pre-push
+  h_4b47e9e4a8b456 1-6
+CONTRIBUTING.md
+  h_4b47e9e4a8b456 85-112
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 52-54
+bun.lock
+  h_4b47e9e4a8b456 35-36,41,45,104-113,644-645,754-755,850-851,876-877,886-887,1356-1357,1756-1757
+knip.jsonc
+  h_4b47e9e4a8b456 41-45
+knip.production.jsonc
+  h_4b47e9e4a8b456 42-44
+oxlint.slop.config.ts
+  h_4b47e9e4a8b456 1-20
+package.json
+  h_4b47e9e4a8b456 93-96,144-145,150,154
+scripts/anti-slop-llm/LICENSE
+  h_4b47e9e4a8b456 1-21
+scripts/anti-slop-llm/UPSTREAM.md
+  h_4b47e9e4a8b456 1-20
+scripts/anti-slop-llm/diff-rules/backends.ts
+  h_4b47e9e4a8b456 1-203
+scripts/anti-slop-llm/diff-rules/cache.ts
+  h_4b47e9e4a8b456 1-49
+scripts/anti-slop-llm/diff-rules/config.ts
+  h_4b47e9e4a8b456 1-221
+scripts/anti-slop-llm/diff-rules/git.ts
+  h_4b47e9e4a8b456 1-404
+scripts/anti-slop-llm/diff-rules/input.ts
+  h_4b47e9e4a8b456 1-136
+scripts/anti-slop-llm/diff-rules/rules.ts
+  h_4b47e9e4a8b456 1-56
+scripts/anti-slop-llm/diff-rules/run.ts
+  h_4b47e9e4a8b456 1-82
+scripts/anti-slop-llm/diff-rules/runner.ts
+  h_4b47e9e4a8b456 1-276
+scripts/anti-slop-llm/effect-plugin.ts
+  h_4b47e9e4a8b456 1-19
+scripts/anti-slop-llm/effect-rules.ts
+  h_4b47e9e4a8b456 1-153
+scripts/anti-slop-llm/fowler-plugin.ts
+  h_4b47e9e4a8b456 1-13
+scripts/anti-slop-llm/fowler-rules.ts
+  h_4b47e9e4a8b456 1-174
+scripts/anti-slop-llm/lint-changed.ts
+  h_4b47e9e4a8b456 1-62
+scripts/anti-slop-llm/owned-commands.ts
+  h_4b47e9e4a8b456 1-21
+scripts/anti-slop-llm/pre-push.ts
+  h_4b47e9e4a8b456 1-92
+scripts/oxlint-plugin-jev/LICENSE
+  h_4b47e9e4a8b456 1-21
+scripts/oxlint-plugin-jev/UPSTREAM.md
+  h_4b47e9e4a8b456 1-23
+scripts/oxlint-plugin-jev/src/answers.ts
+  h_4b47e9e4a8b456 1-107
+scripts/oxlint-plugin-jev/src/backend.ts
+  h_4b47e9e4a8b456 1-124
+scripts/oxlint-plugin-jev/src/cache.ts
+  h_4b47e9e4a8b456 1-29
+scripts/oxlint-plugin-jev/src/changed.ts
+  h_4b47e9e4a8b456 1-140
+scripts/oxlint-plugin-jev/src/decision-model.ts
+  h_4b47e9e4a8b456 1-21
+scripts/oxlint-plugin-jev/src/index.ts
+  h_4b47e9e4a8b456 1-420
+scripts/oxlint-plugin-jev/src/jev.ts
+  h_4b47e9e4a8b456 1-210
+scripts/oxlint-plugin-jev/src/options.ts
+  h_4b47e9e4a8b456 1-216
+scripts/oxlint-plugin-jev/src/sync-jev.ts
+  h_4b47e9e4a8b456 1-31
+scripts/oxlint-plugin-jev/src/types.ts
+  h_4b47e9e4a8b456 1-141
+scripts/oxlint-plugin-jev/src/worker.ts
+  h_4b47e9e4a8b456 1-80
+tests/helpers/mock-decision-models.ts
+  h_4b47e9e4a8b456 1-119
+tests/integration/oxlint-plugin-jev.test.ts
+  h_4b47e9e4a8b456 1-153
+tests/integration/scripts/anti-slop-diff-rules.test.ts
+  h_4b47e9e4a8b456 1-113
+tests/integration/scripts/anti-slop-pre-push.test.ts
+  h_4b47e9e4a8b456 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ab61591c7b1fc6763f4291b0d48773279adf6d12",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
