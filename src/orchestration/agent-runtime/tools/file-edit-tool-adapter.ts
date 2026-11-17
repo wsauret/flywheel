@@ -94,8 +94,7 @@ export async function publishToolFileEdits(context: ToolContext, options: Pick<F
   const warnings: string[] = []
   try {
     const writer = context.sessionEventWriter
-    const stage = writer?.stageSessionContentNodes?.bind(writer)
-    if (writer && !stage) throw new FileEditRefusal("File mutation evidence staging is unavailable")
+    const stage = writer?.stageSessionContentNodes.bind(writer)
     const result = await publishToolFileEditOutcome(context, {
       ...options,
       onPrepared: async (publications) => {
@@ -153,7 +152,7 @@ export async function publishToolFileEdits(context: ToolContext, options: Pick<F
       outcome: result.reason === "cancelled" && retirementError === undefined ? "interrupted" : "error",
       details: {
         ...details, indeterminateFiles: summarizeFileSamples([]),
-        current: { path, status: result.status, reason: result.reason, ...(result.error === undefined ? {} : { error: errorMessage(result.error) }), ...(retirementError === undefined ? {} : { retirementError }) },
+        current: { path, status: result.status, reason: result.reason, ...(result.reason === "cancelled" ? {} : { error: errorMessage(result.error) }), ...(retirementError === undefined ? {} : { retirementError }) },
       },
     }
   } catch (error) {

@@ -149,7 +149,6 @@ function createProjectRecovery(input: {
   readonly predecessorPids?: readonly number[]
 }) {
   const { reader: projectionReader, writer, manager, directories } = input
-  const owedCells = requireInFlightWrites(writer)
   const runReader = workflowRunReader(projectionReader)
   const sweepChildren = (parentSessionId: string) => reconcileChildSessionCompletions({
     parentSessionId, reader: projectionReader, projectionReader, writer,
@@ -196,7 +195,7 @@ function createProjectRecovery(input: {
       ...[...earlierCauses].map(([sessionId, cause]) => ({ sessionId, cause })),
       ...[...sessionIds].filter((sessionId) => !earlierCauses.has(sessionId)).map((sessionId): OwedRecovery => ({ sessionId, cause: interruptedByPerson.has(sessionId) ? "interrupted" : "crash" })),
     ]
-    for (const { sessionId, cause } of owed) if (!earlierCauses.has(sessionId)) await owedCells.putInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND, OWED_KEY, { cause })
+    for (const { sessionId, cause } of owed) if (!earlierCauses.has(sessionId)) await writer.putInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND, OWED_KEY, { cause })
     for (const session of live) await recordCutEpisodeOf(projectionReader, writer, session.id)
     for (const session of live) await manager.updateLifecycleState(session.id, "inactive")
     log.info("project recovery claimed", { owed: owed.length, earlier: earlierCauses.size, degraded: degraded.length })
@@ -245,7 +244,7 @@ function createProjectRecovery(input: {
         log.warn("child completion recovery degraded; the parent stays paused", { sessionId: parentSessionId, error: errorMessage(error) })
       }
     }
-    await owedCells.dropInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND, OWED_KEY)
+    await writer.dropInFlight(sessionId, SESSION_RECOVERY_OWED_IN_FLIGHT_KIND, OWED_KEY)
     log.info("owed session recovered", { sessionId, cause, degraded: errors.length > 0, durationMs: Math.round(performance.now() - startedAt) })
     if (errors.length === 0) return null
     const error = errors.map(errorMessage).join("; ")
@@ -325,12 +324,6 @@ async function readOwedCause(reader: AsyncEventStateReadSurface, sessionId: stri
   if (cause === "crash" || cause === "interrupted") return cause
   log.warn("owed recovery cell has a shape this build cannot read; the session recovers as an unexpected exit", { sessionId })
   return "crash"
-}
-
-function requireInFlightWrites(writer: AsyncEventWriter): Required<Pick<AsyncEventWriter, "putInFlight" | "dropInFlight">> {
-  const { putInFlight, dropInFlight } = writer
-  if (!putInFlight || !dropInFlight) throw new Error("project recovery needs a writer that writes in-flight cells")
-  return { putInFlight, dropInFlight }
 }
 
 /** A session left active may have been cut inside an episode, and the

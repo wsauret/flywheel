@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionMetadataProjection, createSingleSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store.js"
@@ -188,10 +188,8 @@ describe("session auth profile authority", () => {
     let releasePublication: (() => void) | undefined
     const publicationPaused = Promise.withResolvers<void>()
     const publicationRelease = new Promise<void>((resolve) => { releasePublication = resolve })
-    const writer: AsyncGuardedEventWriter = {
-      append: async (event) => store.append(event),
-      appendBatch: async (events: readonly EventStoreAppend[]) => store.appendBatch(events),
-      appendGuarded: async (event) => store.appendGuarded(event),
+    const writer: AsyncEventWriter = {
+      ...asAsyncEventWriter(store),
       appendBatchGuarded: async (events) => {
         if (events.some((event) => event.type === "session.auth.profile.selected")) {
           publicationPaused.resolve()
@@ -199,7 +197,6 @@ describe("session auth profile authority", () => {
         }
         return store.appendBatchGuarded(events)
       },
-      pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
     }
     const metadata = createSessionMetadataStore({ reader: asAsyncEventReadSurface(store), writer })
     const selection = metadata.selectAuthProfileWithRoleSnapshot("doomed", "work", {

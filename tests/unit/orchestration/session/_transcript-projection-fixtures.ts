@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import type { IndexedTranscript } from "../../../../src/orchestration/session/conversation/branch-history-builder"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
@@ -43,15 +43,8 @@ export function transcriptFixture(currentStore: () => EventStore, directory: () 
     if (!conversationId) throw new Error("missing conversation id")
     return { sessionId, conversationId }
   }
-  function immediateWriter(): AsyncGuardedEventWriter {
-    const store = currentStore()
-    return {
-      append: async (event) => store.append(event),
-      appendBatch: async (events) => store.appendBatch(events),
-      appendGuarded: async (event) => store.appendGuarded(event),
-      appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
-      pruneSupersededEvents: async () => 0,
-    }
+  function immediateWriter(): AsyncEventWriter {
+    return { ...asAsyncEventWriter(currentStore()), pruneSupersededEvents: async () => 0 }
   }
   async function publishWorkflowBinding(parentSessionId: string, conversationId: string, toolUseId: string, adopted = false, name = "Workflow"): Promise<string> {
     const manager = createSessionManager({ projectRoot: directory(), executionCwd: directory(), store: currentStore() })

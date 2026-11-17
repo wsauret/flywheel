@@ -7,7 +7,6 @@ import type { FirstPartyModule } from "../modules.js"
 import { buildPapercutDrain } from "./papercuts/drain.js"
 import { createPapercutsProtocol } from "./papercuts/protocol.js"
 import { PapercutRecordedFactSchemas } from "./papercuts/facts.js"
-import { requireGuardedEventAppender } from "../../infra/event-store-types.js"
 import { createPapercutDispositionWriter, papercutDispositionRuntime, papercutDispositionService } from "./papercuts/disposition-writer.js"
 import type { ModuleProcessServices } from "../app-service/module-service-host.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
@@ -33,7 +32,7 @@ export const papercutsModule = {
     create: (services: Pick<ModuleProcessServices, "projectionReader" | "eventWriter">) => ({
       writer: createPapercutDispositionWriter({
         store: services.projectionReader,
-        writer: requireGuardedEventAppender(services.eventWriter, "papercut disposition requires the runtime event store's writer"),
+        writer: services.eventWriter,
       }),
       // The kernel owns the shared writer and closes it after module disposal.
       dispose: async () => {},

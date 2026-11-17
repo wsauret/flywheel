@@ -338,7 +338,7 @@ test.each(["whole", "automatic"] as const)("a %s hand-back with a held message r
     const b = await f.address("b")
     await f.runner.interrupt("person", WHOLE_WORKFLOW)
     await Promise.all([...f.parks.values()].map(({ promise }) => promise))
-    expect(await holdAddressedWorkflowMessage(f.store, "session", "held-a", { text: "continue a" }, a)).toBe(true)
+    await holdAddressedWorkflowMessage(f.store, "session", "held-a", { text: "continue a" }, a)
     if (kind === "whole") expect(await f.runner.handBack()).toEqual({ kind: "continued" })
     else await f.runner.continueHeldMessages()
     expect(await f.runner.cut(a)).toBeUndefined()
@@ -366,7 +366,7 @@ test("a person's addressed hand-back that starts its turn before the cut is clea
       return append(event)
     }
     const person = (state: Parameters<typeof messageDisposition>[0]["state"]) => messageDisposition({ state, origin: "human", hop: 0, self: false })
-    expect(await holdAddressedWorkflowMessage(f.store, "session", "agent-view-a", { text: "Continue agent a." }, a)).toBe(true)
+    await holdAddressedWorkflowMessage(f.store, "session", "agent-view-a", { text: "Continue agent a." }, a)
     await f.control.deliver({ text: "Continue agent a.", dispatchIds: ["agent-view-a"] }, person, a)
     await handBackTurn
     expect(clearedCuts).toBe(1)

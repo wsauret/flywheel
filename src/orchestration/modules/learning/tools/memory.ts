@@ -338,9 +338,9 @@ async function render(
       let mutationEvidence: MutationEvidence | undefined;
       let evidenceFailure = false;
       try {
-        const stage = audit.writer?.stageSessionContentNodes;
-        if (!stage) throw new Error("Session content staging is unavailable");
-        mutationEvidence = await buildMutationDiffEvidence(result.diff, randomUUID(), stage.bind(audit.writer));
+        const writer = audit.writer;
+        if (!writer) throw new Error("No session event writer is available");
+        mutationEvidence = await buildMutationDiffEvidence(result.diff, randomUUID(), nodes => writer.stageSessionContentNodes(nodes));
       } catch {
         evidenceFailure = true;
       }

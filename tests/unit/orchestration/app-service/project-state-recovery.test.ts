@@ -46,7 +46,7 @@ function fixture() {
       return store.readTolerant(query)
     },
   }
-  const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store: localReader, writer })
+  const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, projectionReader: asAsyncEventReadSurface(localReader), writer })
   const reader = asAsyncEventReadSurface(localReader)
   cleanup.push(() => { store.close(); rmSync(projectRoot, { recursive: true, force: true }) })
   return { projectRoot, store, reader, writer, manager, directories: testDirectories(projectRoot) }
@@ -74,7 +74,7 @@ describe("project execution recovery after a generation closes", () => {
   test("discovers an inactive session from its in-flight cells", async () => {
     const { reader, writer, manager, directories } = fixture()
     const sessionId = await manager.createChat({ name: "unsettled", initialState: "inactive" })
-    await writer.putInFlight?.(sessionId, USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-1", {
+    await writer.putInFlight(sessionId, USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-1", {
       state: "pending",
       attemptId: "attempt-1",
       requestId: "request-1",

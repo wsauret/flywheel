@@ -1,4 +1,4 @@
-import { readCapturedFacts, type AsyncGuardedEventAppender, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import { readCapturedFacts, type AsyncEventAppender, type AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import { parsePapercutFact, type PapercutDisposition } from "./facts.js"
 import { PAPERCUT_FACT_TYPES, projectPapercutBacklog } from "./backlog.js"
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
@@ -21,7 +21,7 @@ export const papercutDispositionService = moduleServiceHandle<{ writer: Papercut
 
 interface PapercutDispositionWriterDeps {
   readonly store: AsyncEventStateReadSurface
-  readonly writer: AsyncGuardedEventAppender
+  readonly writer: AsyncEventAppender
 }
 
 /** Appends one terminal disposition under the project papercut aggregate's optimistic sequence guard. */

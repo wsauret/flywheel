@@ -161,7 +161,7 @@ describe("shared file edit publication", () => {
         ...store.writer,
         stageSessionContentNodes: async nodes => {
           if (store.changes.length > 0 && nodes.some(row => row.node.kind === "records")) throw refusal
-          await store.writer.stageSessionContentNodes!(nodes)
+          await store.writer.stageSessionContentNodes(nodes)
         },
       },
     }), {
@@ -207,7 +207,7 @@ describe("shared file edit publication", () => {
         ...store.writer,
         swapInFlight: async (...args) => {
           expect(encodes).toBe(2)
-          return store.writer.swapInFlight!(...args)
+          return store.writer.swapInFlight(...args)
         },
       },
     }, {
@@ -249,7 +249,7 @@ describe("shared file edit publication", () => {
       sessionEventWriter: {
         ...store.writer,
         swapInFlight: async (...args) => {
-          const stored = await store.writer.swapInFlight!(...args)
+          const stored = await store.writer.swapInFlight(...args)
           await prepared.promise
           events.push("prepared")
           return stored

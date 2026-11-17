@@ -9,7 +9,6 @@ import { LlmToolOutputPartSchema } from "../../infra/llm/tool-output-part-schema
 import { TOOL_OUTCOME_VALUES } from "../../infra/tool-outcome.js";
 import {
   InFlightSwapConflictError,
-  requireGuardedEventAppender,
   type AsyncEventStateReadSurface,
   type AsyncEventWriter,
   type GuardedEventStoreAppend,
@@ -87,7 +86,7 @@ export async function checkpointFinalizedToolResult(
   writer: SessionFactWriter | undefined,
   checkpoint: Omit<FinalizedToolResultCheckpoint, "version" | "details" | "turnBudgetChars" | "contextWindowTokens"> & { readonly turnBudgetChars: number; readonly details?: unknown },
 ): Promise<FinalizedToolResultCheckpointToken | null> {
-  if (!writer?.putInFlight) return null;
+  if (!writer) return null;
   const parsed = decodeCheckpoint({ ...checkpoint, version: 2 });
   const key = checkpointKey(parsed.conversationId, parsed.toolUseId);
   const raw = JSON.stringify(parsed);
@@ -150,8 +149,7 @@ export async function recoverFinalizedToolResultCheckpoints(
       continue;
     }
     try {
-      const result = await requireGuardedEventAppender(options.writer, "Finalized result recovery requires guarded append authority")
-        .appendBatchGuarded(withRetirements(appends, checkpoints));
+      const result = await options.writer.appendBatchGuarded(withRetirements(appends, checkpoints));
       if (result.kind === "stored") return;
       if (attempt === 0) continue;
       throw new Error("Finalized tool result recovery stayed sequence-contended", { cause: result.conflict });
@@ -250,7 +248,6 @@ export async function retireLegacyFinalizedToolResultCheckpoints(options: {
     evidence.results.has(checkpoint.toolUseId) && derivatives.has(checkpoint.toolUseId)
     && (checkpoint.executionOutputTail === undefined || evidence.executionOutput.has(checkpoint.toolUseId)));
   if (completed.length === 0) return;
-  if (!options.writer.swapInFlightBatch) throw new Error("Finalized result recovery requires atomic in-flight swap authority");
   await options.writer.swapInFlightBatch(options.sessionId, completed.map(({ row }) => ({
     op: "swap", kind: FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND, key: row.key, expectedRaw: row.raw, payload: null,
   })));
@@ -377,7 +374,6 @@ async function retireAlreadyRecorded(
   options: RecoverFinalizedToolResultCheckpointsOptions,
   checkpoints: readonly StoredCheckpoint[],
 ): Promise<boolean> {
-  if (!options.writer.swapInFlightBatch) throw new Error("Finalized result recovery requires atomic in-flight swap authority");
   return options.writer.swapInFlightBatch(options.sessionId, checkpoints.map(({ row }) => ({
     op: "swap",
     kind: FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND,

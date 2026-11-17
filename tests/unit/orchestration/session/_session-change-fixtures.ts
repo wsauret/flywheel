@@ -3,6 +3,7 @@ import { asAsyncEventReadSurface, type EventStoreReadSurface, type FactQuery, ty
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
 import { readSessionContentRange } from "../../../../src/infra/session-content.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 export const timestamp = "2026-01-01T00:00:00.000Z"
 export function row(position: number, type: string, payload: StoredFact["payload"], version = 1, aggregateId = "session:s"): StoredFact {
@@ -55,6 +56,6 @@ export function fixture(initial: StoredFact[]) {
   const canonical = createMutationEvidenceRecovery({
     ...asAsyncEventReadSurface(reader), readSessionContentNode: async (_session, hash) => nodes.get(hash) ?? null,
     readSessionContentRange: async (_session, reference, offset, length) => readSessionContentRange(reference, offset, length, async hash => nodes.get(hash) ?? null),
-  }, { stageSessionContentNodes: async (_session, values) => { for (const value of values) nodes.set(value.sha256, value.node) } }).reader
+  }, refusingEventWriter({ stageSessionContentNodes: async (_session, values) => { for (const value of values) nodes.set(value.sha256, value.node) } })).reader
   return { reader, projectionReader: canonical, rows, queries }
 }

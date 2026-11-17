@@ -26,7 +26,7 @@ import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-h
 import { createSubagentRunInputs } from "../../../../src/orchestration/modules/subagents/execution/run-inputs"
 import { createWorkflowMemberInputs } from "../../../../src/orchestration/workflow-host/member-inputs"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
-import { addSubagentChild, localAsyncWriter } from "./_child-session-reconciliation-fixtures"
+import { addSubagentChild } from "./_child-session-reconciliation-fixtures"
 import { loadToolExecutionTimelineFromEvents } from "../../../../src/orchestration/session/tool-execution-projection"
 
 const directories: string[] = []
@@ -115,7 +115,7 @@ describe("subagent completion delivery", () => {
     const path = resolveEventStoreDbFile(projectRoot)
     const store = createSqliteEventStore(path)
     try {
-      const writer = localAsyncWriter(store)
+      const writer = asAsyncEventWriter(store)
       const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
       const parentSessionId = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
       for (let i = 0; i < 3; i += 1) await addSubagentChild(store, writer, projectRoot, parentSessionId, "parent-conversation", i, "completed")

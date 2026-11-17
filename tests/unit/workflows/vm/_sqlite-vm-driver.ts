@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { isDeepStrictEqual } from "node:util"
 import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js"
 import { hashContent } from "../../../../src/workflows/definition-hash.js"
@@ -517,7 +517,7 @@ export class SqliteVmDriver {
     return createWorkflowCommitHost({
       sessionId: this.sessionId,
       writer,
-      commitBatch: (events) => requireGuardedEventAppender(writer, "The driver commits through guarded batches").appendBatchGuarded(events),
+      commitBatch: (events) => writer.appendBatchGuarded(events),
       reader: asAsyncEventReadSurface(this.store),
       definitionRevision: this.definitionRevision,
       workflow: this.workflow,
@@ -536,7 +536,7 @@ export class SqliteVmDriver {
       payload: fact.payload,
       ...(index === 0 ? { expectedSeq } : {}),
     }))
-    const result = await requireGuardedEventAppender(this.#writer, "SQLite VM driver requires guarded append authority").appendBatchGuarded(appends)
+    const result = await this.#writer.appendBatchGuarded(appends)
     if (result.kind === "conflict") throw new Error(`${proposalId} conflicted at aggregate sequence ${result.conflict.actualSeq}`)
     const stored = [...result.events]
     if (stored.length === 0) throw new Error(`${proposalId} returned no stored events`)

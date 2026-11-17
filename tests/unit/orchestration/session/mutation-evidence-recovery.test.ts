@@ -38,8 +38,8 @@ function fixture() {
   let swaps = 0
   const recovery = createMutationEvidenceRecovery(reader, {
     ...writer,
-    async stageSessionContentNodes(sessionId, nodes) { stages += 1; await writer.stageSessionContentNodes!(sessionId, nodes) },
-    async swapInFlight(...args) { swaps += 1; return writer.swapInFlight!(...args) },
+    async stageSessionContentNodes(sessionId, nodes) { stages += 1; await writer.stageSessionContentNodes(sessionId, nodes) },
+    async swapInFlight(...args) { swaps += 1; return writer.swapInFlight(...args) },
   })
   return { store, path, reader: recovery.reader, recovery, counts: () => ({ stages, swaps }) }
 }
@@ -106,11 +106,11 @@ describe("state-local mutation evidence recovery", () => {
         ...writer,
         async stageSessionContentNodes(sessionId, nodes) {
           stages += 1
-          await writer.stageSessionContentNodes!(sessionId, nodes)
+          await writer.stageSessionContentNodes(sessionId, nodes)
         },
         async swapInFlight(...args) {
           swaps += 1
-          return writer.swapInFlight!(...args)
+          return writer.swapInFlight(...args)
         },
       })
       return recovery.reader
@@ -290,7 +290,7 @@ describe("state-local mutation evidence recovery", () => {
       ...writer,
       async swapInFlight(...args) {
         store.putInFlight("s", "finalized-tool-result", "c:tool", winner)
-        return writer.swapInFlight!(...args)
+        return writer.swapInFlight(...args)
       },
     })
     const result = await recovery.reader.readInFlight("s", "finalized-tool-result")
@@ -350,11 +350,11 @@ describe("state-local mutation evidence recovery", () => {
       ...writer,
       async stageSessionContentNodes(...args) {
         if (point === "before-stage") throw new Error("crash")
-        await writer.stageSessionContentNodes!(...args)
+        await writer.stageSessionContentNodes(...args)
       },
       async swapInFlight(...args) {
         if (point === "before-swap") throw new Error("crash")
-        await writer.swapInFlight!(...args)
+        await writer.swapInFlight(...args)
         throw new Error("crash")
       },
     })

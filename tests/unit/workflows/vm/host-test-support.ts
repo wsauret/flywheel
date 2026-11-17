@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, requireGuardedEventAppender, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
@@ -21,6 +21,7 @@ import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../sr
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const workPhase = { phase: "work", brief: "Do the work work.", name: "Work", output: { summary: "Result" }, writes: [{ id: "artifact", lifetime: "transient" }] }
 
@@ -51,7 +52,7 @@ function requireAgent(agents: ReadonlyMap<string, ResolvedAgent>, definitionId: 
   return agent
 }
 
-export function createMemoryStore(initial: readonly EventStoreAppend[]): EventReader & AsyncGuardedEventWriter & { events: StoredFact[] } {
+export function createMemoryStore(initial: readonly EventStoreAppend[]): EventReader & AsyncEventWriter & { events: StoredFact[] } {
   const events: StoredFact[] = initial.map((event, index) => stored(event, index, index + 1))
   const reader = inMemoryEventReader(events)
   const appendBatch = async (appends: readonly EventStoreAppend[]): Promise<StoredFact[]> => {
@@ -62,6 +63,7 @@ export function createMemoryStore(initial: readonly EventStoreAppend[]): EventRe
     return written
   }
   return {
+    ...refusingEventWriter(),
     ...reader,
     events,
     append: async (event) => (await appendBatch([event]))[0] ?? Promise.reject(new Error("append returned no event")),
@@ -115,7 +117,7 @@ export function initialFacts(
  *  disposal releases nothing. */
 export function quietHostDeps(writer: AsyncEventWriter): Pick<WorkflowVmHostDeps, "commitBatch" | "conversationId" | "preAttemptPolicy" | "addressedMessages" | "onPostPreflight" | "lifecycle"> {
   return {
-    commitBatch: (events) => requireGuardedEventAppender(writer, "A test host commits through guarded append").appendBatchGuarded(events),
+    commitBatch: (events) => writer.appendBatchGuarded(events),
     conversationId: () => `agent-${crypto.randomUUID()}`,
     preAttemptPolicy: () => null,
     addressedMessages: { read: async () => [], retire: async () => {} },

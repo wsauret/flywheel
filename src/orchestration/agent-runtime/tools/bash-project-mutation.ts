@@ -326,8 +326,7 @@ async function landPrivateCopy(context: MutationLandingContext, copy: LandableCo
 /** Session-folder writes land in place, even when project publication is refused. */
 async function mergeSessionEvidence(context: Pick<MutationLandingContext, "sessionEventWriter">, jobs: PrivateCopyJobs, home: string, projectRoot: string | undefined, landing: ProjectMutationLanding, projectEntries: readonly MutationEvidenceEntry[] = [], snapshot?: SessionFolderSnapshot): Promise<ProjectMutationLanding> {
   const writer = context.sessionEventWriter;
-  const stage = writer?.stageSessionContentNodes?.bind(writer);
-  if (writer && !stage) throw new Error("File mutation evidence staging is unavailable");
+  const stage = writer?.stageSessionContentNodes.bind(writer);
   const entries = [...projectEntries];
   const lines: string[] = [];
   let observed;
@@ -543,7 +542,7 @@ function unsupportedLines(unsupported: readonly UnsupportedChange[]): string[] {
 /** The publisher stops at the first item it cannot settle, and states what became of it. */
 function stoppedState(outcome: Exclude<FileEditPublicationOutcome<PlannedFileEdit>, { readonly status: "completed" }>): string {
   const path = outcome.current.plan.admitted.path;
-  if (outcome.status === "not_applied") return `${path} was not applied: ${errorMessage(outcome.error)}`;
+  if (outcome.status === "not_applied") return `${path} was not applied: ${outcome.reason === "cancelled" ? "publication was interrupted" : errorMessage(outcome.error)}`;
   return outcome.publication === "unknown" ? `${path} may have changed: ${errorMessage(outcome.error)}` : `${path} was applied, but ${outcome.settlement === "pending" ? "it is not durably recorded" : "its result could not be observed"}: ${errorMessage(outcome.error)}`;
 }
 

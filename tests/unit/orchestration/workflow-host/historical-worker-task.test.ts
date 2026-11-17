@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { EventBus, createEmit } from "../../../../src/infra/event-bus"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
@@ -36,7 +36,7 @@ const canonicalPrompt = "# Original request\nImplement the requested feature.\n\
 const step: AttemptRow = { id: "step-1", definitionId: "work", briefId: "work", workflowDefinitionId: "wf", name: "Work", status: "running", writes: [], resumeRevertCount: 0 }
 let baseDir: string
 let store: EventStore
-let writer: AsyncGuardedEventWriter
+let writer: AsyncEventWriter
 
 beforeEach(() => {
   baseDir = mkdtempSync(join(tmpdir(), "flywheel-historical-worker-task-"))
@@ -232,7 +232,7 @@ test("crash after durable task append but before factory creation resumes withou
     processEnd.abort()
     throw new Error("crash after task commit")
   }
-  const crashed: AsyncGuardedEventWriter = {
+  const crashed: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       await writer.append(event)
@@ -336,7 +336,7 @@ test("a failed append blocks agent creation and retains the original operator en
     cancel.abort()
     throw new Error(message)
   }
-  const rejected: AsyncGuardedEventWriter = {
+  const rejected: AsyncEventWriter = {
     ...writer,
     append: async () => refuse("append failed"),
     appendBatch: async () => refuse("append batch failed"),

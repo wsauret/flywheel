@@ -13,6 +13,7 @@ import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess
 import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 const temporary = temporaryDirectories();
 
@@ -141,13 +142,13 @@ describe("child execution liveness and interruption", () => {
         sessionDir,
         backgroundTasks: notification.backgroundTasks,
         createRunner: abortFactory,
-        sessionEventWriter: {
+        sessionEventWriter: discardingSessionFactWriter({
           record: async (fact) => { facts.push(fact); return null; },
           recordBatch: async () => null,
           recordGuarded: async () => null,
           transaction: async (fn) => { fn(); },
           dispose() {},
-        },
+        }),
       });
       deps.subagentSessions = { ...deps.subagentSessions, deactivate: async (id) => { inactive.resolve(id); },
         reconcileParentCompletion: () => { inactive.resolve("completed"); } };
@@ -455,13 +456,13 @@ function scriptedDispatch(script: ReadonlyArray<AgentRunResult["terminal"] | "ho
     sessionDir: temporary("child-recovery-"),
     backgroundTasks: registry,
     keepAliveIntervalMs: 5,
-    sessionEventWriter: {
+    sessionEventWriter: discardingSessionFactWriter({
       record: async (fact) => { facts.push(fact); return null; },
       recordBatch: async () => null,
       recordGuarded: async () => null,
       transaction: async (fn) => { fn(); },
       dispose() {},
-    },
+    }),
     createRunner: (options) => {
       const step = script[runs] ?? "complete";
       runs += 1;

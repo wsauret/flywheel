@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender, type EventStore } from "../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { buildSessionMetadataAppend, createSessionMetadataStore } from "../../../../src/orchestration/session/session-metadata-store";
 import { SessionSchema } from "../../../../src/orchestration/session/schemas";
@@ -101,7 +101,7 @@ describe("SessionMetadataStore", () => {
       const eventStore = createSqliteEventStore(resolveEventStoreDbFile(baseDir));
       ownedStores.push(eventStore);
       const writer = asAsyncEventWriter(eventStore);
-      const guarded = requireGuardedEventAppender(writer, "test requires SQLite guarded writes");
+      const guarded = writer;
       return createSessionMetadataStore({
         reader: asAsyncEventReadSurface(eventStore),
         writer: {

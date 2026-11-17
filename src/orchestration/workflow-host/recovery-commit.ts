@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util"
-import { requireGuardedEventAppender, type AsyncEventStateReadSurface, type AsyncEventWriter, type GuardedEventStoreAppend } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend } from "../../infra/event-store-types.js"
 import type { CommittedWorkflowControl } from "../../workflows/vm/committed-control.js"
 import { readWorkflowRecoveryEvidence, type WorkflowRecoveryEvidence } from "../../workflows/vm/recovery-fold.js"
 import { recoverWorkflowContext, type RecoveredWorkflowContext } from "../../workflows/context-bundle/context-recovery.js"
@@ -130,7 +130,7 @@ export async function commitWorkflowRecovery(input: WorkflowRecoveryCommitInput)
     sessionId: input.sessionId, expectedSeq, basis, resolvedAgents: prepared.resolvedAgents, context, request,
     degradationReasons, runtimeIdentity: await input.runtimeIdentity(), timestamp: Date.parse(input.timestamp),
   })
-  const result = await requireGuardedEventAppender(input.writer, "Workflow recovery requires guarded append authority").appendBatchGuarded(appends)
+  const result = await input.writer.appendBatchGuarded(appends)
   return result.kind === "stored" ? { kind: "committed" } : { kind: "conflict" }
 }
 

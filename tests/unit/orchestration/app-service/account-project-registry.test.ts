@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { canonicalPathWithMissingTail } from "../../../../src/infra/canonical-path"
-import { asAsyncEventAppender } from "../../../../src/infra/event-store-types"
+import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { accountEventStoreDbFile, resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createAccountProjectRegistry, type AccountProjectRegistry } from "../../../../src/orchestration/app-service/account-project-registry"
@@ -88,7 +88,7 @@ describe("account project registry", () => {
   it("rejects malformed owned facts during strict replay", async () => {
     const { userDataRoot, firstProject } = fixture()
     const store = createSqliteEventStore(accountEventStoreDbFile(userDataRoot))
-    await asAsyncEventAppender(store).append({
+    await asAsyncEventWriter(store).append({
       aggregateId: "account-project-registry",
       type: "account.project.registration.updated",
       version: 1,

@@ -4,7 +4,7 @@ import { Redacted } from "effect"
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js"
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { authDir } from "../../../../src/infra/paths.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js"
@@ -25,6 +25,7 @@ import { authProviders } from "../../../helpers/auth-context.js"
 import { AVAILABLE_MODELS, availabilityOwner, EXPLORER, managerDouble, pickerEligibility, providerModelCatalogs, type ManagerDouble } from "./model-assignment-service-fixtures.js"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
 import { testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -35,11 +36,7 @@ const DEFAULT_ROLES = {
 
 const UNUSED_EVENT_READER = inMemoryEventReader([])
 
-const UNUSED_EVENT_WRITER = {
-  append: async () => { throw new Error("unused event writer") },
-  appendBatch: async () => { throw new Error("unused event writer") },
-  pruneSupersededEvents: async () => { throw new Error("unused event writer") },
-} satisfies AsyncEventWriter
+const UNUSED_EVENT_WRITER = refusingEventWriter()
 
 function transientChatStore() {
   return {

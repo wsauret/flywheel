@@ -23,7 +23,7 @@ import { mkdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { Schema } from "effect"
 import { canonicalDirectory, FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../../../src/infra/directory-authorities.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventStoreAppend } from "../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../src/infra/event-store-types.js"
 import { resolveSessionSummaryDbFile } from "../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js"
@@ -109,7 +109,7 @@ function filler(random: () => number, bytes: number): string {
   return text.slice(0, bytes)
 }
 
-function historicalFixtureWriter(store: ReturnType<typeof createSqliteEventStore>): AsyncGuardedEventWriter {
+function historicalFixtureWriter(store: ReturnType<typeof createSqliteEventStore>): AsyncEventWriter {
   const writer = asAsyncEventWriter(store)
   const historicalAppend = <T extends EventStoreAppend>(event: T): T => {
     if (event.type === "chat.entries.appended") {
@@ -241,7 +241,7 @@ interface WorkflowFamily {
  *  points back at its launching tool call on the parent. */
 async function writeWorkflowFamily(
   store: ReturnType<typeof createSqliteEventStore>,
-  writer: AsyncGuardedEventWriter,
+  writer: AsyncEventWriter,
   projectRoot: string,
   updatedMs: number,
   family: WorkflowFamily,

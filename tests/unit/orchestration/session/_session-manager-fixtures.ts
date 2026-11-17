@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
-import { asAsyncEventReadSurface, type AsyncGuardedEventWriter, type EventStore, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type EventStore, type EventStoreReadSurface } from "../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import type { SessionManager, SessionManagerDeps } from "../../../../src/orchestration/session/manager";
 import type { RoleSettings, Session } from "../../../../src/orchestration/session/schemas";
@@ -224,7 +224,7 @@ export async function publishTestSubagent(
 }
 
 interface RacingPublicationWriter {
-  readonly writer: AsyncGuardedEventWriter
+  readonly writer: AsyncEventWriter
   readonly attempts: () => number
 }
 
@@ -236,10 +236,8 @@ export function racingPublicationWriter(
   beforePublication: (attempt: number) => void | Promise<void>,
 ): RacingPublicationWriter {
   let attempts = 0;
-  const writer: AsyncGuardedEventWriter = {
-    append: async (event) => store.append(event),
-    appendBatch: async (events) => store.appendBatch(events),
-    appendGuarded: async (event) => store.appendGuarded(event),
+  const writer: AsyncEventWriter = {
+    ...asAsyncEventWriter(store),
     appendBatchGuarded: async (events) => {
       if (events.some(({ type }) => type === "session.child.linked" || type === "workflow.run.registered")) {
         attempts += 1;
@@ -247,7 +245,6 @@ export function racingPublicationWriter(
       }
       return store.appendBatchGuarded(events);
     },
-    pruneSupersededEvents: async (...args) => store.pruneSupersededEvents(...args),
   };
   return {
     writer,

@@ -257,7 +257,6 @@ describe("recursive child session deletion", () => {
     const { deps, store } = makeDepsWithStore(projectRoot)
     const writer = asAsyncEventWriter(store)
 
-    if (!writer.putInFlight) throw new Error("test writer does not support in-flight state")
     await writer.putInFlight("deleted-root", "session.subagent_recursive_deletion", "deleted-root", {
       version: 1,
       rootSessionId: "deleted-root",

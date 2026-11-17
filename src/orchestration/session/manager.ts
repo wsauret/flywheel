@@ -1,6 +1,6 @@
 import { canonicalDirectory } from "../../infra/directory-authorities.js"
 import { workflowRunOwner } from "../module-catalog.js"
-import { asAsyncEventReadSurface, requireLocalAsyncWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type EventStoreReadSurface, type GuardedAppendResult, type GuardedEventStoreAppend } from "../../infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type EventStoreReadSurface, type LocalEventWrites, type GuardedAppendResult, type GuardedEventStoreAppend } from "../../infra/event-store-types.js"
 import { createWorkflowPublication, type WorkflowAdoption, type WorkflowCommitPublication } from "./workflow-publication.js"
 import { Log } from "../../infra/log.js"
 import { recordBackgroundFailure } from "../../infra/operation-log.js"
@@ -51,8 +51,9 @@ export type SessionManagerDeps = {
    *  directory, and an explicit placement overrides both. */
   executionCwd: string
 } & ({
-  /** Owned local store for offline commands, migrations, and focused tests. */
-  store: EventStoreReadSurface
+  /** Owned local store for offline commands, migrations, and focused tests.
+   *  Its own writes serve unless `writer` names another writer. */
+  store: EventStoreReadSurface & LocalEventWrites
   /** Interactive roots supply the state Worker port. Local and offline roots
    * may omit it and use the direct adapter over their owned reader. */
   projectionReader?: AsyncEventStateReadSurface
@@ -160,7 +161,7 @@ export async function recordGeneratedSessionName(manager: Pick<SessionManager, "
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { projectRoot } = deps
   const projectionReader = "store" in deps ? deps.projectionReader ?? asAsyncEventReadSurface(deps.store) : deps.projectionReader
-  const writer = "store" in deps ? deps.writer ?? requireLocalAsyncWriter(deps.store, "createSessionManager requires writer when store is read-only") : deps.writer
+  const writer = "store" in deps ? deps.writer ?? asAsyncEventWriter(deps.store) : deps.writer
   const metadata = createSessionMetadataStore({ reader: projectionReader, writer })
   const listeners = new Set<(change: SessionMetadataChange) => void>()
   const notifyChanged = (sessionIds: readonly string[]) => { for (const fn of listeners) fn({ kind: "changed", sessionIds }) }

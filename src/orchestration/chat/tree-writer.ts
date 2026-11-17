@@ -127,9 +127,8 @@ export interface ConversationTreeWriterController {
   /** Durably hold a mid-turn queued message at dispatch, the person's or
    *  another session's, under the key its entry takes. Returns the dispatch
    *  id the enqueued input must carry so the save-point flush that commits
-   *  its message retires the cell, or null when the store cannot hold
-   *  in-flight state. */
-  holdQueuedUserInput(input: ChatInputLike): Promise<string | null>
+   *  its message retires the cell. */
+  holdQueuedUserInput(input: ChatInputLike): Promise<string>
   /** Where this conversation already holds the person's message keyed
    *  `key` (`personMessageKey`): an entry, a commit this writer holds behind
    *  the running turn, or a held cell. Undefined when it holds none. */
@@ -358,16 +357,14 @@ export function createConversationTreeWriterController(
     await resolved.writer.settleSuspendedTurn()
   }
 
-  async function holdQueuedUserInput(input: ChatInputLike): Promise<string | null> {
+  async function holdQueuedUserInput(input: ChatInputLike): Promise<string> {
     // A message from another session and a person's message with one
     // submission take their own key; only another person's message
-    // reserves a fresh one, which it gives back when nothing is held.
+    // reserves a fresh one, which it gives back when the hold fails.
     const keyed = normalizeChatInput(input).producer?.kind === "session" || personMessageKey(input) !== undefined
     const reserved = keyed ? undefined : await reserveMessageId()
     try {
-      const held = await holdQueuedInput(deps.writer, deps.sessionId, { target: "conversation", conversationId: deps.conversationId }, input, reserved)
-      if (held === null && reserved !== undefined) releaseMessageId(reserved)
-      return held
+      return await holdQueuedInput(deps.writer, deps.sessionId, { target: "conversation", conversationId: deps.conversationId }, input, reserved)
     } catch (error) {
       if (reserved !== undefined) releaseMessageId(reserved)
       throw error

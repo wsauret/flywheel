@@ -205,24 +205,24 @@ test.each([2, 20])("usage completeness uses one owner request with %s unsettled 
     eventReader: counter.reader,
   }).usageIncomplete
   try {
-    await writer.putInFlight?.("session-a", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-a", {
+    await writer.putInFlight("session-a", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-a", {
       profileId: "profile-a",
     })
-    await writer.putInFlight?.("session-b", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-b", {
+    await writer.putInFlight("session-b", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-b", {
       entry: { profileId: "profile-b" },
     })
     for (let index = 2; index < members; index += 1) {
-      await writer.putInFlight?.(`session-${index}`, USAGE_SETTLEMENT_IN_FLIGHT_KIND, `attempt-${index}`, { profileId: "profile-a" })
+      await writer.putInFlight(`session-${index}`, USAGE_SETTLEMENT_IN_FLIGHT_KIND, `attempt-${index}`, { profileId: "profile-a" })
     }
     expect(await usageIncomplete("absent-profile")).toBe(false)
     expect(counter.take()).toHaveLength(1)
 
     expect(await usageIncomplete("profile-a")).toBe(true)
     expect(await usageIncomplete("profile-b")).toBe(true)
-    await writer.dropInFlight?.("session-b", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-b")
+    await writer.dropInFlight("session-b", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-b")
     expect(await usageIncomplete("profile-a")).toBe(true)
     expect(await usageIncomplete("profile-b")).toBe(false)
-    await writer.dropInFlight?.("session-a", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-a")
+    await writer.dropInFlight("session-a", USAGE_SETTLEMENT_IN_FLIGHT_KIND, "attempt-a")
     expect(await usageIncomplete("profile-a")).toBe(members > 2)
   } finally {
     await store.close()
@@ -252,7 +252,7 @@ test("a request in progress leaves usage complete until it ends without settling
       },
       budgetStreamId: "session", requestId: "request", identity: { providerSessionKey: "provider", conversationId: "parent" }, turn: 1,
     })
-    await store.putInFlight?.("session", USAGE_SETTLEMENT_IN_FLIGHT_KIND, attemptId, { entry: { profileId: "profile-live" } })
+    await store.putInFlight("session", USAGE_SETTLEMENT_IN_FLIGHT_KIND, attemptId, { entry: { profileId: "profile-live" } })
     expect(await usageIncomplete("profile-live")).toBe(false)
     await expect(settlement.settle(attemptId, { served: true })).rejects.toThrow("ledger unavailable")
     expect(await usageIncomplete("profile-live")).toBe(true)

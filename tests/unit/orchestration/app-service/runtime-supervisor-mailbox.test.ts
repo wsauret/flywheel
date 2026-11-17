@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender, type AsyncGuardedEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
@@ -63,9 +63,9 @@ describe("RuntimeSupervisor actor mailbox", () => {
     // cleanly: a rejected ordered section must clear the mailbox so the next
     // dispatch still runs and commits.
     const realWriter = ctx.runtime.runSync(EventStoreWriterService)
-    const guardedWriter = requireGuardedEventAppender(realWriter, "test runtime writer must support guarded append")
+    const guardedWriter = realWriter
     let failNextAppend = true
-    const flakyWriter: AsyncGuardedEventWriter = {
+    const flakyWriter: AsyncEventWriter = {
       ...realWriter,
       appendGuarded: guardedWriter.appendGuarded,
       appendBatchGuarded: (events) => {

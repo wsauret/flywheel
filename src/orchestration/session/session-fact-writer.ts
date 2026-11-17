@@ -1,5 +1,4 @@
 import type { AsyncEventWriter, EventPayload, EventStoreAppend, GuardedAppendResult, InFlightWrite, StoredFact, InFlightPayload } from "../../infra/event-store-types.js"
-import { requireGuardedEventAppender } from "../../infra/event-store-types.js"
 import type { EventStoreDrainResult, EventStoreEnqueueResult, EventStoreWriterLease } from "../../infra/event-store-writer-lane-types.js"
 import { Log } from "../../infra/log.js"
 import { loggedOperation } from "../../infra/operation-log.js"
@@ -22,7 +21,7 @@ const MAX_ENQUEUE_ATTEMPTS = 4
  *  exposes synchronous enqueue and durability barriers for streaming callers. */
 export interface SessionFactWriter {
   /** Stages immutable evidence before settlement. Rejects when disposed or when storage fails. */
-  stageSessionContentNodes?(nodes: readonly SessionContentNodeRow[]): Promise<void>
+  stageSessionContentNodes(nodes: readonly SessionContentNodeRow[]): Promise<void>
   /** Appends a fact and resolves to its stored event. Resolves `null` without
    *  writing after disposal, or when a transaction queues the fact for its
    *  eventual batch. A lane-backed call retries pressure in order and rejects
@@ -39,11 +38,11 @@ export interface SessionFactWriter {
    *  outcome (`record`'s `inFlight`), so the two land together. Resolves when
    *  the state is durable; a caller whose contract is record-before-act must
    *  await it and treat a rejection as the operation being refused. */
-  putInFlight?(kind: string, key: string, payload: InFlightPayload): Promise<void>
+  putInFlight(kind: string, key: string, payload: InFlightPayload): Promise<void>
   /** Retires in-flight state when an operation has no outcome fact. */
-  dropInFlight?(kind: string, key: string): Promise<void>
+  dropInFlight(kind: string, key: string): Promise<void>
   /** Guarded transition of one in-flight cell through the shared writer lane. */
-  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
+  swapInFlight(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
   /** Appends a fact at exactly `expectedSeq`. A lost race resolves as a typed
    * conflict. Real storage failures still reject. */
   recordGuarded(fact: SessionFact, expectedSeq: number): Promise<GuardedAppendResult | null>
@@ -75,7 +74,7 @@ type SessionFactWriterDeps = ({
 }) & {
   /** The one append authority. An offline root adapts a local store once with
    *  `asAsyncEventWriter` and passes the result here. */
-  readonly writer: Pick<AsyncEventWriter, "append" | "appendBatch" | "putInFlight" | "dropInFlight" | "swapInFlight" | "stageSessionContentNodes">
+  readonly writer: Pick<AsyncEventWriter, "append" | "appendBatch" | "appendGuarded" | "putInFlight" | "dropInFlight" | "swapInFlight" | "stageSessionContentNodes">
   readonly lane?: EventStoreWriterLease
   readonly sleep?: (ms: number) => Promise<void>
   /** Projects each committed fact, including transaction and enqueue writes.
@@ -109,7 +108,6 @@ export function createSessionFactWriter(deps: SessionFactWriterDeps): SessionFac
     ...prepareSessionFactAppend(sessionId, fact, contentRows, inFlight),
     aggregateId: durableOwnerAggregate(owner),
   })
-  const stageNodes = eventWriter.stageSessionContentNodes?.bind(eventWriter)
   const sleep = deps.sleep ?? Bun.sleep
   let disposed = false
 
@@ -205,7 +203,7 @@ export function createSessionFactWriter(deps: SessionFactWriterDeps): SessionFac
       summarize: (outcome) => outcome.kind === "conflict"
         ? { kind: outcome.kind, actualSeq: outcome.conflict.actualSeq }
         : { kind: outcome.kind, position: outcome.events[0]?.position },
-    }, () => requireGuardedEventAppender(eventWriter, "SessionFactWriter.recordGuarded requires guarded append authority").appendGuarded(event))
+    }, () => eventWriter.appendGuarded(event))
       .then(async (result) => {
         if (result.kind === "stored") {
           for (const stored of result.events) await deps.onStored?.(stored)
@@ -257,38 +255,22 @@ export function createSessionFactWriter(deps: SessionFactWriterDeps): SessionFac
     lane?.dispose()
   }
 
-  /** Offered only when the store can hold it: a read-only or double store has
-   *  no in-flight state, and a caller that needs it says so rather than
-   *  silently recording nothing. The rejection propagates: a preparation that
-   *  could not be stored (disk full, closed store) must stop the operation it
-   *  guards instead of letting it run unrecoverable. */
-  async function putInFlight(kind: string, key: string, payload: InFlightPayload): Promise<void> {
-    await eventWriter.putInFlight?.(sessionId, kind, key, payload)
-  }
-
-  async function dropInFlight(kind: string, key: string): Promise<void> {
-    await eventWriter.dropInFlight?.(sessionId, kind, key)
-  }
-
-  async function swapInFlight(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean> {
-    return await eventWriter.swapInFlight?.(sessionId, kind, key, expectedRaw, payload) ?? false
-  }
-
+  // The rejection of an in-flight write propagates: a preparation that could
+  // not be stored (disk full, closed store) must stop the operation it guards
+  // instead of letting it run unrecoverable.
   const writer: SessionFactWriter = {
     record,
     recordBatch,
     recordGuarded,
     transaction,
     dispose,
-    ...(eventWriter.putInFlight ? { putInFlight } : {}),
-    ...(eventWriter.dropInFlight ? { dropInFlight } : {}),
-    ...(eventWriter.swapInFlight ? { swapInFlight } : {}),
-    ...(stageNodes ? {
-      async stageSessionContentNodes(nodes: readonly SessionContentNodeRow[]) {
-        if (disposed) throw new Error("session event writer disposed")
-        await stageNodes(sessionId, nodes)
-      },
-    } : {}),
+    putInFlight: (kind, key, payload) => eventWriter.putInFlight(sessionId, kind, key, payload),
+    dropInFlight: (kind, key) => eventWriter.dropInFlight(sessionId, kind, key),
+    swapInFlight: (kind, key, expectedRaw, payload) => eventWriter.swapInFlight(sessionId, kind, key, expectedRaw, payload),
+    async stageSessionContentNodes(nodes) {
+      if (disposed) throw new Error("session event writer disposed")
+      await eventWriter.stageSessionContentNodes(sessionId, nodes)
+    },
   }
   if (!lane) return writer
 

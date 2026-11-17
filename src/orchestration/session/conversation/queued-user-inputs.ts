@@ -98,16 +98,14 @@ export function queuedUserInputPut(key: string, destination: QueuedUserInputDest
 /** Durably holds one accepted message, from a person or from another
  *  session, before any loop reads it. Resolves to the cell key the input must
  *  carry (as its message's dispatchId) so the commit of its entry retires the
- *  cell, or null when the store cannot hold in-flight state - the caller
- *  proceeds without the durability, exactly as read-only stores always have. */
+ *  cell. */
 export async function holdQueuedUserInput(
   writer: AsyncEventWriter,
   sessionId: string,
   destination: QueuedUserInputDestination,
   input: ChatInputLike,
   entryId?: string,
-): Promise<string | null> {
-  if (!writer.putInFlight) return null
+): Promise<string> {
   const normalized = normalizeChatInput(input)
   const key = entryId ?? queuedUserInputKey(normalized.producer, normalized.submissionIds)
   const put = queuedUserInputPut(key, destination, input)
@@ -118,7 +116,7 @@ export async function holdQueuedUserInput(
 /** Retires one cell outside an append: the user recalled the queued message
  *  back into the editor, so there is no commit for the retirement to ride. */
 export async function dropQueuedUserInput(writer: AsyncEventWriter, sessionId: string, key: string, retainedGap = false): Promise<void> {
-  await writer.dropInFlight?.(sessionId, retainedGap ? RETAINED_INPUT_GAP_IN_FLIGHT_KIND : QUEUED_USER_INPUT_IN_FLIGHT_KIND, key)
+  await writer.dropInFlight(sessionId, retainedGap ? RETAINED_INPUT_GAP_IN_FLIGHT_KIND : QUEUED_USER_INPUT_IN_FLIGHT_KIND, key)
 }
 
 /** Decodes one queued human input without accepting another in-flight kind. */

@@ -119,7 +119,7 @@ describe("continuing a planned replacement's work", () => {
     const session = await ctx.manager.read(sessionId)
     if (session?.kind !== "chat") throw new Error("the fixture session is not a chat")
     const row = handedOverRow("/scratch", { sessionId, conversationId: session.conversationId }, { handoffId, processId: `bash-bg-${sessionId}` })
-    await ctx.runtime.runSync(EventStoreWriterService).putInFlight?.(sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
+    await ctx.runtime.runSync(EventStoreWriterService).putInFlight(sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
   }
 
   function retainedLaunch(parentSessionId: string, parentConversationId: string, childSessionId: string) {
@@ -244,7 +244,7 @@ describe("continuing a planned replacement's work", () => {
     const parentConversationId = `conversation-${crypto.randomUUID()}`
     const parentSessionId = await ctx.manager.createChat({ conversationId: parentConversationId })
     const launch = retainedLaunch(parentSessionId, parentConversationId, "reserved-retained-workflow")
-    await writer.putInFlight?.(parentSessionId, WORKFLOW_LAUNCH_OPERATION_KIND, launch.operationId, launch)
+    await writer.putInFlight(parentSessionId, WORKFLOW_LAUNCH_OPERATION_KIND, launch.operationId, launch)
     const operations = await pendingRetainedOperationContinuations({
       reader: asAsyncEventReadSurface(ctx.store),
       projectionReader,
@@ -265,7 +265,6 @@ describe("continuing a planned replacement's work", () => {
         restoreLaunchTracking: async () => { throw new Error("Workflow tracking is not used in this test") },
         commitLaunch: async (_operation, cell) => {
           preparations += 1
-          if (!writer.swapInFlight) throw new Error("expected exact in-flight write authority")
           const committed = await writer.swapInFlight(cell.sessionId, cell.kind, cell.key, cell.raw, null)
           return committed ? { kind: "committed", dispatch: () => {} } : { kind: "retained" }
         },
@@ -305,7 +304,7 @@ describe("continuing a planned replacement's work", () => {
     const parentConversationId = `conversation-${crypto.randomUUID()}`
     const parentSessionId = await ctx.manager.createChat({ conversationId: parentConversationId })
     const launch = retainedLaunch(parentSessionId, parentConversationId, "reserved-interrupted-workflow")
-    await writer.putInFlight?.(parentSessionId, WORKFLOW_LAUNCH_OPERATION_KIND, launch.operationId, launch)
+    await writer.putInFlight(parentSessionId, WORKFLOW_LAUNCH_OPERATION_KIND, launch.operationId, launch)
     const operations = await pendingRetainedOperationContinuations({
       reader: asAsyncEventReadSurface(ctx.store),
       projectionReader,
@@ -372,7 +371,6 @@ describe("continuing a planned replacement's work", () => {
         restoreLaunchTracking: async () => { throw new Error("Workflow tracking is not used in this test") },
         commitLaunch: async (_operation, cell) => {
           preparations += 1
-          if (!writer.swapInFlight) throw new Error("expected exact in-flight write authority")
           const committed = await writer.swapInFlight(cell.sessionId, cell.kind, cell.key, cell.raw, null)
           return committed ? { kind: "committed", dispatch: () => {} } : { kind: "retained" }
         },
@@ -398,7 +396,7 @@ describe("continuing a planned replacement's work", () => {
     await handedOver(other, "handoff-earlier")
     // The step of a workflow a person paused, which no chat owns and no resume re-enters.
     const step = handedOverRow("/scratch", { sessionId: "workflow-paused", conversationId: "agent-step-1" }, { handoffId: "handoff-3", processId: "bash-bg-step" })
-    await writer.putInFlight?.(step.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, step.processId, step)
+    await writer.putInFlight(step.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, step.processId, step)
     const steps: string[] = []
 
     const resumed = await continueAfterReplacement({

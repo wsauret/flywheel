@@ -21,12 +21,12 @@ describe("runtime in-flight cell writer", () => {
   it("queues standalone in-flight puts and drops until the shared lane commits", async () => {
     const store = createRuntimeEventStore(tempDbPath())
     try {
-      const put = store.putInFlight!("s1", "queued-input", "one", { text: "hello" })
+      const put = store.putInFlight("s1", "queued-input", "one", { text: "hello" })
       expect(store.readInFlight("s1", "queued-input")).toEqual([])
       expect(store.writerLane.snapshot().queuedEvents).toBe(1)
       await put
       expect(store.readInFlight("s1", "queued-input")).toMatchObject([{ key: "one", payload: { text: "hello" } }])
-      const drop = store.dropInFlight!("s1", "queued-input", "one")
+      const drop = store.dropInFlight("s1", "queued-input", "one")
       expect(store.readInFlight("s1", "queued-input")).toHaveLength(1)
       expect(store.writerLane.snapshot().queuedEvents).toBe(1)
       await drop
@@ -43,7 +43,7 @@ describe("runtime in-flight cell writer", () => {
     if (!(db instanceof Database)) throw new Error("expected the runtime connection")
     const commit = spyOn(db.query("commit"), "run").mockImplementationOnce(() => { throw new Error("commit refused") })
     try {
-      await expect(store.putInFlight!("s1", "queued-input", "one", { text: "hello" })).rejects.toThrow("commit refused")
+      await expect(store.putInFlight("s1", "queued-input", "one", { text: "hello" })).rejects.toThrow("commit refused")
       expect(store.readInFlight("s1", "queued-input")).toEqual([])
       expect(db.query("PRAGMA busy_timeout").get()).toEqual({ timeout: 5000 })
     } finally {

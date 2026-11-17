@@ -17,6 +17,7 @@ import { publishSkillRevision } from "../../../../../../src/workflows/skill-sche
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills.js";
 import { parseSkillFact } from "../../../../../../src/workflows/skill-facts.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
+import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 
 const TMP = fileTemporaryDirectory("flywheel-skill-manage-tool-test-");
 const CWD = join(TMP, "project");
@@ -69,7 +70,7 @@ function makeContext(): DispatchedToolContext {
     projectRoot: CWD,
     sessionId: "sess-1",
     toolUseId: "tool-global-test",
-    sessionEventWriter: {
+    sessionEventWriter: discardingSessionFactWriter({
       stageSessionContentNodes: async (nodes) => { for (const row of nodes) contentNodes.set(row.sha256, row.node); },
       record: (fact) => {
         recorded.push(parseSkillFact(fact));
@@ -79,7 +80,7 @@ function makeContext(): DispatchedToolContext {
       recordGuarded: async () => { throw new Error("unexpected guarded write"); },
       transaction: async (run) => { run(); },
       dispose: () => {},
-    },
+    }),
   });
 }
 

@@ -42,7 +42,7 @@ export function servedProjectState(directories: ProjectDirectories, options: Ser
     settleRecovery: async () => {},
     appendWriteItem: store.writerLane.appendWriteItem,
     pruneSupersededEvents: store.pruneSupersededEvents,
-    pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents!(aggregate, type, key),
+    pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents(aggregate, type, key),
     pruneRetiredFamilyChunk: maintenance ? (eventType) => deleteRetiredFamilyChunk(dbFile, eventType) : unexpected("retired-family prune"),
     dropRetiredIndexes: maintenance ? () => dropRetiredEventStoreIndexes(dbFile).length : unexpected("retired-index drop"),
     retireFinalizedCheckpointPage: maintenance

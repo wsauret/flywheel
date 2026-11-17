@@ -7,7 +7,7 @@ import { errorDetail, errorMessage } from "./error-message.js"
 import { factRetention } from "./fact-retention-registry.js"
 import {
   InFlightSwapConflictError,
-  type AsyncGuardedEventWriter,
+  type AsyncEventWriter,
   type EventStoreAppend,
   type EventStoreItemSettlement,
   type EventStoreWriteItem,
@@ -38,7 +38,7 @@ const log = Log.create({ service: "sqlite-event-store" })
  *  reject. The read surface stays the shared synchronous one. Lane commits
  *  return lock contention immediately for cooperative retry; acquisition and
  *  synchronous maintenance keep the 5s native lock wait. */
-export interface RuntimeEventStore extends EventStoreReadSurface, AsyncGuardedEventWriter {
+export interface RuntimeEventStore extends EventStoreReadSurface, AsyncEventWriter {
   /** The single writer lane over this connection: lease creation for
    *  session-scoped streaming writers, plus flush/drain control. */
   readonly writerLane: EventStoreWriterLane

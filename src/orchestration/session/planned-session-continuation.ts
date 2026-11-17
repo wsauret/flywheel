@@ -612,7 +612,6 @@ export async function authorizePlannedSessionContinuation(input: {
   readonly continuation: Omit<PlannedSessionContinuation, "version">
 }): Promise<void> {
   const { reader, writer, continuation } = input
-  if (!writer.putInFlight || !writer.dropInFlight) throw new Error("Planned continuation requires durable in-flight storage")
   const sessionId = continuationTargetId(continuation.target)
   for (const row of await reader.readInFlight(sessionId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND)) {
     if (row.key !== sessionId) await writer.dropInFlight(sessionId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, row.key)
@@ -634,7 +633,6 @@ export async function retirePlannedSessionContinuation(input: {
   readonly capacity?: true
 }): Promise<boolean> {
   const { reader, writer, sessionId } = input
-  if (!writer.swapInFlight) throw new Error("Planned continuation requires guarded in-flight retirement")
   let retired = false
   for (const { row, continuation } of decodedContinuations(await reader.readInFlight(sessionId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND), sessionId)) {
     if (input.handoffId !== undefined && continuation.handoffId !== input.handoffId) continue

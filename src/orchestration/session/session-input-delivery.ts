@@ -97,18 +97,17 @@ export async function deliverSessionInput(
 
   const holdAndDeliver = async (): Promise<DeliveryOutcome> => {
     const destination = destinationOf(recipient)
-    let key: string | null
+    let key: string
     if (personKey !== undefined && place !== undefined) {
       // Two copies that arrive together hold one cell, and a copy whose
       // earlier copy a reader committed meanwhile finds that entry.
       const put = queuedUserInputPut(personKey, destination, input)
       const held = await holdPersonMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: put.kind, key: personKey, payload: put.payload }, () => conversationPersonMessage(deps.projectionReader, place, personKey).then((found) => found === "cell" ? undefined : found))
-      if (held !== null && held !== "held") return receipt(recipientSessionId, input, held)
-      key = held === null ? null : personKey
+      if (held !== "held") return receipt(recipientSessionId, input, held)
+      key = personKey
     } else {
       key = await holdQueuedUserInput(deps.eventWriter, recipientSessionId, destination, input)
     }
-    if (!key) throw new Error(`Session ${recipientSessionId} cannot hold an accepted message durably`)
     const drop = () => dropQueuedUserInput(deps.eventWriter, recipientSessionId, key)
     // The recipient can settle while the hold commits; a refusal then takes
     // the hold back, so no settled run keeps a message it will never read.
@@ -182,7 +181,6 @@ export async function deliverWorkflowInput(deps: SessionInputDeliveryDeps, workf
     : { key: await holdQueuedUserInput(deps.eventWriter, workflowId, { target: "workflow" }, input), address: undefined }
   if ("recorded" in held) return receipt(workflowId, input, held.recorded)
   const { key, address } = held
-  if (!key) throw new Error(`Workflow ${workflowId} cannot hold an accepted message durably`)
   const drop = () => address ? retireAddressedWorkflowMessages(deps.eventWriter, workflowId, [key]) : dropQueuedUserInput(deps.eventWriter, workflowId, key)
   const state = await readWorkflowRecipientState(deps, workflowId)
   const admitted = decide(state)
@@ -197,12 +195,14 @@ export async function deliverWorkflowInput(deps: SessionInputDeliveryDeps, workf
  *  same producer would take, so the agent that reads it live writes its entry
  *  under the same key and the workflow records it once. A person's message
  *  that the workflow holds or recorded already answers that record. */
-async function holdAddressed(deps: SessionInputDeliveryDeps, recipientSessionId: string, input: ReturnType<typeof normalizeChatInput>, address: WorkflowDeliveryAddress): Promise<{ readonly key: string | null; readonly address: WorkflowDeliveryAddress } | { readonly recorded: PersonMessageRecord }> {
+async function holdAddressed(deps: SessionInputDeliveryDeps, recipientSessionId: string, input: ReturnType<typeof normalizeChatInput>, address: WorkflowDeliveryAddress): Promise<{ readonly key: string; readonly address: WorkflowDeliveryAddress } | { readonly recorded: PersonMessageRecord }> {
   const key = queuedUserInputKey(input.producer, input.submissionIds)
-  if (personMessageKey(input) === undefined) return { key: await holdAddressedWorkflowMessage(deps.eventWriter, recipientSessionId, key, input, address) ? key : null, address }
+  if (personMessageKey(input) === undefined) {
+    await holdAddressedWorkflowMessage(deps.eventWriter, recipientSessionId, key, input, address)
+    return { key, address }
+  }
   const held = await holdPersonMessageOnce(deps.eventWriter, { sessionId: recipientSessionId, kind: ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key, payload: addressedWorkflowMessagePayload(input, address) },
     () => workflowPersonMessage(deps.projectionReader, recipientSessionId, key).then((found) => found === "cell" ? undefined : found))
-  if (held === null) return { key: null, address }
   return held === "held" ? { key, address } : { recorded: held }
 }
 
@@ -522,7 +522,7 @@ async function returnUnreadMessages(
     const text = returnedMessagesNotice(input.recipientSessionId, input.reason, group.cells)
     const destination = returnDestination(group)
     const hold = heldBackgroundNotificationPut(destination, text, returnedNoticeKey(input.recipientSessionId, group))
-    await store.writer.putInFlight?.(group.senderSessionId, hold.kind, hold.key, hold.payload)
+    await store.writer.putInFlight(group.senderSessionId, hold.kind, hold.key, hold.payload)
     const notification = heldBackgroundNotification(destination, text, hold.key)
     if (options.retire) for (const cell of group.cells) await dropQueuedUserInput(store.writer, input.recipientSessionId, cell.key, cell.retainedGap)
     logReturned(input, group)

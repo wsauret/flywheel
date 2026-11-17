@@ -1,11 +1,11 @@
 import { describe, expect, it } from "bun:test"
 
-import { asAsyncEventReadSurface, type AsyncGuardedEventAppender, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, type AsyncEventAppender, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types"
 import { createProjectNotificationJournal } from "../../../../../src/orchestration/modules/project-notifications/journal"
 
 const AGGREGATE_ID = "project:notifications"
 
-function createStore(): EventReader & AsyncGuardedEventAppender & { reads: Array<{ aggregateId?: string; afterPosition?: number }> } {
+function createStore(): EventReader & AsyncEventAppender & { reads: Array<{ aggregateId?: string; afterPosition?: number }> } {
   const facts: StoredFact[] = []
   const reads: Array<{ aggregateId?: string; afterPosition?: number }> = []
   const append = async (event: EventStoreAppend): Promise<StoredFact> => {

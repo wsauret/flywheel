@@ -60,7 +60,7 @@ test("a completed workflow runner returns to its parent and refuses new conversa
     },
   })
   expect((await seedHost.run()).kind).toBe("completed")
-  await store.putInFlight?.("session", QUEUED_USER_INPUT_IN_FLIGHT_KIND, "retained", {
+  await store.putInFlight("session", QUEUED_USER_INPUT_IN_FLIGHT_KIND, "retained", {
     target: "workflow",
     text: "continue here",
     origin: "human",

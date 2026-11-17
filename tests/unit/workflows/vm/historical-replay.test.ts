@@ -16,13 +16,14 @@ import { recoverWorkflowControl, workflowRecoveryBasis } from "../../../../src/w
 import { continueWorkflowReplay } from "../../../../src/workflows/vm/replay.js";
 import { replayWorkflow, transitionDecodedWorkflow, transitionWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact, WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-facts.js";
-import type { AsyncEventWriter, AsyncGuardedEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
+import type { AsyncEventWriter, EventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js";
 import { retiredFixtureWorkflow } from "../../../helpers/retired-fixture-briefs.js";
 import { retainedDefinitions, retainedProject } from "../../../fixtures/retired-workflows/retained-project.js";
 import { acknowledge, runningControl } from "./_machine-semantics-fixtures.js";
 import { WorkflowDefinitionDriftError } from "../../../../src/workflows/vm/definition-identity.js";
 import { recordedWorkflow } from "../../../../src/workflows/loader.js";
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js";
 
 const retainedRoot = retainedProject({ legacyRaindropAudit: true });
 const retainedRevision = retainedDefinitions(retainedRoot).captureRevision();
@@ -285,11 +286,7 @@ function unstored(fact: { readonly [key: string]: unknown }): { readonly [key: s
 }
 
 const refuse = async (): Promise<never> => { throw new Error("A paused run that adopts with no drift writes nothing"); };
-const refusingWriter: AsyncEventWriter = {
-  append: refuse,
-  appendBatch: refuse,
-  pruneSupersededEvents: refuse,
-};
+const refusingWriter = refusingEventWriter({ append: refuse, appendBatch: refuse, pruneSupersededEvents: refuse });
 
 /** A writer for the Resume of a stored paused run of a named workflow.
  *  Persona hashes the recording build took over the turn cap, the retired
@@ -302,7 +299,7 @@ const refusingWriter: AsyncEventWriter = {
  *  as a drift rejection, so the run must still continue with no drift. */
 function adoptingWriter() {
   const adopted: StoredFact[] = [];
-  const writer: AsyncGuardedEventWriter = {
+  const writer: AsyncEventWriter = {
     ...refusingWriter,
     appendGuarded: async (event) => {
       if (event.type !== "workflow.definition_identity.migrated" && event.type !== "workflow.definition_identity.adopted") return refuse();

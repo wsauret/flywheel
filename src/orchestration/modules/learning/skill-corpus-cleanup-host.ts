@@ -1,7 +1,7 @@
 import type { StartupDirectories } from "../../../infra/directory-authorities.js"
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
-import type { AsyncEventStateReadSurface, AsyncGuardedEventWriter, EventStoreAppend } from "../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../infra/event-store-types.js"
 import { AuthProfileManager } from "../../auth/auth-profile-manager.js"
 import { captureRuntimeConfigRequest } from "../../agent-runtime/request-config.js"
 import { acquireSharedProviderAvailability, disposeSharedProviderAvailability } from "../../agent-runtime/llm/shared-provider-availability.js"
@@ -73,7 +73,7 @@ export interface SkillCorpusCleanupProjectHostInput {
   readonly launcher: LauncherScope
   /** The project's store and the writer its facts and lease reach. */
   readonly reader: AsyncEventStateReadSurface
-  readonly writer: AsyncGuardedEventWriter
+  readonly writer: AsyncEventWriter
   readonly force?: boolean
   readonly signal?: AbortSignal
 }
@@ -89,7 +89,7 @@ export async function runSkillCorpusCleanupForProject(input: SkillCorpusCleanupP
     const moduleSelection = composeRealmModuleSnapshot(modules.policy.state())
     const definitions = createInstalledDefinitionRegistry(directories)
     const writer = createSessionFactWriter({ sessionId: "skill-cleanup", writer: input.writer })
-    const state = createSkillCorpusCleanupState({ reader, writer: leaseWriter(input.writer), ownerId: crypto.randomUUID() })
+    const state = createSkillCorpusCleanupState({ reader, writer: input.writer, ownerId: crypto.randomUUID() })
     try {
       const accounting = createReviewUsageAccounting(crypto.randomUUID(), () => {})
       return await runSkillCorpusCleanup({
@@ -157,19 +157,5 @@ export async function runSkillCorpusCleanupForProject(input: SkillCorpusCleanupP
     await modules.dispose()
     await runtimeConfig.dispose()
     await disposeSharedProviderAvailability()
-  }
-}
-
-/** The cleanup lease and its cooldowns live in in-flight cells, which a writer
- *  offers only when its store can hold them; one that cannot fails the run
- *  here rather than letting two owners clean the corpus at once. */
-function leaseWriter(writer: AsyncGuardedEventWriter) {
-  const { putInFlight, dropInFlight, swapInFlight } = writer
-  if (!putInFlight || !dropInFlight || !swapInFlight) throw new Error("skill corpus cleanup needs a writer that holds in-flight cells")
-  return {
-    append: (event: EventStoreAppend) => writer.append(event),
-    putInFlight: putInFlight.bind(writer),
-    dropInFlight: dropInFlight.bind(writer),
-    swapInFlight: swapInFlight.bind(writer),
   }
 }

@@ -56,7 +56,6 @@ export async function prepare(writer: ReturnType<typeof createSessionFactWriter>
 }
 
 export async function prepareLegacy(writer: ReturnType<typeof createSessionFactWriter>, path: string, beforeContent: string, afterContent: string) {
-  if (!writer.putInFlight) throw new Error("expected in-flight writer")
   await writer.putInFlight("file.mutation", "legacy-mutation", {
     mutationId: "legacy-mutation", path, displayPath: path, changeKind: "modified",
     before: contentEvidence(beforeContent), after: contentEvidence(afterContent), toolUseId: "legacy-tool",

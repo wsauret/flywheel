@@ -1,23 +1,18 @@
 import { expect, test } from "bun:test"
-import { asAsyncEventReadSurface, type AsyncGuardedEventWriter } from "../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { NO_CAPABILITY_ACCESS } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { installedWorkspaceMigrations, prepareDefinitionReconciliation, recoverSessionHistory, runModuleMaintenance, type FirstPartyModule } from "../../../src/orchestration/modules.js"
 import type { ToolHistorySummary } from "../../../src/orchestration/module-seams.js"
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
+import { refusingEventWriter } from "../../helpers/event-writer-doubles.js"
 
 function owner(id: string, hooks: Partial<Pick<FirstPartyModule, "sessionHistory" | "maintenance" | "definitionReconciliation" | "workspaceMigrations">>): FirstPartyModule {
   return { id, dependencies: [], contributions: [], ...hooks }
 }
 const directories = { userDataRoot: "/scratch/module-lifecycle/.flywheel", accountHome: "/scratch/module-lifecycle", projectRoot: "/scratch/module-lifecycle/project", executionCwd: "/scratch/module-lifecycle/project" }
 const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
-const writer: AsyncGuardedEventWriter = {
-  async append() { throw new Error("unexpected append") },
-  async appendBatch() { throw new Error("unexpected append") },
-  async appendGuarded() { throw new Error("unexpected append") },
-  async appendBatchGuarded() { throw new Error("unexpected append") },
-  async pruneSupersededEvents() { throw new Error("unexpected prune") },
-}
+const writer = refusingEventWriter()
 const launcher: LauncherScope = {
   async spawnOwned() { throw new Error("unexpected process") },
   async adoptOwned() { throw new Error("unexpected adoption") },

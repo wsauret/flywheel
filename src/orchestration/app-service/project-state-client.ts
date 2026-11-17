@@ -1,9 +1,10 @@
 import { trackLoopSpan } from "../../infra/event-loop-lag.js"
 import {
   CorruptEventRowError,
+  InFlightSwapConflictError,
   StateRequestNotServedError,
   type AsyncEventStateReadSurface,
-  type AsyncGuardedEventWriter,
+  type AsyncEventWriter,
   type EventStoreAppend,
   type EventStoreItemSettlement,
   type FactQuery,
@@ -84,7 +85,7 @@ interface ProjectStateUpkeep {
 export interface ProjectStateClient extends AsyncEventStateReadSurface {
   readonly available: boolean
   readonly sessions: ProjectStateSessionManager
-  readonly writer: AsyncGuardedEventWriter
+  readonly writer: AsyncEventWriter
   readonly upkeep: ProjectStateUpkeep
   onStored(listener: (events: readonly StoredFact[]) => void): () => void
   control(operation: ProjectStateControlOperation): Promise<ProjectStateResult>
@@ -161,7 +162,7 @@ export function createProjectStateClient(
       return () => sessionListeners.delete(listener)
     },
   })
-  const writer: AsyncGuardedEventWriter = {
+  const writer: AsyncEventWriter = {
     async append(event) {
       const events = requireStored(await appendSettlement("append", [event]))
       const stored = events[0]
@@ -192,6 +193,22 @@ export function createProjectStateClient(
     async pruneSupersededKeyedEvents(aggregateId, eventType, payloadKey) {
       return maintenance({ kind: "maintenance.prune-keyed", aggregateId, eventType, payloadKey })
     },
+    async putInFlight(sessionId, kind, key, payload) {
+      requireStored(await writeSettlement("append", { sessionId, events: [], inFlight: [{ op: "put", kind, key, payload }] }))
+    },
+    async dropInFlight(sessionId, kind, key) {
+      requireStored(await writeSettlement("append", { sessionId, events: [], inFlight: [{ op: "drop", kind, key }] }))
+    },
+    swapInFlight(sessionId, kind, key, expectedRaw, payload) {
+      return writer.swapInFlightBatch(sessionId, [{ op: "swap", kind, key, expectedRaw, payload }])
+    },
+    async swapInFlightBatch(sessionId, swaps) {
+      if (swaps.length === 0) return true
+      const settlement = await writeSettlement("append", { sessionId, events: [], inFlight: swaps })
+      if (settlement.kind === "rejected" && settlement.error instanceof InFlightSwapConflictError) return false
+      requireStored(settlement)
+      return true
+    },
   }
 
   async function appendSettlement(
@@ -200,7 +217,10 @@ export function createProjectStateClient(
   ): Promise<EventStoreItemSettlement> {
     const first = events[0]
     if (!first) throw new ProjectStateUnavailableError("append requires at least one event")
-    const item = { sessionId: first.sessionId, events }
+    return writeSettlement(kind, { sessionId: first.sessionId, events })
+  }
+
+  async function writeSettlement(kind: "append" | "append.batch", item: EventStoreWriteItem): Promise<EventStoreItemSettlement> {
     const result = await request("control", kind === "append" ? { kind, item } : { kind, items: [item] })
     if (result.kind !== "stored") throw stateWriteError(result, "stored")
     const settlement = result.settlements[0]

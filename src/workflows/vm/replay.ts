@@ -1,4 +1,4 @@
-import { requireGuardedEventAppender, type AsyncEventWriter, type StoredFact } from "../../infra/event-store-types.js"
+import type { AsyncEventWriter, StoredFact } from "../../infra/event-store-types.js"
 import { buildDefinitionDriftRejectedFact } from "../definition-provenance-fact-writers.js"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../agent-resolution.js"
 import type { ProjectDefinitionRegistryRevision } from "../definition-registry.js"
@@ -214,7 +214,7 @@ async function appendIdentityFact(
   fact: WorkflowControlFact,
   deps: WorkflowReplayDeps,
 ): Promise<CommittedWorkflowControl> {
-  const result = await requireGuardedEventAppender(deps.writer, "Workflow replay requires guarded append authority").appendGuarded({
+  const result = await deps.writer.appendGuarded({
     aggregateId: workflowAggregateId(deps.sessionId),
     sessionId: deps.sessionId,
     timestamp: (deps.now ?? Date.now)(),

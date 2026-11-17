@@ -267,7 +267,7 @@ describe("bounded output history content deferral", () => {
     ], async (projection, store) => {
       const mutationEvidence = await buildMutationDiffEvidence({
         version: 1, files: reviewMutations.flatMap(item => item.mutation.files), omissions: [],
-      }, "notice", nodes => asAsyncEventWriter(store).stageSessionContentNodes!("session-1", nodes))
+      }, "notice", nodes => asAsyncEventWriter(store).stageSessionContentNodes("session-1", nodes))
       const tree = await openExistingTree({ conversationId: "conv-1", sessionId: "session-1", store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
       await tree.appendMessages([{ kind: "system", content: "Updated skill: `provider-quirks`.", mutationEvidence }])
       tree.getStorage().dispose()

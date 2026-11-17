@@ -58,13 +58,9 @@ const unreadable = coalesceRepeats<{ readonly sessionId: string; readonly key: s
 
 const decodeAddresses = Schema.decodeUnknownOption(HeldMessageAddressesSchema, { onExcessProperty: "error" })
 
-/** Holds one addressed message durably under `key` before any agent reads
- *  it. False when the store cannot hold in-flight state, so the caller
- *  refuses the message instead of losing it. */
-export async function holdAddressedWorkflowMessage(writer: AsyncEventWriter, sessionId: string, key: string, input: ChatInput, address: WorkflowDeliveryAddress): Promise<boolean> {
-  if (!writer.putInFlight) return false
+/** Holds one addressed message durably under `key` before any agent reads it. */
+export async function holdAddressedWorkflowMessage(writer: AsyncEventWriter, sessionId: string, key: string, input: ChatInput, address: WorkflowDeliveryAddress): Promise<void> {
   await writer.putInFlight(sessionId, ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key, addressedWorkflowMessagePayload(input, address))
-  return true
 }
 
 /** The stored form of one addressed message: the held input and its address. */
@@ -142,5 +138,5 @@ export async function readUnreadSessionMessages(reader: AsyncEventStateReadSurfa
 /** Retires the cells of messages that a workflow commit recorded, that a
  *  refused delivery takes back, or that a person recalled. */
 export async function retireAddressedWorkflowMessages(writer: AsyncEventWriter, sessionId: string, keys: readonly string[]): Promise<void> {
-  for (const key of keys) await writer.dropInFlight?.(sessionId, ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key)
+  for (const key of keys) await writer.dropInFlight(sessionId, ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, key)
 }

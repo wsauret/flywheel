@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import { StepGrammarWorkflowSchema } from "../../../../src/workflows/retired-step-grammar/schema.js"
 import { retiredStepIdentity } from "../../../../src/workflows/vm/retired-step-identity.js"
-import type { AsyncGuardedEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js"
+import type { AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../../../src/infra/event-store-types.js"
 import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
@@ -40,6 +40,7 @@ import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolutio
 import { testSkill, testSkillRevision, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 /** One phase that composes the `work` package. */
 const workPhase = { phase: "work", brief: "Follow the work method.", name: "Work", dependencies: ["work"], writes: [] }
@@ -72,8 +73,8 @@ function storedFact(fact: WorkflowSessionFact, seq: number): StoredFact {
   }
 }
 
-function writer(appends: GuardedEventStoreAppend[]): AsyncGuardedEventWriter {
-  return {
+function writer(appends: GuardedEventStoreAppend[]): AsyncEventWriter {
+  return refusingEventWriter({
     append: async (event) => {
       appends.push(event)
       return { ...event, id: `diagnostic-${appends.length}`, position: appends.length, seq: appends.length - 1 }
@@ -86,7 +87,7 @@ function writer(appends: GuardedEventStoreAppend[]): AsyncGuardedEventWriter {
     },
     appendBatchGuarded: async () => { throw new Error("replay must not commit guarded batches") },
     pruneSupersededEvents: async () => 0,
-  }
+  })
 }
 
 function deps(

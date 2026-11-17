@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { mkdirSync, realpathSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types"
 import { createSessionManager, SessionForkRefusal } from "../../../../src/orchestration/session/manager"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
@@ -61,10 +61,8 @@ function publicationWriter(
   beforePublication: (attempt: number, events: readonly GuardedEventStoreAppend[]) => void | Promise<void>,
 ) {
   let attempts = 0
-  const writer: AsyncGuardedEventWriter = {
-    append: async (event: EventStoreAppend) => store.append(event),
-    appendBatch: async (events: readonly EventStoreAppend[]) => store.appendBatch(events),
-    appendGuarded: async (event) => store.appendGuarded(event),
+  const writer: AsyncEventWriter = {
+    ...asAsyncEventWriter(store),
     appendBatchGuarded: async (events) => {
       if (events.some(({ type }) => type === "session.forked")) {
         attempts += 1
@@ -72,8 +70,6 @@ function publicationWriter(
       }
       return store.appendBatchGuarded(events)
     },
-    pruneSupersededEvents: async (...args: Parameters<EventStore["pruneSupersededEvents"]>) =>
-      store.pruneSupersededEvents(...args),
   }
   return {
     writer,

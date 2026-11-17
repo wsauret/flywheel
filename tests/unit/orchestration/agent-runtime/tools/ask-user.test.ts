@@ -13,10 +13,11 @@ import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 /** A session writer that stores each fact it records, appending it to `recorded`. */
 function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     record: async (fact) => {
       recorded.push(fact);
       return { aggregateId: "session:s1", sessionId: "s1", id: "event-1", position: 1, seq: 0, timestamp: 1, ...fact };
@@ -25,7 +26,7 @@ function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
     recordGuarded: async () => { throw new Error("ask_user records no guarded fact"); },
     transaction: async (fn) => { fn(); },
     dispose: () => {},
-  };
+  });
 }
 
 function makeContext(toolUseId = "tool_question"): DispatchedToolContext {

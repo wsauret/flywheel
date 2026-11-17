@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { asAsyncEventReadSurface, type AsyncEventWriter, type AsyncGuardedEventWriter, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventWriter, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
@@ -41,15 +41,7 @@ afterEach(async () => {
 function openStore() {
   const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
   stores.push(store)
-  const writer: AsyncGuardedEventWriter = {
-    append: async (event) => store.append(event),
-    appendBatch: async (events) => store.appendBatch(events),
-    appendGuarded: async (event) => store.appendGuarded(event),
-    appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
-    pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
-    putInFlight: async (sessionId, kind, key, payload) => store.putInFlight(sessionId, kind, key, payload),
-  }
-  return { store, writer }
+  return { store, writer: asAsyncEventWriter(store) }
 }
 
 const TOOL_USE_ID = "workflow-tool"

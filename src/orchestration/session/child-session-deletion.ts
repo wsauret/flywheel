@@ -234,7 +234,6 @@ export function createChildSessionDeletionState(ports: ChildSessionDeletionState
         }
       }
     }
-    if (!ports.writer.putInFlight) throw new Error("Child session deletion requires durable in-flight storage")
     await ports.writer.putInFlight(rootSessionId, CHILD_SESSION_DELETION_IN_FLIGHT_KIND, rootSessionId, operation)
     return childSessionDeletionPlan(operation)
   }
@@ -301,13 +300,12 @@ export function createChildSessionDeletionState(ports: ChildSessionDeletionState
     if (target.kind === "workflow") {
       const run = await workflowRunReader(ports.projectionReader).read(target.workflowId)
       if (!run && await workflowTombstoned(target.workflowId)) {
-        if (target.workflowId === operation.rootSessionId) await ports.writer.dropInFlight?.(target.workflowId, CHILD_SESSION_DELETION_IN_FLIGHT_KIND, target.workflowId)
+        if (target.workflowId === operation.rootSessionId) await ports.writer.dropInFlight(target.workflowId, CHILD_SESSION_DELETION_IN_FLIGHT_KIND, target.workflowId)
         return []
       }
       if (!run || run.launchedFrom.parentSessionId !== target.parentSessionId) throw new Error(`Workflow ${target.workflowId} no longer has its admitted launch binding`)
       const notices = await ports.deleteWorkflow(target.workflowId)
       if (target.workflowId === operation.rootSessionId) {
-        if (!ports.writer.dropInFlight) throw new Error("Workflow deletion requires in-flight retirement")
         await ports.writer.dropInFlight(target.workflowId, CHILD_SESSION_DELETION_IN_FLIGHT_KIND, target.workflowId)
       }
       return notices

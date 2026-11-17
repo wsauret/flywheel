@@ -112,9 +112,7 @@ export function createSessionChangesService(deps: { readonly reader: AsyncEventS
         const omittedLines = target?.omittedLines ?? 0
         let patch: Extract<SessionChangeDiffResult, { status: "ready" }>["diff"]["patch"]
         if (target) {
-          const stage = deps.writer.stageSessionContentNodes
-          if (!stage) throw new Error("Session content staging is unavailable")
-          patch = { kind: "retained", reference: await buildSessionContent(target.unifiedDiff, nodes => stage.call(deps.writer, sessionId, nodes)) }
+          patch = { kind: "retained", reference: await buildSessionContent(target.unifiedDiff, nodes => deps.writer.stageSessionContentNodes(sessionId, nodes)) }
         } else if (omission) patch = { kind: "omitted", reason: omission.reason }
         else return { status: "stale" }
         return {

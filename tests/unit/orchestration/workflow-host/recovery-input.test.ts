@@ -5,7 +5,7 @@ import { testAuthContext } from "../../../helpers/auth-context.js"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore, type InFlightWrite } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type InFlightWrite } from "../../../../src/infra/event-store-types"
 import { EventBus, createEmit } from "../../../../src/infra/event-bus"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
@@ -49,7 +49,7 @@ const expectedInput = {
 } satisfies ConversationMessage
 let baseDir: string
 let store: EventStore
-let writer: AsyncGuardedEventWriter
+let writer: AsyncEventWriter
 let factoryErrors: unknown[]
 let inputSessionId: string
 let inputConversationId: string | undefined
@@ -204,7 +204,7 @@ test("an agent in its own session that commits a live message its workflow held 
 test("failed task seed holds input and a new worker invocation still seeds before consuming it", async () => {
   await publishInputMember("worker-seed-failed")
   hold("after-seed")
-  const failingWriter: AsyncGuardedEventWriter = {
+  const failingWriter: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (event.type === "chat.entries.appended") throw new Error("seed write failed")
@@ -297,7 +297,7 @@ test("a failed input append leaves only uncommitted cells held and reopening doe
     cancel.abort()
     throw new Error("input write failed")
   }
-  const failingWriter: AsyncGuardedEventWriter = {
+  const failingWriter: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (event.inFlight?.some((write) => write.op === "swap" && write.key === "failed")) return fail()
@@ -362,7 +362,7 @@ test("stale workflow raw cannot publish an entry or retire its replacement", asy
   hold("stale", { text: "replacement" })
   const replacement = store.readInFlight(sessionId, QUEUED_USER_INPUT_IN_FLIGHT_KIND)
   const writes: (readonly InFlightWrite[])[] = []
-  const observed: AsyncGuardedEventWriter = {
+  const observed: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (event.inFlight) writes.push([...event.inFlight])
@@ -388,7 +388,7 @@ test("workflow contention stops the snapshot in order and requests refresh even 
   hold("z-first")
   hold("a-later", { text: "later" })
   let replace = true
-  const contending: AsyncGuardedEventWriter = {
+  const contending: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (replace && event.inFlight?.some((write) => write.op === "swap" && write.key === "z-first")) {
@@ -424,7 +424,7 @@ test("generic recovery refuses an explicit input behind a contended conversation
   store.putInFlight(sessionId, QUEUED_USER_INPUT_IN_FLIGHT_KIND, "first", { conversationId, ...originalInput })
   store.putInFlight(sessionId, QUEUED_USER_INPUT_IN_FLIGHT_KIND, "later", { conversationId, text: "later" })
   let replace = true
-  const contending: AsyncGuardedEventWriter = {
+  const contending: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (replace && event.inFlight?.some((write) => write.op === "swap" && write.key === "first")) {
@@ -477,7 +477,7 @@ test("queued-input commit propagates non-swap append failures unchanged", async 
   hold("failure")
   const cell = (await readWorkflowQueuedUserInputs(asAsyncEventReadSurface(store), sessionId))[0]!
   let failure: Error = new Error("storage unavailable")
-  const failing: AsyncGuardedEventWriter = {
+  const failing: AsyncEventWriter = {
     ...writer,
     append: async (event) => {
       if (event.type === "chat.entries.appended") throw failure
@@ -599,7 +599,7 @@ test("a resumed step takes a held message addressed to its lane that its convers
   const lane = (ordinal: number) => ({ addressedTo: [{ _tag: "item" as const, listNodeId: group, itemNodeId: `${group}:item:${ordinal}`, key: `t${ordinal}` }] as const, leafIds: [], label: `lane t${ordinal}` })
   const parent = { kind: "session" as const, sessionId: "parent", conversationId: "parent-conversation", toolUseId: "send-1", hop: 0, envelope: { name: "Planner", relation: "parent" as const, waits: false } }
   // A build before the agent lexicon held this cell with a `branch` address.
-  await writer.putInFlight?.(sessionId, ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, "msg:parent:send-1", {
+  await writer.putInFlight(sessionId, ADDRESSED_WORKFLOW_MESSAGE_IN_FLIGHT_KIND, "msg:parent:send-1", {
     ...queuedInputPayload({ text: "Keep the old flag names.", producer: parent }),
     addressedTo: [{ _tag: "branch", groupNodeId: group, branchNodeId: `${group}:item:2`, key: "t2" }],
   })

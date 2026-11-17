@@ -114,7 +114,7 @@ afterEach(() => {
           aggregateId: "workflow:wf-active", sessionId: "wf-active", timestamp: 3, type: "step_context.input.added", version: 4, actor: "flywheel",
           payload: { key: "person:local-1", source: { kind: "person" }, text: "continue", addressedTo: [{ _tag: "workflow" }] },
         })
-        await deps.eventWriter.dropInFlight!("wf-active", "workflow.addressed_message", "person:local-1")
+        await deps.eventWriter.dropInFlight("wf-active", "workflow.addressed_message", "person:local-1")
         expect(await controller.sendWorkflow("wf-active", message)).toEqual(receipt)
         expect(await readHeldAddressedMessages(deps.projectionReader, "wf-active")).toEqual([])
       } finally {

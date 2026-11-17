@@ -14,6 +14,7 @@ import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
 import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js"
 
 /** A capability boundary over one selection, optionally under a grant an
  *  operation was already admitted with. `admissions` records every operation
@@ -140,7 +141,7 @@ export function createRecordingFileMutationStore() {
       }
     }
   };
-  const writer: SessionFactWriter & Required<Pick<SessionFactWriter, "stageSessionContentNodes">> = {
+  const writer: SessionFactWriter = discardingSessionFactWriter({
     stageSessionContentNodes: async nodes => { for (const row of nodes) contentNodes.set(row.sha256, row.node) },
     recordBatch: async () => { throw new Error("unused request audit"); },
     putInFlight: async (kind, key, payload) => { applyInFlight({ op: "put", kind, key, payload }); },
@@ -162,7 +163,7 @@ export function createRecordingFileMutationStore() {
     recordGuarded: async (fact, _expectedSeq) => ({ kind: "stored", events: [stored(fact)] }),
     transaction: async fn => { fn(); },
     dispose: () => {},
-  };
+  });
   return {
     facts,
     changes,

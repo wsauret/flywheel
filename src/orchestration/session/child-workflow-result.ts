@@ -1,4 +1,4 @@
-import { requireGuardedEventAppender, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import { extractToolContentFact, type ExtractedToolContentFact } from "../../infra/tool-content-extraction.js"
 import { contentEvidence } from "../../infra/content-evidence.js"
 import { stringField } from "../../infra/output/json-field.js"
@@ -60,7 +60,7 @@ async function recordChildWorkflowResult(input: ChildWorkflowResultInput, operat
         },
       } }
       : extractToolContentFact(childSessionResultFact(tool, text, outcome))
-    const result = await requireGuardedEventAppender(input.writer, `${operation} requires guarded append authority`).appendBatchGuarded([{
+    const result = await input.writer.appendBatchGuarded([{
       ...prepareSessionFactAppend(input.parentSessionId, extracted.fact, extracted.contentRows),
       expectedSeq,
     }])

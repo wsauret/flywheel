@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
-import { asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncGuardedEventWriter, type EventStore, type EventStoreAppend } from "../../../../src/infra/event-store-types";
+import { asAsyncEventWriter, asAsyncEventReadSurface, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager } from "../../../../src/orchestration/session/manager";
 import { createConversationTree, readTranscript, readReconciledBranch, readReconciledTranscript, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
@@ -301,14 +301,8 @@ describe("borrowed tree handle lifecycle", () => {
   });
 });
 
-function immediateWriter(target: EventStore): AsyncGuardedEventWriter {
-  return {
-    append: async (event: EventStoreAppend) => target.append(event),
-    appendBatch: async (events: readonly EventStoreAppend[]) => target.appendBatch(events),
-    appendGuarded: async (event) => target.appendGuarded(event),
-    appendBatchGuarded: async (events) => target.appendBatchGuarded(events),
-    pruneSupersededEvents: async () => 0,
-  };
+function immediateWriter(target: EventStore): AsyncEventWriter {
+  return { ...asAsyncEventWriter(target), pruneSupersededEvents: async () => 0 };
 }
 
 describe("model deliberation persistence", () => {
@@ -528,7 +522,7 @@ describe("dangling tool_use sweep at adoption", () => {
       expect(disposals).toBe(1);
 
       disposals = 0;
-      const rejectingWriter: AsyncGuardedEventWriter = {
+      const rejectingWriter: AsyncEventWriter = {
         ...immediateWriter(store),
         append: async () => { throw new Error("write failed"); },
         appendGuarded: async () => { throw new Error("write failed"); },

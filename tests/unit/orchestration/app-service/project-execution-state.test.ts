@@ -37,7 +37,7 @@ function fixture() {
     settleRecovery: async () => {},
     appendWriteItem: store.writerLane.appendWriteItem,
     pruneSupersededEvents: store.pruneSupersededEvents,
-    pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents!(aggregate, type, key),
+    pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents(aggregate, type, key),
     pruneRetiredFamilyChunk: () => { throw new Error("unexpected retired-family prune") },
     dropRetiredIndexes: () => { throw new Error("unexpected retired-index drop") },
     retireFinalizedCheckpointPage: () => { throw new Error("unexpected checkpoint maintenance") },
@@ -135,7 +135,7 @@ describe("project execution state", () => {
       const stop = store.onStored(() => { stoppedCalls += 1 })
       stop()
       store.onStored((events) => observed.push(...events))
-      await store.putInFlight!("s", "tool", "k", { running: true })
+      await store.putInFlight("s", "tool", "k", { running: true })
       expect(observed).toHaveLength(0)
       expect(await store.readInFlight("s", "tool")).toHaveLength(1)
       const terminalResult = await store.appendGuarded({ ...fact(), expectedSeq: 0, inFlight: [{ op: "drop", kind: "tool", key: "k" }] })
@@ -153,17 +153,17 @@ describe("project execution state", () => {
       expect(observed).toHaveLength(1)
       expect(await store.aggregateSeq("session:s")).toBe(0)
 
-      await store.putInFlight!("s", "tool", "a", { value: 1 })
-      await store.putInFlight!("s", "tool", "b", { value: 1 })
-      expect(await store.swapInFlightBatch!("s", [
+      await store.putInFlight("s", "tool", "a", { value: 1 })
+      await store.putInFlight("s", "tool", "b", { value: 1 })
+      expect(await store.swapInFlightBatch("s", [
         { op: "swap", kind: "tool", key: "a", expectedRaw: '{"value":1}', payload: { value: 2 } },
         { op: "swap", kind: "tool", key: "b", expectedRaw: "wrong", payload: null },
       ])).toBe(false)
       expect((await store.readInFlight("s", "tool")).map((cell) => cell.raw)).toEqual(['{"value":1}', '{"value":1}'])
-      expect(await store.swapInFlight!("s", "tool", "a", '{"value":1}', { value: 2 })).toBe(true)
-      await store.dropInFlight!("s", "tool", "b")
+      expect(await store.swapInFlight("s", "tool", "a", '{"value":1}', { value: 2 })).toBe(true)
+      await store.dropInFlight("s", "tool", "b")
       f.refuse(true)
-      await expect(store.swapInFlight!("s", "tool", "a", '{"value":2}', null)).rejects.toBeInstanceOf(ProjectStateRefusedError)
+      await expect(store.swapInFlight("s", "tool", "a", '{"value":2}', null)).rejects.toBeInstanceOf(ProjectStateRefusedError)
       f.refuse(false)
 
       await execution.sessionManager.createChat({ id: "chat", initialState: "inactive" })
@@ -176,7 +176,7 @@ describe("project execution state", () => {
       expect(new Set(observed.map((event) => event.id)).size).toBe(observed.length)
       expect(stoppedCalls).toBe(0)
       expect(await store.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
-      expect(await store.pruneSupersededKeyedEvents!("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
+      expect(await store.pruneSupersededKeyedEvents("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
 
       const pending = store.append(fact({ draining: true }))
       await runtime.dispose()

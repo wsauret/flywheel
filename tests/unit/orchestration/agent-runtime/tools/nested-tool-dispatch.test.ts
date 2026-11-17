@@ -13,6 +13,7 @@ import { Log } from "../../../../../src/infra/log.js";
 import { createHandoffTracker } from "../../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
 import { largeSecretResult, resultRecordingWriter } from "./_nested-tool-dispatch-fixtures.js";
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 function context(): DispatchedToolContext {
   return dispatchedToolContext({
@@ -394,13 +395,13 @@ describe("nested tool dispatch batch", () => {
       aggregateId: "session:session", type: fact.type, version: fact.version, timestamp: Date.now(), actor: fact.actor,
       sessionId: "session", payload: fact.payload, position: facts.length, id: `event-${facts.length}`, seq: facts.length,
     });
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async (fact) => { facts.push(fact); return stored(fact); },
       recordBatch: async () => { throw new Error("unused request audit"); },
       recordGuarded: async (fact) => { facts.push(fact); return { kind: "stored", events: [stored(fact)] }; },
       transaction: async (fn) => { fn(); },
       dispose: () => {},
-    };
+    });
     const inputProjection = Promise.withResolvers<void>();
     const inputStarted = Promise.withResolvers<void>();
     const resultProjection = Promise.withResolvers<void>();
@@ -449,7 +450,7 @@ describe("nested tool dispatch batch", () => {
     const failure = new Error("nested projection failed");
     const projection = Promise.withResolvers<void>();
     const started = Promise.withResolvers<void>();
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async (fact) => ({
         aggregateId: "session:session", type: fact.type, version: fact.version,
         timestamp: Date.now(), actor: fact.actor, sessionId: "session",
@@ -459,7 +460,7 @@ describe("nested tool dispatch batch", () => {
       recordGuarded: async () => null,
       transaction: async (fn) => { fn(); },
       dispose: () => {},
-    };
+    });
     const durable = createNestedToolFactPublisher({
       ...context(), sessionEventWriter: writer,
       applyNestedStoredFact: async () => { started.resolve(); await projection.promise; },
@@ -566,7 +567,7 @@ describe("nested tool dispatch batch", () => {
   it("redacts durable leaves and coalesces a synchronous progress burst", async () => {
     const facts: Array<{ readonly type: string; readonly payload: EventPayload }> = [];
     const projected: StoredFact[] = [];
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       recordBatch: async () => { throw new Error("unused request audit"); },
       record: async (fact) => {
         facts.push(fact);
@@ -576,7 +577,7 @@ describe("nested tool dispatch batch", () => {
       recordGuarded: async () => null,
       transaction: async (fn) => { fn(); },
       dispose: () => {},
-    };
+    });
     const durableContext = { ...context(), sessionEventWriter: writer, applyNestedStoredFact: (event: StoredFact) => { projected.push(event); } };
     const secret = ["Bearer", "fixturevalue123"].join(" ");
     const noisy = tool("noisy", async (_input, ctx): Promise<ToolResult> => {

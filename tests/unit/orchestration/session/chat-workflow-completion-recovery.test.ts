@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { contentEvidence } from "../../../../src/infra/content-evidence.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { EventReaderService, EventStoreLive, LocalEventStoreService } from "../../../../src/infra/event-store-effect.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
@@ -195,13 +195,7 @@ function createSupervisor(
           parentSessionId,
           reader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
           projectionReader: liveRegistry ? projectionReader : asAsyncEventReadSurface(cycle.store),
-          writer: {
-            append: async (event) => cycle.store.append(event),
-            appendBatch: async (events) => cycle.store.appendBatch(events),
-            appendGuarded: async (event) => cycle.store.appendGuarded(event),
-            appendBatchGuarded: async (events) => cycle.store.appendBatchGuarded(events),
-            pruneSupersededEvents: async (aggregateId, eventType) => cycle.store.pruneSupersededEvents(aggregateId, eventType),
-          },
+          writer: asAsyncEventWriter(cycle.store),
           ...options,
         })
       },

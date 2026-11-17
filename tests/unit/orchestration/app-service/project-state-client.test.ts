@@ -48,7 +48,7 @@ describe("project state client", () => {
     const nodes: SessionContentNodeRow[] = []
     const text = Array.from({ length: 400 }, (_, index) => `${index}${"\0".repeat(1_000)}`).join("")
     await buildSessionContent(text, async (rows) => { nodes.push(...rows) })
-    await expect(client.writer.stageSessionContentNodes!("s", nodes)).rejects.toMatchObject({ name: "PersistenceWriteRefused", limitBytes: 1_048_576 })
+    await expect(client.writer.stageSessionContentNodes("s", nodes)).rejects.toMatchObject({ name: "PersistenceWriteRefused", limitBytes: 1_048_576 })
     expect(harness.sent).toHaveLength(0)
     await client.close()
   })
@@ -373,7 +373,7 @@ describe("project state client", () => {
 
     const operations = [
       client.writer.pruneSupersededEvents("a", "t"),
-      client.writer.pruneSupersededKeyedEvents!("a", "t", "$.key"),
+      client.writer.pruneSupersededKeyedEvents("a", "t", "$.key"),
     ]
     expect(harness.sent.slice(2).map(({ operation }) => operation)).toEqual([
       { kind: "maintenance.prune", aggregateId: "a", eventType: "t" },

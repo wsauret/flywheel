@@ -1,10 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import * as crypto from "node:crypto"
-import * as fs from "node:fs"
-import * as os from "node:os"
-import * as path from "node:path"
+import { beforeEach, describe, expect, it } from "bun:test"
 
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { createRuntimeEventStore, createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types"
 import { createSessionFactWriter, type SessionFact } from "../../../../src/orchestration/session/session-fact-writer"
@@ -15,19 +11,11 @@ import type { EventStoreEnqueueResult, EventStoreWriterLease } from "../../../..
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/budget-store-types"
 import { wireSessionSubscribers } from "../../../../src/orchestration/session/create-session-infra"
 import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/tool-execution-types"
+import { servedProjectState } from "../app-service/_served-project-state-fixture"
+import { temporaryDirectories } from "../../../helpers/directories"
 
-const TMP_ROOT = path.join(
-  os.tmpdir(),
-  `flywheel-session-event-writer-test-${process.pid}-${Date.now()}`,
-)
-
+const createDirectory = temporaryDirectories()
 let tmpDir: string
-
-function makeTmpDir(): string {
-  const dir = path.join(TMP_ROOT, crypto.randomUUID())
-  fs.mkdirSync(dir, { recursive: true })
-  return dir
-}
 
 function assistantFact(text = "hello"): SessionRuntimeFact {
   return {
@@ -83,11 +71,7 @@ function fakeLease(enqueue: (event: EventStoreAppend) => EventStoreEnqueueResult
 }
 
 beforeEach(() => {
-  tmpDir = makeTmpDir()
-})
-
-afterEach(() => {
-  fs.rmSync(TMP_ROOT, { recursive: true, force: true })
+  tmpDir = createDirectory("flywheel-session-event-writer-test-")
 })
 
 describe("SessionFactWriter", () => {
@@ -297,6 +281,45 @@ describe("SessionFactWriter", () => {
     } finally {
       store.close()
     }
+  })
+
+  // The executor writes through its lane, the account-service runtime through
+  // its lane-owned store, and a served project through its state client; none
+  // may drop the cell that guards an operation or accept a stale swap.
+  describe.each([
+    ["the executor lane", (projectRoot: string) => {
+      const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
+      const lane = createEventStoreWriterLane(store)
+      return { writer: lane, reader: store, close: async () => { await lane.dispose(); store.close() } }
+    }],
+    ["the local runtime store", (projectRoot: string) => {
+      const store = createRuntimeEventStore(resolveEventStoreDbFile(projectRoot))
+      return { writer: store, reader: store, close: () => store.close() }
+    }],
+    ["the project state client", (projectRoot: string) => {
+      const accountHome = createDirectory("flywheel-session-event-writer-account-")
+      const served = servedProjectState({ projectRoot, accountHome, userDataRoot: accountHome })
+      return { writer: served.state.writer, reader: served.store, close: () => served.close() }
+    }],
+  ] as const)("on %s", (_name, open) => {
+    it("a record-before-act write reaches the store before the act, a stale swap loses, and its retirement removes it", async () => {
+      const { writer: eventWriter, reader, close } = open(tmpDir)
+      try {
+        const writer = createSessionFactWriter({ sessionId: "s1", writer: eventWriter })
+        await writer.putInFlight("operation.prepared", "op-1", { step: "before-act" })
+        expect(reader.readInFlight("s1", "operation.prepared").map(({ key, payload }) => ({ key, payload })))
+          .toEqual([{ key: "op-1", payload: { step: "before-act" } }])
+
+        expect(await writer.swapInFlight("operation.prepared", "op-1", null, { step: "stale" })).toBe(false)
+        expect(reader.readInFlight("s1", "operation.prepared").map(({ payload }) => payload)).toEqual([{ step: "before-act" }])
+
+        await writer.dropInFlight("operation.prepared", "op-1")
+        expect(reader.readInFlight("s1", "operation.prepared")).toEqual([])
+        writer.dispose()
+      } finally {
+        await close()
+      }
+    })
   })
 
   it("dispose marks the writer disposed without closing the borrowed store", async () => {

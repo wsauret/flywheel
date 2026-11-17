@@ -202,7 +202,7 @@ describe("a turn a dead process left unfinished", () => {
     recordToolCall("edit_file", "t1");
     writer.enqueueMessage(assistantMessage("I have started on"));
 
-    await asAsyncEventWriter(ctx.store).swapInFlight?.(ctx.sessionId, "workflow.launch", "operation-1", null, { operationId: "operation-1" });
+    await asAsyncEventWriter(ctx.store).swapInFlight(ctx.sessionId, "workflow.launch", "operation-1", null, { operationId: "operation-1" });
     const [cell] = ctx.store.readInFlight(ctx.sessionId, "workflow.launch");
     if (!cell) throw new Error("expected the accepted cell");
     const noticeId = turnEndEntryId({ reason: "settled" }, "operation-1");
@@ -384,7 +384,6 @@ describe("a turn a dead process left unfinished", () => {
     try {
       // The shape a 2026-09-04 binary wrote: no conversation, tool name,
       // budget flag, or ordinal. No current contract can finish it.
-      if (!checkpointWriter.putInFlight) throw new Error("expected an in-flight writer");
       await checkpointWriter.putInFlight("finalized-tool-result", "legacy", {
         toolUseId: "legacy",
         content: [{ type: "text", text: "from an older binary" }],

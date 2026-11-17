@@ -30,20 +30,17 @@ import { testAuthContext } from "../../../helpers/auth-context.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { testSessionAuthAdmission } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { managerDouble } from "./model-assignment-service-fixtures.js"
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
 import { createAvailabilityAuthority } from "../../../../src/infra/llm/availability-store.js"
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const temporaryDirectory = temporaryDirectories()
 const availability = await createDefinitionAvailability({ definitions: repoDefinitions(), modules: repoModules, capabilities: { state: () => decodeModuleState("") } })
-const unusedEventWriter: AsyncEventWriter = {
-  append: async () => { throw new Error("unused") },
-  appendBatch: async () => { throw new Error("unused") },
-  pruneSupersededEvents: async () => { throw new Error("unused") },
-}
+const unusedEventWriter = refusingEventWriter()
 /** A profile with no saved paid-use permission and no allowance evidence. */
 const noSubscriptionAdmission = () => async () => ({
   consent: { profileId: "default", rows: [], authorizations: new Map() },

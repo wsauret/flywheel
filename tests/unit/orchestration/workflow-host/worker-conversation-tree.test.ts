@@ -190,7 +190,7 @@ describe("worker conversation tree", () => {
       ...durableWriter,
       putInFlight: async (...args) => {
         if (holds++ === 0) throw failure
-        await durableWriter.putInFlight?.(...args)
+        await durableWriter.putInFlight(...args)
       },
     }
     // The parked runner settles only when the worker aborts it, so the worker

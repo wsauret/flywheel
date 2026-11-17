@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type AsyncEventStateReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
@@ -622,7 +622,7 @@ describe("child workflow completion reconciliation", () => {
   test("retries three parent sequence conflicts and rejects unrelated conflicts", async () => {
     const { store, writer, parentSessionId } = await setup("completed")
     let attempts = 0
-    const retrying: AsyncGuardedEventWriter = {
+    const retrying: AsyncEventWriter = {
       ...writer,
       appendBatchGuarded: async (events) => {
         attempts += 1
@@ -639,7 +639,7 @@ describe("child workflow completion reconciliation", () => {
 
     const second = await setup("completed", "-other")
     let unrelatedAttempts = 0
-    const unrelated: AsyncGuardedEventWriter = {
+    const unrelated: AsyncEventWriter = {
       ...second.writer,
       appendBatchGuarded: async () => {
         unrelatedAttempts += 1
@@ -654,7 +654,7 @@ describe("child workflow completion reconciliation", () => {
     const { store, writer, parentSessionId, description } = await setup("paused")
     const notices: unknown[] = []
     routeChildResultNotices(asAsyncEventReadSurface(store), (sessionId, operation) => { notices.push({ sessionId, ...operation }) })
-    const reconcile = (target: AsyncGuardedEventWriter) => reconcileChatLaunchedWorkflowCompletions({ parentSessionId, reader: store, writer: target })
+    const reconcile = (target: AsyncEventWriter) => reconcileChatLaunchedWorkflowCompletions({ parentSessionId, reader: store, writer: target })
     expect(await reconcile(writer)).toMatchObject({ reconciledCount: 0 })
     await replaceWorkflowState(store, "child", description, "completed")
     await expect(reconcile({ ...writer, appendBatchGuarded: async () => { throw new Error("injected publication failure") } })).rejects.toThrow("injected publication failure")

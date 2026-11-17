@@ -3,7 +3,7 @@ import { Effect, Exit, Scope } from "effect"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type AsyncGuardedEventWriter, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type GuardedEventStoreAppend } from "../../../../src/infra/event-store-types.js"
 import { wireSessionSubscribers } from "../../../../src/orchestration/session/create-session-infra.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { acquireSessionResources } from "../../../../src/orchestration/session/session-resources-service.js"
@@ -84,7 +84,7 @@ describe("workflow VM host SQLite interruption", () => {
     await vm.initialize()
     const base = asAsyncEventWriter(vm.store)
     const batches: GuardedEventStoreAppend[][] = []
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         batches.push([...events])
@@ -159,7 +159,7 @@ describe("workflow VM host SQLite interruption", () => {
     await vm.initialize()
     const base = asAsyncEventWriter(vm.store)
     const batches: GuardedEventStoreAppend[][] = []
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         batches.push([...events])
@@ -197,7 +197,7 @@ describe("workflow VM host SQLite interruption", () => {
     await vm.initialize()
     const base = asAsyncEventWriter(vm.store)
     const batches: GuardedEventStoreAppend[][] = []
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         const stored = await base.appendBatchGuarded(events)

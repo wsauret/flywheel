@@ -212,7 +212,6 @@ describe("command invocation", () => {
 
   test("a command session awaits its asynchronous in-flight state read", async () => {
     const sessionId = await ctx.manager.createChat({ name: "Async read" })
-    if (!ctx.store.putInFlight) throw new Error("Fixture requires in-flight write authority")
     await ctx.store.putInFlight(sessionId, "test.in-flight", "one", { value: 1 })
     const direct = ctx.runtime.runSync(EventReaderService)
     let released = false
@@ -264,7 +263,6 @@ describe("command invocation", () => {
 
   test("experiment start awaits asynchronous interruption evidence and does not redispatch recorded work", async () => {
     const sessionId = await ctx.manager.createChat({ name: "Interrupted experiment" })
-    if (!ctx.store.putInFlight) throw new Error("Fixture requires in-flight write authority")
     await ctx.store.putInFlight(sessionId, EXPERIMENT_OPERATION_KIND, "run", { state: "running" })
     const direct = ctx.runtime.runSync(EventReaderService)
     let reads = 0

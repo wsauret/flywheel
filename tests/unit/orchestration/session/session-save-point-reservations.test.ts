@@ -32,7 +32,7 @@ describe("save-point identity reservations", () => {
         ...eventWriter,
         putInFlight: async (...args) => {
           if (refuse) throw new Error("write refused");
-          await eventWriter.putInFlight!(...args);
+          await eventWriter.putInFlight(...args);
         },
       },
     });

@@ -55,7 +55,7 @@ export function replyWaitSource(row: InFlightRecord): ReplyWaitIdentity | undefi
 
 /** Holds one open wait. */
 export async function holdReplyWait(writer: AsyncEventWriter, waiterSessionId: string, cell: ReplyWaitCell): Promise<void> {
-  await writer.putInFlight?.(waiterSessionId, REPLY_WAIT_IN_FLIGHT_KIND, cellKey(cell), {
+  await writer.putInFlight(waiterSessionId, REPLY_WAIT_IN_FLIGHT_KIND, cellKey(cell), {
     openedAtMs: cell.openedAtMs,
     ...(cell.readKey === undefined ? {} : { readKey: cell.readKey }),
   })
@@ -64,7 +64,7 @@ export async function holdReplyWait(writer: AsyncEventWriter, waiterSessionId: s
 /** Retires the cell of one wait outside an append: a reply ended it, or its
  *  own session stopped it, or a newer wait on the same addressee replaced it. */
 export async function dropReplyWait(writer: AsyncEventWriter, waiterSessionId: string, wait: ReplyWaitIdentity): Promise<void> {
-  await writer.dropInFlight?.(waiterSessionId, REPLY_WAIT_IN_FLIGHT_KIND, cellKey(wait))
+  await writer.dropInFlight(waiterSessionId, REPLY_WAIT_IN_FLIGHT_KIND, cellKey(wait))
 }
 
 /** The open waits a waiter holds. */

@@ -18,10 +18,10 @@ import {
 import type { FileChangeObservationInput } from "./file-mutation-types.js"
 
 export interface FileMutationFactWriter {
-  stageSessionContentNodes?: StageSessionContentNodes
+  stageSessionContentNodes: StageSessionContentNodes
   record(fact: FileMutationFact, contentRows?: undefined, inFlight?: readonly InFlightWrite[]): Promise<StoredFact | null>
   transaction(fn: () => void): Promise<void>
-  swapInFlight?(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
+  swapInFlight(kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
 }
 
 /** The in-flight kind a prepared mutation is held under. */
@@ -73,8 +73,7 @@ export async function prepareFileMutationOperation(
     ...change, beforeContent: evidence.beforeSnapshot?.content ?? null,
   }, origin ?? context.origin))
   const writer = context.sessionEventWriter
-  const stage = writer?.stageSessionContentNodes?.bind(writer)
-  if (writer && !stage) throw new Error("File mutation evidence staging is unavailable")
+  const stage = writer?.stageSessionContentNodes.bind(writer)
   const evidence: (MutationFileEvidence | undefined)[] = []
   for (const [index, fact] of facts.entries()) {
     // SAFETY: facts maps plans without filtering.
@@ -93,11 +92,8 @@ export async function prepareFileMutationOperation(
   } satisfies FileMutationOperationCell
   const header = stage ? await stageFileMutationOperation(cell, stage) : null
   const state: FileMutationOperationState = { items: cell.items, header }
-  if (context.sessionEventWriter) {
-    if (!context.sessionEventWriter.swapInFlight) throw new Error("File mutation operation was not stored")
-    if (!await context.sessionEventWriter.swapInFlight(FILE_MUTATION_IN_FLIGHT_KIND, operationId, null, header)) {
-      throw new Error("File mutation operation changed before preparation")
-    }
+  if (context.sessionEventWriter && !await context.sessionEventWriter.swapInFlight(FILE_MUTATION_IN_FLIGHT_KIND, operationId, null, header)) {
+    throw new Error("File mutation operation changed before preparation")
   }
   return facts.map((fact, index) => ({ mutationId: fact.payload.mutationId, operationId, fact, state, ...(evidence[index] ? { evidence: evidence[index] } : {}) }))
 }

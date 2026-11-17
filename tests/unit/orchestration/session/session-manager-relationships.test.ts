@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import type { EventStore, EventStoreAppend, GuardedEventStoreAppend } from "../../../../src/infra/event-store-types";
 
 import { canonicalDirectory } from "../../../../src/infra/directory-authorities";
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types";
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
 import { createSessionManager, ParentPublicationContendedError } from "../../../../src/orchestration/session/manager";
@@ -206,15 +206,12 @@ describe("SessionManager workflow relationships", () => {
     const manager = createSessionManager({
       ...deps,
       writer: {
-        append: async (event) => store.append(event),
-        appendBatch: async (events) => store.appendBatch(events),
-        appendGuarded: async (event) => store.appendGuarded(event),
+        ...asAsyncEventWriter(store),
         appendBatchGuarded: async (events) => {
           batches.push(events);
           if (events.some(({ type }) => type === "workflow.paused")) payloadReadsBeforeAppend = payloadReads;
           return store.appendBatchGuarded(events);
         },
-        pruneSupersededEvents: async (...args) => store.pruneSupersededEvents(...args),
       },
     });
 
@@ -481,14 +478,11 @@ describe("SessionManager subagent relationships", () => {
     const manager = createSessionManager({
       ...deps,
       writer: {
-        append: async (event) => store.append(event),
-        appendBatch: async (events) => store.appendBatch(events),
-        appendGuarded: async (event) => store.appendGuarded(event),
+        ...asAsyncEventWriter(store),
         appendBatchGuarded: async (events) => {
           batches.push(events);
           return store.appendBatchGuarded(events);
         },
-        pruneSupersededEvents: async (...args) => store.pruneSupersededEvents(...args),
       },
     });
     const parentId = await manager.createChat({ name: "Parent", authProfileId: "profile-a" });

@@ -5,7 +5,7 @@ import { mkdtempSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { loadDefinitionLineageFromEvents } from "../../../../src/workflows/definition-provenance-projection.js"
@@ -23,7 +23,7 @@ function origin(parentId: string, conversationId: string) {
   return modelWorkflowLaunchOrigin(parentId, { conversationId, toolUseId: "tool-1", confirmation: { kind: "absent" }, authority: fullAuthority() })
 }
 
-function observingWriter(store: EventStore, batches: string[][]): AsyncGuardedEventWriter {
+function observingWriter(store: EventStore, batches: string[][]): AsyncEventWriter {
   return {
     ...asAsyncEventWriter(store),
     append: async () => { throw new Error("workflow launch must use appendBatch") },

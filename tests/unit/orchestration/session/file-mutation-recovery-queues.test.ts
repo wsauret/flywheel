@@ -81,7 +81,7 @@ describe("file mutation recovery queues", () => {
       const authority = RetainedFileEditAuthority.admit(z)
       const precondition = snapshotToFileObjectProof(authority.existingSnapshot())
       authority.close()
-      const changed = await stageFileMutationOperation({ ...cell, items: [{ ...cell.items[0]!, candidateEvidence: undefined, evidence: { ...cell.items[0]!.evidence, mutationId: "new-target", path: z, displayPath: z }, precondition }] }, nodes => writer.stageSessionContentNodes!(nodes))
+      const changed = await stageFileMutationOperation({ ...cell, items: [{ ...cell.items[0]!, candidateEvidence: undefined, evidence: { ...cell.items[0]!.evidence, mutationId: "new-target", path: z, displayPath: z }, precondition }] }, nodes => writer.stageSessionContentNodes(nodes))
       const heldA = createDeferred<void>()
       const heldZ = createDeferred<void>()
       const releaseA = createDeferred<void>()

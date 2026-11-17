@@ -216,7 +216,6 @@ export const workflowLaunchRetainedOperation = {
         if (operation.parentSessionId !== sessionId || operation.parentConversationId !== conversationId) {
           throw new Error(`Workflow launch ${operation.operationId} targets another parent`)
         }
-        if (!writer.swapInFlight) throw new Error("Workflow launch acceptance requires exact in-flight write authority")
         const inserted = await writer.swapInFlight(sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, acceptance.key, null, operation)
         const row = (await reader.readInFlight(sessionId, WORKFLOW_LAUNCH_OPERATION_KIND))
           .find((candidate) => candidate.key === acceptance.key)

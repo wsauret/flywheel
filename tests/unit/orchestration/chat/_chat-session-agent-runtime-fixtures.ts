@@ -28,6 +28,7 @@ import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-typ
 import { capabilityAccessHolding } from "../agent-runtime/tools/_fixtures"
 import { authProviders } from "../../../helpers/auth-context.js"
 import { planEveryCapability } from "../../../helpers/attempt-brief.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 export function makeMemoryTreeWriter(): ConversationTreeWriterController {
   // Production-shaped mock: durably mirrors the chat-tree-writer contract by
@@ -165,7 +166,7 @@ export function createSessionFactWriter(): SessionFactWriter {
     }
     return stored
   }
-  return {
+  return discardingSessionFactWriter({
     record,
     recordBatch: (facts) => Promise.all(facts.map((fact) => record(fact))),
     recordGuarded: async (fact) => ({ kind: "stored", events: [await record(fact)] }),
@@ -173,6 +174,18 @@ export function createSessionFactWriter(): SessionFactWriter {
     flush: async () => ({ kind: "drained", acked: [] }),
     drain: async () => ({ kind: "drained", acked: [] }),
     dispose: () => {},
+  })
+}
+
+/** The fixture's fact writer with its in-flight cells in `writer`'s store, so
+ *  a cell and the conversation commit that retires it meet in one store, as
+ *  they do in production. */
+export function inFlightCellsIn(sessionId: string, writer: AsyncEventWriter): SessionFactWriter {
+  return {
+    ...createSessionFactWriter(),
+    putInFlight: (kind, key, payload) => writer.putInFlight(sessionId, kind, key, payload),
+    dropInFlight: (kind, key) => writer.dropInFlight(sessionId, kind, key),
+    swapInFlight: (kind, key, expectedRaw, payload) => writer.swapInFlight(sessionId, kind, key, expectedRaw, payload),
   }
 }
 
@@ -345,7 +358,7 @@ export async function createStoredChatSession(input: {
     ...base,
     conversationId,
     eventBus,
-    infra: { ...base.infra, eventStore: reader, projectionReader: reader },
+    infra: { ...base.infra, eventStore: reader, projectionReader: reader, sessionEventWriter: inFlightCellsIn(sessionId, writer) },
     treeWriter: createConversationTreeWriterController({ conversationId, sessionId, projectRoot, store: reader, projectionReader: reader, writer }),
     ...input.overrides,
   })

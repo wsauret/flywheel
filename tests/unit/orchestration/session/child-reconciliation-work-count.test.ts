@@ -18,7 +18,7 @@ import { parseWorkflowRunFact } from "../../../../src/workflows/run-facts"
 import { readWorkflowControl } from "../../../../src/workflows/vm/recovery-fold"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
-import { addSubagentChild, addWorkflowChild, localAsyncWriter, reconcileChatLaunchedWorkflowCompletions, recordTerminalResult, replaceWorkflowState, setupWorkflowParent } from "./_child-session-reconciliation-fixtures"
+import { addSubagentChild, addWorkflowChild, reconcileChatLaunchedWorkflowCompletions, recordTerminalResult, replaceWorkflowState, setupWorkflowParent } from "./_child-session-reconciliation-fixtures"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { buildSubagentCompleted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
@@ -54,7 +54,7 @@ describe("child reconciliation work", () => {
       const unregister = registerLiveSessionControl(counter.reader, {
         sessionId: parentSessionId, state: async () => "running", deliver: async () => ({ status: "delivered", startsTurn: false }),
         ...(parentKind === "chat" ? { backgroundTasks: registry } : { member: { workflowId: `parent-workflow-${children}`, backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} } }),
-        notify: async (notification) => { offers += 1; await counter.reader.aggregateSeq(`session:${parentSessionId}`); await writer.putInFlight?.(parentSessionId, "chat.queued_background_notification", notification.key ?? "notice", { conversationId: "conversation", text: notification.text }); writes += 1; return true },
+        notify: async (notification) => { offers += 1; await counter.reader.aggregateSeq(`session:${parentSessionId}`); await writer.putInFlight(parentSessionId, "chat.queued_background_notification", notification.key ?? "notice", { conversationId: "conversation", text: notification.text }); writes += 1; return true },
       })
       const input = { parentSessionId, reader: counter.reader, projectionReader: counter.reader, writer, projectRoot, deliverNotification: async () => { callbacks += 1; return false } }
       try {
@@ -184,7 +184,7 @@ describe("child reconciliation work", () => {
         const projectRoot = temporaryDirectory("child-reconciliation-reopen-")
         const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
         stores.push(store)
-        const writer = localAsyncWriter(store)
+        const writer = asAsyncEventWriter(store)
         const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
         const parentSessionId = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
         const tree = await tryOpenConversationTree({ store: asAsyncEventReadSurface(store), writer, sessionId: parentSessionId, conversationId: "parent-conversation" })
@@ -220,7 +220,7 @@ describe("child reconciliation work", () => {
       const projectRoot = temporaryDirectory("child-reconciliation-siblings-")
       const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
       stores.push(store)
-      const writer = localAsyncWriter(store)
+      const writer = asAsyncEventWriter(store)
       const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
       for (let p = 0; p <= siblings; p += 1) {
         const id = await manager.createChat({ id: `parent-${p}`, conversationId: `parent-conversation-${p}`, name: "Parent" })
@@ -271,7 +271,7 @@ describe("child reconciliation work", () => {
       const projectRoot = temporaryDirectory("child-reconciliation-held-")
       const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
       stores.push(store)
-      const writer = localAsyncWriter(store)
+      const writer = asAsyncEventWriter(store)
       const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
       const parentSessionId = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
       for (let i = 0; i < children; i += 1) await addSubagentChild(store, writer, projectRoot, parentSessionId, "parent-conversation", i, "created")

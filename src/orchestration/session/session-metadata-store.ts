@@ -1,6 +1,5 @@
 import { HashMap } from "effect"
 import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventStoreAppend, GuardedAppendResult, GuardedEventStoreAppend, StoredFact } from "../../infra/event-store-types.js"
-import { requireGuardedEventAppender } from "../../infra/event-store-types.js"
 import type { EventProjection } from "../../infra/event-projection.js"
 import { Log } from "../../infra/log.js"
 import { generateSessionId } from "../../infra/session-id.js"
@@ -151,7 +150,6 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
   // because every metadata fact commits to its own session's aggregate.
   let projection: EventProjection<PerSessionMetadataState> | null = null
   const writer = deps.writer
-  const guardedWriter = () => requireGuardedEventAppender(writer, "Session metadata guarded writes require guarded append authority")
   const metadataProjection = (): EventProjection<PerSessionMetadataState> => {
     projection ??= createSessionMetadataProjection(deps.reader)
     return projection
@@ -183,7 +181,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
   }
 
   async function appendGuardedFacts(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult> {
-    const result = await guardedWriter().appendBatchGuarded(events)
+    const result = await writer.appendBatchGuarded(events)
     if (result.kind === "stored") await projection?.apply(result.events)
     return result
   }
@@ -250,7 +248,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
       if (from === to) return { kind: "noop" }
       if (!isValidTransition(from, to)) return { kind: "invalid", from, to }
       const now = new Date().toISOString()
-      const result = await guardedWriter().appendGuarded({ ...buildSessionMetadataAppend(id, {
+      const result = await writer.appendGuarded({ ...buildSessionMetadataAppend(id, {
           type: "session.lifecycle.changed",
           version: 1,
           actor: "flywheel",
@@ -279,7 +277,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
       const unchanged = existing.label === labels.label && existing.shortLabel === labels.shortLabel && existing.name === labels.label
       // A user rename to the already-current labels must mark the session user-named.
       if (unchanged && (source === "generated" || existing.userNamed)) return false
-      const result = await guardedWriter().appendGuarded({ ...buildSessionMetadataAppend(id, {
+      const result = await writer.appendGuarded({ ...buildSessionMetadataAppend(id, {
         type: "session.label.updated",
         version: 1,
         actor: "flywheel",
@@ -325,7 +323,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
     const expectedSeq = await deps.reader.aggregateSeq(`session:${id}`) + 1
     const existing = await read(id)
     if (!existing || existing.roleAssignments !== undefined) return false
-    const result = await guardedWriter().appendGuarded({
+    const result = await writer.appendGuarded({
         ...buildSessionMetadataAppend(id, buildSessionRolesSnapshottedFact({}, new Date().toISOString(), roles)),
         expectedSeq,
       })
@@ -344,7 +342,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
       const expectedSeq = await deps.reader.aggregateSeq(aggregateId) + 1
       const existing = await read(id)
       if (!existing || existing.authProfileId !== undefined) return false
-      const result = await guardedWriter().appendGuarded({
+      const result = await writer.appendGuarded({
           ...buildSessionMetadataAppend(id, buildSessionAuthProfileSelectedFact(authProfileId)),
           expectedSeq,
         })
@@ -403,7 +401,7 @@ export function createSessionMetadataStore(deps: SessionMetadataStoreDeps): Sess
     const expectedSeq = await deps.reader.aggregateSeq(aggregateId) + 1
     const existing = await read(id)
     if (!existing || !sameRoleSnapshot(existing.roleAssignments, expectedSnapshot)) return false
-    const result = await guardedWriter().appendGuarded({
+    const result = await writer.appendGuarded({
         ...buildSessionMetadataAppend(id, buildSessionRolesSnapshottedFact(roles, new Date().toISOString(), overrides)),
         expectedSeq,
       })

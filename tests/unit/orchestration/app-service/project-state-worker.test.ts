@@ -244,7 +244,7 @@ describe("project state read and write boundary", () => {
   })
   test("reports missing and corrupt evidence and refuses an indivisible node over the response budget", async () => {
     const { client, path } = await fixture()
-    const reference = await buildSessionContent("exact evidence".repeat(100), nodes => client.writer.stageSessionContentNodes!("s", nodes))
+    const reference = await buildSessionContent("exact evidence".repeat(100), nodes => client.writer.stageSessionContentNodes("s", nodes))
     const missing = { ...reference, root: "0".repeat(64) }
     expect(await client.control({ kind: "content.node", sessionId: "s", sha256: missing.root, maxBytes: 1024 })).toMatchObject({ kind: "content.node", value: { kind: "unavailable", reason: "missing" } })
     expect(await client.readSessionContentRange!("s", missing, 0, 100)).toEqual({ kind: "unavailable", reason: "missing" })
@@ -404,7 +404,7 @@ describe("project state read and write boundary", () => {
     expect(store.currentPosition()).toBe(1)
 
     expect(await client.writer.pruneSupersededEvents("session:s", "queue.state.changed")).toBe(0)
-    expect(await client.writer.pruneSupersededKeyedEvents?.("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
+    expect(await client.writer.pruneSupersededKeyedEvents("session:s", "step.resume_revert.recorded", "$.attemptId")).toBe(0)
   })
 
   test("store upkeep runs one bounded step per request and never deletes a live family", async () => {

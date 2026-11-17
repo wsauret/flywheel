@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createBackgroundNotificationDelivery as createSessionBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/session-background-notifications"
@@ -134,7 +134,7 @@ describe("workflow background notification delivery", () => {
     const projectRoot = temporary("background-notification-failure-")
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
     const base = asAsyncEventWriter(store)
-    const guarded = requireGuardedEventAppender(base, "notification test requires guarded writes")
+    const guarded = base
     let refused = false
     const writer = { ...base, appendBatchGuarded: async (...args: Parameters<typeof guarded.appendBatchGuarded>) => {
       if (refused) throw new Error("injected notification commit failure")
@@ -177,8 +177,8 @@ describe("workflow background notification delivery", () => {
     const conversationId = "conversation"
     const conversation = createConversationTreeWriterController({ conversationId, sessionId, projectRoot, store: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })
     try {
-      await writer.putInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "first", { conversationId, text: "first" })
-      await writer.putInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "second", { conversationId, text: "second" })
+      await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "first", { conversationId, text: "first" })
+      await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "second", { conversationId, text: "second" })
       let admitted = true
       const read = Promise.withResolvers<void>()
       const releaseRead = Promise.withResolvers<void>()
@@ -211,7 +211,7 @@ describe("workflow background notification delivery", () => {
           : [],
       )).toEqual(["first", "second"])
       expect(store.readInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
-      await writer.putInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "late", { conversationId, text: "held during stop" })
+      await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "late", { conversationId, text: "held during stop" })
       let liveDeliveries = 0
       const closing = chatEntry({ conversationId, runner: mockRunner(sessionId, {
         deliverBackgroundNotification: async () => { liveDeliveries += 1; return true },

@@ -72,7 +72,6 @@ export async function writeCommandHandover(input: {
   readonly row: Omit<CommandHandoverRow, "version">
 }): Promise<StoredCommandHandover> {
   const { reader, writer } = input
-  if (!writer.putInFlight) throw new Error("Command handover requires durable in-flight storage")
   const row: CommandHandoverRow = { version: 1, ...input.row }
   await writer.putInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
   const stored = (await reader.readInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND)).find((candidate) => candidate.key === row.processId)
@@ -168,9 +167,8 @@ export interface CommandCompletion {
  *  nothing. A completion already held under the key is that publication, so
  *  the row then retires alone. */
 export async function retireCommandHandover(writer: AsyncEventWriter, stored: StoredCommandHandover, completion?: CommandCompletion): Promise<boolean> {
-  if (!writer.swapInFlight || !writer.swapInFlightBatch) throw new Error("Command handover requires guarded in-flight retirement")
   const { row } = stored
-  const retire = (): Promise<boolean> => writer.swapInFlight?.(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, stored.raw, null) ?? Promise.resolve(false)
+  const retire = (): Promise<boolean> => writer.swapInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, stored.raw, null)
   if (completion === undefined) return await retire()
   const retiredWithHold = await writer.swapInFlightBatch(row.sessionId, [
     { op: "swap", kind: COMMAND_HANDOVER_IN_FLIGHT_KIND, key: row.processId, expectedRaw: stored.raw, payload: null },
@@ -185,7 +183,6 @@ export async function retireCommandHandover(writer: AsyncEventWriter, stored: St
  *  compare-and-swap on the row as it was read, and answers the row as stored
  *  now: nothing when another consumer retired it first. */
 export async function markCommandKept(reader: Pick<AsyncEventStateReadSurface, "readInFlight">, writer: AsyncEventWriter, stored: StoredCommandHandover): Promise<StoredCommandHandover | undefined> {
-  if (!writer.swapInFlight) throw new Error("Command handover requires guarded in-flight writes")
   const row: CommandHandoverRow = { ...stored.row, kept: true }
   if (!await writer.swapInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, stored.raw, row)) return undefined
   const marked = (await reader.readInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND)).find((candidate) => candidate.key === row.processId)

@@ -517,10 +517,7 @@ async function createWorkerProjectStateService(init: ProjectStateWorkerInit) {
       settleRecovery: gate.settle,
       appendWriteItem: (item) => writerLane.appendWriteItem(item),
       pruneSupersededEvents: (...args) => store.pruneSupersededEvents(...args),
-      pruneSupersededKeyedEvents: (...args) => {
-        if (!store.pruneSupersededKeyedEvents) throw new Error("event store does not support keyed pruning")
-        return store.pruneSupersededKeyedEvents(...args)
-      },
+      pruneSupersededKeyedEvents: (...args) => store.pruneSupersededKeyedEvents(...args),
       // Each step opens its own handle on this thread. Operations run one at a
       // time here and the writer lane commits synchronously, so the handle
       // never waits on this Worker's own writes. The module loads on the first

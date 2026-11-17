@@ -13,7 +13,7 @@ import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { Effect } from "effect"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { EventReaderService, EventStoreWriterLaneService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
 import type { EventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane-types.js"
@@ -31,6 +31,7 @@ import { skillLoadedFact } from "../../../../src/workflows/skill-facts.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { wireSessionSubscribers, type MetricsWriter } from "../../../../src/orchestration/session/create-session-infra.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 // ---------------------------------------------------------------------------
 // Shared state per test — reset in beforeEach
@@ -80,13 +81,13 @@ function fakeCreateSessionBudgetStore(): SessionBudgetStore {
 }
 
 function fakeCreateSessionFactWriter(): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     record: async () => null,
     recordBatch: async () => null,
     recordGuarded: async () => null,
     transaction: async (fn) => { fn() },
     dispose: () => record("sessionEvents.dispose"),
-  }
+  })
 }
 
 function fakeCreateSessionToolExecutionStore(): SessionToolExecutionStore {
@@ -135,20 +136,12 @@ function createWriterLane(store: EventStore): EventStoreWriterLane {
   return lane
 }
 
-function localAsyncWriter(store: EventStore): AsyncEventWriter {
-  return {
-    append: async (event) => store.append(event),
-    appendBatch: async (events) => store.appendBatch(events),
-    pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
-  }
-}
-
 function provideEventStoreServices<A, E, R>(effect: Effect.Effect<A, E, R>, store: EventStore) {
   return Effect.provideService(
     Effect.provideService(
       Effect.provideService(effect, EventReaderService, asAsyncEventReadSurface(store)),
       EventStoreWriterService,
-      localAsyncWriter(store),
+      asAsyncEventWriter(store),
     ),
     EventStoreWriterLaneService,
     createWriterLane(store),
@@ -332,7 +325,7 @@ describe("child execution resources", () => {
       sessionId: "child", conversationId: "child-conversation", description: "child", executionCwd: "/scratch",
       projectRoot: storeDirectories.at(-1)!,
       eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
-      writer: localAsyncWriter(store), recall: async () => ({ hits: [] }),
+      writer: asAsyncEventWriter(store), recall: async () => ({ hits: [] }),
       attachProjection: async () => ({
         onEvent() {}, queueUserMessage() {}, lifecycle: {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {},
         async dispose() {
@@ -370,7 +363,7 @@ describe("child execution resources", () => {
       sessionId: "child", conversationId: "child-conversation", description: "child", executionCwd: "/scratch",
       projectRoot: storeDirectories.at(-1)!,
       eventStore: asAsyncEventReadSurface(store), projectionReader: counter.reader,
-      writer: localAsyncWriter(store), recall: async () => ({ hits: [] }),
+      writer: asAsyncEventWriter(store), recall: async () => ({ hits: [] }),
       attachProjection: async () => ({
         onEvent() {}, queueUserMessage() {}, lifecycle: {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {},
         updateMetrics(metrics) { contextPercents.push(metrics.contextPercent) },
@@ -399,7 +392,7 @@ describe("child execution resources", () => {
       sessionId: "child", conversationId: "child-conversation", description: "child", executionCwd: "/scratch",
       projectRoot: storeDirectories.at(-1)!,
       eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
-      writer: localAsyncWriter(store), recall: async () => ({ hits: [] }),
+      writer: asAsyncEventWriter(store), recall: async () => ({ hits: [] }),
       attachProjection: async () => ({
         onEvent() {}, queueUserMessage() {}, lifecycle: {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {},
         async dispose() {},
@@ -422,7 +415,7 @@ describe("child execution resources", () => {
       sessionId: "child", conversationId: "child-conversation", description: "child", executionCwd: "/scratch",
       projectRoot: storeDirectories.at(-1)!,
       eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),
-      writer: localAsyncWriter(store), recall: async () => ({ hits: [] }),
+      writer: asAsyncEventWriter(store), recall: async () => ({ hits: [] }),
       attachProjection: async () => ({
         onEvent() {}, queueUserMessage() {}, lifecycle: {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {},
         updateMetrics() { throw new Error("initial metrics failed") },

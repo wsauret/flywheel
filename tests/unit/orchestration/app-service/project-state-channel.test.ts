@@ -6,7 +6,7 @@ import { InvariantViolation } from "../../../../src/infra/invariant.js"
 import { Log } from "../../../../src/infra/log.js"
 import { createMessagePortProcessEndpoint, type InternalProcessEndpoint } from "../../../../src/infra/internal-process-channel.js"
 import { createReattachableProcessEndpoint } from "../../../../src/infra/reattachable-process-endpoint.js"
-import { asAsyncEventWriter, CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused, type AsyncGuardedEventWriter, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, CorruptEventRowError, InFlightSwapConflictError, PersistenceWriteRefused, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { connectProjectStateChannel, serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js"
 import { createProjectStateClient, type ProjectStateClient } from "../../../../src/orchestration/app-service/project-state-client.js"
 import { createProjectStateSessionManager } from "../../../../src/orchestration/app-service/project-state-sessions.js"
@@ -19,6 +19,7 @@ import { WorkflowParentRefusal } from "../../../../src/orchestration/session/chi
 import { buildSessionContent, buildSessionContentManifest, readSessionContentRecords } from "../../../../src/infra/session-content.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { closeFixtures, fixture } from "./_project-state-worker-fixture.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 /** The response frame a state client reads from `bytes`, with its body unread. */
 function responseFrame(bytes: Uint8Array) {
@@ -130,14 +131,14 @@ function stateHarness() {
     if (operation.kind === "execution.operation") return control(operation.operation)
     return { kind: "ok" }
   }
-  const writer: AsyncGuardedEventWriter = {
+  const writer = refusingEventWriter({
     append: async (_event: EventStoreAppend) => storedFact,
     appendBatch: async () => [],
     appendGuarded: async () => ({ kind: "stored", events: [storedFact] }),
     appendBatchGuarded: async () => ({ kind: "stored", events: [] }),
     pruneSupersededEvents: async () => 0,
     pruneSupersededKeyedEvents: async () => 0,
-  }
+  })
   const state: ProjectStateClient = {
     available: true,
     sessions,
@@ -228,7 +229,7 @@ describe("project state channel", () => {
     const localWriter = createSessionFactWriter({ sessionId: "local", writer: asAsyncEventWriter(store) })
     try {
       const text = 'é🙂"\0'.repeat(20_000)
-      const reference = await buildSessionContent(text, nodes => writer.stageSessionContentNodes!(nodes))
+      const reference = await buildSessionContent(text, nodes => writer.stageSessionContentNodes(nodes))
       const pieces: Buffer[] = []
       let offset: number | null = 0
       while (offset !== null) {
@@ -239,7 +240,7 @@ describe("project state channel", () => {
       }
       expect(Buffer.concat(pieces).equals(Buffer.from(text))).toBe(true)
       const records = Array.from({ length: 600 }, (_, index) => JSON.stringify({ path: `file-${index}`, value: "x".repeat(180) }))
-      const manifest = await buildSessionContentManifest(records, nodes => writer.stageSessionContentNodes!(nodes))
+      const manifest = await buildSessionContentManifest(records, nodes => writer.stageSessionContentNodes(nodes))
       const actual: string[] = []
       offset = 0
       while (offset !== null) {
@@ -250,7 +251,7 @@ describe("project state channel", () => {
         offset = page.nextOffset
       }
       expect(actual).toEqual(records)
-      const local = await buildSessionContent("local evidence", nodes => localWriter.stageSessionContentNodes!(nodes))
+      const local = await buildSessionContent("local evidence", nodes => localWriter.stageSessionContentNodes(nodes))
       expect(await client.readSessionContentRange!("local", local, 0, 100)).toMatchObject({ kind: "available", base64: Buffer.from("local evidence").toString("base64") })
       expect(operations).toContain("content.stage")
       expect(operations).toContain("content.node")

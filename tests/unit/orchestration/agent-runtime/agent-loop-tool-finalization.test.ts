@@ -22,6 +22,7 @@ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { makeCaptureClient } from "./context/_loop-fixtures.js"
 import { blockedFailureRecord, describeAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 async function mutationSummary(stage: StageSessionContentNodes = async () => {}) {
   const file = await buildMutationFileEvidence({
@@ -108,11 +109,11 @@ describe("tool result finalization", () => {
   it("does not publish an available result when its settled-file checkpoint is refused", async () => {
     const error = new PersistenceWriteRefused(129, 128)
     const mutationEvidence = await mutationSummary()
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null, recordBatch: async () => [],
       recordGuarded: async () => null, transaction: async (fn) => { fn() }, dispose() {},
       putInFlight: async () => { throw error },
-    }
+    })
     const tool = makeTool(async () => ({ content: "done", outcome: "ok", details: { mutationEvidence } }), "write")
     const turn = harness(tool, { ...makeContext(), conversationId: "c", sessionEventWriter: writer, flushCanonicalMessages: async () => {} })
     const call = { id: "failed-save", name: "write", input: {} }
@@ -126,7 +127,7 @@ describe("tool result finalization", () => {
     const error = new PersistenceWriteRefused(13_268_930, 8_388_608)
     let releaseEarlier = () => {}
     const earlierRunning = new Promise<void>((resolve) => { releaseEarlier = resolve })
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null, recordBatch: async () => [],
       recordGuarded: async () => null, transaction: async (fn) => { fn() }, dispose() {},
       putInFlight: async (_kind, key) => {
@@ -136,7 +137,7 @@ describe("tool result finalization", () => {
         setTimeout(releaseEarlier, 5)
         throw error
       },
-    }
+    })
     // bun test fails the test that was running when a rejection goes unhandled,
     // so this test also proves the refusal never escapes as one.
     const earlier = { ...makeTool(async () => { await earlierRunning; return { content: "earlier", outcome: "ok" } }, "earlier"), isConcurrencySafe: true }
@@ -226,14 +227,14 @@ describe("tool result finalization", () => {
     const genericJson = JSON.stringify({ changedFiles: ["large.json"], diagnostic })
 
     let checkpoint: unknown
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null,
       recordBatch: async () => { throw new Error("unused request audit") },
       recordGuarded: async () => null,
       transaction: async (fn) => { fn() },
       dispose: () => {},
       putInFlight: async (_kind, _key, payload) => { checkpoint = payload },
-    }
+    })
     const call: ToolCall = { id: "tool_large_write", name: "write", input: {} }
     const tool = makeTool(async (): Promise<ToolResult> => ({
       content: "Wrote large.json",
@@ -281,11 +282,11 @@ describe("tool result finalization", () => {
     const mutationEvidence = await mutationSummary()
     const error = new PersistenceWriteRefused(129, 128)
     const checkpoints: unknown[] = []
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null, recordBatch: async () => [],
       recordGuarded: async () => null, transaction: async fn => { fn() }, dispose() {},
       putInFlight: async (_kind, _key, payload) => { checkpoints.push(payload) },
-    }
+    })
     const { client, capturedMessages } = makeCaptureClient([{ events: [
       { kind: "tool_use", toolCall: { id: "write-1", name: "write", input: {} } },
       { kind: "done", stopReason: "tool_use" },

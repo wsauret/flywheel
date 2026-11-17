@@ -196,6 +196,6 @@ export function getSessionChangeReview(reader: AsyncEventStateReadSurface, sessi
 
 /** Session-close retention for the newest review assertion per stable file identity. */
 export async function pruneSupersededFileReviewFacts(writer: AsyncEventWriter, sessionId: string): Promise<number> {
-  return await writer.pruneSupersededKeyedEvents?.(`session:${sessionId}`, "file.reviewed", "$.fileId") ?? 0
+  return await writer.pruneSupersededKeyedEvents(`session:${sessionId}`, "file.reviewed", "$.fileId")
 }
 export type SessionChangeReview = Awaited<ReturnType<typeof getSessionChangeReview>>

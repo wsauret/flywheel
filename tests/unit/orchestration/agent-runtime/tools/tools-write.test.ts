@@ -97,7 +97,7 @@ describe("write tool", () => {
         // channels: the point of the test is that it lands before any bytes.
         swapInFlight: (kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null) => {
           order.push(`prepared:${fs.existsSync(target)}`);
-          return recorder.writer.swapInFlight!(kind, key, expectedRaw, payload);
+          return recorder.writer.swapInFlight(kind, key, expectedRaw, payload);
         },
         record: async (fact) => {
           order.push(`${fact.type}:${fs.existsSync(target)}`);

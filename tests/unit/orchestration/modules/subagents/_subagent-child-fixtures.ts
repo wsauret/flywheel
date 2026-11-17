@@ -6,7 +6,7 @@ import { ManagedRuntime } from "effect"
 import { EventStoreLive } from "../../../../../src/infra/event-store-effect.js"
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js"
 import { contentEvidence } from "../../../../../src/infra/content-evidence.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter, type EventStoreAppend, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { createSessionStore } from "../../../../../src/orchestration/session-store/store.js"
@@ -201,8 +201,8 @@ function createHarness(projectRoot: string, createRunner: (options: AgentOptions
       throw new Error("injected activation publication failure")
     }
   }
-  const writer: AsyncGuardedEventWriter = {
-    append: (event) => baseWriter.append(event),
+  const writer: AsyncEventWriter = {
+    ...baseWriter,
     appendBatch: async (events) => {
       observeBatch(events)
       return baseWriter.appendBatch(events)
@@ -215,12 +215,6 @@ function createHarness(projectRoot: string, createRunner: (options: AgentOptions
       observeBatch(events)
       return baseWriter.appendBatchGuarded(events)
     },
-    pruneSupersededEvents: (...args) => baseWriter.pruneSupersededEvents(...args),
-    pruneSupersededKeyedEvents: (...args) => baseWriter.pruneSupersededKeyedEvents?.(...args) ?? Promise.resolve(0),
-    putInFlight: (...args) => baseWriter.putInFlight?.(...args) ?? Promise.reject(new Error("missing in-flight writer")),
-    dropInFlight: (...args) => baseWriter.dropInFlight?.(...args) ?? Promise.reject(new Error("missing in-flight writer")),
-    swapInFlight: (...args) => baseWriter.swapInFlight?.(...args) ?? Promise.resolve(false),
-    swapInFlightBatch: (...args) => baseWriter.swapInFlightBatch?.(...args) ?? Promise.resolve(false),
   }
   const manager = manageSessions(createSessionManager({ projectRoot, executionCwd: projectRoot, projectionReader: reader, writer }))
   const backgroundTasks = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} })

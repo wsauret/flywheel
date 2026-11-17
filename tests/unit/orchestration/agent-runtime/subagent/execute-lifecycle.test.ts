@@ -15,6 +15,7 @@ import type { SessionFactWriter } from "../../../../../src/orchestration/session
 import { isRecord, type UnknownRecord } from "../../../../../src/infra/record.js";
 import type { ResolvedRoles } from "../../../../../src/orchestration/config/roles.js";
 import { processSettled } from "../../../../helpers/process-settled.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 function parseRecord(json: string): UnknownRecord {
   const value: unknown = JSON.parse(json);
@@ -150,13 +151,13 @@ describe("subagent tool — execute lifecycle", () => {
       const done = Promise.withResolvers<AgentRunResult>();
       const output = pendingSubagentOutput("/workspace", "dispatch-call");
       const facts: Parameters<SessionFactWriter["record"]>[0][] = [];
-      const sessionEventWriter: SessionFactWriter = {
+      const sessionEventWriter: SessionFactWriter = discardingSessionFactWriter({
         record: async (fact) => { facts.push(fact); return null; },
         recordBatch: async (batch) => { facts.push(...batch); return null; },
         recordGuarded: async () => null,
         transaction: async (fn) => { fn(); },
         dispose: () => {},
-      };
+      });
       const tool = createSubagentDispatch(makeDeps({
         backgroundTasks,
         sessionEventWriter,
@@ -257,7 +258,7 @@ describe("subagent tool — execute lifecycle", () => {
       const { factory } = makeMockRunnerFactory({ finalText: "done" });
       const sessionDir = path.join(os.tmpdir(), `subagent-test-${Date.now()}`);
       const notification = createNotificationCapture();
-      const sessionEventWriter: SessionFactWriter = {
+      const sessionEventWriter: SessionFactWriter = discardingSessionFactWriter({
         record: async (fact) => {
           if (fact.type === "subagent.completed") throw new Error("store refused the append");
           return null;
@@ -266,7 +267,7 @@ describe("subagent tool — execute lifecycle", () => {
         recordGuarded: async () => null,
         transaction: async (fn) => { fn(); },
         dispose: () => {},
-      };
+      });
       const deps = makeDeps({ sessionDir, backgroundTasks: notification.backgroundTasks, createRunner: factory, sessionEventWriter });
       const tool = createSubagentDispatch(deps);
 

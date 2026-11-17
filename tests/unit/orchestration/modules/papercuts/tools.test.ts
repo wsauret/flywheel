@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { asAsyncEventAppender, asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { papercutsModule } from "../../../../../src/orchestration/modules/papercuts.js"
@@ -61,7 +61,7 @@ function storeFixture() {
   directories.push(directory)
   const store = createSqliteEventStore(join(directory, "events.sqlite"))
   openStores.push(store)
-  return { store, writer: createPapercutDispositionWriter({ store: asAsyncEventReadSurface(store), writer: asAsyncEventAppender(store) }) }
+  return { store, writer: createPapercutDispositionWriter({ store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) }) }
 }
 
 /** The disposition tool's context when the module's runtime writer is `writer`. */

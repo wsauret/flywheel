@@ -26,6 +26,7 @@ import { asRecord } from "../../../src/infra/record.js";
 import { turnReminders } from "../../../src/orchestration/agent-runtime/turn-reminders.js";
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { promptCapabilities } from "../../helpers/prompt-capabilities.js";
+import { discardingSessionFactWriter } from "../../helpers/event-writer-doubles.js";
 // Every module a source run composes: the shipped catalog plus the one the
 // source entry installs, so the development module's off-surface is held too.
 const CATALOG = [...SHIPPED_MODULES, ...DEVELOPMENT_MODULES] as const;
@@ -151,13 +152,13 @@ async function observe(composition: FirstPartyModuleComposition): Promise<Capabi
       sessionId: "module-observer-probe",
       eventStore: reader,
       projectionReader: reader,
-      writer: {
+      writer: discardingSessionFactWriter({
         record: async () => { throw new Error("no experiment fact is recorded without a run"); },
         recordBatch: async () => { throw new Error("no experiment fact batch is recorded without a run"); },
         recordGuarded: async () => { throw new Error("no experiment fact is recorded without a run"); },
         transaction: async () => { throw new Error("no experiment transaction starts without a run"); },
         dispose: () => {},
-      },
+      }),
       enqueueSilentSystem: (message) => silentContinuations.push(message),
       showSystemMessage: (message) => messages.push(message),
     });

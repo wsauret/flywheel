@@ -9,7 +9,7 @@ import { ownedCommandRunner } from "../../infra/owned-command.js"
 import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js"
 import { resolveEventStoreDbFile } from "../../infra/paths.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
-import type { AsyncGuardedEventWriter } from "../../infra/event-store-types.js"
+import type { AsyncEventWriter } from "../../infra/event-store-types.js"
 import { pruneRetiredFactFamiliesThrough, readEventStoreSizeStats, shouldVacuum } from "../session/event-store-maintenance.js"
 import { sweepIdleScratch } from "../session/session-artifacts.js"
 import type { WorkerSelf } from "./bun-worker-rpc.js"
@@ -127,7 +127,7 @@ async function runMaintenanceWork(directories: StartupDirectories, launcher: Lau
   }
 }
 
-async function runMaintenanceSteps(directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, writer: AsyncGuardedEventWriter, signal: AbortSignal): Promise<void> {
+async function runMaintenanceSteps(directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, writer: AsyncEventWriter, signal: AbortSignal): Promise<void> {
   // The state client is the reader, as in the executor, so a projection that
   // maintenance holds is keyed by the same object that releases it.
   const input = { directories, launcher, reader: state, writer, signal }

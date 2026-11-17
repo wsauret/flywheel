@@ -15,6 +15,7 @@ import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, test
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { budgetCaptureSurface } from "./context/_loop-fixtures.js"
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 const { harness, makeContext } = turnDispatchHarnesses()
 
@@ -190,14 +191,14 @@ describe("createTurnDispatcher", () => {
   it("settles a suspended durable tool without emitting a tool result", async () => {
     const toolCall: ToolCall = { id: "tool_wait", name: "waiter", input: {} }
     const checkpoints: unknown[] = []
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null,
       recordBatch: async () => { throw new Error("unused request audit") },
       recordGuarded: async () => null,
       transaction: async (fn) => { fn() },
       dispose: () => {},
       putInFlight: async (_kind, _key, payload) => { checkpoints.push(payload) },
-    }
+    })
 
     const tool = makeTool(async (): Promise<ToolResult> => ({
       content: "",

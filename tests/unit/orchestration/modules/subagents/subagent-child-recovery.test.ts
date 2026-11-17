@@ -36,7 +36,7 @@ async function publishRunningChild() {
       return store.readTolerant(query)
     },
   }
-  const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store: localReader, writer })
+  const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, projectionReader: asAsyncEventReadSurface(localReader), writer })
   const reader = asAsyncEventReadSurface(localReader)
   await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "parent", initialState: "inactive" })
   const created = buildDurableSubagentCreated({

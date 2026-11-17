@@ -63,7 +63,7 @@ describe("subagent private input at handoff", () => {
     const retiring = Promise.withResolvers<void>()
     const retirement = Promise.withResolvers<void>()
     const released = Promise.withResolvers<void>()
-    const drop = harness.writer.dropInFlight!
+    const drop = harness.writer.dropInFlight
     harness.writer.dropInFlight = async (...args) => {
       if (args[1] === QUEUED_USER_INPUT_IN_FLIGHT_KIND && args[2] === "person:recall") {
         retiring.resolve()
@@ -113,7 +113,7 @@ describe("subagent private input at handoff", () => {
     const holding = Promise.withResolvers<void>()
     const admission = Promise.withResolvers<void>()
     const released = Promise.withResolvers<void>()
-    const swap = harness.writer.swapInFlight!
+    const swap = harness.writer.swapInFlight
     harness.writer.swapInFlight = async (...args) => {
       const held = await swap(...args)
       if (args[1] === QUEUED_USER_INPUT_IN_FLIGHT_KIND && args[2] === "person:admission" && args[4] !== null) {

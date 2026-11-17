@@ -59,7 +59,7 @@ export interface PendingFileMutationProjection {
 
 export interface FileMutationRecoveryWriter {
   appendBatch(events: readonly EventStoreAppend[]): Promise<readonly StoredFact[]>
-  appendBatchGuarded?(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
+  appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
 }
 
 export class FileMutationRecoveryError extends Error {
@@ -254,7 +254,7 @@ async function reconcileOperation(
         const outcome = classifyOperationItem(item)
         const facts = fileMutationCompletionFacts(preparedFromItem(item), outcome, null, { mutationDiff: item.mutationDiff, evidence: item.candidateEvidence })
         const expectedSeq = await options.store.aggregateSeq(aggregateId) + 1
-        const result = await appendRecoveryGuarded(options.writer, facts.map((fact, index) => recoveryAppend(
+        const result = await options.writer.appendBatchGuarded(facts.map((fact, index) => recoveryAppend(
           aggregateId,
           fact,
           expectedSeq + index,
@@ -300,7 +300,7 @@ async function reconcileLegacy(
         payload: { mutationId, outcome: "applied" },
       } satisfies FileMutationFact]
     const expectedSeq = await options.store.aggregateSeq(aggregateId) + 1
-    const result = await appendRecoveryGuarded(options.writer, facts.map((fact, index) => recoveryAppend(
+    const result = await options.writer.appendBatchGuarded(facts.map((fact, index) => recoveryAppend(
         aggregateId,
         fact,
         expectedSeq + index,
@@ -394,16 +394,6 @@ function recoveryAppend(aggregateId: string, fact: FileMutationFact, expectedSeq
     expectedSeq,
     ...(inFlight ? { inFlight } : {}),
   }
-}
-
-function appendRecoveryGuarded(
-  writer: FileMutationRecoveryWriter,
-  events: readonly GuardedEventStoreAppend[],
-): Promise<GuardedAppendResult> {
-  if (!("appendBatchGuarded" in writer) || typeof writer.appendBatchGuarded !== "function") {
-    throw new Error("File mutation recovery requires guarded append authority")
-  }
-  return writer.appendBatchGuarded(events)
 }
 
 function legacyRecoveryOutcome(prepared: FileMutationPreparedFact): CurrentFileMutationOutcome {

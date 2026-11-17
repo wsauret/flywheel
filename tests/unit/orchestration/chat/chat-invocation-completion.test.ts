@@ -97,7 +97,7 @@ it("runs the root chat of an unattended invocation with the unattended purpose",
 it("refuses to seal while accepted input commits and refuses new input after sealing", async () => {
   const { lifecycle, deps, runnerOptions, resolvers, state, session, callbacks } = makeLifecycle()
   deps.rootChatCompletion = createChatInvocationCompletion(() => {})
-  const held = Promise.withResolvers<string | null>()
+  const held = Promise.withResolvers<string>()
   let saves = 0
   deps.treeWriter.holdQueuedUserInput = () => { saves++; return held.promise }
   const controls = createChatControls({
@@ -132,7 +132,7 @@ it("refuses to seal while accepted input commits and refuses new input after sea
     await lifecycle.settle()
     expect(await controls.send("after settlement")).toBe("ended")
   } finally {
-    held.resolve(null)
+    held.resolve("held-input")
     resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
     await lifecycle.settle()
     await lifecycle.terminateBackgroundWorks()

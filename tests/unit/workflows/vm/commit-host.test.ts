@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Database } from "bun:sqlite"
-import { asAsyncEventReadSurface, requireGuardedEventAppender, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventReader, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type GuardedEventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { createSqliteEventReadSurface } from "../../../../src/infra/sqlite-event-read-surface.js"
 import { createSqliteEventInserter } from "../../../../src/infra/sqlite-event-store-core.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
@@ -20,6 +20,7 @@ import { createLiveWorkflowView, loadQueueFromEvents } from "../../../../src/wor
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { WorkflowMalformedStateError } from "../../../../src/workflows/vm/host-types.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const workflow = loadedWorkflow({
   id: "workflow",
@@ -67,8 +68,9 @@ function reader(events: readonly StoredFact[], onRead?: (kind: "indexed" | "full
   }
 }
 
-function writer(overrides: Partial<AsyncGuardedEventWriter> = {}): AsyncGuardedEventWriter {
+function writer(overrides: Partial<AsyncEventWriter> = {}): AsyncEventWriter {
   return {
+    ...refusingEventWriter(),
     append: async (event) => stored(event, 0),
     appendBatch: async (events) => events.map((event, index) => stored(event, index)),
     appendGuarded: async (event) => ({ kind: "stored", events: [stored(event, 0)] }),
@@ -83,7 +85,7 @@ function host(eventWriter: AsyncEventWriter, events: readonly StoredFact[] | Eve
   return createWorkflowCommitHost({
     sessionId: "session",
     writer: eventWriter,
-    commitBatch: (appends) => requireGuardedEventAppender(eventWriter, "A test commit host appends through guarded batches").appendBatchGuarded(appends),
+    commitBatch: (appends) => eventWriter.appendBatchGuarded(appends),
     reader: asAsyncEventReadSurface("read" in events ? events : reader(events, onRead)),
     definitionRevision: Object.freeze({
       ...captured,

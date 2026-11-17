@@ -35,6 +35,7 @@ import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/create-session-infra.js";
 import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 interface UnknownRecord { [key: string]: unknown }
 let nextTestChildId = 0;
@@ -433,7 +434,7 @@ function memoryConversation(): ConversationTreeWriterController {
     recordCanonicalMessage: async (message) => { messages.push(message); },
     suspendPending: () => {},
     settleSuspendedTurn: async () => {},
-    holdQueuedUserInput: async () => null,
+    holdQueuedUserInput: async () => crypto.randomUUID(),
     commitHeldMessage: async () => null,
     holdBackgroundNotification: async () => ({ key: "test", text: "" }),
     waitForBackgroundNotification: async () => {},
@@ -454,13 +455,13 @@ function memoryConversation(): ConversationTreeWriterController {
 }
 
 function noopSessionFactWriter(): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     record: async () => null,
     recordBatch: async () => null,
     recordGuarded: async () => null,
     transaction: async (fn) => { fn(); },
     dispose: () => {},
-  };
+  });
 }
 
 export function createNotificationCapture() {

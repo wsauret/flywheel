@@ -542,65 +542,38 @@ interface EventWriter {
 export interface AsyncEventAppender {
   append(event: EventStoreAppend): Promise<StoredFact>
   appendBatch(events: readonly EventStoreAppend[]): Promise<StoredFact[]>
-}
-
-export interface AsyncGuardedEventAppender extends AsyncEventAppender {
   appendGuarded(event: GuardedEventStoreAppend): Promise<GuardedAppendResult>
   appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
 }
 
-export function requireGuardedEventAppender(
-  writer: AsyncEventAppender,
-  message: string,
-): AsyncGuardedEventAppender {
-  if (!isAsyncGuardedEventAppender(writer)) throw new Error(message)
-  return writer
-}
-
-function isAsyncGuardedEventAppender(writer: AsyncEventAppender): writer is AsyncGuardedEventAppender {
-  return (
-    "appendGuarded" in writer && typeof writer.appendGuarded === "function"
-    && "appendBatchGuarded" in writer && typeof writer.appendBatchGuarded === "function"
-  )
-}
-
-/** Out-of-band maintenance for replace-only projections: superseded-row
- *  pruning. Never part of the event-sourcing append path. */
-interface AsyncEventMaintenance {
+/** The complete write port of a project's store. Every production writer
+ *  implements every member: the lane-owned runtime store, the executor's lane
+ *  over the state channel, and the state client's control writer. Read-only
+ *  consumers take `AsyncEventStateReadSurface`, which has no write member. */
+export interface AsyncEventWriter extends AsyncEventAppender {
+  /** Stage immutable nodes in the existing session content ownership. A fact
+   * may name a root only after the writer proves its complete staged closure. */
+  stageSessionContentNodes(sessionId: string, nodes: readonly SessionContentNodeRow[]): Promise<void>
+  /** Out-of-band maintenance for replace-only projections: superseded-row
+   *  pruning. Never part of the event-sourcing append path. */
   pruneSupersededEvents(aggregateId: string, eventType: string): Promise<number>
   /** Keyed sibling of `pruneSupersededEvents`: keep the newest row of
-   *  `eventType` per distinct `payloadKey` JSON-path value, delete the rest.
-   *  Optional: a store that cannot prune does not offer it. */
-  pruneSupersededKeyedEvents?(aggregateId: string, eventType: string, payloadKey: string): Promise<number>
+   *  `eventType` per distinct `payloadKey` JSON-path value, delete the rest. */
+  pruneSupersededKeyedEvents(aggregateId: string, eventType: string, payloadKey: string): Promise<number>
   /** Records in-flight recovery state for an operation that has just begun,
-   *  with no fact beside it. Optional: a store that cannot hold it does not
-   *  offer it, and a caller that needs it fails loudly rather than recording
-   *  nothing. The returned promise settles when the state is durable; a
-   *  caller whose contract is record-before-act must await it and treat a
-   *  rejection as the operation being refused. Retirement rides the append
-   *  that records the outcome. */
-  putInFlight?(sessionId: string, kind: string, key: string, payload: InFlightPayload): Promise<void>
+   *  with no fact beside it. The returned promise settles when the state is
+   *  durable; a caller whose contract is record-before-act must await it and
+   *  treat a rejection as the operation being refused. Retirement rides the
+   *  append that records the outcome. */
+  putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): Promise<void>
   /** Retires one in-flight value outside an append, for the rare settlement
    *  with no fact beside it (a queued input recalled back into the editor).
    *  Ordinary retirement rides the outcome append's `inFlight` writes. */
-  dropInFlight?(sessionId: string, kind: string, key: string): Promise<void>
-}
-
-export interface AsyncEventWriter extends AsyncEventAppender, AsyncEventMaintenance {
-  /** Stage immutable nodes in the existing session content ownership. A fact
-   * may name a root only after the writer proves its complete staged closure. */
-  stageSessionContentNodes?(sessionId: string, nodes: readonly SessionContentNodeRow[]): Promise<void>
-  appendGuarded?(event: GuardedEventStoreAppend): Promise<GuardedAppendResult>
-  appendBatchGuarded?(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
+  dropInFlight(sessionId: string, kind: string, key: string): Promise<void>
   /** Serializes a compare-and-swap through the process's writer lane. */
-  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
+  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
   /** Atomically applies an exact-raw guarded cell set through the writer lane. */
-  swapInFlightBatch?(sessionId: string, swaps: readonly InFlightSwap[]): Promise<boolean>
-}
-
-export interface AsyncGuardedEventWriter extends AsyncEventWriter {
-  appendGuarded(event: GuardedEventStoreAppend): Promise<GuardedAppendResult>
-  appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
+  swapInFlightBatch(sessionId: string, swaps: readonly InFlightSwap[]): Promise<boolean>
 }
 
 export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWriter {
@@ -654,80 +627,28 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
 
 export type EventStore = LocalSqliteEventStore
 
-/** In-process write surface backing an `AsyncEventWriter`: the synchronous
- *  tooling store or the lane-owned runtime store, whose methods already
- *  return promises. Either way the writes land on a local connection. */
-type LocalEventWrites = {
-  stageSessionContentNodes?(sessionId: string, nodes: readonly SessionContentNodeRow[]): void | Promise<void>
-  append(event: EventStoreAppend): StoredFact | Promise<StoredFact>
-  appendBatch(events: readonly EventStoreAppend[]): StoredFact[] | Promise<StoredFact[]>
-  appendGuarded(event: GuardedEventStoreAppend): GuardedAppendResult | Promise<GuardedAppendResult>
-  appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): GuardedAppendResult | Promise<GuardedAppendResult>
-  pruneSupersededEvents(aggregateId: string, eventType: string): number | Promise<number>
-  pruneSupersededKeyedEvents?(aggregateId: string, eventType: string, payloadKey: string): number | Promise<number>
-  putInFlight?(sessionId: string, kind: string, key: string, payload: InFlightPayload): void | Promise<void>
-  dropInFlight?(sessionId: string, kind: string, key: string): void | Promise<void>
-  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): boolean | Promise<boolean>
-  swapInFlightBatch?(sessionId: string, swaps: readonly InFlightSwap[]): boolean | Promise<boolean>
+/** A local store's write methods: synchronous on a tooling connection, or
+ *  already promise-returning on the lane-owned runtime store. Either way the
+ *  writes land on a local connection. */
+export type LocalEventWrites = {
+  readonly [K in keyof AsyncEventWriter]: (...args: Parameters<AsyncEventWriter[K]>) => ReturnType<AsyncEventWriter[K]> | Awaited<ReturnType<AsyncEventWriter[K]>>
 }
-type LocalEventAppends = Pick<LocalEventWrites, "append" | "appendBatch" | "appendGuarded" | "appendBatchGuarded">
 
-/** Adapt a local store to the `AsyncEventAppender` boundary. A synchronous
+/** Adapt a local store to the `AsyncEventWriter` boundary. A synchronous
  *  store resolves immediately; the lane-owned runtime store resolves when its
- *  flush commits. */
-export function asAsyncEventAppender(store: LocalEventAppends): AsyncGuardedEventAppender {
+ *  flush commits. The result carries only the write methods. */
+export function asAsyncEventWriter(store: LocalEventWrites): AsyncEventWriter {
   return {
     append: async (event) => store.append(event),
     appendBatch: async (events) => store.appendBatch(events),
     appendGuarded: async (event) => store.appendGuarded(event),
     appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
-  }
-}
-
-/** Adapt a local store to the full `AsyncEventWriter` boundary: the append
- *  surface plus the maintenance surface. */
-export function asAsyncEventWriter(store: LocalEventWrites): AsyncGuardedEventWriter {
-  const stageNodes = store.stageSessionContentNodes?.bind(store)
-  return {
-    ...(stageNodes ? {
-      stageSessionContentNodes: async (sessionId: string, nodes: readonly SessionContentNodeRow[]) => { await stageNodes(sessionId, nodes) },
-    } : {}),
-    ...asAsyncEventAppender(store),
+    stageSessionContentNodes: async (sessionId, nodes) => store.stageSessionContentNodes(sessionId, nodes),
     pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
-    ...(store.pruneSupersededKeyedEvents
-      ? { pruneSupersededKeyedEvents: async (aggregateId: string, eventType: string, payloadKey: string) => store.pruneSupersededKeyedEvents?.(aggregateId, eventType, payloadKey) ?? 0 }
-      : {}),
-    // Optional on the boundary: a store that cannot hold in-flight state does
-    // not offer the methods, and a caller that needs them fails loudly.
-    ...(store.putInFlight
-      ? { putInFlight: async (sessionId: string, kind: string, key: string, payload: InFlightPayload) => { await store.putInFlight?.(sessionId, kind, key, payload) } }
-      : {}),
-    ...(store.dropInFlight
-      ? { dropInFlight: async (sessionId: string, kind: string, key: string) => { await store.dropInFlight?.(sessionId, kind, key) } }
-      : {}),
-    ...(store.swapInFlight
-      ? { swapInFlight: async (sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null) => store.swapInFlight?.(sessionId, kind, key, expectedRaw, payload) ?? false }
-      : {}),
-    ...(store.swapInFlightBatch
-      ? { swapInFlightBatch: async (sessionId: string, swaps: readonly InFlightSwap[]) => store.swapInFlightBatch?.(sessionId, swaps) ?? false }
-      : {}),
+    pruneSupersededKeyedEvents: async (aggregateId, eventType, payloadKey) => store.pruneSupersededKeyedEvents(aggregateId, eventType, payloadKey),
+    putInFlight: async (sessionId, kind, key, payload) => store.putInFlight(sessionId, kind, key, payload),
+    dropInFlight: async (sessionId, kind, key) => store.dropInFlight(sessionId, kind, key),
+    swapInFlight: async (sessionId, kind, key, expectedRaw, payload) => store.swapInFlight(sessionId, kind, key, expectedRaw, payload),
+    swapInFlightBatch: async (sessionId, swaps) => store.swapInFlightBatch(sessionId, swaps),
   }
-}
-
-/** A reader given no explicit writer must be a local writable store. Cross-process
- *  replay readers cannot append, so narrow structurally and throw `message` rather than
- *  silently dropping writes. */
-export function requireLocalAsyncWriter(store: EventReader, message: string): AsyncGuardedEventWriter {
-  if (!isLocalEventWrites(store)) throw new Error(message)
-  return asAsyncEventWriter(store)
-}
-
-function isLocalEventWrites(store: EventReader): store is EventReader & LocalEventWrites {
-  return (
-    "append" in store && typeof store.append === "function" &&
-    "appendBatch" in store && typeof store.appendBatch === "function" &&
-    "appendGuarded" in store && typeof store.appendGuarded === "function" &&
-    "appendBatchGuarded" in store && typeof store.appendBatchGuarded === "function" &&
-    "pruneSupersededEvents" in store && typeof store.pruneSupersededEvents === "function"
-  )
 }

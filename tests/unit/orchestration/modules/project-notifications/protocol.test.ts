@@ -12,6 +12,7 @@ import { projectNotificationsCursor, projectNotificationsDomain, type ProjectNot
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "../../app-service/app-service-doubles.js"
+import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 
 const episode: ProjectNotificationEpisode = { id: "episode-1", sourceId: "auth:openai", title: "Authentication needed", message: "Sign in.", severity: "warning", action: { kind: "open-auth", providerId: "chatgpt", accountCorrelationId: "opaque-account", envelopeId: "opaque-envelope" }, createdAt: 10, expiresAt: 20 }
 
@@ -31,7 +32,7 @@ function serviceOver(modules: ModuleServices, calls: string[], enabledModuleIds:
   const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
   const protocolServices: Omit<ModuleProtocolServices, "enabled"> = {
     eventStore: reader,
-    eventWriter: { append: async () => { throw new Error("No notification fact write") }, appendBatch: async () => { throw new Error("No notification fact write") }, pruneSupersededEvents: async () => 0 },
+    eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     projectionReader: reader,
     manager,
     sessionStore,

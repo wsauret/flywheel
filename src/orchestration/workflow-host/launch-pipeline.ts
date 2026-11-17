@@ -348,7 +348,6 @@ export function createWorkflowLaunchPipeline(
     if (existing?.launchedFrom.parentSessionId === operation.parentSessionId && existing.launchedFrom.toolUseId === operation.toolUseId) {
       // A repeated acceptance of a launch this parent already published: the
       // child exists, so the commit only retires the cell and starts nothing.
-      if (!deps.eventWriter.swapInFlight) throw new Error("Workflow launch commit requires exact in-flight write authority")
       if (!await deps.eventWriter.swapInFlight(cell.sessionId, cell.kind, cell.key, cell.raw, null)) return { kind: "retained" }
       decide("committed", fields)
       return { kind: "committed", dispatch: () => {} }

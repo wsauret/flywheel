@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface } from "../../src/infra/event-store-types.js"
 import { NO_MODULE_SERVICES } from "../../src/infra/module-service.js"
 import type { ModuleProcessServices } from "../../src/orchestration/app-service/module-service-host.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
@@ -7,6 +7,7 @@ import type { SessionStore } from "../../src/orchestration/session-store/types.j
 import { testDirectories } from "./directories.js"
 import { inMemoryEventReader } from "./in-memory-event-reader.js"
 import { refusingLauncher } from "./launcher-fake.js"
+import { refusingEventWriter } from "./event-writer-doubles.js"
 
 /** The kernel authorities a module's process-scoped service receives, without
  *  the two that composition adds itself. */
@@ -82,12 +83,6 @@ const refusingSessionStore: SessionStore = {
   refreshDeps: refuse("sessionStore.refreshDeps"),
 }
 
-const refusingEventWriter: AsyncEventWriter = {
-  append: refuse("eventWriter.append"),
-  appendBatch: refuse("eventWriter.appendBatch"),
-  pruneSupersededEvents: refuse("eventWriter.pruneSupersededEvents"),
-}
-
 /** Kernel authorities for a module service test. Every port that `provided`
  *  does not name refuses when called: listeners and lookups throw, the stores
  *  are empty, the launcher starts nothing, and the configuration is absent.
@@ -110,7 +105,7 @@ export function kernelPorts(provided: Partial<KernelPorts> = {}): KernelPorts {
     directories: testDirectories(process.cwd()),
     eventStore: empty,
     projectionReader: empty,
-    eventWriter: refusingEventWriter,
+    eventWriter: refusingEventWriter(),
     onStored: refuse("onStored"),
     publish: refuse("publish"),
     snapshotPosition: refuse("snapshotPosition"),

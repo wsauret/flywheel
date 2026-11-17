@@ -466,7 +466,7 @@ describe("chat session queued message recall", () => {
       ...storeWriter,
       dropInFlight: async (...args) => {
         if (failDrops) throw new Error("database is locked")
-        await storeWriter.dropInFlight!(...args)
+        await storeWriter.dropInFlight(...args)
       },
     }
     const calls: ConversationMessage[][] = []

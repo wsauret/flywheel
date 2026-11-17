@@ -86,7 +86,7 @@ describe("RuntimeSupervisor planned replacement", () => {
     const conversationId = `${sessionId}-conversation`
     const childSessionId = "reserved-workflow"
     await ctx.manager.createChat({ id: sessionId, conversationId })
-    await ctx.runtime.runSync(EventStoreWriterService).putInFlight?.(
+    await ctx.runtime.runSync(EventStoreWriterService).putInFlight(
       sessionId,
       WORKFLOW_LAUNCH_OPERATION_KIND,
       "operation-1",
@@ -375,7 +375,7 @@ describe("RuntimeSupervisor planned replacement", () => {
       ...written,
       putInFlight: async (sessionId, kind, key, payload) => {
         order.push(`row:${sessionId}`)
-        await written.putInFlight?.(sessionId, kind, key, payload)
+        await written.putInFlight(sessionId, kind, key, payload)
       },
     }
     const release = registerTestChildRun(ctx.runtime.runSync(EventReaderService), {
@@ -441,7 +441,7 @@ describe("RuntimeSupervisor planned replacement", () => {
       putInFlight: async (sessionId, kind, key, payload) => {
         writing.resolve()
         await gate.promise
-        await written.putInFlight?.(sessionId, kind, key, payload)
+        await written.putInFlight(sessionId, kind, key, payload)
       },
     }
     const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, store), writer, replacementHandoff: () => "handoff-3" })
@@ -471,7 +471,7 @@ describe("RuntimeSupervisor planned replacement", () => {
       putInFlight: async (sessionId, kind, key, payload) => {
         writing.resolve()
         await gate.promise
-        await written.putInFlight?.(sessionId, kind, key, payload)
+        await written.putInFlight(sessionId, kind, key, payload)
       },
     }
     // The chats whose runner holds a running turn.

@@ -453,12 +453,12 @@ describe("staged session content", () => {
     expect(store.currentPosition()).toBe(position)
     expect(store.aggregateSeq("session:evidence")).toBe(-1)
     expect(store.readInFlight("evidence", "cursor")).toEqual([])
-    await asAsyncEventWriter(store).stageSessionContentNodes!("evidence", nodes)
+    await asAsyncEventWriter(store).stageSessionContentNodes("evidence", nodes)
     expect(() => store.append(makeFact(file({ kind: "retained", reference: { ...reference, bytes: reference.bytes + 1 } })))).toThrow()
     const summary = await buildMutationEvidence([{ kind: "applied", file: file({ kind: "retained", reference }) }],
-      rows => asAsyncEventWriter(store).stageSessionContentNodes!("evidence", rows))
+      rows => asAsyncEventWriter(store).stageSessionContentNodes("evidence", rows))
     const wrongSummary = await buildMutationEvidence([{ kind: "applied", file: file({ kind: "retained", reference: { ...reference, sha256: "0".repeat(64) } }) }],
-      rows => asAsyncEventWriter(store).stageSessionContentNodes!("evidence", rows))
+      rows => asAsyncEventWriter(store).stageSessionContentNodes("evidence", rows))
     expect(() => store.putInFlight("evidence", "finalized-tool-result", "t1", { details: { mutationEvidence: wrongSummary } })).toThrow()
     store.putInFlight("evidence", "finalized-tool-result", "t1", { details: { mutationEvidence: summary } })
     const raw = store.readInFlight("evidence", "finalized-tool-result")[0]!.raw
@@ -485,8 +485,8 @@ describe("staged session content", () => {
     try {
       await runtime.append({ ...batchFact(0), contentRows: [{ sha256: row.sha256, content, bytes: Buffer.byteLength(content) }] })
       expect(runtime.readSessionContentNode?.("batch-0", row.sha256)).toBeNull()
-      await asAsyncEventWriter(runtime).stageSessionContentNodes!("batch-0", nodes)
-      await asAsyncEventWriter(runtime).stageSessionContentNodes!("batch-0", nodes)
+      await asAsyncEventWriter(runtime).stageSessionContentNodes("batch-0", nodes)
+      await asAsyncEventWriter(runtime).stageSessionContentNodes("batch-0", nodes)
       expect(runtime.readSessionContentNode?.("batch-0", reference.root)).toEqual(row.node)
       expect(runtime.readSessionContentNode?.("other", reference.root)).toBeNull()
       const db = new Database(path.join(tmpDir, "nodes.sqlite"), { readonly: true })

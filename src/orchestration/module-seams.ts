@@ -1,6 +1,6 @@
 import type { ProjectDirectories, StartupDirectories } from "../infra/directory-authorities.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
-import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, AsyncGuardedEventWriter, EventPayload, EventStoreAppend, GuardedEventStoreAppend, InFlightSwap, StoredFact } from "../infra/event-store-types.js"
+import type { AsyncEventReadSurface, AsyncEventStateReadSurface, AsyncEventWriter, EventPayload, EventStoreAppend, GuardedEventStoreAppend, InFlightSwap, StoredFact } from "../infra/event-store-types.js"
 import type { ModuleRuntimes } from "../infra/module-runtime.js"
 import type { RetainedOperationHosts } from "../infra/retained-operation-hosts.js"
 import type { ModuleServices } from "../infra/module-service.js"
@@ -218,7 +218,7 @@ export interface ModuleMaintenanceInput {
   readonly reader: AsyncEventStateReadSurface
   /** Every maintenance write reaches the project's one writer through this
    *  port, so a live project's committed facts have one source (ARCH-SUBSTRATE-018). */
-  readonly writer: AsyncGuardedEventWriter
+  readonly writer: AsyncEventWriter
   readonly signal: AbortSignal
 }
 export interface ModuleMaintenance {

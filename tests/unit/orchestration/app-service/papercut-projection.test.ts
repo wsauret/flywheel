@@ -16,6 +16,7 @@ import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/ru
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
+import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const stores: LocalSqliteEventStore[] = []
 const directories: string[] = []
@@ -86,7 +87,7 @@ function countOver(deps: {
   const services: ModuleProtocolServices = {
     eventStore: deps.reader,
     projectionReader: deps.reader,
-    eventWriter: { append: async () => { throw new Error("The papercut count writes no fact") }, appendBatch: async () => { throw new Error("The papercut count writes no fact") }, pruneSupersededEvents: async () => 0 },
+    eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     manager: fakeManager(),
     sessionStore: fakeSessionStore(new Map()),
     definitions: repoDefinitions(),

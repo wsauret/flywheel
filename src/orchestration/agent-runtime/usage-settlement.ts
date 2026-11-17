@@ -138,12 +138,9 @@ function recordedTokens(entry: UsageSettlementDraft["entry"]) {
 
 /** Creates the session-backed settlement saga and publishes audit and budget facts in one atomic batch. */
 export function createSessionUsageSettlement(options: SessionUsageSettlementOptions): UsageSettlement {
-  const putInFlight = options.writer.putInFlight
-  const dropInFlight = options.writer.dropInFlight
-  if (!putInFlight || !dropInFlight) throw new Error("Usage settlement requires in-flight persistence authority")
   return createUsageSettlement({
-    putInFlight,
-    retire: async (retirement) => dropInFlight(retirement.kind, retirement.key),
+    putInFlight: (kind, key, payload) => options.writer.putInFlight(kind, key, payload),
+    retire: (retirement) => options.writer.dropInFlight(retirement.kind, retirement.key),
     acquireAuthority: options.acquireAuthority,
     publish: async (draft, retirement) => {
       const cell = (await options.reader.readInFlight(durableOwnerId(options.owner), retirement.kind))

@@ -48,7 +48,6 @@ export async function holdQueuedBackgroundNotification(
   notificationKey: string = randomUUID(),
 ): Promise<HeldBackgroundNotification> {
   const payload = heldPayload(conversation(conversationId), text)
-  if (!writer.putInFlight) return { key: notificationKey, text: payload.text }
   await writer.putInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, notificationKey, payload)
   return { key: notificationKey, text: payload.text }
 }
@@ -76,7 +75,7 @@ export function heldBackgroundNotificationSwap(conversationId: string, text: str
 /** Retires the cell held under `key`, for a notification whose entry the
  *  conversation already committed. */
 export async function dropQueuedBackgroundNotification(writer: AsyncEventWriter, sessionId: string, key: string): Promise<void> {
-  await writer.dropInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, key)
+  await writer.dropInFlight(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, key)
 }
 
 export function decodeQueuedBackgroundNotification(

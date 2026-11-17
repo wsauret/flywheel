@@ -1,4 +1,4 @@
-import { readCapturedFacts, requireGuardedEventAppender, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import { readCapturedFacts, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../infra/event-store-types.js"
 import type { RecallInput, RecallResult } from "../../../../protocol/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { prepareSessionFactAppend } from "../../../session/session-fact-writer.js"
@@ -79,7 +79,7 @@ export function createSubagentSessionAuthority(input: {
     error: unknown,
   ) => {
     try {
-      const result = await requireGuardedEventAppender(input.eventWriter, "Subagent opening failure requires guarded append authority").appendBatchGuarded([
+      const result = await input.eventWriter.appendBatchGuarded([
         {
           ...prepareSessionFactAppend(publication.childSessionId, buildSubagentCompleted({
             childRunId, status: "failed", isError: true, content: `Subagent could not open: ${errorMessage(error)}`, durationMs: 0,

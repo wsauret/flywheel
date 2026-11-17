@@ -10,6 +10,7 @@ import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOper
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
 import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/create-session-infra.js"
 import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 type MockRunnerContext = Agent & { sendCalled: Array<string | AgentLoopWakeInput> }
 
@@ -60,10 +61,10 @@ describe("runAgentTurn", () => {
       notices = applySessionNoticeOperation(notices, operation)
     }
     bus.subscribeToType("agent.notice.changed", (event) => onNotice(event.data.operation))
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => { throw error }, recordBatch: async () => [], recordGuarded: async () => null,
       transaction: async (work) => { work() }, dispose() {},
-    }
+    })
     const subscription = subscribeSessionRuntimeFacts(bus, { sessionEventWriter: writer })
     createEmit(bus)("agent.error.observed", { sessionId: "s", data: { message: "not saved" } })
     await bus.drain()

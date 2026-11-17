@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, type AsyncGuardedEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type AsyncEventWriter, type EventReader, type EventStoreAppend, type GuardedEventStoreAppend, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import { createWorkflowContextStore } from "../../../../../src/workflows/context-bundle/context-store.js"
 import { buildContextInputSeededFact } from "../../../../../src/workflows/context-bundle/context-facts.js"
 import { createWorkflowViewStore } from "../../../../../src/workflows/view/view-store.js"
@@ -14,8 +14,9 @@ import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import type { CanonicalOutcome, CanonicalScenario } from "./_canonical-scenarios.js"
 import { quietHostDeps } from "../host-test-support.js"
+import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 
-interface MemoryStore extends EventReader, AsyncGuardedEventWriter {
+interface MemoryStore extends EventReader, AsyncEventWriter {
   readonly events: StoredFact[]
   /** The number of stored facts after each committed batch. */
   readonly batchEnds: number[]
@@ -203,6 +204,7 @@ function createStore(scenario: CanonicalScenario): MemoryStore {
     return written
   }
   return {
+    ...refusingEventWriter(),
     ...reader,
     events,
     batchEnds,

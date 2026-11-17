@@ -311,9 +311,9 @@ async function render(dispatched: DispatchOutcome, context: ToolContext, deps: S
   let evidenceFailure = false;
   if (result.diff) {
     try {
-      const stage = context.sessionEventWriter?.stageSessionContentNodes;
-      if (!stage) throw new Error("Session content staging is unavailable");
-      mutationEvidence = await buildMutationDiffEvidence(result.diff, context.toolUseId ?? result.name, stage.bind(context.sessionEventWriter));
+      const writer = context.sessionEventWriter;
+      if (!writer) throw new Error("No session event writer is available");
+      mutationEvidence = await buildMutationDiffEvidence(result.diff, context.toolUseId ?? result.name, nodes => writer.stageSessionContentNodes(nodes));
     } catch {
       evidenceFailure = true;
     }

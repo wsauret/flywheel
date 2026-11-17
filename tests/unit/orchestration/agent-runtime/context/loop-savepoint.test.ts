@@ -10,6 +10,7 @@ import type { ConversationMessage, ProviderStreamEvent } from "../../../../../sr
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { makeCaptureClient } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 const echoTool: RuntimeTool = {
   name: "echo",
@@ -170,7 +171,7 @@ describe("agent loop durable turn save points", () => {
       seed: { kind: "fresh" },
       completeOnIdle: {},
       onEvent: () => {},
-      sessionEventWriter: {
+      sessionEventWriter: discardingSessionFactWriter({
         record: async () => null,
         recordBatch: async () => null,
         recordGuarded: async () => null,
@@ -179,7 +180,7 @@ describe("agent loop durable turn save points", () => {
         putInFlight: async (_kind, key, payload) => {
           checkpointRaw.set(key, JSON.stringify(payload));
         },
-      },
+      }),
       conversationId: "loop-savepoint",
       flushCanonicalMessages: async (_protectedToolUseIds, swaps = []) => {
         for (const swap of swaps) {

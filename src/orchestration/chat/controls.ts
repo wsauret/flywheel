@@ -299,7 +299,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
   async function holdQueued(input: ChatInputLike): Promise<{ input: ChatInputLike; entryId: string | undefined }> {
     const dispatchId = await treeWriter.holdQueuedUserInput(input)
     const held = normalizeChatInput(input)
-    return { input: dispatchId ? { ...held, dispatchIds: [...(held.dispatchIds ?? []), dispatchId] } : held, entryId: dispatchId ?? undefined }
+    return { input: { ...held, dispatchIds: [...(held.dispatchIds ?? []), dispatchId] }, entryId: dispatchId }
   }
 
   /** Commits an idle message under its submission key, or under a fresh id

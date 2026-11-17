@@ -7,7 +7,7 @@ import { asModelClient } from "../../agent-runtime/_model-client.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type AsyncGuardedEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types";
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type LocalSqliteEventStore } from "../../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store";
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer";
@@ -61,7 +61,7 @@ describe("durable child controls", () => {
     store.append(prepareSessionFactAppend(childSessionId, buildSubagentPaused({ childRunId: "run-1", pausedBy: "person" })));
     const reader = asAsyncEventReadSurface(store);
     const base = asAsyncEventWriter(store);
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       async appendBatchGuarded(events) {
         store.append(prepareSessionFactAppend(childSessionId, winner === "Resume"
@@ -141,7 +141,7 @@ describe("durable child controls", () => {
     const settling: AsyncEventWriter = {
       ...base,
       async putInFlight(sessionId, kind, key, payload) {
-        await base.putInFlight?.(sessionId, kind, key, payload);
+        await base.putInFlight(sessionId, kind, key, payload);
         store.append(prepareSessionFactAppend(childSessionId, buildSubagentCompleted({
           childRunId: "run-1",
           status: "completed",
@@ -629,7 +629,7 @@ describe("live child messages", () => {
       const writer: AsyncEventWriter = {
         ...harness.writer,
         async putInFlight(sessionId, kind, key, payload) {
-          await harness.writer.putInFlight?.(sessionId, kind, key, payload);
+          await harness.writer.putInFlight(sessionId, kind, key, payload);
           if (kind !== QUEUED_USER_INPUT_IN_FLIGHT_KIND || resumed) return;
           resumed = harness.tool(parent).processResume(child, makeContext({ conversationId: parentConversation, toolUseId: "resume-call" }));
           await resumed;

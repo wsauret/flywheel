@@ -17,6 +17,7 @@ import type { AgentRunResult } from "../../../../../src/orchestration/agent-runt
 import { makeContext, testGrant } from "../../agent-runtime/tools/_fixtures.js";
 import { sessionContentFixture } from "../../../../helpers/session-content.js";
 import { readMutationEvidenceFiles } from "../../../../../src/infra/mutation-evidence.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 const ROOT = join(tmpdir(), `flywheel-learning-review-semantic-audit-${randomUUID()}`);
 afterAll(() => {
@@ -77,7 +78,7 @@ async function runScenario(name: string, options: ScenarioOptions): Promise<Scen
   let currentRegistry = loadRegistry(projectRoot, userDataRoot);
   let position = 0;
   const { stage, read } = sessionContentFixture();
-  const writer: SessionFactWriter = {
+  const writer: SessionFactWriter = discardingSessionFactWriter({
     stageSessionContentNodes: stage,
     recordBatch: async () => null,
     record: async (fact) => {
@@ -91,7 +92,7 @@ async function runScenario(name: string, options: ScenarioOptions): Promise<Scen
     },
     transaction: async (operation) => { operation(); },
     dispose: () => {},
-  };
+  });
   let result: ToolResult = { outcome: "error", content: "not run" };
   let done: Promise<AgentRunResult> = Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } });
   const review = createLearningReview({
@@ -227,14 +228,14 @@ describe("Learning Review semantic admission through the production entrypoint",
     archivedSkill(projectRoot, interactiveName);
     const tool = createSkillManageTool({ origin: { kind: "user" }, registry: () => loadRegistry(projectRoot, userDataRoot), userDataRoot });
     let interactivePosition = 0;
-    const interactiveWriter: SessionFactWriter = {
+    const interactiveWriter: SessionFactWriter = discardingSessionFactWriter({
       stageSessionContentNodes: sessionContentFixture().stage,
       recordBatch: async () => null,
       record: async (fact) => ({ aggregateId: "session:interactive-restore", type: fact.type, version: fact.version, timestamp: Date.now(), actor: fact.actor, sessionId: "interactive-restore", payload: fact.payload, position: ++interactivePosition, id: `interactive-${interactivePosition}`, seq: interactivePosition }),
       recordGuarded: async (fact) => ({ kind: "stored", events: [{ aggregateId: "session:interactive-restore", type: fact.type, version: fact.version, timestamp: Date.now(), actor: fact.actor, sessionId: "interactive-restore", payload: fact.payload, position: ++interactivePosition, id: `interactive-${interactivePosition}`, seq: interactivePosition }] }),
       transaction: async (operation) => { operation(); },
       dispose: () => {},
-    };
+    });
     const restored = await tool.execute({ action: "restore", name: interactiveName, reach: "project" }, makeContext({ projectRoot, executionCwd: projectRoot, sessionEventWriter: interactiveWriter }));
     expect(restored.outcome).toBe("ok");
     expect(existsSync(join(projectRoot, ".flywheel", "skills", interactiveName, SKILL_FILE))).toBe(true);

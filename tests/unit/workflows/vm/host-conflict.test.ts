@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncGuardedEventWriter } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import type { WorkflowRuntimeEvent } from "../../../../src/workflows/vm/host-types.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
@@ -90,7 +90,7 @@ describe("workflow VM host SQLite conflicts", () => {
     await vm.initialize()
     const base = asAsyncEventWriter(vm.store)
     let compete = true
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         if (compete) {
@@ -101,7 +101,7 @@ describe("workflow VM host SQLite conflicts", () => {
       },
     }
     const ran: string[] = []
-    const host = (startMode: "launch" | "operator_resume", hostWriter: AsyncGuardedEventWriter) => createWorkflowVmHost({
+    const host = (startMode: "launch" | "operator_resume", hostWriter: AsyncEventWriter) => createWorkflowVmHost({
       ...quietHostDeps(hostWriter),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
@@ -181,7 +181,7 @@ describe("workflow VM host SQLite conflicts", () => {
     await vm.initialize()
     const base = asAsyncEventWriter(vm.store)
     let compete = true
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         if (compete) {
@@ -234,7 +234,7 @@ describe("workflow VM host SQLite conflicts", () => {
     const base = asAsyncEventWriter(vm.store)
     const recomposedBatches: string[][] = []
     let compete = true
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         if (compete) {

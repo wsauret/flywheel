@@ -258,7 +258,7 @@ async function noticeEvidence(actions: readonly ReviewActionReport[], deps: Lear
   const skills = actions.flatMap(action => action.surface === "skill" && action.mutationEvidence ? [{ action, evidence: action.mutationEvidence }] : []);
   if (skills.length === 0) return undefined;
   const writer = deps.sessionEventWriter;
-  const stage = writer?.stageSessionContentNodes?.bind(writer);
+  const stage = writer?.stageSessionContentNodes.bind(writer);
   const read = deps.readContentNode;
   if (!stage || !read) throw new Error("Session content storage is unavailable");
   const entries: MutationEvidenceEntry[] = [];

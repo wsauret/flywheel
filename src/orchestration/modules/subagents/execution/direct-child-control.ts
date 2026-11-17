@@ -1,4 +1,4 @@
-import { requireGuardedEventAppender, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../../../infra/event-store-types.js"
 import { liveChildRun, whenLiveChildRun, type LiveChildControl } from "../../../session/live-session-control.js"
 import { readUnreadMessages, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js"
 import { readConversationBackgroundNotifications } from "../../../session/conversation/queued-background-notifications.js"
@@ -128,7 +128,7 @@ async function endSubagentRun(input: SubagentEndInput, owner: "person" | "agent"
     parent: { sessionId: input.parentSessionId, ...(run.parentConversationId ? { conversationId: run.parentConversationId } : {}) },
     end: async (parentReturn) => {
       const content = owner === "agent" ? cancelledSubagentContent(run.agentType, run.description) : stoppedSubagentContent(run.agentType, run.description)
-      const appended = await requireGuardedEventAppender(input.writer, "Subagent stop requires guarded append authority").appendBatchGuarded([{
+      const appended = await input.writer.appendBatchGuarded([{
         ...prepareSessionFactAppend(input.childSessionId, buildSubagentCompleted({
           childRunId: run.childRunId,
           status: owner === "agent" ? "cancelled" : "stopped",

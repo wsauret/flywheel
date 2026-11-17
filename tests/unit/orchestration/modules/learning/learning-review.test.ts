@@ -16,6 +16,7 @@ import type { AgentRunResult, AgentRunTerminal } from "../../../../../src/orches
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { composeRealmModuleSnapshot } from "../../../../../src/orchestration/modules.js";
 import { Log } from "../../../../../src/infra/log.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 interface UnknownObject {
   [key: string]: unknown;
 }
@@ -63,14 +64,14 @@ const reviewCapabilities = capabilityAccessFor({
 const reviewCapabilityModules = () => composeRealmModuleSnapshot({ moduleIds: reviewCapabilityState().capabilities });
 
 function recordingWriter(): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     stageSessionContentNodes: stageContent,
     record: async (fact) => { recorded.push(fact); return null; },
     recordBatch: async () => { throw new Error("unexpected batch write"); },
     recordGuarded: async () => { throw new Error("unexpected guarded write"); },
     transaction: async (run) => { run(); },
     dispose: () => {},
-  };
+  });
 }
 
 function makeReview(config: Partial<LearningReviewConfig> = {}) {

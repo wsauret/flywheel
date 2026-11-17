@@ -4,9 +4,9 @@ import * as os from "node:os"
 import * as path from "node:path"
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type EventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createChatSession } from "../../../../src/orchestration/chat/session"
+import { createChatSession, type ChatSessionDeps } from "../../../../src/orchestration/chat/session"
 import type { ChatRunner } from "../../../../src/orchestration/chat/runner-types"
 import type { ChatCallbacks } from "../../../../src/orchestration/chat/types"
 import type { LiveAgent } from "../../../../src/orchestration/agent-runtime/runner"
@@ -23,8 +23,14 @@ import { ConversationTreeStorage } from "../../../../src/orchestration/session/c
 import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork"
 import { applySessionNoticeOperation, type SessionNotice } from "../../../../src/infra/session-notice"
 import { EventBus } from "../../../../src/infra/event-bus"
-import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
+import { captureBlocks, createTestChatSessionDeps, inFlightCellsIn } from "./_chat-session-agent-runtime-fixtures"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
+
+/** `deps` with the session's in-flight cells in `store`, where its
+ *  conversation commits retire them. */
+function withStoreCells(deps: ChatSessionDeps, store: EventStore): ChatSessionDeps {
+  return { ...deps, infra: { ...deps.infra, sessionEventWriter: inFlightCellsIn(deps.sessionId, asAsyncEventWriter(store)) } }
+}
 
 describe("chat session with agent runtime request-owned recovery", () => {
   let session: ChatRunner | null = null
@@ -309,7 +315,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
     }
 
     try {
-      session = await createChatSession({ onError: () => {}, onEnded: () => {} }, createTestChatSessionDeps({
+      session = await createChatSession({ onError: () => {}, onEnded: () => {} }, withStoreCells(createTestChatSessionDeps({
         sessionId: "chat-retry-tree-context-test",
         createAgent: (options) => newTestRunner(options, createClient),
         projectRoot: tmpDir,
@@ -323,7 +329,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
           writer: asAsyncEventWriter(store),
         }),
         onTreeFailure: (err) => { treeFailures.push(err) },
-      }))
+      }), store))
 
       void session.send("start")
       await replayStreamEntered.promise
@@ -411,14 +417,14 @@ describe("chat session with agent runtime request-owned recovery", () => {
     }
 
     try {
-      session = await createChatSession({ onError: () => {}, onEnded: () => {} }, createTestChatSessionDeps({
+      session = await createChatSession({ onError: () => {}, onEnded: () => {} }, withStoreCells(createTestChatSessionDeps({
         sessionId: "chat-stall-recovery-test",
         createAgent: (options) => newTestRunner(options, createClient),
         projectRoot: tmpDir,
         executionCwd: tmpDir,
         treeWriter,
         updateEntry: blockView.updateEntry,
-      }))
+      }), store))
 
       void session.send("start")
       await recoveryStreamEntered.promise

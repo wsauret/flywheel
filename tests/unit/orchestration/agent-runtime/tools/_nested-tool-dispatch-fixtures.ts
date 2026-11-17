@@ -1,5 +1,6 @@
 import type { NestedToolFactPublisher } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 const FIXTURE_SECRET = ["Bearer", "fixturevalue123"].join(" ");
 
@@ -13,7 +14,7 @@ export function largeSecretResult(id: string): Parameters<NestedToolFactPublishe
 
 /** A fact writer that records `<toolUseId>:redacted` or `<toolUseId>:raw` for each fact it stores, and refuses to store the facts of the refused tool use. */
 export function resultRecordingWriter(records: string[], refusedToolUseId?: string): SessionFactWriter {
-  return {
+  return discardingSessionFactWriter({
     recordBatch: async () => { throw new Error("unused request audit"); },
     record: async (fact, contentRows) => {
       const toolUseId = "toolUseId" in fact.payload ? String(fact.payload.toolUseId) : "none";
@@ -27,5 +28,5 @@ export function resultRecordingWriter(records: string[], refusedToolUseId?: stri
     recordGuarded: async () => null,
     transaction: async (fn) => { fn(); },
     dispose: () => {},
-  };
+  });
 }

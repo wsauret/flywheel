@@ -1,4 +1,4 @@
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type AsyncGuardedEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreReadSurface, type FactQuery, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { Schema } from "effect"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
@@ -38,7 +38,7 @@ interface SetupOptions {
 }
 
 export async function setupWorkflowParent(store: LocalSqliteEventStore, projectRoot: string, status: "completed" | "failed" | "paused", suffix: string, options: SetupOptions) {
-  const writer = localAsyncWriter(store)
+  const writer = asAsyncEventWriter(store)
   const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
   const parentSessionId = options.historicalParent
     ? await createHistoricalChat(store, writer, `parent${suffix}`, `conversation${suffix}`, projectRoot)
@@ -290,7 +290,7 @@ export async function addWorkflowChild(
  *  person's interrupt and a message the person queued behind it. */
 export async function addSubagentChild(
   store: EventStoreReadSurface,
-  writer: AsyncGuardedEventWriter,
+  writer: AsyncEventWriter,
   executionCwd: string,
   parentSessionId: string,
   parentConversationId: string,
@@ -309,7 +309,7 @@ export async function addSubagentChild(
     payload: { toolUseId, toolName: "subagent", input: toolInput, inputBytes: evidence.bytes, inputSha256: evidence.sha256, inputPreview: evidence.preview, executionMode: "background", traceKind: "subagent", childHasOwnViewport: true, modelRequestId: "request" },
   })
   parentWriter.dispose()
-  const manager = createSessionManager({ projectRoot: executionCwd, executionCwd, store, writer })
+  const manager = createSessionManager({ projectRoot: executionCwd, executionCwd, projectionReader: asAsyncEventReadSurface(store), writer })
   await manager.publishSubagent({
     id: childSessionId, conversationId: `conversation-${index}`, description: "Review", executionCwd,
     launchedFrom: { parentSessionId, conversationId: parentConversationId, toolUseId }, initialRoles: {},
@@ -410,22 +410,11 @@ export function measuredReader(store: LocalSqliteEventStore, parentSessionId: st
   return { reader, rows }
 }
 
-export function localAsyncWriter(store: LocalSqliteEventStore): AsyncGuardedEventWriter {
-  return {
-    append: async (event) => store.append(event),
-    appendBatch: async (events) => store.appendBatch(events),
-    appendGuarded: async (event) => store.appendGuarded(event),
-    appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
-    pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
-    putInFlight: async (sessionId, kind, key, payload) => store.putInFlight(sessionId, kind, key, payload),
-  }
-}
-
 /** The parent creation row as every store written before 2026-09-20 holds it:
  *  `session.created` v3 with the chat payload of that day. Reconciliation runs
  *  on every activation, so it must read this row or no older session opens.
  *  Remove with the v3 salvage rule after 2027-09-20. */
-export async function createHistoricalChat(store: LocalSqliteEventStore, writer: AsyncGuardedEventWriter, id: string, conversationId: string, executionCwd: string): Promise<string> {
+export async function createHistoricalChat(store: LocalSqliteEventStore, writer: AsyncEventWriter, id: string, conversationId: string, executionCwd: string): Promise<string> {
   const now = new Date().toISOString()
   const tree = await createConversationTree({
     conversationId,

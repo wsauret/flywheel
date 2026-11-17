@@ -1,5 +1,4 @@
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { requireGuardedEventAppender } from "../../../infra/event-store-types.js"
 import type { ControlModuleServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import { createProjectNotificationJournal, type ProjectNotificationJournal } from "./journal.js"
 import { createProjectNotificationPublisher, type ProjectNotificationPublisher } from "./publisher.js"
@@ -23,7 +22,7 @@ export const projectNotificationsService = moduleServiceHandle<ProjectNotificati
 export function createProjectNotificationsService(services: ControlModuleServices): ProjectNotificationsService {
   const journal = createProjectNotificationJournal({
     reader: services.projectionReader,
-    writer: requireGuardedEventAppender(services.eventWriter, "Project notifications require guarded append authority"),
+    writer: services.eventWriter,
     sessionId: JOURNAL_SESSION_ID,
   })
   const sink = createProjectNotificationSink({ journal })

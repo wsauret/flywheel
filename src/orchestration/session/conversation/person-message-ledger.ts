@@ -61,18 +61,16 @@ export async function workflowPersonMessage(reader: AsyncEventStateReadSurface, 
  *  key the conversation already holds and record the message again. The
  *  window is one read long and needs a copy sent again at the same moment.
  *
- *  Answers `held`, the record that holds the message instead, or null when
- *  the store cannot hold in-flight state. */
+ *  Answers `held`, or the record that holds the message instead. */
 export async function holdPersonMessageOnce(
   writer: AsyncEventWriter,
   hold: { readonly sessionId: string; readonly kind: string; readonly key: string; readonly payload: InFlightPayload },
   recorded: () => Promise<PersonMessageRecord | undefined>,
-): Promise<"held" | PersonMessageRecord | null> {
-  if (!writer.swapInFlight) return null
+): Promise<"held" | PersonMessageRecord> {
   if (!await writer.swapInFlight(hold.sessionId, hold.kind, hold.key, null, hold.payload)) return "cell"
   const record = await recorded()
   if (record === undefined) return "held"
-  await writer.dropInFlight?.(hold.sessionId, hold.kind, hold.key)
+  await writer.dropInFlight(hold.sessionId, hold.kind, hold.key)
   return record
 }
 

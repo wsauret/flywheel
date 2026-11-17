@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { requireGuardedEventAppender, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../infra/event-store-types.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
 import { ComposerReturnSchema, returnedInputNoticeId, type ClaimComposerReturnsResult } from "../../protocol/composer-returns.js"
 import { createSessionPlacementProjection, sessionMetadataStateOf } from "./session-metadata-projection.js"
@@ -50,7 +50,7 @@ export async function returnUnreadHumanInput(store: {
         ])
         if (appends.length === 0) break
         try {
-          const result = await requireGuardedEventAppender(store.writer, "Composer returns require atomic publication").appendBatchGuarded(appends.map((append) => ({
+          const result = await store.writer.appendBatchGuarded(appends.map((append) => ({
             ...append, inFlight: [
               { op: "swap", sessionId: source.sessionId, kind: QUEUED_USER_INPUT_IN_FLIGHT_KIND, key: cell.key, expectedRaw: cell.raw, payload: null },
               { op: "put", kind: COMPOSER_RETURN_KIND, key: noticeId, payload },
@@ -89,7 +89,6 @@ export async function claimComposerReturns(store: { readonly reader: AsyncEventS
       }
     }
     if (matches.length === 0) return { ok: true, kind: "no_match" }
-    if (!store.writer.swapInFlightBatch) throw new Error("Composer claims require atomic cell authority")
     if (await store.writer.swapInFlightBatch(sessionId, matches.map(({ row }) => ({ op: "swap", kind: row.kind, key: row.key, expectedRaw: row.raw, payload: null })))) {
       return { ok: true, kind: "claimed", items: matches.map(({ item }) => item) }
     }

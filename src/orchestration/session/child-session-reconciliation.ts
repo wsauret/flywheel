@@ -1,4 +1,4 @@
-import { requireGuardedEventAppender, type AggregateSeqConflict, type AsyncEventStateReadSurface, type AsyncEventWriter, type GuardedEventStoreAppend, type StoredFact } from "../../infra/event-store-types.js"
+import type { AggregateSeqConflict, AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../infra/event-store-types.js"
 import type { BackgroundWorkResult } from "../agent-runtime/background-work.js"
 import { liveWorkflowControl } from "./live-session-control.js"
 import {
@@ -422,7 +422,7 @@ async function publishSubagentCompletions(
     const appends: GuardedEventStoreAppend[] = [...resultAppends, ...lifecycleAppends]
     tree.getStorage().dispose()
     if (appends.length > 0) {
-      const result = await requireGuardedEventAppender(input.writer, "Child reconciliation requires guarded append authority").appendBatchGuarded(appends)
+      const result = await input.writer.appendBatchGuarded(appends)
       if (result.kind === "conflict") {
         const child = [...latestCandidateByChild.keys()].some((id) => result.conflict.aggregateId === `session:${id}`)
         if ((!child && !isRetryableConflict(result.conflict, input.parentSessionId, conversationId)) || attempt === MAX_CONFLICT_RETRIES) {
@@ -432,7 +432,6 @@ async function publishSubagentCompletions(
       }
     }
     if (notification && resultAppends.length === 0) {
-      if (!input.writer.putInFlight) throw new Error("Child completion reconciliation requires durable in-flight notification writes")
       await input.writer.putInFlight(
         input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, notification.key,
         { conversationId, text: notification.text },
@@ -608,7 +607,7 @@ async function reconcileChild(
     }
 
     if (appends.length > 0) {
-      const result = await requireGuardedEventAppender(input.writer, "Child reconciliation requires guarded append authority").appendBatchGuarded(appends)
+      const result = await input.writer.appendBatchGuarded(appends)
       if (result.kind === "conflict") {
         if (!isRetryableConflict(result.conflict, input.parentSessionId, candidate.conversationId) || attempt === MAX_CONFLICT_RETRIES) {
           throw new Error("Child workflow reconciliation stayed contended", { cause: result.conflict })
@@ -617,7 +616,6 @@ async function reconcileChild(
       }
     }
     if (delivery && appends.length === 0) {
-      if (!input.writer.putInFlight) throw new Error("Child completion reconciliation requires durable in-flight notification writes")
       await input.writer.putInFlight(
         input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, delivery.key,
         { conversationId: candidate.conversationId, text: delivery.text },
@@ -652,7 +650,6 @@ async function deliverSettledNotification(context: ReconciliationContext, candid
   tree.getStorage().dispose()
   const held = heldRows.some((row) => row.key === entryId)
   if (existing || held) return { wrote: false, durable: existing !== undefined }
-  if (!input.writer.putInFlight) throw new Error("Child completion reconciliation requires durable in-flight notification writes")
   const payload = { conversationId: candidate.conversationId, text: candidate.content }
   await input.writer.putInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, entryId, payload)
   const notification = { key: entryId, text: candidate.content }

@@ -196,7 +196,7 @@ describe("ConversationTreeWriter — retained operations", () => {
   /** Accepts a launch cell under `key`, and returns an operation that the
    *  module refuses with `content` and that retires that exact cell. */
   async function refusedLaunch(key: string, content: string) {
-    await asAsyncEventWriter(ctx.store).swapInFlight?.(ctx.sessionId, "workflow.launch", key, null, { operationId: key });
+    await asAsyncEventWriter(ctx.store).swapInFlight(ctx.sessionId, "workflow.launch", key, null, { operationId: key });
     const cell = ctx.store.readInFlight(ctx.sessionId, "workflow.launch").find((candidate) => candidate.key === key);
     if (!cell) throw new Error("expected the accepted cell");
     const notice: ConversationMessage = { kind: "user", content, origin: "system" };
@@ -353,13 +353,7 @@ describe("ConversationTreeWriterController — commit ids", () => {
       projectRoot: ctx.baseDir,
       store: asAsyncEventReadSurface(ctx.store),
       projectionReader: asAsyncEventReadSurface(ctx.store),
-      writer: {
-        append: async (event) => ctx.store.append(event),
-        appendBatch: async (events) => ctx.store.appendBatch(events),
-        appendGuarded: async (event) => ctx.store.appendGuarded(event),
-        appendBatchGuarded: async (events) => ctx.store.appendBatchGuarded(events),
-        pruneSupersededEvents: async (aggregateId, eventType) => ctx.store.pruneSupersededEvents(aggregateId, eventType),
-      },
+      writer: asAsyncEventWriter(ctx.store),
     });
     try {
       const entryId = await controller.commitUserTurn("idle");

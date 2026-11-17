@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { asAsyncEventAppender, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { createCommandInvokeService } from "../../../../src/orchestration/app-service/command-invoke-service.js"
 import type { RuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor-types.js"
@@ -57,7 +57,7 @@ describe("papercut drain command", () => {
       const beforeSecondConnection = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)
       expect(beforeSecondConnection.kind).toBe("ready")
 
-      await asAsyncEventAppender(ctx.store).append(recorded("owner-2", "Second observation"))
+      await asAsyncEventWriter(ctx.store).append(recorded("owner-2", "Second observation"))
       const refreshed = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)
       expect(refreshed.kind).toBe("ready")
       if (refreshed.kind !== "ready") throw new Error("expected ready drain")

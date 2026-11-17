@@ -42,7 +42,6 @@ describe("workflow launch cells", () => {
       restoreLaunchTracking: async () => { throw new Error("Workflow tracking is not used in this test"); },
       commitLaunch: async (operation, cell) => {
         commits.push(operation);
-        if (!eventWriter.swapInFlight) throw new Error("expected exact in-flight write authority");
         const retired = await eventWriter.swapInFlight(cell.sessionId, cell.kind, cell.key, cell.raw, null);
         return retired ? { kind: "committed", dispatch: () => {} } : { kind: "retained" };
       },
@@ -81,7 +80,7 @@ describe("workflow launch cells", () => {
   it("reads a cell a candidate wrote with the person's raw command and a random acknowledgement id, and commits it under the settled id", async () => {
     const { authority, eventWriter, commits } = retiringLaunchAuthority();
     // The shape before 2026-10-03 carried `acceptedInput` and reserved a random id. Remove after 2027-04-03.
-    await eventWriter.swapInFlight?.(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ acceptedInput: "/qa verify release", parentEntryId: "5f0c2d1e-draft" }));
+    await eventWriter.swapInFlight(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ acceptedInput: "/qa verify release", parentEntryId: "5f0c2d1e-draft" }));
 
     const [held] = await authority.read({ sessionId: ctx.sessionId, conversationId: ctx.conversationId });
     if (!held) throw new Error("the old cell did not decode");
@@ -95,7 +94,7 @@ describe("workflow launch cells", () => {
     const { authority, eventWriter, commits } = retiringLaunchAuthority();
     // The shape before 2026-10-16 named the fixed model choices `steps`. Remove after 2027-04-30.
     const models = { implement: { model: "gpt-6-luna", effort: "high" } } as const;
-    await eventWriter.swapInFlight?.(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ launch: { workflowDefinitionId: "qa", description: "verify release", steps: models } }));
+    await eventWriter.swapInFlight(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ launch: { workflowDefinitionId: "qa", description: "verify release", steps: models } }));
 
     const [held] = await authority.read({ sessionId: ctx.sessionId, conversationId: ctx.conversationId });
     if (!held) throw new Error("the cell with launch steps did not decode");
@@ -109,8 +108,8 @@ describe("workflow launch cells", () => {
     const { authority, eventWriter, reader, commits } = retiringLaunchAuthority();
     const warn = spyOn(Log.create({ service: "workflow-launch-operation" }), "warn").mockImplementation(() => {});
     try {
-      await eventWriter.swapInFlight?.(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ version: 2 }));
-      await eventWriter.swapInFlight?.(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-2", null, { kind: WORKFLOW_LAUNCH_OPERATION_KIND, version: 1, operationId: "operation-2" });
+      await eventWriter.swapInFlight(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ version: 2 }));
+      await eventWriter.swapInFlight(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-2", null, { kind: WORKFLOW_LAUNCH_OPERATION_KIND, version: 1, operationId: "operation-2" });
 
       expect(await authority.read({ sessionId: ctx.sessionId, conversationId: ctx.conversationId })).toEqual([]);
       expect(await workflowLaunchRetainedOperation.pending(reader, ctx.sessionId, ctx.conversationId)).toBe(true);
@@ -127,7 +126,7 @@ describe("workflow launch cells", () => {
     const { authority, eventWriter, reader, commits } = retiringLaunchAuthority();
     const warn = spyOn(Log.create({ service: "workflow-launch-operation" }), "warn").mockImplementation(() => {});
     try {
-      await eventWriter.swapInFlight?.(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ parentConversationId: "another-conversation" }));
+      await eventWriter.swapInFlight(ctx.sessionId, WORKFLOW_LAUNCH_OPERATION_KIND, "operation-1", null, launchCell({ parentConversationId: "another-conversation" }));
 
       expect(await authority.read({ sessionId: ctx.sessionId, conversationId: ctx.conversationId })).toEqual([]);
       expect(await workflowLaunchRetainedOperation.pending(reader, ctx.sessionId, ctx.conversationId)).toBe(false);

@@ -66,7 +66,7 @@ test("the real state Worker fences every executor state producer while account w
     ] })
     await checkpointFinalizedToolResult(facts, { conversationId: "conversation", toolUseId: "finished", toolName: "read",
       budgetExempt: true, turnBudgetChars: 200_000, registrationOrdinal: 0, content: [{ type: "text", text: "durable result" }], outcome: "ok" })
-    await facts.putInFlight!("usage.settlement", "pending", {
+    await facts.putInFlight("usage.settlement", "pending", {
       state: "pending", attemptId: "pending", requestId: "request", profileId: "default", budgetStreamId: "session",
       identity: { providerSessionKey: "session", conversationId: "conversation" }, turn: 1,
     })

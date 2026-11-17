@@ -70,11 +70,11 @@ function harness(options: {
       putInFlight: async (kind, key, payload) => {
         calls.push("checkpoint")
         if (options.checkpointError) throw options.checkpointError
-        await writer.putInFlight!(kind, key, payload)
+        await writer.putInFlight(kind, key, payload)
       },
       dropInFlight: async (kind, key) => {
         calls.push("retire")
-        await writer.dropInFlight!(kind, key)
+        await writer.dropInFlight(kind, key)
       },
       transaction: async (publication) => {
         calls.push("publish")
@@ -99,7 +99,7 @@ function harness(options: {
   return {
     settlement, calls, opened,
     /** Writes a settlement cell as an earlier process left it. */
-    leaveCell: (payload: InFlightPayload) => writer.putInFlight!("usage.settlement", entry.attemptId, payload),
+    leaveCell: (payload: InFlightPayload) => writer.putInFlight("usage.settlement", entry.attemptId, payload),
     cells: () => store.readInFlight("parent", "usage.settlement").map(({ kind, key, payload }) => ({ kind, key, payload })),
     facts: () => store.read({ sessionId: "parent" }),
   }
@@ -163,7 +163,7 @@ describe("usage settlement", () => {
     const base = { owner: { kind: "session" as const, sessionId: "parent" }, reader: asAsyncEventReadSurface(store), writer }
     try {
       const crashed: UsageSettlementDraft = { ...unmeasuredDraft, requestId: "request-0", entry: { ...unmeasuredEntry, attemptId: "00000000-0000-4000-8000-000000000000" } }
-      await writer.putInFlight!("usage.settlement", crashed.entry.attemptId, crashed)
+      await writer.putInFlight("usage.settlement", crashed.entry.attemptId, crashed)
       const live = createSessionUsageSettlement({ ...base, acquireAuthority: lease })
       await live.begin(unmeasuredDraft)
       let settledLive = false

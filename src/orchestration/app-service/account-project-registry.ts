@@ -181,8 +181,7 @@ export function createAccountProjectRegistry(options: AccountProjectRegistryOpti
     const existing = projection.getState().registrations.get(projectRoot)
     if (!existing || existing.status === "forgotten") return
     await append({ status: "forgotten", projectRoot, id: existing.project.id })
-    // SAFETY: createRuntimeEventStore opens SQLite, whose writer implements keyed pruning.
-    store.pruneSupersededKeyedEvents!(AGGREGATE_ID, FACT_TYPE, "$.projectRoot")
+    store.pruneSupersededKeyedEvents(AGGREGATE_ID, FACT_TYPE, "$.projectRoot")
   }
 
   return {
@@ -218,8 +217,7 @@ export function createAccountProjectRegistry(options: AccountProjectRegistryOpti
         if (result.kind === "stored") {
           const recorded = projection.getState().registrations.get(projectRoot)
           if (recorded?.status !== "known") throw new Error(`Stored account project did not project: ${projectRoot}`)
-          // SAFETY: createRuntimeEventStore opens SQLite, whose writer implements keyed pruning.
-          store.pruneSupersededKeyedEvents!(AGGREGATE_ID, FACT_TYPE, "$.projectRoot")
+          store.pruneSupersededKeyedEvents(AGGREGATE_ID, FACT_TYPE, "$.projectRoot")
           return recorded.project
         }
       }
@@ -239,12 +237,10 @@ export function createAccountProjectRegistry(options: AccountProjectRegistryOpti
     },
     async recordReplacementHandoff(lane, handoff) {
       const stored: ReplacementHandoff = { version: 2, ...handoff, projectRoots: [...handoff.projectRoots], phoneAwakeRoots: [...handoff.phoneAwakeRoots] }
-      // SAFETY: createRuntimeEventStore opens SQLite, whose writer implements in-flight cells.
-      await store.putInFlight!(handoffScope(lane), HANDOFF_IN_FLIGHT_KIND, handoff.handoffId, stored)
+      await store.putInFlight(handoffScope(lane), HANDOFF_IN_FLIGHT_KIND, handoff.handoffId, stored)
     },
     async retireReplacementHandoff(lane, handoffId) {
-      // SAFETY: createRuntimeEventStore opens SQLite, whose writer implements in-flight cells.
-      await store.dropInFlight!(handoffScope(lane), HANDOFF_IN_FLIGHT_KIND, handoffId)
+      await store.dropInFlight(handoffScope(lane), HANDOFF_IN_FLIGHT_KIND, handoffId)
     },
     capacityWakes(lane) {
       return store.readInFlight(handoffScope(lane), CAPACITY_WAKE_IN_FLIGHT_KIND).flatMap((row) => {
@@ -258,10 +254,8 @@ export function createAccountProjectRegistry(options: AccountProjectRegistryOpti
       })
     },
     async recordCapacityWake(lane, projectRoot, at) {
-      // SAFETY: createRuntimeEventStore opens SQLite, whose writer implements in-flight cells.
-      if (at === null) await store.dropInFlight!(handoffScope(lane), CAPACITY_WAKE_IN_FLIGHT_KIND, projectRoot)
-      // SAFETY: as above.
-      else await store.putInFlight!(handoffScope(lane), CAPACITY_WAKE_IN_FLIGHT_KIND, projectRoot, { version: 1, projectRoot, at })
+      if (at === null) await store.dropInFlight(handoffScope(lane), CAPACITY_WAKE_IN_FLIGHT_KIND, projectRoot)
+      else await store.putInFlight(handoffScope(lane), CAPACITY_WAKE_IN_FLIGHT_KIND, projectRoot, { version: 1, projectRoot, at })
     },
     async dispose() {
       if (disposed) return

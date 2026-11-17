@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, type AsyncGuardedEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventWriter, asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context"
 import { createConversationTree, readReconciledBranch } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
@@ -21,16 +21,6 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(tmpDir, { recursive: true, force: true })
 })
-
-function localAsyncWriter(store: LocalSqliteEventStore): AsyncGuardedEventWriter {
-  return {
-    append: async (event) => store.append(event),
-    appendBatch: async (events) => store.appendBatch(events),
-    appendGuarded: async (event) => store.appendGuarded(event),
-    appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
-    pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
-  }
-}
 
 /** A run row as version 1 of `child_run.created` recorded it, stamped with
  *  the conversation of the runner that dispatched it. Current runs record
@@ -56,7 +46,7 @@ describe("stale subagent run recovery", () => {
     const sessionId = "durable-child"
     const conversationId = "conv-durable-child"
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    const writer = localAsyncWriter(store)
+    const writer = asAsyncEventWriter(store)
     const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
     await tree.appendMessage({ kind: "user", content: "delegated task" })
     await tree.getStorage().dispose()
@@ -106,7 +96,7 @@ describe("stale subagent run recovery", () => {
     const sessionId = "recovery-stamped"
     const conversationId = "conv-recovery-stamped"
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    const writer = localAsyncWriter(store)
+    const writer = asAsyncEventWriter(store)
 
     const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
     await tree.appendMessage({ kind: "user", content: "dispatch something" })
@@ -137,7 +127,7 @@ describe("stale subagent run recovery", () => {
     const sessionId = "recovery-parallel"
     const [first, second] = ["conv-step-a", "conv-step-b"]
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    const writer = localAsyncWriter(store)
+    const writer = asAsyncEventWriter(store)
     for (const conversationId of [first, second]) {
       const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer })
       await tree.appendMessage({ kind: "user", content: `step of ${conversationId}` })
@@ -158,7 +148,7 @@ describe("stale subagent run recovery", () => {
   test("an unstamped legacy run without a fallback conversation is interrupted but skipped for recovery messages", async () => {
     const sessionId = "recovery-legacy"
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
-    const writer = localAsyncWriter(store)
+    const writer = asAsyncEventWriter(store)
 
     // Historical row: written before the conversationId stamp existed.
     store.append({

@@ -27,7 +27,7 @@ describe("the adoption sweep of a later executor generation", () => {
   const writer = () => ctx.runtime.runSync(EventStoreWriterService)
 
   async function storeRow(row: CommandHandoverRow): Promise<void> {
-    await writer().putInFlight?.(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
+    await writer().putInFlight(row.sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row)
   }
 
   /** A workflow session's step command, which no chat owns. */

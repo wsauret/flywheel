@@ -1,4 +1,4 @@
-import { requireGuardedEventAppender, type AsyncEventAppender, type AsyncEventStateReadSurface, type GuardedAppendResult, type GuardedEventStoreAppend, type InFlightWrite, type StoredFact } from "../../../infra/event-store-types.js"
+import type { AsyncEventAppender, AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend, InFlightWrite, StoredFact } from "../../../infra/event-store-types.js"
 import { runInTaskSlices, runToCompletion, type TaskSliceScheduling } from "../../../infra/task-scheduling.js"
 import { chatEntriesFacts, parseConversationTreeFact, type ConversationTreeFact } from "./conversation-facts.js"
 import { extractTreeFactContent } from "./conversation-tree-content-extraction.js"
@@ -554,8 +554,7 @@ export class ConversationTreeStorage {
    *  the one before it. `inFlight` rides on the first. */
   private async appendGuardedFacts(facts: readonly ConversationTreeFact[], expectedSeq: number, inFlight?: readonly InFlightWrite[]): Promise<GuardedAppendResult> {
     if (this.disposed) throw new Error("Session tree storage is disposed")
-    return requireGuardedEventAppender(this.writer, "Conversation tree guarded writes require guarded append authority")
-      .appendBatchGuarded(facts.map((fact, index) => this.toAppend(fact, expectedSeq + index, index === 0 ? inFlight : undefined)))
+    return this.writer.appendBatchGuarded(facts.map((fact, index) => this.toAppend(fact, expectedSeq + index, index === 0 ? inFlight : undefined)))
   }
 
   // Extraction happens here, the last point before the payload turns durable
@@ -584,13 +583,14 @@ export class ConversationTreeStorage {
   }
 }
 
+const refuseReadOnlyAppend = async (): Promise<never> => {
+  throw new Error("ConversationTreeStorage requires writer for appends")
+}
 const READ_ONLY_TREE_WRITER: AsyncEventAppender = {
-  append: async () => {
-    throw new Error("ConversationTreeStorage requires writer for appends")
-  },
-  appendBatch: async () => {
-    throw new Error("ConversationTreeStorage requires writer for appends")
-  },
+  append: refuseReadOnlyAppend,
+  appendBatch: refuseReadOnlyAppend,
+  appendGuarded: refuseReadOnlyAppend,
+  appendBatchGuarded: refuseReadOnlyAppend,
 }
 
 function isRefusal(built: readonly ConversationEntry[] | AppendRefusal): built is AppendRefusal {

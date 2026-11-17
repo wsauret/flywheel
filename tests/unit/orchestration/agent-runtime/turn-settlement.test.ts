@@ -8,6 +8,7 @@ import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-tu
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { ToolResultEntry } from "../../../../src/orchestration/agent-runtime/agent-state.js"
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
 
 function makeTool(execute: RuntimeTool["execute"], name: string, extra: Partial<RuntimeTool> = {}): RuntimeTool {
   return {
@@ -64,14 +65,14 @@ function harness(input: {
       await Bun.sleep(1)
       log.push("assistant-acknowledged")
     },
-    sessionEventWriter: {
+    sessionEventWriter: discardingSessionFactWriter({
       record: async () => null,
       recordBatch: async () => null,
       recordGuarded: async () => null,
       transaction: async (fn) => { fn() },
       dispose: () => {},
       putInFlight: input.checkpoint ?? (async () => {}),
-    },
+    }),
   }
   const turnScope = Scope.makeUnsafe()
   const dispatcher = createTurnDispatcher({

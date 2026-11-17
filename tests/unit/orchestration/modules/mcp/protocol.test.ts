@@ -25,6 +25,7 @@ import type { DomainReader } from "../../../../../src/protocol/protocol-module.j
 import { moduleDomainReader } from "../../../../../src/protocol/client/module-domain.js"
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
+import { refusingEventWriter } from "../../../../helpers/event-writer-doubles.js"
 
 // The account credential directory the composition root publishes. It resolves
 // under the isolated test account home, so no case reads real credentials.
@@ -41,7 +42,7 @@ function protocolOver(manager: McpManager, options: { readonly enabled?: boolean
   const patches: RuntimeUiPatchInput[] = []
   const service: McpService = options.service ?? {
     manager,
-    ports: { servers: manager.servers, tools: manager.tools, call: manager.call },
+    ports: { servers: manager.servers, tools: manager.tools, call: manager.call, toolsGeneration: () => 0 },
     authentication: { authenticate: options.authenticate ?? (async () => {}) },
     status: () => manager.status().map((row) => ({ ...row, ...globalMetadata })),
     claudeAiConnectors: () => false,
@@ -57,7 +58,7 @@ function protocolOver(manager: McpManager, options: { readonly enabled?: boolean
   const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
   const services: ModuleProtocolServices = {
     eventStore: reader,
-    eventWriter: { append: async () => { throw new Error("No MCP fact write") }, appendBatch: async () => { throw new Error("No MCP fact write") }, pruneSupersededEvents: async () => 0 },
+    eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     projectionReader: reader,
     manager: fakeManager(),
     sessionStore: fakeSessionStore(new Map()),
@@ -100,7 +101,8 @@ describe("MCP protocol runtime", () => {
     closeCallback()
     expect(patches).toHaveLength(count)
     await manager.replaceServers({})
-    expect(patches).toHaveLength(count + 1)
+    // A bare manager notifies at the handoff start and at the empty registry; the service holds both as one.
+    expect(patches).toHaveLength(count + 2)
     expect(patches.at(-1)).toEqual({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: [], claudeAiConnectors: false } })
     expect(await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).toEqual({ servers: [], claudeAiConnectors: false, snapshotPosition: 37 })
     runtime.dispose()
@@ -323,7 +325,7 @@ describe("MCP protocol runtime", () => {
     const snapshot = await createRuntimeConfigOwner({ configPath: join(temporary("mcp-reply-"), "flywheel.toml"), watch: false })
     const service: McpService = {
       manager,
-      ports: { servers: manager.servers, tools: manager.tools, call: manager.call },
+      ports: { servers: manager.servers, tools: manager.tools, call: manager.call, toolsGeneration: () => 0 },
       authentication: { authenticate: async () => {} },
       status: () => [],
       claudeAiConnectors: () => false,

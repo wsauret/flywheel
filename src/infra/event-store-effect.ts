@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, type ManagedRuntime } from "effect"
 
 import { errorDetail, errorMessage } from "./error-message.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncGuardedEventWriter, type AsyncEventWriter, type StoredFact } from "./event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type StoredFact } from "./event-store-types.js"
 import type { EventStoreWriterLane } from "./event-store-writer-lane-types.js"
 import { Log } from "./log.js"
 import { durationMs, logCompletion } from "./operation-log.js"
@@ -12,7 +12,7 @@ const log = Log.create({ service: "event-store-effect" })
  *  its close in a way a person notices. */
 const SLOW_STORE_LIFECYCLE_MS = 1_000
 
-export interface RuntimeEventState extends AsyncEventStateReadSurface, AsyncGuardedEventWriter {
+export interface RuntimeEventState extends AsyncEventStateReadSurface, AsyncEventWriter {
   readonly writerLane: EventStoreWriterLane
   onStored(listener: (events: readonly StoredFact[]) => void): () => void
   close(): Promise<void>
@@ -32,7 +32,7 @@ type LocalEventStoreServices = EventStoreServices | LocalEventStoreService
 
 type EventStoreReadSurfaceFactory = (
   reader: AsyncEventStateReadSurface,
-  writer: AsyncGuardedEventWriter,
+  writer: AsyncEventWriter,
 ) => AsyncEventStateReadSurface
 
 /** Process-lifetime EventStore as an Effect resource. The connection is

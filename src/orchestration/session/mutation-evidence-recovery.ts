@@ -43,10 +43,7 @@ function hasOneRetainedTarget(diff: MutationDiff, source: { readonly path: unkno
  * remain immutable; converted cells use their exact old raw text as the CAS token.
  * Storage failures propagate. Unreadable history yields a bounded typed gap. */
 export function createMutationEvidenceRecovery(reader: AsyncEventStateReadSurface, writer: Pick<AsyncEventWriter, "stageSessionContentNodes" | "swapInFlight">) {
-  const stage = (sessionId: string): StageSessionContentNodes => async nodes => {
-    if (!writer.stageSessionContentNodes) throw new Error("Mutation evidence recovery requires local content staging")
-    await writer.stageSessionContentNodes(sessionId, nodes)
-  }
+  const stage = (sessionId: string): StageSessionContentNodes => nodes => writer.stageSessionContentNodes(sessionId, nodes)
 
   async function entries(value: unknown, sessionId: string, identity: string) {
     const diff = decodeDiff(value)
@@ -244,7 +241,6 @@ export function createMutationEvidenceRecovery(reader: AsyncEventStateReadSurfac
       // Inline operation cells written before 2026-10-16 are converted beside the state writer. Remove this conversion after 2027-04-16.
       payload = await stageFileMutationOperation({ ...cell, version: 3, items }, stage(sessionId))
     }
-    if (!writer.swapInFlight) throw new Error("Mutation evidence recovery requires exact-raw local cell swaps")
     if (!await writer.swapInFlight(sessionId, row.kind, row.key, row.raw, payload)) {
       const current = (await reader.readInFlight(sessionId, row.kind)).find(value => value.key === row.key)
       return current ? normalizeInFlight(sessionId, current) : { ...row, raw: "", payload: { kind: "degraded", reason: "Mutation evidence checkpoint was retired" } }

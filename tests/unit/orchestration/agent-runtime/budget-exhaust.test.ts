@@ -32,6 +32,7 @@ import { renderSystemPrompt, stableSystemPrompt } from "../../../../src/orchestr
 import { loginWaitingRequest } from "./_login-wait-fixture.js";
 import { createHandoffTracker } from "../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
 import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
+import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js";
 
 interface AssistantWrite { readonly content: ContentBlock[]; readonly incomplete?: true }
 function recordAssistant(pushed: AssistantWrite[]) {
@@ -496,11 +497,11 @@ describe("budget exhaust turn under failover", () => {
   it("An exhaustion turn's tool results flush with their checkpoint swaps, in the same order as the main turn", async () => {
     const order: string[] = [];
     const checkpoints: unknown[] = [];
-    const writer: SessionFactWriter = {
+    const writer: SessionFactWriter = discardingSessionFactWriter({
       record: async () => null, recordBatch: async () => [],
       recordGuarded: async () => null, transaction: async (fn) => { fn(); }, dispose() {},
       putInFlight: async (_kind, key) => { checkpoints.push(key); },
-    };
+    });
     const tools = new RequestToolMap([["handoff", { ...handoffDefinition, execute: async () => ({ content: "written", outcome: "ok" as const }) }]]);
     const interactionProfile = resolveModelInteractionProfile("gpt-6-luna", "openai");
     const attempt = { accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", toolPresentation: FUNCTION_TOOL_PRESENTATION, contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const) } as const;

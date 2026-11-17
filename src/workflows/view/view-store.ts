@@ -207,8 +207,8 @@ export async function pruneSupersededWorkflowViewFacts(reader: AsyncEventStateRe
   pruned += await writer.pruneSupersededEvents(aggregateId, "queue.plan.changed")
   pruned += await writer.pruneSupersededEvents(aggregateId, "queue.tree.changed")
   pruned += await writer.pruneSupersededEvents(aggregateId, "follow_up.resume_state.recorded")
-  pruned += await writer.pruneSupersededKeyedEvents?.(aggregateId, "step.resume_revert.recorded", "$.attemptId") ?? 0
-  pruned += await writer.pruneSupersededKeyedEvents?.(aggregateId, "queue.tree.node.changed", "$.node.id") ?? 0
+  pruned += await writer.pruneSupersededKeyedEvents(aggregateId, "step.resume_revert.recorded", "$.attemptId")
+  pruned += await writer.pruneSupersededKeyedEvents(aggregateId, "queue.tree.node.changed", "$.node.id")
   return pruned
 }
 

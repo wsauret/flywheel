@@ -3,7 +3,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncGuardedEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
@@ -331,6 +331,8 @@ describe("appendEntries", () => {
       writer: {
         append: async () => { throw new Error("refused") },
         appendBatch: async () => { throw new Error("refused") },
+        appendGuarded: async () => { throw new Error("refused") },
+        appendBatchGuarded: async () => { throw new Error("refused") },
       },
     })
     const before = await storage.getState()
@@ -351,7 +353,7 @@ describe("appendEntries", () => {
     const initial = await createStorage()
     const base = asAsyncEventWriter(store)
     let attempts = 0
-    const writer: AsyncGuardedEventWriter = {
+    const writer: AsyncEventWriter = {
       ...base,
       appendBatchGuarded: async (events) => {
         attempts += 1

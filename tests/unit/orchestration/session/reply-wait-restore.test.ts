@@ -150,7 +150,7 @@ describe("waits outlive the run", () => {
   test("a held wait this build cannot read is named in a warning, keeps its bytes, and registers nothing", async () => {
     const here = project()
     const waiter = await here.manager.createChat({ name: "Waiter" })
-    await here.writer.putInFlight?.(waiter, REPLY_WAIT_KIND, "addressee", { toolUseId: 7, openedAtMs: "later" })
+    await here.writer.putInFlight(waiter, REPLY_WAIT_KIND, "addressee", { toolUseId: 7, openedAtMs: "later" })
     const warn = spyOn(Log.create({ service: "reply-wait-cells" }), "warn").mockImplementation(() => {})
     try {
       const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })

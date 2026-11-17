@@ -18,6 +18,7 @@ import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../.
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
 import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
+import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 
 type SessionFact = Parameters<NonNullable<ToolContext["sessionEventWriter"]>["record"]>[0];
 interface UnknownRecord { [key: string]: unknown }
@@ -74,7 +75,7 @@ function makeContext(record?: (fact: SessionFact) => Promise<StoredFact | null>)
     toolUseId: "memory-call",
     artifactScopeId: "sess-test",
     retrievalSessionId: "sess-test",
-    sessionEventWriter: {
+    sessionEventWriter: discardingSessionFactWriter({
       stageSessionContentNodes: async (nodes) => { for (const row of nodes) contentNodes.set(row.sha256, row.node); },
       record: (fact: SessionFact) => {
         recorded.push(fact);
@@ -84,7 +85,7 @@ function makeContext(record?: (fact: SessionFact) => Promise<StoredFact | null>)
       recordGuarded: async () => { throw new Error("unexpected guarded write"); },
       transaction: async (run) => { run(); },
       dispose: () => {},
-    },
+    }),
   });
 }
 

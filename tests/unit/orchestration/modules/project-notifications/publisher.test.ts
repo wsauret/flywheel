@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
-import { asAsyncEventAppender, asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { createProjectNotificationJournal } from "../../../../../src/orchestration/modules/project-notifications/journal.js"
 import { createProjectNotificationPublisher } from "../../../../../src/orchestration/modules/project-notifications/publisher.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -18,7 +18,7 @@ test("publishes local and reconciled facts once in aggregate order", async () =>
   const external = createSqliteEventStore(file)
   const patches: RuntimeUiPatchInput[] = []
   let tick = () => {}
-  const journal = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(local), writer: asAsyncEventAppender(local), sessionId: "local", now: () => 10 })
+  const journal = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(local), writer: asAsyncEventWriter(local), sessionId: "local", now: () => 10 })
   const publisher = createProjectNotificationPublisher({
     journal,
     onStored: local.onStored,
@@ -37,7 +37,7 @@ test("publishes local and reconciled facts once in aggregate order", async () =>
 
     // A raise committed through another connection's journal reaches this
     // runtime only when it reconciles, and then its own projection shows it.
-    const producer = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(external), writer: asAsyncEventAppender(external), sessionId: "external", now: () => 12 })
+    const producer = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(external), writer: asAsyncEventWriter(external), sessionId: "external", now: () => 12 })
     await producer.raise(usageWarning)
     expect(patches.map((patch) => patch.payload.kind)).toEqual(["project_notifications.raised", "project_notifications.dismissed"])
     tick()
