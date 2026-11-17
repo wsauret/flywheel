@@ -1,0 +1,68 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 219
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 715
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 17,19,63,67
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 289
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 71
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 73-75
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 42-43,49-53,237-240
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 229-234,256-261,288-291,734
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 50,96-97,303,393,399,403
+src/orchestration/modules/lead/control.ts
+  h_4b47e9e4a8b456 74-75
+src/orchestration/modules/lead/facts.ts
+  h_4b47e9e4a8b456 70-78,114
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 16-17,127-129,156
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 32
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 42-45,47,64-66,71-72,92-97,111-112,124,126-127,159,185,196,209-210,214-224,269-276,346-351,353-362
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 52-53,76,134-135,142,170-171,238-241,276-277,307,336,362-366,371-384,418,492-494,497-500,545-548,564,567-568,601
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 20,25-27,33,90,200,203
+src/tui/modules/lead/list-model.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 371,373
+tests/unit/orchestration/app-service/runtime-supervisor-open-hold.test.ts
+  h_4b47e9e4a8b456 36-66
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 105
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 94,99,101,103,105-117,253-254
+tests/unit/orchestration/modules/lead/rows-work-count.test.ts
+  h_4b47e9e4a8b456 38,77
+tests/unit/orchestration/modules/lead/rows.test.ts
+  h_4b47e9e4a8b456 74,77-78,112-115,173,182-183,185
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 72,77-81,87-95,97,105,111-112,143,156-157,161,185,207-208,327,341,343,345-346,349-352,355-358,427-432,461,463-465,526,528,531,534-545,547-555,563,621-624,633,640,664,666,687-688,692-739
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 163
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 251
+tests/unit/protocol/modules/lead.test.ts
+  h_4b47e9e4a8b456 21-22,29
+tests/unit/tui/modules/lead/strip.test.tsx
+  h_4b47e9e4a8b456 78,85,91,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8d926a306aa01846d661c2cdd1a533cc17009245",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
