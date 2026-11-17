@@ -26,15 +26,16 @@ interface ModuleSlotDeps {
   readonly modal: Pick<ModalContext, "replace">
   readonly showToast: (toast: ToastInput) => void
   readonly client: Pick<RuntimeClient, "query" | "dispatch">
-  readonly enabled?: Accessor<readonly TuiModule["id"][] | undefined>
+  /** The published module selection; undefined until the runtime publishes one. */
+  readonly enabled: Accessor<readonly TuiModule["id"][] | undefined>
   /** Whether the runtime answers this terminal now; a held module view reads
    *  as current only while it does. */
   readonly answering: Accessor<boolean>
-  readonly auth?: TuiControllerHost["auth"]
-  readonly projectRoot?: Accessor<string>
+  readonly auth: TuiControllerHost["auth"]
+  readonly projectRoot: Accessor<string>
   readonly navigate: TuiNavigation
   readonly clipboard: TuiControllerHost["clipboard"]
-  readonly appVersion?: string
+  readonly appVersion: string
 }
 
 export interface ModuleSlots {
@@ -60,15 +61,16 @@ export interface ModuleSlots {
  *  and reported once, so a broken module never takes the composer with it. */
 export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   const foreground = createDomainReader(deps.intakes, deps.foregroundId, deps.answering)
-  const composerStatus = createMemo(() => moduleComposerStatus(foreground, deps.enabled?.()))
-  const introRows = createMemo(() => moduleRows("intro", foreground, deps.enabled?.()))
-  const settingsRows = createMemo(() => moduleRows("settings", foreground, deps.enabled?.()))
-  const enabled = (module: TuiModule): boolean => deps.enabled?.()?.includes(module.id) ?? true
-  const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: deps.foregroundId(), profileId: deps.auth?.()?.profile.id, moduleIds: deps.enabled?.() ?? deps.modules.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
+  const composerStatus = createMemo(() => moduleComposerStatus(foreground, deps.enabled()))
+  const introRows = createMemo(() => moduleRows("intro", foreground, deps.enabled()))
+  const settingsRows = createMemo(() => moduleRows("settings", foreground, deps.enabled()))
+  // Until the runtime publishes a selection, every module counts as enabled.
+  const enabled = (module: TuiModule): boolean => deps.enabled()?.includes(module.id) ?? true
+  const statusScope = createMemo<ModuleStatusScope, undefined>(() => ({ sessionId: deps.foregroundId(), profileId: deps.auth()?.profile.id, moduleIds: deps.enabled() ?? deps.modules.map((module) => module.id) }), undefined, { equals: sameModuleStatusScope })
   const [queriedRows, setQueriedRows] = createSignal<{ readonly scope: ModuleStatusScope; readonly rows: readonly ModuleRow[] }>()
   const statusRows = createMemo(() => {
     const result = queriedRows()
-    return [...moduleRows("status", foreground, deps.enabled?.()), ...(result?.scope === statusScope() ? result.rows : [])]
+    return [...moduleRows("status", foreground, deps.enabled()), ...(result?.scope === statusScope() ? result.rows : [])]
   })
   let statusGeneration = 0
   function refreshStatus(): void {
@@ -105,7 +107,7 @@ export function createModuleSlots(deps: ModuleSlotDeps): ModuleSlots {
   }
 
   function controlledSurfaceOpener(module: TuiModule, surface: Extract<TuiSurface, { readonly loadController: unknown }>): (request?: SurfaceRequest) => boolean | Promise<boolean> {
-    const controller = createLazyController(() => surface.loadController(), (create) => create({ enabled: () => enabled(module), modal: deps.modal, client: deps.client, foregroundId: deps.foregroundId, auth: deps.auth ?? (() => undefined), read: foreground, projectRoot: deps.projectRoot ?? (() => ""), showToast: deps.showToast, navigate: deps.navigate, clipboard: deps.clipboard, appVersion: deps.appVersion ?? "" }))
+    const controller = createLazyController(() => surface.loadController(), (create) => create({ enabled: () => enabled(module), modal: deps.modal, client: deps.client, foregroundId: deps.foregroundId, auth: deps.auth, read: foreground, projectRoot: deps.projectRoot, showToast: deps.showToast, navigate: deps.navigate, clipboard: deps.clipboard, appVersion: deps.appVersion }))
     // The latest opening that waits for the controller. A later one replaces
     // it, and the replaced one settles as accepted: the person moved on.
     let pendingPresentation: { readonly request: SurfaceRequest; readonly settle: (accepted: boolean) => void } | undefined

@@ -114,7 +114,7 @@ afterAll(() => { server.close(); rmSync(directory, { recursive: true, force: tru
 
 test("all Changes command IDs and the sheet capability open the one shared editor review without writing files", async () => {
   const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: client })
-  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
   const sidebar = sidebars.at(-1)!
   const opened = panels.length
   let picks = 0
@@ -189,7 +189,7 @@ test("replacement retains the old page during preparation, swaps only on correla
     questions: [{ question: "Which?", multiSelect: false, choices: [{ kind: "option", choiceId: "file", label: "File", requiresText: true }] }],
   } })
   try {
-    vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+    vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
     const view = sidebars.at(-1)!
     await served(view)
     view.send({ type: "ready" })
@@ -279,7 +279,7 @@ test("a failed replacement preparation reports failure without swapping the page
 test("a version-1 client reload request replaces its rejected bundle on a version-2 host", async () => {
   const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: client })
   try {
-    vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+    vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
     const view = sidebars.at(-1)!
     await served(view)
     const oldHtml = view.webview.html
@@ -295,7 +295,7 @@ test("a version-1 client reload request replaces its rejected bundle on a versio
 test("the panel goes from a status page to the client and keeps the commands asked for on the way", async () => {
   const actions: string[] = []
   const host = new ChatViewProvider(line => diagnostics.push(line), id => { actions.push(id) })
-  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
   const view = sidebars.at(-1)!
   try {
     // Before the runtime listens the panel says what the editor is doing,
@@ -358,7 +358,7 @@ test("a reloaded page gets its own channels, and the old page's streams close", 
   })
   await new Promise<void>(resolve => service.listen(runtime.socketPath, resolve))
   const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: { kind: "client", target: runtime, ensureRuntime: async () => {} } })
-  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
   const view = sidebars.at(-1)!
   const opened = () => view.messages.filter(message => message.type === "socket.opened").length
   try {
@@ -415,7 +415,7 @@ test("the Changes editor keeps its page across runtime changes and attaches to t
     kind: "client", target: { socketPath: lanes[lane]!.socketPath, projectRoot, credential: "test" }, ensureRuntime: async () => { ensured.push(start) },
   }) as const
   const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: runtime(0, "/project", "first start") })
-  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewTypes[1], host)
   const sidebar = sidebars.at(-1)!
   const registrations = host.registerChangesCommands(async () => { throw new Error("the summary names the session") })
   const opened = panels.length

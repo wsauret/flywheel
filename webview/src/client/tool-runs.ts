@@ -153,16 +153,22 @@ export function* toolGroupKeys(group: ToolGroup): Generator<string> {
   yield* stretchKeys(group.opening, group.scriptIds, group.members)
 }
 
+/** The calls a stretch's group lists, in order: every call except a script,
+ *  and every session message as its disclosure entry. */
+export function stretchCalls(stretch: ToolStretch): FrontendToolEntry[] {
+  return stretch.members.flatMap((member) => {
+    if (isScript(member)) return []
+    if (member.kind === "tool") return [member]
+    return member.kind === "userMessage" ? [messageDisclosureEntry(member, member.from)] : []
+  })
+}
+
 /** A group is keyed on its stretch's opening block, unless one of its blocks,
  *  scripts included, named a key in `keptKeys`. Each key names a block of its
  *  own group, so keys stay unique when a stretch splits. */
 function toolGroupOf(stretch: ToolStretch, keptKeys: ReadonlySet<string>): ToolGroup {
   const members = stretch.members.filter((member) => !isScript(member)).map(presentBlock)
-  const children: FrontendToolEntry[] = []
-  for (const member of members) {
-    if (member.kind === "tool") children.push(member)
-    else if (member.kind === "userMessage") children.push(messageDisclosureEntry(member, member.from))
-  }
+  const children = stretchCalls(stretch)
   let id = `toolGroup:${stretch.id}`
   if (keptKeys.size > 0) {
     for (const key of stretchKeys(stretch.id, stretch.scriptIds, stretch.members)) {

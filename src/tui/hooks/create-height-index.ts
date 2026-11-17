@@ -77,8 +77,6 @@ class ItemExtentIndex {
   private rows = new Map<number, number>()
   private measured = new Set<number>()
   private deltas: FenwickTree
-  /** Comparison count of the most recent rowOffsetToBlockIndex search (diagnostic). */
-  searchSteps = 0
 
   constructor(itemCount: number, estimatedRows: number) {
     this.itemCount = itemCount
@@ -178,14 +176,12 @@ class ItemExtentIndex {
 
   // Binary-search the block whose rows span offset `y`.
   findIndexAtOffset(y: number): number {
-    this.searchSteps = 0
     if (this.itemCount <= 1) return 0
     const target = Math.max(0, y)
     let lo = 0
     let hi = this.itemCount - 1
     let found = this.itemCount - 1
     while (lo <= hi) {
-      this.searchSteps += 1
       const mid = Math.floor((lo + hi) / 2)
       // Rows are contiguous, so an offset exactly on a boundary belongs to the
       // next block; the comparison must be strict.
@@ -285,8 +281,6 @@ export interface HeightIndex {
    *  turns these deltas into scroll compensation. */
   takeCorrections(): readonly ExtentCorrection[]
   extentVersion(): number
-  /** Comparison count of the most recent offset lookup (perf diagnostic). */
-  lastSearchSteps(): number
 }
 
 export function createHeightIndex(config: HeightIndexConfig): HeightIndex {
@@ -351,6 +345,5 @@ export function createHeightIndex(config: HeightIndexConfig): HeightIndex {
       return taken
     },
     extentVersion,
-    lastSearchSteps: () => model.searchSteps,
   }
 }

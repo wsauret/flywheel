@@ -13,7 +13,6 @@ import { TranscriptViewportHeightProvider } from "@tui/context/transcript-viewpo
 import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
 import { BlockDisclosureProvider } from "@tui/context/block-disclosure.js"
 import { LandingTargetProvider } from "@tui/context/landing-highlight.js"
-import { MutationEvidenceProvider } from "../context/mutation-evidence.js"
 import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { useTheme } from "@tui/context/theme"
 import { type Accessor, createEffect, createMemo, createSignal, Index, onCleanup, Show, untrack } from "solid-js"
@@ -325,7 +324,6 @@ export function OutputWindow(props: OutputWindowProps) {
                 setPendingRows(this.height)
               }}
             >
-              <MutationEvidenceProvider reader={transcript.mutationEvidence}>
               <scrollbox height="auto" minHeight={0}
                 maxHeight={dockRows()}
                 contentOptions={{ minHeight: 0 }}
@@ -352,7 +350,6 @@ export function OutputWindow(props: OutputWindowProps) {
                 />}
               </Index>
               </scrollbox>
-              </MutationEvidenceProvider>
             </OpaqueBox>
           </Show>
           {/* Wheel input is applied during native layout, after text composition.

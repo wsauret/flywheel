@@ -10,14 +10,13 @@ import { createAuthNotificationCoordinator, notificationToast, type AuthNotifica
 
 type NotificationSnapshot = ProtocolDomainSnapshot<typeof projectNotificationsDomain>
 
-const authSnapshot = (position: number, operationId?: string): RuntimeAuthStatusSnapshotResult => ({
+const authSnapshot = (position: number): RuntimeAuthStatusSnapshotResult => ({
   snapshotPosition: position,
   auth: {
     providers: [], warnings: [],
     authFilePath: "/profiles/profile/auth.json",
     profile: { id: "profile", displayName: "Default", source: "default", availableProfiles: [] },
     subscriptionSpendConsent: { kind: "available", profileId: "profile", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, accounts: [{ accountCorrelationId: "account", providerId: "chatgpt", providerDisplayName: "ChatGPT Subscription", providerStatus: "ok", modes: [{ mode: "automatic", envelopeId: "paid", decision: "unreviewed", evidence: { kind: "automatic-billing", enablement: "enabled" } }] }] },
-    ...(operationId ? { settlement: { kind: "completed" as const, operationId, providerId: "chatgpt" } } : {}),
   },
 })
 
@@ -130,65 +129,6 @@ describe("VS Code auth and notification coordinator", () => {
     coordinator.dispose()
   })
 
-  test("serializes public refresh with following patches", async () => {
-    let listener: ((event: FrontendEvent) => void) | undefined
-    const lanes = laneSource()
-    let resolveRefresh!: (snapshot: RuntimeAuthStatusSnapshotResult) => void
-    const blockedRefresh = new Promise<RuntimeAuthStatusSnapshotResult>((resolve) => { resolveRefresh = resolve })
-    let authReads = 0
-    const coordinator = createAuthNotificationCoordinator({
-      connection: scriptedConnection({
-        onLane: lanes.onLane,
-        subscribe: (next) => { listener = next; return () => { listener = undefined } },
-        authStatus: async () => {
-          authReads += 1
-          return authReads === 1 ? authSnapshot(10) : await blockedRefresh
-        },
-        notifications: async () => ({ snapshotPosition: 20, notifications: [] }),
-      }),
-      isForegroundSafe: () => false,
-      presentNotification: async () => false,
-      open: () => {}, onError: () => {},
-    })
-    const positions: Array<number | undefined> = []
-    coordinator.onAuthChange((snapshot) => { positions.push(snapshot?.snapshotPosition) })
-    lanes.open()
-    await new Promise<void>((resolve) => { setImmediate(resolve) })
-
-    const refreshing = coordinator.refresh()
-    await Promise.resolve()
-    listener?.({ type: "patch", patch: { cursor: { scope: "workspace", domain: "auth" }, prevPosition: 10, position: 11, payload: { kind: "auth.changed", auth: authSnapshot(11).auth } } })
-    resolveRefresh(authSnapshot(10))
-    await refreshing
-    await new Promise<void>((resolve) => { setImmediate(resolve) })
-
-    assert.deepEqual(positions, [undefined, 10, 10, 11])
-    coordinator.dispose()
-  })
-
-  test("correlates OAuth settlement from the exact ordered auth patch", async () => {
-    const run = harness()
-    run.openLane()
-    await Promise.resolve(); await Promise.resolve()
-    const waiting = run.coordinator.waitForOAuthSettlement("oauth-op")
-    run.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "auth" }, prevPosition: 10, position: 11, payload: { kind: "auth.changed", auth: authSnapshot(11, "oauth-op").auth } } })
-    assert.equal((await waiting)?.snapshotPosition, 11)
-    run.coordinator.dispose()
-  })
-
-  test("cancellation releases OAuth correlation and prevents late settlement", async () => {
-    const run = harness()
-    run.openLane()
-    await new Promise<void>((resolve) => { setImmediate(resolve) })
-    const controller = new AbortController()
-    const waiting = run.coordinator.waitForOAuthSettlement("oauth-op", controller.signal)
-    controller.abort()
-    assert.equal(await waiting, undefined)
-    run.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "auth" }, prevPosition: 10, position: 11, payload: { kind: "auth.changed", auth: authSnapshot(11, "oauth-op").auth } } })
-    await new Promise<void>((resolve) => { setImmediate(resolve) })
-    assert.equal(run.authChanges.at(-1)?.snapshotPosition, 11)
-    run.coordinator.dispose()
-  })
   test("opens the exact current targeted auth account and dismisses the episode", async () => {
     const complete = authSnapshot(10)
     const consent = complete.auth.subscriptionSpendConsent

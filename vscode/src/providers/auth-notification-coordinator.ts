@@ -5,18 +5,10 @@ import { formatDateTime } from "../../../src/protocol/client/format.js"
 import { MODULE_DOMAIN_BINDINGS } from "../../../src/protocol/client/module-domain.js"
 import { notificationAction, type NotificationActionView } from "../../../src/protocol/modules/project-notifications.js"
 
-interface OAuthWaiter {
-  readonly resolve: (snapshot: RuntimeAuthStatusSnapshotResult | undefined) => void
-  readonly stop: () => void
-}
-
-export interface AuthNotificationCoordinator {
-  waitForOAuthSettlement(operationId: string, signal?: AbortSignal): Promise<RuntimeAuthStatusSnapshotResult | undefined>
+interface AuthNotificationCoordinator {
   /** Presents every unresolved notice not yet presented, when the window can take one. */
   foregroundAvailable(): void
-  snapshot(): RuntimeAuthStatusSnapshotResult | undefined
   onAuthChange(listener: (snapshot: RuntimeAuthStatusSnapshotResult | undefined) => void): () => void
-  refresh(): Promise<void>
   dispose(): void
 }
 
@@ -68,19 +60,17 @@ export function createAuthNotificationCoordinator(deps: AuthNotificationCoordina
   let held: HeldNotifications | undefined
   let disposed = false
   let reseedGeneration = 0
-  const oauthWaiters = new Map<string, OAuthWaiter>()
   const presentedNotificationIds = new Set<string>()
   const authListeners = new Set<(snapshot: RuntimeAuthStatusSnapshotResult | undefined) => void>()
   let eventLane = Promise.resolve()
 
-  const enqueue = (operation: () => Promise<void>): Promise<void> => {
+  const enqueue = (operation: () => Promise<void>): void => {
     // A read lost with its lane is read again on the next lane.
     eventLane = eventLane.then(operation).catch((cause: unknown) => { if (!lostWithLane(cause)) deps.onError(cause) })
-    return eventLane
   }
-  const stop = deps.connection.subscribe((event) => { void enqueue(() => consume(event)) })
+  const stop = deps.connection.subscribe((event) => { enqueue(() => consume(event)) })
   // Each lane seeds both cursors, in order with the events around it.
-  const stopLanes = deps.connection.onLane(() => { void enqueue(reseed) })
+  const stopLanes = deps.connection.onLane(() => { enqueue(reseed) })
   const publishAuth = (): void => {
     for (const listener of authListeners) listener(auth)
   }
@@ -115,14 +105,6 @@ export function createAuthNotificationCoordinator(deps: AuthNotificationCoordina
       }
       auth = { snapshotPosition: patch.position, auth: patch.payload.auth }
       publishAuth()
-      const operationId = patch.payload.auth.settlement?.operationId
-      const waiter = operationId === undefined ? undefined : oauthWaiters.get(operationId)
-      if (waiter) {
-        oauthWaiters.delete(operationId!)
-        waiter.stop()
-        waiter.resolve(auth)
-        return
-      }
       foregroundAvailable()
       return
     }
@@ -171,47 +153,16 @@ export function createAuthNotificationCoordinator(deps: AuthNotificationCoordina
     }
   }
 
-  function waitForOAuthSettlement(operationId: string, signal?: AbortSignal): Promise<RuntimeAuthStatusSnapshotResult | undefined> {
-    const previous = oauthWaiters.get(operationId)
-    previous?.resolve(undefined)
-    previous?.stop()
-    return new Promise((resolve) => {
-      const abort = (): void => {
-        const waiter = oauthWaiters.get(operationId)
-        if (waiter?.resolve !== resolve) return
-        oauthWaiters.delete(operationId)
-        waiter.stop()
-        resolve(undefined)
-      }
-      signal?.addEventListener("abort", abort, { once: true })
-      const waiter: OAuthWaiter = { resolve, stop: () => signal?.removeEventListener("abort", abort) }
-      if (disposed || signal?.aborted) {
-        waiter.stop()
-        resolve(undefined)
-      } else {
-        oauthWaiters.set(operationId, waiter)
-      }
-    })
-  }
-
   function dispose(): void {
     if (disposed) return
     disposed = true
     stopLanes()
     stop()
-    for (const waiter of oauthWaiters.values()) {
-      waiter.stop()
-      waiter.resolve(undefined)
-    }
-    oauthWaiters.clear()
     authListeners.clear()
   }
 
   return {
-    waitForOAuthSettlement,
     foregroundAvailable,
-    refresh: () => enqueue(reseed),
-    snapshot: () => auth,
     onAuthChange: (listener) => {
       authListeners.add(listener)
       listener(auth)

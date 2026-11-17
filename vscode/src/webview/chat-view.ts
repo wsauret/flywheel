@@ -30,8 +30,6 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
    *  and falls back to the activity bar on VS Code older than 1.106, which has
    *  no `secondarySidebar` contribution point. Both ids are registered; the
    *  `when` clauses in the manifest decide which one is ever resolved. */
-  public static readonly viewType = "flywheel.chat"
-  public static readonly secondaryViewType = "flywheel.chatSecondary"
   public static readonly viewTypes = ["flywheel.chatSecondary", "flywheel.chat"] as const
 
   private chat: PanelMount | undefined

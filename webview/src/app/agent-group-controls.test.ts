@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { jest } from "bun:test"
-import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock, FrontendToolEntry } from "../../../src/protocol/app-service-types.js"
 import { settle } from "../../../tests/unit/protocol/client/_session-changes-fixtures.js"
 import { mountAgentGroup } from "./render-ownership-loader-fixture.js"
 
@@ -216,4 +216,29 @@ test("detail replacements remove stale Resume and completed cards release detail
     assert.deepEqual(complete.detailReads, [])
     assert.equal(complete.elements().some(node => node.properties["aria-label"] === "Actions"), false)
   } finally { complete.dispose() }
+})
+
+test("An agent card lists its compact tool rows in order, with read runs folded", () => {
+  const read = (id: string, file: string, timestamp: number): FrontendToolEntry => ({
+    kind: "tool", id, name: "read", action: "file_read",
+    presentation: { name: "Read", detail: file }, timestamp, status: "completed",
+  })
+  const command: FrontendToolEntry = {
+    kind: "tool", id: "list", name: "bash", action: "shell_exec",
+    presentation: { name: "Bash", detail: "ls src" }, timestamp: 3, status: "completed", exitCode: 0,
+  }
+  const mounted = mountAgentGroup({
+    kind: "agentGroup", id: "folded-agent-group", toolUseId: "folded-subagent-call", containerKind: "subagent",
+    label: "Explorer", description: "Inspect three files", status: "completed",
+    children: [read("a", "a.ts", 1), read("b", "b.ts", 2), command, read("c", "c.ts", 4)], totalToolCount: 4, timestamp: 0,
+  })
+  try {
+    mounted.open()
+    const rows = mounted.elements().filter(node => String(node.properties.class).split(" ").includes("compact"))
+    assert.equal(rows.length, 3)
+    const text = mounted.text()
+    assert.match(text, /a\.ts, b\.ts/)
+    assert.ok(text.indexOf("b.ts") < text.indexOf("ls src"))
+    assert.ok(text.indexOf("ls src") < text.indexOf("c.ts"))
+  } finally { mounted.dispose() }
 })

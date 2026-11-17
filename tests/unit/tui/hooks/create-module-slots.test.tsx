@@ -43,6 +43,8 @@ function fakeAppService() {
 /** Kernel destinations no surface under test reaches. */
 const NAVIGATE: TuiNavigation = { openSettings: async () => {}, openSurface: () => {}, navigateSession: () => {} }
 const CLIPBOARD = { copy: async (_text: string) => {} }
+/** The controller host values no surface under test reads. */
+const HOST = { auth: () => undefined, projectRoot: () => "/scratch/project", appVersion: "0.0.0-test" }
 const CLIENT: Pick<RuntimeClient, "dispatch" | "query"> = { query: async () => { throw new Error("no query in this test") }, dispatch: async () => { throw new Error("no mutation is dispatched in this test") } }
 
 const SURFACE: TuiComponentSurface = {
@@ -67,7 +69,7 @@ function harness(modules: readonly TuiModule[]) {
   const built = createRoot((dispose) => {
     const service = fakeAppService()
     const intakes = createModuleDomainIntakes({ appService: service, hydration: service })
-    const slots = createModuleSlots({ answering: () => true, modules, intakes, foregroundId, modal, client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: (input) => {
+    const slots = createModuleSlots({ ...HOST, enabled: () => undefined, answering: () => true, modules, intakes, foregroundId, modal, client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: (input) => {
       const options = typeof input === "function" ? input() : input
       if (options !== null) toasts.push(options.message)
     } })
@@ -273,7 +275,7 @@ describe("controlled module surfaces", () => {
       const intakes = createModuleDomainIntakes({ appService: service, hydration: service })
       intakes["side-question"].ensure("parent")
       intakes["side-question-request"].ensure("parent")
-      return { dispose, slots: createModuleSlots({ answering: () => true, modules: [module], intakes, foregroundId: () => "parent", modal, client: { ...CLIENT, dispatch }, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: () => {}, enabled }) }
+      return { dispose, slots: createModuleSlots({ ...HOST, answering: () => true, modules: [module], intakes, foregroundId: () => "parent", modal, client: { ...CLIENT, dispatch }, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: () => {}, enabled }) }
     })
     try {
       await Promise.resolve(); await Promise.resolve()
@@ -305,7 +307,7 @@ describe("controlled module surfaces", () => {
     const service = fakeAppService()
     const built = createRoot((dispose) => ({
       dispose,
-      slots: createModuleSlots({ answering: () => true, modules: [module], intakes: createModuleDomainIntakes({ appService: service, hydration: service }), foregroundId: () => undefined, modal, client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: () => {}, enabled }),
+      slots: createModuleSlots({ ...HOST, answering: () => true, modules: [module], intakes: createModuleDomainIntakes({ appService: service, hydration: service }), foregroundId: () => undefined, modal, client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: () => {}, enabled }),
     }))
     try {
       expect(loadController).not.toHaveBeenCalled()
@@ -338,7 +340,7 @@ describe("module status scope ownership", () => {
     const module: TuiModule = { id: "development", status: () => { const request = Promise.withResolvers<readonly import("../../../../src/protocol/protocol-module.js").ModuleRow[]>(); readings.push(request); return request.promise } }
     const toasts: string[] = []
     const service = fakeAppService()
-    const built = createRoot((dispose) => ({ dispose, slots: createModuleSlots({ answering: () => true,
+    const built = createRoot((dispose) => ({ dispose, slots: createModuleSlots({ ...HOST, answering: () => true,
       modules: [module], intakes: createModuleDomainIntakes({ appService: service, hydration: service }), foregroundId: sessionId, enabled,
       auth: () => ({ providers: [], warnings: [], profile: { id: profileId(), displayName: profileId(), source: "default", availableProfiles: [] }, subscriptionSpendConsent: { kind: "unavailable", profileId: profileId(), message: "Flywheel could not read this profile's paid-use settings. Paid use is off until it can." } }),
       modal: createModalStack(), client: CLIENT, clipboard: CLIPBOARD, navigate: NAVIGATE, showToast: (toast) => { const input = typeof toast === "function" ? toast() : toast; if (input !== null) toasts.push(input.message) },

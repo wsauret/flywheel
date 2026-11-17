@@ -9,7 +9,7 @@ import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { blockEndTimes } from "../client/tool-runs.js"
 import { RowTime, TranscriptClock } from "./row-time.js"
 import { createSessionReading, type SessionReadingSource } from "./session-reading.js"
-import { TranscriptRows } from "./transcript-rows.js"
+import { CompactToolRows } from "./compact-tool-rows.js"
 import { AgentLineCells } from "./agent-line.js"
 import { SubagentHeader } from "./subagent-header.js"
 import { ClientContext } from "./client-context.js"
@@ -110,7 +110,7 @@ export function AgentGroup(props: {
     <Show when={line().failureDetail}>{detail => <div class="subagent-line subagent-failure"><span class="subagent-line-detail">{detail()}</span></div>}</Show>
     <Show when={open() && !active()}><div class="group-body">
       <Show when={loaded()} fallback={<div class="group-loading">Loading what this agent did…</div>}>{group => <>
-        <TranscriptRows blocks={group().children} showThinking={false} compact onOpenFile={props.onOpenFile} endOf={id => ends().get(id)} />
+        <CompactToolRows blocks={group().children} onOpenFile={props.onOpenFile} endOf={id => ends().get(id)} />
         <Show when={group().children.length < group().total}><div class="group-loading">{group().total - group().children.length} more not shown</div></Show>
       </>}</Show>
     </div></Show>

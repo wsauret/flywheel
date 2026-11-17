@@ -7,8 +7,7 @@ import type { AttachedRuntimeClient, RuntimeStartupStatus } from "../../protocol
  * runtime that dies before serving RPC must fail the load screen loudly
  * instead of leaving a spinner behind an empty viewport.
  *
- * Like create-workspace-connection-state.ts, this is a plain top-level event
- * listener, not an ordered-patch receiver: `runtime.startup` is
+ * This is a plain top-level event listener, not an ordered-patch receiver: `runtime.startup` is
  * transport-local (synthesized by the socket client from the runtime's
  * stdout handshake records), so there is no domain snapshot to reconcile.
  * A lane that opens clears the status: it supersedes both a phase notice

@@ -7,7 +7,7 @@ import { CATALOG_PALETTE_COMMANDS, type CatalogPaletteCommand } from "./catalog-
 import { openSheetCommand, type ClientCommand } from "../../src/protocol/client/host-contract.js"
 import { summarizeProviders } from "../../src/protocol/client/provider-summary.js"
 import { installedLauncherPath, updateRepository } from "../../src/protocol/installation.js"
-import { createAuthNotificationCoordinator, type AuthNotificationCoordinator } from "./providers/auth-notification-coordinator.js"
+import { createAuthNotificationCoordinator } from "./providers/auth-notification-coordinator.js"
 import { nodeSocketLayer } from "./runtime/node-socket.js"
 import { MINIMUM_RUNTIME_VERSION, resolveRuntime } from "./runtime/runtime-resolver.js"
 import { createRuntimeRecovery } from "./runtime/runtime-recovery.js"
@@ -41,7 +41,6 @@ const FILE_ROWS = 50
  *  reconciles chat state. */
 interface LiveRuntime {
   readonly connection: RuntimeConnection
-  readonly coordinator: AuthNotificationCoordinator
   dispose(): Promise<void>
 }
 
@@ -217,7 +216,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     panel.show({ kind: "client", target, ensureRuntime: recovery.ensureRuntime })
     return {
       connection,
-      coordinator,
       async dispose() {
         for (const stop of stops) stop()
         for (const summary of summaries) summary.dispose()

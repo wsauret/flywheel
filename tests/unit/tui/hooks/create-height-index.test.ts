@@ -212,14 +212,23 @@ describe("createHeightIndex", () => {
     })
   })
 
-  it("resolves offset lookups in O(log n) over a 100k-block index", () => {
+  it("rowOffsetToBlockIndex over 10,000 rows returns the right block", () => {
     createRoot((dispose) => {
-      const itemCount = 100_000
+      const itemCount = 10_000
       const index = createHeightIndex({ itemCount, estimatedRows: 1 })
-      index.rowOffsetToBlockIndex(73_421)
-      // log2(100000) ~= 16.6; a binary search stays well under a linear scan.
-      expect(index.lastSearchSteps()).toBeGreaterThan(0)
-      expect(index.lastSearchSteps()).toBeLessThanOrEqual(40)
+      // Mixed extents, zero-row blocks included, so a lookup cannot follow the estimate.
+      const rows = Array.from({ length: itemCount }, (_, block) => block % 7 === 0 ? 0 : 1 + (block % 3))
+      index.recordMeasuredBatch(rows.map((height, block) => [block, height] as const))
+      let top = 0
+      for (let block = 0; block < itemCount; block += 1) {
+        const height = rows[block] ?? 0
+        if (height > 0) {
+          expect(index.rowOffsetToBlockIndex(top)).toBe(block)
+          expect(index.rowOffsetToBlockIndex(top + height - 1)).toBe(block)
+        }
+        top += height
+      }
+      expect(index.totalRows()).toBe(top)
       dispose()
     })
   })
