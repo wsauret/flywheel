@@ -93,7 +93,7 @@ export const AUX_ROLE_IDS: readonly RoleId[] = [LEARNING_REVIEW_ROLE_ID, TITLE_G
 
 
 
-export function isKnownRoleId(rawRoleId: RoleId, registeredBriefIds: ReadonlySet<string> = new Set()): boolean {
+function isKnownRoleId(rawRoleId: RoleId, registeredBriefIds: ReadonlySet<string> = new Set()): boolean {
   const roleId = canonicalRoleId(rawRoleId);
   if (roleId in DEFAULT_ROLES) return true;
   if (AGENT_ROLE_IDS.includes(roleId)) return true;

@@ -3,7 +3,7 @@ import { parseSchema, safeParse, safeParseStrip } from "../../../helpers/schema-
 import * as path from "node:path";
 import * as fs from "node:fs";
 import { loadConfig } from "../../../../src/orchestration/config/loader";
-import { MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/defaults";
+import { MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/setting-definitions.js";
 import {
   FlywheelConfigSchema,
 } from "../../../../src/orchestration/config/schema";

@@ -6,10 +6,9 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
-import { DEFAULT_PROACTIVE_COMPACTION_THRESHOLD, DEFAULT_THEME_SELECTION, MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/defaults.js";
 import { ConfigWriteError, migrateLegacyModelSpellings, migrateModelAssignments, patchProfileBoolean, patchProfileProviderSetting, seedConfigDefaults, setAuthProjectProfile, updateDefinedSetting } from "../../../../src/orchestration/config/writer.js";
 import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
-import { profileBooleanSettingDefinition } from "../../../../src/orchestration/config/setting-definitions.js";
+import { MIN_PROACTIVE_COMPACTION_THRESHOLD, profileBooleanSettingDefinition } from "../../../../src/orchestration/config/setting-definitions.js";
 
 async function withConfig(source: string, run: (path: string, dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-settings-"));
@@ -135,10 +134,10 @@ describe("config settings persistence", () => {
 
       const text = await readFile(path, "utf8");
       const config = loadConfig(path, {}).config;
-      expect(config.theme).toBe(DEFAULT_THEME_SELECTION);
+      expect(config.theme).toBe("flywheel");
       expect(config.show_thinking).toBe(false);
       expect(config.diff_colors).toBe("theme");
-      expect(config.proactive_compaction_threshold).toBe(DEFAULT_PROACTIVE_COMPACTION_THRESHOLD);
+      expect(config.proactive_compaction_threshold).toBe(270_000);
       expect(config.web_search.provider).toBe("chatgpt");
       expect(text).toContain('[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"');
       expect(text).toContain('features = ["skills"]');

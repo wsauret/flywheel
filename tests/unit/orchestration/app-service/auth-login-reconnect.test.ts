@@ -11,7 +11,7 @@ import { providerLoginFlow, type ProviderOAuthLogin } from "../../../../src/orch
 import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
 import { testAuthContext } from "../../../helpers/auth-context.js";
 import type { AuthOperationNotice } from "../../../../src/protocol/auth-status-protocol-types.js";
-import { createModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy } from "../../../../src/orchestration/config/module-policy.js";
 import { defaultModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { createAuthStatusProjection } from "../../../../src/orchestration/app-service/auth-status-projection.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot } from "../../../../src/orchestration/modules.js";
@@ -247,7 +247,7 @@ describe("auth login instance selection", () => {
   test("login reads the admitted selection and retains it through a later disable", async () => {
     const home = mkdtempSync(join(tmpdir(), "flywheel-login-grant-"));
     const config = join(home, "flywheel.toml");
-    const policy = await createModulePolicy({ userDataRoot: home });
+    const { policy, dispose } = await startModulePolicy({ userDataRoot: home });
     // The projection's own selection is stale: it lacks ChatGPT, which the login grant admits.
     const staleComposition = composeFirstPartyModules(undefined, ["provider-chatgpt"]);
     const projection = createAuthStatusProjection({
@@ -305,7 +305,7 @@ describe("auth login instance selection", () => {
     } finally {
       login.dispose();
       finish.resolve();
-      await policy.dispose();
+      await dispose();
       rmSync(home, { recursive: true });
     }
   });
@@ -314,7 +314,7 @@ describe("auth login instance selection", () => {
     const home = mkdtempSync(join(tmpdir(), "flywheel-login-admission-"));
     const config = join(home, "flywheel.toml");
     writeFileSync(config, "");
-    const policy = await createModulePolicy({ userDataRoot: home });
+    const { policy, dispose } = await startModulePolicy({ userDataRoot: home });
     const calls: string[] = [];
     const flow: ProviderOAuthLogin = {
       flow: "browser",
@@ -338,7 +338,7 @@ describe("auth login instance selection", () => {
       expect(await Bun.file(join(home, "credentials", "auth.json")).exists()).toBe(false);
     } finally {
       login.dispose();
-      await policy.dispose();
+      await dispose();
       rmSync(home, { recursive: true });
     }
   });

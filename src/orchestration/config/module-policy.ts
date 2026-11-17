@@ -61,7 +61,7 @@ export interface ModulePolicy {
   onChange(listener: (state: ModuleState) => void): () => void;
 }
 
-export interface DisposableModulePolicy extends ModulePolicy {
+interface DisposableModulePolicy extends ModulePolicy {
   /** Release resources allocated by this policy wrapper. Injected owners remain caller-owned. */
   dispose(): Promise<void>;
 }
@@ -110,7 +110,7 @@ export async function startModulePolicy(location: ConfigFileLocation, owner?: Ru
 
 /** `run` adjusts the selection this policy publishes, so its state, its
  *  admissions, and its grants all read the one selection the run composes. */
-export async function createModulePolicy(location: ConfigFileLocation, injectedOwner?: RuntimeConfigOwner, run?: RunModuleSelection): Promise<DisposableModulePolicy> {
+async function createModulePolicy(location: ConfigFileLocation, injectedOwner?: RuntimeConfigOwner, run?: RunModuleSelection): Promise<DisposableModulePolicy> {
   const owner = injectedOwner ?? await createRuntimeConfigOwner({ ...location, watch: false });
   let disposed = false;
   let lastValidState = defaultModuleState();

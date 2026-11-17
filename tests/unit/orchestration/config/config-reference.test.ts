@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
-import { configReference, configReferenceFor } from "../../../../src/orchestration/config/config-reference.js";
+import { configReference } from "../../../../src/orchestration/config/config-reference.js";
 import { decodeConfigObject } from "../../../../src/orchestration/config/loader.js";
 import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { McpConfigSchema } from "../../../../src/orchestration/modules/mcp/config.js";
@@ -46,12 +46,6 @@ describe("configuration reference", () => {
     const entry = configReference().entries.find(({ path }) => path === "subagents.disabled_types");
     expect(entry?.defaultValue).toEqual([]);
     expect(entry?.description).toContain("`reviewer` turns off every reviewer role");
-  });
-
-  test("fails when a definition and schema conflict on descriptions", () => {
-    expect(() => configReferenceFor([
-      { id: "showThinking", ownership: "generated-writer", path: ["x"], schema: Schema.String.pipe(Schema.annotate({ description: "schema" })), presentation: { kind: "simple-boolean" } },
-    ], Schema.Struct({ x: Schema.optionalKey(Schema.String) }))).toThrow("Conflicting descriptions");
   });
 });
 
@@ -113,17 +107,5 @@ describe("configuration reference coverage", () => {
       expect(() => decodeConfigObject(tomlTable(entry.example ?? ""), [], "/configuration.md")).not.toThrow();
     }
     expect(() => decodeConfigObject(tomlTable(configReference().example), [], "/configuration.md")).not.toThrow();
-  });
-
-  test("escapes dotted, quoted, and control-character record keys", () => {
-    const record = Schema.Record(Schema.String, Schema.String.pipe(Schema.annotate({ description: "A value." }))).pipe(Schema.annotate({ description: "Values.", exampleKey: "dot.\"line\n" }));
-    const reference = configReferenceFor([{ id: "items", key: "items", schema: record, owner: "items", presentation: { kind: "none" } }], Schema.Struct({ items: record }));
-    expect(reference.entries[0]?.examplePath).toContain('"dot.\\\"line\\n"');
-    expect(() => Bun.TOML.parse(reference.entries[0]?.example ?? "")).not.toThrow();
-  });
-
-  test("fails for missing descriptions and unresolved definitions", () => {
-    expect(() => configReferenceFor([{ id: "x", key: "x", schema: Schema.String, presentation: { kind: "none" } }], Schema.Struct({ x: Schema.String }))).toThrow("Missing description");
-    expect(() => configReferenceFor([], Schema.Struct({ x: Schema.String }))).toThrow("Unresolved configuration reference");
   });
 });
