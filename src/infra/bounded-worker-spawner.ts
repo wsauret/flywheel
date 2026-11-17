@@ -3,7 +3,7 @@ import { trackWorkerClose } from "./worker-termination.js"
 export const WORKER_GENERATION_BUDGETS = {
   "runtime-background": 3,
   "streaming-edit-validation": 1,
-  "bash-private-copy": 1,
+  "bash-private-copy": 3,
   "models-document": 1,
   "code-mode-invocation": 1,
   "runtime-maintenance": 1,

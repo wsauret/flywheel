@@ -1,14 +1,21 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
+import { Log } from "../../../../../src/infra/log.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
 import type { ContainerProbe } from "../../../../../src/infra/process-container.js";
+import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
 import { createPrivateCopyPool, REUSE_IDLE_LIMIT_MS, type LaunchStamp, type PrivateCopyPool } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
-import { privateCopyRemovals, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { detectCopyChanges, privateCopyRemovals, readPrivateProjectCopy, takePrivateProjectCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy.js";
+import { readPrivateCopyRecord } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record.js";
+import { observeCopyTopology } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-tree.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const createDirectory = temporaryDirectories();
+const jobs = createPrivateCopyJobs();
+afterAll(() => jobs.close());
 const HOUR_MS = 60 * 60 * 1000;
 
 function answered(stdout: string): OwnedCommandResult {
@@ -114,9 +121,16 @@ function project(options: { readonly prefix?: string; readonly repository?: bool
     },
     take(pool: PrivateCopyPool | undefined, hasRepository = fs.existsSync(gitDir)) {
       homes += 1;
-      return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(scratchDir, "mutations", `h${homes}`), scratchDir, runGit: hasRepository ? git : notGit, guard: "none", ...(pool ? { pool } : {}) });
+      return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(scratchDir, "mutations", `h${homes}`), scratchDir, runGit: hasRepository ? git : notGit, guard: "none", jobs: pool?.jobs ?? jobs, ...(pool ? { pool } : {}) });
     },
   };
+}
+
+/** The file entries that the record in `home` holds; they stay on the Worker, so a take never answers them. */
+function recordedFiles(home: string) {
+  const read = readPrivateCopyRecord(home);
+  if (read.kind !== "recorded") throw new Error(`no record in ${home}`);
+  return read.copy.files;
 }
 
 function identity(file: string): string {
@@ -134,6 +148,58 @@ function contents(directory: string): Map<string, string> {
 }
 
 describe("reusing a private copy", () => {
+  it.each([
+    { change: "adds a nested repository", registers: true, run: (copyRoot: string) => fs.mkdirSync(path.join(copyRoot, "src", "inner", ".git"), { recursive: true }) },
+    { change: "adds a symbolic link", registers: false, run: (copyRoot: string) => fs.symlinkSync("../outside", path.join(copyRoot, "src", "linked")) },
+    { change: "removes a directory", registers: false, run: (copyRoot: string) => fs.rmSync(path.join(copyRoot, "src"), { recursive: true }) },
+  ])("a landing scan of a command that $change answers the topology that a fresh observation of the copy finds", async ({ registers, run }) => {
+    const fixture = project({ prefix: "app" });
+    fs.mkdirSync(path.join(fixture.root, "vendored", ".git"), { recursive: true });
+    fs.mkdirSync(path.join(fixture.root, "empty"));
+    const pool = createPrivateCopyPool({ probe: noSurvivor });
+    const copy = await fixture.take(pool);
+    if (copy.execution.kind !== "file-only-v4") throw new Error("Expected a finalized copy");
+    const request = { treeRoot: copy.execution.treeRoot, privateGitDir: path.join(copy.home, "git") };
+    run(copy.copyRoot);
+    const { topology } = await detectCopyChanges(copy, pool.jobs, request);
+    expect(topology).toEqual(observeCopyTopology({ ...request, copyRoot: copy.copyRoot, shared: copy.shared }));
+    // The topology binds Git registrations only, so only a new one moves it off the take's baseline.
+    expect(topology === undefined || !isDeepStrictEqual(topology, copy.execution.baseline.topology)).toBe(registers);
+    await pool.close();
+    await privateCopyRemovals();
+  });
+
+  it.each(["", "app"])("records a topology baseline equal to a fresh observation of the copy, fresh and reused (prefix %j)", async (prefix) => {
+    const fixture = project({ prefix });
+    fs.symlinkSync("src", path.join(fixture.root, "linked"));
+    fs.mkdirSync(path.join(fixture.root, "empty"));
+    fs.mkdirSync(path.join(fixture.root, "vendored", ".git"), { recursive: true });
+    fs.mkdirSync(path.join(fixture.root, "sub"));
+    fs.writeFileSync(path.join(fixture.root, "sub", ".git"), "gitdir: /outside/never-followed\n");
+    const pool = createPrivateCopyPool({ probe: noSurvivor });
+    const observed = (copy: Awaited<ReturnType<typeof fixture.take>>) => {
+      if (copy.execution.kind !== "file-only-v4") throw new Error("Expected a finalized copy");
+      return observeCopyTopology({ copyRoot: copy.copyRoot, treeRoot: copy.execution.treeRoot, shared: copy.shared, privateGitDir: path.join(copy.home, "git") });
+    };
+    const first = await fixture.take(pool);
+    // The shared session folder is the excluded path; a nested registration in it is never observed.
+    expect(first.shared).toEqual([".flywheel"]);
+    fs.mkdirSync(path.join(first.copyRoot, ".flywheel", "x", ".git"), { recursive: true });
+    expect(first.execution).toMatchObject({ baseline: { topology: { count: 3 } } });
+    expect(first.execution.kind === "file-only-v4" && first.execution.baseline.topology).toEqual(observed(first));
+    fs.rmSync(path.join(fixture.root, ".flywheel", "x"), { recursive: true });
+    expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
+    fs.rmSync(path.join(fixture.root, "empty"), { recursive: true });
+    fs.mkdirSync(path.join(fixture.root, "src", "deeper", ".git"), { recursive: true });
+
+    const second = await fixture.take(pool);
+    expect(second.home).toBe(first.home);
+    expect(second.execution).toMatchObject({ baseline: { topology: { count: 4 } } });
+    expect(second.execution.kind === "file-only-v4" && second.execution.baseline.topology).toEqual(observed(second));
+    await pool.close();
+    await privateCopyRemovals();
+  });
+
   it("refreshes a released copy in its own home, keeps its private Git directory, and has no record while it runs", async () => {
     const fixture = project();
     // A take pins the hash of a file changed within RACY_WINDOW_NS of its own
@@ -148,11 +214,12 @@ describe("reusing a private copy", () => {
     const treeFile = path.join(first.copyRoot, "src", "a.ts");
     const baseFile = path.join(first.baseRoot, "src", "a.ts");
     const before = { tree: identity(treeFile), base: identity(baseFile) };
+    const firstFiles = recordedFiles(first.home);
     expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
     const recordDuringRefresh: string[] = [];
     // The read of the real index runs after the home was reset, before the copy is recorded again.
     fixture.during("--stage", async () => {
-      recordDuringRefresh.push((await readPrivateProjectCopy(first.home)).kind);
+      recordDuringRefresh.push((await readPrivateProjectCopy(first.home, jobs)).kind);
     });
 
     const second = await fixture.take(pool);
@@ -163,13 +230,10 @@ describe("reusing a private copy", () => {
     expect(second.refresh).toMatchObject({ recloned: 0, removed: 0, reseeded: false });
     // The kept directory's baseline is the first take's, which no read of the private state replaced.
     expect(second.execution).toEqual(first.execution);
-    expect(second.files).toEqual(first.files);
     expect({ tree: identity(treeFile), base: identity(baseFile) }).toEqual(before);
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);
-    const reread = await readPrivateProjectCopy(second.home);
-    if (reread.kind !== "recorded") throw new Error("refreshed copy has no record");
-    expect(reread.copy.files).toEqual(first.files);
-    pool.close();
+    expect(recordedFiles(second.home)).toEqual(firstFiles);
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -215,8 +279,41 @@ describe("reusing a private copy", () => {
     expect(fs.readFileSync(path.join(git, "objects", "info", "alternates"), "utf8")).toBe(`${path.join(fixture.top, ".git", "objects")}\n`);
     expect(fs.readdirSync(treeRoot).sort()).toEqual([".git", "pkg"]);
     expect(fs.readFileSync(path.join(treeRoot, ".git"), "utf8")).toBe(`gitdir: ${git}\n`);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
+  });
+
+  it("takes a new copy without a warning when the pool's Worker ended after the idle copy was taken, because the new Worker holds no state of it", async () => {
+    const fixture = project();
+    const workers: Worker[] = [];
+    const pool = createPrivateCopyPool({ probe: noSurvivor, spawn: (specifier, options) => {
+      const worker = new Worker(specifier, options);
+      workers.push(worker);
+      return worker;
+    } });
+    const first = await fixture.take(pool);
+    expect(pool.release(first.reuse, LAUNCH)).toBe("pooled");
+    const ended = Promise.withResolvers<void>();
+    workers[0]!.addEventListener("close", () => ended.resolve(), { once: true });
+    workers[0]!.terminate();
+    await ended.promise;
+    const warn = spyOn(Log.create({ service: "bash-private-copy" }), "warn");
+
+    let warnings = 0;
+    const second = await fixture.take(pool).finally(() => {
+      warnings = warn.mock.calls.length;
+      warn.mockRestore();
+    });
+
+    // A state the Worker no longer holds is an expected miss, not a failed refresh.
+    expect(warnings).toBe(0);
+    expect(workers.length).toBe(2);
+    expect(second.home).not.toBe(first.home);
+    expect(second.refresh).toBeUndefined();
+    expect(fs.readFileSync(path.join(second.copyRoot, "src", "a.ts"), "utf8")).toBe("source\n");
+    await pool.close();
+    await privateCopyRemovals();
+    expect(fs.existsSync(first.home)).toBe(false);
   });
 
   it.each<readonly [string, (repository: FakeRepository, top: string) => void]>([
@@ -241,7 +338,7 @@ describe("reusing a private copy", () => {
     for (const left of [...removed, path.join(git, "objects", "ab")]) expect(fs.existsSync(left)).toBe(false);
     expect(fs.readFileSync(path.join(git, "config"), "utf8")).not.toContain("[user]");
     expect(second.reuse.git?.fingerprint).not.toBe(first.reuse.git?.fingerprint);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -266,7 +363,7 @@ describe("reusing a private copy", () => {
     expect(second.home).toBe(first.home);
     expect(second.refresh?.reseeded).toBe(true);
     expect(fs.readdirSync(path.join(second.home, "git", "reftable")).sort()).toEqual(["t1.ref", "t2.ref", "tables.list"]);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -301,7 +398,7 @@ describe("reusing a private copy", () => {
     expect(fs.lstatSync(fixture.mutations).isDirectory()).toBe(true);
     expect(fs.existsSync(first.home)).toBe(false);
     expect(fs.readFileSync(path.join(second.copyRoot, "src", "a.ts"), "utf8")).toBe("source\n");
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -319,7 +416,7 @@ describe("reusing a private copy", () => {
     expect(second.home).toBe(first.home);
     expect(second.refresh).toBeDefined();
     expect(pool.release(second.reuse, LAUNCH)).toBe("pooled");
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
 
     expect(fs.lstatSync(fixture.scratchDir).isSymbolicLink()).toBe(true);
@@ -339,7 +436,7 @@ describe("reusing a private copy", () => {
     fs.rmSync(first.home, { recursive: true });
     fs.symlinkSync(outside, first.home, "junction");
 
-    if (retirement === "closes") pool.close();
+    if (retirement === "closes") await pool.close();
     else {
       offset = REUSE_IDLE_LIMIT_MS + HOUR_MS;
       expect((await fixture.take(pool)).home).not.toBe(first.home);
@@ -348,7 +445,7 @@ describe("reusing a private copy", () => {
 
     expect(contents(outside)).toEqual(new Map([["copy.json", "not a record"], ["tree", "directory"]]));
     expect(fs.existsSync(first.home)).toBe(false);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -372,7 +469,7 @@ describe("reusing a private copy", () => {
     expect(fs.readFileSync(secret, "utf8")).toBe("secret\n");
     expect(fs.lstatSync(target).isSymbolicLink()).toBe(false);
     expect(fs.readFileSync(path.join(second.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(second.home, "git")}\n`);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -390,7 +487,7 @@ describe("reusing a private copy", () => {
     expect(second.home).not.toBe(first.home);
     expect(second.git.kind).toBe("repository");
     expect(fs.existsSync(first.home)).toBe(false);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -416,7 +513,7 @@ describe("reusing a private copy", () => {
     } finally {
       fs.chmodSync(stuck, 0o755);
     }
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -439,7 +536,7 @@ describe("reusing a private copy", () => {
     expect(pool.release(third.reuse, LAUNCH)).toBe("pooled");
     offset = 21 * HOUR_MS;
     expect((await fixture.take(pool)).home).toBe(third.home);
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
   });
 
@@ -473,7 +570,7 @@ describe("reusing a private copy", () => {
     expect(pool.release(second.reuse, LAUNCH)).toBe("slot");
     expect(fs.existsSync(first.home)).toBe(true);
 
-    pool.close();
+    await pool.close();
     await privateCopyRemovals();
     expect(fs.existsSync(first.home)).toBe(false);
     expect(fs.existsSync(second.home)).toBe(true);
