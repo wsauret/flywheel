@@ -1,0 +1,90 @@
+src/orchestration/config/schema.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 198
+src/orchestration/file-edits/file-edit-operation.ts
+  h_4b47e9e4a8b456 91-96,100,166,170,206-207,224,238
+src/orchestration/file-edits/session-undo.ts
+  h_4b47e9e4a8b456 16,90,93,96,100
+src/orchestration/font-installer.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 17
+src/orchestration/headless/headless-bootstrap.ts
+  h_4b47e9e4a8b456 74
+src/orchestration/headless/headless-chat-channel.ts
+  h_4b47e9e4a8b456 1-288
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 2,7-8
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 109,118,496,513
+src/orchestration/update/update-check.ts
+  h_4b47e9e4a8b456 25,75
+src/orchestration/workspace-state-retirement.ts
+  h_4b47e9e4a8b456 76
+tests/fixtures/create-retired-workspace.ts
+  h_4b47e9e4a8b456 29,31
+tests/helpers/retirement-checkpoints.ts
+  h_4b47e9e4a8b456 1-95
+tests/integration/workspace-state-concurrency.test.ts
+  h_4b47e9e4a8b456 26-27,56
+tests/unit/orchestration/app-service/model-assignment-session.test.ts
+  h_4b47e9e4a8b456 2,5,11,23,34
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 11,23,34,41,49,58-59,102,265
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 8,29,31,48-50,54-59,63,65,67,71,90,117,130,142,154-155,428,440,465,473,480
+tests/unit/orchestration/config/default-pin-normalization.test.ts
+  h_4b47e9e4a8b456 6,42,115,142
+tests/unit/orchestration/config/model-assignment-controller-scopes.test.ts
+  h_4b47e9e4a8b456 9,48,61
+tests/unit/orchestration/config/model-brief-pruning.test.ts
+  h_4b47e9e4a8b456 5,17,33
+tests/unit/orchestration/config/model-cost-warning.test.ts
+  h_4b47e9e4a8b456 4,15,46,92,169
+tests/unit/orchestration/config/model-provider-unavailable.test.ts
+  h_4b47e9e4a8b456 11,19,263
+tests/unit/orchestration/config/model-release-cutoff.test.ts
+  h_4b47e9e4a8b456 4,17
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 9,85,114,122,138
+tests/unit/orchestration/config/setting-definitions.test.ts
+  h_4b47e9e4a8b456 3,13,39,41-43
+tests/unit/orchestration/config/shell-write-guard-policy.test.ts
+  h_4b47e9e4a8b456 9,24
+tests/unit/orchestration/file-edits/session-undo.test.ts
+  h_4b47e9e4a8b456 8,222-223,299-300,349-364
+tests/unit/orchestration/font-installer.test.ts
+  h_4b47e9e4a8b456 94
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/headless/headless-bootstrap.test.ts
+  h_4b47e9e4a8b456 1-12,14-15,17-47,50-61
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 7-8,166-244
+tests/unit/orchestration/headless/headless-task-report.test.ts
+  h_4b47e9e4a8b456 2-4,6-11,78-108,110-117,119,129-136,138,148-152,154,164-165,167,177-182,184
+tests/unit/orchestration/session/runtime-fact-subscriber.test.ts
+  h_4b47e9e4a8b456 17,23,27
+tests/unit/orchestration/update/update-check.test.ts
+  h_4b47e9e4a8b456 2,10-11,136,202,205,220,229,246,266,275
+tests/unit/orchestration/workspace-state-retirement-legacy.test.ts
+  h_4b47e9e4a8b456 12-13
+tests/unit/orchestration/workspace-state-retirement.test.ts
+  h_4b47e9e4a8b456 15,20,49,53-68
+tests/unit/scripts/generate-docs.test.ts
+  h_4b47e9e4a8b456 10,66,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4a0aa1f3125758238cec6356133b2f6275459d3b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
