@@ -7,6 +7,7 @@ import { useQuestionInput, type QuestionInputContext } from "@tui/components/que
 import { OpaqueBox } from "@tui/components/opaque-box"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/utils/border"
+import { visibleScreenRows } from "@tui/utils/scroll-clip"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width"
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount, Show, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
@@ -246,9 +247,11 @@ export function QuestionDock(props: QuestionDockProps) {
         element.renderAfter = function () {
           const caret = layout().caret
           if (!caret) return
-          // The scrollbox clips glyphs, not the terminal cursor.
+          // A scrollbox clips glyphs, not the terminal cursor: the dock's own, and any that holds the dock, such as a
+          // transcript.
           const row = this.screenY + caret.row
-          if (!scroll.showsScreenRow(row)) { renderer.setCursorPosition(0, 0, false); return }
+          const shown = visibleScreenRows(this, renderer.height)
+          if (row < shown.top || row >= shown.bottom) { renderer.setCursorPosition(0, 0, false); return }
           // Terminal cursor coordinates are one-based.
           renderer.setCursorPosition(this.screenX + caret.column + 1, row + 1, true)
           renderer.setCursorStyle({ style: "block", blinking: true, color: themeContext.cursorColor })

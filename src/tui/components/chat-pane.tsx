@@ -19,7 +19,7 @@ import type { CommandsHook } from "../hooks/use-commands.js"
 import type { BackgroundModalTarget } from "../hooks/use-background-modal.js"
 import type { TranscriptInView } from "../hooks/transcript-in-view.js"
 import type { ModuleSlots } from "../hooks/create-module-slots.js"
-import type { KeymapPane } from "../hooks/create-keyboard-handler.js"
+import { interruptOnEscape, type KeymapPane } from "../hooks/create-keyboard-handler.js"
 import { createComposerBorderLayout, type DismissibleUpdateStatus } from "../hooks/create-composer-border-layout.js"
 import { createComposerPopupKeySlot, type ComposerPopupKeySlot } from "../hooks/create-composer-popup-key-slot.js"
 import { useSessionControls, type SessionControlsHook } from "../hooks/use-session-controls.js"
@@ -127,7 +127,7 @@ export interface ChatPaneHost {
 export interface ChatPaneView {
   /** True while the view is the top view, also under a dialog. */
   readonly active: Accessor<boolean>
-  /** Escape goes back from the view; a question shown there stays pending. */
+  /** Escape goes back from the view once nothing runs; a question shown there stays pending. */
   readonly leave: () => void
   /** Closes the chat as Close chat does, and leaves the view. */
   readonly closeChat: () => void
@@ -142,7 +142,7 @@ export interface ChatPaneProps {
   readonly controls: SessionControlsHook
   readonly input: ChatPaneInput
   /** Absent for the tab in front. A view's pane does all that a tab does,
-   *  except the tab keys, which act on the tab bar, and Escape, which goes back. */
+   *  except the tab keys, which act on the tab bar, and an idle Escape, which goes back. */
   readonly view?: ChatPaneView
   /** What the composer sends to, which a pending tab names before its session exists; the surface's session when absent. */
   readonly target?: Accessor<ForegroundTarget | undefined>
@@ -261,7 +261,7 @@ export function ChatPane(props: ChatPaneProps) {
           {...(props.ref ? { ref: props.ref } : {})}
           foregroundId={draftKey}
           agentState={surface.agentState}
-          interruptible={() => view === undefined && surface.interruptible() && !stripFocused()}
+          interruptible={() => surface.interruptible() && !stripFocused()}
           tabHints={tabHints}
           pendingQuestion={surface.pendingQuestion}
           questionInput={props.input.questionInput}
@@ -325,7 +325,8 @@ export function ChatViewPane(props: {
   const surface = untrack(() => props.surface)
   const controls = useSessionControls({ row: surface.summary, status: surface.status, appService: host.client, showToast: host.showToast })
   const changes = host.createChanges(surface.sessionId)
-  bindPane(input, { pendingQuestion: () => surface.pendingQuestion() !== undefined, sessionControls: controls, output: input.output })
+  bindPane(input, { pendingQuestion: () => surface.pendingQuestion() !== undefined, sessionControls: controls,
+    interruptible: surface.interruptible, interrupt: controls.interrupt, output: input.output })
   return host.provide(() => <ChatPane host={host} surface={surface} changes={changes} controls={controls} input={input} view={props.view} width={props.width} focused={props.focused}
     selectionDrag={props.selectionDrag} {...(props.landing === undefined ? {} : { landing: props.landing })} />)
 }
@@ -338,13 +339,15 @@ function bindPane(input: ChatPaneInput, pane: KeymapPane): void {
 }
 
 /** Routes a key of a view to the chat pane it shows, in the tab's order: the
- *  pane's question dock, then its composer popups, then `viewKey` (the view's
- *  own keys, such as Escape back), then the keymap. A key that none takes
- *  reaches the pane's focused composer. */
+ *  pane's question dock, then its composer popups, then Escape's interrupt of
+ *  a running turn, as in a tab, then `viewKey` (the view's own keys, such as an
+ *  idle Escape back), then the keymap. A key that none takes reaches the pane's
+ *  focused composer. */
 export function routeChatPaneKey(host: Pick<ChatPaneHost, "paneKey">, input: ChatPaneInput, evt: PaneKeyEvent, viewKey: (evt: PaneKeyEvent) => boolean): void {
   if (input.questionInput.input(evt)) return
   if (input.promptPopup.input(evt)) return
-  if (viewKey(evt)) return
   const pane = boundPanes.get(input)
+  if (evt.name === "escape" && pane && interruptOnEscape(pane)) return
+  if (viewKey(evt)) return
   if (pane) host.paneKey(evt, pane)
 }

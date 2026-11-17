@@ -38,6 +38,32 @@ describe("the lead list", () => {
     ])
   })
 
+  it("names each chat by its tab title in the text colour, then its longer title muted, which a wide row shows whole, and keeps the tab title whole when the row is narrow", async () => {
+    const titles = { titles: { name: "Choose a Markdown filename" }, shortTitles: { name: "Name Choice" } }
+    const wide = await mountStrip([leadRow("name", "working", { status: "Asked" })], { width: 120, ...titles })
+    expect(wide.lines()).toEqual(["  ● Name Choice  Choose a Markdown filename  Asked  5m"])
+    const spans = wide.rendered.captureSpans().lines.flatMap((line) => line.spans)
+    expect(spans.find((span) => span.text.includes("Name Choice"))?.fg.equals(theme.text)).toBe(true)
+    const long = spans.find((span) => span.text.includes("Choose a Markdown filename"))
+    expect(long?.text).not.toContain("Name Choice")
+    expect(long?.fg.equals(theme.textMuted)).toBe(true)
+    const strip = await mountStrip([leadRow("name", "working", { status: "Asked" })], titles)
+    expect(strip.lines()).toEqual(["  ● Name Choice  Choose a Ma…  Asked  5m"])
+    // A longer title cut to fewer than 4 of its characters leaves the row.
+    const narrow = await mountStrip([leadRow("name", "working", { status: "Asked" })], { width: 30, ...titles })
+    expect(narrow.lines()).toEqual(["  ● Name Choice       5m"])
+    const narrowest = await mountStrip([leadRow("name", "working", { status: "Asked" })], { width: 28, ...titles })
+    expect(narrowest.lines()).toEqual(["  ● Name Choice     5m"])
+  })
+
+  it("names a chat with no short title by its full title once, as wide as the name column lets it", async () => {
+    const titles = { titles: { plain: "Investigate why the nightly DAG fails" } }
+    const wide = await mountStrip([leadRow("plain", "working", { status: "Asked" })], { width: 120, ...titles })
+    expect(wide.lines()).toEqual(["  ● Investigate why the nightly DAG fails  Asked  5m"])
+    const strip = await mountStrip([leadRow("plain", "working", { status: "Asked" })], titles)
+    expect(strip.lines()).toEqual(["  ● Investigate why the nigh…  Asked  5m"])
+  })
+
   it("paints each state's mark in its own tone, with every chat that needs the person in the warning tone", async () => {
     const strip = await mountStrip([leadRow("asks", "question"), leadRow("broke", "failed"), leadRow("stopped", "cut"), leadRow("busy", "working"), leadRow("unread", "result")])
     const markTone = (mark: string) => strip.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.startsWith(mark))?.fg
@@ -112,10 +138,10 @@ describe("the lead list", () => {
     expect(other.lines()).toHaveLength(1)
   })
 
-  it("cuts the title at 24 columns and the status at 48, or the room that is left, with an ellipsis, so no row wraps at widths 80 and 140", async () => {
-    for (const [width, status] of [[80, `${"word ".repeat(8)}w…`], [140, `${"word ".repeat(9)}wo…`]] as const) {
+  it("cuts the name to the column that the width gives and the status to the room that is left, with an ellipsis, so no row wraps at widths 80 and 140", async () => {
+    for (const [width, title, status] of [[80, "A very long chat title t…", `${"word ".repeat(7)}word…`], [140, "A very long chat title that goes on", `${"word ".repeat(17)}word…`]] as const) {
       const strip = await mountStrip([leadRow("long", "working", { status: "word ".repeat(80) })], { width, titles: { long: "A very long chat title that goes on" } })
-      expect(strip.lines()).toEqual([`  ● A very long chat title…   ${status}  5m`])
+      expect(strip.lines()).toEqual([`  ● ${title}  ${status}  5m`])
     }
   })
 

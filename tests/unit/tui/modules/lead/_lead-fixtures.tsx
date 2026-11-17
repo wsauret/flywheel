@@ -42,10 +42,11 @@ export function choiceQuestion(toolUseId: string): QuestionBlock {
   return { kind: "question", toolUseId, questions: [{ question: "Which provider?", choices: [{ kind: "option", choiceId: "a", label: "Alpha" }, { kind: "freeform", label: "Other" }], multiSelect: false }], timestamp: 1 }
 }
 
-/** What the viewer shows of each chat beyond its transcript: the title that the Sessions list shows, and its surface's
- *  own readings, such as its statistics. */
+/** What the viewer shows of each chat beyond its transcript: its title, its short title that its tab shows, which a
+ *  chat has only when named, and its surface's own readings, such as its statistics. */
 interface ViewerChats {
   readonly titles?: { readonly [sessionId: string]: string }
+  readonly shortTitles?: { readonly [sessionId: string]: string }
   readonly surfaces?: { readonly [sessionId: string]: Partial<SessionSurface> }
 }
 
@@ -78,6 +79,8 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
     slashCatalog: [{ id: "status", title: "/status", value: "/status", description: "Show status" }],
     projectFiles: [{ path: "src/shell.tsx", directory: false }],
     over: {
+      // The chat's own controls, such as the Interrupt that Escape sends while a turn runs, dispatch through this client.
+      client: { dispatch: runtimeDispatch({ "chat.interrupt": async (command) => { sent.push(`chat.interrupt ${command.sessionId}`); return { ok: true } } }), query: runtimeQuery({}) },
       createSurface: (sessionId) => {
         const id = sessionId() ?? ""
         return chatSurface(id, input.transcripts?.[id] ?? [], { pendingQuestion: () => questions()[id], ...input.surfaces?.[id] })
@@ -97,7 +100,11 @@ export function viewerHost(input: { readonly transcripts?: { readonly [sessionId
   const host = {
     navigateSession: async (sessionId: string) => { sent.push(`navigate ${sessionId}`) },
     viewerLayer: overlay.viewer,
-    sessionTitles: (sessionId: string) => ({ id: sessionId, title: input.titles?.[sessionId] ?? `Chat ${sessionId}`, shortTitle: "Short" }),
+    sessionTitles: (sessionId: string) => {
+      const title = input.titles?.[sessionId] ?? `Chat ${sessionId}`
+      const shortTitle = input.shortTitles?.[sessionId]
+      return { id: sessionId, title, ...(shortTitle === undefined ? {} : { shortTitle }) }
+    },
     showSession: (sessionId: string) => {
       shows.push(`show ${sessionId}`)
       return (toTab?: boolean) => { shows.push(`${toTab ? "to tab" : "end"} ${sessionId}`) }
@@ -160,7 +167,7 @@ export async function mountStrip(rows: readonly LeadRow[], options: {
   readonly sessionId?: string
   readonly transcripts?: { readonly [sessionId: string]: readonly FrontendOutputBlock[] }
 } & ViewerChats = {}) {
-  const lead = leadHarness(rows, options.transcripts, undefined, { ...(options.titles ? { titles: options.titles } : {}), ...(options.surfaces ? { surfaces: options.surfaces } : {}) })
+  const lead = leadHarness(rows, options.transcripts, undefined, { ...(options.titles ? { titles: options.titles } : {}), ...(options.shortTitles ? { shortTitles: options.shortTitles } : {}), ...(options.surfaces ? { surfaces: options.surfaces } : {}) })
   const [focused, setFocused] = createSignal(false)
   const [composerEmpty, setComposerEmpty] = createSignal(true)
   const [sessionId, setSessionId] = createSignal(options.sessionId ?? LEAD_ID)

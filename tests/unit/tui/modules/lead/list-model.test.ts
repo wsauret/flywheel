@@ -2,30 +2,49 @@ import { describe, expect, it } from "bun:test"
 import { followSelection, layoutLeadRow, leadAge, leadListWindow, leadTitleColumn } from "../../../../../src/tui/modules/lead/list-model.js"
 import { displayWidth } from "../../../../../src/tui/utils/text.js"
 
-const line = (layout: ReturnType<typeof layoutLeadRow>): string => `${layout.mark}${layout.title}${layout.status}${layout.age}`
+const line = (layout: ReturnType<typeof layoutLeadRow>): string => `${layout.mark}${layout.title}${layout.longTitle}${layout.status}${layout.age}`
+const named = (title: string, longTitle = "") => ({ title, longTitle })
 
 describe("the lead list model", () => {
   it("lays a row out as mark, the title padded to the title column, the status, and the age", () => {
-    const layout = layoutLeadRow({ state: "question", title: "Fix login", status: "Which provider should I use?", age: "3m" }, { width: 80, titleColumn: leadTitleColumn(["Fix login", "Docs"]) })
+    const layout = layoutLeadRow({ state: "question", ...named("Fix login"), status: "Which provider should I use?", age: "3m" }, { width: 80, titleColumn: leadTitleColumn([named("Fix login"), named("Docs")], 80) })
     expect(line(layout)).toBe("? Fix login  Which provider should I use?  3m")
   })
 
-  it("cuts the title at 24 columns and the status at 48 with an ellipsis after a word, and never exceeds the width", () => {
-    const status = "The migration plan is ready and it covers every table that the billing service writes"
-    const title = "Billing migration for the ledger tables"
+  it("names a chat by its tab title, then its longer title, and cuts the longer title first so the tab title stays", () => {
+    const name = named("Name Choice", "Choose a Markdown filename")
+    const at = (width: number) => layoutLeadRow({ state: "working", ...name, status: "Asked", age: "3m" }, { width, titleColumn: leadTitleColumn([name, named("Docs")], width) })
+    // A wide row shows the longer title whole, so it tells the chat apart; an 80-column row cuts it.
+    expect(at(100).title).toBe("Name Choice")
+    expect(at(100).longTitle).toBe("  Choose a Markdown filename  ")
+    expect(at(80).longTitle).toBe("  Choose a Markdown…  ")
+    // Room for 4 of its characters keeps the longer title; room for fewer, and it leaves while the tab title stays whole.
+    expect(at(26).longTitle).toBe("  Choo…  ")
+    for (const width of [24, 22]) {
+      const narrow = at(width)
+      expect(narrow.title).toBe("Name Choice")
+      expect(narrow.longTitle.trim()).toBe("")
+      expect(displayWidth(line(narrow))).toBeLessThanOrEqual(width)
+    }
+  })
+
+  it("cuts the name at 24 columns on a narrow row and at 46 on a wide one, gives the status the rest, and never exceeds the width", () => {
+    const status = "The migration plan is ready and it covers every table that the billing service writes and every report"
+    const title = "Billing migration for the ledger tables and the audit log"
+    const at = (width: number) => layoutLeadRow({ state: "working", ...named(title), status, age: "12m" }, { width, titleColumn: leadTitleColumn([named(title)], width) })
     for (const width of [40, 80, 140]) {
-      const layout = layoutLeadRow({ state: "working", title, status, age: "12m" }, { width, titleColumn: leadTitleColumn([title]) })
+      const layout = at(width)
       expect(displayWidth(line(layout))).toBeLessThanOrEqual(width)
       expect(layout.status.trimEnd()).toEndWith("…")
       expect(layout.age).toBe("12m")
     }
-    const wide = layoutLeadRow({ state: "working", title, status, age: "12m" }, { width: 140, titleColumn: leadTitleColumn([title]) })
-    expect(wide.title).toBe("Billing migration for t…  ")
-    expect(displayWidth(wide.status.trimEnd())).toBeLessThanOrEqual(48)
+    expect(at(40).title).toBe("Billing migration for t…")
+    expect(displayWidth(at(140).title)).toBe(46)
+    expect(displayWidth(line(at(140)))).toBe(140)
   })
 
   it("leaves the status out of a row that has none", () => {
-    const layout = layoutLeadRow({ state: "result", title: "Docs", status: "", age: "now" }, { width: 40, titleColumn: 4 })
+    const layout = layoutLeadRow({ state: "result", ...named("Docs"), status: "", age: "now" }, { width: 40, titleColumn: 4 })
     expect(line(layout)).toBe("✓ Docs  now")
   })
 

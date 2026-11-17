@@ -24,7 +24,9 @@ export function chatSurface(sessionId: string, blocks: readonly FrontendOutputBl
   const transcript = transcriptOf(blocks)
   const snapshot = transcript.visibleRange()
   const estimated = snapshot && { ...snapshot, heightEstimates: heightEstimatesFromBlocks(blocks, 0, false) }
-  return viewerSurface("chat", { sessionId: () => sessionId, transcript: { ...transcript, visibleRange: () => estimated }, ...over })
+  const chat = viewerSurface("chat")
+  const summary = (): ReturnType<SessionSurface["summary"]> => { const row = chat.summary(); return row && { ...row, id: sessionId } }
+  return { ...chat, sessionId: () => sessionId, summary, transcript: { ...transcript, visibleRange: () => estimated }, ...over }
 }
 
 export interface ChatPaneHostOptions {

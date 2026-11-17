@@ -111,12 +111,13 @@ function SessionMessageRow(props: UserMessageBlockProps & { readonly from: NonNu
   let row: BoxRenderable | undefined
   // The part below belongs to this row's line, so revealing it shows the line too.
   const revealRow: RevealInTranscript = (element) => { revealInTranscript(row ?? element) }
+  const [ready, setReady] = createSignal(false)
   const line = () => <ToolEntry block={entry()} disclosureId={`userMessage:${props.block.id}`} onHydrateBody={props.onHydrateBody} />
   // Only a row with a part below takes a box, so every other message row keeps its layout.
   return <Show when={below()} fallback={line()}>
     <box ref={(box: BoxRenderable) => { row = box }} flexDirection="column" flexShrink={0}>
-      {line()}
-      <TranscriptRevealProvider value={revealRow}>{untrack(() => custom()?.below?.())}</TranscriptRevealProvider>
+      <Show when={ready()}>{line()}</Show>
+      <TranscriptRevealProvider value={revealRow}>{untrack(() => custom()?.below?.(() => setReady(true)))}</TranscriptRevealProvider>
     </box>
   </Show>
 }

@@ -69,7 +69,7 @@ describe("createKeyboardHandler", () => {
       const deps = createDeps({ tabs })
       const output = mock((_command: string) => {})
       const resume = mock(() => {})
-      const pane = { pendingQuestion: () => false, sessionControls: { offered: () => ({ primary: "resume" as const, stop: false }), resume }, output }
+      const pane = { pendingQuestion: () => false, sessionControls: { offered: () => ({ primary: "resume" as const, stop: false }), resume }, interruptible: () => false, interrupt: () => {}, output }
       const { paneKey } = createKeyboardHandler(deps)
       let prevented = 0
       const prevent = () => { prevented += 1 }

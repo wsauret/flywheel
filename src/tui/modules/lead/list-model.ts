@@ -1,3 +1,4 @@
+import { SHORT_TITLE_MAX_CHARS } from "../../../protocol/app-service-types.js"
 import type { LeadRowState } from "../../../protocol/modules/lead.js"
 import { displayWidth, truncateToWidth } from "../../utils/text.js"
 
@@ -15,10 +16,17 @@ export const LEAD_STATE_LOOK = {
   done: { mark: "·", tone: "textMuted" },
 } as const satisfies { readonly [state in LeadRowState]: { readonly mark: string; readonly tone: LeadStateTone } }
 
-/** The widest title and status a row shows; longer text is cut with an ellipsis. */
-const TITLE_COLUMNS = 24
-const STATUS_COLUMNS = 48
 const SEPARATOR = "  "
+/** The name column (the tab title, then the longer title) is 24 columns wide on a narrow terminal and grows with a
+ *  wider one while the status keeps 40 columns, up to a whole tab title and 30 columns of the longer title. The
+ *  status takes the rest. Longer text is cut with an ellipsis. */
+const NAME_MIN_COLUMNS = 24
+const NAME_MAX_COLUMNS = SHORT_TITLE_MAX_CHARS + SEPARATOR.length + 30
+const STATUS_KEPT_COLUMNS = 40
+/** The columns of a row besides its name and its status: the mark, two separators, and an age such as "59m". */
+const ROW_FRAME_COLUMNS = 2 + 2 * SEPARATOR.length + 3
+/** A longer title cut to fewer characters than this tells nothing, so it leaves instead. */
+const MIN_LONG_TITLE_CHARS = 4
 /** The most chat rows the list shows, so it never pushes the transcript off the screen. */
 const MAX_VISIBLE_ROWS = 5
 
@@ -31,19 +39,31 @@ export function leadAge(since: number, now: number): string {
   return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`
 }
 
-/** One row's text in parts that render in their own colours: the mark, the title padded to the list's title column,
- *  the status, and the age. The title and the status are the chat's own, only cut, and the parts never exceed
- *  `width`, so a row never wraps. */
+/** How a row names its chat: the title that its tab shows, and its longer title, which is empty when it adds nothing
+ *  to the tab title. */
+export interface LeadRowName {
+  readonly title: string
+  readonly longTitle: string
+}
+
+/** One row's text in parts that render in their own colours: the mark, the tab title, the longer title padded to the
+ *  list's title column, the status, and the age. The titles and the status are the chat's own, only cut, and the parts
+ *  never exceed `width`, so a row never wraps. The longer title is cut first, so the tab title stays in view. */
 export interface LeadRowLayout {
   readonly mark: string
   readonly title: string
+  readonly longTitle: string
   readonly status: string
   readonly age: string
 }
 
-/** The title column of the rows that show: as wide as their widest title, and at most `TITLE_COLUMNS`. */
-export function leadTitleColumn(titles: readonly string[]): number {
-  return Math.min(TITLE_COLUMNS, Math.max(0, ...titles.map(displayWidth)))
+const nameText = (name: LeadRowName): string => name.longTitle ? `${name.title}${SEPARATOR}${name.longTitle}` : name.title
+
+/** The title column of the rows that show on a list `width` columns wide: as wide as their widest name, and at most
+ *  the name column that the width gives. One column for every row, so the statuses line up. */
+export function leadTitleColumn(names: readonly LeadRowName[], width: number): number {
+  const most = Math.min(NAME_MAX_COLUMNS, Math.max(NAME_MIN_COLUMNS, width - ROW_FRAME_COLUMNS - STATUS_KEPT_COLUMNS))
+  return Math.min(most, Math.max(0, ...names.map((name) => displayWidth(nameText(name)))))
 }
 
 /** Text cut to `columns` with an ellipsis that follows the last word, not a space. */
@@ -51,14 +71,17 @@ function cut(text: string, columns: number): string {
   return truncateToWidth(text, columns, "…").replace(/\s+…$/, "…")
 }
 
-export function layoutLeadRow(row: { readonly state: LeadRowState; readonly title: string; readonly status: string; readonly age: string }, input: { readonly width: number; readonly titleColumn: number }): LeadRowLayout {
+export function layoutLeadRow(row: LeadRowName & { readonly state: LeadRowState; readonly status: string; readonly age: string }, input: { readonly width: number; readonly titleColumn: number }): LeadRowLayout {
   const mark = `${LEAD_STATE_LOOK[row.state].mark} `
   const room = Math.max(0, input.width - mark.length - 2 * SEPARATOR.length - row.age.length)
   const titleColumn = Math.min(input.titleColumn, room)
-  const statusColumns = Math.min(STATUS_COLUMNS, room - titleColumn)
   const title = cut(row.title, titleColumn)
-  const status = cut(row.status, statusColumns)
-  return { mark, title: `${title}${" ".repeat(titleColumn - displayWidth(title))}${SEPARATOR}`, status: status ? `${status}${SEPARATOR}` : "", age: row.age }
+  const longRoom = titleColumn - displayWidth(title) - SEPARATOR.length
+  const longCut = row.longTitle && longRoom > 0 ? cut(row.longTitle, longRoom) : ""
+  const longTitle = longCut && (longCut === row.longTitle || displayWidth(longCut) - 1 >= MIN_LONG_TITLE_CHARS) ? `${SEPARATOR}${longCut}` : ""
+  const status = cut(row.status, room - titleColumn)
+  const padding = " ".repeat(titleColumn - displayWidth(title) - displayWidth(longTitle))
+  return { mark, title, longTitle: `${longTitle}${padding}${SEPARATOR}`, status: status ? `${status}${SEPARATOR}` : "", age: row.age }
 }
 
 /** The first chat row shown, how many show, and how many rows the lines above and below them count. */

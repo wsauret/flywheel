@@ -55,8 +55,8 @@ export function openLeadChatTab(host: Pick<TuiModuleClientHost, "client" | "navi
  *  pane in a frame. The person reads it, types to that chat, and answers its question there; a result it shows is
  *  read, and a failure or a cut is seen once the chat shows. Only the frame and its controls differ from a tab: Tab
  *  and Shift+Tab move through the chats in the list's order and stay at the ends, `ctrl+t` opens the chat as a tab,
- *  Close chat closes it and goes back to the lead, and Escape goes back to the lead, where the list keeps its
- *  selection. The lead's tab stays in front throughout. */
+ *  Close chat closes it and goes back to the lead, and Escape interrupts a running turn as in a tab and, once nothing
+ *  runs, goes back to the lead, where the list keeps its selection. The lead's tab stays in front throughout. */
 export function openLeadChatViewer(host: LeadChatViewerHost, input: {
   readonly sessionId: string
   readonly order: Accessor<readonly string[]>
@@ -103,7 +103,7 @@ export function openLeadChatViewer(host: LeadChatViewerHost, input: {
     inputs.set(sessionId, created)
     return created
   }
-  /** The view's own keys, after the chat's question and composer popups had them. */
+  /** The view's own keys, after the chat's question, its composer popups, and Escape's interrupt had them. */
   const viewKey = (event: PaneKeyEvent): boolean => {
     if (isCtrlChord(event, "t")) openAsTab()
     else if (event.name === "escape" && !event.ctrl && !event.meta) close()
@@ -170,7 +170,8 @@ function LeadChatViewer(props: {
             view={{ active: props.active, leave: props.close, closeChat: props.closeChat }} width={paneWidth} focused={props.focused}
             selectionDrag={selectionDrag} {...withLanding(props.landing(sessionId))} />
           <box flexDirection="row" gap={1} flexShrink={0}>
-            <Button label="Back" hotkey="esc" muted onPress={props.close} />
+            {/* While a turn runs, Escape interrupts it instead of going back. */}
+            <Button label="Back" {...(surface.interruptible() ? {} : { hotkey: "esc" })} muted onPress={props.close} />
             <Button label="Open as tab" hotkey="ctrl+t" muted onPress={props.openAsTab} />
             <Button label="Close chat" muted onPress={props.closeChat} />
             <Show when={props.canMove(-1)}><Button label="Previous chat" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>

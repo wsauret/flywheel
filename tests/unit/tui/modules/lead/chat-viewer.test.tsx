@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import { afterEach, describe, expect, it, spyOn } from "bun:test"
+import { createSignal } from "solid-js"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
 import { textBlock } from "../../_output-window-transcript.js"
@@ -17,13 +18,13 @@ const theme = resolveTheme(flywheelTheme, "dark")
 const cleanups: (() => void)[] = []
 afterEach(() => { for (const cleanup of cleanups.splice(0)) cleanup() })
 
-/** Three chats in list order: `asks` and `broke` need the person, `busy` works. */
-async function openViewer() {
+/** Three chats in list order: `asks` and `broke` need the person, `busy` works. `surfaces` sets a chat's own readings. */
+async function openViewer(surfaces?: NonNullable<Parameters<typeof mountStrip>[1]>["surfaces"]) {
   const strip = await mountStrip([
     leadRow("busy", "working"),
     leadRow("asks", "question", { waitingSince: Date.now() - 20 * 60_000 }),
     leadRow("broke", "failed", { waitingSince: Date.now() - 10 * 60_000 }),
-  ], { width: 100, height: 40 })
+  ], { width: 100, height: 40, ...(surfaces ? { surfaces } : {}) })
   cleanups.push(strip.dispose)
   await strip.key("down")
   expect(await strip.key("return")).toBe(true)
@@ -72,17 +73,14 @@ describe("the lead's full-chat viewer", () => {
     expect(title(strip.rendered.captureCharFrame())).toBe("asks")
   })
 
-  it("names a chat by the title that the Sessions list shows, in its row and in the view's header, never by its short title", async () => {
-    // The fixture's catalog row holds a short title too.
-    const strip = await mountStrip([leadRow("root", "result")], { width: 100, height: 40, titles: { root: "List Project Root Files" } })
+  it("names a chat in the view's header by the title that its tab shows, then its longer title", async () => {
+    const strip = await mountStrip([leadRow("root", "result")], { width: 100, height: 40, titles: { root: "List Project Root Files" }, shortTitles: { root: "Root Files" } })
     cleanups.push(strip.dispose)
-    const row = strip.lines().findIndex((line) => line.includes("List Project Root Files"))
+    const row = strip.lines().findIndex((line) => line.includes("Root Files"))
     expect(row).toBeGreaterThanOrEqual(0)
     await strip.rendered.mockMouse.click(10, row)
     await strip.viewerKey("pagedown")
-    const frame = strip.rendered.captureCharFrame()
-    expect(frame).toMatch(/│\s+List Project Root Files\s.*\sx\s+│/)
-    expect(frame).not.toContain("Short")
+    expect(strip.rendered.captureCharFrame()).toMatch(/│\s+Root Files · List Project Root Files\s.*\sx\s+│/)
   })
 
   it("marks a failed or cut chat seen once when it opens, so its row no longer needs the person", async () => {
@@ -269,15 +267,41 @@ describe("the lead's full-chat viewer", () => {
     expect(strip.sent).toEqual(["session.send asks  ok "])
   })
 
-  it("goes back to the lead with the list focused on the same row on Escape", async () => {
-    const strip = await openViewer()
+  it("interrupts the chat's running turn on Escape as its tab does, and once nothing runs goes back to the lead with the list focused on the same row", async () => {
+    const [running, setRunning] = createSignal(true)
+    const strip = await openViewer({ broke: { interruptible: running } })
     await strip.viewerKey("tab")
     await strip.viewerKey("escape")
+    expect(chatSends(strip)).toEqual(["chat.interrupt broke"])
+    expect(strip.overlay.viewer.stack).toHaveLength(1)
+    expect(title(strip.rendered.captureCharFrame())).toBe("broke")
+    setRunning(false)
+    await strip.viewerKey("escape")
+    expect(chatSends(strip)).toEqual(["chat.interrupt broke"])
     expect(strip.overlay.viewer.stack).toHaveLength(0)
     expect(strip.focused()).toBe(true)
     // Enter opens the row the viewer opened from.
     await strip.key("return")
     expect(title(strip.rendered.captureCharFrame())).toBe("asks")
+  })
+
+  it("names what Escape does in one place: the interrupt hint while the chat's turn runs, else Back's esc", async () => {
+    const [running, setRunning] = createSignal(true)
+    const strip = await openViewer({ broke: { interruptible: running } })
+    await strip.viewerKey("tab")
+    // The harness draws the viewer under the list; with the list gone, the viewer's navigation row is on screen. The
+    // list's own state goes with it, so this check stands apart from the Escape test above.
+    strip.setSessionId("elsewhere")
+    await strip.viewerKey("pagedown")
+    let frame = strip.rendered.captureCharFrame()
+    expect(frame).toContain("esc to interrupt")
+    expect(frame).not.toContain("esc cancel")
+    expect(frame).toMatch(/ Back {2,}Open as tab/)
+    setRunning(false)
+    await strip.settle()
+    frame = strip.rendered.captureCharFrame()
+    expect(frame).toMatch(/ Back +esc +Open as tab/)
+    expect(frame).not.toContain("esc to interrupt")
   })
 
   it("holds each chat it shows as a tab does, and its close ends the view as a closed tab, but not when the chat opens as a tab", async () => {
@@ -302,8 +326,8 @@ describe("the lead's full-chat viewer", () => {
   })
 
   it("shows a report in the lead's transcript as one line, and its link opens the chat at the final message, marked", async () => {
-    // The line names each chat by its title now, as the Sessions list does.
-    const lead = leadHarness([], {}, undefined, { titles: { done: "DAG Failures", long: "Investigate why the nightly DAG failures started after the warehouse migration" } })
+    // The line names each chat by the title that its tab shows now, not by its longer title.
+    const lead = leadHarness([], {}, undefined, { shortTitles: { done: "DAG Failures" }, titles: { done: "Find why the nightly DAG fails", long: "Investigate why the nightly DAG failures started after the warehouse migration" } })
     cleanups.push(lead.dispose)
     // The rows of the lead's transcript, as the output window presents them for the first tab.
     const leadMessageRow = (block: Parameters<typeof UserMessageBlock>[0]["block"]) => <ThemeProvider mode="dark"><MessageRowProvider present={lead.client.firstTab!.messageRow!}><UserMessageBlock block={block} /></MessageRowProvider></ThemeProvider>
@@ -316,6 +340,7 @@ describe("the lead's full-chat viewer", () => {
     const frame = row.captureCharFrame()
     expect(frame).toContain("Report · DAG Failures · open")
     expect(frame).not.toContain("The build passes now.")
+    expect(frame).not.toContain("Find why")
 
     // A long title is cut, so the line stays one row with its open action.
     const long = await testRender(() => leadMessageRow({

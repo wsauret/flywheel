@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 import type { BoxRenderable } from "@opentui/core"
-import { createEffect, createMemo, createSignal, For, on, onCleanup, Show, untrack, type Accessor } from "solid-js"
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, untrack, type Accessor } from "solid-js"
 import { createReadRetry } from "../../../protocol/client/background-reads.js"
 import type { LeadQuestionOutcome } from "../../../protocol/modules/lead.js"
 import { createQuestionInputRegistry, type QuestionInputContext } from "../../components/question-input.js"
@@ -41,6 +41,8 @@ interface QuestionWidgetKeys {
 export interface LeadQuestionFocus {
   /** The ask_user call of the widget that holds key focus; undefined while none does. */
   readonly focused: Accessor<string | undefined>
+  /** The ask_user call of the newest pending widget, which shift+Up from the input enters; undefined while none waits. */
+  readonly newest: Accessor<string | undefined>
   /** Adds a pending widget, and answers its removal, which gives focus back to the input when it held it. */
   register(widget: QuestionWidgetKeys): () => void
   focus(toolUseId: string): void
@@ -57,8 +59,14 @@ export function createLeadQuestionFocus(): LeadQuestionFocus {
   const widgets = new Map<string, QuestionWidgetKeys>()
   const [target, setTarget] = createSignal<string>()
   const [bound, setBound] = createSignal<StripKeys>()
+  const [newest, setNewest] = createSignal<string>()
   const focused = (): string | undefined => bound()?.claim.focused() ? target() : undefined
   const ordered = (): QuestionWidgetKeys[] => [...widgets.values()].toSorted((left, right) => left.openedAt - right.openedAt)
+  const newestOf = (): string | undefined => {
+    let found: QuestionWidgetKeys | undefined
+    for (const widget of widgets.values()) if (!found || widget.openedAt > found.openedAt) found = widget
+    return found?.toolUseId
+  }
   const release = (): void => { untrack(bound)?.claim.setFocused(false) }
   const focus = (toolUseId: string): void => {
     const keys = untrack(bound)
@@ -68,11 +76,14 @@ export function createLeadQuestionFocus(): LeadQuestionFocus {
   }
   return {
     focused,
+    newest,
     register(widget) {
       widgets.set(widget.toolUseId, widget)
+      setNewest(newestOf())
       return () => {
         if (widgets.get(widget.toolUseId) !== widget) return
         widgets.delete(widget.toolUseId)
+        setNewest(newestOf())
         if (untrack(focused) === widget.toolUseId) release()
       }
     },
@@ -84,10 +95,11 @@ export function createLeadQuestionFocus(): LeadQuestionFocus {
       if (!keys) return false
       if (!keys.claim.focused()) {
         if (event.ctrl || event.meta || !event.shift || event.name !== "up" || !keys.composerEmpty()) return false
-        const newest = ordered().at(-1)
-        if (!newest) return false
-        focus(newest.toolUseId)
-        newest.reveal()
+        const entered = untrack(newest)
+        const widget = entered === undefined ? undefined : widgets.get(entered)
+        if (!widget) return false
+        focus(widget.toolUseId)
+        widget.reveal()
         return true
       }
       const pending = ordered()
@@ -117,15 +129,24 @@ export function createLeadQuestionFocus(): LeadQuestionFocus {
   }
 }
 
-/** How the keys reach the widgets. The line shows in every state of the widget's focus, so focus never moves a row. */
+/** How the keys reach the widgets. Only the newest pending widget shows the line, because shift+Up from the input
+ *  enters that one first; it shows in every state of the widget's focus, so focus never moves a row. */
 const KEYS_HINT = "shift+↑ from the empty input to answer by key · shift+↑↓ other questions"
 
 /** The widget of one chat's question in the lead's transcript (PI-LEAD-005): while the question waits, its context and
  *  the chat's own question dock, which sends the answer to the chat as the chat's dock does; once the question is
- *  settled anywhere, the answer or the skip in a few muted lines. It reads where the question stands at its mount and
- *  again at each change of the chat's live question until the question is settled, which never changes again. A read
- *  that fails reads again with the client core's backoff (ARCH-PROTOCOL-019). */
-export function LeadQuestionWidget(props: { readonly sessionId: string; readonly toolUseId: string; readonly host: LeadQuestionHost; readonly focus: LeadQuestionFocus }) {
+ *  settled anywhere, the answer or the skip in a few muted lines. It shows nothing until it shows its form or its
+ *  answer in full, and then calls `ready`, so that its row's line never shows without them. A read that fails calls
+ *  `ready` too, so the line and its open link show while the read tries again. It reads where the question stands at
+ *  its mount and again at each change of the chat's live question until the question is settled, which never changes
+ *  again. A read that fails reads again with the client core's backoff (ARCH-PROTOCOL-019). */
+export function LeadQuestionWidget(props: {
+  readonly sessionId: string
+  readonly toolUseId: string
+  readonly host: LeadQuestionHost
+  readonly focus: LeadQuestionFocus
+  readonly ready: () => void
+}) {
   const [outcome, setOutcome] = createSignal<LeadQuestionOutcome>()
   // One message names one call of one chat, so the read is fixed for the widget's lifetime.
   const { client, request } = untrack(() => ({ client: props.host.client, request: { type: "lead.question" as const, sessionId: props.sessionId, toolUseId: props.toolUseId } }))
@@ -139,7 +160,9 @@ export function LeadQuestionWidget(props: { readonly sessionId: string; readonly
       retry.succeeded()
       setOutcome(next)
     } catch (cause) {
-      if (read === reading) retry.failed(cause)
+      if (read !== reading) return
+      retry.failed(cause)
+      props.ready()
     }
   }
   createEffect(on(() => props.host.question(props.sessionId)?.toolUseId, () => {
@@ -157,9 +180,9 @@ export function LeadQuestionWidget(props: { readonly sessionId: string; readonly
   const settled = createMemo(() => { const current = outcome(); return current && current.state !== "pending" ? current : undefined }, undefined, { equals: sameState })
   return <>
     <Show when={pending()} keyed>{(current) =>
-      <PendingQuestion sessionId={props.sessionId} toolUseId={props.toolUseId} pending={current} host={props.host} focus={props.focus} />
+      <PendingQuestion sessionId={props.sessionId} toolUseId={props.toolUseId} pending={current} host={props.host} focus={props.focus} ready={props.ready} />
     }</Show>
-    <Show when={settled()} keyed>{(current) => <SettledQuestion outcome={current} />}</Show>
+    <Show when={settled()} keyed>{(current) => <SettledQuestion outcome={current} ready={props.ready} />}</Show>
   </>
 }
 
@@ -169,12 +192,12 @@ function PendingQuestion(props: {
   readonly pending: Extract<LeadQuestionOutcome, { state: "pending" }>
   readonly host: LeadQuestionHost
   readonly focus: LeadQuestionFocus
+  readonly ready: () => void
 }) {
   const input = createQuestionInputRegistry()
   const revealInTranscript = useRevealInTranscript()
   let element: BoxRenderable | undefined
   const reveal = (): void => { if (element) revealInTranscript(element) }
-  onCleanup(untrack(() => props.focus.register({ toolUseId: props.toolUseId, openedAt: props.pending.question.timestamp, input, reveal })))
   const row = useRowWidth()
   // Once the answer or the skip reaches the chat, keys go back to the lead's input.
   const settle = async (sent: Promise<boolean>): Promise<boolean> => {
@@ -184,14 +207,28 @@ function PendingQuestion(props: {
   }
   const { theme } = useTheme()
   const focus = (): void => { props.focus.focus(props.toolUseId) }
+  // The form spends its first frame out of view while it measures its rows; the context and the hint wait for it, so
+  // that the widget shows whole in one frame.
+  const [measured, setMeasured] = createSignal(false)
+  const measuredForm = (shown: boolean): void => {
+    setMeasured(shown)
+    if (shown) props.ready()
+  }
+  // The widget takes keys, and becomes the newest that shows the hint, only once it shows, so the hint moves from an
+  // older widget in the same update that shows this one.
+  createEffect(on(measured, (shown) => {
+    if (shown) onCleanup(props.focus.register({ toolUseId: props.toolUseId, openedAt: props.pending.question.timestamp, input, reveal }))
+  }))
   return <box ref={(box: BoxRenderable) => { element = box }} flexDirection="column" flexShrink={0} paddingLeft={2} onMouseDown={focus}>
-    <Show when={props.pending.context}>{(context) => <box paddingBottom={1}><MarkdownBody cache={true}>{context()}</MarkdownBody></box>}</Show>
+    <Show when={measured() ? props.pending.context : undefined}>{(context) => <box paddingBottom={1}><MarkdownBody cache={true}>{context()}</MarkdownBody></box>}</Show>
     <QuestionDock sessionId={props.sessionId} question={props.pending.question} drafts={props.host.questionDrafts} input={input}
       width={Math.max(1, row.width() - 2)} captureFocus={() => props.focus.focused() === props.toolUseId} pointer={true} onPointer={focus}
       onAnswer={(answers) => settle(props.host.answerQuestion(props.sessionId, props.toolUseId, answers))}
       onCancel={() => settle(props.host.cancelQuestion(props.sessionId, props.toolUseId))}
-      escape="leave" onLeave={props.focus.release} />
-    <text fg={theme.textMuted} wrapMode="none" selectable={false}>{KEYS_HINT}</text>
+      escape="leave" onLeave={props.focus.release} onMeasured={measuredForm} />
+    <Show when={measured() && props.focus.newest() === props.toolUseId}>
+      <text fg={theme.textMuted} wrapMode="none" selectable={false}>{KEYS_HINT}</text>
+    </Show>
   </box>
 }
 
@@ -211,8 +248,9 @@ function settledQuestionLines(outcome: Exclude<LeadQuestionOutcome, { state: "pe
   }
 }
 
-function SettledQuestion(props: { readonly outcome: Exclude<LeadQuestionOutcome, { state: "pending" }> }) {
+function SettledQuestion(props: { readonly outcome: Exclude<LeadQuestionOutcome, { state: "pending" }>; readonly ready: () => void }) {
   const { theme } = useTheme()
+  onMount(() => { props.ready() })
   return <box flexDirection="column" flexShrink={0} paddingLeft={2}>
     <For each={settledQuestionLines(props.outcome)}>{(line) => <text fg={theme.textMuted} wrapMode="word">{line}</text>}</For>
   </box>

@@ -1,5 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 import { describe, expect, it } from "bun:test"
+import type { ManualClock } from "@opentui/core/testing"
+import { ManualClock as Clock } from "@opentui/core/testing"
 import { testRender } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import type { QuestionBlock } from "../../../../../src/infra/output-blocks.js"
@@ -16,7 +18,7 @@ import { TickPoolProvider } from "../../../../../src/tui/context/tick-pool-conte
 import { LeadStrip } from "../../../../../src/tui/modules/lead/strip.js"
 import { OutputWindow } from "../../../../../src/tui/output-window/output-window.js"
 import type { TuiStripKeyEvent } from "../../../../../src/tui/tui-module.js"
-import { transcriptOf } from "../../_output-window-transcript.js"
+import { renderScheduledFrame, transcriptOf } from "../../_output-window-transcript.js"
 import { withHeldDeadlines } from "../../../protocol/client/_connection-fixtures.js"
 import { LEAD_ID, leadHarness } from "./_lead-fixtures.js"
 
@@ -44,7 +46,7 @@ function questionMessage(chat: string, toolUseId: string, timestamp: number): Fr
 }
 
 /** The lead's tab over `blocks` with the lead's strip below it, whose key claim is the kernel's in its simplest form. */
-async function mountLead(blocks: readonly FrontendOutputBlock[], outcomes: { readonly [key: string]: LeadQuestionOutcome } = {}, failingReads: { readonly [key: string]: number } = {}, height = 60) {
+async function mountLead(blocks: readonly FrontendOutputBlock[], outcomes: { readonly [key: string]: LeadQuestionOutcome } = {}, failingReads: { readonly [key: string]: number } = {}, height = 60, clock?: ManualClock) {
   const lead = leadHarness([])
   for (const [key, outcome] of Object.entries(outcomes)) lead.outcomes.set(key, outcome)
   for (const [key, failures] of Object.entries(failingReads)) lead.failingReads.set(key, failures)
@@ -71,7 +73,7 @@ async function mountLead(blocks: readonly FrontendOutputBlock[], outcomes: { rea
           keys={{ claim: (input) => { handler = input.onKey; pasteHandler = input.onPaste; return { focused, setFocused } } }} />
       </box>
     </NavigationProvider></ClientExtensionProviders></ClientExtensionsProvider></TickPoolProvider></ThemeProvider>
-  ), { width: 100, height })
+  ), { width: 100, height, ...(clock ? { clock } : {}) })
   const frame = async (): Promise<string> => {
     for (let turn = 0; turn < 4; turn += 1) {
       await result.renderOnce()
@@ -211,9 +213,9 @@ describe("a chat's question in the lead's transcript (PI-LEAD-005)", () => {
       expect(top).toBeGreaterThanOrEqual(0)
       // The widget's heading line, which names its chat, shows too.
       expect(revealed.slice(0, top).some((row) => row.includes("Chat c1"))).toBe(true)
-      // The whole widget shows: its last row, the key hint, comes before the next chat's line.
+      // The whole widget shows: its last row, the form's key line, comes before the next chat's line.
       const next = revealed.findIndex((row, index) => index > top && row.includes("Chat c2"))
-      expect(revealed.slice(top, next < 0 ? undefined : next).some((row) => row.includes("shift+↑ from the empty input"))).toBe(true)
+      expect(revealed.slice(top, next < 0 ? undefined : next).some((row) => row.includes("ctrl+x skip"))).toBe(true)
     } finally { tab.dispose() }
   })
 
@@ -269,9 +271,16 @@ describe("a chat's question in the lead's transcript (PI-LEAD-005)", () => {
         "c1 ask-1": { state: "pending", question: question("ask-1", "Which form should change?", 1000), context: null },
       }, { "c1 ask-1": 1 })
       try {
-        expect(await tab.frame()).not.toContain("Which form should change?")
+        // While the read fails, the row shows its line, whose link opens the chat, and no part of the question.
+        const waiting = await tab.frame()
+        expect(waiting).toContain("Question · Chat c1 · open")
+        expect(waiting).not.toContain("Which form should change?")
         expire()
-        expect(await tab.frame()).toContain("Which form should change?")
+        const shown = await tab.frame()
+        expect(shown).toContain("Question · Chat c1 · open")
+        expect(shown).toContain("Which form should change?")
+        expect(shown).toContain("Sign-in form")
+        expect(shown).toContain("shift+↑ from the empty input")
         expect(tab.questionReads).toEqual(["c1 ask-1", "c1 ask-1"])
       } finally { tab.dispose() }
     })
@@ -300,6 +309,98 @@ describe("a chat's question in the lead's transcript (PI-LEAD-005)", () => {
       const frame = await tab.frame()
       expect(frame).toContain("Skipped")
       expect(frame).toContain("Withdrawn by the chat")
+    } finally { tab.dispose() }
+  })
+
+  it("never paints a frame that shows the question's row without its options", async () => {
+    const clock = new Clock()
+    const tab = await mountLead([questionMessage("c1", "ask-1", 1000)], {
+      "c1 ask-1": { state: "pending", question: question("ask-1", "Which form should change?", 1000), context: CONTEXT },
+    }, {}, 60, clock)
+    try {
+      const frames: string[] = [tab.result.captureCharFrame()]
+      for (let turn = 0; turn < 10; turn += 1) {
+        if (tab.result.renderer.getSchedulerState().hasScheduledRender) await renderScheduledFrame(tab.result, clock)
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        frames.push(tab.result.captureCharFrame())
+      }
+      expect(frames.at(-1)).toContain("Sign-in form")
+      for (const frame of frames) {
+        if (!["Chat c1", CONTEXT, "shift+↑"].some((part) => frame.includes(part))) continue
+        expect(frame).toContain("Sign-in form")
+      }
+    } finally { tab.dispose() }
+  })
+
+  it("shows the key hint once, on the newest pending question, which shift+↑ enters first", async () => {
+    const tab = await mountLead([questionMessage("c1", "ask-1", 1000), questionMessage("c2", "ask-2", 2000)], {
+      "c1 ask-1": { state: "pending", question: question("ask-1", "First question?", 1000), context: null },
+      "c2 ask-2": { state: "pending", question: question("ask-2", "Second question?", 2000), context: null },
+    })
+    try {
+      const hinted = async (): Promise<number[]> => (await tab.frame()).split("\n").flatMap((row, index) => row.includes("shift+↑ from the empty input") ? [index] : [])
+      const rows = (await tab.frame()).split("\n")
+      const hints = await hinted()
+      expect(hints).toHaveLength(1)
+      expect(hints[0]).toBeGreaterThan(rows.findIndex((row) => row.includes("Second question?")))
+      // Once the newest question settles, the hint moves to the question that is now the newest.
+      tab.outcomes.set("c2 ask-2", { state: "skipped" })
+      tab.setQuestions({ c2: question("ask-3", "Third question?", 3000) })
+      const after = (await tab.frame()).split("\n")
+      const moved = await hinted()
+      expect(moved).toHaveLength(1)
+      expect(moved[0]).toBeGreaterThan(after.findIndex((row) => row.includes("First question?")))
+      expect(moved[0]).toBeLessThan(after.findIndex((row) => row.includes("Chat c2")))
+    } finally { tab.dispose() }
+  })
+
+  it("moves the key hint to a question that shows later in the same frame that shows it, so no frame shows no hint", async () => {
+    await withHeldDeadlines(250, async (expire) => {
+      const clock = new Clock()
+      const tab = await mountLead([questionMessage("c1", "ask-1", 1000), questionMessage("c2", "ask-2", 2000)], {
+        "c1 ask-1": { state: "pending", question: question("ask-1", "First question?", 1000), context: null },
+        "c2 ask-2": { state: "pending", question: question("ask-2", "Second question?", 2000), context: null },
+      }, { "c2 ask-2": 1 }, 60, clock)
+      try {
+        const hints = (frame: string): number[] => frame.split("\n").flatMap((row, index) => row.includes("shift+↑ from the empty input") ? [index] : [])
+        const frames = async (): Promise<string[]> => {
+          const painted: string[] = []
+          for (let turn = 0; turn < 10; turn += 1) {
+            if (tab.result.renderer.getSchedulerState().hasScheduledRender) await renderScheduledFrame(tab.result, clock)
+            await new Promise((resolve) => setTimeout(resolve, 1))
+            painted.push(tab.result.captureCharFrame())
+          }
+          return painted
+        }
+        const first = (await frames()).at(-1)!
+        expect(first).not.toContain("Second question?")
+        expect(hints(first)).toHaveLength(1)
+        // The second question's read answers now: every frame from here shows the hint once.
+        expire()
+        const later = await frames()
+        for (const frame of later) expect(hints(frame)).toHaveLength(1)
+        const last = later.at(-1)!
+        expect(hints(last)[0]).toBeGreaterThan(last.split("\n").findIndex((row) => row.includes("Second question?")))
+      } finally { tab.dispose() }
+    })
+  })
+
+  it("hides the text cursor of a focused widget while the transcript is scrolled away from it", async () => {
+    const earlier: FrontendOutputBlock[] = Array.from({ length: 40 }, (_, index) => ({ kind: "text", id: `t${index}`, content: `Earlier line ${index}`, timestamp: 1 }))
+    const tab = await mountLead([...earlier, questionMessage("c1", "ask-1", 1000)], {
+      "c1 ask-1": { state: "pending", question: question("ask-1", "Which form should change?", 1000), context: null },
+    }, {}, 30)
+    try {
+      const rows = (await tab.frame()).split("\n")
+      const y = rows.findIndex((row) => row.includes("Other"))
+      await tab.result.mockMouse.click(rows[y]!.indexOf("Other") + 1, y)
+      await tab.key("h", { sequence: "h" })
+      expect(tab.result.renderer.getCursorState().visible).toBe(true)
+      for (let turn = 0; turn < 20; turn += 1) await tab.result.mockMouse.scroll(2, 2, "up")
+      const scrolled = await tab.frame()
+      expect(scrolled).not.toContain("Which form should change?")
+      expect(tab.focused()).toBe(true)
+      expect(tab.result.renderer.getCursorState().visible).toBe(false)
     } finally { tab.dispose() }
   })
 })

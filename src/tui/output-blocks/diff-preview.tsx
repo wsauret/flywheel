@@ -3,7 +3,7 @@
 import { TOOL_PREVIEW_LINE_LIMIT, type DiffOmission, type ProvisionalDiffFile } from "@infra/output-blocks"
 import type { MutationDiff } from "@infra/mutation-diff.js"
 import { diffOmittedLinesForFile } from "../../protocol/diff-omission.js"
-import { RGBA, ScrollBoxRenderable, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
+import { RGBA, StyledText, bg as stBg, fg as stFg, type BoxRenderable, type TextChunk } from "@opentui/core"
 import { renderHunk, renderTypedDiffRows, type DiffSyntaxHighlighter } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff, type Hunk, type TypedDiffRow } from "@tui/adapters/diff-parser"
 import { fileDiffFiles, removedDirectoryGroups, removedDirectoryLabel, type FileChangeBody, type FileDiffFile, type FileWritePolicy } from "../../protocol/client/file-change-body.js"
@@ -21,6 +21,7 @@ import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/utils/border.js"
 import { bindSelectableStyledTextContent } from "@tui/utils/reactive-text.js"
+import { visibleScreenRows } from "@tui/utils/scroll-clip.js"
 import { Button } from "../components/button.js"
 import { OVERSCAN_ROWS } from "../output-window/output-window-scroll.js"
 import { PreviewViewport } from "./preview-viewport.js"
@@ -459,14 +460,7 @@ export function MutationEvidencePreview(props: {
   const acquireNearby = () => untrack(() => {
     const current = handle()
     if (!current || !tail || !root) return
-    let top = 0
-    let bottom = renderer.height
-    for (let parent = root.parent; parent; parent = parent.parent) {
-      if (parent instanceof ScrollBoxRenderable) {
-        top = Math.max(top, parent.viewport.screenY)
-        bottom = Math.min(bottom, parent.viewport.screenY + parent.viewport.height)
-      }
-    }
+    const { top, bottom } = visibleScreenRows(root, renderer.height)
     const nearby = (box: BoxRenderable) => box.screenY < bottom + OVERSCAN_ROWS && box.screenY + Math.max(1, box.height) > top - OVERSCAN_ROWS
     const expanded = expandedFlags()
     for (const [index, entry] of entries().entries()) {

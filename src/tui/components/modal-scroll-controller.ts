@@ -18,8 +18,6 @@ export interface ModalScrollController {
    *  reveal applies again when the viewport changes size, until a scroll
    *  through this controller replaces it. */
   scrollIntoView: (element: Renderable, options?: { readonly preferTop?: boolean; readonly row?: number }) => void
-  /** Whether a screen row lies inside the scrollbox viewport. */
-  showsScreenRow: (screenY: number) => boolean
   /** Keep one mounted descendant at its current screen row across the next layout. */
   preserveAnchor: (element: Renderable) => void
   /** An explicit destination replaces any pending reader-position correction. */
@@ -184,7 +182,6 @@ export function createModalScrollController(): ModalScrollController {
     },
     scrollTo: (row) => seek({ kind: "row", row }),
     scrollIntoView: (element, options) => seek({ kind: "element", element, preferTop: options?.preferTop ?? false, row: options?.row, pending: true }),
-    showsScreenRow: (screenY) => renderable !== undefined && screenY >= renderable.viewport.screenY && screenY < renderable.viewport.screenY + renderable.viewport.height,
     preserveAnchor: (element) => {
       target = undefined
       const scroll = renderable

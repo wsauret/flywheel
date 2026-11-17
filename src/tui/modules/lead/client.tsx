@@ -2,7 +2,6 @@
 import { basename } from "node:path"
 import { createContext, createMemo, createSignal, useContext, type Accessor } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { sessionListTitle } from "../../../protocol/app-service-types.js"
 import { leadEntryLink, leadQuestionEntry, leadReportEntry, leadRowOrder, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
 import { truncateToWidth } from "../../utils/text.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
@@ -19,7 +18,11 @@ export interface LeadScreen {
   readonly leadSessionId: Accessor<string | undefined>
   /** The rows in list order. */
   readonly rows: Accessor<readonly LeadRow[]>
+  /** The title that the chat's tab shows, so every place in the lead names a chat as its tab does (PI-LEAD-004); the
+   *  full title for a chat with no short title, whose tab shows the start of it. */
   readonly title: (sessionId: string) => string
+  /** The chat's longer title, or empty when it adds nothing to the tab title. */
+  readonly longTitle: (sessionId: string) => string
   /** Opens a chat's full conversation over the lead, at `landing` when one is named. */
   readonly openChat: (sessionId: string, landing?: string) => void
   /** Opens a chat as an ordinary tab in front. */
@@ -60,8 +63,12 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     return view && !view.dismissed ? view.leadSessionId ?? undefined : undefined
   })
   const report = (message: string): void => { host.showToast({ message, variant: "error" }) }
-  // The title that the Sessions list shows, read now, so every place in the lead names a chat alike (PI-LEAD-005).
-  const title = (sessionId: string): string => { const row = host.sessionTitles(sessionId); return row ? sessionListTitle(row) : "" }
+  // Read now, so every place in the lead names a chat alike. A chat with no short title goes by its full title once,
+  // which starts with what its tab shows, so its longer title is no repeat of the tab's cut of it.
+  const title = (sessionId: string): string => { const row = host.sessionTitles(sessionId); return row ? row.shortTitle || row.title || row.id : "" }
+  const longTitle = (sessionId: string): string => { const long = host.sessionTitles(sessionId)?.title ?? ""; return long === title(sessionId) ? "" : long }
+  // The view's frame has room for both titles in one line.
+  const viewerTitle = (sessionId: string): string => { const long = longTitle(sessionId); return long ? `${title(sessionId)} · ${long}` : title(sessionId) }
   const rows = createMemo(() => leadRowOrder(host.domains.leadChats.view()?.rows ?? []))
   const order = createMemo(() => rows().map((row) => row.sessionId))
   const rowOf = (sessionId: string): LeadRow | undefined => rows().find((candidate) => candidate.sessionId === sessionId)
@@ -72,7 +79,8 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
     leadSessionId: current,
     rows,
     title,
-    openChat: (sessionId, landing) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title, closeChat, ...(landing === undefined ? {} : { landing }) }) },
+    longTitle,
+    openChat: (sessionId, landing) => { openLeadChatViewer(host, { sessionId, order, row: rowOf, title: viewerTitle, closeChat, ...(landing === undefined ? {} : { landing }) }) },
     openTab: (sessionId) => { openLeadChatTab(host, sessionId, rowOf(sessionId)) },
     closeChat,
     questions: createLeadQuestionFocus(),
@@ -134,7 +142,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
           name: question !== undefined ? "Question" : reportEntry === undefined ? "Update" : "Report",
           detail: `· ${truncateToWidth(title(chat) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`,
           linkUri: leadEntryLink(chat, reportEntry ?? question ?? call),
-          ...(question === undefined ? {} : { below: () => <LeadQuestionWidget sessionId={chat} toolUseId={question} host={host} focus={screen.questions} /> }),
+          ...(question === undefined ? {} : { below: (ready: () => void) => <LeadQuestionWidget sessionId={chat} toolUseId={question} host={host} focus={screen.questions} ready={ready} /> }),
         }
       },
       // The lead is the happy path and tabs the divergent one (PI-LEAD-013, PI-LEAD-014).

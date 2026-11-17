@@ -15,12 +15,26 @@ import type { SessionModalHook } from "./use-session-modal-types.js"
 
 type KeyboardEventLike = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }
 
-/** What the keymap acts on in a chat pane: its transcript's paging and its session's Resume. */
+/** What the keymap acts on in a chat pane: its transcript's paging, its session's Resume, and the Interrupt that
+ *  Escape sends. */
 export interface KeymapPane {
   /** True while the pane's question shows; its dock then owns the keys, and Resume names no hint. */
   readonly pendingQuestion: Accessor<boolean>
   readonly sessionControls: Pick<SessionControlsHook, "offered" | "resume">
+  /** True while the pane's session has something that an Interrupt cuts (`isInterruptible`). */
+  readonly interruptible: Accessor<boolean>
+  /** Interrupts the pane's session; it can be resumed. */
+  interrupt(): void
   output(command: OutputWindowCommandType): void
+}
+
+/** Escape in a chat pane, after the pane's question dock, its composer popups, and a focused module strip had it:
+ *  it interrupts a running turn and answers true. An idle Escape answers false and stays with the focused editor in
+ *  a tab, and goes back from a view over the tab in front. */
+export function interruptOnEscape(pane: Pick<KeymapPane, "interruptible" | "interrupt">): boolean {
+  if (!pane.interruptible()) return false
+  pane.interrupt()
+  return true
 }
 
 type BindingAction = (evt: KeyboardEventLike, pane: KeymapPane) => void
@@ -118,11 +132,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     sessions: sessionModal.openSessionsModal,
   }
 
-  function handleEscape(): void {
-    // Idle Escape remains available to the focused editor.
-    if (signals.interruptible()) chat.interruptChat()
-  }
-
   /** The escape mode a press would run now, or null when an earlier key
    *  consumer owns Escape. */
   function activeEscapeMode(): EscapeModeId | null {
@@ -203,6 +212,8 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
   const tabPane: KeymapPane = {
     pendingQuestion: () => signals.pendingQuestion() !== undefined,
     sessionControls: deps.sessionControls,
+    interruptible: signals.interruptible,
+    interrupt: chat.interruptChat,
     output: deps.dispatchOutputCommand,
   }
 
@@ -232,7 +243,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     if (commandId) { bindingActions[commandId](normalized, tabPane); return }
     // A keymap binding wins over a chord a module strip declares.
     if (deps.strips.stripInput(normalized)) return
-    if (evt.name === "escape") handleEscape()
+    if (evt.name === "escape") interruptOnEscape(tabPane)
   }
 
   /** A key for a chat pane that a view over the tab in front shows, such as

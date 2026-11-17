@@ -10,7 +10,7 @@ import { bindStyledTextContent } from "../../utils/reactive-text.js"
 import { useHoverHighlight } from "../../hooks/use-hover-highlight.js"
 import { isCtrlChord } from "./chat-viewer.js"
 import { useLeadScreen, type LeadScreen } from "./client.js"
-import { followSelection, layoutLeadRow, leadAge, leadListWindow, leadTitleColumn, LEAD_STATE_LOOK } from "./list-model.js"
+import { followSelection, layoutLeadRow, leadAge, leadListWindow, leadTitleColumn, LEAD_STATE_LOOK, type LeadRowName } from "./list-model.js"
 
 /** The columns the list keeps clear on each side, so its rows line up with the text inside the composer frame above. */
 const SIDE_INSET = 2
@@ -67,7 +67,9 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     total: rows().length, selected: claim.focused() ? selectedIndex() : undefined, start: claim.focused() ? previous.start : 0, terminalRows: dimensions().height,
   }), { start: 0, count: 0, above: 0, below: 0 })
   const visible = createMemo(() => rows().slice(window().start, window().start + window().count))
-  const titleColumn = createMemo(() => leadTitleColumn(visible().map((row) => props.screen.title(row.sessionId))))
+  const name = (sessionId: string): LeadRowName => ({ title: props.screen.title(sessionId), longTitle: props.screen.longTitle(sessionId) })
+  const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET - CLOSE_MARK.length)
+  const titleColumn = createMemo(() => leadTitleColumn(visible().map((row) => name(row.sessionId)), width()))
 
   function onKey(event: TuiStripKeyEvent): boolean {
     if (!claim.focused()) {
@@ -110,13 +112,12 @@ function LeadList(props: { readonly strip: TuiStripProps; readonly screen: LeadS
     props.screen.closeChat(sessionId)
   }
 
-  const width = () => Math.max(1, props.strip.width() - 2 * SIDE_INSET - CLOSE_MARK.length)
   function rowContent(row: LeadRow, age: string): StyledText {
     const look = LEAD_STATE_LOOK[row.state]
-    const layout = layoutLeadRow({ state: row.state, title: props.screen.title(row.sessionId), status: row.status, age }, { width: width(), titleColumn: titleColumn() })
+    const layout = layoutLeadRow({ state: row.state, ...name(row.sessionId), status: row.status, age }, { width: width(), titleColumn: titleColumn() })
     const selected = claim.focused() && selection().id === row.sessionId
     const paint = (color: RGBA) => (text: string) => selected ? stBg(theme.selectionBackground)(stFg(theme.selectionForeground)(text)) : stFg(color)(text)
-    return new StyledText([paint(theme[look.tone])(layout.mark), paint(theme.text)(layout.title), paint(theme.textMuted)(`${layout.status}${layout.age}`)])
+    return new StyledText([paint(theme[look.tone])(layout.mark), paint(theme.text)(layout.title), paint(theme.textMuted)(`${layout.longTitle}${layout.status}${layout.age}`)])
   }
 
   return <box flexDirection="column" flexShrink={0} paddingLeft={SIDE_INSET} paddingRight={SIDE_INSET}>
