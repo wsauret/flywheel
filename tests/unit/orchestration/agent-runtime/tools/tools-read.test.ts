@@ -1,10 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import sharp from "sharp";
 
-import { createReadDefinition, readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
+import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
+import * as imageResize from "../../../../../src/orchestration/agent-runtime/tools/image-resize.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
@@ -173,15 +174,14 @@ describe("read tool", () => {
       expect(result.content).not.toContain("not a valid");
     }
 
-    const withoutDecoder = createReadDefinition({ operations: {
-      readFile: async (filePath) => {
-        const file = Bun.file(filePath);
-        return { size: file.size, arrayBuffer: () => file.arrayBuffer(), stream: () => file.stream() };
-      },
-      resizeImage: async () => ({ kind: "unavailable" }),
-    } });
+    const withoutDecoder = spyOn(imageResize, "resizeImage").mockResolvedValue({ kind: "unavailable" });
     const corrupt = path.join(tmpDir, "corrupt.png");
-    const passed = await withoutDecoder.execute({ path: corrupt }, makeContext({ executionCwd: tmpDir }));
+    let passed;
+    try {
+      passed = await readDefinition.execute({ path: corrupt }, makeContext({ executionCwd: tmpDir }));
+    } finally {
+      withoutDecoder.mockRestore();
+    }
     expect(passed).toEqual({ outcome: "ok", content: [{ type: "image", mediaType: "image/png", data: fs.readFileSync(corrupt).toString("base64") }] });
   });
 

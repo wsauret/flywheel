@@ -88,7 +88,7 @@ interface Claim extends ProcessorClaimInput, HeldTime {
 /** The hold time of a container that processor admission never holds. */
 export const NEVER_HELD: HeldTime = { heldMs: () => 0, hold: () => undefined, released: () => Promise.resolve() };
 
-export function createProcessorClaims(now: () => number = Date.now): ProcessorClaims {
+function createProcessorClaims(): ProcessorClaims {
   const claims = new Map<string, Claim>();
   // Each status reads one session's held commands, so they are indexed by
   // session rather than found by a scan over every claim.
@@ -115,7 +115,7 @@ export function createProcessorClaims(now: () => number = Date.now): ProcessorCl
     if (hold === undefined) return;
     indexHeld(claim, false);
     claim.current = undefined;
-    claim.endedMs += now() - hold.sinceMs;
+    claim.endedMs += Date.now() - hold.sinceMs;
     hold.released.resolve();
   };
   const unclaim = (token: string): void => {
@@ -153,7 +153,7 @@ export function createProcessorClaims(now: () => number = Date.now): ProcessorCl
           exempt: input.exempt,
           current: undefined,
           endedMs: 0,
-          heldMs: () => claim.endedMs + (claim.current === undefined ? 0 : now() - claim.current.sinceMs),
+          heldMs: () => claim.endedMs + (claim.current === undefined ? 0 : Date.now() - claim.current.sinceMs),
           hold: () => claim.current === undefined ? undefined : { ahead: claim.current.ahead },
           released: () => claim.current?.released.promise ?? Promise.resolve(),
         };
@@ -193,7 +193,7 @@ export function createProcessorClaims(now: () => number = Date.now): ProcessorCl
           endHold(claim);
           changed.push(claim.sessionId);
         } else if (claim.current === undefined) {
-          claim.current = { ahead: next, sinceMs: now(), released: Promise.withResolvers() };
+          claim.current = { ahead: next, sinceMs: Date.now(), released: Promise.withResolvers() };
           indexHeld(claim, true);
           changed.push(claim.sessionId);
         } else if (claim.current.ahead !== next) {

@@ -16,7 +16,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js
 import { installedModules } from "../../../src/orchestration/module-catalog.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher } from "../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { boundedStringCodeModeOutput, type RuntimeTool, type ToolContext, type ToolResult } from "../../../src/orchestration/agent-runtime/tools/types.js";
+import { boundedStringCodeModeOutput, type DispatchedToolContext, type RuntimeTool, type ToolResult } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { spawnInvocationWorker } from "../../../src/orchestration/modules/code-mode/worker-pool.js";
 import type { CodeModeLimits } from "../../../src/orchestration/modules/code-mode/limits.js";
 import { createCodeModeService, type CodeModeService } from "../../../src/orchestration/modules/code-mode/service.js";
@@ -25,6 +25,7 @@ import { createSessionFactWriter } from "../../../src/orchestration/session/sess
 import { startLoopbackMcpServer, type LoopbackMcpServer } from "../../helpers/code-mode-loopback-mcp.js";
 import { codeToolOver } from "../../helpers/code-mode-worker.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
 
 /** The EXS-2 ceilings from the approved plan. */
 const HOST_GAP_CEILING_MS = 50;
@@ -82,7 +83,7 @@ interface LiveFixture {
   readonly resetHeapBytes: number[];
   /** The most Workers that were open at one time. */
   maxOpenWorkers(): number;
-  context(session: string, options?: { readonly signal?: AbortSignal; readonly output?: (text: string) => void }): ToolContext;
+  context(session: string, options?: { readonly signal?: AbortSignal; readonly output?: (text: string) => void }): DispatchedToolContext;
 }
 
 /** A host tool a script can call. */
@@ -147,14 +148,14 @@ async function liveFixture(options: { readonly limits?: Partial<CodeModeLimits>;
     resetHeapBytes,
     maxOpenWorkers: () => maxOpenWorkers,
     context(session, contextOptions = {}) {
-      const context: ToolContext = {
+      const context = dispatchedToolContext({
         executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), artifactScopeId: session, sessionId: session, toolUseId: `outer-${session}`,
         retrievalSessionId: session,
         modelRequestId: `request-${session}`,
         sessionEventWriter: createSessionFactWriter({ sessionId: session, writer: asAsyncEventWriter(store) }),
         ...(contextOptions.signal ? { signal: contextOptions.signal } : {}),
         ...(contextOptions.output ? { onExecutionOutput: contextOptions.output } : {}),
-      };
+      });
       const durable = createNestedToolFactPublisher(context);
       context.createNestedToolDispatchBatch = (batchOptions) => createNestedToolDispatchBatch({
         ...batchOptions, context, gate,

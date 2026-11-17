@@ -2,6 +2,7 @@ import { expect, test } from "bun:test"
 import { createInitExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/init-experiment.js"
 import type { ExperimentInitializedFact } from "../../../../../../src/orchestration/modules/experiments/facts.js"
 import { testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
+import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js"
 
 const charter = `# Experiment
 \`\`\`toml
@@ -49,7 +50,7 @@ test("validates then records segment one with mandatory protections", async () =
     name: "speed", metric_name: "latency", metric_unit: "ms", direction: "lower",
     measure_command: "./.experiment/measure.sh", checks_command: "./.experiment/checks.sh",
     work_dir: ".", protected_paths: ["tests/**", "tests/**"], sealed_paths: [],
-  }, { executionCwd: "/repo", userDataRoot: "/repo/.test-account", projectRoot: "/repo", artifactScopeId: "a", retrievalSessionId: "r" })
+  }, dispatchedToolContext({ executionCwd: "/repo", userDataRoot: "/repo/.test-account", projectRoot: "/repo", artifactScopeId: "a", retrievalSessionId: "r" }))
   expect(result.outcome).toBe("ok")
   expect(facts).toHaveLength(1)
   expect(facts[0]?.payload.protectedPaths).toEqual(["tests/**", ".experiment/charter.md", ".experiment/measure.sh", ".experiment/checks.sh"])

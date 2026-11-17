@@ -6,12 +6,13 @@ import type { AskUserController } from "../../../../../src/orchestration/runner/
 import type { ResolveWorkflowLaunchTarget } from "../../../../../src/orchestration/workflow-host/launch-origin.js";
 import { answeredAskUserResult, createAskUserTool } from "../../../../../src/orchestration/agent-runtime/tools/ask-user.js";
 import { normalizeAskUserInput } from "../../../../../src/infra/tools/displays/ask-user.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentInputAnswer } from "../../../../../src/protocol/question-protocol-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 /** A session writer that stores each fact it records, appending it to `recorded`. */
 function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
@@ -27,8 +28,8 @@ function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
   };
 }
 
-function makeContext(toolUseId = "tool_question"): ToolContext {
-  return {
+function makeContext(toolUseId = "tool_question"): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: "/scratch",
     projectRoot: "/scratch",
     userDataRoot: "/scratch/.test-account",
@@ -38,7 +39,7 @@ function makeContext(toolUseId = "tool_question"): ToolContext {
     sessionId: "conversation-1",
     conversationId: "conversation-1",
     sessionEventWriter: recordingWriter(),
-  };
+  });
 }
 
 describe("ask_user tool", () => {

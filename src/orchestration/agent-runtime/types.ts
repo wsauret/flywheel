@@ -353,7 +353,6 @@ interface AgentBaseOptions {
   createChildConversation?: CreateChildConversation;
   /** Durable child-session publication authority. A subagent tool is absent without it. */
   subagentSessions?: ChildSessionAuthority;
-  sessionEventWriter?: SessionFactWriter;
   /** In-memory observer of every provider-request audit record this run and
    * its subagents emit. A caller that summarizes its own run (headless)
    * accumulates request and tool-surface evidence without re-reading a store. */
@@ -370,11 +369,6 @@ interface AgentBaseOptions {
    *  answered decision it claims through this, so a context without it cannot
    *  confirm one. */
   sessionEventStore?: AsyncEventStateReadSurface;
-  /** The one read surface of this run's durable facts: registered session
-   *  projections, the conversation checkpoint, usage settlement, and the
-   *  recorded stale-mask seed. Every producer that gives the run a
-   *  `sessionEventWriter` sets it. */
-  sessionEventReader?: AsyncEventStateReadSurface;
   /** Resolves the `<env>` block this runner's prompt carries. Absent means the
    *  prompt renders no environment, which is what prompt tooling and unit
    *  tests want. */
@@ -400,7 +394,17 @@ interface AgentBaseOptions {
   onChildEvent?: (childSessionId: string, event: RuntimeEvent) => void;
 }
 
-export type AgentOptions = AgentBaseOptions & {
+/** The durable facts of a run. A run with durable state writes them through `sessionEventWriter` and reads them
+ *  through `sessionEventReader`, the one read surface of its registered session projections, the conversation
+ *  checkpoint, usage settlement, and the recorded stale-mask seed. A run without durable state states neither. */
+export type AgentDurableFacts =
+  | { sessionEventWriter: SessionFactWriter; sessionEventReader: AsyncEventStateReadSurface }
+  | { sessionEventWriter?: undefined; sessionEventReader?: undefined };
+
+/** `Omit` over run options that keeps the durable-facts pair whole: `Omit` does not distribute over a union. */
+export type OmitAgentOptions<O extends AgentOptions, K extends keyof O> = Omit<O, K | keyof AgentDurableFacts> & AgentDurableFacts;
+
+export type AgentOptions = AgentBaseOptions & AgentDurableFacts & {
   readonly purpose: AgentPurpose;
   readonly conversation: AgentConversation;
   readonly lifecycle: AgentLifecycle;

@@ -5,6 +5,7 @@ import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runt
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testDirectories } from "../../../helpers/directories.js"
@@ -36,7 +37,7 @@ function modelClient(toolTurns = 0) {
   })
 }
 
-async function assembledRuntime(extraOptions: Partial<AgentOptions>, facts: ProviderRequestAuditFact[], client = modelClient()) {
+async function assembledRuntime(extraOptions: AgentOptionsOverride, facts: ProviderRequestAuditFact[], client = modelClient()) {
   const options: RunnableAgentOptions = {
     model: "test",
     ...testDirectories(process.cwd()),
@@ -71,7 +72,7 @@ async function assembledRuntime(extraOptions: Partial<AgentOptions>, facts: Prov
   })
 }
 
-async function recordedFacts(extraOptions: Partial<AgentOptions>): Promise<ProviderRequestAuditFact[]> {
+async function recordedFacts(extraOptions: AgentOptionsOverride): Promise<ProviderRequestAuditFact[]> {
   const facts: ProviderRequestAuditFact[] = []
   const attribution: ProviderRequestAttribution = {
     accessProvider: "anthropic_api",

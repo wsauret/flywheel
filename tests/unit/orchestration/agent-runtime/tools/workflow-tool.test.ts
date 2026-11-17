@@ -6,7 +6,7 @@ import {
   createWorkflowToolCore,
   decorateWorkflowToolCall,
   type LaunchableWorkflowToolDeps,
-  type ModelWorkflowLaunch,
+  type StartModelWorkflow,
 } from "../../../../../src/orchestration/agent-runtime/tools/workflow-tool.js";
 import { createWorkflowTool } from "../../../../../src/orchestration/agent-runtime/tools/workflow.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
@@ -22,6 +22,9 @@ import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { capabilityAccessHolding, makeContext as makeToolContext } from "./_fixtures.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+
+/** One launch that the workflow tool asks its host to start. */
+type ModelWorkflowLaunch = Parameters<StartModelWorkflow>[0];
 
 // ---------------------------------------------------------------------------
 // Task 2: createWorkflowTool

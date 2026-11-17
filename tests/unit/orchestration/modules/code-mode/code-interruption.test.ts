@@ -9,6 +9,7 @@ import type { HostMessage } from "../../../../../src/orchestration/modules/code-
 import type { InvocationWorker } from "../../../../../src/orchestration/modules/code-mode/worker-pool.js";
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
 import { codeModeServices, codeToolOver, InProcessInvocationWorker, scriptedWorker, workerLog, type FakeWorker } from "../../../../helpers/code-mode-worker.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const codeModeService = codeModeServices();
 
@@ -35,13 +36,13 @@ function interruptionFixture(execute: RuntimeTool["execute"], options: Interrupt
   };
   const eligibleTools = new Map([[nested.name, nested]]);
   const outputs: string[] = [];
-  const context: ToolContext = {
+  const context = dispatchedToolContext({
     executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), artifactScopeId: "session", sessionId: "session", toolUseId: "outer",
     retrievalSessionId: "session",
     capabilities: (term) => term === "bash" && options.bash !== false,
     ...(options.signal ? { signal: options.signal } : {}),
     onExecutionOutput: (output) => { outputs.push(output); },
-  };
+  });
   const terminals: string[] = [];
   const batches = { opened: 0, closed: 0 };
   context.createNestedToolDispatchBatch = (batchOptions) => {
@@ -197,7 +198,7 @@ describe("code tool interruption", () => {
     const result = await run.tool.execute({ source: "return 1" }, { ...run.context, createNestedToolDispatchBatch: (options) => {
       attempts++;
       // SAFETY: the fixture always installs a batch factory.
-      return run.context.createNestedToolDispatchBatch!(options);
+      return run.context.createNestedToolDispatchBatch(options);
     } });
     expect(result).toEqual({ outcome: "error", content: "Code runtime could not start: native allocation failed" });
     expect(attempts).toBe(1);

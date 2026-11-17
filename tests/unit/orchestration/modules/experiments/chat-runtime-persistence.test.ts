@@ -18,6 +18,7 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import type { CommandOutcome } from "../../../../../src/protocol/command-catalog-protocol-types.js"
 import { testDirectories } from "../../../../helpers/directories.js"
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js"
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 
 const directories: string[] = []
 afterEach(async () => {
@@ -135,14 +136,14 @@ async function fixture(
 type Target = Awaited<ReturnType<typeof fixture>>
 
 function toolContext(target: Target, toolUseId: string) {
-  return {
+  return dispatchedToolContext({
     executionCwd: target.directory,
     userDataRoot: `${target.directory}/.test-account`, projectRoot: target.directory,
     sessionId: "test",
     toolUseId,
     artifactScopeId: "test-artifacts",
     retrievalSessionId: "test-retrieval",
-  }
+  })
 }
 
 async function producePendingRun(target: Target): Promise<void> {
@@ -325,14 +326,14 @@ test("a post-Git publication failure retains the durable run marker", async () =
     metric: 8,
     status: "discard",
     description: "discard",
-  }, {
+  }, dispatchedToolContext({
     executionCwd: target.directory,
     userDataRoot: `${target.directory}/.test-account`, projectRoot: target.directory,
     sessionId: "test",
     toolUseId: "log",
     artifactScopeId: "test-artifacts",
     retrievalSessionId: "test-retrieval",
-  })
+  }))
 
   expect(response).toEqual({ outcome: "error", content: "publication failed" })
   expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(1)
@@ -360,14 +361,14 @@ for (const [label, maxIterations, expectedModeFacts] of [
       metric: 8,
       status: "discard",
       description: "discard",
-    }, {
+    }, dispatchedToolContext({
       executionCwd: target.directory,
       userDataRoot: `${target.directory}/.test-account`, projectRoot: target.directory,
       sessionId: "test",
       toolUseId: "log",
       artifactScopeId: "test-artifacts",
       retrievalSessionId: "test-retrieval",
-    })).outcome).toBe("ok")
+    }))).outcome).toBe("ok")
 
     expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(0)
     expect(target.store.read({ aggregateId: "session:test", types: ["experiment.run.recorded"] })).toHaveLength(1)

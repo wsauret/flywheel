@@ -7,7 +7,7 @@ import { reconcileChildSessionCompletions } from "../../../../../src/orchestrati
 import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer.js"
 import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/session-metadata-store.js"
 import { makeContext, makeDeps, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"
-import { testGrant } from "../../agent-runtime/tools/_fixtures.js"
+import { makeContext as makeToolContext, testGrant } from "../../agent-runtime/tools/_fixtures.js"
 import { subagentChildHarnesses, completedRunner, createRoot, waitForSettled, childIds, runs, continuationService, continuationParentHost, heldRunner } from "./_subagent-child-fixtures.js"
 import { createSubagentToolSummaryReader } from "../../../../../src/orchestration/modules/subagents/history/tool-summary.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
@@ -191,7 +191,7 @@ describe("explicit child Resume", () => {
       expect(tasks.awaitedTaskCount()).toBe(1)
       const waiting = processSettled(tasks, childRunId)
       if (ending === "stop") {
-        expect((await createProcessTool(tasks).execute({ action: "stop", process_id: childRunId }, { ...context, userDataRoot: `${harness.projectRoot}/.test-account`, retrievalSessionId: root.sessionId })).outcome).toBe("ok")
+        expect((await createProcessTool(tasks).execute({ action: "stop", process_id: childRunId }, makeToolContext({ ...context, userDataRoot: `${harness.projectRoot}/.test-account`, retrievalSessionId: root.sessionId }))).outcome).toBe("ok")
       } else {
         runner.options.at(-1)?.runtimeSurfaces?.handoff?.onContent({ summary: "finished" })
         runner.results.at(-1)?.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })

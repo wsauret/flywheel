@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore, type StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { ToolResult, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree.js";
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
 import { loadAgentInputProjection } from "../../../../../src/orchestration/session/agent-input-projection.js";
@@ -71,7 +71,7 @@ function skillManage(origin: SkillWriteOrigin = AGENT) {
   });
 }
 
-function context(toolUseId: string): ToolContext {
+function context(toolUseId: string): DispatchedToolContext {
   return makeContext({ executionCwd: CWD, projectRoot: CWD, toolUseId, sessionId: SESSION, conversationId: "conv-1", sessionEventWriter: writer });
 }
 

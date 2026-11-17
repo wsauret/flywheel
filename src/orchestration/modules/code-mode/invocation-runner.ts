@@ -5,7 +5,7 @@ import { probeLoopUnit } from "../../../infra/event-loop-lag.js"
 import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js"
 import { redactSecretEntries, redactSecrets } from "../../../infra/redact-secrets.js"
 import type { NestedToolDispatchBatch } from "../../agent-runtime/tools/nested-tool-dispatch.js"
-import { boundedStringCodeModeOutput, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js"
+import { boundedStringCodeModeOutput, type CreateNestedToolDispatchBatch, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js"
 import type { CodeModeToolSet } from "./descriptors.js"
 import { GuestMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
 import type { CodeModeLimits } from "./limits.js"
@@ -17,7 +17,7 @@ export interface CodeModeInvocation {
   readonly source: string
   readonly tools: CodeModeToolSet
   readonly parentToolUseId: string
-  readonly createBatch: NonNullable<ToolContext["createNestedToolDispatchBatch"]>
+  readonly createBatch: CreateNestedToolDispatchBatch
 }
 
 export interface InvocationOwner {

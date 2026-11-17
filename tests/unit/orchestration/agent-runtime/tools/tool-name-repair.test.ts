@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { prepareToolCall, preparedToolAdmission, repairToolCall, repairToolName } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { executePreparedTool, prepareToolCall, preparedToolAdmission, repairToolName } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBashDefinition } from "../../../../../src/orchestration/agent-runtime/tools/bash.js";
@@ -68,17 +68,16 @@ describe("repairToolName", () => {
   });
 });
 
-describe("repairToolCall and prepareToolCall integration", () => {
+describe("prepareToolCall name repair", () => {
   const tools = toolMap("read", "write");
 
-  it("stamps repairedFrom and preserves identity when no repair is needed", () => {
-    const call = { id: "t1", name: "Read_tool", input: {} };
-    const repaired = repairToolCall(call, tools);
-    expect(repaired.name).toBe("read");
-    expect(repaired.repairedFrom).toBe("Read_tool");
+  it("a call named Bash resolves to bash and runs, and a call that names its tool exactly is kept as made", async () => {
+    const prepared = prepareToolCall({ id: "t1", name: "Bash", input: {} }, toolMap("bash", "read"), admitEveryTool);
+    expect(prepared.call).toMatchObject({ name: "bash", repairedFrom: "Bash" });
+    expect(await executePreparedTool(prepared, makeContext())).toEqual({ content: "bash", outcome: "ok" });
 
     const untouched = { id: "t2", name: "read", input: {} };
-    expect(repairToolCall(untouched, tools)).toBe(untouched);
+    expect(prepareToolCall(untouched, tools, admitEveryTool).call).toBe(untouched);
   });
 
   it("prepareToolCall resolves the repaired tool instead of rejecting", () => {

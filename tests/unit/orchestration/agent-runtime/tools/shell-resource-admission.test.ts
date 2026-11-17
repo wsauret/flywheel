@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
-import { createProcessorClaims, sharedProcessorClaims } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
+import { sharedProcessorClaims, type ProcessorClaims } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
 import { startManagedCommand } from "../../../../../src/orchestration/agent-runtime/tools/managed-command.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
@@ -9,6 +9,7 @@ import { bridgeExternalPromise } from "../../../../../src/orchestration/agent-ru
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeMockOps, makeMockOwnedProcess, type OwnedExit } from "./_bash-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
+import { freshProcessorClaims } from "../../../../helpers/processor-claims.js";
 
 // The runtime spools command output under its temporary directory.
 const temporaryDirectory = temporaryDirectories();
@@ -28,7 +29,7 @@ function shellOptions(sessionId: string, spawnOwned: NonNullable<ToolContext["sp
 }
 
 /** Waits until `token` is claimed, which happens once its launch returns. */
-async function claimed(claims: ReturnType<typeof createProcessorClaims>, token: string): Promise<void> {
+async function claimed(claims: ProcessorClaims, token: string): Promise<void> {
   const has = (): boolean => claims.claims().some((claim) => claim.token === token);
   if (has()) return;
   await new Promise<void>((resolve) => {
@@ -43,7 +44,7 @@ async function claimed(claims: ReturnType<typeof createProcessorClaims>, token: 
 describe("shell container processor claims", () => {
   it.each(["foreground", "background", "auto-yield", "detach"] as const)("claims a %s container until the owned container settles", async (mode) => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     const runtime = createShellRuntime(tasks, { processorClaims: claims });
     const exit = Promise.withResolvers<OwnedExit>();
     const token = `owned:${mode}`;
@@ -94,7 +95,7 @@ describe("shell container processor claims", () => {
 
   it("tells the agent that a held command waits for processor time when it reaches the foreground cap", async () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     const runtime = createShellRuntime(tasks, { processorClaims: claims });
     const exit = Promise.withResolvers<OwnedExit>();
     const options = shellOptions("session-a", async () => makeMockOwnedProcess({ token: "owned:capped", exited: exit.promise }));
@@ -113,7 +114,7 @@ describe("shell container processor claims", () => {
 
   it.each(["foreground", "managed"] as const)("does not count held time against a %s command's explicit timeout", async (mode) => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     const runtime = createShellRuntime(tasks, { processorClaims: claims });
     const exit = Promise.withResolvers<OwnedExit>();
     let terminations = 0;
@@ -166,7 +167,7 @@ describe("shell container processor claims", () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
     const caller = new AbortController();
     const owner = new AbortController();
-    const claims = createProcessorClaims();
+    const claims = await freshProcessorClaims();
     const runtime = createShellRuntime(tasks, { signal: owner.signal, processorClaims: claims });
     let spawns = 0;
     const options = shellOptions("session-a", async () => { spawns++; return makeMockOwnedProcess(); });

@@ -1,7 +1,8 @@
 import * as os from "node:os";
 
 import { unguardedSpawnOwned } from "../../../../helpers/real-process-fixture.js";
-import { capabilityAccessFor, type CapabilityAccess, type ToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { capabilityAccessFor, type CapabilityAccess, type DispatchedToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 import type { CapabilityGrant } from "../../../../../src/orchestration/config/module-policy.js";
 import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
@@ -53,8 +54,8 @@ export function testGrant(
   };
 }
 
-export function makeContext(overrides?: Partial<ToolContext>): ToolContext {
-  return {
+export function makeContext(overrides?: Partial<DispatchedToolContext>): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: os.tmpdir(),
     userDataRoot: `${os.tmpdir()}/.test-account`, projectRoot: os.tmpdir(),
     artifactScopeId: "test-artifacts",
@@ -66,7 +67,7 @@ export function makeContext(overrides?: Partial<ToolContext>): ToolContext {
     // Tests construct tools directly, so the fixture supplies that mapping.
     toolNames: { logical: (name) => name === "apply_patch" ? "edit" : name, presented: (name) => name },
     ...overrides,
-  };
+  });
 }
 
 /** The stored form of an experiment fact, for a writer double that acknowledges every record. */

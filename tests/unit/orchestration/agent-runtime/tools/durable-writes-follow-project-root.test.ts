@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { createMemoryTool } from "../../../../../src/orchestration/modules/learning/tools/memory.js";
 import { createSkillManageTool } from "../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { publishSkillRevision } from "../../../../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../src/workflows/skills.js";
 import { fileTemporaryDirectory } from "../../../../helpers/directories.js";
@@ -21,7 +21,7 @@ const DIRS = { projectRoot: PROJECT, accountHome: HOME, userDataRoot: join(HOME,
 
 /** A recording runtime: a memory write reports success only once its audit fact
  *  is recorded, so the context carries an accepting writer. */
-function context(): ToolContext {
+function context(): DispatchedToolContext {
   return makeContext({
     executionCwd: EXECUTION,
     projectRoot: PROJECT,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
+import type { AgentOptionsOverride } from "../_runner-options.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
 import type { ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient } from "../_model-client.js";
@@ -19,7 +20,7 @@ import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runti
 /** Background dispatch (subagent, workflow) is exposed only to a runner whose
  *  host owns the work it starts, so every dispatch-exposing case supplies an
  *  owner. */
-function makeOptions(overrides?: Partial<AgentOptions>): AgentOptions {
+function makeOptions(overrides?: AgentOptionsOverride): AgentOptions {
   return {
     model: "claude-haiku-4-5-20251001",
     ...testDirectories("/scratch"),

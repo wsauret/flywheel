@@ -58,7 +58,7 @@ interface LaunchedWorkflowFile {
 /** One model-originated launch: the intent the model stated plus the call
  *  context the tool attests. The host that owns the runner stamps the trusted
  *  origin variant, so the model cannot present itself as explicit user intent. */
-export interface ModelWorkflowLaunch extends ModelWorkflowLaunchIntent {
+interface ModelWorkflowLaunch extends ModelWorkflowLaunchIntent {
   readonly model: ModelWorkflowLaunchContext;
   /** The structured launch input as the call passed it. The launch decodes
    *  it against the workflow's input contract. */

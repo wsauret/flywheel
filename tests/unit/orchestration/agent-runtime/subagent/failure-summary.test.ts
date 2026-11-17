@@ -25,6 +25,7 @@ import { asAsyncEventWriter, type EventStore } from "../../../../../src/infra/ev
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 const temporaryDirectory = temporaryDirectories();
 const stores: EventStore[] = [];
@@ -190,11 +191,11 @@ describe("subagent failure summary integration", () => {
       },
     }, () => true, false);
 
-    await tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "fix the test" }, {
+    await tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "fix the test" }, dispatchedToolContext({
       ...makeContext({ toolUseId: "tc_root" }),
       userDataRoot: "/scratch/test-account",
       retrievalSessionId: "test-session",
-    });
+    }));
     await notification.next;
 
     expect(notification.read()).toContain("<status>failed</status>");
