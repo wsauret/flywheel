@@ -44,15 +44,15 @@ export interface DefinitionOverrideBaselineOwner {
   set(physicalOverridePath: string, acknowledgedDefaultHash: string): Promise<void>
 }
 
-export interface ObserveDefinitionOverrideBaselinesOptions {
+export interface AcknowledgeDefinitionOverrideBaselinesOptions {
   readonly userDataRoot: string
   readonly resolutions: readonly DefinitionResolution<unknown>[]
   readonly catalog: BundledDefaultCatalog
 }
 
 /** Completes initial observation before it exposes the manifest mutation authority. */
-export async function createDefinitionOverrideBaselineOwner(options: ObserveDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineOwner> {
-  let records = await observeDefinitionOverrideBaselines(options)
+export async function createDefinitionOverrideBaselineOwner(options: AcknowledgeDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineOwner> {
+  let records = await acknowledgeDefinitionOverrideBaselines(options)
   const mutate = async (change: (current: DefinitionOverrideBaselineRecords) => DefinitionOverrideBaselineRecords): Promise<void> => {
     const manifestPath = join(options.userDataRoot, MANIFEST_NAME)
     const ownership = await acquireLock(`${manifestPath}.lock`)
@@ -67,7 +67,7 @@ export async function createDefinitionOverrideBaselineOwner(options: ObserveDefi
   return {
     records: () => records,
     observe: async (resolutions) => {
-      records = await observeDefinitionOverrideBaselines({ ...options, resolutions })
+      records = await acknowledgeDefinitionOverrideBaselines({ ...options, resolutions })
     },
     set: async (path, hash) => {
       if (!HASH_PATTERN.test(hash)) throw new Error(`Invalid definition override baseline hash: ${hash}`)
@@ -115,7 +115,7 @@ function readOwnedManifest(manifestPath: string): OwnedManifestRead {
 }
 
 /** Observes each physical override once. Read-only observations need no mutation ownership. Snapshot publication completes before a new baseline is committed. */
-export async function observeDefinitionOverrideBaselines(options: ObserveDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineRecords> {
+export async function acknowledgeDefinitionOverrideBaselines(options: AcknowledgeDefinitionOverrideBaselinesOptions): Promise<DefinitionOverrideBaselineRecords> {
   const observed = readDefinitionOverrideBaselines(options.userDataRoot)
   if (observed.kind === "readable") {
     const missing = options.resolutions.some((resolution) => options.catalog.files[resolution.target] !== undefined

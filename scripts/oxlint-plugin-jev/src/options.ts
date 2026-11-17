@@ -1,5 +1,5 @@
 // oxlint-disable flywheel/no-record, typescript/consistent-indexed-object-style, typescript/consistent-type-assertions, unicorn/no-array-for-each -- vendored upstream source keeps its own style; see UPSTREAM.md
-import type { Location, RuleOptionsSchema } from '@oxlint/plugins';
+import type { ESTree, Location, RuleOptionsSchema } from '@oxlint/plugins';
 import type {
   JevPluginOptions,
   JevRule,
@@ -38,6 +38,19 @@ export function snippetNodeFor(node: SnippetNode): SnippetNode {
   if (!isNamedParentType(parentType)) return node;
   const field = NAMED_PARENTS[parentType];
   return ANONYMOUS_FUNCTIONS.has(node.type) && parent[field] === node ? parent : node;
+}
+
+/** The number of top-level statements in a function's body; an arrow's expression body is one. */
+export function statementCount(node: ESTree.Node): number {
+  switch (node.type) {
+    case 'ArrowFunctionExpression':
+      return node.body.type === 'BlockStatement' ? node.body.body.length : 1;
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+      return node.body?.body.length ?? 0;
+    default:
+      return 0;
+  }
 }
 
 export const DEFAULTS = {
@@ -86,6 +99,7 @@ export const SCHEMA = {
             },
           },
           cutoff: { type: 'number', minimum: 0, maximum: 1 },
+          minStatements: { type: 'integer', minimum: 1 },
           message: { type: 'string', minLength: 1 },
         },
       },
@@ -99,8 +113,11 @@ function fail(message: string): never {
 
 function checkRules(rules: readonly JevRule[]): void {
   const seen = new Set<string>();
-  for (const { id, target, location, message } of rules) {
+  for (const { id, target, location, message, minStatements } of rules) {
     if (location && target !== 'file') fail('location is supported only for file rules');
+    if (minStatements !== undefined && target !== 'function') {
+      fail('minStatements is supported only for function rules');
+    }
     if (message !== undefined && message.trim() === '') fail(`rule "${id}" has a blank message`);
     if (seen.has(id)) fail(`rule id "${id}" is used more than once`);
     seen.add(id);

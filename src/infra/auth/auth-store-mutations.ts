@@ -17,8 +17,6 @@ export class AuthStoreMutationError extends Error {
   constructor(readonly conditions: readonly AuthStoreCondition[]) { super("Cannot update auth.json until its storage condition is repaired."); }
 }
 
-function emptyAuthStoreLoadResult(revision = lockedJsonRevision(undefined), conditions: readonly AuthStoreCondition[] = []): AuthStoreLoadResult { return { revision, store: {}, credentialLineages: {}, dropped: [], diagnostics: [], conditions }; }
-
 function fileMalformedCondition(authDirectory: string, revision: string): AuthStoreCondition {
   return { kind: "malformed", scope: "file", authDirectory, path: lockedJsonStorePath(accountSecretFile(authDirectory, AUTH_STORE_FILE)), revision };
 }
@@ -69,7 +67,7 @@ function withConditions(result: AuthStoreLoadResult, authDirectory: string, revi
 function loadAuthStoreFromAccess(access: AuthProfileAccess, classifySlot: CredentialSlotClassifier, installedIds?: readonly string[]): AuthStoreLoadResult {
   const { authDirectory } = access;
   const bytes = readAuthStoreBytesForMutation(access);
-  if (bytes === undefined) return emptyAuthStoreLoadResult();
+  if (bytes === undefined) return { revision: lockedJsonRevision(undefined), store: {}, credentialLineages: {}, dropped: [], diagnostics: [], conditions: [] };
   const revision = lockedJsonRevision(bytes);
   let result: AuthStoreLoadResult;
   try {

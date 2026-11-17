@@ -62,6 +62,17 @@ const ACCOUNT_OUTPUT_WATCH_ONLY = "Output watches are stated through the account
 
 const log = Log.create({ service: "app-service" })
 
+/** Mutations that `dispatch` admits and answers itself, each with its own
+ *  answer once admission closed. None of them reaches `dispatchMutation`. */
+type AdmittedMutationType =
+  | "background.warm" | "subscription_spend_consent.save" | "command_usage.record" | "model.save_effort" | "model.reset_assignments"
+  | "provider_model.set" | "provider_models.deselect_all" | "provider_models.recheck" | "provider_models.set_auto_enable" | "provider_free_routes.set"
+  | "session.changes.set_viewed" | "session.claim_composer_returns"
+type AdmittedMutations = { readonly [Type in AdmittedMutationType]: Extract<FrontendMutation, { readonly type: Type }> }
+type AdmittedMutationHandlers = {
+  readonly [Type in AdmittedMutationType]: (mutation: AdmittedMutations[Type]) => Promise<MutationResult<FrontendMutation>> | MutationResult<FrontendMutation>
+}
+
 export interface ProviderModelPreferenceService {
   query(profileId: string, target: ProviderModelTarget): Promise<ProviderModelView>
   set(mutation: RuntimeSetProviderModelMutation): Promise<RuntimeSetProviderModelResult>
@@ -291,10 +302,8 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     }
   }
 
-  function dispatch<C extends FrontendMutation>(mutation: C): Promise<MutationResult<C>>
-  async function dispatch(mutation: FrontendMutation): Promise<MutationResult<FrontendMutation>> {
-    if (mutation.type === "session.claim_composer_returns") return admission.admit(() => deps.runtimeSupervisor.claimComposerReturns(mutation.sessionId, mutation.submissionIds)) ?? { ok: false, error: ADMISSION_CLOSED_ERROR }
-    if (mutation.type === "background.warm") {
+  const admittedMutations: AdmittedMutationHandlers = {
+    "background.warm": () => {
       backgroundWarm ??= admission.admit(async () => {
         ensureCatalogSubscription()
         deps.backgroundLane.start()
@@ -308,19 +317,26 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
         throw error
       })
       return backgroundWarm
-    }
-    if (mutation.type === "subscription_spend_consent.save") {
-      return admission.admit(() => deps.subscriptionSpendConsent.mutate(mutation)) ?? { kind: "contention" }
-    }
-    if (mutation.type === "command_usage.record") return admission.admit(async () => (deps.commandUsage.record(mutation.name) ? { ok: true } : { ok: false, error: `"/${mutation.name}" is not a slash command` })) ?? { ok: false, error: ADMISSION_CLOSED_ERROR }
-    if (mutation.type === "model.save_effort") return admission.admit(() => deps.modelAssignments.saveEffort(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "model.reset_assignments") return admission.admit(() => deps.modelAssignments.resetDefaults(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_model.set") return admission.admit(() => deps.providerModels.set(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.deselect_all") return admission.admit(() => deps.providerModels.deselectAll(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.recheck") return admission.admit(() => deps.providerModels.recheck(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_models.set_auto_enable") return admission.admit(() => deps.providerModels.setAutoEnableNewModels(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "provider_free_routes.set") return admission.admit(() => deps.providerModels.setFreeRoutes(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR))
-    if (mutation.type === "session.changes.set_viewed") return admission.admit(async () => (await deps.sessionChanges()).setViewed(mutation)) ?? { status: "refused", message: "Runtime is closing" }
+    },
+    "subscription_spend_consent.save": (mutation) => admission.admit(() => deps.subscriptionSpendConsent.mutate(mutation)) ?? { kind: "contention" },
+    "command_usage.record": (mutation) => admission.admit(async () => (deps.commandUsage.record(mutation.name) ? { ok: true } : { ok: false, error: `"/${mutation.name}" is not a slash command` })) ?? { ok: false, error: ADMISSION_CLOSED_ERROR },
+    "model.save_effort": (mutation) => admission.admit(() => deps.modelAssignments.saveEffort(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "model.reset_assignments": (mutation) => admission.admit(() => deps.modelAssignments.resetDefaults(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "provider_model.set": (mutation) => admission.admit(() => deps.providerModels.set(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "provider_models.deselect_all": (mutation) => admission.admit(() => deps.providerModels.deselectAll(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "provider_models.recheck": (mutation) => admission.admit(() => deps.providerModels.recheck(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "provider_models.set_auto_enable": (mutation) => admission.admit(() => deps.providerModels.setAutoEnableNewModels(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "provider_free_routes.set": (mutation) => admission.admit(() => deps.providerModels.setFreeRoutes(mutation)) ?? Promise.reject(new Error(ADMISSION_CLOSED_ERROR)),
+    "session.changes.set_viewed": (mutation) => admission.admit(async () => (await deps.sessionChanges()).setViewed(mutation)) ?? { status: "refused", message: "Runtime is closing" },
+    "session.claim_composer_returns": (mutation) => admission.admit(() => deps.runtimeSupervisor.claimComposerReturns(mutation.sessionId, mutation.submissionIds)) ?? { ok: false, error: ADMISSION_CLOSED_ERROR },
+  }
+  const isAdmittedMutation = (mutation: FrontendMutation): mutation is AdmittedMutations[AdmittedMutationType] => Object.hasOwn(admittedMutations, mutation.type)
+  // A generic key pairs each mutation with its own handler, which a union key cannot.
+  const dispatchAdmitted = <Type extends AdmittedMutationType>(type: Type, mutation: AdmittedMutations[Type]) => admittedMutations[type](mutation)
+
+  function dispatch<C extends FrontendMutation>(mutation: C): Promise<MutationResult<C>>
+  async function dispatch(mutation: FrontendMutation): Promise<MutationResult<FrontendMutation>> {
+    if (isAdmittedMutation(mutation)) return dispatchAdmitted(mutation.type, mutation)
     if (mutation.type === "session.changes.undo") return admission.admit(() => dispatchMutation(mutation)) ?? { status: "refused", message: "Runtime is closing" }
     return admission.admit(() => dispatchMutation(mutation)) ?? moduleMutationRefusal(mutation, ADMISSION_CLOSED_ERROR) ?? { ok: false, error: ADMISSION_CLOSED_ERROR }
   }
@@ -382,7 +398,6 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
   return withLoggedFlywheelAppService(service, log)
 
   async function dispatchMutation(mutation: FrontendMutation): Promise<MutationResult<FrontendMutation>> {
-    if (mutation.type === "session.claim_composer_returns") return deps.runtimeSupervisor.claimComposerReturns(mutation.sessionId, mutation.submissionIds)
     startupTrace(`app-service dispatch ${mutation.type} start`)
     if (isAuthMutation(mutation)) return dispatchAuthMutation(deps, mutation)
     if (isSettingsMutation(mutation)) return dispatchSettingsMutation(deps, mutation)
@@ -393,7 +408,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       deps.backgroundIndex.release(mutation.sessionId)
       return { ok: true }
     }
-    if (mutation.type === "command_usage.record" || mutation.type === "model.save_effort" || mutation.type === "model.reset_assignments" || mutation.type === "provider_model.set" || mutation.type === "provider_models.deselect_all" || mutation.type === "provider_models.recheck" || mutation.type === "provider_models.set_auto_enable" || mutation.type === "provider_free_routes.set" || mutation.type === "background.warm" || mutation.type.startsWith("auth.profile.") || mutation.type === "subscription_spend_consent.save" || mutation.type === "session.changes.set_viewed") {
+    if (isAdmittedMutation(mutation) || mutation.type.startsWith("auth.profile.")) {
       throw new Error(`Mutation ${mutation.type} reached the basic mutation dispatcher`)
     }
     const targetSessionId = mutationSessionId(mutation)

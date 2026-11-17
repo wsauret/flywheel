@@ -46,6 +46,7 @@ disabled_modules = [
   "provider-openai-api",
   "provider-chatgpt",
   "provider-deepseek",
+  "provider-opencode-go",
   "provider-supergrok",
   "remote",
   "side-question",

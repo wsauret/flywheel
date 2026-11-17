@@ -281,7 +281,12 @@ export async function runSkillsDoctor(args: readonly string[], directories: Proj
     const definitions = openProject(directories)
     let findings = inspectSkillLibrary({ revision: definitions.skills(), directories, ...(includeUnowned ? { includeUnowned: true } : {}) })
     if (fix) {
-      const { repaired, linked } = repairMovedPaths(findings, definitions.skills())
+      const { repaired, linked, failed } = repairMovedPaths(findings, definitions.skills())
+      if (failed.length > 0) {
+        console.log(`Could not repair ${failed.length} moved path(s):`)
+        for (const { finding, errorKind } of failed) console.log(`  ${finding.skill}/${finding.file}: ${finding.path} -> ${finding.movedTo} (${errorKind})`)
+        console.log("")
+      }
       if (linked.length > 0) {
         console.log(`Left ${linked.length} moved path(s) in linked skills; edit them where the link points:`)
         for (const entry of linked) console.log(`  ${entry.skill}/${entry.file}: ${entry.path} -> ${entry.movedTo}`)
@@ -293,7 +298,7 @@ export async function runSkillsDoctor(args: readonly string[], directories: Proj
         console.log("")
         definitions.reload()
         findings = inspectSkillLibrary({ revision: definitions.skills(), directories, ...(includeUnowned ? { includeUnowned: true } : {}) })
-      } else if (linked.length === 0) {
+      } else if (linked.length === 0 && failed.length === 0) {
         console.log("No path was confidently relocatable; nothing repaired.\n")
       }
     }

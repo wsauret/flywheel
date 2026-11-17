@@ -17,7 +17,7 @@ import {
   proposalRecordIds,
   readOperationManifest,
   readProposalRecord,
-  readProposalRecordsForReconciliation,
+  readProposalRecordsQuarantiningUnusable,
   writeOperationManifest,
   type ManifestArea,
   type OperationManifest,
@@ -109,7 +109,7 @@ describe("the recovery walk enumerates records, not directory entries", () => {
       truncateSync(path, 4 * 1024 * 1024);
     }
 
-    expect(readProposalRecordsForReconciliation(GLOBAL_ROOT)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(GLOBAL_ROOT)).toEqual([]);
     expect(existsSync(proposalPath(GLOBAL_ROOT, recordId(16)))).toBe(false);
   });
 });
@@ -159,13 +159,13 @@ describe("persisted record verification and recovery", () => {
     const root = globalRoot();
     const path = proposalPath(root, proposal.proposalId);
     writeRecord(path, proposal);
-    expect(readProposalRecordsForReconciliation(root)).toHaveLength(1);
+    expect(readProposalRecordsQuarantiningUnusable(root)).toHaveLength(1);
     const content = readFileSync(path);
     const outside = join(TMP, "outside-proposals");
     renameSync(dirname(path), outside);
     symlinkSync(outside, dirname(path), process.platform === "win32" ? "junction" : "dir");
 
-    expect(readProposalRecordsForReconciliation(root)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(root)).toEqual([]);
     expect(readFileSync(join(outside, `${proposal.proposalId}.json`))).toEqual(content);
   });
 
@@ -179,7 +179,7 @@ describe("persisted record verification and recovery", () => {
     mkdirSync(outside);
     symlinkSync(outside, join(operationsDir(root), "quarantine"), process.platform === "win32" ? "junction" : "dir");
 
-    expect(readProposalRecordsForReconciliation(root)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(root)).toEqual([]);
     expect(readFileSync(path)).toEqual(content);
     expect(readdirSync(outside)).toEqual([]);
   });

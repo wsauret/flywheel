@@ -55,7 +55,7 @@ export function useFindModal(deps: FindModalDeps): FindModalHook {
   let generation = 0
   let timer: ReturnType<typeof setTimeout> | undefined
 
-  async function run(): Promise<void> {
+  async function runSearch(): Promise<void> {
     const text = query().trim()
     const sessionId = deps.foregroundSessionId()
     const mine = ++generation
@@ -78,7 +78,7 @@ export function useFindModal(deps: FindModalDeps): FindModalHook {
   }
   function schedule(): void {
     if (timer !== undefined) clearTimeout(timer)
-    timer = setTimeout(() => { void run() }, DEBOUNCE_MS)
+    timer = setTimeout(() => { void runSearch() }, DEBOUNCE_MS)
   }
 
   const hitSession = (hit: TranscriptSearchHit): SessionCatalogRow | undefined => deps.sessions().find((row) => row.id === hit.sessionId)
@@ -133,7 +133,7 @@ export function useFindModal(deps: FindModalDeps): FindModalHook {
     setResult(undefined)
     setCursor(0)
     deps.modal.replace(deps.renderModal, { onKey: handleKey })
-    if (initialQuery.trim().length > 0) void run()
+    if (initialQuery.trim().length > 0) void runSearch()
   }
 
   return { query, scope, hits, total, busy, cursor, openFindModal, selectRow, openRow, hitSession }

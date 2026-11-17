@@ -130,7 +130,18 @@ export interface RequestProviderRuntime {
   readonly runtimeConfig?: RuntimeConfigRequestCapture;
 }
 
-interface RequestToolSurface {
+/** What one request was admitted under: its module composition, its runtime policy, and the provider clients
+ *  prepared from both. A capability plan has no provider runtime. */
+export interface RequestCapture {
+  /** Immutable module composition that admitted this request. */
+  readonly moduleSnapshot: FirstPartyModuleComposition;
+  /** Next-request policy captured at the same admission boundary as tools and providers. */
+  readonly runtimeConfig: RuntimeConfigRequestCapture;
+  /** Main and auxiliary provider clients prepared from `moduleSnapshot`. */
+  readonly providerRuntime?: RequestProviderRuntime;
+}
+
+interface RequestToolSurface extends RequestCapture {
   readonly tools: ReadonlyMap<string, RuntimeTool>;
   /** Provider-visible tool name to its exact selected registration id. */
   readonly registrationIds: ReadonlyMap<string, string>;
@@ -151,16 +162,10 @@ interface RequestToolSurface {
   /** Resolves old unstamped calls only when their recorded model profile selects
    *  exactly one registration for the recorded provider-visible name. */
   historicalRegistrationId(name: string, model: string | undefined, provider: import("../../infra/llm/model-family.js").ModelFamily | undefined): string | undefined;
-  /** Immutable module composition that admitted this request. */
-  readonly moduleSnapshot: FirstPartyModuleComposition;
-  /** Next-request policy captured at the same admission boundary as tools and providers. */
-  readonly runtimeConfig: RuntimeConfigRequestCapture;
   /** Capability admission fixed with the advertised tool surface. */
   readonly executionAdmission: ExecutionAdmission;
   /** Provider planning, factories, and billing derived from this exact request composition. */
   readonly providerRegistry: AccessProviderRegistry;
-  /** Main and auxiliary provider clients prepared from `moduleSnapshot`. */
-  readonly providerRuntime?: RequestProviderRuntime;
   /** Complete skill revision captured with this request's prompt and executable tools. */
   readonly skillRegistry?: ToolExposurePlan["skillRegistry"];
   prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile): Promise<RequestStablePrompt>;
@@ -199,10 +204,8 @@ export function requestCapabilities(plan: PlannedRequest): CapabilityCheck {
 
 function pin(
   plan: PlannedRequest,
-  moduleSnapshot: FirstPartyModuleComposition,
-  runtimeConfig: RuntimeConfigRequestCapture,
+  { moduleSnapshot, runtimeConfig, providerRuntime }: RequestCapture,
   staticTokenCache: StaticTokenCache,
-  providerRuntime?: RequestProviderRuntime,
 ): RequestToolSurface {
   const tools = plan.tools;
   const enabledModuleIds = new Set(moduleSnapshot.enabledModuleIds);
@@ -326,23 +329,16 @@ function pin(
 
 /** Owner that captures one coherent capability composition for every request. */
 export async function createRequestToolSurface(
-  plan: (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, providerRuntime: RequestProviderRuntime | undefined) => PlannedRequest | Promise<PlannedRequest>,
+  plan: (request: RequestCapture) => PlannedRequest | Promise<PlannedRequest>,
   moduleSelection: () => FirstPartyModuleComposition,
   captureRuntimeConfig: CaptureRuntimeConfig,
   prepareProviderRuntime?: (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, selection?: RequestModelSelection) => Promise<RequestProviderRuntime>,
   captureSelection?: (runtimeConfig: RuntimeConfigRequestCapture, moduleSnapshot: FirstPartyModuleComposition) => Promise<RequestModelSelection>,
-  initialProvider?: {
-    readonly moduleSnapshot: FirstPartyModuleComposition;
-    readonly runtimeConfig: RuntimeConfigRequestCapture;
-    readonly providerRuntime: RequestProviderRuntime;
-  },
+  initialProvider?: RequestCapture & { readonly providerRuntime: RequestProviderRuntime },
 ): Promise<RequestToolSurfaceOwner> {
   const staticTokenCache: StaticTokenCache = {};
-  const capture = async (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, providerRuntime?: RequestProviderRuntime): Promise<RequestToolSurface> =>
-    pin(await plan(moduleSnapshot, runtimeConfig, providerRuntime), moduleSnapshot, runtimeConfig, staticTokenCache, providerRuntime);
-  let initialRequest = initialProvider
-    ? await capture(initialProvider.moduleSnapshot, initialProvider.runtimeConfig, initialProvider.providerRuntime)
-    : undefined;
+  const capture = async (request: RequestCapture): Promise<RequestToolSurface> => pin(await plan(request), request, staticTokenCache);
+  let initialRequest = initialProvider ? await capture(initialProvider) : undefined;
   let pinned: RequestToolSurface | undefined = initialRequest;
   const resolve = async (): Promise<RequestToolSurface> => {
     const moduleSnapshot = moduleSelection();
@@ -362,7 +358,7 @@ export async function createRequestToolSurface(
     if (reuseInitial) pinned = initial;
     else {
       const providerRuntime = await prepareProviderRuntime?.(moduleSnapshot, runtimeConfig, selection);
-      pinned = await capture(moduleSnapshot, providerRuntime?.runtimeConfig ?? runtimeConfig, providerRuntime);
+      pinned = await capture({ moduleSnapshot, runtimeConfig: providerRuntime?.runtimeConfig ?? runtimeConfig, ...(providerRuntime ? { providerRuntime } : {}) });
     }
     return pinned;
   };

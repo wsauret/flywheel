@@ -349,7 +349,7 @@ export function publishSkillRevision(
   skills: ReadonlyMap<string, SkillDefinition>,
   bundledCorpus: ReadonlyMap<string, BundledSkillPackage> = new Map(),
 ): SkillRegistryRevision {
-  const catalog = sealCatalog(skills);
+  const catalog = sealReadonlyMap(skills);
   const corpus = sealReadonlyMap(bundledCorpus);
   const corpusIdentity = bundledCorpusIdentity(corpus);
   const corePackages = sealReadonlyMap(new Map([...corpus].filter(([, pkg]) => pkg.sourceKind === "agent")));
@@ -363,15 +363,11 @@ export function publishSkillRevision(
   return Object.freeze({ revision, skills: catalog, bundledCorpus: corpus, bundledCorpusIdentity: corpusIdentity, corePackages, coreManifest, coreIdentity, modelInvocable: Object.freeze(modelInvocable) });
 }
 
-/** A read-only catalog with no mutator to reach. A frozen `Map` still accepts
+/** A read-only map with no mutator to reach. A frozen `Map` still accepts
  *  `set` and `delete`, so a revision that held one would change under every
  *  consumer that already read it as soon as anything cast it back to `Map`.
  *  This view holds the only reference to its entries and exposes no way to
  *  write them, which is what "a revision is never mutated" has to mean. */
-function sealCatalog(skills: ReadonlyMap<string, SkillDefinition>): ReadonlyMap<string, SkillDefinition> {
-  return sealReadonlyMap(skills);
-}
-
 function sealReadonlyMap<K, V>(source: ReadonlyMap<K, V>): ReadonlyMap<K, V> {
   const entries = new Map(source);
   const catalog: ReadonlyMap<K, V> = Object.freeze({

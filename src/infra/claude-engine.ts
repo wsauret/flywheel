@@ -62,9 +62,9 @@ export interface EngineHost {
   /** The `claude` engine that ships with Flywheel (`enginePath`). */
   readonly enginePath: string;
   /** The account the engine runs on. The engine names its keychain item for `USER`, and on macOS the
-   *  system `security` command finds the login keychain through the account's home (`keychainFolder`). */
+   *  system `security` command finds the login keychain through the account's home (`writeKeychainLauncher`). */
   readonly account: OsAccount;
-  /** The platform the engine runs on, which decides how the engine reaches its keychain (`keychainFolder`). */
+  /** The platform the engine runs on, which decides how the engine reaches its keychain (`writeKeychainLauncher`). */
   readonly platform: NodeJS.Platform;
   /** The host environment the allowlist reads from. */
   readonly hostEnvironment: { readonly [name: string]: string | undefined };
@@ -101,7 +101,7 @@ export function processEngineHost(account: OsAccount, overrides: Partial<Pick<En
  *  engine that Flywheel starts reads or writes the default directory, which the person's own `claude` installation uses. The
  *  engine names its keychain item after that exact path, so each config directory keeps an item of its own. On macOS it
  *  also places the directory's `security` launcher, which reaches the login keychain of `keychainHome`
- *  (`keychainFolder`). */
+ *  (`writeKeychainLauncher`). */
 export function separatedEngineEnvironment(host: EngineHost, configDir: string, keychainHome: string) {
   const inherited = Object.fromEntries(INHERITED_VARIABLES.flatMap((name) => {
     const value = host.hostEnvironment[name];
@@ -124,7 +124,7 @@ export function separatedEngineEnvironment(host: EngineHost, configDir: string, 
     USER: host.account.user,
     ...inherited,
     ...(host.timeZone === undefined ? {} : { TZ: host.timeZone }),
-    ...(host.platform === "darwin" ? { PATH: hostPath === undefined ? keychainFolder(configDir, keychainHome) : `${keychainFolder(configDir, keychainHome)}:${hostPath}` } : {}),
+    ...(host.platform === "darwin" ? { PATH: hostPath === undefined ? writeKeychainLauncher(configDir, keychainHome) : `${writeKeychainLauncher(configDir, keychainHome)}:${hostPath}` } : {}),
     CLAUDE_CONFIG_DIR: configDir,
     CLAUDE_CODE_TMPDIR: host.temporaryDirectory,
     ...ENGINE_TOGGLES,
@@ -138,7 +138,7 @@ export function separatedEngineEnvironment(host: EngineHost, configDir: string, 
  * login keychain as before, and its items keep their names, which come from `CLAUDE_CONFIG_DIR` and `USER`. The
  * launcher is written whenever its text differs, so a directory that an earlier Flywheel made gets it at its next engine.
  */
-function keychainFolder(configDir: string, keychainHome: string): string {
+function writeKeychainLauncher(configDir: string, keychainHome: string): string {
   const folder = join(configDir, "keychain");
   const launcher = join(folder, "security");
   const script = `#!/bin/sh\nHOME=${shellQuoted(keychainHome)} exec /usr/bin/security "$@"\n`;

@@ -222,7 +222,7 @@ describe("provider-model auth publication", () => {
     try {
       intake.seed(bus.snapshotPosition({ kind: "cursor", cursor }))
       await projection.snapshot(scope)
-      models.publish(models.prepare({ profileId: profile.id, authRevision: "a", preferenceRevision: "p", catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
+      models.publish(models.prepare({ profileId: profile.id, inputRevision: { auth: "a", preferences: "p" }, catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
       await completed.promise
       await bus.drain()
       expect(applied).toHaveLength(1)

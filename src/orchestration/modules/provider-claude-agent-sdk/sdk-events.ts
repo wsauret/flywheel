@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SDKAssistantMessageError, SDKMessage, SDKRateLimitInfo } from "@anthropic-ai/claude-agent-sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
-import { Cause, Effect, Exit } from "effect";
+import { Effect } from "effect";
 import { ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../agent-runtime/llm/errors.js";
 import type { QuotaExhaustionObservation } from "../../agent-runtime/llm/provider-availability-types.js";
 import { ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
@@ -154,20 +154,20 @@ export function reportsSpentUsage(text: string, rejection: UsageLimitRejection |
 /**
  * Reads one query's SDK messages until the stream ends and hands each one, sorted, to `onInput`. The turn result that
  * answers a replayed row settles its wait in `acks` and never reaches `onInput`. When the stream ends, fails, or the
- * reading fiber is interrupted, every open wait fails. The effect never fails: it succeeds with the stream's failure,
- * or with undefined when the stream ended.
+ * reading fiber is interrupted, every open wait fails. The effect succeeds when the stream ended and fails with the
+ * stream's own failure.
  */
-export function readSdkMessages(messages: AsyncIterable<SDKMessage>, acks: Pick<ReplayAcks, "settle" | "end">, onInput: (input: SdkInput) => void): Effect.Effect<unknown> {
+export function readSdkMessages(messages: AsyncIterable<SDKMessage>, acks: Pick<ReplayAcks, "settle" | "end">, onInput: (input: SdkInput) => void): Effect.Effect<void, Error> {
   return Effect.gen(function* () {
     const iterator = messages[Symbol.asyncIterator]();
     while (true) {
       // The stream's own failure, such as the SDK's report that the CLI exited, names the cause; Effect's wrapper does not.
-      const next = yield* Effect.tryPromise({ try: () => iterator.next(), catch: (error) => error });
+      const next = yield* Effect.tryPromise({ try: () => iterator.next(), catch: (error) => error instanceof Error ? error : new Error(String(error)) });
       if (next.done === true) return;
       const input = readSdkMessage(next.value, acks);
       if (input !== undefined) onInput(input);
     }
-  }).pipe(Effect.exit, Effect.map((exit) => (Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined)), Effect.ensuring(Effect.sync(() => { acks.end(); })));
+  }).pipe(Effect.ensuring(Effect.sync(() => { acks.end(); })));
 }
 
 /** One SDK message, sorted for the query's owner, or undefined for the turn result that answers a replayed row: that

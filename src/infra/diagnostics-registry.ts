@@ -62,7 +62,7 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // process caused it. A kept revision is a warning from the registry instead.
   ["definitions.revision.published", { tier: "info" }],
   // One record per fact a served request proved about a model for one exact
-  // account generation: a refused model, or a narrower granted window.
+  // account lineage: a refused model, or a narrower granted window.
   ["model.refusal.recorded", { tier: "info" }],
   // One content-free record per account login episode decision, never per waiter or repeated refusal.
   ["provider.claude_sdk.login.condition", { tier: "info" }],

@@ -1,7 +1,10 @@
 import type { Accessor } from "solid-js"
+import { errorMessage } from "../../infra/error-message.js"
+import { Log } from "../../infra/log.js"
 import { SLASH_COMMAND_PATTERN } from "../../infra/slash-command.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { OffCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
+import { lostWithLane } from "../../protocol/client/connection-failures.js"
 import { offCommandRefusal } from "../../protocol/client/off-command.js"
 import { routeSlashToken, UNKNOWN_COMMAND_NOTICE, type CommandCatalogReadiness } from "../../protocol/client/slash-route.js"
 import { createAcceptanceReporter } from "../hooks/report-async.js"
@@ -9,6 +12,7 @@ import type { ShellServices } from "../hooks/shell-state.js"
 import type { BuiltInCommandDefinition, CommandSpec } from "./command-types.js"
 
 const SLASH_PATTERN = SLASH_COMMAND_PATTERN
+const usageLog = Log.create({ service: "command-usage" })
 const QUOTED_ARG = /^"([\s\S]*)"$/
 
 export interface CommandDispatchDeps<Context = unknown> {
@@ -42,10 +46,13 @@ export interface CommandDispatch {
 /** Records accepted command use. A record still crossing when the terminal
  *  exits, such as the exit command's own, finishes before the runtime client
  *  closes, because that close lets every call in flight finish. A record the
- *  transport loses is not worth a word to the person. */
+ *  lane loses is not worth a word to anyone; any other failure is recorded
+ *  in the diagnostics log, never shown to the person. */
 export function createCommandUsageRecorder(appService: Pick<RuntimeClient, "dispatch">): (token: string) => void {
   return (token) => {
-    void appService.dispatch({ type: "command_usage.record", name: token }).catch(() => {})
+    void appService.dispatch({ type: "command_usage.record", name: token }).catch((cause: unknown) => {
+      if (!lostWithLane(cause)) usageLog.warn("command usage record failed", { name: token, error: errorMessage(cause) })
+    })
   }
 }
 

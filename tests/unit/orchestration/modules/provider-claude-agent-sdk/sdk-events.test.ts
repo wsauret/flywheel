@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { Effect } from "effect";
+import { Cause, Effect, Exit } from "effect";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SDKMessage, SDKRateLimitInfo } from "@anthropic-ai/claude-agent-sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
@@ -193,11 +193,10 @@ describe("the error map", () => {
     }
     const acks = { settle: (uuid: string | undefined) => { settled.push(uuid); return uuid === "replayed"; }, end: () => { ended = true; } };
 
-    const failure = await Effect.runPromise(readSdkMessages(stream(), acks, (input) => { inputs.push(input.kind); }));
+    const exit = await Effect.runPromiseExit(readSdkMessages(stream(), acks, (input) => { inputs.push(input.kind); }));
 
     // The CLI's own failure, not a wrapper that names only the call that failed.
-    expect(failure).toBeInstanceOf(Error);
-    expect(String(failure)).toBe("Error: engine process exited with code 1");
+    expect(Exit.isFailure(exit) ? String(Cause.squash(exit.cause)) : "succeeded").toBe("Error: engine process exited with code 1");
     expect(settled).toEqual(["replayed", "pushed"]);
     expect(inputs).toEqual(["turn-result"]);
     expect(ended).toBe(true);

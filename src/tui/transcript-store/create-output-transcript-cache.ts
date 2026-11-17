@@ -15,11 +15,10 @@ import { transcriptIdentitySample } from "../../protocol/client/transcript-delta
 import { adoptedBlocks, type ChatSubmissionWindow } from "../../protocol/client/chat-submissions.js"
 import { createResidency, type ResidentLanes } from "../../protocol/client/residency.js"
 
-type StreamingText = OutputView["streamingToolText"]
 type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 type MutableSnapshot = Omit<Mutable<TranscriptSnapshot>, "blocks" | "window" | "status"> & { blocks: FrontendOutputBlock[]; window: Mutable<TranscriptSnapshot["window"]>; status: TranscriptStatus }
 interface TranscriptSnapshots { [sessionId: string]: TranscriptSnapshot }
-interface StreamingTextBySession { [sessionId: string]: StreamingText }
+interface StreamingTextBySession { [sessionId: string]: OutputView["streamingToolText"] }
 interface FreshnessBySession { [sessionId: string]: TranscriptFreshness }
 interface DisclosureByKey { [key: string]: boolean }
 interface CountBySession { [sessionId: string]: number }

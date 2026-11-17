@@ -4,10 +4,14 @@ import { createProviderRequestAuditWriter } from "./llm/provider-request-audit.j
 import type { AgentConversation, AgentOptions } from "./types.js";
 import { projectToolHistoryAsContext } from "./llm/tool-history-projection.js";
 
-export interface RuntimeConversation {
+/** The keys that scope a conversation's provider session, artifacts, and retrieval. */
+export interface RuntimeConversationScopes {
   readonly providerSessionKey: string;
   readonly artifactScopeId: string;
   readonly retrievalSessionId: string;
+}
+
+export interface RuntimeConversation extends RuntimeConversationScopes {
   readonly sessionId?: string;
   readonly aggregateId?: string;
   readonly requestAccounting?: Extract<AgentConversation, { kind: "replay" }>["requestAccounting"];
@@ -18,21 +22,15 @@ export interface RuntimeConversation {
   readonly seed: () => AgentLoopSeed | Promise<AgentLoopSeed>;
 }
 
-export interface RuntimeConversationFallbacks {
-  readonly providerSessionKey: string;
-  readonly artifactScopeId: string;
-  readonly retrievalSessionId: string;
-}
-
 const EMPTY_PERSISTENCE: AgentLoopPersistence = { history: { append: () => {} } };
-function sessionScopes(sessionId: string | undefined, fallbacks: RuntimeConversationFallbacks) {
+function sessionScopes(sessionId: string | undefined, fallbacks: RuntimeConversationScopes) {
   return {
     artifactScopeId: sessionId ?? fallbacks.artifactScopeId,
     retrievalSessionId: sessionId ?? fallbacks.retrievalSessionId,
   };
 }
 
-export function resolveRuntimeConversation(conversation: AgentConversation, fallbacks: RuntimeConversationFallbacks): RuntimeConversation {
+export function resolveRuntimeConversation(conversation: AgentConversation, fallbacks: RuntimeConversationScopes): RuntimeConversation {
   switch (conversation.kind) {
     case "durable-tree":
       return {

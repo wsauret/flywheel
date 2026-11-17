@@ -16,5 +16,9 @@ export default defineConfig({
   rules: {
     ...Object.fromEntries(effectSourceJevRules.map((rule) => [`${effectJevPluginName}/${rule.id}`, "error"])),
     ...Object.fromEntries(martinFowlerJevRules.map((rule) => [`${martinFowlerJevPluginName}/${rule.id}`, "warn"])),
+    // Flywheel names small helpers on purpose, and almost every finding of this rule had no location.
+    [`${martinFowlerJevPluginName}/lazy-element`]: "off",
+    // A measured sweep of src/ found no real insider trading in any finding.
+    [`${martinFowlerJevPluginName}/insider-trading`]: "off",
   },
 });

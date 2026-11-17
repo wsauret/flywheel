@@ -160,7 +160,7 @@ type ModelsDevBaselineForListing = (contribution: ModelCatalogContribution) => S
 
 export interface ModelListingClient {
   getModelCatalogs(auth: AuthContext, request?: ModelListingRequest): Promise<AccessProviderModelCatalogs>;
-  /** Saves what a served request proved about one wire model for the exact account generation that `auth` and
+  /** Saves what a served request proved about one wire model for the exact account lineage that `auth` and
    *  `subscriptions` hold, and the next listing applies it. Returns false, and saves nothing, for an access-only
    *  connection, a provider without a saved catalog, or a credential that is no longer current. A failed write is a
    *  warning, never an error. */
@@ -175,7 +175,7 @@ interface ModelRefusalInput {
   readonly refusal: ModelRefusal;
 }
 
-/** One candidate's listing and the live and ended refusals saved for its account generation. */
+/** One candidate's listing and the live and ended refusals saved for its account lineage. */
 interface ListedCandidate {
   readonly listed: AccessProviderCandidateModels;
   readonly refusals: SavedModelRefusals;
@@ -193,6 +193,19 @@ interface ModelListingRequest {
   /** The caller's launch authority. A provider whose listing runs a local process launches it only in this scope, so
    *  the process ends with the caller; without a scope that listing fails and its fallback applies. */
   readonly launcher?: LauncherScope;
+}
+
+/** One candidate account to list, captured once with the evidence saved for its exact account lineage. */
+interface ListingCandidateContext {
+  readonly definition: AccessProviderDefinition;
+  readonly contribution: NonNullable<AccessProviderDefinition["dynamicCatalog"]>;
+  readonly auth: AuthContext;
+  readonly candidate: AccessProviderCandidate;
+  readonly instance: CapturedSubscriptionCredential | undefined;
+  readonly credential: RuntimeCredential;
+  readonly lineage: string | undefined;
+  readonly savedRows: readonly CatalogCanonicalRow[] | undefined;
+  readonly signal: AbortSignal;
 }
 
 /** What every candidate of one listing call shares. */
@@ -312,7 +325,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
 
   const evidence = createSavedListingEvidence({ withProfile, now });
   const readSaved = (account: AccessProviderAccountIdentity, lineage: string, limits: CatalogLimits) =>
-    options.oauthPersistence === "access-only" ? Promise.resolve(undefined) : evidence.read(account, lineage, limits);
+    options.oauthPersistence === "access-only" ? Promise.resolve(undefined) : evidence.read({ account, lineage }, limits);
 
   async function recordModelRefusal(input: ModelRefusalInput): Promise<boolean> {
     const { candidate, wireModelId, refusal } = input;
@@ -320,7 +333,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     const lineage = capturedCredentialLineage(candidate, input.auth, instance);
     const limits = definitions.get(candidate.providerId)?.dynamicCatalog?.limits;
     if (lineage === undefined || limits === undefined || options.oauthPersistence === "access-only") return false;
-    const saved = await evidence.recordRefusal(accessProviderAccountIdentity(candidate), lineage, wireModelId, refusal, limits);
+    const saved = await evidence.recordRefusal({ account: accessProviderAccountIdentity(candidate), lineage }, wireModelId, refusal, limits);
     DebugLog.record({ type: "model.refusal.recorded", payload: {
       providerId: candidate.providerId, wireModelId, kind: refusal.kind, ...(refusal.kind === "extended-context" ? { contextLimit: refusal.contextLimit } : {}), saved,
     } });
@@ -331,17 +344,9 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
    *  listing that extends the baseline serves the models it names at once, so its candidates are only the models.dev
    *  rows it does not name; its entry saves those listed rows, from which every later mode reads them. An `audit`
    *  pass probes what the saved audit leaves due and every refused candidate again (`runAccessAudit`). */
-  async function resolveAudited(
-    definition: AccessProviderDefinition,
-    contribution: NonNullable<AccessProviderDefinition["dynamicCatalog"]>,
+  async function listAuditedAccountModels(
+    { definition, contribution, auth, candidate, instance, credential: capturedCredential, lineage, savedRows, signal }: ListingCandidateContext,
     probe: NonNullable<NonNullable<AccessProviderDefinition["dynamicCatalog"]>["probeAccess"]>,
-    auth: AuthContext,
-    candidate: AccessProviderCandidate,
-    instance: CapturedSubscriptionCredential | undefined,
-    capturedCredential: RuntimeCredential,
-    lineage: string | undefined,
-    savedRows: readonly CatalogCanonicalRow[] | undefined,
-    signal: AbortSignal,
     { mode, baselineForListing, onAccessAudit, recheckAccount, launcher }: ListingPass,
   ): Promise<AccessProviderCandidateModels> {
     const account = accessProviderAccountIdentity(candidate);
@@ -363,8 +368,8 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
       const fetched = await fetchSettled(definition, auth, instance, credential, signal, launcher);
       if (fetched?.discovery.kind === "auth-invalid") {
         if (durableLineage !== undefined) {
-          await withProfile((profile) => deleteProviderModelCatalog(profile, account, durableLineage, contribution.limits));
-          evidence.forget(account, durableLineage);
+          await withProfile((profile) => deleteProviderModelCatalog(profile, { account, lineage: durableLineage }, contribution.limits));
+          evidence.forget({ account, lineage: durableLineage });
         }
         return invalid();
       }
@@ -383,8 +388,8 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
       }
       const saved = entryRows();
       if (discoveryFailure === undefined && durableLineage !== undefined && saved.length > 0
-        && await withProfile((profile) => writeProviderModelCandidates(profile, account, durableLineage, saved, candidates.map((row) => row.modelId), contribution.limits))) {
-        evidence.keepRows(account, durableLineage, saved);
+        && await withProfile((profile) => writeProviderModelCandidates(profile, { account, lineage: durableLineage }, saved, candidates.map((row) => row.modelId), contribution.limits))) {
+        evidence.keepRows({ account, lineage: durableLineage }, saved);
         audit = await readAudit();
       }
     } else if (mode === "audit" && durableLineage !== undefined && (recheckAccount === undefined ? audit !== undefined : accessProviderAccountKey(recheckAccount) === accessProviderAccountKey(account))) {
@@ -400,7 +405,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
         // A committed result can end a saved refusal, so every read after it, starting with the progress listing,
         // reads the entry again.
         onAccessAudit: async (progress) => {
-          evidence.forget(account, durableLineage);
+          evidence.forget({ account, lineage: durableLineage });
           await onAccessAudit?.(progress);
         },
         audit,
@@ -416,7 +421,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     return assembleAuditedCatalog({ contribution, defaultChatTransport: definition.defaultChatTransport, fallback, listed, listedProvenance, candidates, audit, transferred, joined, discoveryFailure });
   }
 
-  /** Lists one candidate with the evidence saved for its exact account generation, which is read once. */
+  /** Lists one candidate with the evidence saved for its exact account lineage, which is read once. */
   async function resolveCandidate(
     definition: AccessProviderDefinition,
     auth: AuthContext,
@@ -432,24 +437,17 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     const reading = lineage === undefined ? Promise.resolve(undefined) : readSaved(accessProviderAccountIdentity(candidate), lineage, contribution.limits);
     // A fresh listing never reads saved rows, so its fetch starts before the saved read settles.
     const savedRows = pass.mode === "fresh" ? undefined : (await reading)?.rows;
+    const context: ListingCandidateContext = { definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal };
     const listed = contribution.probeAccess !== undefined
-      ? await resolveAudited(definition, contribution, contribution.probeAccess, auth, candidate, instance, credential, lineage, savedRows, signal, pass)
-      : await resolveListed(definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal, pass);
+      ? await listAuditedAccountModels(context, contribution.probeAccess, pass)
+      : await listAccountModels(context, pass);
     // An audit that committed a result forgot the entry, so it is read again with the refusals that the audit left.
     const refusals = pass.mode === "audit" && lineage !== undefined ? readSaved(accessProviderAccountIdentity(candidate), lineage, contribution.limits) : reading;
     return { listed, refusals: (await refusals)?.refusals ?? {} };
   }
 
-  async function resolveListed(
-    definition: AccessProviderDefinition,
-    contribution: NonNullable<AccessProviderDefinition["dynamicCatalog"]>,
-    auth: AuthContext,
-    candidate: AccessProviderCandidate,
-    instance: CapturedSubscriptionCredential | undefined,
-    credential: RuntimeCredential,
-    lineage: string | undefined,
-    savedRows: readonly CatalogCanonicalRow[] | undefined,
-    signal: AbortSignal,
+  async function listAccountModels(
+    { definition, contribution, auth, candidate, instance, credential, lineage, savedRows, signal }: ListingCandidateContext,
     pass: ListingPass,
   ): Promise<AccessProviderCandidateModels> {
     const { mode, baselineForListing } = pass;
@@ -533,15 +531,15 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     if (fetched) recordProviderCatalogFailure(definition.id, fetched.discovery, outcome);
     const effectiveCredential = fetched?.credential ?? credential;
     if (fetched?.discovery.kind === "auth-invalid" && lineage !== undefined && options.oauthPersistence !== "access-only") {
-      await withProfile((profile) => deleteProviderModelCatalog(profile, account, lineage, contribution.limits));
-      evidence.forget(account, lineage);
+      await withProfile((profile) => deleteProviderModelCatalog(profile, { account, lineage }, contribution.limits));
+      evidence.forget({ account, lineage });
     }
     if (!credentialIsCurrent(candidate, auth, instance, effectiveCredential)) {
       return { models: null, outcome: { kind: "unavailable", reason: "authentication-invalid" } };
     }
     if (discoveryCatalog !== undefined && discoveryCatalog.length > 0 && lineage !== undefined && options.oauthPersistence !== "access-only"
-      && await withProfile((profile) => writeProviderModelCatalog(profile, account, lineage, discoveryCatalog, contribution.limits))) {
-      evidence.keepRows(account, lineage, discoveryCatalog);
+      && await withProfile((profile) => writeProviderModelCatalog(profile, { account, lineage }, discoveryCatalog, contribution.limits))) {
+      evidence.keepRows({ account, lineage }, discoveryCatalog);
     }
     if (outcome.kind !== "catalog") {
       return {

@@ -520,14 +520,14 @@ describe("explicit child Resume", () => {
     if (status === "attach_failure" || status === "metrics_failure") {
       let disposed = 0
       const authority = createSubagentSessionAuthority({
-        manager: harness.manager, eventStore: harness.reader, projectionReader: {
+        manager: harness.manager, reader: harness.reader, projectionReader: {
           ...harness.reader,
           readPage: async (...args) => {
             if (status === "metrics_failure" && args[0].types?.includes("budget.process.started")) throw new Error("metrics failed")
             return harness.reader.readPage(...args)
           },
         },
-        eventWriter: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
+        writer: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
         attachProjection: async () => {
           if (status === "attach_failure") throw new Error("attachment failed")
           return { onEvent() {}, queueUserMessage() {}, setStreaming() {}, lifecycle: {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {}, async dispose() { disposed += 1 } }
@@ -563,8 +563,8 @@ describe("explicit child Resume", () => {
 
       let fresh: Awaited<ReturnType<typeof harness.authority.publishNewAttempt>> | undefined
       const superseded = createSubagentSessionAuthority({
-        manager: harness.manager, eventStore: harness.reader, projectionReader: harness.reader,
-        eventWriter: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
+        manager: harness.manager, reader: harness.reader, projectionReader: harness.reader,
+        writer: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
         attachProjection: async () => {
           await harness.writer.append(prepareSessionFactAppend(childSessionId, { type: "subagent.paused", version: 1, actor: "flywheel", payload: { childRunId: "opening-stale", pausedBy: "person" } }))
           await harness.manager.updateLifecycleState(childSessionId, "inactive")
@@ -590,8 +590,8 @@ describe("explicit child Resume", () => {
     const entered = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()
     const openingAuthority = createSubagentSessionAuthority({
-      manager: harness.manager, eventStore: harness.reader, projectionReader: harness.reader,
-      eventWriter: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
+      manager: harness.manager, reader: harness.reader, projectionReader: harness.reader,
+      writer: harness.writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }),
       attachProjection: async () => {
         entered.resolve()
         await release.promise

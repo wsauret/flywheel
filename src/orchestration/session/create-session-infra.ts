@@ -193,24 +193,24 @@ interface FactPersistence {
 export function wireSessionSubscribers(
   bus: EventBus,
   infra: Pick<SessionInfra, "budgetStore" | "sessionEventWriter" | "toolExecutionStore">,
+  sessionId: string,
   metricsWriter?: MetricsWriter,
-  sessionId?: string,
 ): WiredSessionSubscribers {
 
   const unsubs: Unsubscribe[] = [
     bus.subscribeToType("agent.run.started", (event) => {
-      if (sessionId === undefined || event.sessionId === sessionId) infra.budgetStore.recordProcessStarted()
+      if (event.sessionId === sessionId) infra.budgetStore.recordProcessStarted()
     }, { deliveryClass: "durable", label: "budget-process-started" }),
   ]
 
   if (metricsWriter) {
     unsubs.push(bus.subscribeToType("budget.metrics.changed", (e) => {
-      if (sessionId === undefined || e.sessionId === sessionId) metricsWriter(e.data)
+      if (e.sessionId === sessionId) metricsWriter(e.data)
     }, { deliveryClass: "ui", label: "budget-metrics-writer" }))
   }
 
   const runtimeFacts = subscribeSessionRuntimeFacts(bus, {
-    ...(sessionId ? { sessionId } : {}),
+    sessionId,
     sessionEventWriter: infra.sessionEventWriter,
     onStored: (stored) => infra.toolExecutionStore.applyStoredFact(stored),
   })

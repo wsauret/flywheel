@@ -29,7 +29,6 @@ import type { AuthConditionOwner } from "../auth/auth-condition-owner.js";
 import type { UsageAuthorityGeneration } from "./usage-settlement.js";
 import { accessProviderRegistry } from "./llm/access-provider-registry.js";
 
-type ModulesInput = FirstPartyModuleComposition | FirstPartyModuleSnapshot;
 /** Builds a client of `model` whose provider resources `providerSessionLifetime` owns. An absent snapshot or
  *  configuration reads the runtime's current one. */
 export type LLMClientFactory = (model: string, moduleSnapshot: FirstPartyModuleComposition | undefined, runtimeConfig: RuntimeConfigRequestCapture | undefined, providerSessionLifetime: ProviderSessionLifetime) => Promise<ModelClient>;
@@ -124,7 +123,7 @@ export function createAgentRuntime(deps: {
    *  its briefs, workflow summaries, and skill revisions from it. */
   definitions: ProjectDefinitionRegistry;
   /** Live realm composition, or one immutable composition for an admitted realm. */
-  moduleSelection: ModulesInput;
+  moduleSelection: FirstPartyModuleComposition | FirstPartyModuleSnapshot;
   /** Returns the current effective credential directory without I/O. */
   authDirectory: () => string;
   /** Stable profile identity captured with this runtime's credential directory. */

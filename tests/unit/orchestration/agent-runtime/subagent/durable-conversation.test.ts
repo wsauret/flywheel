@@ -101,7 +101,7 @@ describe("subagent durable conversation", () => {
         return reader.readInFlight(...args)
       },
     }
-    const authority = createSubagentSessionAuthority({ manager, eventStore: reader, projectionReader: faultReader, eventWriter: writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }) })
+    const authority = createSubagentSessionAuthority({ manager, reader, projectionReader: faultReader, writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }) })
     const attempts: AgentOptions[] = []
     const notification = notificationRegistry()
     const tool = createSubagentDispatch(makeDeps({
@@ -176,7 +176,7 @@ describe("subagent durable conversation", () => {
     const writer = asAsyncEventWriter(harness.store)
     const manager = createSessionManager({ projectRoot: harness.projectRoot, executionCwd: harness.projectRoot, projectionReader: reader, writer })
     await manager.createChat({ id: "root", conversationId: "root-conversation", name: "Root" })
-    const authority = createSubagentSessionAuthority({ manager, eventStore: reader, projectionReader: reader, eventWriter: writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }) })
+    const authority = createSubagentSessionAuthority({ manager, reader, projectionReader: reader, writer, projectRoot: harness.projectRoot, recall: async () => ({ hits: [] }) })
     const earlierBuild = {
       ...authority,
       async publish(publication: Parameters<typeof authority.publish>[0]) {

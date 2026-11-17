@@ -207,7 +207,7 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     return choice?.kind === "freeform" ? currentAnswer().freeformPicked : currentAnswer().picked.has(choiceIndex)
   }
 
-  function answerIsValid(questionIndex: number): boolean {
+  function isAnswered(questionIndex: number): boolean {
     const question = questions()[questionIndex]
     const answer = answers()[questionIndex]
     if (!question || !answer || (answer.picked.size === 0 && !answer.freeformPicked)) return false
@@ -217,7 +217,6 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     })
   }
 
-  function isAnswered(questionIndex: number): boolean { return answerIsValid(questionIndex) }
   function cursorForQuestion(index: number): number {
     const question = questions()[index]
     const answer = answers()[index]
@@ -262,7 +261,7 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     persistDraft()
   }
   function submit(): void {
-    const invalid = questions().findIndex((_question, index) => !answerIsValid(index))
+    const invalid = questions().findIndex((_question, index) => !isAnswered(index))
     if (invalid >= 0) {
       setTab(invalid)
       const answer = answers()[invalid]
@@ -300,7 +299,7 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
   function cancel(): void {
     const skip = questionSkip(questions().map((question, index) => [
       question.question,
-      index !== tab() && answerIsValid(index) ? resolvedAnswer(index) : undefined,
+      index !== tab() && isAnswered(index) ? resolvedAnswer(index) : undefined,
     ]))
     if (!beginSettlement()) return
     void settle(skip.kind === "answer" ? () => opts.onAnswer(skip.answers) : opts.onCancel)

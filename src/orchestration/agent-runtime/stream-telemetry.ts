@@ -276,7 +276,7 @@ function toolMetadata(event: ToolMetadataEvent): TelemetryFields {
       return {
         toolUseId: event.toolCall.id,
         name: event.toolCall.name,
-        input: summarizeValue(event.toolCall.input),
+        input: summarizeText(stringify(event.toolCall.input)),
         ...(event.toolCall.providerItemId ? { providerItemId: event.toolCall.providerItemId } : {}),
         ...(event.toolCall.providerCallId ? { providerCallId: event.toolCall.providerCallId } : {}),
         ...(event.toolCall.thoughtSignature ? { hasThoughtSignature: true } : {}),
@@ -353,10 +353,6 @@ function sortedRecord(map: ReadonlyMap<string, number>): NumberByKey {
 function percentile(sorted: readonly number[], fraction: number): number {
   const index = Math.min(sorted.length - 1, Math.floor(sorted.length * fraction));
   return sorted[index] ?? 0;
-}
-
-function summarizeValue(value: unknown): TelemetryFields {
-  return summarizeText(stringify(value));
 }
 
 /** The size and hash of a stream's text, never the text: conversation

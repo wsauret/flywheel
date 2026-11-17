@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot, writeHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { captureHeadlessSnapshotConnection, consumeHeadlessAuthSnapshot, writeHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
 import { createToolEnvironmentFactory } from "../../../../src/orchestration/agent-runtime/tools/shell-environment.js"
 import { makeContext } from "../agent-runtime/tools/_fixtures.js"
 import { testDirectories } from "../../../helpers/directories.js"
@@ -45,11 +45,11 @@ describe("headless auth snapshot export", () => {
     const profileStore = catalogProfile(access, PROVIDERS, credentialSlotClassifier(composeFirstPartyModules()))
     for (const { account, lineage } of accounts) {
       const rows = ["allowed", "denied"].map((modelId) => ({ modelId, offerings: [{ wireModelId: modelId, metadata: null, dataUse: "standard" as const }] }))
-      expect(await writeProviderModelCandidates(profileStore, account, lineage, rows, ["allowed", "denied"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
-      const generation = readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
+      expect(await writeProviderModelCandidates(profileStore, { account, lineage }, rows, ["allowed", "denied"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      const generation = readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
       if (generation === undefined) throw new Error("Missing fixture audit")
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "denied", "denied", "refused", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, { account, lineage }, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, { account, lineage }, generation, "denied", "denied", "refused", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
     }
     access.close()
     const stage = privateStage(root)
@@ -87,7 +87,7 @@ describe("headless auth snapshot export", () => {
       expect(snapshot.modelAccess).toEqual(accounts.map(({ account, lineage }) => ({
         account, lineage, outcomes: { allowed: "completed", denied: "refused" },
       })))
-      const captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
+      const captured = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
       expect(captured?.connection.modelAccess).toEqual(snapshot.modelAccess)
       // A singleton whose provider audits no model access, such as a metered API key, names the usage of its run with
       // the lineage of the profile's credential.
@@ -120,10 +120,10 @@ describe("headless auth snapshot export", () => {
     const profileStore = catalogProfile(access, PROVIDERS, credentialSlotClassifier(composeFirstPartyModules()))
     for (const { account, lineage } of accounts) {
       const rows = [{ modelId: "allowed", offerings: [{ wireModelId: "allowed", metadata: null, dataUse: "standard" as const }] }]
-      expect(await writeProviderModelCandidates(profileStore, account, lineage, rows, ["allowed"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
-      const generation = readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
+      expect(await writeProviderModelCandidates(profileStore, { account, lineage }, rows, ["allowed"], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      const generation = readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit?.generation
       if (generation === undefined) throw new Error("Missing fixture audit")
-      expect(await recordProviderModelAccess(profileStore, account, lineage, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+      expect(await recordProviderModelAccess(profileStore, { account, lineage }, generation, "allowed", "allowed", "completed", DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
     }
     access.close()
     const resolved: string[] = []
@@ -143,7 +143,7 @@ describe("headless auth snapshot export", () => {
       expect(snapshot.modelAccess).toEqual([{ account: accounts[0]?.account, lineage: vertexLineage, outcomes: { allowed: "completed" } }])
       // The failure this filter removes: a reader whose config enables only the named providers refused the snapshot.
       const enabled = PROVIDERS.filter((provider) => ["chatgpt", "google_vertex"].includes(credentialIdOf(provider)))
-      const captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, enabled), stage, enabled)
+      const captured = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(output, enabled), stage, enabled)
       expect(captured.connection.auth.credentialLineages.google_vertex).toBe(vertexLineage)
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -217,7 +217,7 @@ describe("headless auth snapshot export", () => {
     try {
       await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "token", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-token" } })
       expect(JSON.parse(readFileSync(output, "utf8"))).toEqual({ profile: "token", credentials: {}, modelAccess: [], externalLogins: { claude_agent_sdk: [{ access: "sk-ant-oat-token" }] } })
-      captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
+      captured = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
       const accounts = captured.connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
       expect(accounts.map(({ instanceId, lineageId, identity }) => ({ instanceId, lineageId, identity }))).toEqual([{ instanceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), lineageId: accounts[0]?.instanceId, identity: `${LOGIN_PROGRAM_LABEL} token` }])
       const credential = accounts[0]?.credential
@@ -297,7 +297,7 @@ describe("headless auth snapshot export", () => {
       expect(snapshot.credentials.chatgpt.map(({ credential }: { credential: { access: string; refresh?: string } }) => [credential.access, credential.refresh])).toEqual([["rotated-access", undefined]])
       // The host keeps the rotated refresh token, so its next use of the account does not fail on a spent one.
       expect(JSON.parse(readFileSync(authFile, "utf8")).chatgpt[0].credential).toMatchObject({ access: "rotated-access", refresh: "host-refresh-2" })
-      const captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, providers), stage, providers)
+      const captured = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(output, providers), stage, providers)
       expect(captured?.profileId).toBe("benchmark")
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -543,7 +543,7 @@ describe("headless auth snapshot export", () => {
       expect(JSON.parse(readFileSync(output, "utf8")).credentials).toEqual({})
       expect(readFileSync(output, "utf8")).not.toContain("uuid-claude")
 
-      const snapshot = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, providers), authDirectory, providers)
+      const snapshot = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(output, providers), authDirectory, providers)
       expect(snapshot?.connection.subscriptionCredentials.get(credentialIdOf(sdk))?.map(({ instanceId, identity, credential }) => ({ instanceId, identity, credential }))).toEqual([
         { instanceId: "uuid-claude", identity: "uuid-claude@example.com", credential: { type: "external", configDir } },
       ])

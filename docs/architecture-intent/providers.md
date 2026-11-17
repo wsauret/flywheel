@@ -142,9 +142,9 @@ A provider definition owns model serveability through settled catalog evidence a
 
 Not: Hardcoded per-provider model lists or alias tables.
 
-## ARCH-PROVIDERS-018: Saved catalog evidence is fenced by credential generation
+## ARCH-PROVIDERS-018: Saved catalog evidence is fenced by account lineage
 
-A valid catalog saved for the exact canonical account and credential generation is admission evidence with no age limit: preparation publishes it at once and starts one owned background replacement. Credential generation fences cache reads, replacement, deletion, and publication, but never defines membership or storage identity. A catalog read serves the shared model metadata document that the process holds and never reaches the network; only the owned metadata refresh does.
+Account lineage is the canonical account and the credential lineage that it holds now. A valid catalog saved for the exact account lineage is admission evidence with no age limit: preparation publishes it at once and starts one owned background replacement. Credential lineage fences cache reads, replacement, deletion, and publication, but never defines membership or storage identity. A catalog read serves the shared model metadata document that the process holds and never reaches the network; only the owned metadata refresh does.
 
 ## ARCH-PROVIDERS-019: Model identity fields stay separate
 

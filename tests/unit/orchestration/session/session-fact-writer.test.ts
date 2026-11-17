@@ -553,7 +553,7 @@ describe("SessionFactWriter", () => {
     bus.subscribeToType("agent.notice.changed", (event) => {
       if (event.data.operation.type === "upsert") notices.push(event.data.operation.notice.message)
     }, { deliveryClass: "ui", label: "persistence-notice-test" })
-    const wiring = wireSessionSubscribers(bus, { budgetStore, sessionEventWriter: writer, toolExecutionStore })
+    const wiring = wireSessionSubscribers(bus, { budgetStore, sessionEventWriter: writer, toolExecutionStore }, "s1")
     createEmit(bus)("agent.error.observed", { sessionId: "s1", data: { message: "lost" } })
     try {
       await bus.drain()

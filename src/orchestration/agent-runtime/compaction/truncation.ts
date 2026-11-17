@@ -44,7 +44,19 @@ function retrievalWays(has: CapabilityCheck): RetrievalWays {
   return { search: has("search"), read: has("read"), shell: has("bash") };
 }
 
-interface LimitOutputOptions {
+/** Where a dropped payload is saved, and who reads the notice that names it. */
+interface OutputArtifactContext {
+  executionCwd: string;
+  projectRoot: string;
+  /** Breadcrumb tree the dropped payload is saved into. */
+  artifactScopeId: string;
+  /** The agent check of the agent that reads the result, which decides how the notice says to retrieve the saved
+   *  file. Absent: the reader's tools are unknown, such as in crash recovery, so the notice names the file and no
+   *  tool. */
+  capabilities?: CapabilityCheck;
+}
+
+interface LimitOutputOptions extends OutputArtifactContext {
   content: string;
   /** Pre-drop original when the tool emitted a lossy view. Saved verbatim
    *  to the breadcrumb file regardless of byte-cap state. */
@@ -54,16 +66,8 @@ interface LimitOutputOptions {
   retainedFullContent?: RetainedFullContent;
   /** Bound of the returned text, recovery notice included. */
   maxBytes?: number;
-  executionCwd: string;
-  projectRoot: string;
-  /** Breadcrumb tree the dropped payload is saved into. */
-  artifactScopeId: string;
   /** Used as the breadcrumb filename prefix. Defaults to "output". */
   toolName?: string;
-  /** The agent check of the agent that reads the result, which decides how the notice says to retrieve the saved
-   *  file. Absent: the reader's tools are unknown, such as in crash recovery, so the notice names the file and no
-   *  tool. */
-  capabilities?: CapabilityCheck;
 }
 
 interface LimitedOutput {
@@ -168,7 +172,7 @@ export interface TurnBudgetReplacement {
  *  respect to its inputs; the caller applies the replacements. */
 export async function enforceTurnBudget(
   entries: ReadonlyArray<TurnBudgetEntry>,
-  options: { budgetChars: number; executionCwd: string; projectRoot: string; artifactScopeId: string; capabilities?: CapabilityCheck },
+  options: OutputArtifactContext & { budgetChars: number },
 ): Promise<TurnBudgetReplacement[]> {
   const budget = options.budgetChars;
   const sized = entries.map((entry) => ({ entry, chars: textChars(entry.content) }));

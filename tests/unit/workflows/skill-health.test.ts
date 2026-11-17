@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { inspectSkillLibrary, repairMovedPaths, type SkillFinding } from "../../../src/workflows/skill-health.js";
 import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
@@ -166,5 +166,21 @@ describe("repairMovedPaths", () => {
     expect(result.linked.map((entry) => entry.skill)).toEqual(["linked"]);
     expect(readFileSync(join(ownedSkillStoreDirs(DIRS).project, "installed", "SKILL.md"), "utf8")).toContain("`docs/moved-guide.md`");
     expect(readFileSync(join(source, "SKILL.md"), "utf8")).toBe(sourceSkill);
+  });
+
+  it("returns a repair it cannot write with the error code instead of dropping it", () => {
+    writeFileSync(join(PROJECT, "docs", "moved-guide.md"), "guide");
+    writeSkill("locked", "# Method\n\nRead `docs/guides/moved-guide.md` first.");
+    const file = join(ownedSkillStoreDirs(DIRS).project, "locked", "SKILL.md");
+    const revision = installedRevision();
+    chmodSync(file, 0o444);
+    try {
+      const result = repairMovedPaths(inspectSkillLibrary({ revision, directories: DIRS, includeUnowned: true }), revision);
+
+      expect(result.repaired).toEqual([]);
+      expect(result.failed.map(({ finding, errorKind }) => [finding.skill, finding.path, errorKind])).toEqual([["locked", "docs/guides/moved-guide.md", expect.stringMatching(/^E(ACCES|PERM)$/)]]);
+    } finally {
+      chmodSync(file, 0o644);
+    }
   });
 });

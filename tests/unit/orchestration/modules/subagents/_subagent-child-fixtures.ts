@@ -221,9 +221,9 @@ function createHarness(projectRoot: string, createRunner: (options: AgentOptions
   const metricUpdates: string[] = []
   const authority = createSubagentSessionAuthority({
     manager,
-    eventStore: reader,
+    reader,
     projectionReader: reader,
-    eventWriter: writer,
+    writer,
     projectRoot,
     recall: async () => ({ hits: [] }),
     attachProjection: async (input) => {

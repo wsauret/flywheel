@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test"
 
-import { loadAgentDefaults } from "../../../../src/workflows/agents/installer.js"
+import { loadPersonaSources } from "../../../../src/workflows/agents/persona-sources.js"
 
-describe("agent defaults", () => {
+describe("persona sources", () => {
   test("preserves nested persona source paths for defaults publication", () => {
-    const agents = loadAgentDefaults()
+    const agents = loadPersonaSources()
 
     expect(Object.keys(agents).length).toBeGreaterThan(0)
     expect(agents["explorer.md"]).toContain("name: explorer")

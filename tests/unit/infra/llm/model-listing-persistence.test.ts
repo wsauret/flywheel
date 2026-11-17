@@ -116,7 +116,7 @@ test.each(["fresh", "cached-first"] as const)("Copilot context authority reconci
     });
     const saved = normalizeResolvedCatalogRows(sourceRows, copilotCatalog.limits);
     if (saved.kind !== "valid") throw new Error("invalid saved Copilot fixture");
-    await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, saved.rows, copilotCatalog.limits);
+    await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, saved.rows, copilotCatalog.limits);
     const document = modelsDevDocument();
     document["github-copilot"] = {
       id: "github-copilot", name: "Copilot", npm: "@ai-sdk/openai",
@@ -170,7 +170,7 @@ test.each(["fresh", "cached-first"] as const)("Copilot context authority reconci
         if (expectedContext !== 328_000) expect(offering?.resolvedMetadata?.catalogFields).toContain("contextLimit");
       }
       if (mode === "fresh" && catalogOwned) {
-        const retained = readSavedProviderModels(access, ACCOUNT, LINEAGE, copilotCatalog.limits)?.rows;
+        const retained = readSavedProviderModels(access, { account: ACCOUNT, lineage: LINEAGE }, copilotCatalog.limits)?.rows;
         expect(retained?.find((row) => row.modelId === "gpt-6.1-sol")?.offerings[0]?.resolvedMetadata?.contextLimit).toBe(328_000);
         for (const row of Object.values(document["github-copilot"].models)) delete row.limit;
         globalThis.fetch = Object.assign(async () => Response.json(combinedModelsDevProviders(document)), { preconnect: original.preconnect });
@@ -193,7 +193,7 @@ test("cached-first sanitization leaves saved catalog bytes unchanged", async () 
   const access = await new AuthProfileStore(root).create("default");
   const authDir = access.authDirectory;
   seedCredential(authDir);
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, [
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, [
     { modelId: "stale", offerings: [{ wireModelId: "route", metadata: { saved: true }, dataUse: "standard" }] },
     { modelId: "unresolved", offerings: [{ wireModelId: "unknown", metadata: { saved: true }, dataUse: "standard" }] },
   ], TEST_CATALOG_LIMITS);
@@ -223,7 +223,7 @@ test("successful empty refresh retains the saved canonical catalog and bytes", a
   const access = await new AuthProfileStore(root).create("default");
   const authDir = access.authDirectory;
   seedCredential(authDir);
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, [
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, [
     { modelId: "stale", offerings: [{ wireModelId: "route", metadata: { saved: true }, dataUse: "standard" }] },
   ], TEST_CATALOG_LIMITS);
   const before = access.readFile("provider-model-catalogs.json", TEST_CATALOG_LIMITS.durableBytes);
@@ -246,7 +246,7 @@ test("successful empty refresh retains the saved canonical catalog and bytes", a
     expect(catalogBytes(authDir)).toEqual(before);
     const persisted = openExistingAuthProfileDirectory(authDir);
     try {
-      expect(readSavedProviderModels(persisted, ACCOUNT, LINEAGE, TEST_CATALOG_LIMITS)?.rows?.[0]?.offerings[0]?.wireModelId).toBe("route");
+      expect(readSavedProviderModels(persisted, { account: ACCOUNT, lineage: LINEAGE }, TEST_CATALOG_LIMITS)?.rows?.[0]?.offerings[0]?.wireModelId).toBe("route");
     } finally {
       persisted.close();
     }
@@ -260,7 +260,7 @@ test("failed refresh serves the same credential's saved catalog rather than losi
   const access = await new AuthProfileStore(root).create("default");
   const authDir = access.authDirectory;
   seedCredential(authDir);
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, [
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, [
     { modelId: "saved-only", offerings: [{ wireModelId: "saved-only", metadata: null, dataUse: "standard" }] },
   ], TEST_CATALOG_LIMITS);
   const before = access.readFile("provider-model-catalogs.json", TEST_CATALOG_LIMITS.durableBytes);
@@ -306,9 +306,9 @@ test.each(["cached-first", "fresh", "refresh"] as const)("a %s listing hides a r
   seedCredential(authDir);
   const at = 10 * ONE_DAY_MS;
   const { rows, client } = refusalFixture();
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, rows, TEST_CATALOG_LIMITS);
-  await recordProviderModelRefusal(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, "refused", { kind: "model", at }, TEST_CATALOG_LIMITS);
-  await recordProviderModelRefusal(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, "narrowed", { kind: "extended-context", contextLimit: 200_000, at }, TEST_CATALOG_LIMITS);
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, rows, TEST_CATALOG_LIMITS);
+  await recordProviderModelRefusal(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, "refused", { kind: "model", at }, TEST_CATALOG_LIMITS);
+  await recordProviderModelRefusal(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, "narrowed", { kind: "extended-context", contextLimit: 200_000, at }, TEST_CATALOG_LIMITS);
   access.close();
   try {
     const listed = async (now: number) => {
@@ -335,7 +335,7 @@ test("a refusal saved through the listing client reaches its next listing, and a
   const authDir = access.authDirectory;
   seedCredential(authDir);
   const { rows, client: makeClient } = refusalFixture();
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, rows, TEST_CATALOG_LIMITS);
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, rows, TEST_CATALOG_LIMITS);
   access.close();
   const now = 10 * ONE_DAY_MS;
   const client = makeClient(authDir, now);
@@ -358,7 +358,7 @@ test("an unreadable saved catalog file leaves the listing with its models.dev ca
   const authDir = access.authDirectory;
   seedCredential(authDir);
   const { rows, client } = refusalFixture();
-  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), ACCOUNT, LINEAGE, rows, TEST_CATALOG_LIMITS);
+  await writeProviderModelCatalog(catalogProfile(access, [provider(unusedFetch)]), { account: ACCOUNT, lineage: LINEAGE }, rows, TEST_CATALOG_LIMITS);
   access.close();
   chmodSync(join(authDir, "provider-model-catalogs.json"), 0o000);
   try {

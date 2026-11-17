@@ -90,7 +90,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
     await createRoot((dispose) => {
       try {
         const { modal, consentSaves } = harness()
-        expect(modal.openPaidUseQuestion(authView(), 9, "github_copilot", accountCorrelationId)).toBe(true)
+        expect(modal.openPaidUseQuestion(authView(), 9, { providerId: "github_copilot", accountCorrelationId })).toBe(true)
         expect(modal.authView().kind).toBe("paid-use-question")
         expect(consentSaves()).toEqual([])
       } finally {
@@ -102,7 +102,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
   it("gives the arrows back to the list after a rename that started in account settings", async () => {
     await createRoot(async (dispose) => {
       const { modal, modals } = harness()
-      expect(modal.openAuthAccountDetail(authView(), 5, "github_copilot", accountCorrelationId)).toBe(true)
+      expect(modal.openAuthAccountDetail(authView(), 5, { providerId: "github_copilot", accountCorrelationId })).toBe(true)
       expect(modal.authView().kind).toBe("provider-settings")
       modals.input({ name: "n" })
       expect(modal.authView()).toMatchObject({ kind: "rename-input", instanceId })
@@ -146,7 +146,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
   it("opens standalone, saves a tick in place, and Continue declines the unanswered mode", async () => {
     await createRoot(async (dispose) => {
       const { modal, modals, consentSaves, showToast } = harness()
-      expect(modal.openPaidUseQuestion(authView(), 9, "github_copilot", accountCorrelationId)).toBe(true)
+      expect(modal.openPaidUseQuestion(authView(), 9, { providerId: "github_copilot", accountCorrelationId })).toBe(true)
       expect(modal.authView()).toMatchObject({ kind: "paid-use-question", returnTo: "close" })
       modals.input({ name: "space", sequence: " " })
       await until(() => consentSaves().length === 1 && modal.subscriptionSpendConsent.state().kind === "detail")
@@ -172,7 +172,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
   it("treats Return on the opening question row as Continue without accepting paid use", async () => {
     await createRoot(async (dispose) => {
       const { modal, modals, consentSaves } = harness()
-      modal.openPaidUseQuestion(authView(), 9, "github_copilot", accountCorrelationId)
+      modal.openPaidUseQuestion(authView(), 9, { providerId: "github_copilot", accountCorrelationId })
       expect(modal.subscriptionSpendConsent.state()).toMatchObject({ cursor: 0 })
       modals.input({ name: "return" })
       await until(() => modals.stack.length === 0)
@@ -192,7 +192,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
       const declined = { ...accepted, authorityRevision: 3, accounts: accepted.accounts.map((row) => ({ ...row, modes: row.modes.map((mode) => mode.mode === "prepaid" ? { ...mode, decision: "declined" as const } : mode) })) }
       const response = Promise.withResolvers<SubscriptionSpendConsentMutationResult>()
       runtime["subscription_spend_consent.save"].mockImplementation(async () => consentSaves().length === 1 ? await response.promise : { kind: "committed", consent: declined })
-      modal.openPaidUseQuestion({ ...authView(), subscriptionSpendConsent: question }, 9, "github_copilot", accountCorrelationId)
+      modal.openPaidUseQuestion({ ...authView(), subscriptionSpendConsent: question }, 9, { providerId: "github_copilot", accountCorrelationId })
       const tick = modal.subscriptionSpendConsent.toggle("copilot-automatic")
       if (close === "frame") modal.closeAuthModal()
       else modals.input({ name: close })
@@ -215,7 +215,7 @@ describe("paid-use question (PI-MODEL-018)", () => {
       const { modal, modals, runtime, showToast } = harness()
       const response = Promise.withResolvers<SubscriptionSpendConsentMutationResult>()
       runtime["subscription_spend_consent.save"].mockImplementation(async () => await response.promise)
-      modal.openAuthAccountDetail(authView(), 9, "github_copilot", accountCorrelationId)
+      modal.openAuthAccountDetail(authView(), 9, { providerId: "github_copilot", accountCorrelationId })
       const tick = modal.subscriptionSpendConsent.toggle("copilot-automatic")
       modal.closeAuthModal()
       expect(modals.stack).toHaveLength(0)

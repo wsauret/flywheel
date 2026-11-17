@@ -1,4 +1,5 @@
-import { expect, test } from "bun:test"
+import { expect, spyOn, test } from "bun:test"
+import { Log } from "../../../../../src/infra/log.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventWriter, asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { createProjectNotificationJournal } from "../../../../../src/orchestration/modules/project-notifications/journal.js"
@@ -47,6 +48,51 @@ test("publishes local and reconciled facts once in aggregate order", async () =>
   } finally {
     publisher.closeAdmission()
     await publisher.settled()
+    local.close()
+    external.close()
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test("keeps one failure and a count while reads keep failing, and records each failure episode once", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "notification-publisher-"))
+  const file = join(directory, "events.sqlite")
+  const local = createSqliteEventStore(file)
+  const external = createSqliteEventStore(file)
+  const warn = spyOn(Log.create({ service: "project-notification-publisher" }), "warn").mockImplementation(() => {})
+  const patches: RuntimeUiPatchInput[] = []
+  let tick = () => {}
+  const journal = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(local), writer: asAsyncEventWriter(local), sessionId: "local", now: () => 10 })
+  const failure = new TypeError("journal read failed")
+  // The first read and the next 100 polls fail.
+  let failingReads = 101
+  const publisher = createProjectNotificationPublisher({
+    journal: { ...journal, reconcile: () => (failingReads-- > 0 ? Promise.reject(failure) : journal.reconcile()) },
+    onStored: local.onStored,
+    publish: (patch) => patches.push(patch),
+    schedule: (reconcile) => { tick = reconcile; return () => {} },
+  })
+  try {
+    for (let poll = 0; poll < 100; poll++) tick()
+    const producer = createProjectNotificationJournal({ reader: asAsyncEventReadSurface(external), writer: asAsyncEventWriter(external), sessionId: "external", now: () => 11 })
+    await producer.raise(warning)
+    await publisher.reconcile()
+    failingReads = 1
+    tick()
+    await expect(publisher.settled()).rejects.toThrow(expect.objectContaining({ message: "Notification publication failed 102 times", cause: failure }))
+
+    expect(patches.map((patch) => patch.payload.kind)).toEqual(["project_notifications.raised"])
+    // The recovered publication ends the first episode with its count, so the
+    // failure after it records in full again.
+    expect(warn.mock.calls).toEqual([
+      ["notification publication failed", { errorType: "TypeError" }],
+      ["notification publication failures repeated", { count: 100, windowMs: expect.any(Number) }],
+      ["notification publication failed", { errorType: "TypeError" }],
+    ])
+  } finally {
+    warn.mockRestore()
+    publisher.closeAdmission()
+    await publisher.settled().catch(() => {})
     local.close()
     external.close()
     rmSync(directory, { recursive: true, force: true })

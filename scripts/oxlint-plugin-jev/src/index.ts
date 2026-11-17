@@ -31,6 +31,7 @@ import {
   REPORT_LOC,
   SCHEMA,
   snippetNodeFor,
+  statementCount,
   TARGET_NODE_TYPES,
 } from './options.ts';
 import type {
@@ -297,6 +298,7 @@ function visitorsFor(
       ) {
         continue;
       }
+      if (rule.minStatements !== undefined && statementCount(node) < rule.minStatements) continue;
       if (pass.matches.length >= pass.options.maxMatchesPerFile) {
         pass.dropped += 1;
         continue;

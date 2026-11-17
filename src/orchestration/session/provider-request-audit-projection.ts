@@ -117,7 +117,7 @@ function initialState(): ProviderRequestAuditState {
   }
 }
 
-function resolveProjectionIdentity(
+function foldRequestIdentity(
   state: ProviderRequestAuditState,
   event: StoredFact,
   fact: ProviderRequestAuditFact,
@@ -151,7 +151,7 @@ function reduceProviderRequestAuditEvent(
   event: StoredFact,
 ): ProviderRequestAuditState {
   const fact = readProviderRequestAuditFact(event)
-  const identity = resolveProjectionIdentity(state, event, fact)
+  const identity = foldRequestIdentity(state, event, fact)
   const identityKey = providerRequestIdentityKey(identity)
 
   switch (fact.type) {

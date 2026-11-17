@@ -172,7 +172,7 @@ export async function reconcilePendingAudits(input: ReconcileAuditsInput): Promi
   const workspace = canonicalMutationPath(input.workspace);
   let recorded = 0;
   for (const name of names) {
-    const entry = decodeJournalEntry(input.storeDir, name);
+    const entry = decodeOrQuarantineJournalEntry(input.storeDir, name);
     if (!entry) continue;
     // Resolved on both sides: the caller's path came through a contained-open
     // that resolves it, while an entry's path is joined from the store root as
@@ -374,7 +374,7 @@ interface JournalEntry {
  *  link at an entry name, an entry that is not a regular file, and one over the
  *  read limit are all unusable evidence, moved aside rather than read or retried
  *  forever. */
-function decodeJournalEntry(storeDir: string, name: string): JournalEntry | undefined {
+function decodeOrQuarantineJournalEntry(storeDir: string, name: string): JournalEntry | undefined {
   const path = join(journalDir(storeDir), name);
   let text: string;
   try {

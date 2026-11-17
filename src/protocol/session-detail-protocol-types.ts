@@ -13,10 +13,9 @@ interface RuntimeStreamingToolText {
   readonly [toolUseId: string]: ToolStreamingText
 }
 
-export type RuntimeSessionDetailView = RuntimeLiveHistorySessionView | RuntimeDurableHistorySessionView
-
-type RuntimeLiveHistorySessionView = RuntimeLiveHistorySessionBase & RuntimeSessionDetailKind
-type RuntimeDurableHistorySessionView = RuntimeDurableHistorySessionBase & RuntimeSessionDetailKind
+export type RuntimeSessionDetailView =
+  | (RuntimeLiveHistorySessionBase & RuntimeSessionDetailKind)
+  | (RuntimeDurableHistorySessionBase & RuntimeSessionDetailKind)
 
 type RuntimeSessionDetailKind =
   | {

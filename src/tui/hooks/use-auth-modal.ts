@@ -224,7 +224,7 @@ export function useAuthModal(deps: AuthModalDeps): AuthModalHook {
     if (view.kind !== "paid-use-question") return
     const auth = deps.auth()
     const next = consent?.kind === "available" ? consent.accounts.find((account) => account.modes.some(paidModeAwaitsAnswer)) : undefined
-    if (next && auth && consent && snapshotPosition !== undefined && entry?.isOpen() && providerSettings.showPaidUseQuestion({ ...auth, subscriptionSpendConsent: consent }, snapshotPosition, next.providerId, next.accountCorrelationId, entry, view.returnTo)) return
+    if (next && auth && consent && snapshotPosition !== undefined && entry?.isOpen() && providerSettings.showPaidUseQuestion({ ...auth, subscriptionSpendConsent: consent }, snapshotPosition, next, entry, view.returnTo)) return
     if (view.returnTo === "list") navigateToList()
     else closeAuthModal()
   }

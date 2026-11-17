@@ -59,7 +59,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
     persistAllDeselected: async () => { throw new Error("unused") },
   })
   if (initial === "stale") preferences.publish(preferences.prepare({
-    profileId: "default", authRevision: "old", preferenceRevision: "old",
+    profileId: "default", inputRevision: { auth: "old", preferences: "old" },
     catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map(),
   }))
   const modes: string[] = []
@@ -102,7 +102,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
   })
   try {
     const read = await readAdmission({ kind: "defaults" })
-    expect(preferences.state(read.profile.effectiveId)?.authRevision).toBe("current")
+    expect(preferences.state(read.profile.effectiveId)?.inputRevision.auth).toBe("current")
     expect(read.capture.providers.selection.plan("unavailable-fixture-model", read.capture.connection, read.capture.eligibility, read.capture.allowTrainingRoutes).kind).toBe("unavailable")
     expect(modes).toEqual(["cached-first"])
     expect(metadataRefreshes).toBe(0)
@@ -136,8 +136,7 @@ test("reads saved model, assignment, and effort options for defaults and session
   })
   const eligibility = preferences.prepare({
     profileId: "default",
-    authRevision: "auth",
-    preferenceRevision: "preferences",
+    inputRevision: { auth: "auth", preferences: "preferences" },
     catalogs,
     accountCatalogs: new Map([candidate, ...subscriptions].map((account) => [accessProviderAccountKey(account), catalogs.get("openai_api")!])),
     inventoryCandidates: new Map([candidate, ...subscriptions].map((account) => [accessProviderAccountKey(account), { candidate: account, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings, catalog }])),
@@ -325,7 +324,7 @@ test("a save names what serves when its saved model cannot serve, once for a mir
     persistAllDeselected: async () => { throw new Error("unused") },
   })
   const eligibility = preferences.prepare({
-    profileId: "default", authRevision: "auth", preferenceRevision: "preferences",
+    profileId: "default", inputRevision: { auth: "auth", preferences: "preferences" },
     catalogs: new Map([["openai_api", catalog]]),
     accountCatalogs: new Map([[accessProviderAccountKey(candidate), catalog]]),
     inventoryCandidates: new Map([[accessProviderAccountKey(candidate), { candidate, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }]]),
@@ -395,7 +394,7 @@ test("each model row names the provider that would serve now, read afresh from t
     persistAllDeselected: async () => { throw new Error("unused") },
   })
   const eligibility = preferences.prepare({
-    profileId: "default", authRevision: "auth", preferenceRevision: "preferences",
+    profileId: "default", inputRevision: { auth: "auth", preferences: "preferences" },
     catalogs: new Map([["openai_api", catalog], ["chatgpt", catalog]]),
     accountCatalogs: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), catalog])),
     inventoryCandidates: new Map([keyed, ...accounts].map((account) => [accessProviderAccountKey(account), { candidate: account, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" } }])),
@@ -483,7 +482,7 @@ test("keeps connection conditions with the credential capture when a transient f
   }
   const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
   const revision = authProfileEligibilityInputRevision(profile)
-  preferences.publish(preferences.prepare({ profileId: profile.id, authRevision: revision.auth, preferenceRevision: revision.preferences, catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
+  preferences.publish(preferences.prepare({ profileId: profile.id, inputRevision: revision, catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
   const entered = Promise.withResolvers<void>()
   const release = Promise.withResolvers<void>()
   const preparation = createEligibilityPreparation({

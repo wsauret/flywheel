@@ -1,7 +1,7 @@
 import { resolveAuthContext, type AuthContext } from "../../infra/auth/auth-context.js"
 import { AUTH_STORE_FILE, authStoreObservedRevision, type AuthStoreLoadResult } from "../../infra/auth/auth-store.js"
 import { openExistingAuthProfileDirectory } from "../../infra/auth/auth-profile-store.js"
-import { PROVIDER_MODEL_PREFERENCES_FILE, providerModelPreferencesRevision } from "../../infra/auth/provider-model-preference-store.js"
+import { PROVIDER_MODEL_PREFERENCES_FILE, providerModelPreferencesRevision, type EligibilityInputRevision } from "../../infra/auth/provider-model-preference-store.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import { resolveProviderModelCatalog } from "../config/model-assignment-providers.js"
@@ -29,10 +29,6 @@ import { createDiscoveryCadence } from "./discovery-cadence.js"
 
 const log = Log.create({ service: "eligibility-preparation" })
 const PROFILE_INPUT_PREPARATION_ATTEMPTS = 2
-export interface EligibilityInputRevision {
-  readonly auth: string
-  readonly preferences: string
-}
 interface EligibilityPreparationDeps {
   readonly userDataRoot: string
   readonly resolveKey: KeyResolver
@@ -125,7 +121,7 @@ export interface EligibilityPreparation {
    *  a usage publication change which free-plan accounts may serve (PI-MODEL-038). It reads only the publication,
    *  never a durable store, and does nothing when the published state already agrees. */
   reconcileFreePlans(profile: EligibilityProfile, publication: SubscriptionUsagePublishedSnapshot | undefined): Promise<void>
-  /** Saves a refusal that a request proved for its exact account generation and republishes the profile, so the
+  /** Saves a refusal that a request proved for its exact account lineage and republishes the profile, so the
    *  refused model leaves the eligibility and a refused extended window narrows to the standard one, then applies
    *  that state to the profile's sessions. It returns at once, the request does not wait, and a failure is a warning. */
   recordModelRefusal(record: ModelRefusalRecord): void
@@ -205,7 +201,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   const settlementTimeoutMs = deps.settlementTimeoutMs ?? LISTING_SETTLEMENT_MS
   let closed = false
   let disposal: Promise<void> | undefined
-  const cadence = createDiscoveryCadence<EligibilityProfile>(now, (profile) => run.scheduleRefresh(profile), (profile) => deps.holdsProfile?.(profile) === true, deps.backgroundDiscoveryIntervalMs)
+  const cadence = createDiscoveryCadence<EligibilityProfile>(now, (profile) => prepareEligibility.scheduleRefresh(profile), (profile) => deps.holdsProfile?.(profile) === true, deps.backgroundDiscoveryIntervalMs)
   const resolveAuth = (profile: EligibilityProfile, signal: AbortSignal, composition: FirstPartyModuleComposition, load = deps.observeAuth(profile)) =>
     deps.resolveAuth?.(profile, signal) ?? resolveAuthContext({ authDir: profile.directory, resolveKey: deps.resolveKey, load, definitions: accessProviderRegistry(composition).selection.definitions, credentialSlotClassifier: credentialSlotClassifier(composition) })
   const definitionOf = (composition: FirstPartyModuleComposition) => {
@@ -258,7 +254,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       }
       const current = deps.current(profile.id)
       if (discoveryMode === "cached-first" && current !== initialState) {
-        if (current?.authRevision === inputRevision.auth && current.preferenceRevision === inputRevision.preferences) return current
+        if (current !== undefined && sameInputRevision(current.inputRevision, inputRevision)) return current
         continue
       }
       const accounts = new Map(resolved.accounts)
@@ -267,7 +263,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
         const discovery = catalogDiscovery(candidate.outcome)
         // First-party fallback is not saved as a successful listing. An audit must keep
         // its settled account evidence, not just its label, within the same input revision.
-        const kept = audit !== undefined && current?.authRevision === inputRevision.auth && current.preferenceRevision === inputRevision.preferences
+        const kept = audit !== undefined && current !== undefined && sameInputRevision(current.inputRevision, inputRevision)
           && candidate.audit === undefined && discovery.kind === "unavailable" && discovery.reason === "discovery-pending"
           ? current.inventoryCandidates.get(key)
           : undefined
@@ -302,7 +298,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       const releaseDates = resolveReleaseDates(inventoryCandidates)
       const idle = idleFreePlans(profile, auth, composition, idleOf(current))
       signal.throwIfAborted()
-      const state = deps.prepare({ profileId: profile.id, autoEnableNewModels: resolved.autoEnableNewModels, authRevision: inputRevision.auth, preferenceRevision: inputRevision.preferences, catalogs: new Map(catalogs), accountCatalogs: accounts, inventoryCandidates: withIdleFreePlans(inventoryCandidates, idle), releaseDates })
+      const state = deps.prepare({ profileId: profile.id, autoEnableNewModels: resolved.autoEnableNewModels, inputRevision, catalogs: new Map(catalogs), accountCatalogs: accounts, inventoryCandidates: withIdleFreePlans(inventoryCandidates, idle), releaseDates })
       signal.throwIfAborted()
       deps.publish(state)
       return state
@@ -404,8 +400,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
               autoEnableNewModels: current.autoEnableNewModels,
               catalogs: current.catalogs,
               accountCatalogs: current.accountCatalogs,
-              authRevision: current.authRevision,
-              preferenceRevision: current.preferenceRevision,
+              inputRevision: current.inputRevision,
               releaseDates: current.releaseDates,
               inventoryCandidates: new Map([...current.inventoryCandidates].map(([key, candidate]) => [
                 key,
@@ -455,14 +450,14 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       if (!closed) log.warn("a published eligibility did not reach the sessions", { profileId, error: errorMessage(error) })
     })
   }
-  const run = (profile: EligibilityProfile, options?: EligibilityPreparationOptions): Promise<ProviderModelEligibilityState> => {
+  const prepareEligibility = (profile: EligibilityProfile, options?: EligibilityPreparationOptions): Promise<ProviderModelEligibilityState> => {
     if (closed) return Promise.reject(new Error("eligibility preparation is disposed"))
     const discoveryMode = options?.mode ?? (options?.force === true ? "refresh" : "cached-first")
     if (discoveryMode === "cached-first") {
       const current = deps.current(profile.id)
       if (current) {
         const inputRevision = deps.inputRevision(profile)
-        if (current.authRevision === inputRevision.auth && current.preferenceRevision === inputRevision.preferences) return settle(profile, Promise.resolve(current), options)
+        if (sameInputRevision(current.inputRevision, inputRevision)) return settle(profile, Promise.resolve(current), options)
       }
     }
     const existing = cachedPreparations.get(profile.id)
@@ -496,7 +491,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       const successor = discoverAfter(profile, operation, false)
       for (const recheck of supersedeAudits(profile.id, { kind: "forced-run", by: successor })) {
         try {
-          run.recheckAccount(profile, recheck.account, recheck.expected)
+          prepareEligibility.recheckAccount(profile, recheck.account, recheck.expected)
         } catch (error) {
           log.info("manual provider-model recheck dropped because the auth profile inputs changed", { profileId: profile.id, error: errorMessage(error) })
         }
@@ -504,19 +499,19 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     }
     return settle(profile, awaitWithAbortSignal(operation, options?.signal), options)
   }
-  run.scheduleRefresh = (profile: EligibilityProfile): void => {
+  prepareEligibility.scheduleRefresh = (profile: EligibilityProfile): void => {
     if (closed) throw new Error("eligibility preparation is disposed")
     if (cachedPreparations.has(profile.id) || discoveries.has(profile.id)) return
     if (cadence.coolingDown(profile)) return
     const current = deps.current(profile.id)
     if (current === undefined) {
       // discoverAfter owns failure reporting and terminal pending-catalog publication.
-      void run(profile, { refreshSavedCatalogs: true }).catch(() => {})
+      void prepareEligibility(profile, { refreshSavedCatalogs: true }).catch(() => {})
     } else {
       discoverAfter(profile, Promise.resolve(current), true)
     }
   }
-  run.recheckAccount = (profile: EligibilityProfile, account: AccessProviderAccountIdentity, expected: EligibilityInputRevision): void => {
+  prepareEligibility.recheckAccount = (profile: EligibilityProfile, account: AccessProviderAccountIdentity, expected: EligibilityInputRevision): void => {
     if (closed) throw new Error("eligibility preparation is disposed")
     if (!sameInputRevision(expected, deps.inputRevision(profile))) throw new Error("provider-model recheck was requested against stale auth profile inputs")
     const preceding = latestDiscovery(profile.id)?.done ?? cachedPreparations.get(profile.id)
@@ -533,7 +528,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     // left to finish first, and a discovery that has not reached its audit is followed instead.
     supersedeAudits(profile.id, { kind: "recheck", by: successor })
   }
-  run.republish = (profile: EligibilityProfile): Promise<void> => {
+  prepareEligibility.republish = (profile: EligibilityProfile): Promise<void> => {
     if (closed) return Promise.reject(new Error("eligibility preparation is disposed"))
     const controller = new AbortController()
     const execute = () => prepare(profile, "cached-first", controller.signal, {})
@@ -543,7 +538,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     void operation.then(() => controllers.delete(operation), () => controllers.delete(operation))
     return operation.then(() => undefined)
   }
-  run.reconcileFreePlans = async (profile: EligibilityProfile, publication: SubscriptionUsagePublishedSnapshot | undefined): Promise<void> => {
+  prepareEligibility.reconcileFreePlans = async (profile: EligibilityProfile, publication: SubscriptionUsagePublishedSnapshot | undefined): Promise<void> => {
     const state = deps.current(profile.id)
     if (state === undefined || publication === undefined || closed) return
     // The usage service reads each account as its current identity, so a snapshot in the publication is that
@@ -568,22 +563,22 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     log.info("free-plan accounts changed", { profileId: profile.id, idle: desired.size, previous: previous.size })
     deps.publish(deps.prepare({
       profileId: state.profileId, autoEnableNewModels: state.autoEnableNewModels, catalogs: state.catalogs, accountCatalogs: state.accountCatalogs,
-      authRevision: state.authRevision, preferenceRevision: state.preferenceRevision, releaseDates: state.releaseDates,
+      inputRevision: state.inputRevision, releaseDates: state.releaseDates,
       inventoryCandidates: withIdleFreePlans(state.inventoryCandidates, desired),
     }))
     await deps.apply?.(profile.id)
   }
-  run.recordModelRefusal = (record: ModelRefusalRecord): void => {
+  prepareEligibility.recordModelRefusal = (record: ModelRefusalRecord): void => {
     const profile = { id: record.connection.profileId, directory: record.connection.authDir }
     void (async () => {
       if (closed || !await (deps.saveModelRefusal ?? saveThroughSharedListing)(record) || closed) return
-      await run.republish(profile)
+      await prepareEligibility.republish(profile)
       await deps.apply?.(profile.id)
     })().catch((error: unknown) => {
       if (!closed) log.warn("a saved model refusal did not reach the eligibility", { profileId: profile.id, error: errorMessage(error) })
     })
   }
-  run.awaitDiscovery = async (profile: EligibilityProfile, signal: AbortSignal): Promise<void> => {
+  prepareEligibility.awaitDiscovery = async (profile: EligibilityProfile, signal: AbortSignal): Promise<void> => {
     const discovery = latestDiscovery(profile.id)
     if (discovery !== undefined) await awaitWithAbortSignal(discovery.done, signal)
   }
@@ -594,7 +589,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       auth: connection.auth, subscriptions: connection.subscriptionCredentials, candidate, wireModelId, refusal,
     })
   }
-  run.capture = <T>(profile: EligibilityProfile, capture: (state: ProviderModelEligibilityState, auth: AuthContext, composition: FirstPartyModuleComposition) => T, callerSignal?: AbortSignal, mode?: "saved-only"): Promise<T> => {
+  prepareEligibility.capture = <T>(profile: EligibilityProfile, capture: (state: ProviderModelEligibilityState, auth: AuthContext, composition: FirstPartyModuleComposition) => T, callerSignal?: AbortSignal, mode?: "saved-only"): Promise<T> => {
     if (closed) return Promise.reject(new Error("eligibility preparation is disposed"))
     const controller = new AbortController()
     const signal = callerSignal === undefined ? controller.signal : AbortSignal.any([controller.signal, callerSignal])
@@ -603,20 +598,19 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
         signal.throwIfAborted()
         let state = deps.current(profile.id)
         const inputRevision = deps.inputRevision(profile)
-        if (state === undefined || state.authRevision !== inputRevision.auth || state.preferenceRevision !== inputRevision.preferences) {
+        if (state === undefined || !sameInputRevision(state.inputRevision, inputRevision)) {
           state = mode === "saved-only"
             ? await prepare(profile, "cached-first", signal)
-            : await run(profile, { signal })
+            : await prepareEligibility(profile, { signal })
         }
         if (mode !== "saved-only" && !canServeRequest(state)) {
-          state = await settle(profile, awaitWithAbortSignal(cachedPreparations.get(profile.id) ?? run(profile, { signal }), signal), { signal, settled: true })
+          state = await settle(profile, awaitWithAbortSignal(cachedPreparations.get(profile.id) ?? prepareEligibility(profile, { signal }), signal), { signal, settled: true })
         }
         const composition = deps.moduleSelection()
         const auth = await awaitWithAbortSignal(resolveAuth(profile, signal, composition), signal)
         signal.throwIfAborted()
         const result = capture(state, auth, composition)
-        const revision = deps.inputRevision(profile)
-        if (state.authRevision === revision.auth && state.preferenceRevision === revision.preferences) return result
+        if (sameInputRevision(state.inputRevision, deps.inputRevision(profile))) return result
       }
       throw new Error("auth profile inputs did not stabilize during provider-model read capture")
     })()
@@ -624,7 +618,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     void operation.then(() => controllers.delete(operation), () => controllers.delete(operation))
     return operation
   }
-  run.dispose = (): Promise<void> => {
+  prepareEligibility.dispose = (): Promise<void> => {
     if (disposal) return disposal
     closed = true
     cadence.dispose()
@@ -637,7 +631,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     })
     return disposal
   }
-  return run
+  return prepareEligibility
 }
 
 const openProfileUsage = (profile: EligibilityProfile): UsageAuthority => createUsageAuthority({ profileDir: profile.directory, profileId: profile.id })

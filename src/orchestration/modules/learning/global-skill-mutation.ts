@@ -12,7 +12,7 @@ import { loadAgentInputProjection, type AgentInputEntry } from "../../session/ag
 import { planLockPaths, storeRootDirs } from "./skill-mutation-plan.js";
 import {
   activeOperationIds, advanceOperationManifest, isTerminalState, operationIdentity,
-  quarantineManifest, readOperationManifest, readProposalRecordsForReconciliation,
+  quarantineManifest, readOperationManifest, readProposalRecordsQuarantiningUnusable,
   writeOperationManifest, type OperationManifest, type OperationOrigin,
 } from "./skill-operation-manifest.js";
 import { tryWithPackageLocksSync, withPackageLocks } from "../../../infra/package-directory-lock.js";
@@ -131,7 +131,7 @@ function authorize(manifest: OperationManifest, claims: ConsentClaims | undefine
 /** Recover authorized staged operations. A legacy operation whose consent
  * belongs to another workspace stays untouched; unconfirmed records never run. */
 export function reconcileGlobalSkillOperations(globalRoot: string, claims?: ConsentClaims): void {
-  for (const proposal of readProposalRecordsForReconciliation(globalRoot)) {
+  for (const proposal of readProposalRecordsQuarantiningUnusable(globalRoot)) {
     if (Date.now() - proposal.createdAt > UNCONFIRMED_TTL_MS) forgetProposal(globalRoot, proposal.proposalId);
   }
   for (const operationId of activeOperationIds(globalRoot)) {

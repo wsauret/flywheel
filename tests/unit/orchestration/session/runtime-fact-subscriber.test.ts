@@ -116,7 +116,7 @@ describe("session runtime fact subscription", () => {
       budgetStore: budgetStore(budgetApplied),
       sessionEventWriter: fakeWriter(async (fact) => stored(fact, ++position)),
       toolExecutionStore: toolStore(toolApplied),
-    })
+    }, "s1")
 
     createEmit(bus)("agent.error.observed", {
       sessionId: "s1",
@@ -145,7 +145,7 @@ describe("session runtime fact subscription", () => {
         return stored(fact, 1)
       }),
       toolExecutionStore: toolStore(toolApplied),
-    })
+    }, "s1")
 
     createEmit(bus)("agent.error.observed", { sessionId: "s1", data: { message: "boom" } })
     const barrier = wiring.awaitDurableFacts()
@@ -165,7 +165,7 @@ describe("session runtime fact subscription", () => {
       budgetStore: budgetStore([]),
       sessionEventWriter: fakeWriter(async () => { throw failure }),
       toolExecutionStore: toolStore([]),
-    })
+    }, "s1")
 
     createEmit(bus)("agent.error.observed", { sessionId: "s1", data: { message: "lost" } })
     if (failure instanceof PersistenceWriteRefused) await expect(wiring.awaitDurableFacts()).rejects.toBe(failure)

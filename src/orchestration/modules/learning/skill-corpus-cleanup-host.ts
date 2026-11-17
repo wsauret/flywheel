@@ -28,14 +28,13 @@ export interface SkillCorpusCleanupWorkHostInput<Output> {
   readonly work: readonly SkillCorpusCleanupRequest[]
   readonly acquireClassifier: () => Promise<SkillCorpusCleanupWorkClassifier<Output>>
   readonly signal?: AbortSignal
-  readonly concurrency?: number
 }
+
+const CLEANUP_CONCURRENCY = 2
 
 /** Runs deterministic core-and-shard work with one lazy provider owner and bounded child concurrency. */
 export async function runSkillCorpusCleanupWorkHost<Output>(input: SkillCorpusCleanupWorkHostInput<Output>): Promise<readonly Output[]> {
   if (input.work.length === 0) return []
-  const concurrency = input.concurrency ?? 2
-  if (!Number.isSafeInteger(concurrency) || concurrency < 1) throw new RangeError("Cleanup concurrency must be a positive integer")
   const campaign = new AbortController()
   const signal = input.signal ? AbortSignal.any([input.signal, campaign.signal]) : campaign.signal
   const classifier = await input.acquireClassifier()
@@ -53,7 +52,7 @@ export async function runSkillCorpusCleanupWorkHost<Output>(input: SkillCorpusCl
     }
   }
   try {
-    const workers = Array.from({ length: Math.min(concurrency, input.work.length) }, () => worker().catch((error) => {
+    const workers = Array.from({ length: Math.min(CLEANUP_CONCURRENCY, input.work.length) }, () => worker().catch((error) => {
       campaign.abort(error)
       throw error
     }))

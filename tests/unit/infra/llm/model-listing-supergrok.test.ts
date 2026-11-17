@@ -65,7 +65,7 @@ test("API-key access audits persist exact-lineage results, discover new candidat
   expect([...(checked?.models?.keys() ?? [])]).toEqual(["gemini-ok"]);
   expect([...(checked?.visibleModels?.keys() ?? [])].sort()).toEqual(["gemini-flaky", "gemini-ok"]);
   expect(checked?.audit).toEqual({ remaining: 1, refused: 1 });
-  expect(readSavedProviderModels(access, vertexAccount, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
+  expect(readSavedProviderModels(access, { account: vertexAccount, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
     dueIds: ["gemini-flaky"], outcomes: { "gemini-ok": "completed", "gemini-flash-latest": "refused" },
   });
   client = createClient();
@@ -167,7 +167,7 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
   expect(progress.map((event) => [event.modelId, event.outcome, event.remaining])).toEqual([
     ["grok-ok", "completed", 2], ["grok-paid", "refused", 1],
   ]);
-  expect(readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
+  expect(readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
     dueIds: ["grok-flaky"], outcomes: { "grok-ok": "completed", "grok-paid": "refused" },
   });
 
@@ -178,7 +178,7 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
 
   modelsStatus = 503;
   expect(await listed("fresh")).toEqual({ eligible: [], visible: ["grok-flaky", "grok-ok"] });
-  expect(readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
+  expect(readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toMatchObject({
     dueIds: ["grok-flaky"], outcomes: { "grok-ok": "completed", "grok-paid": "refused" },
   });
   modelsStatus = 200;
@@ -191,7 +191,7 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
   // An invalidated connection still exposes models.dev preferences, without routing any model.
   modelsStatus = 401;
   expect(await listed("refresh")).toEqual({ eligible: [], visible: ["grok-flaky", "grok-ok", "grok-paid"] });
-  expect(readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toBeUndefined();
+  expect(readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit).toBeUndefined();
 });
 
 test("a manual SuperGrok recheck probes every candidate of the exact account, keeps prior successes through transient answers, restores refused models, and refuses a stale lineage", async () => {
@@ -233,7 +233,7 @@ test("a manual SuperGrok recheck probes every candidate of the exact account, ke
     ]]]),
   });
   const list = (mode: "fresh" | "audit", recheckAccount?: typeof account) => client.getModelCatalogs(AUTH_NONE, { mode, ...(recheckAccount === undefined ? {} : { recheckAccount }) });
-  const audit = () => readSavedProviderModels(access, account, lineage, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit;
+  const audit = () => readSavedProviderModels(access, { account, lineage }, DEFAULT_DYNAMIC_CATALOG_LIMITS)?.audit;
 
   await list("fresh");
   await list("audit");

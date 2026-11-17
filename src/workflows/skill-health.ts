@@ -19,6 +19,7 @@
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
 import { renderCapabilityText } from "../infra/capability-text.js";
+import { errnoCode } from "../infra/error-message.js";
 import type { ProjectDirectories } from "../infra/directory-authorities.js";
 import { ownedSkillStoreDirs } from "./skills.js";
 import {
@@ -285,11 +286,17 @@ export function inspectSkillLibrary(input: SkillHealthInput): readonly SkillFind
 /** Repair the one finding class a machine can settle: a path whose basename
  *  resolves to exactly one file in the repository has moved, and rewriting it
  *  is mechanical. Every other finding needs a decision and is only reported.
- *  Returns the findings it repaired, and the relocatable findings it left in
- *  linked packages, which the person edits where the link points. */
+ *  Returns the findings it repaired, the relocatable findings it left in
+ *  linked packages, which the person edits where the link points, and the
+ *  findings whose file it could not read or write, with the error code. */
 export function repairMovedPaths(findings: readonly SkillFinding[], revision: SkillRegistryRevision) {
   const repaired: SkillFinding[] = [];
   const linked: SkillFinding[] = [];
+  const failed: { readonly finding: SkillFinding; readonly errorKind: string }[] = [];
+  const fail = (entries: readonly SkillFinding[], error: unknown) => {
+    const errorKind = errnoCode(error) ?? (error instanceof Error ? error.name : "unknown");
+    for (const finding of entries) failed.push({ finding, errorKind });
+  };
   const byFile = new Map<string, SkillFinding[]>();
   for (const finding of findings) {
     if (finding.kind !== "path-stale" || finding.movedTo === undefined || finding.file === undefined) continue;
@@ -307,7 +314,8 @@ export function repairMovedPaths(findings: readonly SkillFinding[], revision: Sk
     let text: string;
     try {
       text = readFileSync(target, "utf8");
-    } catch {
+    } catch (error) {
+      fail(entries, error);
       continue;
     }
     let next = text;
@@ -319,9 +327,9 @@ export function repairMovedPaths(findings: readonly SkillFinding[], revision: Sk
     try {
       writeFileSync(target, next);
       repaired.push(...entries);
-    } catch {
-      continue;
+    } catch (error) {
+      fail(entries, error);
     }
   }
-  return { repaired, linked };
+  return { repaired, linked, failed };
 }

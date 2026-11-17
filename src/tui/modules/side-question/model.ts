@@ -53,7 +53,7 @@ export function createSideQuestionModel(host: Host, sessionId: string, closeModa
     input?.blur(); input = undefined; scroll.detach()
   })
   const close = () => { cancelOnRetirement = true; cancel(); closeModal() }
-  const run = async (label: string, mutation: Request) => {
+  const dispatchMutation = async (label: string, mutation: Request) => {
     if (!active || pending()) return
     setPending(label)
     setError(undefined)
@@ -74,24 +74,24 @@ export function createSideQuestionModel(host: Host, sessionId: string, closeModa
     const originalDraft = draft()
     const question = originalDraft.trim()
     if (!question || question.length > QUESTION_LIMIT || view()?.current?.state === "running") return
-    const result = await run("Asking...", { type: "side-question.ask", sessionId, question })
+    const result = await dispatchMutation("Asking...", { type: "side-question.ask", sessionId, question })
     if (result) { if (draft() === originalDraft) setDraft(""); setSelection(undefined) }
   }
   const stop = async () => {
     const requestId = running()
     if (requestId) {
-      const result = await run("Stopping...", { type: "side-question.stop", sessionId, requestId })
+      const result = await dispatchMutation("Stopping...", { type: "side-question.stop", sessionId, requestId })
       if (result && displayedPending === requestId) displayedPending = undefined
     }
   }
   const clear = async () => {
     const snapshot = view()
-    if (snapshot) await run("Clearing...", { type: "side-question.clear", sessionId, revision: snapshot.revision })
+    if (snapshot) await dispatchMutation("Clearing...", { type: "side-question.clear", sessionId, revision: snapshot.revision })
   }
   const keep = async () => {
     const row = selected()
     if (!row || !retained()) return
-    const result = await run("Keeping...", { type: "side-question.keep", sessionId, exchangeId: row.id })
+    const result = await dispatchMutation("Keeping...", { type: "side-question.keep", sessionId, exchangeId: row.id })
     if (result?.destinationSessionId) { close(); host.navigate.navigateSession(result.destinationSessionId) }
   }
   const copy = async () => {

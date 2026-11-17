@@ -17,7 +17,8 @@
  * match count of the largest Flywheel module (about 150 functions times four function rules), and
  * the plugin splits a file's questions over several requests when one request would be too large,
  * so no function goes unchecked. `maxSnippetChars` is above the largest module's size, so no file
- * rule reads a truncated file.
+ * rule reads a truncated file. `minStatements` keeps one-statement functions, such as forwarding
+ * closures, out of the function rules that cannot apply to them, before any request.
  */
 import type { JevRule } from "../oxlint-plugin-jev/src/index.ts";
 
@@ -39,16 +40,17 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "mysterious-name",
 		target: "function",
 		question:
-			"Ignore inline callbacks, local helpers of about five lines or fewer, names required by an interface, framework, or library key (such as fetch, make, layer, of, handler, or a service method fixed by its interface), genuinely generic module-private primitives, test helpers, and domain verbs with a documented specific meaning. Does this function's name hide or misstate what callers can observe, because either (a) its main verb is generic (resolve, process, handle, run, execute, manage, do, perform, apply, ensure, prepare, update, sync) while a more specific verb or verb pair, such as getCachedOrAcquire or loadMutateAndSave, would describe the body, or (b) the body has a caller-visible effect that the name omits or contradicts (a network call, a persistent write or delete, spawning a process or fiber, sending a message, swallowing errors, or reading or writing a cache) while the name implies the function is pure or read-only, or names only one of several steps it performs?",
+			"Ignore inline callbacks and test helpers; names fixed by an interface, framework, or library key that the function implements (such as execute, perform, snapshot, fetch, make, layer, or handler); memoization and caches that callers cannot observe; the established idioms ensure, create, resolve, and prepare; and Flywheel lexicon terms used with their defined meaning, such as fold, replay, hydrate, claim, compact, migrate, resume, verify, and validate. Does this function have a durable or external side effect, such as a file write, a deletion, starting or stopping a process or fiber, or a network request, that neither its name nor its doc comment states, so that the name misleads a caller into thinking the function is pure, read-only, or does only one of its steps?",
 		cutoff: 0.7,
 		message:
-			"Possibly Mysterious Name: the name does not tell callers which steps this function performs or which effects (network, writes, retries, swallowed errors, cache) it has. Consider Rename Function: name every caller-visible step, for example `resolve` → `getCachedOrAcquireCredential`, `runLogged` → `logAndSuppressFailures`, `applyDeliveryMutation` → `loadMutateAndSaveDeliverySlot`.",
+			"Possibly Mysterious Name: the name hides a durable or external effect (a file write, a deletion, a process start or stop, or a network request) that callers can observe. Consider Rename Function so the name states every caller-visible step, for example `readSettings` → `readAndMigrateSettings` or `decodeEntry` → `decodeOrQuarantineEntry`, or state the effect in the doc comment.",
 	},
 	{
 		id: "feature-envy",
 		target: "function",
+		minStatements: 2,
 		question:
-			"Ignore mapping and serialization functions at a boundary whose job is to translate between two shapes, pure functions over plain data records or schemas, functions that read a few fields from their own parameters, and Effect programs that only orchestrate calls to several services in sequence. Does this function spend most of its body reading fields of, or calling methods on, one other module's object or service (not its own module's state or its own parameters' plain data), so that the logic would be shorter and clearer if it lived in that other module?",
+			"Ignore factory and composition-root functions that build an object by wiring several dependencies; members of a returned object and methods that only delegate to one dependency; mapping and serialization functions at a boundary that translate between two shapes; pure functions over plain data records or schemas; and functions that orchestrate calls to several services in sequence. Does this function mostly read fields of, or call methods on, one other module's object or service (not its own module's state or its own parameters' plain data), so that the logic would be shorter and clearer as an operation of that other module?",
 		cutoff: 0.75,
 		message:
 			"Possibly Feature Envy: this function mostly reads and works on another module's data instead of its own, so changes to that data's rules have to be made here too. Consider Move Function into the module or service that owns the data (in Effect, an operation on that service, so callers yield the service and call it instead of reaching into its fields).",
@@ -57,7 +59,7 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "data-clumps",
 		target: "file",
 		question:
-			"Ignore groups that are already a named type, schema, or object passed as one value; pairs of values that are only ever used together once; and standard positional pairs such as (x, y) coordinates or (start, end) where a library API requires them separately. Does this file pass, store, or declare the same group of three or more related values (for example organizationId, projectId, and userId, or host, port, and protocol) as separate parameters, fields, or variables in two or more places, so that the group behaves like one concept without a name?",
+			"Ignore groups that a named type, schema, or object already holds; a method signature repeated by the function or class that implements it; variants of one union; protocol messages, stored row shapes, and versioned or historical schemas; pairs of values; and standard positional pairs such as (x, y) or (start, end) that a library API requires separately. Does this file pass the same group of three or more related values (for example organizationId, projectId, and userId, or host, port, and protocol) as separate parameters, or restate them as fields, in two or more declarations that no shared type names, so that the group behaves like one concept without a name?",
 		cutoff: 0.7,
 		location: {
 			question: "Select the first parameter list or declaration where the repeated group of values appears.",
@@ -69,17 +71,18 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 	{
 		id: "primitive-obsession",
 		target: "function",
+		minStatements: 2,
 		question:
-			"Ignore values that are already branded or wrapped in a domain type, values typed as a union of string or number literals (including the kind or type discriminant of a discriminated union, and comparisons of such a value against its literals), local loop counters and indexes, strings shown only to humans (labels, log messages), parameters of thin adapters that must match an external API's primitive signature, and generic utilities that are deliberately type-agnostic. Does this function accept, return, or compare raw strings, numbers, or booleans that stand for a domain concept with rules or a fixed set of values, such as identifiers that could be confused with each other, money, durations, email addresses, status or kind strings compared against literals, or boolean flags that select behavior, where a dedicated type would prevent mix-ups or invalid values?",
+			"Ignore identifiers, paths, names, and model ids, which Flywheel keeps as plain strings by design; values whose type is already a literal union or a branded or wrapped type; values from an external format or API compared against that format's own constants; decoders and validators at a boundary; loop counters, sizes, and timestamps; and strings shown only to humans or written to logs. Does this function declare a parameter, field, or return type as a plain string or number while its body compares that value against, or returns, literals from a small fixed set (for example kind: string checked against \"manifest\" and \"proposal\"), or take a boolean parameter that switches between two different behaviors, so that a literal union type or two separate functions would reject invalid values?",
 		cutoff: 0.75,
 		message:
-			"Possibly Primitive Obsession: raw strings, numbers, or flags here stand for domain concepts, so an ID can be swapped for another ID or an invalid status can flow through unchecked. Consider Replace Primitive with Object (a branded type for each identifier or quantity that callers could confuse, decoded once at the boundary).",
+			"Possibly Primitive Obsession: a plain string, number, or boolean here carries a closed set of values, so an invalid value type-checks. Consider declaring the literal union (or splitting the boolean-flag function in two) so the compiler rejects values outside the set.",
 	},
 	{
 		id: "middle-man",
 		target: "file",
 		question:
-			"Ignore adapters that translate a third-party API into domain types, facades that narrow a large dependency to the few operations callers need, and operations that add validation, authorization, decoding, error mapping, caching, retries, or orchestration of several calls; adding only a span or a log does not count. Does this file define a class, service, or module where most public operations only forward their arguments to one method of one dependency and return its result unchanged?",
+			"Ignore adapters that translate a third-party API into domain types; facades that narrow a large dependency to the few operations callers need; and any operation that adds platform selection, routing, logging, a resolution step, validation, authorization, decoding, error mapping, caching, retries, ownership of a resource, or orchestration of several calls. Does this file define a class, service, or module where every public operation only forwards its arguments unchanged to one method of one dependency and returns its result unchanged?",
 		cutoff: 0.75,
 		location: {
 			question: "Select the first public operation that only forwards to a dependency.",
@@ -105,7 +108,7 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "speculative-generality",
 		target: "file",
 		question:
-			"Ignore exported library API meant for external callers, parameters required by an interface or callback signature, abstractions with two or more implementations in the codebase (including test implementations that exercise real behavior), and options documented as public configuration. Does this file contain generality that no current caller uses, such as a parameter or option that every caller omits or passes the same value for, an interface, abstract class, or generic type parameter with exactly one implementation or instantiation, a hook or extension point nothing registers, or a branch for a case that cannot occur?",
+			"Ignore exported library API meant for external callers; parameters required by an interface or callback signature; abstractions with two or more implementations in the codebase (including test implementations that exercise real behavior); options documented as public configuration; test seams such as an injected clock, file system, or client; code ported from an upstream project or listed in a ported-code ledger; and code with a dated removal note. If you cannot name the unused parameter, option, abstraction, hook, or branch and see in this file that no non-test caller uses it, answer no. Does this file contain generality that no current caller uses, such as a parameter or option that every caller omits or passes the same value for, an interface, abstract class, or generic type parameter with exactly one implementation or instantiation, a hook or extension point nothing registers, or a branch for a case that cannot occur?",
 		cutoff: 0.75,
 		location: {
 			question: "Select the unused parameter, option, abstraction, or branch.",
@@ -118,7 +121,7 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "temporary-field",
 		target: "file",
 		question:
-			"Ignore fields that are optional because the data is genuinely optional in the domain, lazily initialized caches with a clear owner, and fields set in a constructor or factory before the object is used. Does this file define a class, record type, or state object with fields that are only set and read during one operation or in one state, and are undefined, null, or meaningless the rest of the time, so readers must know which state the object is in to know which fields are valid?",
+			"Ignore fields that are optional because the data is genuinely optional in the domain; lifecycle handles that are null before start or after dispose; lazily initialized caches with a clear owner; factory and constructor options; per-run state objects; and types that are already discriminated unions. Does this file define a class, record type, or state object that has a discriminator or status field and, beside it, an optional field that is meaningful only for one value of that discriminator or status, so that readers must know the current state to know whether the field is valid?",
 		cutoff: 0.75,
 		location: {
 			question: "Select the declaration of the field that is only valid in one operation or state.",
@@ -131,7 +134,7 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "insider-trading",
 		target: "file",
 		question:
-			"Ignore imports of a module's public entry point or exported API, test files that inspect internals on purpose, and modules in the same package whose sharing is documented. Does this file reach into another module's internals, for example by importing from its internal or private paths, reading or writing its private or underscore-prefixed fields, depending on its internal data layout, or mutating state that module owns, instead of going through that module's public interface?",
+			"Ignore imports of a module's public entry point or exported API, reads of a field that the dependency's published type declarations (its public .d.ts) declare, test files that inspect internals on purpose, and modules in the same package whose sharing is documented. Does this file reach into another module's internals, for example by importing from its internal or private paths, reading or writing its private or underscore-prefixed fields, depending on its internal data layout, or mutating state that module owns, instead of going through that module's public interface?",
 		cutoff: 0.75,
 		message:
 			"Possibly Insider Trading: this module depends on another module's internals, so neither can change its private structure without breaking the other. Consider Move Function so the logic lives with the data it needs, or Hide Delegate so the other module exposes one public operation for what this code uses (in Effect, a service operation instead of reaching into its implementation).",
@@ -153,8 +156,8 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "comments",
 		target: "function",
 		question:
-			"Ignore comments that explain why (a reason, constraint, trade-off, or link to an issue), SAFETY: and similar invariant comments, doc comments on exported or public APIs, license headers, lint directives, and TODO comments. Does this function contain comments that narrate what the next lines do, label steps of a long body (such as '// step 1: load', '// validate input'), or explain what a confusing expression means, where extracting a well-named function, renaming a variable, or adding an assertion would make the comment unnecessary?",
-		cutoff: 0.7,
+			"Ignore comments that state a rationale, a constraint, a trade-off, an invariant, a safety argument (SAFETY: and similar), a removal date, or an external or stored format; doc comments on exported or public APIs; license headers; lint directives; and TODO comments. Does this function contain a comment that restates what the next lines do, labels a section of a long body (such as '// step 1: load' or '// validate input'), or decodes a magic value, where a named constant, an extracted well-named function, or a renamed variable would make the comment unnecessary?",
+		cutoff: 0.9,
 		message:
 			"Possibly Comments: these comments narrate what the code does, which means the code is not saying it itself. Consider Extract Function named after each commented step, Rename Variable or Rename Function so the name carries the explanation, or Introduce Assertion for a commented assumption; keep only comments that explain why.",
 	},
@@ -162,13 +165,13 @@ export const martinFowlerJevRules: ReadonlyArray<MartinFowlerJevRule> = [
 		id: "repeated-switches",
 		target: "file",
 		question:
-			"Ignore a single switch or match, exhaustive switches over a TypeScript discriminated union whose missing case the compiler reports (through a never check, a satisfies Record over the union, or a return type that every case must produce), switches over values from an external protocol that this code does not own when they appear only at one decoding boundary, and exhaustive Match.tags or Match.type handlers over a tagged union defined in one place. Does this file switch on, or chain if/else or ternaries over, the same kind or type tag of the same union in two or more places, even through differently named variables, so that adding a new case would require editing each of those places?",
+			"Ignore exhaustive switches over a TypeScript discriminated union whose missing case the compiler reports (a never or assertNever default, a satisfies Record over the union, or a return type that every case must produce); tests that check for one single case to narrow a value, such as an early return when kind is not \"x\", or a filter, find, or type guard for one kind; tests on different unions that only share a field name such as kind; and decoding or encoding of an external protocol at its one boundary. Does this file, in two or more separate places, branch on or list the same two or more cases of the same union (a switch, an if/else chain, a ternary chain, or a condition such as kind === \"a\" || kind === \"b\"), so that adding or moving a case requires editing each place and the compiler would not report a place that was missed?",
 		cutoff: 0.7,
 		location: {
 			question: "Select the second switch or conditional chain over the same union.",
 			cutoff: 0.7,
 		},
 		message:
-			"Possibly Repeated Switches: this file dispatches on the same union's cases in several places, so adding a case means finding and editing each one. Consider Replace Conditional with Polymorphism: register each case's behavior once, for example in a `satisfies Record<Kind, Handler>` table, or make every switch exhaustive so that the compiler names each place a new case must reach.",
+			"Possibly Repeated Switches: two places here each enumerate the same cases of one union without a compiler check, so a new case can be handled in one place and silently missed in the other. Consider one `satisfies Record<Kind, Handler>` table that both places read, or make each place an exhaustive switch with a `never` default.",
 	},
 ];

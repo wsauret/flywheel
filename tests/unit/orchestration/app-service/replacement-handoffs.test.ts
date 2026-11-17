@@ -120,7 +120,7 @@ describe("replacement handoffs", () => {
       open: async () => { throw new Error("unused") },
     })
     await expect(handoffs.handOff("unwritten")).rejects.toThrow("disk full")
-    expect(await handoffs.stopped(root, { continuations: 1, handovers: 0 })).toBe(false)
+    expect(await handoffs.recordProjectStopped(root, { continuations: 1, handovers: 0 })).toBe(false)
   })
 
   test("each project's stop narrows the row to the projects with work to continue, a command to adopt, or a surface to serve again", async () => {
@@ -139,11 +139,11 @@ describe("replacement handoffs", () => {
     })
     await handoffs.handOff("h1")
 
-    expect(await handoffs.stopped(empty, { continuations: 0, handovers: 0 })).toBe(false)
+    expect(await handoffs.recordProjectStopped(empty, { continuations: 0, handovers: 0 })).toBe(false)
     // `busy` holds one continuation row and one handover row for the successor.
-    expect(await handoffs.stopped(busy, { continuations: 1, handovers: 1 })).toBe(true)
+    expect(await handoffs.recordProjectStopped(busy, { continuations: 1, handovers: 1 })).toBe(true)
     // A surface held `viewed` at the cut, so it stays named with no work to continue.
-    expect(await handoffs.stopped(viewed, { continuations: 0, handovers: 0 })).toBe(true)
+    expect(await handoffs.recordProjectStopped(viewed, { continuations: 0, handovers: 0 })).toBe(true)
     // `silent` never reports, as after a crash or a stop past its deadline, so it stays named.
     expect(roots()).toEqual([[busy, silent, viewed].sort()])
   })
@@ -185,9 +185,9 @@ describe("replacement handoffs", () => {
     // The phone's hold ends with the project's close; the cut already read it.
     awakeAtCut.clear()
 
-    await handoffs.stopped(woken, { continuations: 0, handovers: 1 })
-    await handoffs.stopped(wokenResumed, { continuations: 1, handovers: 0 })
-    await handoffs.stopped(quiet, { continuations: 0, handovers: 1 })
+    await handoffs.recordProjectStopped(woken, { continuations: 0, handovers: 1 })
+    await handoffs.recordProjectStopped(wokenResumed, { continuations: 1, handovers: 0 })
+    await handoffs.recordProjectStopped(quiet, { continuations: 0, handovers: 1 })
 
     expect(registry.replacementHandoffs("installed").map((row) => row.phoneAwakeRoots)).toEqual([[woken]])
   })

@@ -1,4 +1,4 @@
-import { readCapturedFacts, type AsyncEventStateReadSurface, type AsyncEventWriter } from "../../../../infra/event-store-types.js"
+import { readCapturedFacts } from "../../../../infra/event-store-types.js"
 import type { RecallInput, RecallResult } from "../../../../protocol/conversation-recall.js"
 import type { SessionManager } from "../../../session/manager.js"
 import { prepareSessionFactAppend } from "../../../session/session-fact-writer.js"
@@ -15,15 +15,11 @@ import { liveChildRun, registerLiveSessionControl } from "../../../session/live-
 import { settleUnreadMessages, wakeAfterSettlement } from "../../../session/session-input-delivery.js"
 // oxlint-disable-next-line import/no-cycle -- planned continuation is a kernel authorization consumed by the module run owner.
 import { preparePlannedSessionContinuationConsumption, readPlannedSessionContinuationAsync } from "../../../session/planned-session-continuation.js"
-import type { AttachChildSessionProjection, ChildSessionAuthority } from "../../../module-seams.js"
+import type { AttachChildSessionProjection, ChildSessionAuthority, SessionStorePorts } from "../../../module-seams.js"
 
 const log = Log.create({ service: "subagent-session-authority" })
-export function createSubagentSessionAuthority(input: {
+export function createSubagentSessionAuthority(input: SessionStorePorts & {
   readonly manager: Pick<SessionManager, "allocateId" | "publishSubagent" | "read" | "publishActivation" | "updateLifecycleState">
-  readonly eventStore: AsyncEventStateReadSurface
-  readonly projectionReader: AsyncEventStateReadSurface
-  readonly eventWriter: AsyncEventWriter
-  readonly projectRoot: string
   readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
   readonly attachProjection?: AttachChildSessionProjection
 }): ChildSessionAuthority {
@@ -39,9 +35,9 @@ export function createSubagentSessionAuthority(input: {
       description: publication.description,
       executionCwd: publication.executionCwd,
       projectRoot: input.projectRoot,
-      eventStore: input.eventStore,
+      eventStore: input.reader,
       projectionReader: input.projectionReader,
-      writer: input.eventWriter,
+      writer: input.writer,
       recall: (contract) => input.recall(publication.childConversationId, contract),
       attachProjection: input.attachProjection,
     })
@@ -56,9 +52,9 @@ export function createSubagentSessionAuthority(input: {
   ): void => {
     const work = Promise.resolve().then(() => reconcileChildSessionCompletions({
         parentSessionId,
-        reader: input.eventStore,
+        reader: input.reader,
         projectionReader: input.projectionReader,
-        writer: input.eventWriter,
+        writer: input.writer,
         ...(deliverNotification ? { deliverNotification } : {}),
       })).then(() => {})
     pendingReconciliations.add(work)
@@ -79,7 +75,7 @@ export function createSubagentSessionAuthority(input: {
     error: unknown,
   ) => {
     try {
-      const result = await input.eventWriter.appendBatchGuarded([
+      const result = await input.writer.appendBatchGuarded([
         {
           ...prepareSessionFactAppend(publication.childSessionId, buildSubagentCompleted({
             childRunId, status: "failed", isError: true, content: `Subagent could not open: ${errorMessage(error)}`, durationMs: 0,
@@ -147,10 +143,10 @@ export function createSubagentSessionAuthority(input: {
       }
     },
     registerLiveControl(control) {
-      return registerLiveSessionControl(input.eventStore, control)
+      return registerLiveSessionControl(input.reader, control)
     },
     async settleUnreadMessages(settlement) {
-      const outcome = await settleUnreadMessages({ reader: input.projectionReader, writer: input.eventWriter }, settlement)
+      const outcome = await settleUnreadMessages({ reader: input.projectionReader, writer: input.writer }, settlement)
       if (outcome.stored) await wakeAfterSettlement(input.projectionReader, settlement.recipientSessionId, outcome.returned)
       return outcome.stored
     },
@@ -162,7 +158,7 @@ export function createSubagentSessionAuthority(input: {
         child?.kind !== "subagent"
         || child.launchedFrom.parentSessionId !== request.parentSessionId
       ) return { ok: false as const, error: "Subagent is not a current direct child of this parent" }
-      if (liveChildRun(input.eventStore, request.childSessionId)) {
+      if (liveChildRun(input.reader, request.childSessionId)) {
         return { ok: false as const, error: "Subagent is still running" }
       }
       const run = (await readSubagentRuns(input.projectionReader, request.childSessionId)).at(-1)

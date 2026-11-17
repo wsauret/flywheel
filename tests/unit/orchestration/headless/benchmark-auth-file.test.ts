@@ -4,7 +4,7 @@ import { existsSync, linkSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import { captureHeadlessSnapshotConnection, type CapturedHeadlessSnapshot, type HeadlessAuthSnapshot, readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { captureHeadlessSnapshotConnection, type CapturedHeadlessSnapshot, type HeadlessAuthSnapshot, consumeHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
 import type { AccessProviderCandidate } from "../../../../src/infra/llm/access-provider.js"
 import { credentialForCandidate } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
@@ -31,7 +31,7 @@ describe("headless auth snapshot", () => {
     }
     const { directory, path } = fixture(JSON.stringify(bundle))
     try {
-      expect(readHeadlessAuthSnapshot(path, PROVIDERS)).toEqual(bundle)
+      expect(consumeHeadlessAuthSnapshot(path, PROVIDERS)).toEqual(bundle)
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -42,7 +42,7 @@ describe("headless auth snapshot", () => {
     const candidate = { id: "account-a", identity: "alice@example.com", label: "Personal", lineageId: crypto.randomUUID(), credential: { type: "oauth" as const, access: "oauth-a", refresh: "refresh-a", expires: 123 } }
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials: { github_copilot: [candidate] } }))
     try {
-      const snapshot = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(path, PROVIDERS), directory, PROVIDERS)
+      const snapshot = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(path, PROVIDERS), directory, PROVIDERS)
       expect(snapshot?.connection.oauthPersistence).toBe("access-only")
       const credentials = snapshot?.connection.subscriptionCredentials.get("github_copilot")
       expect(credentials?.map(({ instanceId, identity, label, lineageId, credential }) => ({ instanceId, identity, label, lineageId, type: credential.type, expires: credential.type === "oauth" ? credential.expires : undefined }))).toEqual([
@@ -61,7 +61,7 @@ describe("headless auth snapshot", () => {
     const account = (id: string) => ({ id, identity: `${id}@example.com`, lineageId: crypto.randomUUID(), credential: { type: "oauth", access: `${id}-access`, expires: 1 } })
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials: { chatgpt: [account("one"), account("two")] } }))
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("this profile has 2 chatgpt accounts")
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("this profile has 2 chatgpt accounts")
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
@@ -73,7 +73,7 @@ describe("headless auth snapshot", () => {
     const owner = createProviderAvailability()
     let captured: CapturedHeadlessSnapshot | undefined
     try {
-      captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(path, PROVIDERS), directory, PROVIDERS)
+      captured = await captureHeadlessSnapshotConnection(consumeHeadlessAuthSnapshot(path, PROVIDERS), directory, PROVIDERS)
       const connection = captured.connection
       const accounts = connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
       const configDirs = accounts.map(({ credential }) => credential.type === "external" ? credential.configDir : "")
@@ -119,7 +119,7 @@ describe("headless auth snapshot", () => {
   test("says that a missing snapshot was consumed by an earlier run", () => {
     const directory = privateStage(tmpdir())
     try {
-      expect(() => readHeadlessAuthSnapshot(join(directory, "auth.json"), PROVIDERS)).toThrow("A snapshot works for one run only")
+      expect(() => consumeHeadlessAuthSnapshot(join(directory, "auth.json"), PROVIDERS)).toThrow("A snapshot works for one run only")
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }
@@ -150,7 +150,7 @@ describe("headless auth snapshot", () => {
   ])("rejects and consumes %s content", (_name, content) => {
     const { directory, path } = fixture(content)
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -165,7 +165,7 @@ describe("headless auth snapshot", () => {
   ])("rejects and consumes a subscription instance with %s", (_name, instance) => {
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials: { github_copilot: [instance] } }))
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -180,7 +180,7 @@ describe("headless auth snapshot", () => {
   ])("rejects and consumes %s, naming the export that replaces the snapshot", (_name, credentials) => {
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials }))
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("Headless auth snapshot content is invalid. Export a new one with `flywheel headless snapshot-auth`")
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("Headless auth snapshot content is invalid. Export a new one with `flywheel headless snapshot-auth`")
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -199,7 +199,7 @@ describe("headless auth snapshot", () => {
   ])("rejects and consumes a collection with %s", (_name, instances) => {
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials: { github_copilot: instances } }))
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow()
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -211,7 +211,7 @@ describe("headless auth snapshot", () => {
     const path = join(directory, "auth.json")
     writeFileSync(path, JSON.stringify({ profile: "Work", credentials: {} }), { mode: 0o600 })
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("dedicated stage")
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("dedicated stage")
       expect(existsSync(path)).toBe(true)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -224,7 +224,7 @@ describe("headless auth snapshot", () => {
   test.skipIf(process.platform === "win32")("rejects and consumes a non-private file", () => {
     const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials: { github_copilot: { type: "oauth", access: "a", refresh: "r", expires: 1 } } }), 0o644)
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("private, owner-controlled")
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("private, owner-controlled")
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -236,7 +236,7 @@ describe("headless auth snapshot", () => {
     const other = join(directory, "other.json")
     linkSync(path, other)
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("private, owner-controlled")
+      expect(() => consumeHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("private, owner-controlled")
       expect(existsSync(path)).toBe(false)
       expect(existsSync(other)).toBe(true)
     } finally {
@@ -249,7 +249,7 @@ describe("headless auth snapshot", () => {
     const link = join(directory, "link.json")
     symlinkSync(target, link)
     try {
-      expect(() => readHeadlessAuthSnapshot(link, PROVIDERS)).toThrow()
+      expect(() => consumeHeadlessAuthSnapshot(link, PROVIDERS)).toThrow()
       expect(existsSync(target)).toBe(true)
     } finally {
       rmSync(directory, { recursive: true, force: true })

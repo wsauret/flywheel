@@ -18,7 +18,6 @@ const SessionNoticeSchema = Schema.Struct({
 })
 
 export const ActivitySchema = Schema.Union([Schema.Literal("absent"), Schema.Literal("idle"), Schema.Literal("awaiting_user"), Schema.Literal("waiting"), Schema.Literal("thinking"), Schema.Literal("generating"), Schema.Literal("executing_tools")])
-const SessionDiffStatsSchema = Schema.Struct({ added: Schema.Number, modified: Schema.Number, removed: Schema.Number })
 const SessionCatalogRowMetadataSchema = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
@@ -47,7 +46,7 @@ const SessionCatalogReadyRowSchema = SessionCatalogRowMetadataSchema.pipe(Schema
   contextPromptTokens: Schema.Number,
   compactionTriggerTokens: Schema.optionalKey(Schema.Number),
   durationMs: Schema.Number,
-  diffStats: Schema.optionalKey(SessionDiffStatsSchema),
+  diffStats: Schema.optionalKey(Schema.Struct({ added: Schema.Number, modified: Schema.Number, removed: Schema.Number })),
 }))
 const chatFields = {
   kind: Schema.Literal("chat"),

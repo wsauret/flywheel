@@ -581,7 +581,7 @@ describe("executor generations", () => {
       await handoffs.join(root)
       const f = fixture({
         stopResult: { settled: true, successorRows: { continuations: 1, handovers: 0 } },
-        handoffRecovery: (rows) => handoffs.stopped(root, rows),
+        handoffRecovery: (rows) => handoffs.recordProjectStopped(root, rows),
         releaseForHandoff: () => outgoing.releaseForHandoff(() => handoffs.recoveryPending(root)),
       })
       await settle()

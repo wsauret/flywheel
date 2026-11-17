@@ -6,7 +6,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { Redacted } from "effect"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
-import { readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { consumeHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import { authDir } from "../../../../src/infra/paths.js"
@@ -228,7 +228,7 @@ describe("headless auth profile", () => {
     try {
       let message = ""
       try {
-        readHeadlessAuthSnapshot(authFile, PROVIDERS)
+        consumeHeadlessAuthSnapshot(authFile, PROVIDERS)
       } catch (error) {
         message = String(error)
       }

@@ -43,7 +43,7 @@ export function providerModelPreferencesRevision(access: AuthProfileAccess): str
 }
 
 /** Migrates legacy provider preferences only while the captured account set still matches auth.json. */
-export async function prepareProviderModelPreferences(
+export async function loadAndMigrateProviderModelPreferences(
   access: AuthProfileAccess,
   capturedAuthRevision: string,
   currentAccounts: readonly AccessProviderAccountIdentity[],
@@ -89,22 +89,32 @@ export async function prepareProviderModelPreferences(
   });
 }
 
+/** The auth and preference revisions that one eligibility read captured. A preference write commits only while
+ *  both are still current. */
+export interface EligibilityInputRevision {
+  readonly auth: string;
+  readonly preferences: string;
+}
+
+function requireCapturedInputs(access: AuthProfileAccess, expected: EligibilityInputRevision): void {
+  if (authStoreRevision(access) !== expected.auth || providerModelPreferencesRevision(access) !== expected.preferences) {
+    throw new Error("auth profile inputs changed during provider-model preference mutation");
+  }
+}
+
 export async function setProviderModelPreference(
   access: AuthProfileAccess,
   account: AccessProviderAccountIdentity | string,
   modelId: string,
   state: ProviderModelPreferenceState,
   currentAccounts: readonly AccessProviderAccountIdentity[],
-  expectedAuthRevision: string,
-  expectedPreferenceRevision: string,
+  expected: EligibilityInputRevision,
 ): Promise<string> {
   const normalizedAccount = typeof account === "string" ? { kind: "singleton" as const, providerId: account } : account;
   requireAccount(normalizedAccount);
   const canonicalModel = requireModelId(modelId);
   return access.withLock(() => {
-    if (authStoreRevision(access) !== expectedAuthRevision || providerModelPreferencesRevision(access) !== expectedPreferenceRevision) {
-      throw new Error("auth profile inputs changed during provider-model preference mutation");
-    }
+    requireCapturedInputs(access, expected);
     const currentKeys = new Set(currentAccounts.map(accessProviderAccountKey));
     const key = accessProviderAccountKey(normalizedAccount);
     if (!currentKeys.has(key)) throw new Error("provider-model target is not a current account");
@@ -129,15 +139,12 @@ export async function deselectAllProviderModels(
   account: AccessProviderAccountIdentity,
   modelIds: readonly string[],
   currentAccounts: readonly AccessProviderAccountIdentity[],
-  expectedAuthRevision: string,
-  expectedPreferenceRevision: string,
+  expected: EligibilityInputRevision,
 ): Promise<string> {
   const normalizedAccount = requireAccount(account);
   const disabled = new Set(modelIds.map(requireModelId));
   return access.withLock(() => {
-    if (authStoreRevision(access) !== expectedAuthRevision || providerModelPreferencesRevision(access) !== expectedPreferenceRevision) {
-      throw new Error("auth profile inputs changed during provider-model preference mutation");
-    }
+    requireCapturedInputs(access, expected);
     const currentKeys = new Set(currentAccounts.map(accessProviderAccountKey));
     const key = accessProviderAccountKey(normalizedAccount);
     if (!currentKeys.has(key)) throw new Error("provider-model target is not a current account");
@@ -163,14 +170,11 @@ export async function setProviderFreeRoutePreference(
   account: AccessProviderAccountIdentity,
   preferFreeRoutes: boolean,
   currentAccounts: readonly AccessProviderAccountIdentity[],
-  expectedAuthRevision: string,
-  expectedPreferenceRevision: string,
+  expected: EligibilityInputRevision,
 ): Promise<string> {
   const normalizedAccount = requireAccount(account);
   return access.withLock(() => {
-    if (authStoreRevision(access) !== expectedAuthRevision || providerModelPreferencesRevision(access) !== expectedPreferenceRevision) {
-      throw new Error("auth profile inputs changed during provider-model preference mutation");
-    }
+    requireCapturedInputs(access, expected);
     const currentKeys = new Set(currentAccounts.map(accessProviderAccountKey));
     const key = accessProviderAccountKey(normalizedAccount);
     if (!currentKeys.has(key)) throw new Error("provider-model target is not a current account");
@@ -193,13 +197,10 @@ export async function setProviderAutoEnableNewModels(
   enabled: boolean,
   accountCatalogs: ReadonlyMap<string, { readonly account: AccessProviderAccountIdentity; readonly effectiveModelIds: readonly string[]; readonly catalogModelIds: readonly string[] }>,
   currentAccounts: readonly AccessProviderAccountIdentity[],
-  expectedAuthRevision: string,
-  expectedPreferenceRevision: string,
+  expected: EligibilityInputRevision,
 ): Promise<string> {
   return access.withLock(() => {
-    if (authStoreRevision(access) !== expectedAuthRevision || providerModelPreferencesRevision(access) !== expectedPreferenceRevision) {
-      throw new Error("auth profile inputs changed during provider-model preference mutation");
-    }
+    requireCapturedInputs(access, expected);
     const currentKeys = new Set(currentAccounts.map(accessProviderAccountKey));
     const decoded = decode(access.readFile(PROVIDER_MODEL_PREFERENCES_FILE, MAX_BYTES), new Map());
     if (decoded.version !== 4) throw malformed();

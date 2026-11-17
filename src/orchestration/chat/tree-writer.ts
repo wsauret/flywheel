@@ -279,7 +279,7 @@ export function createConversationTreeWriterController(
 
   /** Whether the notification held under `key` is committed already. A cell
    *  a repeat left under that key is retired, so it never reaches a turn. */
-  async function committedNotification(key: string): Promise<boolean> {
+  async function retireIfCommitted(key: string): Promise<boolean> {
     const entry = disposed
       ? (await createConversationTreeProjection(deps.projectionReader, deps.conversationId).replay()).entriesById[key]
       : await (await ensureResolved()).tree.getEntry(key)
@@ -290,7 +290,7 @@ export function createConversationTreeWriterController(
   }
 
   async function commitBackgroundNotification(notification: HeldBackgroundNotification): Promise<string | null> {
-    if (notification.key !== undefined && await committedNotification(notification.key)) return notification.key
+    if (notification.key !== undefined && await retireIfCommitted(notification.key)) return notification.key
     const { writer } = await ensureResolved()
     return writer.commitUserTurn({
       kind: "user",
@@ -383,7 +383,7 @@ export function createConversationTreeWriterController(
   }
 
   async function holdBackgroundNotification(text: string, notificationKey?: string): Promise<HeldBackgroundNotification | undefined> {
-    if (notificationKey !== undefined && await committedNotification(notificationKey)) return undefined
+    if (notificationKey !== undefined && await retireIfCommitted(notificationKey)) return undefined
     const held = await holdQueuedBackgroundNotification(deps.writer, deps.sessionId, deps.conversationId, text, notificationKey)
     if (held.key !== undefined) {
       liveNotificationKeys.add(held.key)
@@ -398,7 +398,7 @@ export function createConversationTreeWriterController(
     const pending = Promise.withResolvers<void>()
     notificationCommits.set(key, pending)
     // Install before reading: a concurrent save point can commit during the read.
-    void committedNotification(key).then((committed) => {
+    void retireIfCommitted(key).then((committed) => {
       if (!committed && disposed) throw new Error("Conversation writer disposed before background notification commit")
     }).catch((cause: unknown) => {
       if (notificationCommits.get(key) !== pending) return

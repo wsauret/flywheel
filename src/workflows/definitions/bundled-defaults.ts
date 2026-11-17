@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 import { systemPromptText } from "../../infra/agent-assets/manifest.js"
 import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../agents/manifest.js"
 import { definitionAssets } from "../definition-assets.js"
-import { loadAgentDefaults } from "../agents/installer.js"
+import { loadPersonaSources } from "../agents/persona-sources.js"
 import { BUNDLED_SKILL_DIR } from "../skill-source-inventory.js"
 import type { DefinitionBundle } from "../loader.js"
 
@@ -107,7 +107,7 @@ export function loadBundledDefaultCatalog(bundles: readonly DefinitionBundle[]):
     addFile(files, `workflows/${path}`, `workflows/${path}`, content)
   }
 
-  const personas = Object.keys(agents).length > 0 ? agents : loadAgentDefaults()
+  const personas = Object.keys(agents).length > 0 ? agents : loadPersonaSources()
   for (const [path, content] of Object.entries(personas).sort(([left], [right]) => left.localeCompare(right))) {
     addFile(files, `agents/${path}`, `agents/${path}`, content)
   }

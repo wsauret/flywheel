@@ -64,14 +64,12 @@ interface BackgroundDetailSource {
   readonly summaryIndex: Pick<SessionSummaryIndex, "readImmediate">
 }
 
-type SessionDetailSource = LiveDetailSource | BackgroundDetailSource
-
 interface SessionDetailReaderDeps {
   readonly manager: Pick<SessionManager, "read">
   readonly reader: AsyncEventStateReadSurface
   readonly projectionReader: AsyncEventStateReadSurface
   readonly projectRoot: string
-  readonly source: SessionDetailSource
+  readonly source: LiveDetailSource | BackgroundDetailSource
 }
 
 /** The executor's detail and transcript reads. The caller owns the lifetime

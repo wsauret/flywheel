@@ -319,7 +319,7 @@ async function removeRemainders(versionsRoot: ContainedDirectory, remainders: re
     try {
       // A remainder inside a version directory can be a build a restore
       // could not put back, so on Windows it goes only once nothing runs it.
-      if (removal.platform === "win32" && stillRuns(versionDir, remainder.name)) continue;
+      if (removal.platform === "win32" && executableDeletionRefused(versionDir, remainder.name)) continue;
       if (remove(versionDir, remainder.name)) removed.push(`${remainder.version}/${remainder.name}`);
     } finally {
       versionDir.close();
@@ -374,7 +374,7 @@ function retire(versionDir: ContainedDirectory, buildId: string, removal: BuildR
     log.warn("build collection could not retire a build tree", { buildId, error: errorMessage(error) });
     return false;
   }
-  if (removal.platform === "win32" && stillRuns(versionDir, retiring)) {
+  if (removal.platform === "win32" && executableDeletionRefused(versionDir, retiring)) {
     removal.stillRuns(buildId);
     try {
       versionDir.renameInto(retiring, versionDir, buildId);
@@ -390,7 +390,7 @@ function retire(versionDir: ContainedDirectory, buildId: string, removal: BuildR
 /** Whether a Windows tree is still executing, answered by deleting its
  *  executable, which Windows refuses while a process runs it. A tree that
  *  cannot be opened is kept as one that may run. */
-function stillRuns(parent: ContainedDirectory, name: string): boolean {
+function executableDeletionRefused(parent: ContainedDirectory, name: string): boolean {
   const tree = openDirectory(parent, name);
   if (!tree) return true;
   try {

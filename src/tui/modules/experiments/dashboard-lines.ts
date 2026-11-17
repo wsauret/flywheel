@@ -118,127 +118,159 @@ export function renderDashboardLines(view: FrontendExperimentView, width: number
 }
 
 /** Runs, Baseline, and Progress lines with the wrapped secondary deltas. */
-function summaryLines(view: FrontendExperimentView, width: number, { fg, bold, fit }: LineStyle): DashboardLine[] {
-  const lines: DashboardLine[] = []
-  const results = view.runs
-  const segment = view.segment
-  const direction = view.direction
-  const { kept, discarded, crashed, checksFailed } = view.runCounts
+function summaryLines(view: FrontendExperimentView, width: number, style: LineStyle): DashboardLine[] {
+  const best = bestKeptRun(view)
+  return [
+    runsSummaryLine(view, style),
+    baselineLine(view, style),
+    ...(best === undefined ? [] : [progressLine(view, best, style), ...secondaryMetricLines(view, best, width, style)]),
+  ]
+}
 
-  const baseline = view.baseline
-  const baselineRunNumber = findBaselineRunNumber(results, segment)
-  const baselineSec = findBaselineSecondary(results, segment, view.secondaryMetrics)
-
-  // Find best kept primary metric and its run number (current segment only)
-  let bestPrimary: number | null = null
-  let bestSecondary: MetricValues = {}
-  let bestRunNum = 0
-  for (const r of results.toReversed()) {
-    if (r.segment !== segment || r.status !== "keep" || r.metric <= 0) continue
-    if (bestPrimary === null || isBetter(r.metric, bestPrimary, direction)) {
-      bestPrimary = r.metric
-      bestSecondary = r.metrics
-      bestRunNum = r.run
-    }
+/** The kept run of the current segment with the best primary metric; the latest run wins a tie. */
+function bestKeptRun(view: FrontendExperimentView): FrontendExperimentRun | undefined {
+  let best: FrontendExperimentRun | undefined
+  for (const r of view.runs.toReversed()) {
+    if (r.segment !== view.segment || r.status !== "keep" || r.metric <= 0) continue
+    if (best === undefined || isBetter(r.metric, best.metric, view.direction)) best = r
   }
+  return best
+}
 
-  // Runs summary
+function runsSummaryLine(view: FrontendExperimentView, { fg, fit }: LineStyle): DashboardLine {
+  const { kept, discarded, crashed, checksFailed } = view.runCounts
   const confSuffix: TextChunk[] = view.confidence !== null
     ? [fg(view.confidence >= 2.0 ? "success" : view.confidence >= 1.0 ? "warning" : "error", `  (conf: ${view.confidence.toFixed(1)}×)`)]
     : [fg("muted", `  (${CONFIDENCE_PENDING_COPY})`)]
-  lines.push(fit([
-    fg("muted", "  Runs: "), fg("text", String(results.length)),
+  return fit([
+    fg("muted", "  Runs: "), fg("text", String(view.runs.length)),
     fg("success", `  ${kept} kept`),
     ...confSuffix,
     ...(discarded > 0 ? [fg("warning", `  ${discarded} discarded`)] : []),
     ...(crashed > 0 ? [fg("error", `  ${crashed} crashed`)] : []),
     ...(checksFailed > 0 ? [fg("error", `  ${checksFailed} checks failed`)] : []),
-  ]))
+  ])
+}
 
-  // Baseline: first run's primary metric
+/** The first run's primary metric. */
+function baselineLine(view: FrontendExperimentView, { fg, fit }: LineStyle): DashboardLine {
+  const baselineRunNumber = findBaselineRunNumber(view.runs, view.segment)
   const baselineSuffix = baselineRunNumber === null ? "" : ` #${baselineRunNumber}`
-  lines.push(fit([
+  return fit([
     fg("muted", "  Baseline: "),
-    baseline === null
+    view.baseline === null
       ? fg("muted", BASELINE_PENDING_COPY)
-      : fg("muted", `★ ${view.metric.name}: ${formatMetricValue(baseline, view.metric.unit)}${baselineSuffix}`),
-  ]))
+      : fg("muted", `★ ${view.metric.name}: ${formatMetricValue(view.baseline, view.metric.unit)}${baselineSuffix}`),
+  ])
+}
 
-  // Progress: best primary metric with delta + run number
-  if (bestPrimary !== null) {
-    const progressLine: TextChunk[] = [
-      fg("muted", "  Progress: "),
-      bold(fg("warning", `★ ${view.metric.name}: ${formatMetricValue(bestPrimary, view.metric.unit)}`)),
-      fg("dim", ` #${bestRunNum}`),
-    ]
-    if (baseline !== null && baseline !== 0 && bestPrimary !== baseline) {
-      const pct = ((bestPrimary - baseline) / baseline) * 100
-      const sign = pct > 0 ? "+" : ""
-      progressLine.push(fg(isBetter(bestPrimary, baseline, direction) ? "success" : "error", ` (${sign}${pct.toFixed(1)}%)`))
+/** The best primary metric with its run number and its delta from the baseline. */
+function progressLine(view: FrontendExperimentView, best: FrontendExperimentRun, { fg, bold, fit }: LineStyle): DashboardLine {
+  const baseline = view.baseline
+  const line: TextChunk[] = [
+    fg("muted", "  Progress: "),
+    bold(fg("warning", `★ ${view.metric.name}: ${formatMetricValue(best.metric, view.metric.unit)}`)),
+    fg("dim", ` #${best.run}`),
+  ]
+  if (baseline !== null && baseline !== 0 && best.metric !== baseline) {
+    const pct = ((best.metric - baseline) / baseline) * 100
+    const sign = pct > 0 ? "+" : ""
+    line.push(fg(isBetter(best.metric, baseline, view.direction) ? "success" : "error", ` (${sign}${pct.toFixed(1)}%)`))
+  }
+  return fit(line)
+}
+
+/** Aligns wrapped secondary metrics under the metric name of the progress line. */
+const PROGRESS_VALUE_PREFIX = " ".repeat("  Progress: ★ ".length)
+
+/** The best run's secondary metrics and their deltas, wrapped into lines that fit the width. */
+function secondaryMetricLines(view: FrontendExperimentView, best: FrontendExperimentRun, width: number, { fg, fit }: LineStyle): DashboardLine[] {
+  if (view.secondaryMetrics.length === 0) return []
+  const baselineSec = findBaselineSecondary(view.runs, view.segment, view.secondaryMetrics)
+  const maxLineW = width - PROGRESS_VALUE_PREFIX.length
+  const secParts: TextChunk[][] = []
+  for (const sm of view.secondaryMetrics) {
+    const val = best.metrics[sm.name]
+    const bv = baselineSec[sm.name]
+    if (val === undefined) continue
+    const part: TextChunk[] = [fg("muted", `${sm.name}: ${formatMetricValue(val, sm.unit)}`)]
+    if (bv !== undefined && bv !== 0 && val !== bv) {
+      const p = ((val - bv) / bv) * 100
+      const s = p > 0 ? "+" : ""
+      part.push(fg(val <= bv ? "success" : "error", ` ${s}${p.toFixed(1)}%`))
     }
-    lines.push(fit(progressLine))
-
-    // Progress secondary metrics: wrap into lines that fit width, indented
-    if (view.secondaryMetrics.length > 0) {
-      const indent = "            " // 12 chars to align under progress value
-      const maxLineW = width - 2 - indent.length // 2 for leading "  "
-      const secParts: TextChunk[][] = []
-      for (const sm of view.secondaryMetrics) {
-        const val = bestSecondary[sm.name]
-        const bv = baselineSec[sm.name]
-        if (val !== undefined) {
-          const part: TextChunk[] = [fg("muted", `${sm.name}: ${formatMetricValue(val, sm.unit)}`)]
-          if (bv !== undefined && bv !== 0 && val !== bv) {
-            const p = ((val - bv) / bv) * 100
-            const s = p > 0 ? "+" : ""
-            part.push(fg(val <= bv ? "success" : "error", ` ${s}${p.toFixed(1)}%`))
-          }
-          secParts.push(part)
-        }
-      }
-      let curLine: TextChunk[] = []
-      let curVisW = 0
-      for (const part of secParts) {
-        const partVisW = chunkDisplayWidth(part)
-        const sep = curLine.length > 0 ? "  " : ""
-        if (curLine.length > 0 && curVisW + sep.length + partVisW > maxLineW) {
-          lines.push(fit([fg("dim", `  ${indent}`), ...curLine]))
-          curLine = part
-          curVisW = partVisW
-        } else {
-          curLine = sep ? [...curLine, fg("muted", sep), ...part] : [...curLine, ...part]
-          curVisW += sep.length + partVisW
-        }
-      }
-      if (curLine.length > 0) lines.push(fit([fg("dim", `  ${indent}`), ...curLine]))
+    secParts.push(part)
+  }
+  const lines: DashboardLine[] = []
+  let curLine: TextChunk[] = []
+  let curVisW = 0
+  for (const part of secParts) {
+    const partVisW = chunkDisplayWidth(part)
+    const sep = curLine.length > 0 ? "  " : ""
+    if (curLine.length > 0 && curVisW + sep.length + partVisW > maxLineW) {
+      lines.push(fit([fg("dim", PROGRESS_VALUE_PREFIX), ...curLine]))
+      curLine = part
+      curVisW = partVisW
+    } else {
+      curLine = sep ? [...curLine, fg("muted", sep), ...part] : [...curLine, ...part]
+      curVisW += sep.length + partVisW
     }
   }
+  if (curLine.length > 0) lines.push(fit([fg("dim", PROGRESS_VALUE_PREFIX), ...curLine]))
   return lines
 }
 
-/** Column header, rule, hidden-run note, and one row per rendered run. */
-function tableLines(view: FrontendExperimentView, width: number, { fg, bold, fit }: LineStyle, maxRows: number): DashboardLine[] {
-  const lines: DashboardLine[] = []
-  const results = view.runs
-  const segment = view.segment
-  const direction = view.direction
+/** Column widths of the rendered rows. */
+interface TableColumns {
+  readonly primaryLabel: string
+  readonly idx: number
+  readonly commit: number
+  readonly primary: number
+  readonly status: number
+  /** Secondary metric columns that have a value in a rendered row and fit the width. */
+  readonly secondary: readonly { readonly sm: FrontendExperimentMetric; readonly colW: number }[]
+  readonly description: number
+}
 
-  // Determine visible rows once, used for both column sizing and rendering
+/** The current segment's baseline run and metric values, for the delta colors. */
+interface TableBaseline {
+  readonly index: number
+  readonly primary: number | null
+  readonly secondary: MetricValues
+}
+
+/** Column header, rule, hidden-run note, and one row per rendered run. */
+function tableLines(view: FrontendExperimentView, width: number, style: LineStyle, maxRows: number): DashboardLine[] {
+  const { fg, fit } = style
+  const results = view.runs
   const effectiveMax = maxRows <= 0 ? results.length : maxRows
   const startIdx = Math.max(0, results.length - effectiveMax)
   const rowsToRender = results.slice(startIdx)
+  const columns = visibleColumns(view, width, rowsToRender)
+  const baseline: TableBaseline = {
+    index: results.findIndex((x) => x.segment === view.segment),
+    primary: findBaselineMetric(results, view.segment),
+    secondary: findBaselineSecondary(results, view.segment, view.secondaryMetrics),
+  }
+  return [
+    headerLine(columns, style),
+    fit([fg("borderMuted", `  ${"─".repeat(Math.max(0, width - 4))}`)]),
+    ...(startIdx > 0 ? [fit([fg("dim", `  … ${startIdx} earlier run${startIdx === 1 ? "" : "s"}`)])] : []),
+    ...rowsToRender.map((r, offset) => runRow(view, r, startIdx + offset, columns, baseline, style)),
+  ]
+}
 
-  // Only show secondary metric columns that have at least one value in rendered rows
+function visibleColumns(view: FrontendExperimentView, width: number, rowsToRender: readonly FrontendExperimentRun[]): TableColumns {
   const secMetrics = view.secondaryMetrics.filter((sm) => rowsToRender.some((r) => r.metrics[sm.name] !== undefined))
 
-  // Primary column: "★ " prefix (2 visible) + metric name + 1 padding, clamped to 25% of width
+  // "★ " prefix (2 visible) + metric name + 1 padding, clamped to 25% of width
   const primaryLabel = "★ " + (view.metric.name || "metric")
   const primaryW = Math.max(11, Math.min(Math.floor(width * 0.25), displayWidth(primaryLabel) + 1))
   const col = { idx: 3, commit: 8, primary: primaryW, status: 15 }
   const minDescW = Math.max(10, Math.floor(width * 0.25))
   const fixedW = col.idx + col.commit + col.primary + col.status + 6
 
-  // Each secondary column width from actual content: max(name, widest value) + 1 padding
+  // max(name, widest value) + 1 padding
   const secColumns = secMetrics.map((sm) => {
     let maxW = displayWidth(sm.name)
     for (const r of rowsToRender) {
@@ -248,102 +280,83 @@ function tableLines(view: FrontendExperimentView, width: number, { fg, bold, fit
     return { sm, colW: maxW + 1 }
   })
 
-  // Drop secondary columns from the right until they fit
+  // Secondary columns drop from the right until they fit.
   let visibleSecColumns = secColumns
   const totalSecWidth = () => visibleSecColumns.reduce((a, { colW }) => a + colW, 0)
   while (visibleSecColumns.length > 0 && totalSecWidth() > width - fixedW - minDescW) {
     visibleSecColumns = visibleSecColumns.slice(0, -1)
   }
 
-  const descW = Math.max(minDescW, width - fixedW - totalSecWidth())
+  return { primaryLabel, ...col, secondary: visibleSecColumns, description: Math.max(minDescW, width - fixedW - totalSecWidth()) }
+}
 
-  // Table header: primary metric name bolded with ★
-  const headerLine: TextChunk[] = [
-    fg("muted", `  ${"#".padEnd(col.idx)}`),
-    fg("muted", "commit".padEnd(col.commit)),
-    bold(fg("warning", truncateToWidth(primaryLabel, col.primary - 1, "…").padEnd(col.primary))),
+function headerLine(columns: TableColumns, { fg, bold, fit }: LineStyle): DashboardLine {
+  const line: TextChunk[] = [
+    fg("muted", `  ${"#".padEnd(columns.idx)}`),
+    fg("muted", "commit".padEnd(columns.commit)),
+    bold(fg("warning", truncateToWidth(columns.primaryLabel, columns.primary - 1, "…").padEnd(columns.primary))),
   ]
-  for (const { sm, colW } of visibleSecColumns) {
-    headerLine.push(fg("muted", sm.name.padEnd(colW)))
+  for (const { sm, colW } of columns.secondary) {
+    line.push(fg("muted", sm.name.padEnd(colW)))
   }
-  headerLine.push(fg("muted", "status".padEnd(col.status)), fg("muted", "description"))
-  lines.push(fit(headerLine), fit([fg("borderMuted", `  ${"─".repeat(Math.max(0, width - 4))}`)]))
+  line.push(fg("muted", "status".padEnd(columns.status)), fg("muted", "description"))
+  return fit(line)
+}
 
-  // Baseline values for delta display (current segment only)
-  const baselinePrimary = findBaselineMetric(results, segment)
-  const baselineSecondary = findBaselineSecondary(results, segment, view.secondaryMetrics)
+function runRow(view: FrontendExperimentView, r: FrontendExperimentRun, i: number, columns: TableColumns, baseline: TableBaseline, { fg, bold, fit }: LineStyle): DashboardLine {
+  const isOld = r.segment !== view.segment
+  const isBaseline = !isOld && i === baseline.index
 
-  // Recent runs only, with a note about hidden earlier ones
-  if (startIdx > 0) {
-    lines.push(fit([fg("dim", `  … ${startIdx} earlier run${startIdx === 1 ? "" : "s"}`)]))
+  const color: DashboardColor = isOld
+    ? "dim"
+    : r.status === "keep"
+      ? "success"
+      : r.status === "crash" || r.status === "checks_failed"
+        ? "error"
+        : "warning"
+
+  const primaryStr = formatMetricValue(r.metric, view.metric.unit)
+  let primaryColor: DashboardColor = isOld ? "dim" : "text"
+  if (!isOld && !isBaseline && baseline.primary !== null && r.status === "keep" && r.metric > 0) {
+    if (isBetter(r.metric, baseline.primary, view.direction)) {
+      primaryColor = "success"
+    } else if (r.metric !== baseline.primary) {
+      primaryColor = "error"
+    }
   }
 
-  const baselineIndex = results.findIndex((x) => x.segment === segment)
+  const commitStr = isOld
+    ? "(old)".padEnd(columns.commit)
+    : r.status !== "keep"
+      ? "—".padStart(Math.ceil(columns.commit / 2)).padEnd(columns.commit)
+      : r.commit.padEnd(columns.commit)
 
-  for (const [offset, r] of rowsToRender.entries()) {
-    const i = startIdx + offset
-    const isOld = r.segment !== segment
-    const isBaseline = !isOld && i === baselineIndex
+  const primaryChunk = fg(primaryColor, primaryStr.padEnd(columns.primary))
+  const rowLine: TextChunk[] = [
+    fg("dim", `  ${String(r.run).padEnd(columns.idx)}`),
+    fg(isOld ? "dim" : "accent", commitStr),
+    isOld ? primaryChunk : bold(primaryChunk),
+  ]
 
-    const color: DashboardColor = isOld
-      ? "dim"
-      : r.status === "keep"
-        ? "success"
-        : r.status === "crash" || r.status === "checks_failed"
-          ? "error"
-          : "warning"
-
-    // Primary metric with color coding
-    const primaryStr = formatMetricValue(r.metric, view.metric.unit)
-    let primaryColor: DashboardColor = isOld ? "dim" : "text"
-    if (!isOld) {
-      if (isBaseline) {
-        primaryColor = "text" // baseline row, normal text
-      } else if (baselinePrimary !== null && r.status === "keep" && r.metric > 0) {
-        if (isBetter(r.metric, baselinePrimary, direction)) {
-          primaryColor = "success"
-        } else if (r.metric !== baselinePrimary) {
-          primaryColor = "error"
+  for (const { sm, colW } of columns.secondary) {
+    const val = r.metrics[sm.name]
+    if (val !== undefined) {
+      const secStr = formatMetricValue(val, sm.unit)
+      let secColor: DashboardColor = "dim"
+      if (!isOld) {
+        const bv = baseline.secondary[sm.name]
+        if (isBaseline) {
+          secColor = "text"
+        } else if (bv !== undefined && bv !== 0) {
+          secColor = val <= bv ? "success" : "error"
         }
       }
+      rowLine.push(fg(secColor, secStr.padEnd(colW)))
+    } else {
+      rowLine.push(fg("dim", "—".padEnd(colW)))
     }
-
-    const commitStr = isOld
-      ? "(old)".padEnd(col.commit)
-      : r.status !== "keep"
-        ? "—".padStart(Math.ceil(col.commit / 2)).padEnd(col.commit)
-        : r.commit.padEnd(col.commit)
-
-    const primaryChunk = fg(primaryColor, primaryStr.padEnd(col.primary))
-    const rowLine: TextChunk[] = [
-      fg("dim", `  ${String(r.run).padEnd(col.idx)}`),
-      fg(isOld ? "dim" : "accent", commitStr),
-      isOld ? primaryChunk : bold(primaryChunk),
-    ]
-
-    // Secondary metrics (only visible columns)
-    for (const { sm, colW } of visibleSecColumns) {
-      const val = r.metrics[sm.name]
-      if (val !== undefined) {
-        const secStr = formatMetricValue(val, sm.unit)
-        let secColor: DashboardColor = "dim"
-        if (!isOld) {
-          const bv = baselineSecondary[sm.name]
-          if (isBaseline) {
-            secColor = "text"
-          } else if (bv !== undefined && bv !== 0) {
-            secColor = val <= bv ? "success" : "error"
-          }
-        }
-        rowLine.push(fg(secColor, secStr.padEnd(colW)))
-      } else {
-        rowLine.push(fg("dim", "—".padEnd(colW)))
-      }
-    }
-
-    rowLine.push(fg(color, r.status.padEnd(col.status)), fg("muted", r.description.slice(0, descW)))
-    lines.push(fit(rowLine))
   }
 
-  return lines
+  rowLine.push(fg(color, r.status.padEnd(columns.status)), fg("muted", r.description.slice(0, columns.description)))
+  return fit(rowLine)
 }

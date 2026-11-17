@@ -180,7 +180,7 @@ describe("auth modal provider model selection", () => {
         subscriptionSpendConsent: { kind: "available", profileId: "default", usageGeneration: 1, authorityIncarnation: "authority", authorityRevision: 1, accounts: [capability] },
       } satisfies RuntimeAuthView
       const { modal, modals, query } = createModal(() => authView)
-      expect(modal.openAuthAccountDetail(authView, 9, "opencode_go", accountCorrelationId)).toBe(true)
+      expect(modal.openAuthAccountDetail(authView, 9, { providerId: "opencode_go", accountCorrelationId })).toBe(true)
       expect(modal.subscriptionSpendConsent.state()).toMatchObject({ kind: "detail", cursor: -1 })
 
       modals.input({ name: "down" })

@@ -17,9 +17,9 @@ export function createAuthModalSettingEdits(deps: Pick<AuthModalDeps, "auth" | "
   const profileDeps = { ...deps, onWarning: (message: string) => deps.showToast({ message, variant: "warning", duration: 8000 }) }
   function target() {
     const view = deps.view()
-    if (view.kind === "profile-rename-input") return { id: `profile:${view.id}`, edit: renameProfileEdit(profileDeps, view.id, view.label) }
-    if (view.kind === "profile-create-input") return { id: "profile:create", edit: createProfileEdit(profileDeps, view.scope), action: true }
-    if (view.kind === "rename-input") return { id: `account:${view.providerId}:${view.instanceId}`, edit: deps.accountEdit(view.providerId, view.instanceId) }
+    if (view.kind === "profile-rename-input") return { view, id: `profile:${view.id}`, edit: renameProfileEdit(profileDeps, view.id, view.label) }
+    if (view.kind === "profile-create-input") return { view, id: "profile:create", edit: createProfileEdit(profileDeps, view.scope), action: true }
+    if (view.kind === "rename-input") return { view, id: `account:${view.providerId}:${view.instanceId}`, edit: deps.accountEdit(view.providerId, view.instanceId) }
     return undefined
   }
   const completion = createTerminalSettingEdit({
@@ -27,10 +27,8 @@ export function createAuthModalSettingEdits(deps: Pick<AuthModalDeps, "auth" | "
     onError: (message) => deps.showToast({ message, variant: "error" }),
   })
   function projectedView(): AuthView {
-    const current = deps.view()
     const edit = target()
-    return edit && (current.kind === "rename-input" || current.kind === "profile-rename-input" || current.kind === "profile-create-input")
-      ? { ...current, saving: completion.saving(edit.id), error: error() } : current
+    return edit ? { ...edit.view, saving: completion.saving(edit.id), error: error() } : deps.view()
   }
   function projectedRows(rows: AuthRow[]): AuthRow[] {
     return rows.map((row) => {

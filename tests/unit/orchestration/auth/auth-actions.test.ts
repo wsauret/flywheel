@@ -194,9 +194,9 @@ describe("auth-actions", () => {
     await loginWithApiKey("opencode_go", "first-1234", AUTH_DIR, resolveKey, undefined, settleCatalog);
     const first = subscriptionInstances("opencode_go")[0];
     if (!first) throw new Error("expected OpenCode Go account");
-    await renameProviderInstance("opencode_go", first.id, "Work", AUTH_DIR);
+    await renameProviderInstance({ providerId: "opencode_go", instanceId: first.id }, "Work", AUTH_DIR);
 
-    expect(await reconnectWithApiKey("opencode_go", first.id, "next-5678", AUTH_DIR, resolveKey, settleCatalog)).toBe(true);
+    expect(await reconnectWithApiKey({ providerId: "opencode_go", instanceId: first.id }, "next-5678", AUTH_DIR, resolveKey, settleCatalog)).toBe(true);
     expect(subscriptionInstances("opencode_go")[0]).toEqual({
       id: first.id,
       identity: first.identity,
@@ -211,9 +211,9 @@ describe("auth-actions", () => {
     const first = subscriptionInstances("opencode_go")[0];
     if (!first) throw new Error("expected OpenCode Go account");
     let finishResolution: ((value: Awaited<ReturnType<typeof resolveKey>>) => void) | undefined;
-    const reconnect = reconnectWithApiKey("opencode_go", first.id, "next-5678", AUTH_DIR, () => new Promise((resolve) => { finishResolution = resolve; }), settleCatalog);
+    const reconnect = reconnectWithApiKey({ providerId: "opencode_go", instanceId: first.id }, "next-5678", AUTH_DIR, () => new Promise((resolve) => { finishResolution = resolve; }), settleCatalog);
     await Promise.resolve();
-    await disconnectProviderInstance("opencode_go", first.id, AUTH_DIR, { launcher: refusingLauncher });
+    await disconnectProviderInstance({ providerId: "opencode_go", instanceId: first.id }, AUTH_DIR, { launcher: refusingLauncher });
     finishResolution?.((await import("effect")).Redacted.make("next-5678"));
 
     expect(await reconnect).toBe(false);

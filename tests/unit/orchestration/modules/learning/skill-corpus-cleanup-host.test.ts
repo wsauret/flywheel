@@ -44,7 +44,6 @@ describe("runSkillCorpusCleanupWorkHost", () => {
     let disposals = 0;
     const result = await runSkillCorpusCleanupWorkHost({
       work: [work("a"), work("b"), work("c")],
-      concurrency: 2,
       acquireClassifier: async () => {
         acquisitions += 1;
         return {
@@ -65,7 +64,6 @@ describe("runSkillCorpusCleanupWorkHost", () => {
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const running = runSkillCorpusCleanupWorkHost({
       work: [work("a"), work("b"), work("c"), work("d")],
-      concurrency: 2,
       acquireClassifier: async () => ({
         classify: async () => {
           active += 1;
@@ -91,7 +89,6 @@ describe("runSkillCorpusCleanupWorkHost", () => {
     let disposed = false;
     const running = runSkillCorpusCleanupWorkHost({
       work: [work("a"), work("b"), work("c"), work("d")],
-      concurrency: 2,
       acquireClassifier: async () => ({
         classify: async (request) => {
           started.push(request.corePackageId);
@@ -116,7 +113,6 @@ describe("runSkillCorpusCleanupWorkHost", () => {
     const started: string[] = [];
     const running = runSkillCorpusCleanupWorkHost({
       work: [work("a"), work("b"), work("c")],
-      concurrency: 1,
       acquireClassifier: async () => ({
         classify: async (request) => {
           started.push(request.corePackageId);
@@ -128,7 +124,7 @@ describe("runSkillCorpusCleanupWorkHost", () => {
     });
 
     await expect(running).rejects.toThrow("invalid cleanup output");
-    expect(started).toEqual(["core-a"]);
+    expect(started).toEqual(["core-a", "core-b"]);
   });
 });
 

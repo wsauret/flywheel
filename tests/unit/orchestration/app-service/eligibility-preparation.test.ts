@@ -20,7 +20,7 @@ describe("eligibility preparation", () => {
     const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const other = { id: "personal", directory: authDir(DIRECTORIES.userDataRoot, "personal") }
     for (const profile of [PROFILE, other]) service.publish(service.prepare({
-      profileId: profile.id, authRevision: "auth-v1", preferenceRevision: "preferences-v1",
+      profileId: profile.id, inputRevision: { auth: "auth-v1", preferences: "preferences-v1" },
       catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map(),
     }))
     let now = 0
@@ -240,8 +240,8 @@ describe("eligibility preparation", () => {
     expect(service.state("work")?.revision).toBe(refreshed.revision)
     replaceAuthDuringCapture = true
     const captured = await prepare.capture(PROFILE, (state) => state)
-    expect(captured.authRevision).toBe("auth-v3")
-    expect(captured.authRevision).toBe(service.state("work")!.authRevision)
+    expect(captured.inputRevision.auth).toBe("auth-v3")
+    expect(captured.inputRevision).toEqual(service.state("work")!.inputRevision)
     await prepare.dispose()
     await service.dispose()
   })
@@ -262,7 +262,7 @@ describe("eligibility preparation", () => {
 
     const first = await prepare(PROFILE)
     inputRevision = { auth: "auth-v1", preferences: "preferences-v2" }
-    const canonical = service.prepare({ ...first, preferenceRevision: inputRevision.preferences })
+    const canonical = service.prepare({ ...first, inputRevision })
     service.publish(canonical)
 
     expect(await prepare(PROFILE)).toBe(canonical)
@@ -370,7 +370,7 @@ describe("eligibility preparation", () => {
         prepare.capture(PROFILE, (state) => state),
         new Promise<undefined>((resolve) => setTimeout(resolve, 20)),
       ])
-      expect(captured?.authRevision).toBe(authRevision)
+      expect(captured?.inputRevision.auth).toBe(authRevision)
       expect(captured?.inventoryCandidates.get("cached")?.enabledOfferings?.has("gpt-5.5")).toBe(true)
     } finally {
       refresh.resolve()
