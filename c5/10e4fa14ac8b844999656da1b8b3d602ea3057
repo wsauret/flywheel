@@ -1,0 +1,48 @@
+src/orchestration/modules/subagents/migrations/subagent-prompt.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 61,98
+src/orchestration/modules/workflows/cli/reducers.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/workflows/cli/verify.ts
+  h_4b47e9e4a8b456 52,82
+src/orchestration/modules/workflows/migrations/adopt-workflow-children.ts
+  h_4b47e9e4a8b456 617
+src/orchestration/modules/workflows/migrations/legacy-step-catalog-filesystem.ts
+  h_4b47e9e4a8b456 59
+src/workflows/retired-bindings.ts
+  h_4b47e9e4a8b456 21
+tests/unit/cli/workflow-verify.test.ts
+  h_4b47e9e4a8b456 1-3,19-21,23-27,29,32-37,40-53,56,59-65,68-71,73-74,78-83,86-93,98-103,106-114,121-125,129-132,137-141,149-151,158,160,162,165-166,169,171-172,176-177,179-180
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 23,76-78
+tests/unit/orchestration/migrations/_legacy-workflow-aggregate.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/migrations/_pre-cutover-control.ts
+  h_4b47e9e4a8b456 6-9,12-15,20,24-227
+tests/unit/orchestration/migrations/adopt-workflow-children-input.test.ts
+  h_4b47e9e4a8b456 12,115,120-122,124-140
+tests/unit/orchestration/migrations/legacy-step-catalog-migration.test.ts
+  h_4b47e9e4a8b456 6,99-102,311
+tests/unit/orchestration/migrations/subagent-prompt-migration.test.ts
+  h_4b47e9e4a8b456 11-14,78,137
+tests/unit/orchestration/migrations/workflow-definition-identity-migration.test.ts
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/modules/workflows/launching-session-authority.test.ts
+  h_4b47e9e4a8b456 1,6,10-13,17-18,30-46
+tests/unit/workflows/reducers/registry.test.ts
+  h_4b47e9e4a8b456 1,6,454-464,486
+tests/unit/workflows/retired-bindings.test.ts
+  h_4b47e9e4a8b456 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c510e4fa14ac8b844999656da1b8b3d602ea3057",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
