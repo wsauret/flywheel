@@ -1,0 +1,118 @@
+src/orchestration/session-store/types.ts
+  h_4b47e9e4a8b456 145
+src/orchestration/session-store/view.ts
+  h_4b47e9e4a8b456 97
+src/orchestration/session/child-reconciliation-fault.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/session/child-session-publication.ts
+  h_4b47e9e4a8b456 328
+src/orchestration/session/composer-returns.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/session/conversation-checkpoint.ts
+  h_4b47e9e4a8b456 53
+src/orchestration/session/conversation/conversation-facts.ts
+  h_4b47e9e4a8b456 195
+src/orchestration/session/provider-request-audit-recorder.ts
+  h_4b47e9e4a8b456 32,49-50
+tests/helpers/branch-blocks.ts
+  h_4b47e9e4a8b456 1-16
+tests/helpers/session-entries.ts
+  h_4b47e9e4a8b456 1-4
+tests/helpers/workflow-parent.ts
+  h_4b47e9e4a8b456 9,70
+tests/integration/local/event-search-reconstruct.test.ts
+  h_4b47e9e4a8b456 46
+tests/integration/orchestration/agent-runtime/streaming-tools.test.ts
+  h_4b47e9e4a8b456 25,181,192
+tests/unit/bench/campaign-tool-evidence.test.ts
+  h_4b47e9e4a8b456 3,18-19,30-31,35-36,39-41
+tests/unit/cli/event-search-reconstruct.test.ts
+  h_4b47e9e4a8b456 12,65,93-95,110,118
+tests/unit/infra/mutation-evidence-contracts.test.ts
+  h_4b47e9e4a8b456 9,119
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 27,141,195
+tests/unit/orchestration/agent-runtime/runner-stream-events.test.ts
+  h_4b47e9e4a8b456 12,67
+tests/unit/orchestration/agent-runtime/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 16,91
+tests/unit/orchestration/agent-runtime/tools/session-note-tools.test.ts
+  h_4b47e9e4a8b456 8,68,71,81
+tests/unit/orchestration/app-service/_frontend-projection-fixtures.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/app-service/_runtime-supervisor-workflow-launch-fixtures.ts
+  h_4b47e9e4a8b456 9,162
+tests/unit/orchestration/app-service/_status-projection-fixtures.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/app-service/replacement-person-interrupt.test.ts
+  h_4b47e9e4a8b456 27-29,230,448
+tests/unit/orchestration/app-service/runtime-supervisor-mailbox.test.ts
+  h_4b47e9e4a8b456 13,626
+tests/unit/orchestration/app-service/runtime-supervisor-question-lifecycle.test.ts
+  h_4b47e9e4a8b456 9,187
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-directory.test.ts
+  h_4b47e9e4a8b456 8,35,57,80
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-reopen.test.ts
+  h_4b47e9e4a8b456 20,46,145,197
+tests/unit/orchestration/app-service/runtime-supervisor-reactivation-seed.test.ts
+  h_4b47e9e4a8b456 26,93,146,177,218,254,271,315,346,411,545,606,631,656
+tests/unit/orchestration/app-service/runtime-supervisor-recovered-chat.test.ts
+  h_4b47e9e4a8b456 4,34
+tests/unit/orchestration/app-service/runtime-supervisor-replacement.test.ts
+  h_4b47e9e4a8b456 14-15
+tests/unit/orchestration/app-service/runtime-supervisor.test.ts
+  h_4b47e9e4a8b456 622
+tests/unit/orchestration/app-service/session-auto-delete.test.ts
+  h_4b47e9e4a8b456 15,166
+tests/unit/orchestration/app-service/session-detail-messaging.test.ts
+  h_4b47e9e4a8b456 4-5,25,27-28,33,46
+tests/unit/orchestration/app-service/session-undo-lifecycle.test.ts
+  h_4b47e9e4a8b456 7,80,258
+tests/unit/orchestration/app-service/transcript-mutation-protocol.test.ts
+  h_4b47e9e4a8b456 6,54
+tests/unit/orchestration/app-service/transcript-projection-cache.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/migrations/adopt-workflow-children.test.ts
+  h_4b47e9e4a8b456 34,429
+tests/unit/orchestration/modules/development/benchmark/headless-execution.test.ts
+  h_4b47e9e4a8b456 17-18,52-56,60,65-72,286
+tests/unit/orchestration/modules/subagents/subagent-child-inputs.test.ts
+  h_4b47e9e4a8b456 14-16
+tests/unit/orchestration/session-store/session-entry-defaults.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/session/branch-history-builder.test.ts
+  h_4b47e9e4a8b456 3-4,35,67,69-71,87-88,90,135,160,170,177-178,182,186,190,203-204,207,210,216,220,222,235,241,249
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 24,203
+tests/unit/orchestration/session/child-session-reconciliation.test.ts
+  h_4b47e9e4a8b456 24,665-666
+tests/unit/orchestration/session/conversation-block-projection-failures.test.ts
+  h_4b47e9e4a8b456 5,50,83
+tests/unit/orchestration/session/conversation-block-projection-subagents.test.ts
+  h_4b47e9e4a8b456 5-6,23,40,111,220,238,287,326,354,393
+tests/unit/orchestration/session/conversation-block-projection-turn-ends.test.ts
+  h_4b47e9e4a8b456 4,18
+tests/unit/orchestration/session/conversation-entry-schemas.test.ts
+  h_4b47e9e4a8b456 17,400
+tests/unit/orchestration/session/conversation-mutation-projection.test.ts
+  h_4b47e9e4a8b456 6,28
+tests/unit/orchestration/session/provider-request-audit-reconstruction.test.ts
+  h_4b47e9e4a8b456 49,109,160,204,253,290,318,346,377,410,465
+tests/unit/orchestration/session/provider-request-audit-store.test.ts
+  h_4b47e9e4a8b456 25,85,139,361,363,369,387,389,391
+tests/unit/orchestration/session/session-input-delivery.test.ts
+  h_4b47e9e4a8b456 12,17-19
+tests/unit/orchestration/session/session-messaging.test.ts
+  h_4b47e9e4a8b456 17,400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bd34473d831e502eb39f71ef54718ec8ecadbc8c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
