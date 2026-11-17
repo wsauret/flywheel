@@ -17,7 +17,8 @@ export interface ExperimentSideInformation {
   readonly [key: string]: unknown;
 }
 
-export interface ExperimentRunValue {
+export interface ExperimentRun {
+  segment: number;
   run: number;
   commit: string;
   metric: number;
@@ -30,30 +31,16 @@ export interface ExperimentRunValue {
   asi?: ExperimentSideInformation;
 }
 
-export interface ExperimentRun extends ExperimentRunValue {
-  segment: number;
-}
-
-interface ExperimentInitializedValue {
-  segment: number;
-  name: string;
-  metricName: string;
-  metricUnit: string;
-  bestDirection: MetricDirection;
-}
-
-export type ExperimentStateEntry =
-  | { type: "initialized"; value: ExperimentInitializedValue }
-  | { type: "run"; value: ExperimentRun };
-
+/** The analysis of the recorded runs, advanced one fact at a time. */
 export interface ExperimentState {
-  name: string | null;
-  metricName: string;
-  metricUnit: string;
   bestDirection: MetricDirection;
   currentSegment: number;
-  results: ExperimentRun[];
-  secondaryMetrics: ExperimentMetric[];
+  /** Every run in recording order. A new run replaces the array, so a
+   *  snapshot that holds it keeps the runs it was taken with. */
+  results: readonly ExperimentRun[];
+  /** The runs of each segment, which the analysis of one segment reads. */
+  readonly segmentRuns: Map<number, ExperimentRun[]>;
+  secondaryMetrics: readonly ExperimentMetric[];
   baselineMetric: number | null;
   bestMetric: number | null;
   confidence: number | null;

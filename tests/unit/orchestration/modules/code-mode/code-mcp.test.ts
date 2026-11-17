@@ -26,6 +26,7 @@ function ports(state: "ready" | "needs_auth" | "failed" = "ready"): McpPorts {
       onProgress?.({ progress: 1, total: 2, message: "working" });
       return { content: [{ type: "text", text: "mcp-result" }], isError: false };
     },
+    toolsGeneration: () => 0,
   };
 }
 

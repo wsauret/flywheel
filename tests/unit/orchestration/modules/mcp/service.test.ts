@@ -11,7 +11,7 @@ import { testDirectories, temporaryDirectories } from "../../../../helpers/direc
 import { refusingLauncher } from "../../../../helpers/launcher-fake.js"
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js"
 import { fakeConnection } from "./_manager-fixtures.js"
-import type { McpConnection } from "../../../../../src/orchestration/modules/mcp/connection.js"
+import type { McpConnection, McpToolHit } from "../../../../../src/orchestration/modules/mcp/connection.js"
 import { McpNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/errors.js"
 
 const directories = { ...testDirectories(process.cwd()), executionCwd: process.cwd() }
@@ -107,6 +107,77 @@ describe("the MCP service", () => {
     } finally {
       await Promise.all([a.dispose(), b.dispose(), c.dispose()])
       await owner.dispose()
+    }
+  })
+
+  test("advances the tools generation when a server lists a new tool, and keeps it for an unchanged list", async () => {
+    const config = configOver(decode({ mcp: { servers: { work: { command: "server" } } } }))
+    const hit = (name: string): McpToolHit => ({ server: "work", name, inputSchema: { type: "object" } })
+    let listed = [hit("search")]
+    const connection = fakeConnection()
+    const service = createMcpService(servicesFor(config.owner, "/scratch/a"), { connect: async () => ({ ...connection, tools: () => listed }) })
+    let publications = 0
+    service.subscribe(() => { publications += 1 })
+    try {
+      await service.manager.acquire("work")
+      const connected = service.ports.toolsGeneration()
+      const publishedBefore = publications
+
+      listed = [hit("search")]
+      connection.toolsChanged()
+      expect(publications).toBe(publishedBefore + 1)
+      expect(service.ports.toolsGeneration()).toBe(connected)
+
+      listed = [hit("search"), hit("fetch")]
+      connection.toolsChanged()
+      expect(service.ports.toolsGeneration()).toBeGreaterThan(connected)
+      expect(service.ports.tools().map((tool) => tool.name)).toEqual(["search", "fetch"])
+    } finally {
+      await service.dispose()
+    }
+  })
+
+  test("advances the tools generation while a replacement is held, in its warmup and in its handoff", async () => {
+    const config = configOver(decode({ mcp: { servers: { work: { command: "server" } } } }))
+    const hit = (name: string): McpToolHit => ({ server: "work", name, inputSchema: { type: "object" } })
+    let listed = [hit("search")]
+    const work = fakeConnection()
+    const warming = Promise.withResolvers<void>()
+    const warmed = Promise.withResolvers<void>()
+    const closing = Promise.withResolvers<void>()
+    const closed = Promise.withResolvers<void>()
+    const first: McpConnection = { ...work, tools: () => listed, close: async () => { closing.resolve(); await closed.promise } }
+    let opened = 0
+    const service = createMcpService(servicesFor(config.owner, "/scratch/a"), {
+      connect: async ({ config: server }) => {
+        if (server.command === "other") { warming.resolve(); await warmed.promise; return fakeConnection() }
+        opened += 1
+        return opened === 1 ? first : fakeConnection()
+      },
+    })
+    try {
+      await service.manager.acquire("work")
+      const connected = service.ports.toolsGeneration()
+      const replacement = config.publish(decode({ mcp: { servers: { work: { command: "server" }, other: { command: "other" } } } }))
+      await warming.promise
+
+      listed = [hit("search"), hit("fetch")]
+      work.toolsChanged()
+      expect(service.ports.tools().map((tool) => tool.name)).toEqual(["search", "fetch"])
+      const warmup = service.ports.toolsGeneration()
+      expect(warmup).toBeGreaterThan(connected)
+
+      warmed.resolve()
+      await closing.promise
+      expect(service.ports.tools()).toEqual([])
+      expect(service.ports.toolsGeneration()).toBeGreaterThan(warmup)
+
+      closed.resolve()
+      await replacement
+    } finally {
+      warmed.resolve()
+      closed.resolve()
+      await service.dispose()
     }
   })
 

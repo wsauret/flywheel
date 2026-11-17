@@ -11,7 +11,7 @@
       "endMarker": "  /** Current session confidence score (best improvement / noise floor). null if insufficient data. */",
       "sha256": "d251d0d2e5193fc7faec7c39163c7bd9bffb549e68d0df8472b5bc80127449f3",
       "substitutions": [
-        { "from": "ExperimentResult", "to": "ExperimentRun and ExperimentRunValue" },
+        { "from": "ExperimentResult", "to": "ExperimentRun" },
         { "from": "MetricDef", "to": "ExperimentMetric" },
         {
           "from": "maxExperiments",
@@ -216,13 +216,17 @@
       "substitutions": [
         {
           "from": "JSONL lines with lenient field coercion",
-          "to": "strict ExperimentStateEntry values decoded from session facts",
-          "reason": "Facts are parsed strictly once at the recovery boundary, so reconstruction needs no salvage."
+          "to": "strict experiment facts that the projection folds one at a time through startExperimentSegment and recordExperimentRun",
+          "reason": "Facts are parsed strictly once at the recovery boundary, so the fold needs no salvage."
         },
-        { "from": "ReconstructedJsonlState", "to": "ExperimentState with baselineMetric, bestMetric, and confidence derived after every run" },
+        {
+          "from": "ReconstructedJsonlState rebuilt from every line",
+          "to": "ExperimentState that recordExperimentRun advances, analysing baselineMetric, bestMetric, and confidence again from the current segment's runs only",
+          "reason": "A projection snapshot is read per request, so the analysis advances once per recorded run and never replays the whole history."
+        },
         {
           "from": "segment inferred from initialization position and assigned to each run",
-          "to": "initialized and run entries preserve their fact-recorded segment",
+          "to": "initialized and run facts preserve their recorded segment",
           "reason": "The initialized fact is the segment owner, and recorded run facts already carry that identity."
         }
       ]

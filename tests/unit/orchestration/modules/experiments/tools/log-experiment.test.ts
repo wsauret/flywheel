@@ -35,6 +35,7 @@ const snapshot: ExperimentSnapshot = {
   confidence: null,
   protectedPaths: [],
   sealedPaths: [],
+  guardRevision: 2,
 }
 const context = makeContext({ executionCwd: "/worktree", projectRoot: "/worktree" })
 

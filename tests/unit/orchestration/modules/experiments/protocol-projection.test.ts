@@ -337,7 +337,7 @@ describe("experiment view protocol projection", () => {
   it("shows an active mode without initialization as an empty view", () => {
     const view = experimentViewFromSnapshot({
       mode: { active: true, workDir: "/repo" }, configuration: null, segments: [], runs: [], currentSegment: 0, secondaryMetrics: [],
-      resumedTurns: 0, baselineMetric: null, bestMetric: null, confidence: null, protectedPaths: [], sealedPaths: [],
+      resumedTurns: 0, baselineMetric: null, bestMetric: null, confidence: null, protectedPaths: [], sealedPaths: [], guardRevision: 1,
     }, false)
     expect(view).toMatchObject({ name: null, metric: { name: "metric", unit: "" }, active: true, running: false, runs: [] })
   })

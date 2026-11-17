@@ -1,10 +1,10 @@
-import { computeConfidence, findBaselineMetric, findBestMetric } from "./result-analysis.js";
+import { computeConfidence, findBestMetric } from "./result-analysis.js";
 import type {
   ExperimentMetric,
   ExperimentMetricValues,
   ExperimentRun,
   ExperimentState,
-  ExperimentStateEntry,
+  MetricDirection,
 } from "./types.js";
 
 function inferMetricUnit(name: string): string {
@@ -16,24 +16,20 @@ function inferMetricUnit(name: string): string {
   return "";
 }
 
-function registerSecondaryMetrics(
-  secondaryMetrics: ExperimentMetric[],
+function withSecondaryMetrics(
+  known: readonly ExperimentMetric[],
   metrics: ExperimentMetricValues,
-): void {
-  for (const name of Object.keys(metrics)) {
-    if (secondaryMetrics.some((metric) => metric.name === name)) continue;
-    secondaryMetrics.push({ name, unit: inferMetricUnit(name) });
-  }
+): readonly ExperimentMetric[] {
+  const added = Object.keys(metrics).filter((name) => !known.some((metric) => metric.name === name));
+  return added.length === 0 ? known : [...known, ...added.map((name) => ({ name, unit: inferMetricUnit(name) }))];
 }
 
-function emptyExperimentState(): ExperimentState {
+export function emptyExperimentState(): ExperimentState {
   return {
-    name: null,
-    metricName: "metric",
-    metricUnit: "",
     bestDirection: "lower",
     currentSegment: 0,
     results: [],
+    segmentRuns: new Map(),
     secondaryMetrics: [],
     baselineMetric: null,
     bestMetric: null,
@@ -41,36 +37,27 @@ function emptyExperimentState(): ExperimentState {
   };
 }
 
-/**
- * Reconstructs the experiment view from strict, already decoded fact values.
- */
-export function reconstructExperimentState(entries: ExperimentStateEntry[]): ExperimentState {
-  const state = emptyExperimentState();
+/** Starts the analysis of an initialized segment: its secondary metrics,
+ *  baseline, best, and confidence stay empty until its next run. */
+export function startExperimentSegment(state: ExperimentState, segment: number, direction: MetricDirection): void {
+  state.currentSegment = segment;
+  state.bestDirection = direction;
+  state.secondaryMetrics = [];
+  state.baselineMetric = null;
+  state.bestMetric = null;
+  state.confidence = null;
+}
 
-  for (const entry of entries) {
-    if (entry.type === "initialized") {
-      state.currentSegment = entry.value.segment;
-      state.secondaryMetrics = [];
-      state.name = entry.value.name;
-      state.metricName = entry.value.metricName;
-      state.metricUnit = entry.value.metricUnit;
-      state.bestDirection = entry.value.bestDirection;
-      state.baselineMetric = null;
-      state.bestMetric = null;
-      state.confidence = null;
-      continue;
-    }
-
-    const result: ExperimentRun = {
-      ...entry.value,
-      metrics: { ...entry.value.metrics },
-    };
-    state.results.push(result);
-    registerSecondaryMetrics(state.secondaryMetrics, result.metrics);
-    state.baselineMetric = findBaselineMetric(state.results, state.currentSegment);
-    state.bestMetric = findBestMetric(state.results, state.currentSegment, state.bestDirection);
-    state.confidence = computeConfidence(state.results, state.currentSegment, state.bestDirection);
-  }
-
-  return state;
+/** Adds one strictly decoded run and analyses the current segment again,
+ *  once, from the runs of that segment only. */
+export function recordExperimentRun(state: ExperimentState, run: ExperimentRun): void {
+  state.results = [...state.results, run];
+  const segmentRuns = state.segmentRuns.get(run.segment);
+  if (segmentRuns) segmentRuns.push(run);
+  else state.segmentRuns.set(run.segment, [run]);
+  state.secondaryMetrics = withSecondaryMetrics(state.secondaryMetrics, run.metrics);
+  const current = state.segmentRuns.get(state.currentSegment) ?? [];
+  state.baselineMetric = current[0]?.metric ?? null;
+  state.bestMetric = findBestMetric(current, state.currentSegment, state.bestDirection);
+  state.confidence = computeConfidence(current, state.currentSegment, state.bestDirection);
 }

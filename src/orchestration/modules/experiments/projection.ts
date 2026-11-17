@@ -1,8 +1,8 @@
 import type { AsyncEventReadSurface, CorruptEventRowError, StoredFact } from "../../../infra/event-store-types.js"
 import { createEventProjection } from "../../../infra/event-projection.js"
 import { heldProjection } from "../../../infra/projection-registry.js"
-import { reconstructExperimentState } from "./state-reconstruction.js"
-import type { ExperimentMetric, ExperimentRun, ExperimentStateEntry } from "./types.js"
+import { emptyExperimentState, recordExperimentRun, startExperimentSegment } from "./state-reconstruction.js"
+import type { ExperimentMetric, ExperimentRun, ExperimentState } from "./types.js"
 import {
   parseExperimentFact,
   type ExperimentInitializedFact,
@@ -36,14 +36,22 @@ export interface ExperimentSnapshot {
   readonly confidence: number | null
   readonly protectedPaths: readonly string[]
   readonly sealedPaths: readonly string[]
+  /** Advances with each change of the mode or the configuration, the only
+   *  inputs of the charter policy and the experiment prompt fragment. Equal
+   *  revisions of one session mean equal inputs. */
+  readonly guardRevision: number
 }
 
+/** The analysis advances as each fact lands, and every array that a snapshot
+ *  holds is replaced rather than changed, so a snapshot is O(1) and keeps the
+ *  values it was taken with. */
 interface ExperimentProjectionState {
   available: boolean
   mode: ExperimentMode
-  configurations: ExperimentConfiguration[]
-  entries: ExperimentStateEntry[]
+  configurations: readonly ExperimentConfiguration[]
+  analysis: ExperimentState
   resumedTurns: number
+  guardRevision: number
 }
 
 export interface ExperimentProjection {
@@ -76,8 +84,9 @@ function initialState(): ExperimentProjectionState {
     available: true,
     mode: { active: false, workDir: null },
     configurations: [],
-    entries: [],
+    analysis: emptyExperimentState(),
     resumedTurns: 0,
+    guardRevision: 0,
   }
 }
 
@@ -100,6 +109,7 @@ function reduce(state: ExperimentProjectionState, event: StoredFact): Experiment
   switch (fact.type) {
     case "experiment.mode.changed":
       state.mode = { ...fact.payload }
+      state.guardRevision += 1
       break
     case "experiment.initialized": {
       const configuration = {
@@ -107,27 +117,16 @@ function reduce(state: ExperimentProjectionState, event: StoredFact): Experiment
         protectedPaths: [...fact.payload.protectedPaths],
         sealedPaths: [...fact.payload.sealedPaths],
       }
-      state.configurations.push(configuration)
-      state.entries.push({
-        type: "initialized",
-        value: {
-          segment: configuration.segment,
-          name: configuration.name,
-          metricName: configuration.metricName,
-          metricUnit: configuration.metricUnit,
-          bestDirection: configuration.direction,
-        },
-      })
+      state.configurations = [...state.configurations, configuration]
+      startExperimentSegment(state.analysis, configuration.segment, configuration.direction)
+      state.guardRevision += 1
       break
     }
     case "experiment.run.recorded":
-      state.entries.push({
-        type: "run",
-        value: {
-          ...fact.payload,
-          metrics: { ...fact.payload.metrics },
-          timestamp: event.timestamp,
-        },
+      recordExperimentRun(state.analysis, {
+        ...fact.payload,
+        metrics: { ...fact.payload.metrics },
+        timestamp: event.timestamp,
       })
       break
     case "experiment.resumed":
@@ -144,20 +143,21 @@ function reduceCorruptRow(state: ExperimentProjectionState, _corrupt: CorruptEve
 
 function snapshot(state: ExperimentProjectionState): ExperimentSnapshot | undefined {
   if (!state.available) return undefined
-  const reconstructed = reconstructExperimentState(state.entries)
+  const { analysis } = state
   const configuration = state.configurations.at(-1) ?? null
   return {
-    mode: { ...state.mode },
+    mode: state.mode,
     configuration,
     segments: state.configurations,
-    runs: reconstructed.results,
-    currentSegment: reconstructed.currentSegment,
-    secondaryMetrics: reconstructed.secondaryMetrics,
+    runs: analysis.results,
+    currentSegment: analysis.currentSegment,
+    secondaryMetrics: analysis.secondaryMetrics,
     resumedTurns: state.resumedTurns,
-    baselineMetric: reconstructed.baselineMetric,
-    bestMetric: reconstructed.bestMetric,
-    confidence: reconstructed.confidence,
+    baselineMetric: analysis.baselineMetric,
+    bestMetric: analysis.bestMetric,
+    confidence: analysis.confidence,
     protectedPaths: configuration?.protectedPaths ?? [],
     sealedPaths: configuration?.sealedPaths ?? [],
+    guardRevision: state.guardRevision,
   }
 }

@@ -108,11 +108,20 @@ export function createMcpService(services: PortableModuleServices, options: Pick
     return server !== undefined && isMcpConnector(server)
   }
   let status = observe()
+  // A publication that leaves the servers and their tool lists equal keeps the generation.
+  const toolsFingerprint = (): string => JSON.stringify([manager.servers(), manager.tools()])
+  let tools = { fingerprint: toolsFingerprint(), generation: 0 }
+  const advanceToolsGeneration = (): void => {
+    const fingerprint = toolsFingerprint()
+    if (fingerprint !== tools.fingerprint) tools = { fingerprint, generation: tools.generation + 1 }
+  }
   const publish = (): void => {
     status = observe()
+    advanceToolsGeneration()
     for (const listener of listeners) listener()
   }
-  const stopManager = manager.subscribe(() => { if (!replacing) publish() })
+  // A held replacement defers the status publication, but the ports already serve the changed lists.
+  const stopManager = manager.subscribe(() => { if (replacing) advanceToolsGeneration(); else publish() })
   /** Applies `source` to the manager with the connectors of the last read. A switch that is off stops every
    *  connector engine and forgets the list. */
   const apply = async (source: McpConfig, enabled: boolean): Promise<void> => {
@@ -171,7 +180,7 @@ export function createMcpService(services: PortableModuleServices, options: Pick
   ]
   return {
     manager,
-    ports: { servers: manager.servers, tools: manager.tools, call: manager.call },
+    ports: { servers: manager.servers, tools: manager.tools, call: manager.call, toolsGeneration: () => tools.generation },
     authentication: createMcpAuthenticationService({ manager, launcher: services.launcher }),
     status: () => status,
     claudeAiConnectors: () => applied.claude_ai_connectors,

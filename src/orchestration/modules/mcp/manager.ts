@@ -60,7 +60,9 @@ export interface McpManager {
   credentialUpdated(server: string): Promise<void>;
   authorize(server: string): Promise<McpOAuthAuthorization>;
   status(): readonly McpConnectionStatusRow[];
-  /** Observe status changes, including an empty replacement; read the current list with status(). */
+  /** Observe status and tool-list changes, including an empty replacement and
+   *  the start of a registry handoff, which empties tools(); read the current
+   *  lists with status() and tools(). */
   subscribe(listener: () => void): () => void;
   replaceServers(servers: McpServerRegistry): Promise<void>;
   dispose(): Promise<void>;
@@ -69,7 +71,12 @@ export interface McpManager {
 export type McpManagerResource = Omit<McpManager, "replaceServers">;
 
 /** What a runner reaches through the module's handle: the catalog and the call, never a connection. */
-export type McpPorts = Pick<McpManager, "servers" | "tools" | "call">;
+export interface McpPorts extends Pick<McpManager, "servers" | "tools" | "call"> {
+  /** Advances whenever `servers` or `tools` returns a different list, so a
+   *  holder of what they returned reads them again only when it changed. Read
+   *  it before the lists it covers. */
+  toolsGeneration(): number;
+}
 
 
 

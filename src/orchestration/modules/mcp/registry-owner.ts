@@ -80,6 +80,8 @@ export function createMcpRegistryOwner(options: McpManagerOptions, createResourc
       void ignoreRejection(pending.promise);
       handoff = pending.promise;
       unsubscribe();
+      // tools() reads empty from here until the candidate is active.
+      publish();
       try {
         await previous.dispose();
         if (disposed) throw new Error("MCP manager was disposed during replacement");

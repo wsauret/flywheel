@@ -42,6 +42,7 @@ export const mcpModule = {
     { domain: "codeTools", id: "mcp", value: {
       create: ({ modules }) => modules.get(mcpRuntime)?.nestedTools() ?? [],
       namespaces: ({ modules }) => modules.get(mcpRuntime)?.namespaces() ?? [],
+      generation: ({ modules }) => modules.get(mcpRuntime)?.toolsGeneration() ?? 0,
     } },
     { domain: "commands", id: MCP_COMMAND, value: {
       id: MCP_COMMAND,

@@ -19,6 +19,13 @@ import { createExperimentOperation, type ExperimentOperation } from "./operation
 import { validateExperimentWorktree } from "./git-worktree.js"
 import { createExperimentProjection, type ExperimentSnapshot } from "./projection.js"
 
+/** The charter policy with the projection's guard revision: a holder of the
+ *  policy, of the tool omissions it gives, or of the experiment prompt fragment
+ *  reads them again only when the revision changed. */
+interface ExperimentGuard extends ExperimentGuardSnapshot {
+  readonly revision: number
+}
+
 /** The experiment loop of one runner: the three loop tools, the operation
  *  owner, the finalizer grant, and the live charter policy, all
  *  reading the session's one held experiment projection. */
@@ -36,7 +43,7 @@ export interface ExperimentsRuntime {
   readonly finalizeGrant: (revision: SkillRegistryRevision) => ExternalSkillChildGrant
   /** Live charter policy. The exposure gate omits tools it forbids and the
    *  execution gate vetoes calls against it. */
-  readonly guard: () => Promise<ExperimentGuardSnapshot | undefined>
+  readonly guard: () => Promise<ExperimentGuard | undefined>
   readonly snapshot: () => Promise<ExperimentSnapshot | undefined>
 }
 
@@ -69,7 +76,7 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
     head: (cwd) => readExperimentHead(cwd, runOwnedCommand),
   })
   const snapshot = (): Promise<ExperimentSnapshot | undefined> => projection.replay()
-  const guard = async (): Promise<ExperimentGuardSnapshot | undefined> => {
+  const guard = async (): Promise<ExperimentGuard | undefined> => {
     const current = await snapshot()
     if (!current) return undefined
     return {
@@ -78,6 +85,7 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
       workDir: current.mode.workDir ?? executionCwd,
       protectedPaths: current.protectedPaths,
       sealedPaths: current.sealedPaths,
+      revision: current.guardRevision,
     }
   }
   return {

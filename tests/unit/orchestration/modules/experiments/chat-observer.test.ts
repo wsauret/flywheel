@@ -36,6 +36,7 @@ function snapshot(overrides: Partial<ExperimentSnapshot> = {}): ExperimentSnapsh
     confidence: null,
     protectedPaths: [],
     sealedPaths: [],
+    guardRevision: 2,
     ...overrides,
   }
 }

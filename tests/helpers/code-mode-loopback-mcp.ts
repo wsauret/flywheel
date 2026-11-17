@@ -139,6 +139,7 @@ export function startLoopbackMcpServer(options: { readonly largeResultBytes?: nu
         servers: () => ["loop"],
         tools: () => connection.tools(),
         call: ({ server: _server, ...request }) => connection.callTool(request),
+        toolsGeneration: () => 0,
       };
     },
     async close() {

@@ -6,7 +6,7 @@ import type { McpService } from "../../src/orchestration/modules/mcp/service.js"
 
 /** Ports over a fixed catalog; `call` answers every tool the same way. */
 export function mcpPortsOver(hits: readonly McpToolHit[], call: McpPorts["call"] = async () => { throw new Error("unused in this test"); }): McpPorts {
-  return { servers: () => [...new Set(hits.map((hit) => hit.server))], tools: () => hits, call };
+  return { servers: () => [...new Set(hits.map((hit) => hit.server))], tools: () => hits, call, toolsGeneration: () => 0 };
 }
 
 /** The module's real per-runner runtime over one process service that holds only `ports`. */

@@ -134,6 +134,9 @@ interface CodeToolsContribution {
   /** The namespaces the contribution serves, known before their tools arrive. The Code Mode catalog names each one
    *  from the first request, so tools that arrive later leave the system prompt and its prompt cache unchanged. */
   readonly namespaces?: (deps: { readonly kernel: KernelToolDeps; readonly modules: ModuleRuntimes }) => readonly string[]
+  /** Advances whenever `create` or `namespaces` can return a different list, so a request preparation that holds
+   *  what they returned reads them again only when it changed. A contribution without it is read on every request. */
+  readonly generation?: (deps: { readonly kernel: KernelToolDeps; readonly modules: ModuleRuntimes }) => number
 }
 export interface WebBackendContribution {
   readonly id: WebSearchProviderId
