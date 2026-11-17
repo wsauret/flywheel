@@ -254,7 +254,7 @@ describe("a model launch of the content of a workflow file", () => {
     if ("error" in byPath) throw new Error(byPath.error)
     expect(launch.workflowFile).toEqual(byPath.workflowFile)
     expect(recorded(setup, launch.workflowId)).toEqual(recorded(setup, byPath.workflowId))
-    expect(recorded(setup, launch.workflowId).definitions["workflow:survey-routes"]?.provenance).toMatchObject({ layer: "session", filePath: expect.stringMatching(/scratch\/workflows\/survey-routes\.workflow\.yaml$/u) })
+    expect(recorded(setup, launch.workflowId).definitions["workflow:survey-routes"]?.provenance).toMatchObject({ layer: "session", filePath: file })
   })
 
   it("keeps the content of a refused launch saved and names the saved file, so the agent can fix it", async () => {
