@@ -67,6 +67,15 @@ const LeadChatClosedFactSchema = defineFact({
   payload: Schema.Struct({ sessionId: Schema.NonEmptyString }),
 })
 
+/** A chat of the lead's list came to rest with nothing for the person and no client shows it, so it leaves the list
+ *  until it becomes active again (PI-LEAD-004). The person did not close it. */
+const LeadChatRetiredFactSchema = defineFact({
+  type: "lead.chat.retired",
+  version: 1,
+  actor: Schema.Literal("system"),
+  payload: Schema.Struct({ sessionId: Schema.NonEmptyString }),
+})
+
 /** The first run of the list in a project joined every chat that the list adopts from the rule before it: each
  *  chat that the lead started and that this rule still showed. Its absence makes the next start run it again. */
 const LeadListSeededFactSchema = defineFact({
@@ -102,6 +111,7 @@ const LeadFactSchema = Schema.Union([
   LeadChatSeenFactSchema,
   LeadChatJoinedFactSchema,
   LeadChatClosedFactSchema,
+  LeadChatRetiredFactSchema,
   LeadListSeededFactSchema,
 ])
 

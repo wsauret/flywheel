@@ -712,7 +712,7 @@ Each command has one slash token and one name, and the terminal, desktop web, ph
 
 ## PI-INTERACTION-082: Closing a tab ends no work, and Close chat ends it now
 
-Closing a chat's tab only stops showing the chat. Its running turn, its background commands, its subagents, and its workflows go on, and the chat stays active and shows as working while they do. When its turn comes to rest, the chat closes as Close chat closes it, unless the person opens the chat again before then. Close chat is the one action that ends a chat's work now, and in the terminal it also removes the chat's tab. While the lead is on, PI-LEAD-004 decides instead.
+Closing a chat's tab only stops showing the chat. Its running turn, its background commands, its subagents, and its workflows go on, and the chat stays active and shows as working while they do. When its turn comes to rest, the chat closes as Close chat closes it, unless the person opens the chat again before then. Close chat is the one action that ends a chat's work now, and in the terminal it also removes the chat's tab. While the lead is on, a chat in the lead's list stays open until it leaves the list (PI-LEAD-004).
 
 ## PI-INTERACTION-119: Close chat interrupts the turn and leaves workflows running
 

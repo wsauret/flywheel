@@ -70,6 +70,9 @@ export interface ModuleExecutionEnvironment {
   /** Calls `listener` with each chat that a person closes (`RuntimeSupervisor.onChatClosed`), and answers the
    *  unsubscribe. */
   readonly onChatClosed: (listener: (sessionId: string) => void) => () => void
+  /** Calls `listener` with each session that the runtime released (`RuntimeSupervisor.onSessionReleased`), and
+   *  answers the unsubscribe. */
+  readonly onSessionReleased: (listener: (sessionId: string) => void) => () => void
   /** Whether a client shows the chat now (`RuntimeSupervisor.isShown`). */
   readonly sessionShown: (sessionId: string) => boolean
   /** The subagent and workflow cards of a session's live transcript that have not finished, each as its transcript

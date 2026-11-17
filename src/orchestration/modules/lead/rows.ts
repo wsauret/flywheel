@@ -39,9 +39,12 @@ interface LeadPendingQuestion {
   readonly openedAt: number
 }
 
-/** A row's state, the time its evidence names, and for a failure or a cut the entry that the person sees it at. */
+/** A chat's state: a row's state, or `done` for a chat at rest with nothing for the person, which shows no row. */
+type ChatState = LeadRowState | "done"
+
+/** A chat's state, the time its evidence names, and for a failure or a cut the entry that the person sees it at. */
 interface RowState {
-  readonly state: LeadRowState
+  readonly state: ChatState
   readonly at: number | undefined
   readonly ended?: string
 }
@@ -58,12 +61,15 @@ interface LeadRowsDeps {
   /** The newest failed or cut state that the person saw in the chat, at its entry. */
   readonly seenMark: (sessionId: string) => { readonly state: LeadSeenState; readonly entryId: string } | undefined
   readonly publish: (change: LeadRowChange) => void
+  /** A followed chat came to rest with nothing for the person, once its fold is built or after it showed a row. It
+   *  shows no row until it works or needs the person again. */
+  readonly onRest: (sessionId: string) => void
   readonly now?: () => number
 }
 
 /** The rows of the chats in the lead's list (PI-LEAD-004): one held fold of each chat's conversation, its pending
- *  question, and its live activity. Every followed chat that exists has a row. Each change touches only the chats
- *  that it names, and a row publishes only when it differs. */
+ *  question, and its live activity. A followed chat that exists has a row while it works or needs the person. Each
+ *  change touches only the chats that it names, and a row publishes only when it differs. */
 export interface LeadRows {
   /** Starts following these chats. A chat that is not a chat, or no longer exists, gets no row. */
   add(sessionIds: Iterable<string>): Promise<void>
@@ -83,6 +89,12 @@ export interface LeadRows {
   questions(sessionId: string): readonly LeadPendingQuestion[]
   /** A followed chat that exists, once its fold is built; undefined for any other chat. */
   chat(sessionId: string): Promise<LeadChatReading | undefined>
+  /** Whether a followed chat's fold is built and the chat is at rest with nothing for the person after its first
+   *  entry. A chat that holds no entry yet, such as a new chat before its first message, waits for it. */
+  resting(sessionId: string): boolean
+  /** Any chat that exists, read once from its start when this owner does not follow it, as for a chat that left the
+   *  list. Publishes nothing. */
+  read(sessionId: string): Promise<LeadChatReading | undefined>
   /** Releases every fold and listener, and settles the builds that run. Publishes nothing. */
   dispose(): Promise<void>
 }
@@ -96,8 +108,8 @@ interface Member {
   readonly release: readonly (() => void)[]
   /** The chat's pending questions, oldest first. */
   questions: readonly PendingEntry[]
-  /** The row's state and the time the chat entered it. */
-  entered: { readonly state: LeadRowState; readonly at: number } | undefined
+  /** The chat's state and the time the chat entered it. */
+  entered: { readonly state: ChatState; readonly at: number } | undefined
   row: LeadRow | undefined
 }
 
@@ -109,10 +121,10 @@ async function pendingQuestions(reader: AsyncEventReadSurface, sessionId: string
 }
 
 /** The question that the row and the lead's reading show: the newest that waits. */
-const newestQuestion = (member: Member): PendingEntry | undefined => member.questions.at(-1)
+const newestQuestion = (member: Pick<Member, "questions">): PendingEntry | undefined => member.questions.at(-1)
 
-function pendingOf(member: Member, question: PendingEntry): LeadPendingQuestion {
-  return { toolUseId: question.toolUseId, context: member.fold.getState().contexts[question.toolUseId] ?? null, questions: question.request, openedAt: question.openedAt }
+function pendingOf(fold: RowFold, question: PendingEntry): LeadPendingQuestion {
+  return { toolUseId: question.toolUseId, context: fold.contexts[question.toolUseId] ?? null, questions: question.request, openedAt: question.openedAt }
 }
 
 export function createLeadRows(deps: LeadRowsDeps): LeadRows {
@@ -144,7 +156,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
   /** The state of a chat by the order of section 2.5 of the lead design. A chat at rest with nothing for the person,
    *  such as a read result or a failure or a cut that the person saw at the same entry, is done since its newest
    *  output. */
-  function stateOf(member: Member, fold: RowFold, live: "failed" | "working" | undefined): RowState {
+  function stateOf(member: Pick<Member, "sessionId" | "questions">, fold: RowFold, live: "failed" | "working" | undefined): RowState {
     const question = newestQuestion(member)
     if (question) return { state: "question", at: question.openedAt }
     if (live === "working") return { state: "working", at: undefined }
@@ -170,8 +182,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       case "failed": return "failed"
       case "cut": return "interrupted"
       case "question": return firstLine(newestQuestion(member)?.request[0]?.question ?? "")
-      case "result":
-      case "done": return firstLine(fold.final?.text ?? "")
+      case "result": return firstLine(fold.final?.text ?? "")
       case "working": {
         const latest = fold.latest
         if (latest?.kind === "text") return latest.text
@@ -182,7 +193,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     }
   }
 
-  function rowOf(member: Member, fold: RowFold, { state, ended }: RowState, entered: number): LeadRow {
+  function rowOf(member: Member, fold: RowFold, { state, ended }: RowState & { readonly state: LeadRowState }, entered: number): LeadRow {
     return {
       sessionId: member.sessionId,
       state,
@@ -195,12 +206,22 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     }
   }
 
-  /** Derives the member's row from its fold, its question, and the live store, and publishes it when it changed. */
+  /** Derives the member's row from its fold, its question, and the live store, and publishes it when it changed. A
+   *  chat that comes to rest with nothing for the person loses its row and tells `onRest` once. */
   function compute(member: Member): void {
     const fold = member.fold.getState()
     const next = stateOf(member, fold, liveState(member.sessionId, fold))
-    if (member.entered?.state !== next.state) member.entered = { state: next.state, at: next.at ?? now() }
-    const row = rowOf(member, fold, next, member.entered.at)
+    const before = member.entered
+    const entered = before?.state === next.state ? before : { state: next.state, at: next.at ?? now() }
+    member.entered = entered
+    if (next.state === "done") {
+      const shown = member.row !== undefined
+      member.row = undefined
+      if (shown) deps.publish({ kind: "removed", sessionId: member.sessionId })
+      if (before?.state !== "done") deps.onRest(member.sessionId)
+      return
+    }
+    const row = rowOf(member, fold, { ...next, state: next.state }, entered.at)
     if (member.row && Bun.deepEquals(member.row, row, true)) return
     member.row = row
     deps.publish({ kind: "updated", row })
@@ -243,6 +264,14 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     members.delete(sessionId)
     for (const release of member.release) release()
     if (member.row) deps.publish({ kind: "removed", sessionId })
+  }
+
+  async function chat(sessionId: string): Promise<LeadChatReading | undefined> {
+    const member = await builds.get(sessionId)?.catch(() => undefined)
+    if (!member || members.get(sessionId) !== member) return undefined
+    const fold = member.fold.getState()
+    const question = newestQuestion(member)
+    return { row: member.row, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
   }
 
   const unsubscribeStore = deps.sessionStore.onChange((changed) => {
@@ -314,14 +343,23 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
     },
     questions(sessionId) {
       const member = members.get(sessionId)
-      return member ? member.questions.map((question) => pendingOf(member, question)) : []
+      return member ? member.questions.map((question) => pendingOf(member.fold.getState(), question)) : []
     },
-    async chat(sessionId) {
-      const member = await builds.get(sessionId)?.catch(() => undefined)
-      if (!member || members.get(sessionId) !== member) return undefined
-      const fold = member.fold.getState()
-      const question = newestQuestion(member)
-      return { row: member.row, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(member, question) }
+    chat,
+    resting(sessionId) {
+      const member = members.get(sessionId)
+      return member?.entered?.state === "done" && member.fold.getState().tail.length > 0
+    },
+    async read(sessionId) {
+      const followed = await chat(sessionId)
+      if (followed) return followed
+      const session = await deps.sessionManager.read(sessionId)
+      if (session?.kind !== "chat") return undefined
+      // One explicit read of a chat that the list does not follow, so it folds once from the start.
+      const fold = await leadRowFold(deps.reader, sessionId, session.conversationId).replay()
+      const questions = await pendingQuestions(deps.reader, sessionId)
+      const question = newestQuestion({ questions })
+      return { row: undefined, working: liveState(sessionId, fold) === "working", turnEnd: fold.turnEnd?.reading, question: question && pendingOf(fold, question) }
     },
     async dispose() {
       disposed = true

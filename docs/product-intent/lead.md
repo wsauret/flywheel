@@ -14,9 +14,9 @@ The lead gives a request to a new chat, or to any chat of the project whose work
 
 A chat that the lead started opens no tab and is otherwise an ordinary chat. It works while no client shows it, asks the person its own questions, and owns its changes review and background list. Session navigation lists it. The person can open it as a tab, message it, interrupt it, close it, or delete it.
 
-## PI-LEAD-004: The lead's screen lists every chat in use
+## PI-LEAD-004: The lead's screen lists every chat that works or needs the person
 
-In the terminal, the lead's screen lists every chat of the project that is in use below its input. This includes chats from any starter or client. It excludes the lead and the subagents and workflow agents of a chat. A chat joins the list when it starts, opens, or receives a message. It leaves only when the person closes or deletes it. While the lead is on, closing a chat's tab returns the chat to the list. A restart or a project sleep keeps the list. Each row names its chat by its tab title, then its longer title.
+In the terminal, the lead's screen lists below its input every chat of the project that works or needs the person, from any starter or client. It excludes the lead and the subagents and workflow agents of a chat. A chat leaves the list by itself once it is idle with nothing unseen, and returns when it works or needs the person again. A restart keeps only chats that need the person. Each row names its chat by its tab title, then its longer title.
 
 ## PI-LEAD-005: The person answers and opens chats from the lead's screen
 
@@ -60,11 +60,11 @@ While the lead's tab is in front, the composer's placeholder and border show no 
 
 ## PI-LEAD-015: A row shows the chat's state
 
-A row in the lead's list shows the chat's state as a mark, its title, one short line of status, and its age. The status of a working chat names its newest action as its transcript summarizes it. A question or a result shows its own first line. A chat whose last result the person read shows as done. Chats that need the person come first, the longest wait first. Every terminal view shows how many chats need the person.
+A row in the lead's list shows the chat's state as a mark, its title, one short line of status, and its age. The status of a working chat names its newest action as its transcript summarizes it. A question or a result shows its own first line. A failure or a cut shows until the person sees it. Chats that need the person come first, the longest wait first. Every terminal view shows how many chats need the person.
 
 ## PI-LEAD-016: The person closes a chat from the lead's screen
 
-The x key on a selected row of the lead's list closes the chat. A click on the close mark of the row under the pointer does the same, and so does the close action of the chat's conversation over the lead. Each closes the chat as Close chat does: its work ends now, and a tab that shows it closes. Its row leaves the list.
+The x key on a selected row of the lead's list closes the chat. A click on the close mark of the row under the pointer does the same, and so does the close action of the chat's conversation over the lead. Each closes the chat as Close chat does: its work ends now, and a tab that shows it closes. The chat leaves the list at once, also while it works.
 
 ## PI-LEAD-017: The lead's calls gather under headings
 

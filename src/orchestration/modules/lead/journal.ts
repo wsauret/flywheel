@@ -13,8 +13,8 @@ interface LeadJournalState {
   readonly dismissed: boolean
   /** Each started chat and the ids of the person's entries that started it. */
   readonly started: ReadonlyMap<string, readonly string[]>
-  /** The chats of the lead's list: each chat whose newest join no close followed (ARCH-SESSIONS-050). It can hold the
-   *  lead chat itself, which joins at its creation before its designation lands, and a deleted chat. */
+  /** The chats of the lead's list: each chat whose newest join no close or retirement followed (ARCH-SESSIONS-050).
+   *  It can hold the lead chat itself, which joins at its creation before its designation lands, and a deleted chat. */
   readonly members: ReadonlySet<string>
   /** The chats that joined at their creation while the lead showed (`lead.chat.joined`). */
   readonly briefed: ReadonlySet<string>
@@ -124,6 +124,9 @@ function createLeadState() {
         members.delete(fact.payload.sessionId)
         closed.add(fact.payload.sessionId)
         return
+      case "lead.chat.retired":
+        members.delete(fact.payload.sessionId)
+        return
       case "lead.list.seeded":
         seeded = true
         return
@@ -150,6 +153,7 @@ function createLeadState() {
       case "lead.chat.joined":
         return members.has(fact.payload.sessionId)
       case "lead.chat.closed":
+      case "lead.chat.retired":
         return !members.has(fact.payload.sessionId)
       case "lead.list.seeded":
         return seeded

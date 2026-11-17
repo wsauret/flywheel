@@ -102,6 +102,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
       sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
       createOpenHold: () => supervisor.createOpenHold(),
       onChatClosed: (listener) => supervisor.onChatClosed(listener),
+      onSessionReleased: (listener) => supervisor.onSessionReleased(listener),
       sessionShown: (sessionId) => supervisor.isShown(sessionId),
       liveAgentCards: (sessionId) => runtime.liveAgentCards(sessionId),
       sendSessionMessage: async (input) => {

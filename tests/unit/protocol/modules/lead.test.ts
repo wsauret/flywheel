@@ -16,18 +16,16 @@ const rows = [
   row("question-oldest", "question", 95, 20),
   row("result-new", "result", 60),
   row("failed-middle", "failed", 70, 40),
-  row("done-old", "done", 5),
-  row("done-new", "done", 99),
 ]
 
-test("the chats that need the person come first, the longest wait first, then working, unread, and done chats, each newest first", () => {
-  expect(leadRowOrder(rows).map((current) => current.sessionId)).toEqual(["question-oldest", "failed-middle", "cut-recent", "working", "result-new", "result-old", "done-new", "done-old"])
+test("the chats that need the person come first, the longest wait first, then working and unread chats, each newest first", () => {
+  expect(leadRowOrder(rows).map((current) => current.sessionId)).toEqual(["question-oldest", "failed-middle", "cut-recent", "working", "result-new", "result-old"])
 })
 
 test("question, failed, and cut need the person, and the composer border counts them in the warning tone", () => {
   expect(leadNeedsPerson(view(rows))).toBe(3)
   expect(status(view(rows.filter((current) => current.sessionId !== "cut-recent")))).toEqual([{ id: "lead", text: "2 need you", tone: "warning" }])
   expect(status(view([row("question", "question", 1, 1), row("working", "working", 2)]))).toEqual([{ id: "lead", text: "1 needs you", tone: "warning" }])
-  expect(status(view([row("working", "working", 2), row("result", "result", 3), row("done", "done", 4)]))).toEqual([])
+  expect(status(view([row("working", "working", 2), row("result", "result", 3)]))).toEqual([])
   expect(status(undefined)).toEqual([])
 })

@@ -35,7 +35,7 @@ async function appendTurn(chat: string, index: number): Promise<void> {
 async function costs(chats: readonly string[], members: number) {
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) } })
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {} })
   let observing: Promise<void> = Promise.resolve()
   const unsubscribe = ctx.store.onStored((events: readonly StoredFact[]) => { observing = observing.then(() => rows.observe(events)) })
   try {
@@ -74,7 +74,7 @@ test("a reorder and a removal in the session store read nothing durable and publ
   const other = await supervisor.openSessionRuntime()
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) } })
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {} })
   try {
     await rows.add(chats)
     // Each chat holds an open turn with no live work and no record, so each has a row that the sweep reads again.

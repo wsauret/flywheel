@@ -47,7 +47,7 @@ interface ChatProgressDeps {
   readonly reader: AsyncEventStateReadSurface
   readonly sessionManager: Pick<SessionManager, "read">
   readonly sessionStore: Pick<SessionStore, "get">
-  /** The rows owner's reading of a listed chat that exists. */
+  /** The rows owner's reading of a chat that exists, listed or not. */
   readonly chat: (sessionId: string) => Promise<LeadChatReading | undefined>
   readonly agentCards: (sessionId: string) => Promise<readonly AgentGroupBlock[]>
   readonly now?: () => number
@@ -93,8 +93,8 @@ interface ConversationPage {
   readonly before: string | null
 }
 
-/** What `chat_progress` answers: a refusal, one line for each listed chat, one listed chat as it stands, or an earlier
- *  page of one listed chat's conversation. */
+/** What `chat_progress` answers: a refusal, one line for each listed chat, one chat as it stands, or an earlier page of
+ *  one chat's conversation. */
 export type ChatProgress =
   | { readonly kind: "refused"; readonly reason: string }
   | { readonly kind: "roster"; readonly chats: readonly (ChatState & { readonly question: boolean })[] }
@@ -300,7 +300,7 @@ async function runningChildren(deps: ChatProgressDeps, sessionId: string): Promi
 /** The characters that a conversation page has after `lines`, less the line that ends it. */
 const pageRoom = (lines: readonly string[]): number => DETAIL_CHARS - lines.join("\n").length - 1 - PAGE_END_CHARS
 
-/** One listed chat as it stands, from the lead's rows, its newest checkpoint, its live transcript, and one bounded
+/** One chat as it stands, from the lead's rows, its newest checkpoint, its live transcript, and one bounded
  *  page of its conversation; with `before`, the page of its conversation before that cursor. */
 export async function readChatDetail(deps: ChatProgressDeps, sessionId: string, before?: string): Promise<ChatProgress> {
   const from = before === undefined ? undefined : parseCursor(before)
@@ -390,17 +390,17 @@ function progressText(progress: Exclude<ChatProgress, { kind: "refused" }>): str
   }
 }
 
-/** The read-only tool through which the lead reads the progress of the chats in its list (PI-LEAD-001,
+/** The read-only tool through which the lead reads the progress of the project's chats (PI-LEAD-001,
  *  PI-LEAD-006, PI-LEAD-019). `progress` answers for the calling lead. */
 export function createChatProgressTool(progress: (chat: string | undefined, before: string | undefined) => Promise<ChatProgress>): RuntimeTool {
   return {
     name: CHAT_PROGRESS_TOOL_NAME,
     action: "ui_meta",
-    description: "Read the progress of the chats in your list: every chat of this project that is in use, whoever started it. Without `chat`, it lists each of them with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers where that chat stands: its checkpoint's current state and next step, its pending question with its context and options word for word, the agents that it runs now, its newest calls, and its conversation newest first without tool output. Pass `before` with the cursor that an answer names to read earlier messages. It reads only chats in your list.",
+    description: "Read the progress of this project's chats. Without `chat`, it lists each chat in your list, which holds every chat that works or needs the person, whoever started it, with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers where that chat stands, also for a chat that left your list: its checkpoint's current state and next step, its pending question with its context and options word for word, the agents that it runs now, its newest calls, and its conversation newest first without tool output. Pass `before` with the cursor that an answer names to read earlier messages.",
     inputSchema: {
       type: "object",
       properties: {
-        chat: { type: "string", description: "The id of one chat in your list. Omit it to list every chat in your list." },
+        chat: { type: "string", description: "The id of one chat of this project, in your list or not. Omit it to list every chat in your list." },
         before: { type: "string", description: "The cursor that an earlier answer about this chat named. Needs `chat`." },
       },
       additionalProperties: false,

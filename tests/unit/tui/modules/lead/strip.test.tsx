@@ -72,27 +72,23 @@ describe("the lead list", () => {
     expect(markTone("■")?.equals(theme.warning)).toBe(true)
     expect(markTone("●")?.equals(theme.primary)).toBe(true)
     expect(markTone("✓")?.equals(theme.success)).toBe(true)
-    // The list shows five rows at most, so a done row is a list of its own.
-    const done = await mountStrip([leadRow("done", "done")])
-    const doneTone = done.rendered.captureSpans().lines.flatMap((line) => line.spans).find((span) => span.text.startsWith("·"))?.fg
-    expect(doneTone?.equals(theme.textMuted)).toBe(true)
   })
 
   it("x closes the selected chat with no question, and the selection moves to the next row, to the row before at the end, or back to the input", async () => {
-    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "done", { since: Date.now() - 6 * 60_000 }), leadRow("c", "done", { since: Date.now() - 7 * 60_000 })])
+    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "result", { since: Date.now() - 6 * 60_000 }), leadRow("c", "result", { since: Date.now() - 7 * 60_000 })])
     // x types into the input while the list has no focus.
     expect(await strip.key("x")).toBe(false)
     await strip.key("down")
     expect(await strip.key("x")).toBe(true)
     expect(strip.sent).toEqual(["session.close a"])
     expect(strip.overlay.dialog.stack).toHaveLength(0)
-    expect(selectedRow(strip.rendered)).toStartWith("· Chat b")
+    expect(selectedRow(strip.rendered)).toStartWith("✓ Chat b")
     // The row leaves once the runtime records the close.
     strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "a") }))
     await strip.rendered.renderOnce()
     await strip.key("down")
     await strip.key("x")
-    expect(selectedRow(strip.rendered)).toStartWith("· Chat b")
+    expect(selectedRow(strip.rendered)).toStartWith("✓ Chat b")
     strip.setView((view) => ({ ...view, rows: view.rows.filter((row) => row.sessionId !== "c") }))
     await strip.rendered.renderOnce()
     await strip.key("x")
@@ -101,7 +97,7 @@ describe("the lead list", () => {
   })
 
   it("shows a muted close mark at the right end of the row under the pointer only; a click on it closes the chat, and a click elsewhere on the row opens it", async () => {
-    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "done")], { width: 80, height: 30 })
+    const strip = await mountStrip([leadRow("a", "working"), leadRow("b", "result")], { width: 80, height: 30 })
     const rowOf = (title: string) => strip.lines().findIndex((line) => line.includes(title))
     expect(strip.lines().some((line) => line.includes("×"))).toBe(false)
     await strip.rendered.mockMouse.moveTo(10, rowOf("Chat b"))

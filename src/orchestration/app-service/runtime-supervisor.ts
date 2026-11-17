@@ -226,6 +226,12 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   async function releaseSession(sessionId: string): Promise<void> {
     shownSessions.delete(sessionId)
     await actors.get(sessionId)?.dispatch({ kind: "session.release" })
+    for (const listener of releaseListeners) listener(sessionId)
+  }
+  const releaseListeners = new Set<(sessionId: string) => void>()
+  function onSessionReleased(listener: (sessionId: string) => void): () => void {
+    releaseListeners.add(listener)
+    return () => { releaseListeners.delete(listener) }
   }
   async function hideSession(sessionId: string): Promise<void> {
     shownSessions.delete(sessionId)
@@ -246,6 +252,12 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     const closed = await ensureActor(sessionId).dispatch(atRest ? { kind: "session.close", atRest } : { kind: "session.close" })
     for (const listener of closeListeners) listener(sessionId)
     return closed
+  }
+  /** The close of a tab that a hold's own close stands for (`SessionOpenHold.close`). */
+  async function closeHeldChat(sessionId: string): Promise<boolean> {
+    if (openHolds.has(sessionId) || shownSessions.has(sessionId)) return false
+    if ((await deps.manager.read(sessionId))?.lifecycleState === "active") await ensureActor(sessionId).dispatch({ kind: "session.close", atRest: true })
+    return true
   }
   /** The listeners of `onChatClosed`. Only `closeChat`, the person's close, calls them. */
   const closeListeners = new Set<(sessionId: string) => void>()
@@ -272,6 +284,10 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       },
       release(sessionId) {
         if (held.delete(sessionId)) letGo(sessionId)
+      },
+      async close(sessionId) {
+        if (held.delete(sessionId)) letGo(sessionId)
+        return closeHeldChat(sessionId)
       },
       drop() {
         for (const sessionId of held) letGo(sessionId)
@@ -715,5 +731,5 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     }
     return removed
   }
-  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, onChatClosed, isShown: (sessionId) => shownSessions.has(sessionId), createOpenHold, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, personEntries: personEntryForward.personEntries, forwardPersonEntries: personEntryForward.forwardPersonEntries, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
+  return { claimComposerReturns: (sessionId, submissionIds) => claimComposerReturns({ reader: deps.projectionReader, writer: eventWriter }, sessionId, submissionIds), reconcileChildSessionCompletions, undoChanges: request => ensureActor(request.sessionId).dispatch({ kind: "session.changes.undo", request }), openSessionRuntime, adoptBlankChat, forkSession, activateSession, releaseSession, hideSession, ensureChatRunner, sessionKind, sendChat, acceptRetainedOperation, closeChat, onChatClosed, onSessionReleased, isShown: (sessionId) => shownSessions.has(sessionId), createOpenHold, discardTransientChat, deleteSession, renameSession, reorderSession, dismissNotice, interruptSession, resumeChat, releaseForegroundBash, terminateBackgroundWork, answerQuestion, cancelQuestion, personEntries: personEntryForward.personEntries, forwardPersonEntries: personEntryForward.forwardPersonEntries, compactChat, reviewChat, requestChatContext, recallQueuedMessage, runtimeState, ownedSessionIds: () => [...actors.keys()], awaitAcceptedWork, warmChatRunner, interruptForReplacement, replacementSuccessorRows: () => successorRowsAfterStop, disposeAll }
 }

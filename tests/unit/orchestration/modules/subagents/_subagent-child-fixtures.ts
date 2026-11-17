@@ -160,6 +160,7 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
       sendSessionMessage: async () => { throw new Error("A subagent posts no session message") },
       createOpenHold: () => { throw new Error("A subagent holds no chat open") },
       onChatClosed: () => { throw new Error("A subagent follows no close") },
+      onSessionReleased: () => { throw new Error("A subagent follows no release") },
       sessionShown: () => { throw new Error("A subagent reads no shown chat") },
       liveAgentCards: () => { throw new Error("A subagent reads no agent cards") },
       openChatRunner: openChatRunner ?? (async (sessionId) => {

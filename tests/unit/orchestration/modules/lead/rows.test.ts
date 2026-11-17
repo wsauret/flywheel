@@ -71,9 +71,11 @@ function rowsHarness(reader: AsyncEventStateReadSurface = asAsyncEventReadSurfac
   return { lead, reader, latest, eventually, startChat, appendEntries, routeToNewChat, published }
 }
 
-test("a question, its answer and a live turn, a final answer read by the person: question, working, result, done", async () => {
+test("a question, its answer and a live turn, a final answer read by the person: question, working, result, then no row", async () => {
   const { lead, latest, eventually, startChat, appendEntries } = rowsHarness()
   const chat = await startChat()
+  // The runner waits on the person from the ask_user call until the question shows, as a live turn does.
+  ctx.sessionStore.updateEntry(chat, { runnerState: "awaiting_user" })
   await appendEntries(chat, [
     { kind: "message", id: "u1", message: { kind: "user", content: "Fix the login page", origin: "human" } },
     { kind: "message", id: "a1", message: { kind: "assistant", content: [{ type: "text", text: "Design is ready.\nDetails..." }, { type: "tool_use", id: "ask-1", name: "ask_user", input: { context: CONTEXT, question: QUESTION.question } }] } },
@@ -107,13 +109,10 @@ test("a question, its answer and a live turn, a final answer read by the person:
   expect((await lead.service.view()).rows).toEqual([result])
 
   expect(await lead.service.markRead(chat, result.result.entryId)).toEqual({ ok: true })
-  // Reading the result keeps the row, done, with the result's first line.
-  const done = await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "done")
-  expect(done).toMatchObject({ state: "done", status: "Changed the sign-in form." })
-  expect(done).not.toHaveProperty("result")
-  expect(ctx.store.read({ aggregateId: "lead" }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: result.result.entryId } })
-  if (typeof done !== "object") throw new Error("expected a done row")
-  expect((await lead.service.view()).rows).toEqual([done])
+  // A chat at rest with nothing for the person shows no row.
+  expect(await eventually(() => latest(chat), (row) => row === "removed")).toBe("removed")
+  expect(ctx.store.read({ aggregateId: "lead" }).some((fact) => fact.type === "lead.result.read" && fact.payload.sessionId === chat && fact.payload.entryId === result.result?.entryId)).toBe(true)
+  expect((await lead.service.view()).rows).toEqual([])
 })
 
 test("a routed chat reads working while its runner starts and after the runner attaches at rest, and never failed", async () => {
@@ -171,7 +170,7 @@ test("a visible interrupt is cut, a crash record is failed with its entry, and a
   expect(await eventually(() => latest(open), (row) => typeof row === "object" && row.state === "failed")).toMatchObject({ state: "failed", ended: { entryId: "u1" } })
 })
 
-test("a failure that the person saw turns the row done until the chat fails again at a later entry", async () => {
+test("a failure that the person saw removes the row until the chat fails again at a later entry", async () => {
   const { lead, latest, eventually, startChat, appendEntries } = rowsHarness()
   const chat = await startChat()
   const crash = turnEndEntryId({ reason: "crash" }, "k1")
@@ -180,8 +179,10 @@ test("a failure that the person saw turns the row done until the chat fails agai
     { kind: "message", id: crash, message: { kind: "user", content: "Your process exited unexpectedly.", origin: "system" } },
   ])
   expect(await eventually(() => latest(chat), (row) => typeof row === "object")).toMatchObject({ state: "failed", ended: { entryId: crash } })
+  // The person sees the failure in the chat that a client shows, so the chat stays in the list with no row.
+  await lead.supervisor.activateSession(chat, { shown: true })
   expect(await lead.service.markSeen(chat, "failed", crash)).toEqual({ ok: true })
-  expect(await eventually(() => latest(chat), (row) => typeof row === "object" && row.state === "done")).toMatchObject({ state: "done" })
+  expect(await eventually(() => latest(chat), (row) => row === "removed")).toBe("removed")
   expect(ctx.store.read({ aggregateId: "lead" }).at(-1)).toMatchObject({ type: "lead.chat.seen", payload: { sessionId: chat, state: "failed", entryId: crash } })
   // A second mark of the same failure appends nothing.
   const facts = ctx.store.read({ aggregateId: "lead" }).length

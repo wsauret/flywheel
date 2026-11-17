@@ -49,8 +49,8 @@ export interface LeadService extends ModuleServiceInstance {
    *  "The routing tool" of the lead design): the runtime selects and copies the entries, and the caller names only
    *  the target. A repeated call starts no second chat and records nothing twice. */
   route(input: RouteInput): Promise<RouteOutcome>
-  /** The progress of every chat in the list, or where one of them stands; with `before`, a page of that chat's
-   *  conversation before a cursor that an earlier answer named. */
+  /** The progress of every chat that shows a row in the list, or where one chat of the project stands, also one that
+   *  left the list; with `before`, a page of that chat's conversation before a cursor that an earlier answer named. */
   progress(chat: string | undefined, before?: string): Promise<ChatProgress>
   /** The project's root chats other than the lead whose messages best match `query`, best first, each marked when it
    *  is in the list (PI-LEAD-001). */
@@ -73,7 +73,7 @@ export const leadService = moduleServiceHandle<LeadService>("lead")
 type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "onSelectionChanged" | "enabled"> & {
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read" | "listActive" | "listForIds">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
-  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "sessionShown" | "liveAgentCards">
+  readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "onSessionReleased" | "sessionShown" | "liveAgentCards">
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
@@ -131,12 +131,15 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   let disposed = false
   // The shown lead that the watches and the hold follow, and the listed chats that each holds.
   let watched: { readonly lead: string; readonly chats: Set<string> } | undefined
+  // The list's one open hold from the start. It holds chats only while a lead shows, and closes the chats that leave
+  // the list at rest also while none shows.
   let opened: SessionOpenHold | undefined
   // The rows of the listed chats while the module is on.
   let rows: LeadRows | undefined
   // The disposals of the rows owners that a turn-off ended; dispose settles them.
   let endings: Promise<unknown> = Promise.resolve()
   let unsubscribeClosed: (() => void) | undefined
+  let unsubscribeReleased: (() => void) | undefined
   // The questions that this process posted or posts, each as `<lead>:<toolUseId>`, so a row that publishes again posts
   // nothing more. A restart posts each pending question again, and the delivery records nothing for one the lead holds.
   const postedQuestions = new Set<string>()
@@ -164,6 +167,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   const publishRow = (change: LeadRowChange): void => {
     services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
     if (change.kind === "updated") {
+      // A chat that shows a row is held again, also after it came to rest once.
+      if (watched?.chats.has(change.row.sessionId)) opened?.hold(change.row.sessionId)
       postReport(change.row.sessionId)
       postQuestions(change.row.sessionId)
     }
@@ -230,23 +235,21 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     })
   }
 
-  /** Watches each listed chat for the shown lead, and holds each open as a tab does, so that a closed tab returns its
-   *  chat to the list (PI-INTERACTION-082). A change of the shown lead moves every watch and hold; otherwise only the
-   *  chats that `joined` and `left` name change, so a fact costs one watch at most, whatever the size of the list.
-   *  While no lead shows, nothing is watched or held, and tabs close as without a lead. */
+  /** Watches each listed chat for the shown lead, and holds each open as a tab does while it shows a row, so that a
+   *  closed tab returns its chat to the list (PI-INTERACTION-082). A change of the shown lead moves every watch and
+   *  hold; otherwise only the chats that `joined` and `left` name change, so a fact costs one watch at most, whatever
+   *  the size of the list. While no lead shows, nothing is watched or held, and tabs close as without a lead. */
   const applyWatches = (joined: readonly string[], left: readonly string[]): void => {
     const lead = shownLead()
     const events = services.executionEnvironment().sessionEvents
     if (watched?.lead !== lead) {
       if (watched) for (const chat of watched.chats) events.unwatch(watched.lead, chat)
       opened?.drop()
-      opened = undefined
       watched = undefined
       if (lead === null) return
       // The new lead chat leaves its own row.
       rows?.remove(lead)
       watched = { lead, chats: new Set() }
-      opened = services.executionEnvironment().createOpenHold()
       watch(listed())
       // The results and questions that waited while no lead showed go to the lead that shows now.
       for (const row of rows?.rows() ?? []) {
@@ -270,7 +273,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     for (const chat of chats) {
       if (chat === watched.lead || watched.chats.has(chat)) continue
       events.watch(watched.lead, chat, NOTICE_KINDS)
-      opened?.hold(chat)
+      // A chat whose row is not built yet is held, so its tab's close waits for its row.
+      if (!rows?.resting(chat)) opened?.hold(chat)
       watched.chats.add(chat)
     }
   }
@@ -300,6 +304,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         seenMark: (sessionId) => journal.state().seenMarks.get(sessionId),
         // Only the current owner publishes: an owner that a turn-off ended may still settle work it started.
         publish: (change) => { if (rows === owner) publishRow(change) },
+        onRest: (sessionId) => { if (rows === owner) letGoLater(sessionId) },
       })
       rows = owner
       chats = listed()
@@ -328,7 +333,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
 
   /** Records a chat's join and follows it. The journal folds its own append, so the store's broadcast of it applies
    *  nothing: the follow happens here. */
-  async function join(sessionId: string, briefed: boolean, cause: "created" | "activated" | "started" | "in use" | "first run"): Promise<void> {
+  async function join(sessionId: string, briefed: boolean, cause: "created" | "activated" | "started" | "routed" | "in use" | "first run"): Promise<void> {
     if (sessionId === journal.state().designated || !await journal.append({ type: "lead.chat.joined", payload: { sessionId, briefed } })) return
     log.info("chat joined the lead's list", { sessionId, cause, briefed })
     follow([sessionId])
@@ -354,11 +359,27 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
   }
 
-  /** A chat that the person closed or deleted leaves the list (PI-LEAD-004). */
-  async function leave(sessionId: string, cause: "closed" | "deleted"): Promise<void> {
-    if (!services.enabled() || !await journal.append({ type: "lead.chat.closed", payload: { sessionId } })) return
+  /** A chat that the person closed or deleted leaves the list, and so does one that came to rest with nothing for the
+   *  person and is no longer open (PI-LEAD-004). */
+  async function leave(sessionId: string, cause: "closed" | "deleted" | "at rest"): Promise<void> {
+    const type = cause === "at rest" ? "lead.chat.retired" : "lead.chat.closed"
+    if (!services.enabled() || !await journal.append({ type, payload: { sessionId } })) return
     log.info("chat left the lead's list", { sessionId, cause })
     follow([], [sessionId])
+  }
+
+  /** Lets go of a listed chat at rest with nothing for the person (PI-LEAD-004). A chat that a client shows, or that
+   *  another holder holds open, stays in the list with no row until a release tells of it again; so does a new chat
+   *  that waits for its first message (`LeadRows.resting`). Any other chat closes as a closed tab does and leaves the list, so every chat in
+   *  use stays a member and a retired chat joins again when it becomes active. */
+  async function letGoAtRest(sessionId: string): Promise<void> {
+    const state = journal.state()
+    if (!opened || !rows?.resting(sessionId) || !state.members.has(sessionId) || sessionId === state.designated) return
+    if (await opened.close(sessionId)) await leave(sessionId, "at rest")
+  }
+
+  const letGoLater = (sessionId: string): void => {
+    own(() => letGoAtRest(sessionId), (error) => { log.warn("the lead list could not let go of a chat at rest", { sessionId, error }) })
   }
 
   /** Adopts what no stored batch told the list while the module was off or before this process: each active chat
@@ -394,7 +415,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     let joined = 0
     for (const sessionId of earlier) {
       const row = (await owner.chat(sessionId))?.row
-      if (row === undefined || row.state === "done") {
+      if (row === undefined) {
         owner.remove(sessionId)
         continue
       }
@@ -468,8 +489,14 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     journal,
     start() {
       started = true
-      unsubscribeClosed = services.executionEnvironment().onChatClosed((sessionId) => {
+      const environment = services.executionEnvironment()
+      opened = environment.createOpenHold()
+      unsubscribeClosed = environment.onChatClosed((sessionId) => {
         if (!disposed) own(() => leave(sessionId, "closed"), (error) => { log.warn("the lead could not record a closed chat", { sessionId, error }) })
+      })
+      // A chat that rested while a client showed it is let go once no client shows it.
+      unsubscribeReleased = environment.onSessionReleased((sessionId) => {
+        if (!disposed && rows?.resting(sessionId)) letGoLater(sessionId)
       })
       own(async () => {
         applyFacts(await journal.reconcile())
@@ -515,6 +542,10 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if ("refused" in target) return { ok: false, reason: target.refused }
       const forwarded = await environment.forwardPersonEntries({ sourceSessionId: input.leadSessionId, entryIds: sourceEntryIds, targetSessionId: target.sessionId, ...(parts === undefined ? {} : { passages: parts }) })
       if (!forwarded.ok) return forwarded
+      // A chat that left the list joins it again (PI-LEAD-002), also when its activation records no lifecycle change.
+      // It joins after the forward commits, so its row's first build reads the person's message and never finds it
+      // at rest.
+      if (target.started !== "now") await join(target.sessionId, false, "routed")
       const recorded = await journal.append({ type: "lead.request.forwarded", payload: {
         leadSessionId: input.leadSessionId, targetSessionId: target.sessionId, newChat: target.started === "now", ...forward,
       } })
@@ -530,11 +561,11 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       if (!current) return { kind: "refused", reason: "the lead is off" }
       const deps = {
         reader: services.projectionReader, sessionManager: services.sessionManager, sessionStore: services.sessionStore,
-        chat: (sessionId: string) => current.chat(sessionId),
+        chat: (sessionId: string) => current.read(sessionId),
         agentCards: (sessionId: string) => services.executionEnvironment().liveAgentCards(sessionId),
       }
-      if (chat === undefined) return readChatRoster(deps, listed())
-      if (chat === journal.state().designated || !journal.state().members.has(chat)) return { kind: "refused", reason: `chat ${chat} is not in your list` }
+      if (chat === undefined) return readChatRoster(deps, current.rows().map((row) => row.sessionId))
+      if (!await routable(chat)) return { kind: "refused", reason: `${chat} is not a chat of this project other than you` }
       return readChatDetail(deps, chat, before)
     },
     async findChats(query) {
@@ -567,6 +598,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       disposed = true
       unsubscribeStored()
       unsubscribeClosed?.()
+      unsubscribeReleased?.()
       await unsubscribeSelection()
       await background
       // `disposed` makes the shown lead null, so this releases every watch and hold.

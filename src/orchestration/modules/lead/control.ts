@@ -71,7 +71,8 @@ export function createLeadControl(services: ControlModuleServices): LeadControl 
   const unsubscribeSelection = services.onSelectionChanged(publishView)
   /** A person's close that the control placement carried out while execution was paused leaves the list, as the
    *  execution service records a close (PI-LEAD-004). A tab close while the lead shows does not: the lead holds every
-   *  listed chat, so that tab close returns the chat to the list. */
+   *  chat that shows a row, so that tab close returns the chat to the list, and the execution service lets a chat
+   *  with no row go once no client shows it. */
   const unsubscribeClosed = services.onChatClosed(({ sessionId, tabClose }) => {
     if (disposed || !services.enabled()) return
     own(async () => {

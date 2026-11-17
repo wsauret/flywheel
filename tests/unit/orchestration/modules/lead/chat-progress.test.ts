@@ -91,24 +91,30 @@ test("a chat whose newest entry is the person's forwarded message reads as start
   expect(text).toContain(": at rest; its last turn failed.")
 })
 
-test("chat_progress reads a listed chat that the lead did not start, and refuses a chat that the person closed", async () => {
+test("chat_progress reads a listed chat that the lead did not start, also after the person closed it, and refuses the lead", async () => {
   const { lead, tool } = await chatWithQuestion()
   const other = await lead.supervisor.openSessionRuntime()
   await conversation.appendConversation(other, [{ kind: "user", content: "Fix the header", origin: "human" }])
   let listed = ""
-  for (let attempt = 0; attempt < 200 && !listed.includes("Fix the header"); attempt += 1) {
+  for (let attempt = 0; attempt < 200 && !listed.includes(`Chat ${other} `); attempt += 1) {
     await Bun.sleep(5)
-    listed = String((await tool.execute({ chat: other }, makeContext())).content)
+    listed = String((await tool.execute({}, makeContext())).content)
   }
-  expect(listed).toContain("Fix the header")
+  expect(listed).toContain(`Chat ${other} `)
   await lead.supervisor.closeChat(other)
-  let result = await tool.execute({ chat: other }, makeContext())
-  for (let attempt = 0; attempt < 200 && result.outcome !== "error"; attempt += 1) {
-    await Bun.sleep(5)
-    result = await tool.execute({ chat: other }, makeContext())
-  }
-  expect(result.outcome).toBe("error")
-  expect(String(result.content)).toContain(`chat ${other} is not in your list`)
+  for (let attempt = 0; attempt < 200 && lead.service.journal.state().members.has(other); attempt += 1) await Bun.sleep(5)
+  expect(lead.service.journal.state().members.has(other)).toBe(false)
+  // The chat left the list, so the overview names it no more, and the lead still reads where it stands.
+  expect(String((await tool.execute({}, makeContext())).content)).not.toContain(`Chat ${other} `)
+  const closed = await tool.execute({ chat: other }, makeContext())
+  expect(closed.outcome).toBe("ok")
+  expect(String(closed.content)).toContain("The person: Fix the header")
+
+  const leadSessionId = await lead.openLead()
+  if (leadSessionId === null) throw new Error("expected the lead to open")
+  const refused = await tool.execute({ chat: leadSessionId }, makeContext())
+  expect(refused.outcome).toBe("error")
+  expect(String(refused.content)).toContain(`${leadSessionId} is not a chat of this project other than you`)
 })
 
 /** A workflow card of a chat's live transcript. A workflow's card states its progress only once its run's summary
@@ -244,6 +250,8 @@ test("a page that reads the conversation's first batch as its last read names no
 test("a busy chat's answer stays within its budget and names every agent that it runs", async () => {
   const long = (word: string) => `${word} `.repeat(200)
   const { chat, tool } = await startedChat(async (seeded) => {
+    // The chat works while it runs its agents, as a turn that started them does.
+    ctx.sessionStore.updateEntry(seeded, { runnerState: "streaming" })
     for (let index = 0; index < 12; index += 1) {
       await conversation.appendConversation(seeded, [
         { kind: "user", content: long(`Ask${index}`), origin: "human" },

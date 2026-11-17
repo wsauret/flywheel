@@ -216,7 +216,7 @@ Not: Fire-and-forget disposal of the conversation, which loses data.
 
 ## ARCH-SESSIONS-050: A chat that the lead started has no parent
 
-A chat that the lead started is a root chat with no parent binding, and no session metadata names the lead. The lead module records the lead chat, the chats it started, each read mark, and each join and close of its list in its own facts. It records a join when a root chat other than the lead becomes active, and a close when a person closes or deletes it. The list holds each chat from its join until its close. A runtime stop that deactivates chats removes none.
+A chat that the lead started is a root chat with no parent binding, and no session metadata names the lead. The lead module records the lead chat, the chats it started, each read mark, and each join, close, and retirement of its list in its own facts. A root chat other than the lead joins when it becomes active or receives a route. It leaves when a person closes or deletes it, or retires once it rests with nothing for the person and no client shows it.
 Because: Owned-child rules, such as reply waits, cascade deletion, and questions that go to the parent, do not fit a chat that the person works with directly.
 Not: A launch binding or a new session kind for a chat that the lead started.
 

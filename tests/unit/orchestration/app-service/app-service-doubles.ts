@@ -368,8 +368,9 @@ export function runtimeSupervisor(overrides: Partial<RuntimeSupervisor> = {}): R
   return {
     claimComposerReturns: async () => ({ ok: true, kind: "empty" }),
     ownedSessionIds: () => [],
-    createOpenHold: () => ({ hold: () => {}, release: () => {}, drop: () => {} }),
+    createOpenHold: () => ({ hold: () => {}, release: () => {}, close: async () => true, drop: () => {} }),
     onChatClosed: () => () => {},
+    onSessionReleased: () => () => {},
     isShown: () => false,
     awaitAcceptedWork: async () => {},
     replacementSuccessorRows: () => undefined,

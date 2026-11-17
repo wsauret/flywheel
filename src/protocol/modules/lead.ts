@@ -17,19 +17,20 @@ export const LEAD_COMMAND_NAME = "Lead"
 /** The client surface that the lead command opens: it asks for the lead chat and shows it. */
 export const LEAD_SURFACE = "lead"
 
-export type LeadRowState = "question" | "failed" | "cut" | "working" | "result" | "done"
+export type LeadRowState = "question" | "failed" | "cut" | "working" | "result"
 
 /** The states that the person sees once a chat with that state is opened. */
 export type LeadSeenState = "failed" | "cut"
 
-/** One chat of the lead's list: it needs the person, works, holds an unread result, or is done. The client joins the
- *  title from the session catalog, so the title has one source. */
+/** One chat of the lead's list: it needs the person, works, or holds an unread result. A chat at rest with nothing for
+ *  the person shows no row (PI-LEAD-004). The client joins the title from the session catalog, so the title has one
+ *  source. */
 export interface LeadRow {
   readonly sessionId: string
   readonly state: LeadRowState
   /** One line that the runtime derives and no model writes, at most 240 characters: for a working chat its newest
    *  tool call as the transcript sums it up, or the start of its newest text; the first line of a question or of a
-   *  result, also of the read result of a done chat; `failed` and `interrupted` for the other states. */
+   *  result; `failed` and `interrupted` for the other states. */
   readonly status: string
   /** Epoch milliseconds of the newest update or state change. The client counts the age from it. */
   readonly since: number
@@ -86,7 +87,7 @@ const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
 const LeadRowSchema: Schema.Codec<LeadRow> = Schema.Struct({
   sessionId: Schema.NonEmptyString,
-  state: Schema.Literals(["question", "failed", "cut", "working", "result", "done"]),
+  state: Schema.Literals(["question", "failed", "cut", "working", "result"]),
   status: Schema.String,
   since: NonNegativeInt,
   waitingSince: Schema.optionalKey(NonNegativeInt),
@@ -196,10 +197,10 @@ const leadChatMarkSeen = defineProtocolMutation({
 })
 
 const NEEDS_PERSON: ReadonlySet<LeadRowState> = new Set(["question", "failed", "cut"])
-const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2, done: 3 } as const satisfies { readonly [state in LeadRowState]: number }
+const GROUP = { question: 0, failed: 0, cut: 0, working: 1, result: 2 } as const satisfies { readonly [state in LeadRowState]: number }
 
 /** The rows in list order: the chats that need the person first, the longest wait first, then the working chats, then
- *  the unread results, then the done chats, each of those three groups newest first. */
+ *  the unread results, each of those two groups newest first. */
 export function leadRowOrder(rows: readonly LeadRow[]): readonly LeadRow[] {
   return rows.toSorted((left, right) => GROUP[left.state] - GROUP[right.state]
     || (NEEDS_PERSON.has(left.state) ? (left.waitingSince ?? left.since) - (right.waitingSince ?? right.since) : right.since - left.since))

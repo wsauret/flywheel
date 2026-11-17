@@ -33,6 +33,37 @@ describe("RuntimeSupervisor open holds", () => {
     await settled()
     expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
   })
+
+  test("a hold's close closes the chat as a tab's close does, only when no other holder holds it and no client shows it, and tells no close listener", async () => {
+    const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
+    const sessionId = await supervisor.openSessionRuntime()
+    await supervisor.sendChat(sessionId, "start")
+    await settled()
+    const closed: string[] = []
+    supervisor.onChatClosed((id) => { closed.push(id) })
+    const hold = supervisor.createOpenHold()
+    const other = supervisor.createOpenHold()
+    hold.hold(sessionId)
+    other.hold(sessionId)
+
+    await hold.close(sessionId)
+    await settled()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
+
+    other.release(sessionId)
+    await supervisor.activateSession(sessionId, { shown: true })
+    hold.hold(sessionId)
+    await hold.close(sessionId)
+    await settled()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
+
+    await supervisor.releaseSession(sessionId)
+    hold.hold(sessionId)
+    await hold.close(sessionId)
+    await settled()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
+    expect(closed).toEqual([])
+  })
 })
 
 describe("RuntimeSupervisor person closes", () => {

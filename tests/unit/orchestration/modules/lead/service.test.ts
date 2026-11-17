@@ -69,35 +69,32 @@ test("while the module is off a listed chat's failure gives no notice, and after
   expect(notices).toEqual([lead!])
 })
 
-test("a chat that the lead started posts its report to the lead once, as a message from the chat, instead of a turn-end notice, and the report counts as read", async () => {
+test("a chat that the lead started posts its report to the lead once, as a message from the chat, instead of a turn-end notice; the report counts as read, and the chat at rest leaves the list and closes", async () => {
   const { service, openLead, sessionEvents, notices, trace, reports } = harness()
   const lead = await openLead()
   if (lead === null) throw new Error("expected the lead to open")
-  await conversation.appendConversation(lead, [
-    { kind: "user", content: "Fix the login page", origin: "human" },
-    { kind: "assistant", content: [{ type: "tool_use", id: "route-1", name: "route_request", input: { kind: "new" } }] },
-  ])
-  const routed = await service.route({ leadSessionId: lead, kind: "new", earlierTurns: 0 })
-  if (!routed.ok) throw new Error(routed.reason)
   await supervisor.ensureChatRunner(lead)
-  sessionEvents.report(routed.sessionId, "turn_ended")
+  // A started chat that no client shows, with no runner.
+  const { sessionId: chat } = await accountOpenChat(ctx)({ name: "Login" })
+  await service.journal.append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: ["entry-1"] } })
+  await settle(() => service.journal.state().members.has(chat))
+  sessionEvents.report(chat, "turn_ended")
   await Bun.sleep(1)
   expect(notices).toEqual([])
 
   const report = "The login page works now.\nThe sign-in form had two handlers."
   const final = "final-1"
-  const conversationId = await conversation.chatConversationId(routed.sessionId)
-  await asAsyncEventWriter(ctx.store).append({
-    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId: routed.sessionId,
-    payload: { conversationId, entries: [{ kind: "message", id: final, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text: report }] } }] },
-  })
-  for (let attempt = 0; attempt < 200 && !trace.some((line) => line.startsWith("report")); attempt += 1) await Bun.sleep(5)
-  expect(trace.filter((line) => line.startsWith("report"))).toEqual([`report ${routed.sessionId} ${leadReportCall(final)}`])
-  for (let attempt = 0; attempt < 200 && (await service.view()).rows.some((row) => row.state === "result"); attempt += 1) await Bun.sleep(5)
-  expect((await service.view()).rows.filter((row) => row.state === "result")).toEqual([])
-  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: routed.sessionId, entryId: final } })
+  await (await finalMessage(chat, final, report))()
+  await settle(() => trace.some((line) => line.startsWith("report")))
+  expect(trace.filter((line) => line.startsWith("report"))).toEqual([`report ${chat} ${leadReportCall(final)}`])
+  await settle(() => !service.journal.state().members.has(chat))
+  expect((await service.view()).rows).toEqual([])
+  const facts = ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).map((fact) => ({ type: fact.type, payload: fact.payload }))
+  expect(facts.slice(-2)).toEqual([{ type: "lead.result.read", payload: { sessionId: chat, entryId: final } }, { type: "lead.chat.retired", payload: { sessionId: chat } }])
+  // The lead held the chat while it showed a row; at rest it closes as a closed tab does.
+  await settle(async () => (await ctx.manager.read(chat))?.lifecycleState === "inactive")
   // The runtime's delivery took the whole report to the lead as a message from the chat.
-  expect(reports).toEqual([{ fromSessionId: routed.sessionId, toSessionId: lead, call: leadReportCall(final), text: report, status: expect.stringMatching(/^(delivered|held)$/) }])
+  expect(reports).toEqual([{ fromSessionId: chat, toSessionId: lead, call: leadReportCall(final), text: report, status: expect.stringMatching(/^(delivered|held)$/) }])
   // Reading the rows again posts nothing more.
   await Bun.sleep(20)
   expect(trace.filter((line) => line.startsWith("report"))).toHaveLength(1)
@@ -105,12 +102,14 @@ test("a chat that the lead started posts its report to the lead once, as a messa
 
 test("a listed chat's question posts to the lead once, word for word, as a question message instead of a notice, and its query follows it to its answer", async () => {
   const lead = harness()
-  const { leadId, chat } = await routedChat(lead)
+  const { leadId, chat } = await listedChat(lead)
   const context = "The login page has two forms."
   const question = { question: "Which form should change?", header: "Form", multiSelect: false, choices: [
     { kind: "option" as const, choiceId: "a", label: "Sign-in form", description: "The form on the start page", recommended: true },
     { kind: "option" as const, choiceId: "b", label: "Sign-up form" },
   ] }
+  // The chat's runner parks on the question before its call commits, as a running turn does.
+  ctx.sessionStore.updateEntry(chat, { runnerState: "awaiting_user" })
   await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "tool_use", id: "ask-1", name: "ask_user", input: { context, questions: [] } }] }])
   await ctx.store.append({
     aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent", timestamp: 1_000,
@@ -141,7 +140,7 @@ test("a listed chat's question posts to the lead once, word for word, as a quest
 
 test("a chat that asks two questions in one batch posts both to the lead, oldest first", async () => {
   const lead = harness()
-  const { chat } = await routedChat(lead)
+  const { chat } = await listedChat(lead)
   const conversationId = await conversation.chatConversationId(chat)
   const ask = (id: string, text: string, timestamp: number) => ({
     aggregateId: `session:${chat}`, sessionId: chat, type: "agent_input.requested", version: 3, actor: "agent" as const, timestamp,
@@ -154,18 +153,12 @@ test("a chat that asks two questions in one batch posts both to the lead, oldest
   expect(posted()).toEqual([leadQuestionCall("ask-1"), leadQuestionCall("ask-2")])
 })
 
-/** Routes one request from a new lead to a new chat, with the lead's runner started, and answers both ids. */
-async function routedChat(lead: ReturnType<typeof harness>): Promise<{ readonly leadId: string; readonly chat: string }> {
+/** Opens a new lead with its runner started and a listed chat whose turn works, and answers both ids. */
+async function listedChat(lead: ReturnType<typeof harness>): Promise<{ readonly leadId: string; readonly chat: string }> {
   const leadId = await lead.openLead()
   if (leadId === null) throw new Error("expected the lead to open")
-  await conversation.appendConversation(leadId, [
-    { kind: "user", content: "Fix the login page", origin: "human" },
-    { kind: "assistant", content: [{ type: "tool_use", id: "route-1", name: "route_request", input: { kind: "new" } }] },
-  ])
-  const routed = await lead.service.route({ leadSessionId: leadId, kind: "new", earlierTurns: 0 })
-  if (!routed.ok) throw new Error(routed.reason)
   await supervisor.ensureChatRunner(leadId)
-  return { leadId, chat: routed.sessionId }
+  return { leadId, chat: await personChat(lead) }
 }
 
 /** The append of one final assistant message of `sessionId`, which the store broadcasts at once. */
@@ -189,7 +182,7 @@ test("a report that the lead holds is not delivered again after a restart that l
     return await store.appendGuarded(event)
   }
   const first = harness()
-  const { leadId, chat } = await routedChat(first)
+  const { leadId, chat } = await listedChat(first)
   await first.dispose()
   disposeAll = disposeAll.filter((dispose) => dispose !== first.dispose)
   const before = leadHarness(ctx, { eventWriter: { ...store, appendGuarded } })
@@ -211,7 +204,8 @@ test("a report that the lead holds is not delivered again after a restart that l
   await settle(async () => (await after.service.view()).rows.every((row) => row.state !== "result") && after.reports.length > 0)
   expect(after.reports).toEqual([expect.objectContaining({ call: leadReportCall("final-1"), status: "delivered" })])
   expect(held()).toBe(heldBefore)
-  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: "final-1" } })
+  await settle(() => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read"))
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.result.read").map((fact) => fact.payload)).toEqual([{ sessionId: chat, entryId: "final-1" }])
 })
 
 test("two finals of one chat that fold before their reports post each report with its own text", async () => {
@@ -330,7 +324,7 @@ function heldLeadFacts(onStored: (listener: (events: readonly StoredFact[]) => v
   }
 }
 
-test("each applied lead fact costs work that grows with neither the listed chats nor the history", async () => {
+test("each applied lead fact costs work that grows with neither the listed chats, the chats that left the list, nor the history", async () => {
   /** The state requests, the watches, and the collection work of the service, the control part, and the journal for
    *  each of `facts` chats that join the list through another writer and get a forward, and checks again, after
    *  `existing` listed chats. */
@@ -344,15 +338,24 @@ test("each applied lead fact costs work that grows with neither the listed chats
     const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
     const lead = await openLead()
     if (lead === null) throw new Error("expected the lead to open")
+    const working: string[] = []
     for (let index = 0; index < existing; index += 1) {
-      // A real chat, so the rows owner follows it and a walk of the rows would show in the collection work.
+      // A real chat that works, so the rows owner shows its row and a walk of the rows would show in the collection work.
       const chat = await supervisor.openSessionRuntime()
+      await conversation.appendConversation(chat, [{ kind: "user", content: "Fix it", origin: "human" }])
+      working.push(chat)
       await writer.append({ type: "lead.chat.started", payload: { sessionId: chat, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
       await writer.append({ type: "lead.request.forwarded", payload: { leadSessionId: lead, targetSessionId: chat, newChat: true, sourceEntryIds: [`old-entry-${existing}-${index}`] } })
+      // As many chats that left the list at rest, which a walk of every chat that ever joined would show.
+      const gone = await ctx.manager.createChat({ initialState: "inactive" })
+      await writer.append({ type: "lead.chat.joined", payload: { sessionId: gone, briefed: false } })
+      await writer.append({ type: "lead.chat.retired", payload: { sessionId: gone } })
     }
     await nextTurn()
-    // Each real chat joined the list at its creation; the roster waits for the rows owner to build each of them.
-    expect(await service.progress(undefined)).toMatchObject({ kind: "roster", chats: { length: existing } })
+    // Each real chat joined the list at its creation; this waits for the rows owner to build each of them.
+    const shown = async () => new Set((await service.view()).rows.map((row) => row.sessionId))
+    await settle(async () => { const rows = await shown(); return working.every((chat) => rows.has(chat)) })
+    expect(working.filter((chat) => !service.journal.state().members.has(chat))).toEqual([])
     const perFact = []
     for (let index = 0; index < facts; index += 1) {
       const sessionId = `new-${existing}-${index}`
@@ -421,6 +424,12 @@ test("appends from the control part and the service to the one lead aggregate at
   expect(service.role(lead)).toBeUndefined()
 })
 
+/** The chats of the list other than the lead, with a row or not. */
+function members(lead: ReturnType<typeof harness>): string[] {
+  const { members: all, designated } = lead.service.journal.state()
+  return [...all].filter((sessionId) => sessionId !== designated)
+}
+
 /** The chats that the service lists now, in list order. */
 async function listed(lead: ReturnType<typeof harness>): Promise<readonly string[]> {
   return (await lead.service.view()).rows.map((row) => row.sessionId)
@@ -449,9 +458,11 @@ test("every root chat that becomes active joins the list, whoever started it, an
   // A fork is an independent root chat that names the chat it came from.
   const forked = await ctx.manager.forkChat(opened)
   await ctx.manager.updateLifecycleState(forked, "active")
-  await settle(async () => (await listed(lead)).includes(reopened) && (await listed(lead)).includes(forked))
+  await settle(() => members(lead).includes(reopened) && members(lead).includes(forked))
   await Bun.sleep(20)
-  expect([...await listed(lead)].toSorted()).toEqual([opened, reopened, forked].toSorted())
+  expect(members(lead).toSorted()).toEqual([opened, reopened, forked].toSorted())
+  // The reopened chat holds no message, so it is at rest with nothing for the person and shows no row.
+  expect([...await listed(lead)].toSorted()).toEqual([opened, forked].toSorted())
   expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.chat.joined").map((fact) => fact.sessionId)).not.toContain(childSessionId)
 })
 
@@ -512,16 +523,36 @@ test("while the lead shows a tab close returns its chat to the list, and while t
   expect(await listed(lead)).toEqual([])
 })
 
-test("a finished turn of a chat that a client shows posts no report, and its row turns done and stays", async () => {
+test("a finished turn of a chat that a client shows posts no report and removes its row, the chat stays in the list with no row and no new fact across reconciles, and it leaves with one fact once no client shows it", async () => {
   const lead = harness()
-  const { chat } = await routedChat(lead)
+  const { chat } = await listedChat(lead)
   await supervisor.activateSession(chat, { shown: true })
   await (await finalMessage(chat, "final-1", "The login page works now."))()
-  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "done"))
-  expect((await lead.service.view()).rows).toEqual([expect.objectContaining({ sessionId: chat, state: "done", status: "The login page works now." })])
+  await settle(async () => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).some((fact) => fact.type === "lead.result.read") && (await listed(lead)).length === 0)
   expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).at(-1)).toMatchObject({ type: "lead.result.read", payload: { sessionId: chat, entryId: "final-1" } })
   expect(lead.reports).toEqual([])
+
+  // Each turn off and on reads the chat again and joins the active chats: nothing joins or leaves.
+  const facts = ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).length
+  for (let round = 0; round < 3; round += 1) {
+    await lead.setEnabled(false)
+    await lead.setEnabled(true)
+    await lead.service.view()
+    await Bun.sleep(20)
+  }
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID })).toHaveLength(facts)
+  expect(await listed(lead)).toEqual([])
+  expect(lead.service.journal.state().members.has(chat)).toBe(true)
   expect((await ctx.manager.read(chat))?.lifecycleState).toBe("active")
+
+  // The client lets go of it, as a closed tab or a connection whose grace ran out does: it closes as a closed tab does
+  // and leaves the list with one fact. A second release records nothing.
+  await supervisor.releaseSession(chat)
+  await settle(async () => !lead.service.journal.state().members.has(chat) && (await ctx.manager.read(chat))?.lifecycleState === "inactive")
+  await supervisor.releaseSession(chat)
+  await Bun.sleep(20)
+  expect([lead.service.journal.state().members.has(chat), (await ctx.manager.read(chat))?.lifecycleState]).toEqual([false, "inactive"])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).slice(facts)).toEqual([expect.objectContaining({ type: "lead.chat.retired", payload: { sessionId: chat } })])
 })
 
 // PI-LEAD-006, PI-LEAD-012: the chat reaches the lead by the id that its message_session contract names, and the
@@ -529,7 +560,7 @@ test("a finished turn of a chat that a client shows posts no report, and its row
 // own rule (session-messaging.test.ts); this harness's lead runner is at rest, so its message waits in its queue.
 test("a listed chat's milestone message reaches the shown lead that its contract names, as a message from the chat", async () => {
   const lead = harness()
-  const { leadId, chat } = await routedChat(lead)
+  const { leadId, chat } = await listedChat(lead)
   const use = await createLeadRuntime({ sessionId: chat, modules: composeModuleServices([["lead", lead.service]]) })?.milestoneUse()
   expect(use).toBe(milestoneMessageUse(leadId))
   // The reader with which the runtime registers each attached runner's live control.
@@ -587,8 +618,10 @@ test("the first run of a list joins every active root chat and each started chat
   await writer.append({ type: "lead.result.read", payload: { sessionId: done, entryId: "final-done" } })
 
   const lead = harness()
-  await settle(async () => (await listed(lead)).length === 2)
-  expect([...await listed(lead)].toSorted()).toEqual([active, unread].toSorted())
+  await settle(async () => members(lead).length === 2 && (await listed(lead)).length === 1)
+  expect(members(lead).toSorted()).toEqual([active, unread].toSorted())
+  // The active chat holds no message, so only the unread result shows a row.
+  expect(await listed(lead)).toEqual([unread])
   const joins = () => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.chat.joined").map((fact) => fact.payload)
   expect(joins()).toEqual(expect.arrayContaining([{ sessionId: active, briefed: false }, { sessionId: unread, briefed: false }]))
   expect(joins()).toHaveLength(2)
@@ -597,14 +630,14 @@ test("the first run of a list joins every active root chat and each started chat
   await lead.dispose()
   disposeAll = disposeAll.filter((dispose) => dispose !== lead.dispose)
   const again = harness()
-  await settle(async () => (await listed(again)).length === 2)
+  await settle(async () => (await listed(again)).length === 1)
   await Bun.sleep(20)
   expect(joins()).toHaveLength(2)
 })
 
 test("a result that finishes in a chat that a client shows while the lead is dismissed is read there, and the lead that shows again gets no report of it", async () => {
   const lead = harness()
-  const { leadId, chat } = await routedChat(lead)
+  const { leadId, chat } = await listedChat(lead)
   await lead.control.dismiss(leadId)
   await settle(() => lead.service.role(leadId) === undefined)
   await supervisor.activateSession(chat, { shown: true })
@@ -628,9 +661,9 @@ test("a chat that became active while the module was off joins when it turns on,
   expect(await supervisor.deleteSession(deleted)).toBe(true)
   await Bun.sleep(20)
   await lead.setEnabled(true)
-  await settle(async () => (await listed(lead)).includes(missed))
+  await settle(() => members(lead).includes(missed))
   await Bun.sleep(20)
-  expect(await listed(lead)).toEqual([missed])
+  expect(members(lead)).toEqual([missed])
   expect(lead.service.journal.state().members.has(deleted)).toBe(false)
   // PI-LEAD-012: the adopted chat holds none of the lead's prompt rules, yet as a chat in the list it may message the
   // lead at a milestone.
@@ -651,8 +684,56 @@ test("a first run that stopped after its first join finishes at the next start",
   await writer.append({ type: "lead.chat.joined", payload: { sessionId: first, briefed: false } })
 
   const lead = harness()
-  await settle(async () => (await listed(lead)).length === 3)
-  expect([...await listed(lead)].toSorted()).toEqual([first, second, unread].toSorted())
+  await settle(() => members(lead).length === 3)
+  expect(members(lead).toSorted()).toEqual([first, second, unread].toSorted())
   await settle(() => lead.service.journal.state().seeded)
   expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.list.seeded")).toHaveLength(1)
+})
+
+/** A chat that an earlier process left in the list, inactive as every chat is after a restart. With `final`, the chat
+ *  ended its turn with a final answer, which the person read when `read` is set. */
+async function earlierMember(writer: ReturnType<typeof createLeadJournal>, final?: { readonly id: string; readonly read: boolean }): Promise<string> {
+  const chat = await ctx.manager.createChat({ conversationId: ctx.manager.allocateId(), executionCwd: ctx.baseDir, initialState: "inactive" })
+  await conversation.appendConversation(chat, [{ kind: "user", content: "Fix it", origin: "human" }])
+  if (final) await (await finalMessage(chat, final.id, "Fixed."))()
+  if (final?.read) await writer.append({ type: "lead.result.read", payload: { sessionId: chat, entryId: final.id } })
+  await writer.append({ type: "lead.chat.joined", payload: { sessionId: chat, briefed: false } })
+  return chat
+}
+
+test("after a restart a member at rest with nothing for the person leaves the list with one fact, and a member that needs the person stays", async () => {
+  const writer = createLeadJournal({ reader: asAsyncEventReadSurface(ctx.store), writer: ctx.store })
+  await writer.append({ type: "lead.list.seeded", payload: {} })
+  // An open turn that no runner works on reads as failed.
+  const failed = await earlierMember(writer)
+  const unread = await earlierMember(writer, { id: "final-unread", read: false })
+  const read = await earlierMember(writer, { id: "final-read", read: true })
+  const retired = () => ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).flatMap((fact) => fact.type === "lead.chat.retired" ? [fact.payload.sessionId] : [])
+
+  const lead = harness()
+  await settle(() => retired().includes(read))
+  expect(members(lead).toSorted()).toEqual([failed, unread].toSorted())
+  expect(retired()).toEqual([read])
+  expect((await lead.service.view()).rows.map((row) => [row.sessionId, row.state]).toSorted()).toEqual([[failed, "failed"], [unread, "result"]].toSorted())
+})
+
+test("a chat that left the list at rest joins again when the person opens it, and shows its row while it works", async () => {
+  const lead = harness()
+  const { chat } = await listedChat(lead)
+  // A final answer that follows the person's message, as a real turn writes it.
+  await conversation.appendConversation(chat, [{ kind: "assistant", content: [{ type: "text", text: "Fixed." }] }])
+  // The lead reads the report, and the chat at rest leaves the list and closes.
+  await settle(async () => members(lead).length === 0 && (await ctx.manager.read(chat))?.lifecycleState === "inactive")
+  expect([members(lead), (await ctx.manager.read(chat))?.lifecycleState]).toEqual([[], "inactive"])
+
+  // A tab open records the chat as active, as the control part does, and attaches its runner.
+  await ctx.manager.updateLifecycleState(chat, "active")
+  expect(await supervisor.activateSession(chat, { shown: true })).toBe(true)
+  await settle(() => members(lead).includes(chat) && ctx.sessionStore.get(chat)?.runner != null)
+  // The chat stays in the list with no row while it rests, and shows its row once a turn works.
+  expect(await listed(lead)).toEqual([])
+  ctx.sessionStore.updateEntry(chat, { runnerState: "streaming", streamPhase: "thinking" })
+  await settle(async () => (await listed(lead)).includes(chat))
+  expect((await lead.service.view()).rows).toEqual([expect.objectContaining({ sessionId: chat, state: "working" })])
+  expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).filter((fact) => fact.type === "lead.chat.joined" && fact.payload.sessionId === chat)).toHaveLength(2)
 })

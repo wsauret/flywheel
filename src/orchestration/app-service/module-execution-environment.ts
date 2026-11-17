@@ -68,6 +68,7 @@ export function moduleExecutionEnvironment(owners: {
     sessionRuntime: (sessionId) => supervisor.runtimeState(sessionId),
     createOpenHold: () => supervisor.createOpenHold(),
     onChatClosed: (listener) => supervisor.onChatClosed(listener),
+    onSessionReleased: (listener) => supervisor.onSessionReleased(listener),
     sessionShown: (sessionId) => supervisor.isShown(sessionId),
     sendSessionMessage: (input) => sendRuntimeSessionMessage(owners.delivery, input),
     liveAgentCards: (sessionId) => liveAgentCards(owners.sessionStore, owners.transcriptCache, sessionId),

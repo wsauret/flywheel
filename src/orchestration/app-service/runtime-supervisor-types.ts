@@ -39,13 +39,18 @@ import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-
 import type { PersonEntryForward } from "./person-entry-forward.js"
 
 /** One holder's hold of chats open, as a tab holds its chat (PI-INTERACTION-082). While any holder holds a chat, the
- *  close of a tab that shows it does not close it. A hold attaches no runner, ends no work, and closes nothing when it
- *  ends: the chat stays as the person left it. */
+ *  close of a tab that shows it does not close it. A hold attaches no runner and ends no work. A release or a drop
+ *  closes nothing: the chat stays as the person left it. Only `close` closes the chat. */
 export interface SessionOpenHold {
   /** Holds the chat open. Holding again is a no-op. */
   hold(sessionId: string): void
   /** Lets go of this holder's hold of one chat. */
   release(sessionId: string): void
+  /** Lets go of this holder's hold of one chat as a tab's close does: when no other holder holds the chat, no client
+   *  shows it, and it is active, it closes once its turn is at rest. It is not a person's close, so it tells no
+   *  `onChatClosed` listener. Answers false when another holder holds the chat or a client shows it, so it stays
+   *  open; true once the close is done or waits for the turn, and for a chat that is not active. */
+  close(sessionId: string): Promise<boolean>
   /** Lets go of every hold of this holder, as when the holder itself ends. */
   drop(): void
 }
@@ -229,6 +234,10 @@ export interface RuntimeSupervisor extends PersonEntryForward {
    *  and a tab's close that no open hold blocks. A stop, a recovery, and a blocked tab close call it for no chat.
    *  Answers the unsubscribe. */
   onChatClosed(listener: (sessionId: string) => void): () => void
+  /** Calls `listener` with each session that `releaseSession` lets go, once its actor took the release: a client
+   *  stopped showing it, a hidden session's grace ran out, or a message reached it while no client showed it. A hide
+   *  calls it for none. Answers the unsubscribe. */
+  onSessionReleased(listener: (sessionId: string) => void): () => void
   /** Whether a client shows the chat: from its activation that a client shows until its release, hide, close, or
    *  deletion. */
   isShown(sessionId: string): boolean

@@ -3,7 +3,7 @@ import type { LeadRowState } from "../../../protocol/modules/lead.js"
 import { displayWidth, truncateToWidth } from "../../utils/text.js"
 
 /** The theme colour of a state's mark, by theme key. */
-type LeadStateTone = "warning" | "primary" | "success" | "textMuted"
+type LeadStateTone = "warning" | "primary" | "success"
 
 /** How a row marks its chat's state: a mark in its own colour. Every state that needs the person shares the warning
  *  tone. */
@@ -13,7 +13,6 @@ export const LEAD_STATE_LOOK = {
   cut: { mark: "■", tone: "warning" },
   working: { mark: "●", tone: "primary" },
   result: { mark: "✓", tone: "success" },
-  done: { mark: "·", tone: "textMuted" },
 } as const satisfies { readonly [state in LeadRowState]: { readonly mark: string; readonly tone: LeadStateTone } }
 
 const SEPARATOR = "  "
