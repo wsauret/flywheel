@@ -1,0 +1,104 @@
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 54
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 24,31,101,110,113
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 343
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 12,77,152
+src/orchestration/agent-runtime/tools/bash-script.ts
+  h_4b47e9e4a8b456 48
+src/orchestration/agent-runtime/tools/bash-session-observation.ts
+  h_4b47e9e4a8b456 8,105
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 18,20-22,142-144,146-185,204-209,211-213,215-218,222,273-276,291-299,302,310,327,331-334
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 16,54-55
+src/orchestration/agent-runtime/tools/shell-execution.ts
+  h_4b47e9e4a8b456 2-6,14,16-17,20-21,53-57,72-73,87,114-115,118
+src/orchestration/agent-runtime/tools/shell-runtime-types.ts
+  h_4b47e9e4a8b456 4,13-25,48,54,90,92-93
+src/orchestration/agent-runtime/tools/shell-runtime.ts
+  h_4b47e9e4a8b456 9-10,44-47,49,52,86,88,96
+src/orchestration/modules/bash/module.ts
+  h_4b47e9e4a8b456 2,39-48,50,52-54
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 32-33
+tests/helpers/request-tool-surface.ts
+  h_4b47e9e4a8b456 2,147-148,151,154
+tests/integration/local/bash-outside-writes.test.ts
+  h_4b47e9e4a8b456 14,34
+tests/integration/local/bash-owned-process.test.ts
+  h_4b47e9e4a8b456 17-19,129,131,159,161
+tests/integration/orchestration/agent-runtime/tools/search-shims.test.ts
+  h_4b47e9e4a8b456 10,23
+tests/integration/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 9,11-12,62,70,164,189
+tests/unit/infra/tools/tool-contracts-registry.test.ts
+  h_4b47e9e4a8b456 6,14,16
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 128
+tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+  h_4b47e9e4a8b456 284,288,308
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 32-34,314-315,321
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 17,402
+tests/unit/orchestration/agent-runtime/runtime-assembly-bash-readiness.test.ts
+  h_4b47e9e4a8b456 133
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 361,433,456,514,580
+tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+  h_4b47e9e4a8b456 22,47,53,239
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 11,20,600-603
+tests/unit/orchestration/agent-runtime/tools/_bash-fixtures.ts
+  h_4b47e9e4a8b456 4-6,11,167-189
+tests/unit/orchestration/agent-runtime/tools/_planner-fixtures.ts
+  h_4b47e9e4a8b456 10,22-24,26
+tests/unit/orchestration/agent-runtime/tools/shell-resource-admission.test.ts
+  h_4b47e9e4a8b456 55-56,85,101,114,131-132,175,209
+tests/unit/orchestration/agent-runtime/tools/shell-runtime.test.ts
+  h_4b47e9e4a8b456 9,23-39,51,118-119,146-147,168-169,173,181,188,197,212-213,218,223,248,251,277
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-background.test.ts
+  h_4b47e9e4a8b456 13,17-18,173
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-contract.test.ts
+  h_4b47e9e4a8b456 15,42-46,130,213
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-tree-hosted.test.ts
+  h_4b47e9e4a8b456 6-8,10,95-116
+tests/unit/orchestration/agent-runtime/tools/tool-name-repair.test.ts
+  h_4b47e9e4a8b456 9,106
+tests/unit/orchestration/agent-runtime/tools/tools-bash-auto-yield.test.ts
+  h_4b47e9e4a8b456 11,67,101,129,152,194,228,256,268,282,299,308,318-319,336,358,379,405,421,438,457,498,534,548,569,584,598
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 13,76,78,112,158,169,214,283,312,333,373,414,452,484,503,545,569,579
+tests/unit/orchestration/agent-runtime/tools/tools-bash-environment.test.ts
+  h_4b47e9e4a8b456 8,122
+tests/unit/orchestration/agent-runtime/tools/tools-bash-script-wrapper.test.ts
+  h_4b47e9e4a8b456 4-7,13-14,25,37-38,41-42,48-50,53,56,59
+tests/unit/orchestration/agent-runtime/tools/tools-bash-windows.test.ts
+  h_4b47e9e4a8b456 8,19,46,80-81,83,123
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 2-4,13-14,20-21,43,96,101,116,130,140,152,166,175-179,184,195,204,220,229,237,249-258,275,282,289,298,326,353,367,384,401,463,509,519,522-523,557-558,567-568,573-574,579-580,588-589
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 21,27
+tests/unit/orchestration/app-service/session-changes-service.test.ts
+  h_4b47e9e4a8b456 11,353,382,393
+tests/unit/orchestration/modules/experiments/tool-execution-gate.test.ts
+  h_4b47e9e4a8b456 18,58,173,178-179
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 79,160
+tests/unit/orchestration/workflow-host/workflow-deps.test.ts
+  h_4b47e9e4a8b456 17-19,218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cd1e055f54ba8b7784fd0ddcb3edb8f35102e44f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
