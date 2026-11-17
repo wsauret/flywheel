@@ -331,6 +331,63 @@ describe("a workflow agent's learning", () => {
   })
 })
 
+/** A one-agent run whose agent reads a file in each of its first `reads` requests, each of which reports the usage
+ *  `usage`, then hands off; the messages of each request it sent, serialized. */
+async function agentRequests(config: Parameters<typeof captureRuntimeConfigRequest>[0]["config"], reads: number, usage: { readonly inputTokens: number; readonly outputTokens: number }) {
+  const workflow = loadedWorkflow({
+    id: "work", name: "Work", phases: [{ phase: "work", brief: "Do the work.", writes: [] }],
+  })
+  const base = makeWorkflowDeps()
+  const requests: string[] = []
+  const respond = (): ProviderStreamEvent[] => requests.length <= reads
+    ? [
+        { kind: "tool_use", toolCall: { id: `read-${requests.length}`, name: "read", input: { file_path: "missing.txt" } } },
+        { kind: "usage", final: true, ...usage, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 },
+        { kind: "done", stopReason: "tool_use" },
+      ]
+    : [{ kind: "tool_use", toolCall: { id: "handoff-1", name: "handoff", input: { summary: "done" } } }, { kind: "done", stopReason: "tool_use" }]
+  const workflowDeps: WorkflowDeps = {
+    ...base,
+    captureRuntimeConfig: () => captureRuntimeConfigRequest({ revision: 0, config, warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" } }, "default"),
+    createAgent: (options) => newTestRunner({ ...options, runtimeSurfaces: { ...options.runtimeSurfaces, launcher: refusingLauncher }, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
+      accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      async *streamWithTools(stream) { requests.push(JSON.stringify(stream.messages)); yield* respond() },
+    }), undefined, base.captureProviderConnection),
+  }
+  const run = await workflowRun("pending", false, "Work", { workflow, workflowDeps })
+  try {
+    await run.reported
+    await run.reconcile()
+    await run.ended
+    expect(await run.tracking.done).toMatchObject({ status: "completed" })
+  } finally {
+    await run.workflowHosts.disposeAll(() => "runtime")
+  }
+  return { requests, run }
+}
+
+describe("a workflow agent's batch notices", () => {
+  it("gives a workflow agent whose own store reports 70 percent context the context-pressure notice after its tool batch", async () => {
+    // The agent's session measures the context of each request as the request starts, from the usage that the
+    // provider reported for the one before it: the second request measures about 70 percent of 100,000 tokens.
+    const { requests } = await agentRequests(CONFIG_DEFAULTS, 2, { inputTokens: 70_000, outputTokens: 10 })
+    expect(requests).toHaveLength(3)
+    expect(requests[1]).not.toContain("context_pressure_notice")
+    expect(requests[2]).toContain("context_pressure_notice")
+  })
+
+  it("reports the member totals against a workflow token budget of 1,000, and the remaining attempts that the gate reads", async () => {
+    const budget = { max_invocations: 3, max_tokens: 1_000, max_wall_clock_minutes: 0 }
+    const { requests, run } = await agentRequests({ ...CONFIG_DEFAULTS, budget }, 1, { inputTokens: 800, outputTokens: 100 })
+    // The gate counts the attempts that the workflow's own aggregate records.
+    const attempts = run.ctx.store.read({ aggregateId: "workflow:child", types: ["budget.invocation.recorded"] }).length
+    expect(attempts).toBe(1)
+    expect(requests).toHaveLength(2)
+    expect(requests[1]).toContain(`Workflow budget running low: ${budget.max_invocations - attempts} attempts and 100 tokens remain.`)
+  })
+})
+
 describe("workflow naming", () => {
   it("names a run by its launch summary and generates no title", async () => {
     const run = await workflowRun("pending", false, "Empty sweep")
