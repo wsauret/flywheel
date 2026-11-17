@@ -1,0 +1,54 @@
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 219
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 51
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 288
+src/orchestration/app-service/module-execution-environment.ts
+  h_4b47e9e4a8b456 21-23
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 59-60
+src/orchestration/modules/lead/facts.ts
+  h_4b47e9e4a8b456 53-54,62-70,123
+src/orchestration/modules/lead/journal.ts
+  h_4b47e9e4a8b456 19-20,124-126,159-161
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 41-42
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 2,12-13,56-57,113-115,123,128-131,168,184-190,195-202,237,265,270,298,313-321,358-362,399-400,405
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 9,27,87-101,159-167,189-208,219-247,256,261-266,281,297,302,305,485-497,603-609,656,667
+src/orchestration/session/conversation/conversation-tree-writer.ts
+  h_4b47e9e4a8b456 136-138,238-244,249-250,261,298-302,304,347-348
+src/orchestration/session/conversation/person-message-ledger.ts
+  h_4b47e9e4a8b456 47-49,67
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 2,14,16,26,103-109,113,134,211,217-243
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 1,3,10,12,16,44-46,53-54,67-80,97-98,122-126,137,163,184-209
+tests/unit/orchestration/modules/lead/journal.test.ts
+  h_4b47e9e4a8b456 66-81
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 206-245
+tests/unit/orchestration/modules/lead/rows.test.ts
+  h_4b47e9e4a8b456 5,7,175-216
+tests/unit/orchestration/modules/lead/service-reports.test.ts
+  h_4b47e9e4a8b456 1-238
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 8,12,89,425,455,470-472,513,540,594
+tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
+  h_4b47e9e4a8b456 140-147,150-154
+tests/unit/orchestration/session/session-input-delivery.test.ts
+  h_4b47e9e4a8b456 6,146-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3f9b6f7c5b40968d383a227bc42a3c8e32605152",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
