@@ -1,0 +1,84 @@
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 227
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 80-83
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 59-60,64
+src/orchestration/app-service/module-service-host.ts
+  h_4b47e9e4a8b456 111-114
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 335-336,340,470,620
+src/orchestration/app-service/role-assignment-projection.ts
+  h_4b47e9e4a8b456 20-21,33
+src/orchestration/app-service/role-protocol-projection.ts
+  h_4b47e9e4a8b456 16-18,94-98,185,199-200,207
+src/orchestration/chat-profile.ts
+  h_4b47e9e4a8b456 12,29-34
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 9,29-32,39-42,57,81,90
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 138,197
+src/orchestration/chat/session-engines.ts
+  h_4b47e9e4a8b456 44-45,263,309
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 129-133
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 14,85,94
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 14-16,39,41-42
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 74,105-106,379-380
+src/orchestration/modules/side-question/request.ts
+  h_4b47e9e4a8b456 5-6,19-21,31
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 238-241
+src/tui/hooks/use-model-modal.ts
+  h_4b47e9e4a8b456 15,38-41,316-319,322-325
+tests/helpers/module-kernel.ts
+  h_4b47e9e4a8b456 117
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 191
+tests/unit/orchestration/agent-runtime/request-tool-surface-chat-profile.test.ts
+  h_4b47e9e4a8b456 37
+tests/unit/orchestration/app-service/model-role-projection.test.ts
+  h_4b47e9e4a8b456 34-38
+tests/unit/orchestration/app-service/role-protocol-projection.test.ts
+  h_4b47e9e4a8b456 10,18-19,105-126,142,195,209,212,232-233,247-248
+tests/unit/orchestration/chat-profile.test.ts
+  h_4b47e9e4a8b456 21,38
+tests/unit/orchestration/chat/chat-request-options.test.ts
+  h_4b47e9e4a8b456 13,33,66-78
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 125
+tests/unit/orchestration/chat/session-engines.test.ts
+  h_4b47e9e4a8b456 74
+tests/unit/orchestration/config/config-models-roles.test.ts
+  h_4b47e9e4a8b456 193-205
+tests/unit/orchestration/config/model-assignment-controller-scopes.test.ts
+  h_4b47e9e4a8b456 227,265
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 45-46
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 58-59,114,166
+tests/unit/orchestration/modules/lead/profile.test.ts
+  h_4b47e9e4a8b456 12,155-162
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 292,303-307
+tests/unit/orchestration/modules/side-question/request.test.ts
+  h_4b47e9e4a8b456 15,82-119
+tests/unit/orchestration/workflow-host/workflow-agent-models.test.ts
+  h_4b47e9e4a8b456 25
+tests/unit/tui/hooks/use-model-modal-defaults.test.ts
+  h_4b47e9e4a8b456 8,10-11,22,46-47,94-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b2d005b000e42a16738699fa686e4d98dc0e8d20",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
