@@ -1,0 +1,68 @@
+src/orchestration/agent-runtime/tools/apply-patch.ts
+  h_4b47e9e4a8b456 76-154
+src/orchestration/agent-runtime/tools/bash-git-main.ts
+  h_4b47e9e4a8b456 19,22,76-78,81
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/tools/bash-mutation-guard.ts
+  h_4b47e9e4a8b456 60,115
+src/orchestration/agent-runtime/tools/bash-output-tail.ts
+  h_4b47e9e4a8b456 2-4,14
+src/orchestration/agent-runtime/tools/bash-private-copy-pool.ts
+  h_4b47e9e4a8b456 24
+src/orchestration/agent-runtime/tools/edit.ts
+  h_4b47e9e4a8b456 58-96
+src/orchestration/agent-runtime/tools/file-mutation-artifact.ts
+  h_4b47e9e4a8b456 16,48
+tests/integration/local/_bash-mutation-repository.ts
+  h_4b47e9e4a8b456 7,9,27,71,74-89,92
+tests/integration/local/bash-mutations.test.ts
+  h_4b47e9e4a8b456 6-7,9,293-294,299
+tests/integration/orchestration/agent-runtime/tools/streaming-edit-validation-worker.test.ts
+  h_4b47e9e4a8b456 7,164
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 6,226
+tests/unit/orchestration/agent-runtime/streaming-tool-validation.test.ts
+  h_4b47e9e4a8b456 12,157
+tests/unit/orchestration/agent-runtime/tools/_bash-mutations-harness.ts
+  h_4b47e9e4a8b456 4,11-12,14,29-35,37-46,56-57,61-62,68,76,85,89-90,104-105,130-131,144,184,194-203,205
+tests/unit/orchestration/agent-runtime/tools/bash-git-policy.test.ts
+  h_4b47e9e4a8b456 1,4,12-30,48,55,68,86,94,100
+tests/unit/orchestration/agent-runtime/tools/bash-mutation-guard.test.ts
+  h_4b47e9e4a8b456 6-7,12-29
+tests/unit/orchestration/agent-runtime/tools/bash-output-tail.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-reuse.test.ts
+  h_4b47e9e4a8b456 10,20-21
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy.test.ts
+  h_4b47e9e4a8b456 7,144
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 4,203,211
+tests/unit/orchestration/agent-runtime/tools/tools-apply-patch.test.ts
+  h_4b47e9e4a8b456 6,19,25,48,126,165,184,187,209,259
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutation-evidence.test.ts
+  h_4b47e9e4a8b456 276
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-reuse.test.ts
+  h_4b47e9e4a8b456 247-248,285
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations-uncaptured.test.ts
+  h_4b47e9e4a8b456 10,25,44,67,85,99,137
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations.test.ts
+  h_4b47e9e4a8b456 314,316-317,321,328
+tests/unit/orchestration/agent-runtime/tools/tools-edit.test.ts
+  h_4b47e9e4a8b456 7,22,44,56,70,89,103,108,121,143,176,201,215,230,246,251,256,261,265,281,283,290,303,306
+tests/unit/orchestration/app-service/command-keeper.test.ts
+  h_4b47e9e4a8b456 67,102
+tests/unit/orchestration/session/file-mutation-fact-writers.test.ts
+  h_4b47e9e4a8b456 14,34,36,256,262,268,415-416,421,429-430,434-436,439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7a3d4f315a821987302e556ca4b6b8011cb0a700",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
