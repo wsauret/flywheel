@@ -3,7 +3,7 @@ import { skillWriteActor, type SkillReviewCompletedFact, type SkillWrittenFact }
 import { LEGACY_MEMORY_TARGET_REACH } from "./memory-written.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
 
-export const SKILL_REACH_MIGRATION_ID = "skill-facts-reach-v1"
+const SKILL_REACH_MIGRATION_ID = "skill-facts-reach-v1"
 
 /** The historical store vocabulary of `skill.written`: `user` named the global
  *  store's directory, `project` the project store's. Reach is now the recorded

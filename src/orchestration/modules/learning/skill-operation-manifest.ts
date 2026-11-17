@@ -252,7 +252,7 @@ type PlanSchemaMatchesPlanner = DecodedPlan extends SkillMutationPlan ? (SkillMu
 const PLAN_SCHEMA_MATCHES_PLANNER: PlanSchemaMatchesPlanner = true;
 void PLAN_SCHEMA_MATCHES_PLANNER;
 
-export function operationsDir(globalRoot: string): string {
+function operationsDir(globalRoot: string): string {
   return join(globalRoot, ".operations");
 }
 
@@ -309,9 +309,8 @@ export type ManifestRead =
   | { readonly kind: "absent" }
   | { readonly kind: "unusable"; readonly reason: string };
 
-export type ProposalRead =
+type ProposalRead =
   | { readonly kind: "ok"; readonly proposal: ProposalRecord }
-  | { readonly kind: "absent" }
   | { readonly kind: "unusable"; readonly reason: string };
 
 /** Read, strictly decode, and fully verify the manifest of one operation,
@@ -333,13 +332,6 @@ function readManifestFromArea(globalRoot: string, operationId: string, area: Man
   }
   const refusal = verifyOperationManifest(manifest, { operationId, globalRoot });
   return refusal ? { kind: "unusable", reason: refusal } : { kind: "ok", manifest, area };
-}
-
-/** Read, strictly decode, and fully verify one proposal. */
-export function readProposalRecord(globalRoot: string, proposalId: string): ProposalRead {
-  if (!RECORD_ID_PATTERN.test(proposalId)) return { kind: "unusable", reason: `${proposalId} is not a proposal identity` };
-  const text = readRecordText(globalRoot, proposalPath(globalRoot, proposalId));
-  return text.kind === "ok" ? decodeProposalRecord(globalRoot, proposalId, text.text) : text;
 }
 
 function decodeProposalRecord(globalRoot: string, proposalId: string, text: string): ProposalRead {
@@ -533,13 +525,6 @@ export function activeOperationIds(globalRoot: string): readonly string[] {
   return recordIds(operationsDir(globalRoot), "operation");
 }
 
-/** The proposal identity of every persisted proposal. */
-export function proposalRecordIds(globalRoot: string): readonly string[] {
-  return recordIds(proposalsDir(globalRoot), "proposal", (proposalId) => {
-    tryQuarantineProposal(globalRoot, proposalId, `proposal area exceeded its ${MAX_AREA_RECORDS} record bound`);
-  });
-}
-
 /** Read the proposal set used by startup and admission. Each record is measured,
  * read, decoded, and verified from one open descriptor while sharing one byte
  * budget across the walk. No later path reopen can enlarge this work. */
@@ -563,7 +548,7 @@ export function readProposalRecordsQuarantiningUnusable(globalRoot: string): rea
     remaining -= text.bytes;
     const read = decodeProposalRecord(globalRoot, proposalId, text.text);
     if (read.kind === "ok") proposals.push(read.proposal);
-    else if (read.kind === "unusable") tryQuarantineProposal(globalRoot, proposalId, read.reason);
+    else tryQuarantineProposal(globalRoot, proposalId, read.reason);
   }
   return proposals;
 }

@@ -3,14 +3,14 @@ import { Database } from "bun:sqlite"
 import { Schema } from "effect"
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { selectStartupDirectories, type StartupDirectories } from "../../../src/infra/directory-authorities.js"
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { prepareWorkspaceState } from "../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../helpers/directories.js"
-import { operationsDir } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js"
-import { userSkillStoreDir } from "../../../src/workflows/skills.js"
+import { manifestPath } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js"
+import { ownedSkillStoreDirs } from "../../../src/workflows/skills.js"
 
 const telemetry = await import("../../../src/orchestration/modules/learning/skill-load-stats.js")
 const collectSkillLoadStats = telemetry.collectSkillLoadStats
@@ -437,9 +437,8 @@ describe("skills commands under capability policy", () => {
     const userDataRoot = join(home, ".flywheel")
     mkdirSync(userDataRoot, { recursive: true })
     writeFileSync(join(userDataRoot, "flywheel.toml"), `features = ${features}\n${extraConfig}`)
-    const operations = operationsDir(userSkillStoreDir(userDataRoot))
-    mkdirSync(operations, { recursive: true })
-    const staleRecord = join(operations, `${"a".repeat(64)}.json`)
+    const staleRecord = manifestPath(ownedSkillStoreDirs({ projectRoot: root, userDataRoot }).user, "a".repeat(64))
+    mkdirSync(dirname(staleRecord), { recursive: true })
     writeFileSync(staleRecord, "{}\n")
     return { directories: { ...launchedIn(root), accountHome: home, userDataRoot }, staleRecord }
   }

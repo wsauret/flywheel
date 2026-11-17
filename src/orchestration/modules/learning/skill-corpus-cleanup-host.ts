@@ -14,58 +14,11 @@ import { createSessionFactWriter } from "../../session/session-fact-writer.js"
 import { resolveHeadlessAuthProfile, withHeadlessProfileRuntime } from "../../headless/headless-profile-runtime.js"
 import { createLearningReviewExecution } from "./learning-review-runner.js"
 import { createSkillCorpusCleanupState } from "./skill-corpus-cleanup-state.js"
-import { createSkillCorpusCleanupRequests, renderSkillCorpusCleanupInstruction, requestValidSkillCorpusCleanupResponse, skillCorpusCleanupAdmission, SKILL_CORPUS_CLEANUP_CONTRACT, type SkillCorpusCleanupRequest } from "./skill-corpus-cleanup-classifier.js"
+import { createSkillCorpusCleanupRequests, requestValidSkillCorpusCleanupResponse, skillCorpusCleanupAdmission, SKILL_CORPUS_CLEANUP_CONTRACT } from "./skill-corpus-cleanup-classifier.js"
+import { classifySkillCorpusCleanupWork } from "./skill-corpus-cleanup-work.js"
 import { createReviewUsageAccounting } from "./learning-review.js"
 import { runSkillCorpusCleanup, type SkillCorpusCleanupResult, type SkillCorpusCleanupWorkResult } from "./skill-corpus-cleanup.js"
 import { createInstalledDefinitionRegistry } from "../../definition-catalog.js"
-
-interface SkillCorpusCleanupWorkClassifier<Output> {
-  readonly classify: (request: SkillCorpusCleanupRequest, instruction: string, signal: AbortSignal) => Promise<Output>
-  readonly dispose: () => Promise<void>
-}
-
-export interface SkillCorpusCleanupWorkHostInput<Output> {
-  readonly work: readonly SkillCorpusCleanupRequest[]
-  readonly acquireClassifier: () => Promise<SkillCorpusCleanupWorkClassifier<Output>>
-  readonly signal?: AbortSignal
-}
-
-const CLEANUP_CONCURRENCY = 2
-
-/** Runs deterministic core-and-shard work with one lazy provider owner and bounded child concurrency. */
-export async function runSkillCorpusCleanupWorkHost<Output>(input: SkillCorpusCleanupWorkHostInput<Output>): Promise<readonly Output[]> {
-  if (input.work.length === 0) return []
-  const campaign = new AbortController()
-  const signal = input.signal ? AbortSignal.any([input.signal, campaign.signal]) : campaign.signal
-  const classifier = await input.acquireClassifier()
-  const results: Output[] = []
-  let nextIndex = 0
-  const worker = async (): Promise<void> => {
-    while (nextIndex < input.work.length) {
-      signal.throwIfAborted()
-      const index = nextIndex
-      nextIndex += 1
-      const request = input.work.at(index)
-      if (!request) throw new Error(`Cleanup work index ${index} is missing`)
-      signal.throwIfAborted()
-      results[index] = await classifier.classify(request, renderSkillCorpusCleanupInstruction(request), signal)
-    }
-  }
-  try {
-    const workers = Array.from({ length: Math.min(CLEANUP_CONCURRENCY, input.work.length) }, () => worker().catch((error) => {
-      campaign.abort(error)
-      throw error
-    }))
-    const settled = await Promise.allSettled(workers)
-    const failed = settled.find((result): result is PromiseRejectedResult => result.status === "rejected")
-    if (failed) throw failed.reason
-    return results
-  } finally {
-    await classifier.dispose()
-  }
-}
-
-
 
 export interface SkillCorpusCleanupProjectHostInput {
   readonly directories: StartupDirectories
@@ -123,29 +76,22 @@ export async function runSkillCorpusCleanupForProject(input: SkillCorpusCleanupP
             const planned = await execution.plannedAttempt()
             const cleanupAdmission = skillCorpusCleanupAdmission(planned.modelFamily, planned.contextLimit)
             const work = corePackageIds.flatMap((id) => createSkillCorpusCleanupRequests(revision, id, candidates, cleanupAdmission))
-            return runSkillCorpusCleanupWorkHost<SkillCorpusCleanupWorkResult>({
-              work,
-              signal,
-              acquireClassifier: async () => ({
-                classify: async (request, instruction, childSignal) => {
-                  const output = await requestValidSkillCorpusCleanupResponse(request, async (retryLimit) => {
-                    let attempts = 0
-                    const response = await execution.request({
-                      systemPrompt: SKILL_CORPUS_CLEANUP_CONTRACT,
-                      instruction,
-                      signal: childSignal,
-                      contextBudget: "caller-preflighted",
-                      turns: "single",
-                      retryLimit,
-                      onAttempt: () => { attempts += 1 },
-                    })
-                    return { output: response, attempts }
-                  }, childSignal)
-                  return { request, output }
-                },
-                dispose: async () => {},
-              }),
-            })
+            return classifySkillCorpusCleanupWork<SkillCorpusCleanupWorkResult>(work, async (request, instruction, childSignal) => {
+              const output = await requestValidSkillCorpusCleanupResponse(request, async (retryLimit) => {
+                let attempts = 0
+                const response = await execution.request({
+                  systemPrompt: SKILL_CORPUS_CLEANUP_CONTRACT,
+                  instruction,
+                  signal: childSignal,
+                  contextBudget: "caller-preflighted",
+                  turns: "single",
+                  retryLimit,
+                  onAttempt: () => { attempts += 1 },
+                })
+                return { output: response, attempts }
+              }, childSignal)
+              return { request, output }
+            }, signal)
           })
         },
       }).finally(() => { accounting.finish() })

@@ -12,11 +12,9 @@ import {
   advanceOperationManifest,
   manifestPath,
   operationIdentity,
-  operationsDir,
   proposalPath,
-  proposalRecordIds,
+  quarantineDir,
   readOperationManifest,
-  readProposalRecord,
   readProposalRecordsQuarantiningUnusable,
   writeOperationManifest,
   type ManifestArea,
@@ -38,9 +36,14 @@ function recordId(seed: number): string {
   return seed.toString(16).padStart(64, "0");
 }
 
+/** The active area of one store: the directory that holds its manifests. */
+function operationArea(globalRoot: string): string {
+  return dirname(manifestPath(globalRoot, recordId(0)));
+}
+
 beforeEach(() => {
   rmSync(TMP, { recursive: true, force: true });
-  mkdirSync(operationsDir(GLOBAL_ROOT), { recursive: true });
+  mkdirSync(operationArea(GLOBAL_ROOT), { recursive: true });
 });
 
 afterEach(() => {
@@ -70,34 +73,32 @@ describe("an operation is named by the confirmation that authorized it", () => {
 describe("the recovery walk enumerates records, not directory entries", () => {
   it("returns the record ids of the area, ascending, and nothing else", () => {
     const ids = [recordId(3), recordId(1), recordId(2)];
-    for (const id of ids) writeFileSync(join(operationsDir(GLOBAL_ROOT), `${id}.json`), "{}");
+    for (const id of ids) writeFileSync(join(operationArea(GLOBAL_ROOT), `${id}.json`), "{}");
     // The area holds the working directories of the protocol beside its records,
     // and anything else the user or another tool left there.
     for (const dir of ["terminal", "proposals", "staging", "rollback", "quarantine", "audit"]) {
-      mkdirSync(join(operationsDir(GLOBAL_ROOT), dir), { recursive: true });
+      mkdirSync(join(operationArea(GLOBAL_ROOT), dir), { recursive: true });
     }
-    writeFileSync(join(operationsDir(GLOBAL_ROOT), "notes.txt"), "hand-written");
-    writeFileSync(join(operationsDir(GLOBAL_ROOT), "not-an-identity.json"), "{}");
+    writeFileSync(join(operationArea(GLOBAL_ROOT), "notes.txt"), "hand-written");
+    writeFileSync(join(operationArea(GLOBAL_ROOT), "not-an-identity.json"), "{}");
 
     expect(activeOperationIds(GLOBAL_ROOT)).toEqual([...ids].sort());
-    expect(proposalRecordIds(GLOBAL_ROOT)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(GLOBAL_ROOT)).toEqual([]);
   });
 
   it("reports absent and non-directory areas as having no records", () => {
     rmSync(TMP, { recursive: true, force: true });
 
     expect(activeOperationIds(GLOBAL_ROOT)).toEqual([]);
-    expect(proposalRecordIds(GLOBAL_ROOT)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(GLOBAL_ROOT)).toEqual([]);
     expect(readOperationManifest(GLOBAL_ROOT, recordId(0))).toEqual({ kind: "absent" });
-    expect(readProposalRecord(GLOBAL_ROOT, recordId(0))).toEqual({ kind: "absent" });
 
     mkdirSync(GLOBAL_ROOT, { recursive: true });
-    writeFileSync(operationsDir(GLOBAL_ROOT), "not a directory");
+    writeFileSync(operationArea(GLOBAL_ROOT), "not a directory");
 
     expect(activeOperationIds(GLOBAL_ROOT)).toEqual([]);
-    expect(proposalRecordIds(GLOBAL_ROOT)).toEqual([]);
+    expect(readProposalRecordsQuarantiningUnusable(GLOBAL_ROOT)).toEqual([]);
     expect(readOperationManifest(GLOBAL_ROOT, recordId(0))).toEqual({ kind: "absent" });
-    expect(readProposalRecord(GLOBAL_ROOT, recordId(0))).toEqual({ kind: "absent" });
   });
 
   it("bounds proposal recovery by aggregate bytes before record parsing", () => {
@@ -177,7 +178,7 @@ describe("persisted record verification and recovery", () => {
     const content = readFileSync(path);
     const outside = join(TMP, "outside-quarantine");
     mkdirSync(outside);
-    symlinkSync(outside, join(operationsDir(root), "quarantine"), process.platform === "win32" ? "junction" : "dir");
+    symlinkSync(outside, dirname(quarantineDir(root, "record.json")), process.platform === "win32" ? "junction" : "dir");
 
     expect(readProposalRecordsQuarantiningUnusable(root)).toEqual([]);
     expect(readFileSync(path)).toEqual(content);
@@ -245,10 +246,8 @@ describe("persisted record verification and recovery", () => {
     const plan = currentPlan();
     writeRecord(proposalPath(globalRoot(), plan.proposalId), { ...proposalRecord(plan), plan: legacyPlan(plan) });
 
-    const read = readProposalRecord(globalRoot(), plan.proposalId);
-
-    expect(read.kind).toBe("unusable");
-    expect(read.kind === "unusable" ? read.reason : "").toContain("decode");
+    expect(readProposalRecordsQuarantiningUnusable(globalRoot())).toEqual([]);
+    expect(existsSync(proposalPath(globalRoot(), plan.proposalId))).toBe(false);
   });
 
   it("still decodes a proposal that carries the retired catalog-truncation warning", () => {
@@ -256,18 +255,17 @@ describe("persisted record verification and recovery", () => {
     const legacy = { ...plan, warning: "The description is 240 chars; the catalog truncates it at 200." };
     writeRecord(proposalPath(globalRoot(), plan.proposalId), { ...proposalRecord(plan), plan: legacy });
 
-    expect(readProposalRecord(globalRoot(), plan.proposalId).kind).toBe("ok");
+    expect(readProposalRecordsQuarantiningUnusable(globalRoot()).map((proposal) => proposal.proposalId)).toEqual([plan.proposalId]);
   });
 
-  it("refuses to read a historical proposal exceeding the record bound", () => {
+  it("quarantines a historical proposal exceeding the record bound", () => {
     const plan = currentPlan();
     const proposal = proposalRecord({ ...plan, message: "x".repeat(4 * 1024 * 1024) });
 
     writeRecord(proposalPath(globalRoot(), proposal.proposalId), proposal);
-    const result = readProposalRecord(globalRoot(), proposal.proposalId);
 
-    expect(result.kind).toBe("unusable");
-    expect(existsSync(proposalPath(globalRoot(), proposal.proposalId))).toBe(true);
+    expect(readProposalRecordsQuarantiningUnusable(globalRoot())).toEqual([]);
+    expect(existsSync(proposalPath(globalRoot(), proposal.proposalId))).toBe(false);
   });
 
   it("is refused as an operation manifest, in either area", () => {

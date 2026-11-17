@@ -17,7 +17,7 @@ import {
   operationIdentity,
   advanceOperationManifest,
   readOperationManifest,
-  readProposalRecord,
+  readProposalRecordsQuarantiningUnusable,
   writeOperationManifest,
   proposalPath,
   isTerminalState,
@@ -35,10 +35,15 @@ import { withPackageLocks } from "../../src/infra/package-directory-lock.js";
 import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/global-skill-mutation-protocol.js";
 import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/learning-journal.js";
 
+/** The persisted proposal of one id, read through the startup proposal reader. */
+function readProposal(globalRoot: string, proposalId: string) {
+  return readProposalRecordsQuarantiningUnusable(globalRoot).find((proposal) => proposal.proposalId === proposalId);
+}
+
 /** Historical producer fixture, not a supported publication API. */
 export function readGlobalMutationProposal(globalRoot: string, proposalId: string) {
-  const read = readProposalRecord(globalRoot, proposalId);
-  return read.kind === "ok" ? { summary: read.proposal.plan.summary } : undefined;
+  const proposal = readProposal(globalRoot, proposalId);
+  return proposal ? { summary: proposal.plan.summary } : undefined;
 }
 
 /** Reproduce the old producer so recovery tests retain real version 1 records. */
@@ -236,9 +241,8 @@ export function createGlobalSkillHarness(input: GlobalSkillHarnessInput): Global
     manifest,
     operationId,
     interrupt(proposalId, interactionId, state) {
-      const read = readProposalRecord(dirs.user, proposalId);
-      if (read.kind !== "ok") throw new Error(`proposal ${proposalId} is ${read.kind}`);
-      const proposal = read.proposal;
+      const proposal = readProposal(dirs.user, proposalId);
+      if (!proposal) throw new Error(`proposal ${proposalId} is absent or unusable`);
       const claiming: OperationManifest = {
         version: 1,
         state: "claiming",

@@ -5,7 +5,8 @@ import { contentEvidence } from "../../../../../src/infra/content-evidence.js";
 import { testSkill } from "../../../../helpers/skill-fixtures.js";
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js";
 import { interceptBashCommand } from "../../../../../src/orchestration/agent-runtime/tools/bash-command-policy.js";
-import { archiveSkill } from "../../../../../src/orchestration/modules/learning/skill-store.js";
+import { applyPlannedMutation } from "../../../../../src/orchestration/modules/learning/skill-store.js";
+import { planSkillMutation } from "../../../../../src/orchestration/modules/learning/skill-mutation-plan.js";
 import { makeContext } from "./_fixtures.js";
 import type { SkillDefinition, SkillRegistryRevision } from "../../../../../src/workflows/skill-schema.js";
 import { publishSkillRevision, SKILL_FILE } from "../../../../../src/workflows/skill-schema.js";
@@ -415,7 +416,10 @@ describe("skill tool resource containment", () => {
     const loading = tool.execute({ action: "load", skill_id: "pdf" }, context);
     await observed;
     let archiveSettled = false;
-    const archiving = archiveSkill({ projectRoot: TMP, userDataRoot: join(TMP, "home", ".flywheel"), registry: () => revision }, { kind: "pruner" }, { name: "pdf" }, () => false)
+    // The pruner's archive: its guard runs under the package lock that the load holds.
+    const planned = planSkillMutation({ projectRoot: TMP, userDataRoot: join(TMP, "home", ".flywheel"), registry: () => revision }, { kind: "pruner" }, { kind: "archive", name: "pdf" });
+    if (planned.kind !== "planned") throw new Error(planned.error);
+    const archiving = applyPlannedMutation(planned.plan, () => false)
       .finally(() => { archiveSettled = true; });
     await Bun.sleep(10);
     expect(archiveSettled).toBe(false);

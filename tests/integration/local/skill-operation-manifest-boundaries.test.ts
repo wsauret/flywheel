@@ -6,10 +6,10 @@ import { tmpdir } from "node:os";
 import { planSkillMutation, storeRootDirs } from "../../../src/orchestration/modules/learning/skill-mutation-plan.js";
 import {
   activeOperationIds,
-  operationsDir,
+  manifestPath,
   proposalPath,
-  proposalRecordIds,
   quarantineDir,
+  readProposalRecordsQuarantiningUnusable,
   type ProposalRecord,
 } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js";
 import type { SkillMutationPlan, SkillStoreConfig } from "../../../src/orchestration/modules/learning/skill-store-types.js";
@@ -57,6 +57,27 @@ function proposalRecord(plan: SkillMutationPlan): ProposalRecord {
   };
 }
 
+/** The active area of one store: the directory that holds its manifests. */
+function operationArea(root: string): string {
+  return dirname(manifestPath(root, recordId(0)));
+}
+
+/** One more valid proposal than the area bound admits, and the id the ascending
+ *  walk reaches last, which is the excess one. */
+function writeExcessProposals(): string {
+  const ids: string[] = [];
+  for (let index = 0; index <= 512; index += 1) {
+    const plan = currentPlan(`occupied-${index}`);
+    const path = proposalPath(globalRoot(), plan.proposalId);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify(proposalRecord(plan)));
+    ids.push(plan.proposalId);
+  }
+  const excess = ids.sort().at(-1);
+  if (!excess) throw new Error("expected proposals");
+  return excess;
+}
+
 function writeLinkedFiles(paths: readonly string[]): void {
   const first = paths[0];
   if (!first) return;
@@ -66,7 +87,7 @@ function writeLinkedFiles(paths: readonly string[]): void {
 
 beforeEach(() => {
   rmSync(TMP, { recursive: true, force: true });
-  mkdirSync(operationsDir(GLOBAL_ROOT), { recursive: true });
+  mkdirSync(operationArea(GLOBAL_ROOT), { recursive: true });
 });
 
 afterEach(() => {
@@ -75,43 +96,26 @@ afterEach(() => {
 
 describe("skill operation manifest scale boundaries", () => {
   test("unrelated entries cannot trip the record bound or hide a record", () => {
-    writeLinkedFiles(Array.from({ length: 513 }, (_, index) => join(operationsDir(GLOBAL_ROOT), `junk-${index}.json`)));
-    writeFileSync(join(operationsDir(GLOBAL_ROOT), `${recordId(7)}.json`), "{}");
+    writeLinkedFiles(Array.from({ length: 513 }, (_, index) => join(operationArea(GLOBAL_ROOT), `junk-${index}.json`)));
+    writeFileSync(manifestPath(GLOBAL_ROOT, recordId(7)), "{}");
 
     expect(activeOperationIds(GLOBAL_ROOT)).toEqual([recordId(7)]);
   });
 
   test("quarantines excess proposals instead of failing the recovery walk", () => {
-    const proposalDir = dirname(proposalPath(GLOBAL_ROOT, recordId(0)));
-    mkdirSync(proposalDir, { recursive: true });
-    writeLinkedFiles(Array.from({ length: 513 }, (_, index) => proposalPath(GLOBAL_ROOT, recordId(index))));
+    const excess = writeExcessProposals();
 
-    expect(proposalRecordIds(GLOBAL_ROOT)).toHaveLength(512);
-    expect(existsSync(proposalPath(GLOBAL_ROOT, recordId(512)))).toBe(false);
+    expect(readProposalRecordsQuarantiningUnusable(globalRoot())).toHaveLength(512);
+    expect(existsSync(proposalPath(globalRoot(), excess))).toBe(false);
   });
 
   test("continues recovery when an excess proposal cannot be quarantined", () => {
-    const proposalDir = dirname(proposalPath(GLOBAL_ROOT, recordId(0)));
-    mkdirSync(proposalDir, { recursive: true });
-    writeLinkedFiles(Array.from({ length: 513 }, (_, index) => proposalPath(GLOBAL_ROOT, recordId(index))));
-    const quarantine = dirname(quarantineDir(GLOBAL_ROOT, "record.json"));
+    const excess = writeExcessProposals();
+    const quarantine = dirname(quarantineDir(globalRoot(), "record.json"));
     mkdirSync(dirname(quarantine), { recursive: true });
     writeFileSync(quarantine, "blocked");
 
-    expect(proposalRecordIds(GLOBAL_ROOT)).toHaveLength(512);
-    expect(existsSync(proposalPath(GLOBAL_ROOT, recordId(512)))).toBe(true);
-  });
-
-  test("bounds historical proposal discovery when the area is full", () => {
-    const plan = currentPlan("global-notes");
-    const proposalDir = dirname(proposalPath(globalRoot(), plan.proposalId));
-    mkdirSync(proposalDir, { recursive: true });
-    for (let index = 0; index < 512; index += 1) {
-      const occupied = currentPlan(`occupied-${index}`);
-      writeFileSync(proposalPath(globalRoot(), occupied.proposalId), JSON.stringify(proposalRecord(occupied)));
-    }
-
-    expect(proposalRecordIds(globalRoot())).toHaveLength(512);
-    expect(existsSync(proposalPath(globalRoot(), plan.proposalId))).toBe(false);
+    expect(readProposalRecordsQuarantiningUnusable(globalRoot())).toHaveLength(512);
+    expect(existsSync(proposalPath(globalRoot(), excess))).toBe(true);
   });
 });

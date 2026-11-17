@@ -20,7 +20,6 @@ import { createSessionFactWriter } from "../../../../../src/orchestration/sessio
 import { openPendingAudit, reconcilePendingAudits } from "../../../../../src/orchestration/modules/learning/learning-journal.js";
 import {
   manifestPath,
-  operationsDir,
   quarantineDir,
   readOperationManifest,
   rollbackDir,
@@ -105,7 +104,7 @@ function hideLivePackage(operationId: string): void {
 /** The entries of the shared audit outbox, which every writer of this store
  *  replays in journal order. */
 function auditOutbox(): readonly string[] {
-  const dir = join(operationsDir(globalRoot()), "audit");
+  const dir = join(globalRoot(), ".operations", "audit");
   return existsSync(dir) ? readdirSync(dir) : [];
 }
 
@@ -390,7 +389,7 @@ describe("a manifest that no longer proves its own claims authorizes nothing", (
     reconcileGlobalSkillOperations(globalRoot(), await harness.claims());
 
     expect(installedBody()).toContain("Alpha.");
-    expect(existsSync(join(operationsDir(globalRoot()), `${manifest.operationId}.json`))).toBe(false);
+    expect(existsSync(manifestPath(globalRoot(), manifest.operationId))).toBe(false);
     expect(quarantined()).toHaveLength(1);
   });
 

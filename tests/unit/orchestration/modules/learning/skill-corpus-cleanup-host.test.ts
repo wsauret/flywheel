@@ -1,9 +1,7 @@
-import type { PreparedPackage } from "../../../../../src/orchestration/agent-runtime/review-types.js";
 import { describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { decodeSkillCorpusCleanupResponse } from "../../../../../src/orchestration/modules/learning/skill-corpus-cleanup-classifier.js";
-import { runSkillCorpusCleanupForProject, runSkillCorpusCleanupWorkHost } from "../../../../../src/orchestration/modules/learning/skill-corpus-cleanup-host.js";
+import { runSkillCorpusCleanupForProject } from "../../../../../src/orchestration/modules/learning/skill-corpus-cleanup-host.js";
 import { runSkillMaintenanceForProject } from "../../../../../src/orchestration/modules/learning/skill-maintenance-host.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { withEventStore } from "../../../../../src/infra/with-event-store.js";
@@ -12,121 +10,6 @@ import type { StartupDirectories } from "../../../../../src/infra/directory-auth
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { clearSharedModelListingClients, getSharedModelsClient } from "../../../../../src/orchestration/config/llm-clients.js";
 import * as workflowDeps from "../../../../../src/orchestration/workflow-host/deps.js";
-
-
-function work(id: string) {
-  const identity = { sha256: id.padEnd(64, "0"), bytes: id.length };
-  const pkg: PreparedPackage = { identity, files: [] };
-  return {
-    requestIdentity: identity,
-    coreIdentity: { version: 1 as const, ...identity },
-    corePackageId: `core-${id}`,
-    corePackageIdentity: identity,
-    candidateShardIdentity: identity,
-    corePackage: { id: `core-${id}`, files: [] },
-    candidates: [{ id: `candidate-${id}`, identity, package: pkg }],
-  };
-}
-
-describe("runSkillCorpusCleanupWorkHost", () => {
-  test("does not acquire provider resources when it receives no work", async () => {
-    let acquisitions = 0;
-    const result = await runSkillCorpusCleanupWorkHost({
-      work: [],
-      acquireClassifier: async () => { acquisitions += 1; throw new Error("unexpected acquisition"); },
-    });
-    expect(result).toEqual([]);
-    expect(acquisitions).toBe(0);
-  });
-
-  test("captures one host runtime and disposes it once for several requests", async () => {
-    let acquisitions = 0;
-    let disposals = 0;
-    const result = await runSkillCorpusCleanupWorkHost({
-      work: [work("a"), work("b"), work("c")],
-      acquireClassifier: async () => {
-        acquisitions += 1;
-        return {
-          classify: async (request) => request.corePackageId,
-          dispose: async () => { disposals += 1; },
-        };
-      },
-    });
-    expect(result).toEqual(["core-a", "core-b", "core-c"]);
-    expect(acquisitions).toBe(1);
-    expect(disposals).toBe(1);
-  });
-
-  test("limits concurrent child requests", async () => {
-    let active = 0;
-    let maximum = 0;
-    let release!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
-    const running = runSkillCorpusCleanupWorkHost({
-      work: [work("a"), work("b"), work("c"), work("d")],
-      acquireClassifier: async () => ({
-        classify: async () => {
-          active += 1;
-          maximum = Math.max(maximum, active);
-          await gate;
-          active -= 1;
-          return "done";
-        },
-        dispose: async () => {},
-      }),
-    });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(maximum).toBe(2);
-    release();
-    expect(await running).toEqual(["done", "done", "done", "done"]);
-  });
-
-  test("does not dequeue new work after a sibling rejects and waits for active settlement before disposal", async () => {
-    let releaseSibling!: () => void;
-    const sibling = new Promise<void>((resolve) => { releaseSibling = resolve; });
-    const started: string[] = [];
-    let disposed = false;
-    const running = runSkillCorpusCleanupWorkHost({
-      work: [work("a"), work("b"), work("c"), work("d")],
-      acquireClassifier: async () => ({
-        classify: async (request) => {
-          started.push(request.corePackageId);
-          if (request.corePackageId === "core-a") throw new Error("rejected");
-          await sibling;
-          return "done";
-        },
-        dispose: async () => { disposed = true; },
-      }),
-    });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(started).toEqual(["core-a", "core-b"]);
-    expect(disposed).toBe(false);
-    releaseSibling();
-    await expect(running).rejects.toThrow("rejected");
-    expect(started).toEqual(["core-a", "core-b"]);
-    expect(disposed).toBe(true);
-  });
-
-  test.each([undefined, "not-json"])("does not start queued work after strict decoding rejects %p", async (output) => {
-    const started: string[] = [];
-    const running = runSkillCorpusCleanupWorkHost({
-      work: [work("a"), work("b"), work("c")],
-      acquireClassifier: async () => ({
-        classify: async (request) => {
-          started.push(request.corePackageId);
-          if (!decodeSkillCorpusCleanupResponse(request, output)) throw new Error("invalid cleanup output");
-          return output;
-        },
-        dispose: async () => {},
-      }),
-    });
-
-    await expect(running).rejects.toThrow("invalid cleanup output");
-    expect(started).toEqual(["core-a", "core-b"]);
-  });
-});
 
 describe("skill maintenance request hosts", () => {
   const temporary = temporaryDirectories();

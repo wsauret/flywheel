@@ -18,7 +18,6 @@
 
 import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { basename, dirname } from "node:path";
-import type { LearningScope } from "../../../infra/learning-scope.js";
 import { ContainedPathError } from "../../../infra/descriptor-directory-contract.js";
 import { removeFileUnder, requireContainedDirectory, writeFileUnder } from "../../../infra/write-file-under.js";
 import { planLockPaths, planSkillMutation, planStaleness } from "./skill-mutation-plan.js";
@@ -26,85 +25,21 @@ import { skillSemanticAuditEvidenceIsCurrent } from "./skill-semantic-audit.js";
 import { withPackageLocks } from "../../../infra/package-directory-lock.js";
 import type { PendingAudit } from "./learning-journal.js";
 import type {
-  SkillMutation,
   SkillMutationPlan,
   SkillStoreConfig,
   SkillStoreResult,
   SkillWriteOrigin,
 } from "./skill-store-types.js";
 
-export interface SaveSkillInput {
-  name: string;
-  description: string;
-  body: string;
-  /** Reach of a create; an existing package stays where it lives. */
-  reach?: LearningScope;
-}
-
-export interface SupportFileInput {
-  name: string;
-  path: string;
-  content: string;
-}
-
-export interface PatchSkillInput {
-  name: string;
-  /** Package-relative file; defaults to SKILL.md. */
-  path?: string;
-  oldString: string;
-  newString: string;
-}
-
-/** Create a managed skill, or fully rewrite an existing one's SKILL.md. */
-export function saveSkill(config: SkillStoreConfig, origin: SkillWriteOrigin, input: SaveSkillInput): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "save", ...input });
-}
-
-/** Write one declared support file under an existing managed skill. */
-export function saveSkillSupportFile(config: SkillStoreConfig, origin: SkillWriteOrigin, input: SupportFileInput): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "support_file", ...input });
-}
-
-/** Delete one declared support file, so a stale reference can retire without
- *  archiving the whole skill. */
-export function removeSkillFile(config: SkillStoreConfig, origin: SkillWriteOrigin, input: { name: string; path: string }): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "remove_file", ...input });
-}
-
-/** Targeted replacement inside SKILL.md or a declared support file: the
- *  preferred shape for fixes (a full rewrite is for major overhauls only).
- *  The old string must match exactly once; a patched SKILL.md must still
- *  parse and fit admission. */
-export function patchSkill(config: SkillStoreConfig, origin: SkillWriteOrigin, input: PatchSkillInput): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "patch", ...input });
-}
-
-/** Archive replaces delete: the whole package moves to `<root>/.archive/<name>`,
- *  which admission ignores, and restore is lossless. A review-origin archive
- *  must name the umbrella that absorbed the content. An optional guard runs
- *  under the same package lock as successful loads and every mutation. */
-export function archiveSkill(
-  config: SkillStoreConfig,
-  origin: SkillWriteOrigin,
-  input: { name: string; absorbedInto?: string },
-  guard?: () => boolean | Promise<boolean>,
-): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "archive", ...input }, guard);
-}
-
 /** Reverse an archive. Searches the project store first, then the user store. */
-export function restoreSkill(config: SkillStoreConfig, origin: SkillWriteOrigin, input: { name: string }): Promise<SkillStoreResult> {
-  return runMutation(config, origin, { kind: "restore", ...input });
-}
-
-async function runMutation(config: SkillStoreConfig, origin: SkillWriteOrigin, mutation: SkillMutation, guard?: () => boolean | Promise<boolean>): Promise<SkillStoreResult> {
+export async function restoreSkill(config: SkillStoreConfig, origin: SkillWriteOrigin, input: { name: string }): Promise<SkillStoreResult> {
   const store = refuseUncontainedSkillStores(config);
   if (store) return { kind: "refused", error: store };
-  const planned = planSkillMutation(config, origin, mutation);
+  const planned = planSkillMutation(config, origin, { kind: "restore", ...input });
   if (planned.kind === "refused") return { kind: "refused", error: planned.error };
   const gate = refuseGlobalReach(origin, planned.plan);
   if (gate) return { kind: "refused", error: gate };
-  return applyPlannedMutation(planned.plan, guard);
+  return applyPlannedMutation(planned.plan);
 }
 
 /** Why this boundary refuses to plan or publish while either owned skill store

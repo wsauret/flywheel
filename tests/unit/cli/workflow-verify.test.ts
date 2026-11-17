@@ -8,8 +8,8 @@ import * as os from "node:os"
 import * as path from "node:path"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { WORKSPACE_STATE_EPOCH } from "../../../src/orchestration/workspace-state-retirement.js"
-import { operationsDir } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js"
-import { userSkillStoreDir } from "../../../src/workflows/skills.js"
+import { manifestPath } from "../../../src/orchestration/modules/learning/skill-operation-manifest.js"
+import { ownedSkillStoreDirs } from "../../../src/workflows/skills.js"
 import { SqliteVmDriver } from "../workflows/vm/_sqlite-vm-driver.js"
 import { DRY_FILES, DRY_LOOP, dryAnswer, dryRound, dryWorkflow, FINDINGS_FILES, findingsAnswer, findingsWorkflow, MAP_GROUP, PLAN, SURVEY_GROUP, TAIL, attemptOf, completePlan, items, mapSkills, mapWorkflow, runPrepared, stage, surveyAnswer, surveyWorkflow } from "../workflows/vm/_map-fixtures.js"
 import { startNext, wideControl } from "../workflows/vm/_tree-fixtures.js"
@@ -238,9 +238,8 @@ describe("workflow verification and optional capabilities", () => {
     fs.writeFileSync(path.join(userDataRoot, "flywheel.toml"), 'features = ["skills"]\n')
     // Reconciliation quarantines this undecodable operation record, so its
     // survival is the observable of a command that reconciled nothing.
-    const operations = operationsDir(userSkillStoreDir(userDataRoot))
-    fs.mkdirSync(operations, { recursive: true })
-    const staleRecord = path.join(operations, `${"a".repeat(64)}.json`)
+    const staleRecord = manifestPath(ownedSkillStoreDirs({ projectRoot, userDataRoot }).user, "a".repeat(64))
+    fs.mkdirSync(path.dirname(staleRecord), { recursive: true })
     fs.writeFileSync(staleRecord, "{}\n")
     const originalLog = console.log
     console.log = () => {}

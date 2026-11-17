@@ -4,7 +4,7 @@ import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-fact
 import { LearningScopeSchema } from "../../../../infra/learning-scope.js"
 import { migrateFactVersions, type FactMigrationResult } from "../../../migrations/engine.js"
 
-export const MEMORY_WRITTEN_MIGRATION_ID = "memory-written-v3"
+const MEMORY_WRITTEN_MIGRATION_ID = "memory-written-v3"
 
 /** The historical target vocabulary: `memory` was the project store and `user`
  *  was the global store. One reach vocabulary (ARCH-LEARNING-005) replaced both. The

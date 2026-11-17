@@ -10,10 +10,7 @@ import { parseSessionFact } from "../../../../src/orchestration/session/session-
 import { collectSkillWriteRecords } from "../../../../src/orchestration/modules/learning/skill-load-stats.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import {
-  SKILL_REACH_MIGRATION_ID,
-  migrateSkillFactReach,
-} from "../../../../src/orchestration/modules/learning/migrations/skill-scope.js"
+import { migrateSkillFactReach } from "../../../../src/orchestration/modules/learning/migrations/skill-scope.js"
 interface UnknownObject {
   [key: string]: unknown
 }
@@ -39,7 +36,7 @@ describe("migrateSkillFactReach", () => {
     expect(JSON.parse(after[1]?.payload ?? "{}")).toEqual(adoptedWrite("global"))
     expect(after[2]).toEqual(before[2]!)
     expect(migrationFacts(dbFile)).toEqual([{
-      migrationId: SKILL_REACH_MIGRATION_ID,
+      migrationId: "skill-facts-reach-v1",
       factTypes: ["skill.written"],
       repaired: 2,
     }])

@@ -6,12 +6,14 @@ import { asAsyncEventReadSurface, type EventStoreAppend, type LocalSqliteEventSt
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import {
   createSkillCorpusCleanupState,
-  SKILL_CORPUS_CLEANUP_AGGREGATE_ID,
-  SKILL_CORPUS_CLEANUP_COOLDOWN_MS,
   SKILL_CORPUS_CLEANUP_LEASE_MS,
 } from "../../../../../src/orchestration/modules/learning/skill-corpus-cleanup-state.js";
 import { skillPackageManifestIdentity } from "../../../../../src/workflows/skill-schema.js";
 
+/** The durable aggregate that holds the cleanup completions. */
+const CLEANUP_AGGREGATE_ID = "project:skill-core-cleanup:v2";
+/** How long a deferred corpus waits before an unforced claim retries it: one hour. */
+const COOLDOWN_MS = 60 * 60_000;
 const TMP = fileTemporaryDirectory("flywheel-skill-corpus-cleanup-state-test-");
 const MANIFEST = [
   { id: "alpha", packageIdentity: { sha256: "1".repeat(64), bytes: 10 } },
@@ -50,11 +52,11 @@ async function complete(corpus = CORPUS, manifest = MANIFEST) {
 }
 
 function append(type: string, payload: EventStoreAppend["payload"], timestamp = now, version = 4): void {
-  store.append({ aggregateId: SKILL_CORPUS_CLEANUP_AGGREGATE_ID, type, version, actor: "flywheel", payload, timestamp, sessionId: "test" });
+  store.append({ aggregateId: CLEANUP_AGGREGATE_ID, type, version, actor: "flywheel", payload, timestamp, sessionId: "test" });
 }
 
 function aggregateFactCount(): number {
-  return store.read({ aggregateId: SKILL_CORPUS_CLEANUP_AGGREGATE_ID }).length;
+  return store.read({ aggregateId: CLEANUP_AGGREGATE_ID }).length;
 }
 
 describe("skill core corpus cleanup authority", () => {
@@ -151,7 +153,7 @@ describe("skill core corpus cleanup authority", () => {
     expect(await owner("changed").defer(NEXT_CORPUS, changed.token, "provider unavailable")).toBe(true);
     expect((await owner("blocked").claim(NEXT_CORPUS, NEXT_MANIFEST)).kind).toBe("deferred");
     expect((await owner("reader").projection()).completedManifest).toEqual(MANIFEST);
-    now += SKILL_CORPUS_CLEANUP_COOLDOWN_MS + 1;
+    now += COOLDOWN_MS + 1;
     expect((await owner("retry").claim(NEXT_CORPUS, NEXT_MANIFEST)).kind).toBe("claimed");
   });
 
@@ -213,7 +215,7 @@ describe("skill core corpus cleanup authority", () => {
     if (changed.kind !== "claimed") throw new Error("changed claim failed");
     expect(await owner("changed").complete(NEXT_CORPUS, NEXT_MANIFEST, changed.token)).toBe(true);
     expect((await owner("old-normal").claim(CORPUS, MANIFEST)).kind).toBe("deferred");
-    now += SKILL_CORPUS_CLEANUP_COOLDOWN_MS + 1;
+    now += COOLDOWN_MS + 1;
     expect((await owner("old-retry").claim(CORPUS, MANIFEST)).kind).toBe("claimed");
   });
 
@@ -252,7 +254,7 @@ describe("skill core corpus cleanup authority", () => {
   it("respects a historical fact cooldown until it lapses", async () => {
     append("skill.cleanup.claimed", { coreIdentity: CORPUS, coreManifest: MANIFEST, ownerId: "old", token: "old", forced: false, claimedAt: now, expiresAt: now + SKILL_CORPUS_CLEANUP_LEASE_MS }, now, 4);
     now += 1;
-    append("skill.cleanup.deferred", { coreIdentity: CORPUS, ownerId: "old", token: "old", deferredAt: now, cooldownUntil: now + SKILL_CORPUS_CLEANUP_COOLDOWN_MS, reason: "provider unavailable" }, now, 4);
+    append("skill.cleanup.deferred", { coreIdentity: CORPUS, ownerId: "old", token: "old", deferredAt: now, cooldownUntil: now + COOLDOWN_MS, reason: "provider unavailable" }, now, 4);
 
     expect((await owner("blocked").claim(CORPUS, MANIFEST)).kind).toBe("deferred");
     expect((await owner("forced").claim(CORPUS, MANIFEST, true)).kind).toBe("claimed");

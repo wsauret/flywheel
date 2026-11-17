@@ -5,10 +5,10 @@ import { Log } from "../../../infra/log.js"
 import { parseSkillFact, skillCleanupCompletedFact } from "../../../workflows/skill-facts.js"
 import { skillPackageManifestIdentity, type BundledCorpusIdentity, type SkillPackageIdentity, type SkillPackageManifestEntry } from "../../../workflows/skill-schema.js"
 
-export const SKILL_CORPUS_CLEANUP_AGGREGATE_ID = "project:skill-core-cleanup:v2"
+const SKILL_CORPUS_CLEANUP_AGGREGATE_ID = "project:skill-core-cleanup:v2"
 const SKILL_CORPUS_CLEANUP_SESSION_ID = "skill-core-cleanup-v2"
 export const SKILL_CORPUS_CLEANUP_LEASE_MS = 5 * 60_000
-export const SKILL_CORPUS_CLEANUP_COOLDOWN_MS = 60 * 60_000
+const SKILL_CORPUS_CLEANUP_COOLDOWN_MS = 60 * 60_000
 
 /** The lease and its deferral cooldowns are in-flight state, not facts: each
  *  is one live value another process must be able to observe or take over,

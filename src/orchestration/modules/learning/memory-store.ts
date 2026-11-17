@@ -670,22 +670,14 @@ export function memoryUsageText(config: MemoryStoreConfig, reach: LearningScope,
  *  substitute a `[BLOCKED]` placeholder for any entry matching the strict
  *  threat scan (the raw entry stays on disk for the user to inspect and
  *  remove; silently dropping it would hide the attack), and render each store
- *  as a block labeled with its reach, content identity, and usage. Read-only:
- *  a store that does not decode renders as one line that says so, because a
- *  silently empty block would hide the loss of memory from the agent and the
- *  user alike. Scanning is deterministic over disk bytes, so the snapshot is
- *  stable for the whole session. */
-export function loadMemorySnapshot(config: MemoryStoreConfig): MemoryValues<string> {
-  return {
-    project: renderSnapshotBlock(config, "project"),
-    global: renderSnapshotBlock(config, "global"),
-  };
-}
-
-/** Both stores as prompt-ready text, including capacity for empty stores. */
+ *  as a block labeled with its reach, content identity, and usage, project
+ *  first. Empty stores render their capacity. Read-only: a store that does not
+ *  decode renders as one line that says so, because a silently empty block
+ *  would hide the loss of memory from the agent and the user alike. Scanning
+ *  is deterministic over disk bytes, so the snapshot is stable for the whole
+ *  session. */
 export function renderMemorySnapshot(config: MemoryStoreConfig): string {
-  const snapshot = loadMemorySnapshot(config);
-  return [snapshot.project, snapshot.global].join("\n\n");
+  return [renderSnapshotBlock(config, "project"), renderSnapshotBlock(config, "global")].join("\n\n");
 }
 
 const SNAPSHOT_SEPARATOR = "═".repeat(46);

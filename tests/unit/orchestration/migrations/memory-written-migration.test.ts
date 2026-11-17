@@ -8,10 +8,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { parseSessionFact } from "../../../../src/orchestration/session/session-fact-registry.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import {
-  MEMORY_WRITTEN_MIGRATION_ID,
-  migrateMemoryWrittenFacts,
-} from "../../../../src/orchestration/modules/learning/migrations/memory-written.js"
+import { migrateMemoryWrittenFacts } from "../../../../src/orchestration/modules/learning/migrations/memory-written.js"
 interface UnknownObject {
   [key: string]: unknown
 }
@@ -37,7 +34,7 @@ describe("migrateMemoryWrittenFacts", () => {
     expect(JSON.parse(after[1]?.payload ?? "{}")).toEqual(adoptedV1Payload("global"))
     expect(after[2]).toEqual(before[2]!)
     expect(migrationFacts(dbFile)).toEqual([{
-      migrationId: MEMORY_WRITTEN_MIGRATION_ID,
+      migrationId: "memory-written-v3",
       factTypes: ["memory.written"],
       repaired: 2,
     }])
