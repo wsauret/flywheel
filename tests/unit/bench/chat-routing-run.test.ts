@@ -1,24 +1,25 @@
 import { describe, expect, it } from "bun:test";
 import type { AgentDefinition } from "../../../src/infra/agent-definition.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../src/orchestration/agent-runtime/types.js";
-import type { RuntimeToolInput, ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js";
+import type { RuntimeToolInput } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js";
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
 import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
 
 const ADVISOR: AgentDefinition = { kind: "persona", name: "advisor", role: "advisor", description: "Advice", systemPrompt: "Advise", tools: ["read"], maxTurns: 4 };
 const EXPLORER: AgentDefinition = { kind: "persona", name: "explorer", role: "explorer", description: "Explore", systemPrompt: "Explore", tools: ["read"], maxTurns: 4 };
 
-const TOOL_CONTEXT: ToolContext = {
+const TOOL_CONTEXT = dispatchedToolContext({
   executionCwd: "/project",
   artifactScopeId: "routing-test",
   retrievalSessionId: "routing-test",
   sessionId: "routing-test",
   userDataRoot: "/scratch/test-account", projectRoot: "/project",
   flushCanonicalMessages: async () => {},
-};
+});
 
 function agentFactory(inputs: readonly Readonly<RuntimeToolInput>[], captured: AgentOptions[], sent: unknown[] = []) {
   return (options: AgentOptions) => {

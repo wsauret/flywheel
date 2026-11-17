@@ -10,7 +10,7 @@ import { createBenchmarkTool } from "../../../../../src/orchestration/modules/de
 import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
@@ -87,7 +87,7 @@ function toolDeps(auth: AuthContext | (() => AuthContext) = AUTH) {
   return { deps, spy, foregroundBashHold };
 }
 
-function context(projectRoot: string, backgroundTasks?: BackgroundWorkRegistry, executionCwd = projectRoot): ToolContext {
+function context(projectRoot: string, backgroundTasks?: BackgroundWorkRegistry, executionCwd = projectRoot): DispatchedToolContext {
   return makeContext({
     projectRoot,
     executionCwd,

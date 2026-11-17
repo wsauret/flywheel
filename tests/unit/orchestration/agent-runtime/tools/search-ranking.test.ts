@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test";
 
 import type { GrepMatch } from "../../../../../src/orchestration/agent-runtime/tools/ripgrep.js";
 import {
-  classifyPath,
   isDefinitionLine,
-  isImportLine,
+  pathWeight,
   rankMatches,
+  tierForMatch,
 } from "../../../../../src/orchestration/agent-runtime/tools/search-ranking.js";
 import type { RankedMatch } from "../../../../../src/orchestration/agent-runtime/tools/search-ranking.js";
 
@@ -33,34 +33,37 @@ describe("isDefinitionLine", () => {
   });
 });
 
-describe("isImportLine", () => {
-  it("matches import/use lines", () => {
-    expect(isImportLine("import x")).toBe(true);
-    expect(isImportLine('from "y"')).toBe(true);
-    expect(isImportLine("use a::b")).toBe(true);
-    expect(isImportLine("require('z')")).toBe(true);
-    expect(isImportLine("require ('z')")).toBe(true);
-    expect(isImportLine("#include <h>")).toBe(true);
-    expect(isImportLine("#  include \"h\"")).toBe(true);
+describe("tierForMatch", () => {
+  const tier = (line: string) => tierForMatch(match("src/a.ts", line));
+
+  it("ranks import and use lines below usages", () => {
+    expect(tier("import x")).toBe(2);
+    expect(tier('from "y"')).toBe(2);
+    expect(tier("use a::b")).toBe(2);
+    expect(tier("require('z')")).toBe(2);
+    expect(tier("require ('z')")).toBe(2);
+    expect(tier("#include <h>")).toBe(2);
+    expect(tier("#  include \"h\"")).toBe(2);
   });
 
-  it("rejects look-alikes", () => {
-    expect(isImportLine("important = 1")).toBe(false);
-    expect(isImportLine("from = 3")).toBe(false);
-    expect(isImportLine("using()")).toBe(false);
+  it("ranks import look-alikes as usages", () => {
+    expect(tier("important = 1")).toBe(1);
+    expect(tier("from = 3")).toBe(1);
+    expect(tier("using()")).toBe(1);
   });
 });
 
-describe("classifyPath", () => {
-  it("classifies vendor, test, and source by segment", () => {
-    expect(classifyPath("node_modules/x.js")).toBe("vendor");
-    expect(classifyPath("dist/a.js")).toBe("vendor");
-    expect(classifyPath("lib/foo.min.js")).toBe("vendor");
-    expect(classifyPath("tests/foo.test.ts")).toBe("test");
-    expect(classifyPath("__fixtures__/x.ts")).toBe("test");
-    expect(classifyPath("src/app.ts")).toBe("source");
+describe("pathWeight", () => {
+  it("weights source before test and test before vendor, by segment", () => {
+    const [source, test, vendor] = [0, 1, 2];
+    expect(pathWeight("node_modules/x.js", false)).toBe(vendor);
+    expect(pathWeight("dist/a.js", false)).toBe(vendor);
+    expect(pathWeight("lib/foo.min.js", false)).toBe(vendor);
+    expect(pathWeight("tests/foo.test.ts", false)).toBe(test);
+    expect(pathWeight("__fixtures__/x.ts", false)).toBe(test);
+    expect(pathWeight("src/app.ts", false)).toBe(source);
     // Segment match, not substring: "testing-utils" must not be a test.
-    expect(classifyPath("src/testing-utils.ts")).toBe("source");
+    expect(pathWeight("src/testing-utils.ts", false)).toBe(source);
   });
 });
 

@@ -5,7 +5,6 @@ import { join } from "node:path"
 
 import { asAsyncEventReadSurface, CorruptEventRowError, type EventReader, type EventStore, type StoredFact } from "../../../../../src/infra/event-store-types.ts"
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.ts"
-import { releaseHeldProjections } from "../../../../../src/infra/projection-registry.ts"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.ts"
 import type { ExperimentFact, ExperimentInitializedFact } from "../../../../../src/orchestration/modules/experiments/facts.ts"
 import { createExperimentProjection } from "../../../../../src/orchestration/modules/experiments/projection.ts"
@@ -15,10 +14,7 @@ const stores: EventStore[] = []
 const directories: string[] = []
 
 afterEach(() => {
-  for (const store of stores) {
-    releaseHeldProjections(asAsyncEventReadSurface(store))
-    store.close()
-  }
+  for (const store of stores) store.close()
   stores.length = 0
   for (const directory of directories) rmSync(directory, { recursive: true, force: true })
   directories.length = 0
@@ -134,6 +130,5 @@ describe("createExperimentProjection", () => {
     }
 
     expect(await createExperimentProjection(asAsyncEventReadSurface(reader), "bad").replay()).toBeUndefined()
-    releaseHeldProjections(asAsyncEventReadSurface(reader))
   })
 })

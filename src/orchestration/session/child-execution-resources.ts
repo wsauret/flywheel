@@ -10,6 +10,7 @@ import type { RecallInput, RecallResult } from "../../protocol/conversation-reca
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../chat/tree-writer.js"
 import type { AttachChildSessionProjection, ChildSessionKind } from "../module-seams.js"
 import { createSessionBudgetStore } from "./budget-store.js"
+import type { ContextUtilization } from "./budget-store-types.js"
 import { holdChildReconciliationIndex } from "./child-reconciliation-index.js"
 import { releaseConversationTreeProjection } from "./conversation/conversation-projection.js"
 import { subscribeSessionRuntimeFacts } from "./create-session-infra.js"
@@ -73,6 +74,8 @@ type ChildExecutionInput = ChildSessionKind & {
 export interface OpenedChildExecutionResources extends ChildExecutionResources {
   /** Attaches the child's live view. Call once. */
   attach(attachProjection: AttachChildSessionProjection | undefined): Promise<void>
+  /** The model context that the child's own session measured last. */
+  contextUtilization(): Promise<ContextUtilization>
 }
 
 /** Opens resources for an already published child conversation and attaches its live view (`openChildExecutionResources`). */
@@ -116,8 +119,9 @@ export async function openChildExecutionResources(input: ChildExecutionInput): P
       store: input.eventStore, projectionReader: input.projectionReader, writer: input.writer, recall: input.recall,
       ...(input.kind === "workflow-agent" ? { workflowId: input.workflowId, ownsQueuedUserInput: () => true } : {}),
     })
-    // The store feeds only the card, which takes the metrics that each change
-    // carries. No budget gate reads this store.
+    // The store feeds the card, which takes the metrics that each change
+    // carries, and the context notice of a workflow agent. No budget gate
+    // reads this store.
     const eventWriter = createSessionFactWriter({
       sessionId: input.sessionId, writer: input.writer,
       onStored: (fact) => budgetStore.applyStoredFact(fact),
@@ -173,6 +177,7 @@ export async function openChildExecutionResources(input: ChildExecutionInput): P
       },
       waitForEventCapacity: (signal) => resources.bus.waitForCapacity(signal),
       awaitDurableFacts: () => resources.runtimeFacts.awaitDurableFacts(),
+      contextUtilization: () => resources.budgetStore.getContextUtilization(),
       settle,
       async attach(attachProjection) {
         const kind: ChildSessionKind = input.kind === "workflow-agent" ? { kind: input.kind, workflowId: input.workflowId } : {}

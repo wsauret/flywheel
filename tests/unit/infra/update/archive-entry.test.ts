@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { ArchiveEntryError, archiveTree, confinedEntryPath } from "../../../../src/infra/update/archive-entry.js";
+import { archiveTree, confinedEntryPath } from "../../../../src/infra/update/archive-entry.js";
+
+const UNSAFE_ARCHIVE = /^The archive is not safe to extract: /;
 
 describe("where an archive entry lands", () => {
   test("a name lands where an extractor puts it, with either separator", () => {
@@ -18,7 +20,7 @@ describe("where an archive entry lands", () => {
 
   test("a name that would land outside the tree is refused", () => {
     for (const name of ["/etc/passwd", "\\\\server\\share\\x", "C:/Windows/x", "c:x", "../escaped", "root/../../escaped", "root\\..\\..\\escaped", "a\0b"]) {
-      expect(() => confinedEntryPath(name)).toThrow(ArchiveEntryError);
+      expect(() => confinedEntryPath(name)).toThrow(UNSAFE_ARCHIVE);
     }
   });
 });
@@ -51,15 +53,15 @@ describe("the tree an archive lists", () => {
   test("a path listed as both a file and a directory is refused, because no tree holds it", () => {
     const fileFirst = archiveTree();
     fileFirst.file("root/a");
-    expect(() => fileFirst.directory("root/a")).toThrow(ArchiveEntryError);
-    expect(() => fileFirst.file("root/a/b")).toThrow(ArchiveEntryError);
+    expect(() => fileFirst.directory("root/a")).toThrow(UNSAFE_ARCHIVE);
+    expect(() => fileFirst.file("root/a/b")).toThrow(UNSAFE_ARCHIVE);
 
     const directoryFirst = archiveTree();
     directoryFirst.directory("root/a");
-    expect(() => directoryFirst.file("root/a")).toThrow(ArchiveEntryError);
+    expect(() => directoryFirst.file("root/a")).toThrow(UNSAFE_ARCHIVE);
   });
 
   test("a file at the root of the archive is refused", () => {
-    expect(() => archiveTree().file("")).toThrow(ArchiveEntryError);
+    expect(() => archiveTree().file("")).toThrow(UNSAFE_ARCHIVE);
   });
 });

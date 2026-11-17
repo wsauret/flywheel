@@ -4,11 +4,10 @@ import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.
 import {
   createTokenEstimationCache,
   estimateConversationTokens,
-  estimateMessageTokensWithPolicy,
   imageTokensForModel,
   tokenCountingPolicy,
 } from "../../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
-import { maskStaleToolResults } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
+import { createStaleToolResultMasker } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const IMAGE_TOKEN_ESTIMATE = imageTokensForModel("anthropic");
@@ -58,7 +57,7 @@ describe("token estimation", () => {
       expect(estimateConversationTokens([replacement, appended], HEURISTIC, cache)).toBe(appendedTotal);
       expect(oldInputCalls).toBe(1);
 
-      const masked = maskStaleToolResults([oldMessage, appended], 1);
+      const masked = createStaleToolResultMasker({ cutoffIndex: 1, zone: 0 }).mask([oldMessage, appended], 0.3);
       expect(masked).not.toBeNull();
       expect(estimateConversationTokens(masked!.messages, HEURISTIC, cache)).toBe(estimateConversationTokens(masked!.messages, HEURISTIC));
     } finally {
@@ -121,9 +120,6 @@ describe("token estimation", () => {
       ],
     };
 
-    expect(estimateMessageTokensWithPolicy(message, policy)).toBe(
-      policy.countText(semanticText) + policy.countText("opaque chain of thought"),
-    );
     expect(estimateConversationTokens([message], policy)).toBe(policy.countText(semanticText) + policy.countText("opaque chain of thought"));
   });
 
@@ -137,7 +133,7 @@ describe("token estimation", () => {
     const own = tokenCountingPolicy("claude-sonnet-5-5", "anthropic", "ClaudeV5Sonnet", { accessProvider: "anthropic_api", model: "claude-sonnet-5-5" });
     const other = tokenCountingPolicy("gpt-5.4", "openai", undefined, { accessProvider: "openai_api", model: "gpt-5.4" });
     const cache = createTokenEstimationCache();
-    expect(estimateConversationTokens([message], other, cache)).toBe(estimateMessageTokensWithPolicy(progressOnly, other));
+    expect(estimateConversationTokens([message], other, cache)).toBe(estimateConversationTokens([progressOnly], other));
     // One cache serves both requests, and each reads its own count.
     expect(estimateConversationTokens([message], own, cache)).toBeGreaterThan(estimateConversationTokens([message], other, cache));
   });
@@ -162,21 +158,21 @@ describe("token estimation", () => {
     // Redacted thinking arrives with no text and only a signature, so its text counts nothing.
     const visible: ConversationMessage = { kind: "assistant", ...provenance, content: [{ type: "thinking", thinking: "", signature: "sig" }, toolUse] };
     const reported: ConversationMessage = { ...visible, reasoningTokens: 4_716 };
-    const visibleTokens = estimateMessageTokensWithPolicy(visible, replaying);
+    const visibleTokens = estimateConversationTokens([visible], replaying);
 
-    expect(estimateMessageTokensWithPolicy(reported, replaying)).toBe(visibleTokens + 4_716);
+    expect(estimateConversationTokens([reported], replaying)).toBe(visibleTokens + 4_716);
     // Another model or access provider receives the thinking as text, not as the opaque replay.
-    expect(estimateMessageTokensWithPolicy(reported, tokenCountingPolicy("claude-opus-5-5", "anthropic", "ClaudeV5", { accessProvider: "anthropic_api", model: "claude-opus-5-5" }))).toBe(
-      estimateMessageTokensWithPolicy(visible, tokenCountingPolicy("claude-opus-5-5", "anthropic", "ClaudeV5", { accessProvider: "anthropic_api", model: "claude-opus-5-5" })),
+    expect(estimateConversationTokens([reported], tokenCountingPolicy("claude-opus-5-5", "anthropic", "ClaudeV5", { accessProvider: "anthropic_api", model: "claude-opus-5-5" }))).toBe(
+      estimateConversationTokens([visible], tokenCountingPolicy("claude-opus-5-5", "anthropic", "ClaudeV5", { accessProvider: "anthropic_api", model: "claude-opus-5-5" })),
     );
-    expect(estimateMessageTokensWithPolicy(reported, tokenCountingPolicy("claude-sonnet-5-5", "anthropic", "ClaudeV5Sonnet", { accessProvider: "github_copilot", model: "claude-sonnet-5-5" }))).toBe(visibleTokens);
+    expect(estimateConversationTokens([reported], tokenCountingPolicy("claude-sonnet-5-5", "anthropic", "ClaudeV5Sonnet", { accessProvider: "github_copilot", model: "claude-sonnet-5-5" }))).toBe(visibleTokens);
     // A message whose reasoning blocks were not kept re-sends no reasoning.
-    expect(estimateMessageTokensWithPolicy({ ...reported, content: [toolUse] }, replaying)).toBe(
-      estimateMessageTokensWithPolicy({ ...visible, content: [toolUse] }, replaying),
+    expect(estimateConversationTokens([{ ...reported, content: [toolUse] }], replaying)).toBe(
+      estimateConversationTokens([{ ...visible, content: [toolUse] }], replaying),
     );
     // Visible thinking text that the report covers counts once.
     const readable: ConversationMessage = { ...visible, content: [{ type: "thinking", thinking: "a readable chain", signature: "sig" }, toolUse] };
-    expect(estimateMessageTokensWithPolicy({ ...readable, reasoningTokens: 1 }, replaying)).toBe(estimateMessageTokensWithPolicy(readable, replaying));
+    expect(estimateConversationTokens([{ ...readable, reasoningTokens: 1 }], replaying)).toBe(estimateConversationTokens([readable], replaying));
     // One shared estimation cache keeps the replayed and the downgraded counts apart.
     const cache = createTokenEstimationCache();
     expect(estimateConversationTokens([reported], replaying, cache)).toBe(visibleTokens + 4_716);
@@ -230,7 +226,7 @@ describe("token estimation", () => {
       ],
     };
 
-    expect(estimateMessageTokensWithPolicy(message, policy)).toBe(
+    expect(estimateConversationTokens([message], policy)).toBe(
       Math.ceil((3 + policy.imageTokens * 4 + "x".length + JSON.stringify({}).length) / 4),
     );
   });

@@ -3,7 +3,7 @@ import { Redacted } from "effect"
 import type { SubscriptionUsageReader, SubscriptionUsageResetConsumer } from "../../../../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionUsageStore } from "../../../../../src/infra/llm/subscription-usage-store.js"
 import { createUsageAuthority } from "../../../../../src/infra/llm/usage-authority.js"
-import { createSubscriptionUsageService, SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
+import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, readerFor, registry, report, writeAccounts } from "./_service-fixtures.js"
 
 const { profile, cleanup } = createProfileFixture()
@@ -113,7 +113,8 @@ describe("subscription usage service lifecycle", () => {
     await Bun.sleep(0)
     expect(publications).toBe(1)
     expect(timers).toHaveLength(1)
-    expect(timers[0]?.delayMs).toBe(SUBSCRIPTION_USAGE_CHECK_INTERVAL_MS * 0.75)
+    // The five-minute check interval, less the whole jitter that a random value of 0 takes.
+    expect(timers[0]?.delayMs).toBe(225_000)
     service.closeAdmission()
     await service.settled()
   })

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import type { ToolEntry as ToolEntryType } from "../../../../src/infra/output-blocks.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import { createBlockDisclosureChannel, fileDisclosureKey } from "../../../../src/tui/context/block-disclosure.js"
 import flywheelThemeJson from "../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../src/tui/context/theme/resolve.js"
@@ -59,7 +59,7 @@ function editEntry(): ToolEntryType {
     kind: "tool",
     id: "edit-1",
     name: "edit",
-    presentation: resolveToolPresentation("edit", { path: "src/sanitized-example.ts" }, CWD),
+    presentation: resolveToolRowPresentation("edit", { path: "src/sanitized-example.ts" }, CWD).presentation,
     // Production edit rows carry the file link that abbreviates the path.
     linkUri: `file://${CWD}/src/sanitized-example.ts`,
     status: "completed",
@@ -83,7 +83,7 @@ function memoryEntry(): ToolEntryType {
     kind: "tool",
     id: "memory-write",
     name: "memory",
-    presentation: resolveToolPresentation("memory", { action: "add", title: "Use Bun for project scripts" }, CWD),
+    presentation: resolveToolRowPresentation("memory", { action: "add", title: "Use Bun for project scripts" }, CWD).presentation,
     status: "completed",
     timestamp: Date.now(),
   }
@@ -288,7 +288,7 @@ describe("tool entry mutation rendering", () => {
     const after = Array.from({ length: 40 }, (_, index) => index % 5 === 2 ? "" : `const v${index} = ${index}`)
     const before = name === "edit" ? { kind: "text" as const, text: after.map((line) => line.replace("const", "let")).join("\n") } : { kind: "absent" as const }
     const fixture = await mutationEvidenceFixture(buildMutationDiff([{ path: "example.ts", before, after: { kind: "text", text: after.join("\n") } }]))
-    const block: ToolEntryType = { ...writeEntry(""), id: name, name, presentation: resolveToolPresentation(name, { path: "example.ts" }, CWD), fileChangeKind: name === "edit" ? "patch" : "create", content: undefined, mutationEvidence: fixture.evidence }
+    const block: ToolEntryType = { ...writeEntry(""), id: name, name, presentation: resolveToolRowPresentation(name, { path: "example.ts" }, CWD).presentation, fileChangeKind: name === "edit" ? "patch" : "create", content: undefined, mutationEvidence: fixture.evidence }
     const result = await renderToolEntry(block, { height: 120, evidenceReader: fixture.reader })
     const expanded = async () => (await settledFrameLines(result, fixture)).some((line) => line.includes("(click to collapse)"))
     try {
@@ -465,7 +465,7 @@ describe("tool entry mutation rendering", () => {
     const fixture = await mutationEvidenceFixture({ version: 1, files: [{ path: "src/first.ts", change: "modified", unifiedDiff: editDiff() }], omissions: [] })
     const result = await renderToolEntry({
       ...editEntry(), id: "edit-many", diff: undefined, fileChangeKind: "patch",
-      presentation: resolveToolPresentation("edit", { path: "src/first.ts" }, CWD),
+      presentation: resolveToolRowPresentation("edit", { path: "src/first.ts" }, CWD).presentation,
       mutationEvidence: fixture.evidence,
     }, { height: 64, onHydrateBody: hydrate, evidenceReader: fixture.reader })
     try {
@@ -485,12 +485,12 @@ describe("tool entry mutation rendering", () => {
   })
 
   it.each([
-    ["note creation", { ...memoryEntry(), id: "note-create", name: "note_write", presentation: resolveToolPresentation("note_write", { path: "checkpoint.md" }, CWD), mutation: { version: 1 as const, files: [{ path: "checkpoint.md", change: "added" as const, unifiedDiff: editDiff() }], omissions: [] } }, "checkpoint.md"],
-    ["note append", { ...memoryEntry(), id: "note-append", name: "note_append", presentation: resolveToolPresentation("note_append", { path: "checkpoint.md" }, CWD), mutation: { version: 1 as const, files: [{ path: "checkpoint.md", change: "modified" as const, unifiedDiff: editDiff() }], omissions: [] } }, "checkpoint.md"],
+    ["note creation", { ...memoryEntry(), id: "note-create", name: "note_write", presentation: resolveToolRowPresentation("note_write", { path: "checkpoint.md" }, CWD).presentation, mutation: { version: 1 as const, files: [{ path: "checkpoint.md", change: "added" as const, unifiedDiff: editDiff() }], omissions: [] } }, "checkpoint.md"],
+    ["note append", { ...memoryEntry(), id: "note-append", name: "note_append", presentation: resolveToolRowPresentation("note_append", { path: "checkpoint.md" }, CWD).presentation, mutation: { version: 1 as const, files: [{ path: "checkpoint.md", change: "modified" as const, unifiedDiff: editDiff() }], omissions: [] } }, "checkpoint.md"],
     ["global memory", { ...memoryEntry(), id: "global-memory", mutation: { version: 1 as const, files: [{ path: "USER.md", change: "modified" as const, unifiedDiff: editDiff() }], omissions: [] } }, "USER.md"],
-    ["global skill", { ...memoryEntry(), id: "global-skill", name: "skill_manage", presentation: resolveToolPresentation("skill_manage", { action: "save", name: "global-notes" }, CWD), resultAction: "created" as const, mutation: { version: 1 as const, files: [{ path: "global-notes/SKILL.md", change: "added" as const, unifiedDiff: editDiff() }], omissions: [] } }, "global-notes/SKILL.md"],
+    ["global skill", { ...memoryEntry(), id: "global-skill", name: "skill_manage", presentation: resolveToolRowPresentation("skill_manage", { action: "save", name: "global-notes" }, CWD).presentation, resultAction: "created" as const, mutation: { version: 1 as const, files: [{ path: "global-notes/SKILL.md", change: "added" as const, unifiedDiff: editDiff() }], omissions: [] } }, "global-notes/SKILL.md"],
     ["legacy memory", { ...memoryEntry(), id: "legacy-memory", mutation: undefined, diff: editDiff() }, "const filler22 = 22"],
-    ["legacy skill", { ...memoryEntry(), id: "legacy-skill", name: "skill_manage", presentation: resolveToolPresentation("skill_manage", { action: "save", name: "global-notes" }, CWD), mutation: undefined, diff: editDiff() }, "const filler22 = 22"],
+    ["legacy skill", { ...memoryEntry(), id: "legacy-skill", name: "skill_manage", presentation: resolveToolRowPresentation("skill_manage", { action: "save", name: "global-notes" }, CWD).presentation, mutation: undefined, diff: editDiff() }, "const filler22 = 22"],
   ])("keeps a successful %s mutation at zero lines until expansion", async (_label, block, hiddenContent) => {
     const { mutation, ...row } = block
     const fixture = mutation === undefined ? undefined : await mutationEvidenceFixture(mutation)

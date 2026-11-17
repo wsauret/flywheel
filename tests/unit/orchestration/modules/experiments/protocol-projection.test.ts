@@ -1,8 +1,7 @@
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js"
 import { experimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
-import { afterEach, describe, expect, it } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../../../../../src/infra/event-store-types.js"
-import { releaseHeldProjections } from "../../../../../src/infra/projection-registry.js"
 import { createExperimentViewProtocolProjection, createExperimentViewProtocolReader, experimentViewFromSnapshot } from "../../../../../src/orchestration/modules/experiments/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { createExperimentOperation, type ExperimentOperation, type PendingExperimentResult } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
@@ -18,12 +17,6 @@ import { storedExperimentFact } from "../../agent-runtime/tools/_fixtures.js"
 
 // Settle asynchronous replay and the publisher's microtask batch.
 const flush = () => new Promise<void>((resolve) => { setImmediate(resolve) })
-
-const readers: EventReader[] = []
-afterEach(() => {
-  for (const reader of readers) releaseHeldProjections(asAsyncEventReadSurface(reader))
-  readers.length = 0
-})
 
 function mode(active: boolean): ExperimentFact {
   return { type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active, workDir: active ? "/repo" : null } }
@@ -50,7 +43,6 @@ class FactLog {
 
   constructor() {
     this.reader = inMemoryEventReader(this.events)
-    readers.push(this.reader)
   }
 
   onStored = (listener: (events: readonly StoredFact[]) => void): (() => void) => {
@@ -140,7 +132,6 @@ describe("experiment view protocol projection", () => {
     const log = new FactLog()
     let reads = 0
     const reader = countingReader(log.reader, () => { reads += 1 })
-    readers.push(reader)
     const store = sessionStore(new Map([["chat-1", chatEntry()]]))
     const projection = createExperimentViewProtocolProjection({ sessionStore: store.store, reader: asAsyncEventReadSurface(reader), onStored: log.onStored, publish: createRuntimeUiPatchSequencer().publish })
 

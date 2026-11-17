@@ -28,7 +28,6 @@ function declaration(tool: RuntimeTool, registryOrder: number): ToolDeclaration 
 export const papercutsModule = {
   id: "papercuts",
   dependencies: [],
-  availability: { kind: "available" },
   service: {
     handle: papercutDispositionService,
     create: (services: Pick<ModuleProcessServices, "projectionReader" | "eventWriter">) => ({
@@ -70,6 +69,4 @@ export const papercutsModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

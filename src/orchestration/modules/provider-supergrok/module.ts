@@ -188,11 +188,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const supergrokModule = {
   id: "provider-supergrok",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "supergrok", value: { definition, createClient, usageReader: createSuperGrokUsageReader() } },
     { domain: "settings", id: "provider-supergrok", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow xAI models through a SuperGrok subscription" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

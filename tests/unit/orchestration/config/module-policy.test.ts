@@ -3,12 +3,9 @@ import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
-import {
-  createModulePolicy,
-  startModulePolicy,
-} from "../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy, type ModulePolicy, type RunModuleSelection } from "../../../../src/orchestration/config/module-policy.js";
 import { decodeModuleState, defaultModuleState, type ModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
-import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
+import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
 
 import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";
 async function withConfig(source: string, run: (configPath: string) => Promise<void>): Promise<void> {
@@ -20,6 +17,11 @@ async function withConfig(source: string, run: (configPath: string) => Promise<v
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/** The module policy that a root starts for `configPath`, as the composition builds it. */
+async function policyAt(configPath: string, owner?: RuntimeConfigOwner, run?: RunModuleSelection): Promise<ModulePolicy> {
+  return (await startModulePolicy({ configPath }, owner, run)).policy;
 }
 
 const RECONCILE = { operation: "global skill reconciliation", required: ["skills", "learning"] } as const;
@@ -36,7 +38,7 @@ describe("catalog-derived harness capability policy", () => {
   test("projects canonical modules, collapses duplicates, and derives workflow mode", async () => {
     const duplicated = disabledLine(WORKFLOW_SELECTION).replace('"learning"', '"learning", "learning"');
     await withConfig(`${duplicated}require_workflow_confirmation = false\n`, async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       expect(policy.state().moduleIds).toEqual(WORKFLOW_SELECTION);
       expect(policy.state().workflowsMode).toBe("on");
       expect(policy.enabled("skills")).toBe(true);
@@ -52,8 +54,8 @@ describe("catalog-derived harness capability policy", () => {
   test("admission reads fresh committed config, not the file an earlier admission read", async () => {
     await withConfig(disabledLine(["skills", "learning"]), async (configPath) => {
       const owner = await createRuntimeConfigOwner({ configPath, watch: false });
-      const writer = await createModulePolicy({ configPath }, owner);
-      const admitter = await createModulePolicy({ configPath }, owner);
+      const writer = await policyAt(configPath, owner);
+      const admitter = await policyAt(configPath, owner);
       expect((await admitter.admit(RECONCILE)).ok).toBe(true);
 
       expect(await writer.select(["skills"])).toEqual({ ok: true });
@@ -70,7 +72,7 @@ describe("catalog-derived harness capability policy", () => {
 
   test("an admitted grant survives a later disable", async () => {
     await withConfig(disabledLine(["skills", "learning"]), async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       const admission = await policy.admit(RECONCILE);
       if (!admission.ok) throw new Error(admission.reason);
 
@@ -85,7 +87,7 @@ describe("catalog-derived harness capability policy", () => {
 
   test("publishes committed selection and refusal state to listeners in observation order", async () => {
     await withConfig(disabledLine(["skills"]), async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       const seen: ModuleState[] = [];
       policy.onChange((state) => seen.push(state));
 
@@ -123,7 +125,7 @@ describe("catalog-derived harness capability policy", () => {
     ] as const;
     for (const [source, message] of rejected) {
       await withConfig(disabledLine(["file-tools", "skills"]), async (configPath) => {
-        const policy = await createModulePolicy({ configPath });
+        const policy = await policyAt(configPath);
         await writeFile(configPath, source);
         await policy.refresh();
         expect(policy.state().moduleIds).toEqual(["file-tools", "skills"]);
@@ -139,7 +141,7 @@ describe("catalog-derived harness capability policy", () => {
 
   test("refuses workflow Ask mode without Ask User and retains a hand-edited conflict", async () => {
     await withConfig(`${disabledLine(["ask-user", "skills", "workflows"])}require_workflow_confirmation = true\n`, async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       const withoutAskUser = policy.state().moduleIds.filter((id) => id !== "ask-user");
 
       const refused = await policy.select(withoutAskUser);
@@ -158,7 +160,7 @@ describe("catalog-derived harness capability policy", () => {
 
   test("names the key the person wrote and says the defaults apply when no valid selection was read yet", async () => {
     await withConfig('disabled_modules = ["ask-user"]\nrequire_workflow_confirmation = true\n', async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       expect(policy.state().moduleIds).toEqual(defaultModuleState().moduleIds);
       expect(policy.state().error).toBe(
         "flywheel.toml disabled_modules is invalid: Workflows in Ask mode requires the Ask User capability. Enable Ask User, or set Workflows to On or Off. Flywheel uses the default modules until you fix it.",
@@ -168,7 +170,7 @@ describe("catalog-derived harness capability policy", () => {
 
   test("admission uses the retained selection while current bytes are invalid", async () => {
     await withConfig(disabledLine(["skills", "learning"]), async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const policy = await policyAt(configPath);
       await writeFile(configPath, 'disabled_modules = ["telepathy"]\n');
       const admission = await policy.admit(RECONCILE);
       expect(admission.ok).toBe(true);
@@ -181,19 +183,19 @@ describe("catalog-derived harness capability policy", () => {
 
   test("admission uses defaults when no valid selection has been committed", async () => {
     await withConfig('disabled_modules = ["telepathy"]\n', async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
-      const admission = await policy.admit(RECONCILE);
+      const started = await startModulePolicy({ configPath });
+      const admission = await started.policy.admit(RECONCILE);
       expect(admission.ok).toBe(true);
       if (!admission.ok) throw new Error(admission.reason);
       expect(admission.grant.moduleIds).toEqual(MODULE_IDS);
       expect(admission.grant.error).toContain("telepathy");
-      await policy.dispose();
+      await started.dispose();
     });
   });
 
   test("a run's selection drops the modules it excludes, in its state and its grants", async () => {
     await withConfig(disabledLine(["skills", "learning", "provider-anthropic-api"]), async (configPath) => {
-      const policy = await createModulePolicy({ configPath }, undefined, { excluded: ["learning"] });
+      const policy = await policyAt(configPath, undefined, { excluded: ["learning"] });
       expect(policy.state().moduleIds).toEqual(["provider-anthropic-api", "skills"]);
       expect(policy.enabled("provider-anthropic-api")).toBe(true);
       expect(policy.enabled("learning")).toBe(false);
@@ -214,18 +216,18 @@ describe("catalog-derived harness capability policy", () => {
   test("refuses a run's selection that the file itself could not state", async () => {
     await withConfig(`${disabledLine(["ask-user", "skills", "workflows"])}require_workflow_confirmation = true\n`, async (configPath) => {
       // A selection policy refuses this file without Ask User, so a run cannot take Ask User out either.
-      await expect(createModulePolicy({ configPath }, undefined, { excluded: ["ask-user"] })).rejects.toThrow("The run's module selection is invalid: Workflows in Ask mode requires the Ask User capability");
-      const policy = await createModulePolicy({ configPath }, undefined, { excluded: ["learning"] });
+      await expect(policyAt(configPath, undefined, { excluded: ["ask-user"] })).rejects.toThrow("The run's module selection is invalid: Workflows in Ask mode requires the Ask User capability");
+      const policy = await policyAt(configPath, undefined, { excluded: ["learning"] });
       expect(policy.state().moduleIds).toEqual(["ask-user", "skills", "workflows"]);
     });
   });
 
   test("disposes the one-shot owner it allocates", async () => {
     await withConfig(disabledLine(WORKFLOW_SELECTION), async (configPath) => {
-      const policy = await createModulePolicy({ configPath });
+      const started = await startModulePolicy({ configPath });
 
-      await policy.dispose();
-      await expect(policy.admit(RECONCILE)).rejects.toThrow("disposed");
+      await started.dispose();
+      await expect(started.policy.admit(RECONCILE)).rejects.toThrow("disposed");
     });
   });
 

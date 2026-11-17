@@ -1,240 +1,208 @@
 import { describe, expect, test } from "bun:test"
-import type { StoredFact } from "../../../../src/infra/event-store-types"
-import type { BackgroundIndexPart, BackgroundIndexSink, BackgroundIndexTree } from "../../../../src/orchestration/app-service/background-index"
-import { createBackgroundIndexOwner, type BackgroundIndexOwnerDeps } from "../../../../src/orchestration/app-service/background-index-publisher"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../src/infra/event-store-types"
 import type { ActiveBackgroundCommandDescriptor } from "../../../../src/orchestration/agent-runtime/background-work"
-import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types"
+import type { SessionStore } from "../../../../src/orchestration/session-store/types"
+import { markCommandKept, writeCommandHandover } from "../../../../src/orchestration/session/command-handover"
+import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store"
+import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact } from "../../../../src/orchestration/session/session-metadata-facts"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types"
 import { countStateRequests } from "../../../helpers/state-requests"
+import { adoptTestWorkflow } from "../session/_session-manager-fixtures"
+import { backgroundIndexFixtures, byId } from "./_background-index-fixtures"
 import { chatEntry } from "./app-service-doubles"
 
-/** The sessions each fake tree holds: a chat that started a workflow and a
- *  subagent, whose own subagent is nested under it. */
-const ROLES = new Map<string, "root" | "child">([["chat", "root"], ["reviewer", "child"], ["explorer", "child"]])
-const ROW: BackgroundWorkRow = { id: "toolu_test", kind: "command", title: "bun test", startedAtMs: 1, cardToolUseId: "toolu_test", status: "running" }
-/** The record of a command, as a session stores it. */
-const COMMAND = { type: "tool.background_command.recorded", payload: { toolUseId: "toolu_test", processId: "bash-1", description: "bun test", startedAtMs: 1, state: "running" } } as const
+const { chatWithWork, follow, ownedIndex } = backgroundIndexFixtures()
 
-/** The commands of a session with none, one array as the store's entry holds it. */
-const NO_COMMANDS: readonly ActiveBackgroundCommandDescriptor[] = []
+/** A command the chat starts after the fixture's work. */
+const LINT = { toolUseId: "toolu_lint", processId: "bash-3", description: "bun run lint", startedAtMs: 500, state: "running" } as const
 
-/** An owner over fake trees and the change feeds, all in the test's hand.
- *  The store holds `sessionIds`, each with its own live command array, which
- *  a change of its commands replaces as the store does. */
-function owner(sessionIds: readonly string[] = ["chat"]) {
-  const stored = new Set<(events: readonly StoredFact[]) => void>()
-  const published: RuntimeUiPatchInput[] = []
-  const updates: BackgroundIndexPart[] = []
-  const builds: string[] = []
-  const callResults: [string, string | undefined][] = []
-  const sinks = new Map<string, BackgroundIndexSink>()
-  let liveChanged: ((changed: ReadonlySet<string> | undefined) => void) | undefined
-  let keptChanged: ((sessionId: string) => void) | undefined
-  let waitsChanged: ((sessionId: string) => void) | undefined
-  const live = new Map<string, readonly ActiveBackgroundCommandDescriptor[]>()
-  let workflowParent = "chat"
-  let failBuild: Error | undefined
-  let failUpdate: Error | undefined
-  const tree = (rootId: string, sink: BackgroundIndexSink): BackgroundIndexTree => {
-    sinks.set(rootId, sink)
-    const rows = new Map<string, BackgroundWorkRow>()
-    return {
-      rows,
-      role: (sessionId) => rootId === "chat" ? ROLES.get(sessionId) : sessionId === rootId ? "root" : undefined,
-      hasWorkflow: (workflowId) => rootId === "chat" && workflowId === "workflow" && workflowParent === "chat",
-      callResult(toolUseId, stoppedBy) {
-        callResults.push([toolUseId, stoppedBy])
-        return rootId === "chat" && toolUseId === "toolu_workflow" ? "workflow" : undefined
-      },
-      childrenLaunchedBy: (sessionId, toolUseIds) => sessionId === "chat" && toolUseIds.has("toolu_reviewer") ? ["reviewer"] : [],
-      async build() {
-        builds.push(rootId)
-        if (failBuild) throw failBuild
-        rows.set(ROW.id, ROW)
-      },
-      async update(part) {
-        if (failUpdate) throw failUpdate
-        updates.push(part)
-      },
-    }
-  }
-  const sessionStore = countStateRequests<BackgroundIndexOwnerDeps["sessionStore"]>({
-    onChange: (listener) => { liveChanged = listener; return () => {} },
-    get: (sessionId) => chatEntry({ activeBackgroundCommands: live.get(sessionId) ?? NO_COMMANDS }),
-    allIds: () => [...sessionIds],
-  })
-  const handle = createBackgroundIndexOwner({
-    index: { tree },
-    workflowPlacements: { parent: async (workflowId) => workflowId === "workflow" ? workflowParent : undefined, observe: () => {} },
-    onStored: (listener) => { stored.add(listener); return () => { stored.delete(listener) } },
-    publish: (input) => { published.push(input) },
-    snapshotPosition: () => published.length,
-    childRunFactTypes: ["subagent.completed"],
-    sessionStore: sessionStore.reader,
-    onKeptChange: (listener) => { keptChanged = listener; return () => {} },
-    onReplyWaitsChange: (listener) => { waitsChanged = listener; return () => {} },
-  })
-  const settle = () => Bun.sleep(1)
-  return {
-    handle, published, updates, builds, callResults, sinks, settle, sessionStore,
-    failBuild(error: Error | undefined) { failBuild = error },
-    failUpdate(error: Error | undefined) { failUpdate = error },
-    moveWorkflow(parentSessionId: string): void { workflowParent = parentSessionId },
-    async changeLive(commands: readonly { readonly id: string; readonly toolUseId: string; readonly model?: string }[]): Promise<void> {
-      live.set("chat", commands.map((command) => ({ ...command, description: command.id, startedAtMs: 0 })))
-      liveChanged?.(new Set(["chat"]))
-      await settle()
-    },
-    /** Places `commands` as the session's array without a word of change. */
-    seedLive(sessionId: string, commands: readonly ActiveBackgroundCommandDescriptor[]): void { live.set(sessionId, commands) },
-    /** A store change of `changed` sessions that leaves their commands alone,
-     *  such as a streamed delta; `undefined` names every session. */
-    async touch(changed: ReadonlySet<string> | undefined): Promise<void> { liveChanged?.(changed); await settle() },
-    async changeKept(sessionId: string): Promise<void> { keptChanged?.(sessionId); await settle() },
-    async changeWaits(sessionId: string): Promise<void> { waitsChanged?.(sessionId); await settle() },
-    async store(...facts: Array<Pick<StoredFact, "type" | "sessionId"> & { readonly aggregateId?: string; readonly payload?: StoredFact["payload"]; readonly version?: number }>): Promise<void> {
-      const events = facts.map((fact, index): StoredFact => ({
-        aggregateId: `session:${fact.sessionId}`, payload: {}, version: 1, ...fact,
-        id: `fact-${index}`, position: index, seq: index, timestamp: 0, actor: "flywheel",
-      }))
-      for (const listener of stored) listener(events)
-      await settle()
-    },
-  }
+const payloads = (patches: readonly RuntimeUiPatchInput[], sessionId: string) =>
+  patches.flatMap((patch) => "sessionId" in patch.cursor && patch.cursor.sessionId === sessionId ? [patch.payload] : [])
+
+/** A batch the owner hears of that the store never wrote. */
+function batch(...facts: Array<Pick<StoredFact, "type" | "sessionId" | "aggregateId" | "payload">>): StoredFact[] {
+  return facts.map((fact, index) => ({ version: 1, ...fact, id: `delivered-${index}`, position: index, seq: index, timestamp: 0, actor: "flywheel" }))
 }
 
 describe("the background index owner", () => {
   test("builds an index at its first read, answers later reads from memory, and builds it again only after a release", async () => {
-    const fixture = owner()
+    const fixture = await chatWithWork()
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+    const { owner, patches } = ownedIndex(fixture, { reader: counter.reader })
 
-    expect(await fixture.handle.snapshot("chat")).toEqual({ snapshotPosition: 0, rows: [ROW] })
-    expect(await fixture.handle.snapshot("chat")).toEqual({ snapshotPosition: 0, rows: [ROW] })
-    expect(fixture.builds).toEqual(["chat"])
+    const built = await owner.snapshot("chat")
+    expect(byId(built.rows)).toEqual(byId(await fixture.index.rows("chat")))
+    expect(counter.take().length).toBeGreaterThan(0)
+    expect(await owner.snapshot("chat")).toEqual(built)
+    expect(counter.take()).toEqual([])
 
-    fixture.handle.release("chat")
-    await fixture.store({ ...COMMAND, sessionId: "chat" })
-    expect(fixture.updates).toEqual([])
-    await fixture.handle.snapshot("chat")
-    expect(fixture.builds).toEqual(["chat", "chat"])
-    fixture.handle.dispose()
+    owner.release("chat")
+    await fixture.command("chat", LINT)
+    await Bun.sleep(5)
+    expect(counter.take()).toEqual([])
+    expect(patches).toEqual([])
+    expect((await owner.snapshot("chat")).rows.map((row) => row.id)).toContain("toolu_lint")
   })
 
   test("a failed build answers the read with the failure, never an empty index, and the next read builds again", async () => {
-    const fixture = owner()
-    fixture.failBuild(new Error("the store refused the read"))
+    const fixture = await chatWithWork()
+    const { owner } = ownedIndex(fixture)
+    fixture.refusals.add("chat")
 
-    await expect(fixture.handle.snapshot("chat")).rejects.toThrow("the store refused the read")
-    fixture.failBuild(undefined)
-    expect(await fixture.handle.snapshot("chat")).toEqual({ snapshotPosition: 0, rows: [ROW] })
-    expect(fixture.builds).toEqual(["chat", "chat"])
-    fixture.handle.dispose()
+    await expect(owner.snapshot("chat")).rejects.toThrow("the store refused the read of chat")
+    fixture.refusals.delete("chat")
+    expect(byId((await owner.snapshot("chat")).rows)).toEqual(byId(await fixture.index.rows("chat")))
   })
 
   test("a failed update lets the index go and tells clients to read it again, which builds it again", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
-    fixture.failUpdate(new Error("the store refused the read"))
+    const fixture = await chatWithWork()
+    const { owner, patches } = ownedIndex(fixture)
+    await owner.snapshot("chat")
+    fixture.refusals.add("chat")
 
-    await fixture.store({ ...COMMAND, sessionId: "chat" })
+    fixture.store.append(buildSessionMetadataAppend("chat", buildSessionChildLinkedFact("late", new Date(700).toISOString())))
+    await Bun.sleep(5)
 
-    expect(fixture.published).toEqual([{ cursor: { scope: "session", domain: "background", sessionId: "chat" }, payload: { kind: "runtime.invalidate", reason: "overflow" } }])
-    fixture.failUpdate(undefined)
-    await fixture.handle.snapshot("chat")
-    expect(fixture.builds).toEqual(["chat", "chat"])
-    fixture.handle.dispose()
+    expect(patches).toEqual([{ cursor: { scope: "session", domain: "background", sessionId: "chat" }, payload: { kind: "runtime.invalidate", reason: "overflow" } }])
+    fixture.refusals.delete("chat")
+    const reads = fixture.sessionReads.length
+    await owner.snapshot("chat")
+    expect(fixture.sessionReads.slice(reads)).toContain("chat")
   })
 
   test("publishes each changed row whole, or its removal, on the cursor of the index's session, and nothing for an index let go", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
-    const sink = fixture.sinks.get("chat")!
+    const fixture = await chatWithWork()
+    const { owner, patches } = ownedIndex(fixture)
+    await owner.snapshot("chat")
 
-    sink.updated({ ...ROW, status: "completed" })
-    sink.removed("toolu_test")
-    fixture.handle.release("chat")
-    sink.updated(ROW)
+    await fixture.command("chat", LINT)
+    await Bun.sleep(5)
+    fixture.sessions.set("chat", { ...fixture.sessions.get("chat")!, children: ["reviewer"] })
+    fixture.store.append(buildSessionMetadataAppend("chat", buildSessionChildUnlinkedFact("finished", new Date(800).toISOString())))
+    await Bun.sleep(5)
+    owner.release("chat")
+    await fixture.command("chat", { ...LINT, toolUseId: "toolu_build", processId: "bash-4", description: "bun run build" })
+    await Bun.sleep(5)
 
-    expect(fixture.published.map((patch) => patch.payload)).toEqual([
-      { kind: "background.row.updated", row: { ...ROW, status: "completed" } },
-      { kind: "background.row.removed", rowId: "toolu_test" },
+    const lint = (await fixture.index.rows("chat")).find((row) => row.id === "toolu_lint")
+    if (!lint) throw new Error("expected the lint command's row")
+    expect(patches.map((patch) => patch.payload)).toEqual([
+      { kind: "background.row.updated", row: lint },
+      { kind: "background.row.removed", rowId: "finished" },
     ])
-    expect(fixture.published.every((patch) => "sessionId" in patch.cursor && patch.cursor.sessionId === "chat")).toBe(true)
-    fixture.handle.dispose()
+    expect(payloads(patches, "chat")).toHaveLength(patches.length)
   })
 
-  test("routes each change to the part of each held index it touches, and a conversation append to none", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
-    await fixture.handle.snapshot("explorer")
-    const routed = async (change: () => Promise<void>): Promise<BackgroundIndexPart[]> => {
-      fixture.updates.length = 0
-      await change()
-      return [...fixture.updates]
-    }
+  test("a conversation append reads and publishes nothing, and a nested subagent's run changes its row in the chat's index but not in its own, where it is the root", async () => {
+    const fixture = await chatWithWork()
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+    const owned = ownedIndex(fixture, { reader: counter.reader })
+    await owned.owner.snapshot("chat")
+    await owned.owner.snapshot("explorer")
+    counter.take()
 
-    expect(await routed(() => fixture.store({ type: "conversation.message.appended", sessionId: "chat" }))).toEqual([])
-    // A nested subagent's run fact changes its row in the chat's index; in its own index it is the root.
-    expect(await routed(() => fixture.store({ type: "subagent.completed", sessionId: "explorer" }, { type: "session.lifecycle.changed", sessionId: "explorer" }))).toEqual([{ kind: "child", sessionId: "explorer" }])
-    // A command record names the one command row it changes.
-    const command: BackgroundIndexPart = { kind: "commands", sessionId: "explorer", toolUseIds: new Set(["toolu_test"]) }
-    expect(await routed(() => fixture.store({ ...COMMAND, sessionId: "explorer" }))).toEqual([command, command])
-    expect(await routed(() => fixture.store({ type: "session.child.linked", sessionId: "reviewer" }))).toEqual([{ kind: "children", sessionId: "reviewer" }])
-    // The keeper's word names no command: only rows it took up or let go are read.
-    expect(await routed(() => fixture.changeKept("reviewer"))).toEqual([{ kind: "commands", sessionId: "reviewer", toolUseIds: new Set() }])
-    // A root's own reply wait is no row of its index.
-    expect(await routed(() => fixture.changeWaits("explorer"))).toEqual([{ kind: "child", sessionId: "explorer" }])
-    expect(await routed(() => fixture.store({ type: "tool.result.recorded", sessionId: "chat", payload: { toolUseId: "toolu_workflow", outcome: "stopped" } }))).toEqual([{ kind: "workflow", workflowId: "workflow" }])
-    expect(fixture.callResults).toEqual([["toolu_workflow", "person"]])
-    fixture.handle.dispose()
+    owned.deliver(batch({ type: "conversation.message.appended", sessionId: "chat", aggregateId: "session:chat", payload: {} }))
+    await owned.settled()
+    expect(counter.take()).toEqual([])
+    expect(owned.patches).toEqual([])
+
+    await fixture.endRun("explorer", "completed")
+    await owned.settled()
+    expect(payloads(owned.patches, "chat")).toEqual([{ kind: "background.row.updated", row: expect.objectContaining({ id: "explorer", status: "completed" }) }])
+    expect(payloads(owned.patches, "explorer")).toEqual([])
   })
 
   test("decodes a root's result in its stored shape, and a fact it cannot read holds back no other change of its batch", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
+    const fixture = await chatWithWork()
+    const { owner, patches, settled } = ownedIndex(fixture)
+    await owner.snapshot("chat")
 
-    await fixture.store(
+    fixture.store.appendBatch([
       // A large result is stored as version 4, whose display text is a content reference.
-      { type: "tool.result.recorded", sessionId: "chat", version: 4, payload: { toolUseId: "toolu_read", outcome: "ok", details: { displayContent: { sha256: "a".repeat(64), bytes: 4096, preview: "src/" } } } },
-      { type: "tool.result.recorded", sessionId: "chat", version: 99, payload: {} },
-      { ...COMMAND, sessionId: "chat" },
-    )
+      { aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "tool.result.recorded", version: 4, actor: "flywheel", payload: { toolUseId: "toolu_workflow", outcome: "stopped", details: { displayContent: { sha256: "a".repeat(64), bytes: 4096, preview: "stopped" } } } },
+      { aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "tool.result.recorded", version: 99, actor: "flywheel", payload: {} },
+      { aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "tool.background_command.recorded", version: 1, actor: "flywheel", payload: LINT },
+    ])
+    await settled()
 
-    expect(fixture.callResults).toEqual([["toolu_read", undefined]])
-    expect(fixture.updates).toEqual([{ kind: "commands", sessionId: "chat", toolUseIds: new Set(["toolu_test"]) }])
-    fixture.handle.dispose()
+    const rows = patches.flatMap(({ payload }) => payload.kind === "background.row.updated" ? [payload.row] : [])
+    expect(rows.find((row) => row.id === "workflow")?.status).toBe("stopped")
+    expect(rows.map((row) => row.id)).toContain("toolu_lint")
   })
 
-  test("live commands update the session's commands and the child each changed call launched, once per change", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
+  test("a change of the live commands is read once: the same commands again read nothing", async () => {
+    const fixture = await chatWithWork()
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+    const client = await follow(fixture, counter.reader)
+    const server = fixture.live.get("chat")!
+    counter.take()
 
-    const changed: BackgroundIndexPart[] = [{ kind: "commands", sessionId: "chat", toolUseIds: new Set(["toolu_reviewer"]) }, { kind: "child", sessionId: "reviewer" }]
-    await fixture.changeLive([{ id: "reviewer", toolUseId: "toolu_reviewer", model: "model" }])
-    expect(fixture.updates).toEqual(changed)
-    fixture.updates.length = 0
-    await fixture.changeLive([{ id: "reviewer", toolUseId: "toolu_reviewer", model: "model" }])
-    expect(fixture.updates).toEqual([])
-    await fixture.changeLive([])
-    expect(fixture.updates).toEqual(changed)
-    fixture.handle.dispose()
+    fixture.live.set("chat", [...server, { id: "reviewer", description: "Reviewer", toolUseId: "toolu_reviewer", startedAtMs: 250, model: "model" }])
+    client.liveChanged("chat")
+    await client.settled()
+    expect(counter.take().length).toBeGreaterThan(0)
+    const rows = await client.rows()
+
+    fixture.live.set("chat", [...server, { id: "reviewer", description: "Reviewer", toolUseId: "toolu_reviewer", startedAtMs: 250, model: "model" }])
+    client.liveChanged("chat")
+    await client.settled()
+    expect(counter.take()).toEqual([])
+    expect(await client.rows()).toEqual(rows)
+    expect(rows).toEqual(byId(await fixture.index.rows("chat")))
   })
 
   test("a command that starts while no index is held and ends after a hold is reported as ended", async () => {
-    const fixture = owner()
-    await fixture.changeLive([{ id: "reviewer", toolUseId: "toolu_reviewer", model: "model" }])
-    await fixture.touch(new Set(["chat"]))
-    await fixture.handle.snapshot("chat")
+    const fixture = await chatWithWork()
+    const owned = ownedIndex(fixture)
+    // The owner learns the dev server while no index is held.
+    owned.liveChanged("chat")
+    expect((await owned.owner.snapshot("chat")).rows.find((row) => row.id === "toolu_server")?.status).toBe("running")
 
-    await fixture.changeLive([])
+    fixture.live.set("chat", [])
+    owned.liveChanged("chat")
+    await owned.settled()
 
-    expect(fixture.updates).toEqual([{ kind: "commands", sessionId: "chat", toolUseIds: new Set(["toolu_reviewer"]) }, { kind: "child", sessionId: "reviewer" }])
-    fixture.handle.dispose()
+    expect(owned.patches.map((patch) => patch.payload)).toContainEqual({ kind: "background.row.updated", row: expect.objectContaining({ id: "toolu_server", status: "ended" }) })
+  })
+
+  test("the keeper's word reads again the rows whose command it took up, so a command the keeper holds runs again", async () => {
+    const fixture = await chatWithWork()
+    const owned = ownedIndex(fixture)
+    owned.liveChanged("chat")
+    await owned.owner.snapshot("chat")
+    fixture.live.set("chat", [])
+    owned.liveChanged("chat")
+    await owned.settled()
+    owned.patches.length = 0
+
+    const reader = asAsyncEventReadSurface(fixture.store)
+    const writer = asAsyncEventWriter(fixture.store)
+    const stored = await writeCommandHandover({ reader, writer, row: {
+      handoffId: "handoff", sessionId: "chat", conversationId: "conversation-chat", processId: "bash-2", toolUseId: "toolu_server",
+      description: "bun run dev", logPath: "log", recordPath: "record", channel: "channel", token: "token", pid: 1, startedAtMs: 300,
+    } })
+    expect(await markCommandKept(reader, writer, stored)).toBeDefined()
+    await owned.settled()
+    expect(owned.patches).toEqual([])
+
+    owned.keptChanged("chat")
+    await owned.settled()
+    expect(owned.patches.map((patch) => patch.payload)).toEqual([{ kind: "background.row.updated", row: expect.objectContaining({ id: "toolu_server", status: "running" }) }])
   })
 
   test.each([2, 200])("store changes over %d sessions whose commands stay the same read one entry per change and none of its commands", async (members) => {
+    const fixture = await chatWithWork()
     const sessionIds = Array.from({ length: members }, (_, index) => `session-${index}`)
-    const fixture = owner(sessionIds)
-    await fixture.handle.snapshot("chat")
+    const live = new Map<string, readonly ActiveBackgroundCommandDescriptor[]>()
+    let liveChanged: ((changed: ReadonlySet<string> | undefined) => void) | undefined
+    const sessionStore = countStateRequests<Pick<SessionStore, "onChange" | "get" | "allIds">>({
+      onChange: (listener) => { liveChanged = listener; return () => {} },
+      get: (sessionId) => chatEntry({ activeBackgroundCommands: live.get(sessionId) ?? [] }),
+      allIds: () => [...sessionIds],
+    })
+    const { owner, patches } = ownedIndex(fixture, { sessionStore: sessionStore.reader })
+    const touch = async (changed: ReadonlySet<string> | undefined): Promise<void> => { liveChanged?.(changed); await Bun.sleep(1) }
+    await owner.snapshot("chat")
     let commandReads = 0
     const countedCommands = (sessionId: string): ActiveBackgroundCommandDescriptor[] => new Proxy([{ id: `bash-${sessionId}`, toolUseId: `toolu_${sessionId}`, description: "bun test", startedAtMs: 0 }], {
       get(target, key, receiver) {
@@ -243,47 +211,68 @@ describe("the background index owner", () => {
         return Reflect.get(target, key, receiver)
       },
     })
-    for (const sessionId of sessionIds) fixture.seedLive(sessionId, countedCommands(sessionId))
+    for (const sessionId of sessionIds) live.set(sessionId, countedCommands(sessionId))
     // The owner learns each session's commands once.
-    await fixture.touch(undefined)
-    fixture.sessionStore.take()
+    await touch(undefined)
+    sessionStore.take()
     commandReads = 0
 
     const changes = 10
-    for (let change = 0; change < changes; change += 1) await fixture.touch(new Set([sessionIds[change % members]!]))
-    expect(fixture.sessionStore.take().map((request) => request.method)).toEqual(Array.from({ length: changes }, () => "get"))
-    await fixture.touch(undefined)
+    for (let change = 0; change < changes; change += 1) await touch(new Set([sessionIds[change % members]!]))
+    expect(sessionStore.take().map((request) => request.method)).toEqual(Array.from({ length: changes }, () => "get"))
+    await touch(undefined)
 
     expect(commandReads).toBe(0)
-    expect(fixture.updates).toEqual([])
-    fixture.handle.dispose()
+    expect(patches).toEqual([])
   })
 
-  test("a burst of a workflow's commits reads its row once, and an adoption reads which workflows each root launched", async () => {
-    const fixture = owner()
-    await fixture.handle.snapshot("chat")
-    await fixture.handle.snapshot("other-chat")
-    const commit = { type: "workflow.control.committed", sessionId: "workflow", aggregateId: "workflow:workflow" }
+  test("a burst of a workflow's commits reads its row once, and an adoption moves the workflow's row from the root that launched it to the root that adopted it", async () => {
+    const fixture = await chatWithWork()
+    fixture.sessions.set("other-chat", { kind: "chat", createdAtMs: 0, label: "Other chat", children: [] })
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+    const owned = ownedIndex(fixture, { reader: counter.reader })
+    await owned.owner.snapshot("chat")
+    await owned.owner.snapshot("other-chat")
+    const commit = fixture.store.read({ aggregateId: "workflow:workflow" }).at(-1)!
+    const reads = async (delivered: readonly StoredFact[]): Promise<number> => {
+      counter.take()
+      owned.deliver(delivered)
+      await owned.settled()
+      return counter.take().length
+    }
 
-    await fixture.store(commit, commit, commit)
-    expect(fixture.updates).toEqual([{ kind: "workflow", workflowId: "workflow" }])
+    // The first commit also builds the held fold of where workflows sit.
+    await reads([commit])
+    const once = await reads([commit])
+    expect(once).toBeGreaterThan(0)
+    expect(await reads([commit, commit, commit])).toBe(once)
 
-    fixture.updates.length = 0
-    fixture.moveWorkflow("other-chat")
-    await fixture.store({ ...commit, type: "workflow.run.adopted" })
-    // The workflow left the chat's index and reached the other chat's.
-    expect(fixture.updates).toEqual([{ kind: "launches" }])
-    fixture.handle.dispose()
+    owned.patches.length = 0
+    adoptTestWorkflow(fixture.store, { workflowSessionId: "workflow", previousParentId: "chat", parentSessionId: "other-chat", parentConversationId: "conversation-other-chat", toolUseId: "toolu_adopt" })
+    await owned.settled()
+    await owned.settled("other-chat")
+    expect(payloads(owned.patches, "chat")).toEqual([{ kind: "background.row.removed", rowId: "workflow" }])
+    expect(payloads(owned.patches, "other-chat")).toEqual([{ kind: "background.row.updated", row: expect.objectContaining({ id: "workflow" }) }])
   })
 
   test("a change that arrives while an index is built reaches it once the build ends, after the build's read", async () => {
-    const fixture = owner()
-    const read = fixture.handle.snapshot("chat")
-    await fixture.store({ type: "session.child.linked", sessionId: "chat" })
+    const fixture = await chatWithWork()
+    const owned = ownedIndex(fixture)
+    const gate = Promise.withResolvers<void>()
+    fixture.gates.set("chat", gate.promise)
+    const read = owned.owner.snapshot("chat")
+    while (!fixture.sessionReads.includes("chat")) await Bun.sleep(1)
 
-    expect(await read).toEqual({ snapshotPosition: 0, rows: [ROW] })
-    await fixture.settle()
-    expect(fixture.updates).toEqual([{ kind: "children", sessionId: "chat" }])
-    fixture.handle.dispose()
+    fixture.sessions.set("late", { kind: "subagent", createdAtMs: 700, label: "Late", parent: { sessionId: "chat", toolUseId: "toolu_late" } })
+    fixture.sessions.set("chat", { ...fixture.sessions.get("chat")!, children: ["reviewer", "finished", "late"] })
+    await fixture.subagentRun("late")
+    fixture.store.append(buildSessionMetadataAppend("chat", buildSessionChildLinkedFact("late", new Date(700).toISOString())))
+    await Bun.sleep(5)
+    fixture.gates.delete("chat")
+    gate.resolve()
+
+    expect((await read).rows.map((row) => row.id)).not.toContain("late")
+    await owned.settled()
+    expect(owned.patches.map((patch) => patch.payload)).toContainEqual({ kind: "background.row.updated", row: expect.objectContaining({ id: "late" }) })
   })
 })

@@ -56,11 +56,9 @@ describe("composer border hints", () => {
       const { layout } = createComposerBorderLayout({
         signals,
         terminalWidth: () => 200,
-        activeModelLabel: () => undefined,
         chordFor: (commandId) => keymap().chordFor(commandId),
         resumeOffered: () => false,
         activeSessionCount: () => 1,
-        sessionCount: () => 2,
       })
       const keys = (): readonly string[] => [...layout().hints, ...(layout().sessionsClickHint ? [layout().sessionsClickHint] : [])].map((hint) => hint?.key ?? "")
 

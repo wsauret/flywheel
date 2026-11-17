@@ -1,15 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { Redacted } from "effect";
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { ChatGptAdapterApiError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
-import { assertChatGptAccountUnchanged } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import {
   classifyProviderFailure,
   isFailoverFailure,
   isProviderAttributedFailure,
-  isRetryableFailure,
   normalizeProviderAttemptFailure,
   ProviderAttemptFailure,
+  ProviderAuthenticationError,
   type ProviderFailure,
 } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ThinkingStallError } from "../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js";
@@ -60,7 +58,6 @@ describe("classifyProviderFailure classification table", () => {
     const failure = classifyProviderFailure(error);
     expect(failure._tag).toBe("QuotaExhaustedFailure");
     expect(failure.cause).toBe(error);
-    expect(isRetryableFailure(failure)).toBe(false);
     expect(isFailoverFailure(failure)).toBe(true);
     expect(isProviderAttributedFailure(failure)).toBe(false);
   });
@@ -70,7 +67,6 @@ describe("classifyProviderFailure classification table", () => {
     const failure = normalizeProviderAttemptFailure(new Error("SDK request failed", { cause: error })).failure;
     expect(failure._tag).toBe("ModelAccessFailure");
     expect(failure.cause).toBe(error);
-    expect(isRetryableFailure(failure)).toBe(false);
     expect(isFailoverFailure(failure)).toBe(true);
     expect(isProviderAttributedFailure(failure)).toBe(false);
   });
@@ -79,14 +75,8 @@ describe("classifyProviderFailure classification table", () => {
     expect(tagOf(new DOMException("aborted", "AbortError"))).toBe("RequestAbortedFailure");
   });
 
-  test("status-less ChatGPT account failures are authentication failures", () => {
-    let authError: unknown;
-    try {
-      assertChatGptAccountUnchanged({ accessToken: Redacted.make("a"), refreshToken: Redacted.make("r-a"), expiresAtMs: 1, accountId: "account-a" }, { accessToken: Redacted.make("b"), refreshToken: Redacted.make("r-b"), expiresAtMs: 1, accountId: "account-b" });
-    } catch (error) {
-      authError = error;
-    }
-    expect(tagOf(authError)).toBe("AuthFailure");
+  test("status-less ChatGPT authentication failures are authentication failures", () => {
+    expect(tagOf(new ProviderAuthenticationError("The ChatGPT access token expired and no refresh token is saved."))).toBe("AuthFailure");
   });
 
   test("HTTP status mapping", () => {
@@ -135,9 +125,9 @@ describe("classifyProviderFailure classification table", () => {
     expect(tagOf(statusError(422, { "x-should-retry": "false" }))).toBe("InvalidRequestFailure");
   });
 
-  test("x-should-retry true forces a terminal status back to retryable", () => {
-    const failure = classifyProviderFailure(statusError(400, { "x-should-retry": "true" }));
-    expect(isRetryableFailure(failure)).toBe(true);
+  test("x-should-retry true keeps a terminal status out of the request-defect and authentication classes", () => {
+    expect(tagOf(statusError(400, { "x-should-retry": "true" }))).toBe("UnknownProviderFailure");
+    expect(tagOf(statusError(401, { "x-should-retry": "true" }))).toBe("UnknownProviderFailure");
   });
 
   test("network patterns and torn streams are transient", () => {
@@ -148,18 +138,15 @@ describe("classifyProviderFailure classification table", () => {
     expect(tagOf(new DOMException("The operation timed out.", "TimeoutError"))).toBe("TransientNetworkFailure");
   });
 
-  test("unrecognized errors default to retryable", () => {
-    const failure = classifyProviderFailure(new Error("what even is this"));
-    expect(failure._tag).toBe("UnknownProviderFailure");
-    expect(isRetryableFailure(failure)).toBe(true);
+  test("unrecognized errors are unknown provider failures", () => {
+    expect(tagOf(new Error("what even is this"))).toBe("UnknownProviderFailure");
     expect(tagOf(new Error("insufficient_quota"))).toBe("UnknownProviderFailure");
     expect(tagOf(Object.assign(new Error("Unknown error"), { code: "unrecognized_quota_code" }))).toBe("UnknownProviderFailure");
   });
 
-  test("thinking stalls are outage-shaped: retryable, failover-eligible, never attributed", () => {
+  test("thinking stalls are outage-shaped: transient, failover-eligible, never attributed", () => {
     const failure = classifyProviderFailure(new ThinkingStallError({ elapsedMs: 1 }));
     expect(failure._tag).toBe("TransientNetworkFailure");
-    expect(isRetryableFailure(failure)).toBe(true);
     expect(isFailoverFailure(failure)).toBe(true);
     expect(isProviderAttributedFailure(failure)).toBe(false);
   });
@@ -167,7 +154,6 @@ describe("classifyProviderFailure classification table", () => {
   test("a repeating response is its own kind: not a network failure, never failover, never attributed", () => {
     const failure = classifyProviderFailure(new DegenerateRepetitionError({ ratio: 0.01, windowChars: 8192, reasoningChars: 20_224 }));
     expect(failure).toMatchObject({ _tag: "DegenerateRepetitionFailure", ratio: 0.01, windowChars: 8192, reasoningChars: 20_224 });
-    expect(isRetryableFailure(failure)).toBe(false);
     expect(isFailoverFailure(failure)).toBe(false);
     expect(isProviderAttributedFailure(failure)).toBe(false);
   });

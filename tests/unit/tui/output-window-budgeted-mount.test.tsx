@@ -19,7 +19,7 @@ import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../src/infra/output-blocks.js"
 import { ManualClock } from "@opentui/core/testing"
 import { buildMutationDiff } from "../../../src/infra/mutation-diff.js"
-import { getToolDisplay, resolveToolPresentation } from "../../../src/infra/tools/tool-display-registry.js"
+import { getToolDisplay, resolveToolRowPresentation } from "../../../src/infra/tools/tool-display-registry.js"
 import { createBlockDisclosureChannel } from "../../../src/tui/context/block-disclosure.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
 import { makeView, renderScheduledFrame, renderWindow as renderScheduledWindow, snapshot, transcriptOf } from "./_output-window-transcript.js"
@@ -480,7 +480,7 @@ describe("OutputWindow growth at the followed tail", () => {
     ])
     const fixture = await mutationEvidenceFixture(diff, { windowBytes: 48000 })
     const tool: FrontendOutputBlock = {
-      kind: "tool", id: "multi", name: "bash", presentation: resolveToolPresentation("bash", { command: "write eta theta" }, "/workspace"),
+      kind: "tool", id: "multi", name: "bash", presentation: resolveToolRowPresentation("bash", { command: "write eta theta" }, "/workspace").presentation,
       action: getToolDisplay("bash").action, status: "completed", timestamp: 1, exitCode: 0, content: "done", declaresMutation: true,
       mutationEvidence: fixture.evidence,
     }

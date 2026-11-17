@@ -11,7 +11,7 @@ import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.j
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";
-import type { RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { RuntimeToolInput, DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { WebSearchError, type WebSearchCommand, type WebSearchPort, type WebSearchProvider, type WebSearchResponse } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
 import { createChatGptWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/chatgpt.js";
 import { createWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
@@ -36,7 +36,7 @@ function capability(overrides?: Partial<WebSearchPort>): WebSearchPort {
   };
 }
 
-function context(): ToolContext {
+function context(): DispatchedToolContext {
   return makeContext({ artifactScopeId: "session-1", sessionId: "session-1" });
 }
 

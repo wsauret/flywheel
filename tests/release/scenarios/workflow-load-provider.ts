@@ -1,5 +1,5 @@
-import { releaseMeasurementNow } from "../../../src/infra/startup-trace.js"
 import { withTimeout } from "../lib/isolated-serve.js"
+import { releaseMeasurementNow } from "../lib/retained-heap.js"
 
 export const WORKFLOW_LOAD_MODEL = "workflow-load-model"
 export const WORKFLOW_LOAD_LAUNCH = "Launch active-load.workflow.yaml and wait for the workflow result."

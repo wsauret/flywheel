@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ResponseInput, ResponseOutputMessage } from "openai/resources/responses/responses.js";
 import type { RequestBody } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/types.js";
-import { getCachedWebSocketInputDelta, streamChatGptAdapterWebSocket } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket.js";
-import { retainWebSocketSession, type CachedWebSocketConnection, type WebSocketEvent, type WebSocketOptions } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
+import { streamChatGptAdapterWebSocket } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket.js";
+import { retainWebSocketSession } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
 import { ChatGptAdapterTransportError } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/types.js";
 import { createStaleToolResultMasker } from "../../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { buildOpenAIResponseInput } from "../../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
@@ -17,7 +17,15 @@ interface UnknownRecord {
   [key: string]: unknown;
 }
 
-type Continuation = NonNullable<CachedWebSocketConnection["continuation"]>;
+/** A frame that the fake socket received: the fields a continuation check reads, and every other field. */
+interface SentFrame extends UnknownRecord {
+  readonly previous_response_id?: string;
+  readonly input?: ResponseInput;
+}
+
+/** The event and option shapes that a fake socket shares with the runtime WebSocket. */
+interface WebSocketEvent { readonly data?: string; readonly message?: string; readonly code?: number; readonly reason?: string; readonly wasClean?: boolean }
+interface WebSocketOptions { readonly headers?: { [name: string]: string } }
 
 const userMessage = (text: string): ResponseInput[number] =>
   ({ type: "message", role: "user", content: [{ type: "input_text", text }] });
@@ -27,17 +35,10 @@ const assistantMessage = (id: string, text: string): ResponseInput[number] =>
 
 const baseRequestBody = (input: ResponseInput): RequestBody => ({ model: "gpt-5.4", input });
 
-function makeContinuation(lastInput: ResponseInput, lastResponseItems: ResponseInput): Continuation {
-  return {
-    lastRequestBody: baseRequestBody(lastInput),
-    lastResponseId: "resp-1",
-    lastResponseItems,
-  };
-}
 
 class ScriptedWebSocket {
 	static scripts: Array<Array<UnknownRecord>> = [];
-	static sent: Array<UnknownRecord> = [];
+	static sent: Array<SentFrame> = [];
 	static nextFrames: Array<UnknownRecord> | undefined;
 	readonly listeners = new Map<string, Set<(event: WebSocketEvent) => void>>();
 	readonly script = ScriptedWebSocket.scripts.shift() ?? [];
@@ -57,6 +58,33 @@ class ScriptedWebSocket {
 		setTimeout(() => { for (const frame of frames) this.emit("message", { data: JSON.stringify(frame) }); }, 0);
 	}
 	emit(type: string, event: WebSocketEvent): void { for (const listener of this.listeners.get(type) ?? []) listener(event); }
+}
+
+interface Answered { readonly lastInput: ResponseInput; readonly responseItems: ResponseInput }
+const answered = (lastInput: ResponseInput, responseItems: ResponseInput): Answered => ({ lastInput, responseItems });
+
+/** The input that a request of `body` sends on the socket where a request of `previous.lastInput` was answered with
+ *  `previous.responseItems`: only the items after that exchange, or undefined when the request sends its whole input. */
+async function continuedInput(body: RequestBody, previous: Answered): Promise<ResponseInput | undefined> {
+	const globalObject: { WebSocket?: unknown } = globalThis;
+	const originalWebSocket = globalObject.WebSocket;
+	globalObject.WebSocket = ScriptedWebSocket;
+	ScriptedWebSocket.scripts = [[{ type: "response.completed", response: { id: "resp-1", status: "completed", output: [] } }]];
+	ScriptedWebSocket.sent = [];
+	const sessionId = `continued-input-${crypto.randomUUID()}`;
+	const release = retainWebSocketSession(sessionId);
+	try {
+		const first = await streamChatGptAdapterWebSocket("wss://example.test", baseRequestBody(previous.lastInput), new Headers(), { sessionId });
+		first.commitContinuation(previous.responseItems, "resp-1");
+		for await (const _event of first.events) { /* drain */ }
+		const second = await streamChatGptAdapterWebSocket("wss://example.test", body, new Headers(), { sessionId });
+		for await (const _event of second.events) { /* drain */ }
+		const sent = ScriptedWebSocket.sent[1];
+		return sent?.previous_response_id === "resp-1" ? sent.input : undefined;
+	} finally {
+		release();
+		globalObject.WebSocket = originalWebSocket;
+	}
 }
 
 describe("WebSocket request failures", () => {
@@ -210,8 +238,8 @@ describe("WebSocket request failures", () => {
 	});
 });
 
-describe("getCachedWebSocketInputDelta", () => {
-  it.each(["write", "edit"])("rejects same-id %s arguments rewritten by stale masking", (name) => {
+describe("the input of a continued WebSocket request", () => {
+  it.each(["write", "edit"])("rejects same-id %s arguments rewritten by stale masking", async (name) => {
     const history: ConversationMessage[] = [
       { kind: "user", content: "change the source file" },
       {
@@ -236,10 +264,10 @@ describe("getCachedWebSocketInputDelta", () => {
     expect(newCall.id).toBe(oldCall.id);
     expect(newCall.arguments).not.toBe(oldCall.arguments);
     for (const continuation of [
-      makeContinuation(original.slice(0, 1), [oldCall]),
-      makeContinuation(original.slice(0, 2), []),
+      answered(original.slice(0, 1), [oldCall]),
+      answered(original.slice(0, 2), []),
     ]) {
-      expect(getCachedWebSocketInputDelta(baseRequestBody(current), continuation)).toBeUndefined();
+      expect(await continuedInput(baseRequestBody(current), continuation)).toBeUndefined();
     }
   });
 
@@ -259,26 +287,28 @@ describe("getCachedWebSocketInputDelta", () => {
     ["function result", { type: "function_call_output", id: "o1", call_id: "call_1", output: "old" }, { type: "function_call_output", id: "o1", call_id: "call_1", output: "new" }],
     ["custom result", { type: "custom_tool_call_output", id: "o1", call_id: "call_2", output: "old" }, { type: "custom_tool_call_output", id: "o1", call_id: "call_2", output: "new" }],
   ];
-  it.each(driftCases)("rejects same-id %s drift in either prefix segment", (_name, original, changed) => {
-    for (const continuation of [makeContinuation([original], []), makeContinuation([], [original])]) {
-      expect(getCachedWebSocketInputDelta(baseRequestBody([changed, userMessage("next")]), continuation)).toBeUndefined();
+  it.each(driftCases)("rejects same-id %s drift in either prefix segment", async (_name, original, changed) => {
+    // The continuation keeps no function result of a response, so one reaches the prefix only through the request.
+    const continuations = original.type === "function_call_output" ? [answered([original], [])] : [answered([original], []), answered([], [original])];
+    for (const continuation of continuations) {
+      expect(await continuedInput(baseRequestBody([changed, userMessage("next")]), continuation)).toBeUndefined();
     }
   });
 
-  it("matches a response reasoning item to its replay, which omits output-only fields", () => {
+  it("matches a response reasoning item to its replay, which omits output-only fields", async () => {
     const raw = { ...reasoning, status: "completed", content: [] } satisfies ResponseInput[number];
     const replay = { encrypted_content: raw.encrypted_content, summary: raw.summary, id: raw.id, type: raw.type };
     const next = userMessage("next");
-    expect(getCachedWebSocketInputDelta(baseRequestBody([replay, next]), makeContinuation([], [raw]))).toEqual([next]);
+    expect(await continuedInput(baseRequestBody([replay, next]), answered([], [raw]))).toEqual([next]);
   });
 
-  it("normalizes server-only tool status and argument serialization before comparison", () => {
+  it("normalizes server-only tool status and argument serialization before comparison", async () => {
     const response: ResponseInput = [{ ...call, status: "completed", arguments: '{ "content": "old" }' }, custom];
     const next = userMessage("next");
-    expect(getCachedWebSocketInputDelta(baseRequestBody([call, custom, next]), makeContinuation([], response))).toEqual([next]);
+    expect(await continuedInput(baseRequestBody([call, custom, next]), answered([], response))).toEqual([next]);
   });
 
-  it("normalizes server text metadata and refusal parts to the converter's text and phase", () => {
+  it("normalizes server text metadata and refusal parts to the converter's text and phase", async () => {
     const response = {
       type: "message", id: "a1", role: "assistant", status: "completed", phase: "final_answer",
       content: [
@@ -291,13 +321,13 @@ describe("getCachedWebSocketInputDelta", () => {
       content: [{ type: "output_text", text: "answer refused", annotations: [] }],
     } satisfies ResponseInput[number] & { phase: string };
     const next = userMessage("next");
-    const continuation = makeContinuation([], [response]);
-    expect(getCachedWebSocketInputDelta(baseRequestBody([replay, next]), continuation)).toEqual([next]);
+    const continuation = answered([], [response]);
+    expect(await continuedInput(baseRequestBody([replay, next]), continuation)).toEqual([next]);
     const changedPhase = { ...replay, phase: "commentary" as const };
-    expect(getCachedWebSocketInputDelta(baseRequestBody([changedPhase, next]), continuation)).toBeUndefined();
+    expect(await continuedInput(baseRequestBody([changedPhase, next]), continuation)).toBeUndefined();
   });
 
-  it.each([null, "commentary", "final_answer"] satisfies Array<ResponseOutputMessage["phase"]>)("reuses provider phase %s through the actual replay converter", (phase) => {
+  it.each([null, "commentary", "final_answer"] satisfies Array<ResponseOutputMessage["phase"]>)("reuses provider phase %s through the actual replay converter", async (phase) => {
     const response = {
       type: "message", id: "a1", role: "assistant", status: "completed", phase,
       content: [{ type: "output_text", text: "answer", annotations: [] }],
@@ -310,92 +340,92 @@ describe("getCachedWebSocketInputDelta", () => {
       accessProvider: "chatgpt", model: "gpt-5.5", supportsImages: false, tools: [],
     });
     if (typeof replay === "string" || !replay) throw new Error("Expected Responses input items");
-    const continuation = makeContinuation([], [response]);
-    expect(getCachedWebSocketInputDelta(baseRequestBody(replay), continuation)).toEqual([]);
+    const continuation = answered([], [response]);
+    expect(await continuedInput(baseRequestBody(replay), continuation)).toEqual([]);
     const next = userMessage("next");
-    expect(getCachedWebSocketInputDelta(baseRequestBody([...replay, next]), continuation)).toEqual([next]);
+    expect(await continuedInput(baseRequestBody([...replay, next]), continuation)).toEqual([next]);
   });
 
-  it("reuses the cached delta when the prior input + response items are an exact prefix", () => {
+  it("reuses the cached delta when the prior input + response items are an exact prefix", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     const followUp = userMessage("how are you?");
     const body = baseRequestBody([...priorInput, ...responseItems, followUp]);
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toEqual([followUp]);
   });
 
-  it("returns an empty delta when the new input exactly equals the baseline (no appended items)", () => {
+  it("returns an empty delta when the new input exactly equals the baseline (no appended items)", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     const body = baseRequestBody([...priorInput, ...responseItems]);
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toEqual([]);
   });
 
-  it("continues after a custom call and result without replaying them", () => {
+  it("continues after a custom call and result without replaying them", async () => {
     const priorInput: ResponseInput = [userMessage("edit")];
     const responseItems: ResponseInput = [{ type: "custom_tool_call", id: "ct_1", call_id: "call_1", name: "apply_patch", input: "patch" }];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
     const result: ResponseInput[number] = { type: "custom_tool_call_output", call_id: "call_1", output: "Done" };
     const followUp = userMessage("continue");
     const body = baseRequestBody([...priorInput, ...responseItems, result, followUp]);
 
-    expect(getCachedWebSocketInputDelta(body, continuation)).toEqual([result, followUp]);
+    expect(await continuedInput(body, continuation)).toEqual([result, followUp]);
   });
 
-  it("busts reuse when an earlier item changed (content drift)", () => {
+  it("busts reuse when an earlier item changed (content drift)", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     // Same lengths and same id/type per slot, but the first item's text differs.
     const body = baseRequestBody([userMessage("HELLO"), ...responseItems, userMessage("next")]);
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toBeUndefined();
   });
 
-  it("busts reuse when an earlier item's identity changed (type mismatch)", () => {
+  it("busts reuse when an earlier item's identity changed (type mismatch)", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     // Replace the assistant message slot with a different id.
     const body = baseRequestBody([...priorInput, assistantMessage("a2", "hi there"), userMessage("next")]);
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toBeUndefined();
   });
 
-  it("returns undefined when the new input is shorter than the baseline", () => {
+  it("returns undefined when the new input is shorter than the baseline", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     const body = baseRequestBody([userMessage("hello")]);
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toBeUndefined();
   });
 
-  it("returns undefined when a non-input request field diverges", () => {
+  it("returns undefined when a non-input request field diverges", async () => {
     const priorInput: ResponseInput = [userMessage("hello")];
     const responseItems: ResponseInput = [assistantMessage("a1", "hi there")];
-    const continuation = makeContinuation(priorInput, responseItems);
+    const continuation = answered(priorInput, responseItems);
 
     const body: RequestBody = {
       ...baseRequestBody([...priorInput, ...responseItems, userMessage("next")]),
       temperature: 0.7,
     };
 
-    const delta = getCachedWebSocketInputDelta(body, continuation);
+    const delta = await continuedInput(body, continuation);
     expect(delta).toBeUndefined();
   });
 });

@@ -27,7 +27,6 @@ import { ownedCommandRunner } from "../infra/owned-command.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
 import { createClipboard } from "./utils/clipboard.js"
 import { createTerminalOutput, type TerminalOutput } from "./terminal-output.js"
-import { createSettingsStore } from "./hooks/create-settings-store.js"
 import { createRuntimeConfigCache } from "./hooks/shell-state.js"
 
 
@@ -125,7 +124,6 @@ export async function startTUI(options: TUIOptions): Promise<void> {
         attachedRenderer = useRenderer()
         const runtimeConfig = createRuntimeConfigCache({ appService: options.appService })
         const settingsOperations = { getFontStatus, installBundledFont, fontInstallSummary }
-        const settings = createSettingsStore(runtimeConfig, options.appService)
         return (
         <ExitProvider onExit={onExit} onFirstFrame={onFirstFrame} output={output}>
           <ToastProvider>
@@ -146,7 +144,7 @@ export async function startTUI(options: TUIOptions): Promise<void> {
                   <KeymapProvider config={runtimeConfig.view}>
                   <QuestionInputProvider>
                     <ModalProvider>
-                      <FlywheelShell appService={options.appService} attach={options.attach} runtimeConfig={runtimeConfig} projectRoot={options.projectRoot} stateRoot={options.stateRoot} userDataRoot={options.userDataRoot} accountHome={options.accountHome} appVersion={options.appVersion} launcher={options.launcher} clipboard={clipboard} settings={settings} settingsOperations={settingsOperations} launchState={options.launchState} attachedIdentity={options.attachedIdentity} registerForeground={(read) => { foregroundId = read }} terminalWriter={nativeSession} />
+                      <FlywheelShell appService={options.appService} attach={options.attach} runtimeConfig={runtimeConfig} projectRoot={options.projectRoot} stateRoot={options.stateRoot} userDataRoot={options.userDataRoot} accountHome={options.accountHome} appVersion={options.appVersion} launcher={options.launcher} clipboard={clipboard} settingsOperations={settingsOperations} launchState={options.launchState} attachedIdentity={options.attachedIdentity} registerForeground={(read) => { foregroundId = read }} terminalWriter={nativeSession} />
                     </ModalProvider>
                   </QuestionInputProvider>
                   </KeymapProvider>

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { createAccountProjectClone, ProjectCloneFailure } from "../../../../src/orchestration/app-service/account-project-clone.js"
+import { createAccountProjectClone } from "../../../../src/orchestration/app-service/account-project-clone.js"
 import { createAccountProjectRegistry } from "../../../../src/orchestration/app-service/account-project-registry.js"
 import type { OwnedCommandOptions, OwnedCommandResult } from "../../../../src/infra/owned-command.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
@@ -71,7 +71,7 @@ describe("account project clone", () => {
   test("refuses a path on the machine without running git", async () => {
     const git = cloningGit()
     const { registry, clone } = setup(git.run)
-    await expect(clone.clone("/home/person/secret")).rejects.toBeInstanceOf(ProjectCloneFailure)
+    await expect(clone.clone("/home/person/secret")).rejects.toMatchObject({ _tag: "ProjectCloneFailure" })
     expect(git.calls).toEqual([])
     expect(await registry.list()).toEqual([])
   })
@@ -80,7 +80,7 @@ describe("account project clone", () => {
     const git = cloningGit(() => ({ ...ownedCommandResult("", 128), stderr: "Cloning into 'private'...\nfatal: could not read Username for 'https://github.com': terminal prompts disabled\n" }))
     const { registry, projectsRoot, clone } = setup(git.run)
     const failure = await clone.clone("owner/private").catch((error: unknown) => error)
-    expect(failure).toBeInstanceOf(ProjectCloneFailure)
+    expect(failure).toMatchObject({ _tag: "ProjectCloneFailure" })
     expect(String(failure)).toContain("gh auth setup-git")
     expect(String(failure)).toContain("terminal prompts disabled")
     expect(existsSync(join(projectsRoot, "private"))).toBe(false)

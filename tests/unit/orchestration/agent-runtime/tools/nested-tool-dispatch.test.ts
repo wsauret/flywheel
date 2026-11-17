@@ -4,7 +4,7 @@ import { interceptBashCommand } from "../../../../../src/orchestration/agent-run
 import { Effect } from "effect";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, type NestedToolFactPublisher } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import type { RuntimeTool, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { DispatchedToolContext, RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import type { EventPayload, StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { RequestToolMap, requestAdmission } from "../../../../helpers/request-tool-surface.js";
@@ -12,15 +12,16 @@ import { SLOW_UNIT_BUDGET_MS } from "../../../../../src/infra/event-loop-lag.js"
 import { Log } from "../../../../../src/infra/log.js";
 import { createHandoffTracker } from "../../../../../src/orchestration/agent-runtime/agent-loop-handoff.js";
 import { largeSecretResult, resultRecordingWriter } from "./_nested-tool-dispatch-fixtures.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
-function context(): ToolContext {
-  return {
+function context(): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: process.cwd(),
     userDataRoot: "/scratch/test-account", projectRoot: process.cwd(),
     artifactScopeId: "session",
     retrievalSessionId: "session",
     sessionId: "session",
-  };
+  });
 }
 
 function tool(name: string, execute: RuntimeTool["execute"]): RuntimeTool {

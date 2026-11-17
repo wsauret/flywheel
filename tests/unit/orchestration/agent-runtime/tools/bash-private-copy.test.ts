@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHash } from "node:crypto";
@@ -11,10 +11,13 @@ import { readCopyRepositoryState } from "../../../../../src/orchestration/agent-
 import { readRepositoryRefs, readReftableStack } from "../../../../../src/orchestration/agent-runtime/tools/bash-copy-refs.js";
 import { observeFileState, sameObservedState } from "../../../../../src/orchestration/file-edits/file-state.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { runPrivateCopyJob } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
+import { createPrivateCopyJobs } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-jobs.js";
+import { readPrivateCopyRecord } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-record.js";
 import type { PrivateCopyPool, ReusableCopy } from "../../../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js";
 
 const createDirectory = temporaryDirectories();
+const jobs = createPrivateCopyJobs();
+afterAll(() => jobs.close());
 
 function answered(stdout: string): OwnedCommandResult {
   return { exitCode: 0, stdout, stdoutBytes: new TextEncoder().encode(stdout), stderr: "", timedOut: false };
@@ -22,8 +25,15 @@ function answered(stdout: string): OwnedCommandResult {
 
 const notGit: OwnedCommandRunner = async () => ({ ...answered(""), exitCode: 128 });
 
+/** The entries of the copy in `home` as its record holds them; they stay on the Worker, so a take never answers them. */
+function recordedEntries(home: string) {
+  const read = readPrivateCopyRecord(home);
+  if (read.kind !== "recorded") throw new Error(`no record in ${home}`);
+  return read.copy;
+}
+
 async function copyOf(root: string) {
-  return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit: notGit, guard: "none" });
+  return takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit: notGit, guard: "none", jobs });
 }
 
 describe("private project copy", () => {
@@ -35,21 +45,21 @@ describe("private project copy", () => {
     fs.writeFileSync(path.join(scratchDir, "notes", "checkpoint.md"), "before\n");
     fs.writeFileSync(path.join(scratchDir, "deleted.bin"), Buffer.from([255, 0, 1]));
     fs.writeFileSync(path.join(path.dirname(scratchDir), "owner.pid"), "1\n");
-    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, scratchDir, runGit: notGit, guard: "none" });
+    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, scratchDir, runGit: notGit, guard: "none", jobs });
     expect(copy.shared).toEqual([".flywheel"]);
     fs.appendFileSync(path.join(copy.copyRoot, ".flywheel", "sessions", "own", "scratch", "notes", "checkpoint.md"), "after\n");
     fs.unlinkSync(path.join(scratchDir, "deleted.bin"));
     fs.writeFileSync(path.join(scratchDir, "new.txt"), "new\n");
     fs.writeFileSync(path.join(path.dirname(scratchDir), "d1.txt"), "direct\n");
     fs.writeFileSync(path.join(path.dirname(scratchDir), "owner.pid"), "2\n");
-    const adopted = await readPrivateProjectCopy(home);
+    const adopted = await readPrivateProjectCopy(home, jobs);
     if (adopted.kind !== "recorded") throw new Error("copy record missing");
     const outside = createDirectory("bash-scratch-outside-");
     fs.writeFileSync(path.join(outside, "foreign.txt"), "not scratch\n");
     fs.rmSync(path.join(home, "scratch-source"), { force: true });
     fs.symlinkSync(outside, path.join(home, "scratch-source"), "junction");
     fs.writeFileSync(path.join(home, "junk"), "not scratch\n");
-    const observed = await runPrivateCopyJob({ kind: "session", home: adopted.copy.home, projectRoot: adopted.copy.realRoot });
+    const observed = await jobs.run({ kind: "session", home: adopted.copy.home, projectRoot: adopted.copy.realRoot });
     if (observed.kind !== "observed") throw new Error("session image damaged");
     expect(observed.changes.map(change => [path.basename(change.path), change.before && Buffer.from(change.before).toString("hex"), change.after && Buffer.from(change.after).toString("hex")])).toEqual([
       ["d1.txt", undefined, "6469726563740a"],
@@ -57,13 +67,13 @@ describe("private project copy", () => {
       ["new.txt", undefined, "6e65770a"],
       ["checkpoint.md", "6265666f72650a", "6265666f72650a61667465720a"],
     ]);
-    expect(await detectCopyChanges(adopted.copy)).toEqual({ changes: [], unsupported: [], removedDirectories: [], listings: expect.any(Map) });
+    expect(await detectCopyChanges(adopted.copy, jobs)).toEqual({ changes: [], unsupported: [], removedDirectories: [] });
     fs.unlinkSync(path.join(home, "scratch-source"));
-    expect(await runPrivateCopyJob({ kind: "session", home, projectRoot: root })).toEqual(observed);
+    expect(await jobs.run({ kind: "session", home, projectRoot: root })).toEqual(observed);
     fs.rmSync(path.join(home, "session-before"), { recursive: true });
-    expect(await runPrivateCopyJob({ kind: "session", home, projectRoot: root })).toEqual({ kind: "observed", changes: [], removedDirectories: [] });
+    expect(await jobs.run({ kind: "session", home, projectRoot: root })).toEqual({ kind: "observed", changes: [], removedDirectories: [] });
     const old = await copyOf(fs.realpathSync(createDirectory("bash-private-copy-no-image-")));
-    expect(await runPrivateCopyJob({ kind: "session", home: old.home, projectRoot: old.realRoot })).toEqual({ kind: "observed", changes: [], removedDirectories: [] });
+    expect(await jobs.run({ kind: "session", home: old.home, projectRoot: old.realRoot })).toEqual({ kind: "observed", changes: [], removedDirectories: [] });
   });
 
   it.each(["replaced", "symlink", "missing"] as const)("reports a %s before image as damaged instead of trusting its bytes", async tamper => {
@@ -72,13 +82,13 @@ describe("private project copy", () => {
     const home = path.join(scratchDir, "mutations", "one");
     fs.mkdirSync(scratchDir, { recursive: true });
     fs.writeFileSync(path.join(scratchDir, "note.md"), "before\n");
-    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, scratchDir, runGit: notGit, guard: "none" });
+    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, scratchDir, runGit: notGit, guard: "none", jobs });
     fs.writeFileSync(path.join(scratchDir, "note.md"), "after\n");
     const image = path.join(home, "session-before", "scratch", "note.md");
     fs.unlinkSync(image);
     if (tamper === "replaced") fs.writeFileSync(image, "after\n");
     if (tamper === "symlink") fs.symlinkSync(path.join(scratchDir, "note.md"), image);
-    expect(await runPrivateCopyJob({ kind: "session", home, projectRoot: root, snapshot: copy.observedSession })).toEqual({ kind: "damaged" });
+    expect(await jobs.run({ kind: "session", home, projectRoot: root, snapshot: copy.observedSession })).toEqual({ kind: "damaged" });
   });
 
   it("links wholly ignored directories and gives Git private metadata without overriding repository discovery", async () => {
@@ -116,14 +126,14 @@ describe("private project copy", () => {
     const excludesFile = path.join(createDirectory("bash-private-copy-config-"), "ignore");
     fs.writeFileSync(excludesFile, "*.log");
 
-    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit, guard: "seatbelt" });
+    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit, guard: "seatbelt", jobs });
 
     expect(commands.every((command) => command[0] === "git" && ["rev-parse", "ls-files", "config", "for-each-ref", "worktree", "init", "symbolic-ref", "update-ref", "update-index", "reflog"].some((operation) => command.includes(operation)))).toBe(true);
     expect(fs.lstatSync(path.join(copy.copyRoot, "node_modules")).isSymbolicLink()).toBe(true);
     expect(fs.realpathSync(path.join(copy.copyRoot, "node_modules"))).toBe(path.join(root, "node_modules"));
     expect(fs.lstatSync(path.join(copy.copyRoot, ".flywheel")).isSymbolicLink()).toBe(true);
     expect(fs.readFileSync(path.join(copy.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(copy.home, "git")}\n`);
-    expect([...copy.files.keys()].sort()).toEqual([".env", path.join("src", "a.ts")]);
+    expect([...recordedEntries(copy.home).files.keys()].sort()).toEqual([".env", path.join("src", "a.ts")]);
     const privateExcludes = path.join(copy.home, "exclude");
     const privateIndex = path.join(copy.home, "git", "index");
     expect(fs.readFileSync(privateIndex, "utf8")).toBe("real index");
@@ -134,7 +144,7 @@ describe("private project copy", () => {
     expect(() => seatbeltProfile(copy)).not.toThrow();
     // The deleted tree still holds its branch, so the private Git directory registers it: the worktrees directory, one tree directory, and its four files.
     expect(copy.execution).toMatchObject({ kind: "file-only-v4", baseline: { repository: { head: { kind: "symbolic", target: "refs/heads/main", object: "1".repeat(40) }, index: { count: 1 }, refs: { count: 1 } }, topology: { count: 7 } } });
-    expect(await readPrivateProjectCopy(copy.home)).toMatchObject({ kind: "recorded", copy: { git: { kind: "repository", gitDir } } });
+    expect(await readPrivateProjectCopy(copy.home, jobs)).toMatchObject({ kind: "recorded", copy: { git: { kind: "repository", gitDir } } });
     // Links are symlinks to Git, so each is ignored by exact path next to the inherited patterns.
     expect(fs.readFileSync(privateExcludes, "utf8").split("\n").sort()).toEqual(["*.log", "/.flywheel", "/node_modules"]);
 
@@ -142,7 +152,7 @@ describe("private project copy", () => {
     fs.writeFileSync(path.join(copy.copyRoot, "src", "a.ts"), "changed\n");
     fs.writeFileSync(privateIndex, "private index");
 
-    expect((await detectCopyChanges(copy)).changes.map((change) => change.path)).toEqual([path.join("src", "a.ts")]);
+    expect((await detectCopyChanges(copy, jobs)).changes.map((change) => change.path)).toEqual([path.join("src", "a.ts")]);
     expect(fs.readFileSync(path.join(root, "src", "a.ts"), "utf8")).toBe("source\n");
     expect(fs.readFileSync(path.join(gitDir, "index"), "utf8")).toBe("real index");
     // The base keeps each copied file as the copy was taken, inside the home, and leaves shared entries out.
@@ -161,8 +171,8 @@ describe("private project copy", () => {
     const ended: OwnedCommandRunner = async () => ({ ...answered(""), exitCode: null });
     const home = path.join(root, ".flywheel", "edits", "one");
 
-    await expect(takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit: timedOut, guard: "none" })).rejects.toThrow("git rev-parse timed out before it answered");
-    await expect(takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit: ended, guard: "none" })).rejects.toThrow("git rev-parse ended before it answered");
+    await expect(takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit: timedOut, guard: "none", jobs })).rejects.toThrow("git rev-parse timed out before it answered");
+    await expect(takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit: ended, guard: "none", jobs })).rejects.toThrow("git rev-parse ended before it answered");
     expect(fs.existsSync(path.join(home, "tree"))).toBe(false);
   });
 
@@ -175,7 +185,7 @@ describe("private project copy", () => {
       return { ...answered(""), exitCode: 128, stderr: "fatal: detected dubious ownership in repository\n" };
     };
 
-    await expect(takePrivateProjectCopy({ projectRoot: path.join(root, "pkg"), executionCwd: path.join(root, "pkg"), home: path.join(root, "pkg", ".flywheel", "edits", "one"), runGit: refused, guard: "none" })).rejects.toThrow("git rev-parse exited with 128 below a .git entry: fatal: detected dubious ownership");
+    await expect(takePrivateProjectCopy({ projectRoot: path.join(root, "pkg"), executionCwd: path.join(root, "pkg"), home: path.join(root, "pkg", ".flywheel", "edits", "one"), runGit: refused, guard: "none", jobs })).rejects.toThrow("git rev-parse exited with 128 below a .git entry: fatal: detected dubious ownership");
 
     const outside = fs.realpathSync(createDirectory("bash-private-copy-outside-git-"));
     fs.writeFileSync(path.join(outside, "a.txt"), "a\n");
@@ -205,17 +215,17 @@ describe("private project copy", () => {
       return answered("pkg/node_modules/\0");
     };
 
-    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit, guard: "mount-namespace" });
+    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "one"), runGit, guard: "mount-namespace", jobs });
 
     expect([...copy.shared].sort()).toEqual([".flywheel", path.join("pkg", "node_modules")]);
     expect(fs.lstatSync(path.join(copy.copyRoot, ".git")).isFile()).toBe(true);
     expect(fs.readFileSync(path.join(copy.copyRoot, ".git"), "utf8")).toBe(`gitdir: ${path.join(copy.home, "git")}\n`);
     expect(fs.lstatSync(path.join(copy.copyRoot, ".flywheel")).isDirectory()).toBe(true);
     expect(fs.readdirSync(path.join(copy.copyRoot, "pkg", "node_modules"))).toEqual([]);
-    expect([...copy.files.keys()]).toEqual([path.join("pkg", "lib", "a.ts")]);
+    expect([...recordedEntries(copy.home).files.keys()]).toEqual([path.join("pkg", "lib", "a.ts")]);
 
     fs.writeFileSync(path.join(copy.copyRoot, "pkg", "lib", "a.ts"), "changed\n");
-    expect((await detectCopyChanges(copy)).changes.map((change) => change.path)).toEqual([path.join("pkg", "lib", "a.ts")]);
+    expect((await detectCopyChanges(copy, jobs)).changes.map((change) => change.path)).toEqual([path.join("pkg", "lib", "a.ts")]);
   });
 
   it("finalizes after split-index normalization and prefix masking, before returning or writing a V4 record", async () => {
@@ -253,10 +263,10 @@ describe("private project copy", () => {
       if (command.includes("--stage")) return answered(`100644 ${"1".repeat(40)} 0\tpkg/a.txt\0`);
       return answered("");
     };
-    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit, guard: "none" });
+    const copy = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home, runGit, guard: "none", jobs });
     expect(copy.execution).toMatchObject({ kind: "file-only-v4", treeRoot: path.join(home, "tree", path.basename(top)), baseline: { repository: { index: { count: 1 } }, topology: { count: 1 } } });
-    expect([...copy.files.keys()]).toEqual(["a.txt"]);
-    expect(await readPrivateProjectCopy(home)).toMatchObject({ kind: "recorded", copy: { execution: copy.execution, files: copy.files } });
+    expect([...recordedEntries(home).files.keys()]).toEqual(["a.txt"]);
+    expect(await readPrivateProjectCopy(home, jobs)).toMatchObject({ kind: "recorded", copy: { execution: copy.execution } });
   });
 
   it("expects a file's state from before its directory was cloned, so a write racing the clone reads as a conflict, and takes the base from the copy", () => {
@@ -297,13 +307,13 @@ describe("private project copy", () => {
     expect(fs.existsSync(path.join(copyRoot, ".GIT"))).toBe(!caseInsensitive);
     const copy = { realRoot: root, copyRoot, baseRoot, ...copied };
     const request = { copyRoot, treeRoot: copyRoot, shared: copied.shared, privateGitDir: null };
-    const before = await inspectPrivateCopyTopology(request);
+    const before = await inspectPrivateCopyTopology(request, jobs);
     fs.mkdirSync(path.join(copyRoot, "nested", ".GIT"), { recursive: true });
     fs.writeFileSync(path.join(copyRoot, "nested", ".GIT", "HEAD"), "nested metadata");
     fs.writeFileSync(path.join(copyRoot, "nested", "adjacent.txt"), "edit");
-    const after = await inspectPrivateCopyTopology(request);
+    const after = await inspectPrivateCopyTopology(request, jobs);
     expect(after.count - before.count).toBe(caseInsensitive ? 1 : 0);
-    const changes = await detectCopyChanges(copy);
+    const changes = scanCopyChanges(copy);
     expect(changes.changes.map(change => change.path).sort()).toEqual([
       ...(!caseInsensitive ? [path.join("nested", ".GIT", "HEAD")] : []),
       path.join("nested", "adjacent.txt"),
@@ -317,21 +327,20 @@ describe("private project copy", () => {
     fs.writeFileSync(path.join(root, "src", "a.ts"), "one\n");
     fs.writeFileSync(path.join(root, "src", "b.ts"), "bee\n");
     const first = await copyOf(root);
-    const { listings } = await detectCopyChanges(first, first.reuse.state.base.listings);
+    await detectCopyChanges(first, jobs);
     fs.writeFileSync(path.join(root, "src", "a.ts"), "two\n");
     fs.writeFileSync(path.join(root, "src", "c.ts"), "sea\n");
-    const { state } = first.reuse;
-    const idle: ReusableCopy[] = [{ ...first.reuse, state: { ...state, tree: { ...state.tree, listings } } }];
-    const pool: PrivateCopyPool = { checkout: () => idle.pop(), launchStamp: () => undefined, release: () => "slot", close: () => undefined };
+    const idle: ReusableCopy[] = [first.reuse];
+    const pool: PrivateCopyPool = { checkout: () => idle.pop(), launchStamp: () => undefined, release: () => "slot", jobs, landing: land => land(jobs), close: async () => undefined };
 
-    const second = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "two"), runGit: notGit, guard: "none", pool });
+    const second = await takePrivateProjectCopy({ projectRoot: root, executionCwd: root, home: path.join(root, ".flywheel", "edits", "two"), runGit: notGit, guard: "none", jobs, pool });
 
     expect(second.home).toBe(first.home);
     for (const tree of [second.copyRoot, second.baseRoot]) {
       expect(["a.ts", "b.ts", "c.ts"].map(name => fs.readFileSync(path.join(tree, "src", name), "utf8"))).toEqual(["two\n", "bee\n", "sea\n"]);
     }
-    expect(sameObservedState(observeFileState(path.join(root, "src", "a.ts")), second.files.get(path.join("src", "a.ts"))!.real)).toBe(true);
-    expect(await detectCopyChanges(second, second.reuse.state.base.listings)).toMatchObject({ changes: [], unsupported: [], removedDirectories: [] });
+    expect(sameObservedState(observeFileState(path.join(root, "src", "a.ts")), recordedEntries(second.home).files.get(path.join("src", "a.ts"))!.real)).toBe(true);
+    expect(await detectCopyChanges(second, jobs)).toMatchObject({ changes: [], unsupported: [], removedDirectories: [] });
   });
 
   it("records the copy in its home when it is taken, and the record reads back as the copy its landing reads", async () => {
@@ -342,15 +351,16 @@ describe("private project copy", () => {
     fs.symlinkSync("src/a.ts", path.join(root, "alias"));
     const { scratchDir: _scratchDir, reuse: _reuse, ...copy } = await copyOf(root);
 
-    const read = await readPrivateProjectCopy(copy.home);
+    const read = await readPrivateProjectCopy(copy.home, jobs);
 
     expect(JSON.parse(fs.readFileSync(path.join(copy.home, "copy.json"), "utf8")).version).toBe(4);
     expect(copy).toMatchObject({ execution: { kind: "file-only-v4", baseline: { repository: null, topology: { count: 0 } } } });
     expect(read).toEqual({ kind: "recorded", copy });
     expect(copy.guard).toBe("none");
-    expect([...copy.links]).toEqual([["alias", path.join("src", "a.ts")]]);
+    const { files, links } = recordedEntries(copy.home);
+    expect([...links]).toEqual([["alias", path.join("src", "a.ts")]]);
     // Just written, so each file's real state is pinned by the hash of its bytes too.
-    expect([...copy.files.values()].every((file) => file.real.sha256 !== undefined)).toBe(true);
+    expect([...files.values()].every((file) => file.real.sha256 !== undefined)).toBe(true);
   });
 
   it.each([1, 2] as const)("reads a version %s record as a later release must read these bytes", async (version) => {
@@ -372,10 +382,9 @@ describe("private project copy", () => {
     }));
     const fingerprint = (identity: string) => ({ kind: "file" as const, identity, size: 7, mtimeNs: 1758800000123456789n, ctimeNs: 1758800000123456790n });
 
-    expect(await readPrivateProjectCopy(home)).toEqual({
+    expect(readPrivateCopyRecord(home)).toEqual({
       kind: "recorded",
       copy: {
-        home,
         realRoot: "/work/app",
         copyRoot: path.join(home, "tree", "app"),
         baseRoot: path.join(home, "base"),
@@ -402,7 +411,7 @@ describe("private project copy", () => {
         ...(version === 3 ? { privateGitDir: inGit ? path.join(home, "git") : null, commonDir: inGit ? path.join(home, "real-git") : null, workTrees: [] } : {}),
       });
       fs.writeFileSync(record, bytes);
-      const read = await readPrivateProjectCopy(home);
+      const read = await readPrivateProjectCopy(home, jobs);
       expect(read).toMatchObject({ kind: "recorded", copy: { execution: { kind: inGit ? "legacy-unlandable" : "legacy-non-git", version } } });
       if (read.kind === "recorded") expect("baseline" in read.copy.execution).toBe(false);
       expect(fs.readFileSync(record, "utf8")).toBe(bytes);
@@ -421,7 +430,7 @@ describe("private project copy", () => {
     ]) {
       const bytes = JSON.stringify(invalid);
       fs.writeFileSync(file, bytes);
-      expect(await readPrivateProjectCopy(copy.home)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 4" });
+      expect(await readPrivateProjectCopy(copy.home, jobs)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 4" });
       expect(fs.readFileSync(file, "utf8")).toBe(bytes);
     }
   });
@@ -431,28 +440,28 @@ describe("private project copy", () => {
     const copy = await copyOf(root);
     if (copy.execution.kind !== "file-only-v4") throw new Error("Expected a finalized copy");
     const request = { copyRoot: copy.copyRoot, treeRoot: copy.execution.treeRoot, shared: copy.shared, privateGitDir: null };
-    const baseline = await inspectPrivateCopyTopology(request);
+    const baseline = await inspectPrivateCopyTopology(request, jobs);
     const external = createDirectory("bash-copy-linked-git-");
     fs.mkdirSync(path.join(external, ".git"));
     fs.symlinkSync(external, path.join(copy.copyRoot, "linked"), "junction");
-    expect(await inspectPrivateCopyTopology(request)).toEqual(baseline);
+    expect(await inspectPrivateCopyTopology(request, jobs)).toEqual(baseline);
     const prefix = path.join(copy.copyRoot, "prefix");
     fs.mkdirSync(prefix);
     fs.writeFileSync(path.join(copy.copyRoot, ".git"), "gitdir: /outside/never-followed\n");
     const prefixed = { ...request, copyRoot: prefix };
-    const registered = await inspectPrivateCopyTopology(prefixed);
+    const registered = await inspectPrivateCopyTopology(prefixed, jobs);
     expect(registered).not.toEqual(baseline);
     fs.writeFileSync(path.join(copy.copyRoot, ".git"), "gitdir: /different/never-followed\n");
-    expect(await inspectPrivateCopyTopology(prefixed)).not.toEqual(registered);
+    expect(await inspectPrivateCopyTopology(prefixed, jobs)).not.toEqual(registered);
     fs.mkdirSync(path.join(prefix, "nested", ".git"), { recursive: true });
-    expect((await inspectPrivateCopyTopology(prefixed)).count).toBe(2);
+    expect((await inspectPrivateCopyTopology(prefixed, jobs)).count).toBe(2);
     const privateGitDir = path.join(copy.home, "git");
     fs.mkdirSync(path.join(privateGitDir, "worktrees", "new"), { recursive: true });
     fs.writeFileSync(path.join(privateGitDir, "worktrees", "new", "gitdir"), "/outside/never-followed");
-    const withWorktree = await inspectPrivateCopyTopology({ ...prefixed, privateGitDir });
+    const withWorktree = await inspectPrivateCopyTopology({ ...prefixed, privateGitDir }, jobs);
     expect(withWorktree.count).toBeGreaterThan(2);
     fs.mkdirSync(path.join(privateGitDir, "modules"));
-    expect(await inspectPrivateCopyTopology({ ...prefixed, privateGitDir })).not.toEqual(withWorktree);
+    expect(await inspectPrivateCopyTopology({ ...prefixed, privateGitDir }, jobs)).not.toEqual(withWorktree);
   });
 
   it("merges dangling loose symbolic refs with enumeration and refuses linked metadata rather than following it", async () => {
@@ -485,22 +494,22 @@ describe("private project copy", () => {
       if (command.includes("ls-files")) return answered("");
       throw new Error(`Unexpected Git call: ${command.join(" ")}`);
     };
-    const baseline = await readCopyRepositoryState(gitDir, runGit);
+    const baseline = await readCopyRepositoryState(gitDir, runGit, jobs);
     expect(baseline.refs.count).toBe(3);
     expect(baseline.stash).toEqual(baseline.refs);
     expect([...await readReftableStack(gitDir)].map(([name]) => name)).toEqual(["tables.list", "first.ref", "second.ref"]);
     fs.writeFileSync(path.join(directory, "obsolete.ref"), "ignored obsolete bytes");
-    expect(await readCopyRepositoryState(gitDir, runGit)).toEqual(baseline);
+    expect(await readCopyRepositoryState(gitDir, runGit, jobs)).toEqual(baseline);
     for (const name of ["first.ref", "second.ref"]) {
       const bytes = fs.readFileSync(path.join(directory, name));
       fs.appendFileSync(path.join(directory, name), "changed");
-      const changed = await readCopyRepositoryState(gitDir, runGit);
+      const changed = await readCopyRepositoryState(gitDir, runGit, jobs);
       expect(changed.refs).not.toEqual(baseline.refs);
       expect(changed.stash).not.toEqual(baseline.stash);
       fs.writeFileSync(path.join(directory, name), bytes);
     }
     fs.writeFileSync(list, "second.ref\nfirst.ref\n");
-    expect((await readCopyRepositoryState(gitDir, runGit)).refs).not.toEqual(baseline.refs);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).refs).not.toEqual(baseline.refs);
     fs.unlinkSync(path.join(directory, "first.ref"));
     await expect(readReftableStack(gitDir)).rejects.toThrow("ENOENT");
     fs.symlinkSync(path.join(directory, "second.ref"), path.join(directory, "first.ref"));
@@ -532,24 +541,24 @@ describe("private project copy", () => {
       captured = new Uint8Array(Buffer.concat(reversed ? entries.toReversed() : entries));
       return { ...answered("the lossy text view does not identify this path"), stdoutBytes: captured };
     };
-    const baseline = await readCopyRepositoryState(gitDir, runGit);
+    const baseline = await readCopyRepositoryState(gitDir, runGit, jobs);
     const first = Buffer.concat([Buffer.from(`100644 ${oid} 0\t`), Buffer.from([0xff])]);
     const second = Buffer.from(`100755 ${oid} 0\tother\npath`);
     const expected = createHash("sha256").update(`${first.length}:`).update(first).update(`${second.length}:`).update(second).digest("hex");
     expect(baseline).toMatchObject({ index: { count: 2, sha256: expected }, stash: { count: 2 }, refs: { count: 2 } });
     expect(captured.byteLength).toBe(0);
     reversed = true;
-    expect((await readCopyRepositoryState(gitDir, runGit)).index).toEqual(baseline.index);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).index).toEqual(baseline.index);
     pathByte = 0xfe;
-    expect((await readCopyRepositoryState(gitDir, runGit)).index).not.toEqual(baseline.index);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).index).not.toEqual(baseline.index);
     pathByte = 0xff;
     stage = 2;
-    expect((await readCopyRepositoryState(gitDir, runGit)).index).not.toEqual(baseline.index);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).index).not.toEqual(baseline.index);
     stage = 0;
     stash = stash.toReversed();
-    expect((await readCopyRepositoryState(gitDir, runGit)).stash).not.toEqual(baseline.stash);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).stash).not.toEqual(baseline.stash);
     target = "refs/heads/alias";
-    expect((await readCopyRepositoryState(gitDir, runGit)).head).not.toEqual(baseline.head);
+    expect((await readCopyRepositoryState(gitDir, runGit, jobs)).head).not.toEqual(baseline.head);
     expect(JSON.stringify(baseline).length).toBeLessThan(600);
   });
 
@@ -563,7 +572,7 @@ describe("private project copy", () => {
       if (command.includes("--verify")) return { ...answered(""), exitCode: 1 };
       return answered("");
     };
-    await expect(readCopyRepositoryState(gitDir, runGit)).rejects.toThrow(operation === "for-each-ref" ? "complete refs" : "did not finish completely");
+    await expect(readCopyRepositoryState(gitDir, runGit, jobs)).rejects.toThrow(operation === "for-each-ref" ? "complete refs" : "did not finish completely");
   });
 
   it.each([
@@ -579,25 +588,25 @@ describe("private project copy", () => {
       if (command.includes("--verify")) return { ...answered(""), exitCode: 1 };
       return answered(index);
     };
-    await expect(readCopyRepositoryState(gitDir, runGit)).rejects.toThrow(reason);
+    await expect(readCopyRepositoryState(gitDir, runGit, jobs)).rejects.toThrow(reason);
   });
 
   it("answers why it cannot read a record that is missing, of another version, or not a record, and leaves every record as it is", async () => {
     const home = createDirectory("bash-private-copy-record-unreadable-");
     const record = path.join(home, "copy.json");
-    expect(await readPrivateProjectCopy(home)).toEqual({ kind: "missing" });
+    expect(await readPrivateProjectCopy(home, jobs)).toEqual({ kind: "missing" });
 
     const later = JSON.stringify({ version: 5, realRoot: "/work/app", layout: "unknown" });
     fs.writeFileSync(record, later);
-    expect(await readPrivateProjectCopy(home)).toEqual({ kind: "unreadable", reason: "has version 5, which this build cannot read" });
+    expect(await readPrivateProjectCopy(home, jobs)).toEqual({ kind: "unreadable", reason: "has version 5, which this build cannot read" });
     expect(fs.readFileSync(record, "utf8")).toBe(later);
 
     fs.writeFileSync(record, "{ half");
-    expect(await readPrivateProjectCopy(home)).toEqual({ kind: "unreadable", reason: "is not valid JSON" });
+    expect(await readPrivateProjectCopy(home, jobs)).toEqual({ kind: "unreadable", reason: "is not valid JSON" });
     fs.writeFileSync(record, JSON.stringify({ version: 1, realRoot: "/work/app" }));
-    expect(await readPrivateProjectCopy(home)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 1" });
+    expect(await readPrivateProjectCopy(home, jobs)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 1" });
     fs.writeFileSync(record, JSON.stringify({ version: 2, realRoot: "/work/app" }));
-    expect(await readPrivateProjectCopy(home)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 2" });
+    expect(await readPrivateProjectCopy(home, jobs)).toEqual({ kind: "unreadable", reason: "does not have the shape of version 2" });
     expect(fs.existsSync(record)).toBe(true);
   });
 
@@ -611,7 +620,7 @@ describe("private project copy", () => {
     fs.writeFileSync(path.join(copy.copyRoot, "grown.bin"), grown);
     fs.rmSync(path.join(copy.copyRoot, "removed.bin"));
 
-    const { changes, unsupported } = await detectCopyChanges(copy);
+    const { changes, unsupported } = await detectCopyChanges(copy, jobs);
 
     expect(unsupported).toEqual([]);
     expect(changes.map((change) => [change.path, change.after?.byteLength, change.expected.kind])).toEqual([["grown.bin", large, "file"], ["removed.bin", undefined, "file"]]);
@@ -639,7 +648,7 @@ describe("private project copy", () => {
     fs.mkdirSync(inCopy("escape"));
     fs.writeFileSync(path.join(inCopy("escape"), "planted.txt"), "outside\n");
 
-    const { changes, unsupported } = await detectCopyChanges(copy);
+    const { changes, unsupported } = await detectCopyChanges(copy, jobs);
 
     expect(changes.map((change) => [change.path, change.mode])).toEqual([["both.txt", undefined]]);
     const permissions = process.platform === "win32" ? [] : [{ path: "both.txt", reason: "permissions changed" }, { path: "chmod.txt", reason: "permissions changed" }];

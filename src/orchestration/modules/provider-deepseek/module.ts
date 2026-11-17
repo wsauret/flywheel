@@ -58,10 +58,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const deepseekModule = {
   id: "provider-deepseek",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "deepseek", value: { definition, createClient, usageReader: createDeepSeekUsageReader() } },
     { domain: "settings", id: "provider-deepseek", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow DeepSeek models through an API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

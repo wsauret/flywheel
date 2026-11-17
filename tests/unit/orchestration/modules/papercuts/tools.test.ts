@@ -11,6 +11,7 @@ import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-st
 import { papercutDisposeDefinition, papercutLogDefinition } from "../../../../../src/orchestration/modules/papercuts/tools.js"
 import { createPapercutDispositionWriter, type PapercutDispositionWriter } from "../../../../../src/orchestration/modules/papercuts/disposition-writer.js"
 import type { PapercutRecordedFact } from "../../../../../src/orchestration/modules/papercuts/facts.js"
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 
 const directories: string[] = []
 const openStores: Array<{ close(): void }> = []
@@ -25,7 +26,7 @@ afterEach(() => {
 interface ContextOverrides { readonly [key: string]: unknown }
 
 function context(overrides: ContextOverrides = {}) {
-  return {
+  return dispatchedToolContext({
     executionCwd: "/project",
     userDataRoot: "/scratch/test-account", projectRoot: "/project",
     artifactScopeId: "session-1",
@@ -36,7 +37,7 @@ function context(overrides: ContextOverrides = {}) {
     toolUseId: "tool-1",
     parentToolUseId: "parent-tool-1",
     ...overrides,
-  }
+  })
 }
 
 function recordedFact(observation = "The search tool omitted a request-shaped fixture lookup."): PapercutRecordedFact {

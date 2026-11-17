@@ -48,9 +48,7 @@ function credentialVocabulary(): CredentialVocabulary {
   const contributions = modules
     .flatMap((module) => module.contributions.map((contribution) => ({ ...contribution, module: module.id })))
     .toSorted((left, right) => left.id.localeCompare(right.id))
-  // A composition admits only an available module's provider definition.
-  const available = new Set(modules.filter((module) => module.availability.kind === "available").map((module) => module.id))
-  const definitions = contributions.flatMap((contribution) => contribution.domain === "providers" && available.has(contribution.module) ? [contribution.value.definition] : [])
+  const definitions = contributions.flatMap((contribution) => contribution.domain === "providers" ? [contribution.value.definition] : [])
   vocabulary = { generation, contributions, selection: createAccessProviderSelection(definitions), classifySlot: credentialSlotClassifier({ installedContributions: contributions }) }
   return vocabulary
 }

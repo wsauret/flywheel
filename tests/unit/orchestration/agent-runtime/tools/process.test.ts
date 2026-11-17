@@ -3,16 +3,16 @@ import { describe, expect, it } from "bun:test";
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import type { BackgroundOutputRequest } from "../../../../../src/orchestration/agent-runtime/background-work-processes.js";
 import { createProcessTool } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
-import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";
 import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
-const context: ToolContext = {
+const context = dispatchedToolContext({
   executionCwd: "/repo",
   userDataRoot: "/repo/.test-account", projectRoot: "/repo",
   artifactScopeId: "process-test",
   retrievalSessionId: "process-test",
-};
+});
 
 function deferredTask(): PromiseWithResolvers<BackgroundWorkResult> {
   return Promise.withResolvers<BackgroundWorkResult>();

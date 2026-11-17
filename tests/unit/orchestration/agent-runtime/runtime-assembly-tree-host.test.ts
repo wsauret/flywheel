@@ -4,6 +4,7 @@ import type { ContentBlock, ConversationMessage, ProviderSessionLifetime } from 
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
 import { seedAgentLoopTurn } from "../../../../src/orchestration/agent-runtime/agent-loop-history.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
@@ -22,7 +23,7 @@ describe("side calls of a chat tree", () => {
     { kind: "subagent-failure-summary", prompt: { kind: "literal", systemPrompt: "summarize" } },
     { kind: "chat-learning-review", review: { reviewRunId: "review" } },
   ]
-  async function hosted(purpose: AgentOptions["purpose"], override: Partial<AgentOptions> = {}) {
+  async function hosted(purpose: AgentOptions["purpose"], override: AgentOptionsOverride = {}) {
     const scope = Effect.runSync(Scope.make())
     let lifetime: ProviderSessionLifetime | undefined
     try {
@@ -62,7 +63,7 @@ describe("side calls of a chat tree", () => {
 describe("prompt cache of a run", () => {
   const ROOT = "root-chat"
   /** An agent with a durable conversation of its own, in the session tree rooted at ROOT. */
-  const treeAgent = (purpose: AgentOptions["purpose"]): Partial<AgentOptions> => ({
+  const treeAgent = (purpose: AgentOptions["purpose"]): AgentOptionsOverride => ({
     purpose,
     conversation: {
       kind: "durable-tree", sessionId: "agent-session", conversationId: "agent-conversation", priorMessages: [{ kind: "user", content: "task", origin: "system" }],

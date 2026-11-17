@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
 
-import { captureOwnedSecret, runOwnedCommand, MAX_SECRET_BYTES } from "../../../src/infra/owned-command.js"
+import { captureOwnedSecret, runOwnedCommand } from "../../../src/infra/owned-command.js"
 import { MAX_OUTPUT_BYTES } from "../../../src/infra/bounded-stream.js"
 import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/owned-subprocess.js"
 import type { OwnedLaunchOptions } from "../../../src/infra/owned-subprocess-backend.js"
@@ -145,7 +145,7 @@ describe("captureOwnedSecret", () => {
   })
 
   test("refuses a helper that printed more than a credential may be, instead of returning a truncated key", async () => {
-    const scope = fakeScope({ stdoutChunks: [new Uint8Array(MAX_SECRET_BYTES + 1).fill(0x6b)] })
+    const scope = fakeScope({ stdoutChunks: [new Uint8Array(64 * 1_024 + 1).fill(0x6b)] })
 
     const result = await captureOwnedSecret(scope, ["sh", "-c", "print-keyring"])
 

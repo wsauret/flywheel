@@ -1,7 +1,6 @@
 import { existsSync, statSync } from "node:fs"
 import { Schema } from "effect"
 import type { Socket } from "bun"
-import { releaseMeasurementNow } from "../../../src/infra/startup-trace.js"
 import type { RetainedHeapSample } from "../scenarios/scenario-context.js"
 import { withTimeout } from "./isolated-serve.js"
 
@@ -14,6 +13,14 @@ const Reply = Schema.Struct({
   })),
 })
 type InspectorReply = typeof Reply.Type
+
+/** The clock of the release memory samples that the measured processes
+ *  write: a fixed epoch plus a monotonic clock, so the harness and every
+ *  executor share interval bounds. Bun's hrtime and nanoseconds clocks start
+ *  anew in each process. */
+export function releaseMeasurementNow(): number {
+  return performance.timeOrigin + performance.now()
+}
 interface Connection {
   buffer: Buffer
   next: number

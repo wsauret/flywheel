@@ -10,7 +10,7 @@ import { createBashDefinition } from "../../../../../src/orchestration/agent-run
 
 const bashDefinition = createBashDefinition();
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createModulePolicy } from "../../../../../src/orchestration/config/module-policy.js";
+import { startModulePolicy, type ModulePolicy } from "../../../../../src/orchestration/config/module-policy.js";
 import type { PersistentProcessRecord } from "../../../../../src/infra/persistent-process-manager.js";
 import { dispatchTool, makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, type OwnedExit } from "./_bash-fixtures.js";
 import { capabilityAccessHolding, makeContext, testGrant } from "./_fixtures.js";
@@ -362,13 +362,13 @@ describe("bash tool: background commands under capability policy", () => {
    *  and a mid-flight disable all behave as they do in production. */
   async function withPolicy(
     moduleIds: string,
-    run: (policy: Awaited<ReturnType<typeof createModulePolicy>>, dir: string) => Promise<void>,
+    run: (policy: ModulePolicy, dir: string) => Promise<void>,
   ): Promise<void> {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-tools-bg-policy-"));
     try {
       const configPath = path.join(dir, "flywheel.toml");
       await Bun.write(configPath, `modules = ${moduleIds}\n`);
-      await run(await createModulePolicy({ configPath }), dir);
+      await run((await startModulePolicy({ configPath })).policy, dir);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

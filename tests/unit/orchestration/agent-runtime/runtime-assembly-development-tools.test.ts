@@ -11,6 +11,7 @@ import { createAgentRuntime } from "../../../../src/orchestration/agent-runtime/
 import type { StreamingEditValidationService } from "../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
 import type { GitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import type { RequestProviderRuntime, RequestToolSurfaceOwner } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
 import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testDirectories } from "../../../helpers/directories.js"
@@ -38,7 +39,7 @@ import { assembledRuntime, CALL_NO_TOOLS, modelClient, providerRuntime } from ".
 const codeModeService = codeModeServices()
 const checkpointTestPersistence = checkpointTestPersistences()
 
-async function assembledSurface(promptKind: PromptKind, override: Partial<AgentOptions> = {}) {
+async function assembledSurface(promptKind: PromptKind, override: AgentOptionsOverride = {}) {
   const assembled = await assembledRuntime(promptKind, override)
   if (!("resolve" in assembled.tools) || typeof assembled.tools.resolve !== "function") throw new Error("expected request tool surface owner")
   const surface: RequestToolSurfaceOwner = assembled.tools
@@ -475,7 +476,7 @@ describe("development tool runtime assembly", () => {
   it("never advertises benchmark from the shipped catalog, even with the launch surfaces a benchmark needs", async () => {
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }))
     const foregroundBashHold = createForegroundBashHoldController(() => {})
-    const benchmarkHost: Partial<RunnableAgentOptions> = {
+    const benchmarkHost: AgentOptionsOverride<RunnableAgentOptions> = {
       runtimeSurfaces: {
         launcher: refusingLauncher,
         background,

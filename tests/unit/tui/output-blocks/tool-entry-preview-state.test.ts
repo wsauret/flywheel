@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { TextAttributes } from "@opentui/core"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../src/infra/output-blocks.js"
-import { resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
+import { resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry.js"
 import {
   getToolContentPreview,
   nextToolEntryToggleState,
@@ -27,7 +27,7 @@ describe("tool entry preview state", () => {
       kind: "tool",
       id: "skill-save",
       name: "skill_manage",
-      presentation: resolveToolPresentation("skill_manage", { action: "save", name: "snowflake-cli-query" }, CWD),
+      presentation: resolveToolRowPresentation("skill_manage", { action: "save", name: "snowflake-cli-query" }, CWD).presentation,
       timestamp: Date.now(),
       ...outcome,
     }, { interrupted })
@@ -51,7 +51,7 @@ describe("tool entry preview state", () => {
       kind: "tool",
       id: "memory-failed",
       name: "memory",
-      presentation: resolveToolPresentation("memory", { action: "add", title: "Use Bun for project scripts" }, CWD),
+      presentation: resolveToolRowPresentation("memory", { action: "add", title: "Use Bun for project scripts" }, CWD).presentation,
       status: "error",
       errorMessage: "Memory limit reached",
       timestamp: Date.now(),
@@ -72,7 +72,7 @@ describe("tool entry preview state", () => {
       kind: "tool",
       id: "skill-load-blocked",
       name: "skill",
-      presentation: resolveToolPresentation("skill", { action: "load", skill_id: "implementation" }, CWD),
+      presentation: resolveToolRowPresentation("skill", { action: "load", skill_id: "implementation" }, CWD).presentation,
       status: "blocked",
       statusMessage: "Waiting on approval",
       timestamp: Date.now(),

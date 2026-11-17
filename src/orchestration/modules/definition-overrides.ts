@@ -45,7 +45,6 @@ const definitionOverrides = {
 export const definitionOverridesModule = {
   id: "definition-overrides",
   dependencies: [],
-  availability: { kind: "available" },
   runtime: { handle: definitionOverridesRuntime, create: (services) => services.definitions.definitionOverrides },
   protocol: moduleProtocol({ contract: definitionOverridesProtocol, create: createDefinitionOverridesProtocol }),
   contributions: [
@@ -59,6 +58,4 @@ export const definitionOverridesModule = {
     { domain: "tools", id: "definition_overrides", value: { kind: "tool", name: "definition_overrides", declaration: definitionOverrides } },
     { domain: "settings", id: "definition-overrides", value: { control: "binary", group: "Tools", label: "Definition overrides", description: "Let agents review upstream updates to overridden definitions" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

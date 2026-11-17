@@ -21,6 +21,7 @@ import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type ConversationMes
 import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "./tools/_fixtures.js"
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 const tempDir = temporaryDirectories()
 
@@ -167,7 +168,7 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
   })))
   const models = initialSurface.tools.get("models")
   if (!models) throw new Error("The assembled runtime must expose live model inspection")
-  const catalog = await models.execute({}, { executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "selection-test", retrievalSessionId: "selection-test" })
+  const catalog = await models.execute({}, dispatchedToolContext({ executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "selection-test", retrievalSessionId: "selection-test" }))
   if (typeof catalog.content !== "string") throw new Error("models must return JSON text")
   expect(JSON.parse(catalog.content).models.rows.map((row: unknown[]) => row[0])).toEqual(["claude-haiku-4.5"])
 })

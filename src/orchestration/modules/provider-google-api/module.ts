@@ -91,10 +91,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const googleApiModule = {
   id: "provider-google-api",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "google_api", value: { definition, createClient } },
     { domain: "settings", id: "provider-google-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Google models through an API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

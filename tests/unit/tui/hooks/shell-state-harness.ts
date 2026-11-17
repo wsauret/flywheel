@@ -14,9 +14,9 @@ import { createShippedOutput } from "../../../../src/orchestration/app-service/s
 import { outputCursor } from "../../../../src/protocol/output-protocol-types"
 import { createBudgetProtocolProjection } from "../../../../src/orchestration/app-service/budget-protocol-projection"
 import { createQuestionProtocolProjection } from "../../../../src/orchestration/app-service/question-protocol-projection"
-import { createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection"
-import { projectRoleAssignments } from "../../../../src/orchestration/app-service/role-assignment-projection"
-import { effectiveRoleAssignments } from "../../../../src/orchestration/config/session-role-resolver"
+import { composeRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection"
+import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership"
+import { roleCapture } from "../../../helpers/role-capture.js"
 import { createStatusProjection } from "../../../../src/orchestration/app-service/status-projection"
 import { createFlywheelAppService } from "../../../../src/orchestration/app-service/app-service"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
@@ -231,10 +231,11 @@ export function buildAppService(sessionStore: ReturnType<typeof createSessionSto
     statusProjection,
     budgetProjection,
     questionProjection,
-    roleProjection: createRoleProtocolProjection({ manager, publish: bus.publish, readRoles: async (id) => {
-      const snapshot = (await manager.read(id))?.roleAssignments
-      return snapshot ? { assignments: projectRoleAssignments(effectiveRoleAssignments(snapshot)) } : null
-    } }),
+    roleProjection: composeRoleProtocolProjection(createRuntimeOwnership(() => {}), {
+      manager, publish: bus.publish, bus, reader, userDataRoot: "/scratch",
+      capture: async () => roleCapture(["gpt-5.5", "gpt-6"]), definitions: { personas: () => new Map() },
+      onStored: () => () => {}, onProfilesChanged: () => async () => {},
+    }),
     authStatusProjection: createAuthStatusProjection({
       initialProfile: {
         id: "default", persistedId: "default", displayName: "Default", retirements: {},

@@ -8,16 +8,20 @@ import { createMutationAdmission } from "../../../../src/orchestration/app-servi
 import { serveProjectExecutorLifecycle } from "../../../../src/orchestration/app-service/project-executor-lifecycle.js"
 import { projectExecutorReattachDelayMs, PROJECT_EXECUTOR_REATTACH_DEADLINE_MS } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
 import { createReplacementReport, type ReplacementBlocker } from "../../../../src/orchestration/app-service/replacement-blockers.js"
-import { createProcessorClaims, type ProcessorClaims } from "../../../../src/orchestration/agent-runtime/tools/processor-claims.js"
 import { makeMockOwnedProcess } from "../agent-runtime/tools/_bash-fixtures.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
+import { freshProcessorClaims } from "../../../helpers/processor-claims.js"
 
 const temporary = temporaryDirectories()
 
 type ProjectExecutorLifecycleHandlers = Parameters<typeof serveProjectExecutorLifecycle>[0]["handlers"]
+type ExecutorProcessor = Parameters<typeof serveProjectExecutorLifecycle>[0]["processor"]
+
+/** An executor that has launched no shell container. */
+const NO_CONTAINERS: ExecutorProcessor = { claims: () => [], onClaimsChanged: () => () => {}, applyHolds: () => {} }
 
 /** The executor's end of the lifecycle channel, with the account's side as a list. */
-function lifecycleFixture(handlers: Partial<ProjectExecutorLifecycleHandlers> = {}, processor: ProcessorClaims = createProcessorClaims()) {
+function lifecycleFixture(handlers: Partial<ProjectExecutorLifecycleHandlers> = {}, processor: ExecutorProcessor = NO_CONTAINERS) {
   const sent: unknown[] = []
   const ended: string[] = []
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message over the executor internal process channel
@@ -183,7 +187,7 @@ describe("executor lifecycle commands", () => {
 
 describe("executor processor admission messages", () => {
   test("the whole claimed set is sent at each change and again at each reattach, and a held set from the account reaches the claims", async () => {
-    const claims = createProcessorClaims()
+    const claims = await freshProcessorClaims()
     const executor = lifecycleFixture({}, claims)
     const exit = Promise.withResolvers<{ code: number; signal: null; statusOf: "payload"; ownership: "surrendered" }>()
     claims.claim(makeMockOwnedProcess({ token: "owned:a", pid: 41, exited: exit.promise }), { order: 10, exempt: true, sessionId: "s-1", toolUseId: "toolu_a" })

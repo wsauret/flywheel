@@ -82,10 +82,8 @@ const createAffordability: ProviderAffordabilityFactory = (connection) => {
 export const openrouterModule = {
   id: "provider-openrouter",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "openrouter", value: { definition, createClient, affordability: createAffordability } },
     { domain: "settings", id: "provider-openrouter", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow models through an OpenRouter API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

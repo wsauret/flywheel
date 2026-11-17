@@ -167,9 +167,3 @@ export function pinHeldProjection(reader: AsyncEventReadSurface, key: string, op
 export function releaseHeldProjection(reader: AsyncEventReadSurface, key: string): void {
   heldByReader.get(reader)?.get(familyOf(key))?.delete(key)
 }
-
-/** Drops everything held for a reader. For a caller that knows its reader is
- *  finished, and for tests that assert on fold counts. */
-export function releaseHeldProjections(reader: AsyncEventReadSurface): void {
-  heldByReader.delete(reader)
-}

@@ -7,7 +7,6 @@ import { RouteUnavailableError } from "../../../../src/orchestration/agent-runti
 import { classifyResponseFailed } from "../../../../src/orchestration/agent-runtime/llm/openai-helpers.js"
 import type { AgentFailureReason, AgentRunResult } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../../src/orchestration/agent-runtime/unattended-recovery.js"
-import { WALL_CLOCK_CHECK_MS } from "../../../../src/infra/wall-clock-sleep.js"
 import { capacityWaitAuthority, registerCapacityWaits, type CapacityWaitAuthority } from "../../../../src/orchestration/session/capacity-wait.js"
 import { EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
@@ -19,6 +18,8 @@ import { chain, fakeAvailability, preparedRequest } from "./llm/_provider-chain-
 const NOW = Date.parse("2026-10-10T12:00:00.000Z")
 const HOUR = 3_600_000
 const PAUSES = [5_000, 10_000, 20_000, 40_000, 80_000, 160_000]
+/** A wall-clock wait looks at the clock once a minute. */
+const WALL_CLOCK_CHECK_MS = 60_000
 /** The timers one wait of `ms` runs: one per wall-clock check. */
 const chunks = (ms: number): number[] => Array.from({ length: Math.ceil(ms / WALL_CLOCK_CHECK_MS) }, (_, index) => Math.min(WALL_CLOCK_CHECK_MS, ms - index * WALL_CLOCK_CHECK_MS))
 

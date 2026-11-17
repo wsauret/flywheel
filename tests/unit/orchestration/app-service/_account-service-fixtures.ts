@@ -4,7 +4,6 @@
 import { expect } from "bun:test"
 
 import { accountServiceRegistrationControl, createAccountServiceInstallation, type AccountServiceInstallation, type AccountServicePlatform } from "../../../../src/orchestration/app-service/account-service-installation.js"
-import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
 import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
 
 export const retired = { launchdLabel: "sh.flywl.flywheel.remote-host", systemdUnit: "flywheel-remote-host.service", windowsTask: "Flywheel Remote Host" }
@@ -16,6 +15,8 @@ export const launchdAbsent: Response = { exitCode: 113, stdout: "", stderr: "Bad
 
 export const launcher = { source: "/opt/flywheel/native/darwin-arm64/Flywheel.app", target: "/scratch/test/.flywheel/launcher/Flywheel.app", executable: "/scratch/test/.flywheel/launcher/Flywheel.app/Contents/MacOS/Flywheel", errorLog: "/scratch/test/.flywheel/launcher/serve.stderr.log" }
 export const plistPath = "/scratch/test/Library/LaunchAgents/sh.flywl.flywheel.serve.plist"
+/** Where the systemd user manager reads the installed unit of the fixture's account home. */
+export const unitPath = "/scratch/test/.config/systemd/user/flywheel-serve.service"
 export const service = "gui/1000/sh.flywl.flywheel.serve"
 export const print = ["launchctl", "print", service]
 export const helperPrint = ["launchctl", "print", `gui/1000/${SERVICE_NAMES.installed.reloadHelper}`]
@@ -209,7 +210,7 @@ export async function currentUnit(): Promise<string> {
   const active = ["systemctl", "--user", "is-active", "--quiet", SERVICE_NAMES.installed.systemdUnit]
   const setup = fixture("linux", new Map([[active.join("\0"), missing]]))
   await setup.installation.install()
-  return textOf(setup.files.get(systemdUnitPath({ accountHome: "/scratch/test", env: {}, names: SERVICE_NAMES.installed })))
+  return textOf(setup.files.get(unitPath))
 }
 
 /** The task XML a fresh Windows install hands Task Scheduler, decoded. */

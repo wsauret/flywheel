@@ -217,7 +217,6 @@ const subagent = {
 export const subagentsModule = {
   id: "subagents",
   dependencies: [],
-  availability: { kind: "available" },
   protocol: moduleProtocol({ contract: subagentsProtocol, create: createSubagentsProtocol }),
   producesBackgroundWork: true,
   runtime: { handle: subagentsRuntime, create: createSubagentsRuntime },
@@ -293,6 +292,4 @@ export const subagentsModule = {
     { domain: "config", id: subagentsConfigSection.key, value: subagentsConfigSection },
     { domain: "settings", id: "subagents", value: { control: "binary", label: "Subagents", description: "Allow agents to delegate focused work" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

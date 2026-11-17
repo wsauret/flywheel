@@ -62,9 +62,6 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
   return {
     id: `provider-custom-${entry.id}`,
     dependencies: [],
-    availability: { kind: "available" },
     contributions: [{ domain: "providers", id: entry.id, value: { definition, createClient } }],
-    observers: [],
-    gates: [],
   };
 }

@@ -96,8 +96,9 @@ export interface WorkerCallbackDeps {
    *  rest when it ends. */
   agentInputs: WorkflowAgentInputs
   attachChildProjection?: AttachChildSessionProjection
-  /** Builds the batch observers of one agent, whose notices reach only that agent. */
-  createObserverChain?: () => AgentObserverChain
+  /** Builds the batch observers of one agent, whose notices reach only that
+   *  agent, over the context percent that the agent's own session measured. */
+  createObserverChain?: (getContextPercent: () => Promise<number>) => AgentObserverChain
   sessionEventWriter: SessionFactWriter
   /** Workflow session barrier shared by every production worker and nested child. */
   applyNestedStoredFact?: AgentOptions["applyNestedStoredFact"]
@@ -269,7 +270,7 @@ export function createWorkerCallback(
       resources.emit<typeof type>(type, { sessionId, data: event.data, ...(timestamp === undefined ? {} : { timestamp }) })
     }
     const setConnectionState = (state: ConnectionState): void => { resources.projection?.lifecycle.onConnectionState?.(state) }
-    const observerChain = opts.createObserverChain?.()
+    const observerChain = opts.createObserverChain?.(async () => (await resources.contextUtilization()).percent)
     const countToolUses = createToolUseCounter(toolUseIds)
     // The agent's live entry carries the same count, so the workflow's live
     // view reads no durable tree while the agent runs.

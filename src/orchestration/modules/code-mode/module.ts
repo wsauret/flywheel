@@ -33,13 +33,10 @@ const code = {
 export const codeModeModule = {
   id: "code-mode",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: codeModeService, portable: true, create: () => createCodeModeService() },
   runtime: { handle: codeModeRuntime, create: createCodeModeRuntime },
   contributions: [
     { domain: "tools", id: "code", value: { kind: "tool", name: "code", declaration: code } },
     { domain: "settings", id: "code-mode", value: { control: "binary", group: "Tools", label: "Code mode", description: "Run supported external tools through JavaScript." } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

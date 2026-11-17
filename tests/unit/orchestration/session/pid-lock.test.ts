@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js";
+import { hostKernel, processHoldersOver } from "../../../helpers/process-holders.js";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Log } from "../../../../src/infra/log";
 import { resolveOwnerPidPath } from "../../../../src/infra/paths";
-import { bootIdentity, processStart } from "../../../../src/infra/process-container";
-import { createProcessHolders, decodeHolderText, processHolders } from "../../../../src/infra/process-holder";
+import { decodeHolderText, processHolders } from "../../../../src/infra/process-holder";
 import { isSessionOwnerGone, removeOwnerPid, writeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
 
 const sessionId = "pid-lock-test";
@@ -42,11 +42,11 @@ describe("writeOwnerPid", () => {
 
   // A bare pid is the record an earlier build writes: a reader waits while
   // that pid runs and never takes the session over.
-  it("records the pid alone while this process cannot read its own identity, and its identity once the read succeeds", () => {
+  it("records the pid alone while this process cannot read its own identity, and its identity once the read succeeds", async () => {
     let failing = true;
-    const holders = createProcessHolders({
-      start: (pid) => (pid === process.pid && failing ? { kind: "unproven" } : processStart(pid)),
-      boot: () => bootIdentity(),
+    const holders = await processHoldersOver({
+      start: (pid) => (pid === process.pid && failing ? { kind: "unproven" } : hostKernel.start(pid)),
+      boot: hostKernel.boot,
     });
     const ownIdentity = spyOn(processHolders, "own").mockImplementation(() => holders.own());
     const warn = spyOn(Log.create({ service: "process-holder" }), "warn").mockImplementation(() => {});

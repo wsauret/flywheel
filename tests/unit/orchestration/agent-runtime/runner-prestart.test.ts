@@ -25,6 +25,8 @@ import { authProviders } from "../../../helpers/auth-context.js"
 import { createSessionFactWriter } from "../chat/_chat-session-agent-runtime-fixtures.js"
 import { asModelClient } from "./_model-client.js"
 import { makeOptions } from "./_runner-options.js"
+import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { fakeAvailability, SAFE_RECHECK_MS } from "./llm/_provider-chain-harness.js"
 import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 
@@ -189,6 +191,7 @@ describe("a pre-start's request preparation", () => {
         ...testDirectories(root), model: "claude-sonnet-4.6", agentRegistry: new Map(), agentsMd: "",
         conversation: conversation(HISTORY, appended),
         sessionEventWriter: { ...writer, record: (fact) => { facts.push(fact); return record(fact) } },
+        sessionEventReader: asAsyncEventReadSurface(inMemoryEventReader([])),
         usageProfile: { profileId: "default", authorityIncarnation: "test", acquireAuthority: async () => { throw new Error("a pre-start settles no usage") } },
         lifecycle: { kind: "one-shot", onRuntimeAssembled: () => { generations += 1 } },
       })
@@ -293,7 +296,7 @@ describe("a pre-start's request preparation", () => {
   test("a capability plan answers the agent check of the next request's tool plan, which its exposure gate narrows, and sends, writes, and builds nothing", async () => {
     // The tool exposure gate of an active experiment, which omits Bash and the subagent tool from the next request.
     const gated = {
-      id: "test-exposure-gate", dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], 
+      id: "test-exposure-gate", dependencies: [], contributions: [],
       gates: [{ seam: "toolExposure", gate: () => new Map([["bash", "sealed paths"], ["subagent", "delegation"]]) }],
     } as const satisfies FirstPartyModule
     const withoutExperiments = SHIPPED_MODULES.filter((module) => module.id !== "experiments")

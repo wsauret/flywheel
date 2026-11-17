@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { AuthSettlementConflictError, disconnectProviderInstance, getAuthStatus, loginWithApiKey, logoutProvider, reconnectWithApiKey, renameProviderInstance } from "../../../../src/orchestration/auth/auth-actions.js";
+import { disconnectProviderInstance, getAuthStatus, loginWithApiKey, logoutProvider, reconnectWithApiKey, renameProviderInstance } from "../../../../src/orchestration/auth/auth-actions.js";
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js";
 import { isCredentialCollection, MeteredCredentialRecordSchema, type CredentialInstance } from "../../../../src/infra/auth/auth-store-types.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
@@ -124,7 +124,7 @@ describe("auth-actions", () => {
       throw new Error("catalog rejected");
     });
 
-    await expect(failed).rejects.toBeInstanceOf(AuthSettlementConflictError);
+    await expect(failed).rejects.toMatchObject({ name: "AuthSettlementConflictError", message: "Catalog settlement failed after the credential changed concurrently" });
     expect(Schema.decodeUnknownSync(MeteredCredentialRecordSchema)(readStore(AUTH_DIR).anthropic_api)).toMatchObject({
       key: "same-key",
       lineageId: expect.any(String),

@@ -27,7 +27,7 @@ export interface ClonedProject {
 }
 
 /** Why a clone did not produce a project, in words a person can act on. */
-export class ProjectCloneFailure extends Error {
+class ProjectCloneFailure extends Error {
   readonly _tag = "ProjectCloneFailure" as const
 }
 

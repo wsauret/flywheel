@@ -18,7 +18,7 @@ export async function createProjectExecutionRuntime(
 }
 
 /** Owns only the executor's reader, write queue, runner pool, and projections. */
-export async function createProjectExecutionKernel(
+async function createProjectExecutionKernel(
   projectRoot: string,
   state: ProjectStateClient,
   scope: RuntimeOwnership,

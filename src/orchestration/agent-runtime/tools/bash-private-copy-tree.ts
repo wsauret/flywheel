@@ -23,11 +23,11 @@
 
 import { createHash } from "node:crypto";
 import { constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, writeFileSync, type BigIntStats } from "node:fs";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState, type FileFingerprint } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
-import { cloneEntry, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type HeldListing, type MirroredFile, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
-import { PRIVATE_INDEX, writePrivateCopyRecord, type PrivateCopyRecordRead, type RecordedCopy } from "./bash-private-copy-record.js";
+import { cloneEntry, entryKind, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type EntryKind, type HeldListing, type MirroredFile, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
+import { PRIVATE_INDEX, writePrivateCopyRecord, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
 import { digestStateEntries, type RepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
 import type { SessionFolderObservation, SessionFolderSnapshot } from "./bash-session-observation.js";
 
@@ -98,6 +98,23 @@ export interface CopiedProject {
 
 export type CopiedTree = Pick<CopiedProject, "shared" | "files" | "links"> & { readonly observedSession?: SessionFolderSnapshot; readonly state: CopyTreeState; readonly tally: MirrorTally };
 
+/** A copy's entries, one per copied file and link, which only the private copy Worker holds and reads. */
+export type CopiedEntries = Pick<CopiedProject, "files" | "links">;
+
+/** What a copy job answers: the take without its mirror state and entries, which the private copy Worker holds. */
+export type TakenTree = Omit<CopiedTree, "state" | keyof CopiedEntries>;
+
+/** What a finalize job answers: the record it wrote, without the entries. */
+export type FinalizedCopy = Omit<RecordedCopy, keyof CopiedEntries>;
+
+/** What a read job answers: what it found of a copy's record, without the entries. */
+export type CopyRecordRead = { readonly kind: "recorded"; readonly copy: Omit<ReadCopy, keyof CopiedEntries> } | Exclude<PrivateCopyRecordRead, { readonly kind: "recorded" }>;
+
+/** What a scan job answers: the changes without the listings, which the private copy Worker holds. A scan asked for the
+ *  copy's topology answers it, derived from the scan's own listings; one whose topology could not be observed
+ *  completely answers none. */
+export type ScannedChanges = Omit<CopyChanges, "listings"> & { readonly topology?: StateDigest };
+
 /** One regular file the command added, changed, or deleted in its copy. `after` undefined is a deletion. */
 export interface CopyChange {
   readonly path: string;
@@ -164,20 +181,43 @@ export function removedDirectories(beforeRoot: string, afterRoot: string, files:
 
 /** One job of the private copy Worker. */
 export type PrivateCopyJob =
-  | { readonly kind: "copy"; readonly request: CopyTreeRequest }
-  | { readonly kind: "finalize"; readonly copy: Omit<RecordedCopy, "execution">; readonly home: string; readonly treeRoot: string; readonly repository: RepositoryState | null }
+  /** With `reuse`, the mirrors start from the state that the Worker holds for
+   *  the request's home; a Worker that holds none answers `dropped`. */
+  | { readonly kind: "copy"; readonly request: Omit<CopyTreeRequest, "prior">; readonly reuse: boolean }
+  /** Writes the record of the copy that the Worker took into `home`, with the entries that the Worker holds for it. */
+  | { readonly kind: "finalize"; readonly copy: Omit<RecordedCopy, "execution" | keyof CopiedEntries>; readonly home: string; readonly treeRoot: string; readonly repository: RepositoryState | null }
+  /** Drops what the Worker holds for a copy whose take failed after its copy job. */
+  | { readonly kind: "forget"; readonly home: string }
   | { readonly kind: "topology"; readonly request: CopyTopologyRequest }
   | { readonly kind: "index"; readonly bytes: Uint8Array }
-  | { readonly kind: "scan"; readonly copy: CopiedProject; readonly baseListings?: ReadonlyMap<string, HeldListing> }
+  /** Scans the copy in `home` with the entries and base listings that the
+   *  Worker holds for it, and its own listings replace the held tree
+   *  listings. A copy the Worker holds nothing of is scanned with the
+   *  entries of its record, as a later build that adopted its command scans
+   *  it. */
+  | { readonly kind: "scan"; readonly copy: Omit<CopiedProject, keyof CopiedEntries>; readonly home: string; readonly topology?: Omit<CopyTopologyRequest, "copyRoot" | "shared"> }
   | { readonly kind: "session"; readonly home: string; readonly projectRoot: string | undefined; readonly snapshot?: SessionFolderSnapshot }
   | { readonly kind: "read"; readonly home: string };
 
-/** A copy job answers with its `CopiedTree`, a scan job with its
- *  `CopyChanges`, and a read job with what it found of the copy's record. */
+/** Each job answers `done` with its value or `failed`. A copy job of a reused
+ *  copy whose state the Worker no longer holds answers `dropped`: an expected
+ *  miss, after which the take takes a new copy. */
 export type PrivateCopyAnswer =
-  | { readonly kind: "done"; readonly value: CopiedTree | CopyChanges | PrivateCopyRecordRead | RecordedCopy | StateDigest | SessionFolderObservation }
+  | { readonly kind: "done"; readonly value: TakenTree | ScannedChanges | CopyRecordRead | FinalizedCopy | StateDigest | SessionFolderObservation | undefined }
   | { readonly kind: "git-ready" }
+  | { readonly kind: "dropped" }
   | { readonly kind: "failed"; readonly message: string };
+
+/** A job as its owner sends it to the private copy Worker, and each answer the Worker sends back, by the job's id. */
+export interface PrivateCopyRequest {
+  readonly id: number;
+  readonly job: PrivateCopyJob;
+}
+
+export interface PrivateCopyReply {
+  readonly id: number;
+  readonly answer: PrivateCopyAnswer;
+}
 
 /** Clones the project into `request.copyRoot`, then the copy into
  *  `request.baseRoot`, and writes the private Git index and excludes file.
@@ -235,9 +275,12 @@ export interface CopyTopologyRequest {
   readonly privateGitDir: string | null;
 }
 
+/** Each directory's entries, by absolute path, where a caller already knows them: `undefined` reads the directory. */
+type KnownListing = (directory: string) => ReadonlyMap<string, EntryKind> | undefined;
+
 /** Binds copy-local Git registrations without following a shared entry, symlink, or gitdir target.
- * Throws if a complete bounded observation cannot be made. */
-export function observeCopyTopology(request: CopyTopologyRequest): StateDigest {
+ * `known` stands in for reading the directories it answers. Throws if a complete bounded observation cannot be made. */
+export function observeCopyTopology(request: CopyTopologyRequest, known: KnownListing = () => undefined): StateDigest {
   let bytes = 0;
   let count = 0;
   const bounded = (entry: Buffer): Buffer => {
@@ -263,15 +306,16 @@ export function observeCopyTopology(request: CopyTopologyRequest): StateDigest {
   const shared = new Set(request.shared.map(path => join(request.copyRoot, path)));
   function* tree(directory: string, depth: number): Generator<Buffer> {
     if (depth > 256 || ++count > 100_000) throw new Error("Copy repository topology exceeds the inspection bound");
-    if (!lstatSync(directory).isDirectory()) throw new Error("Copy tree root is not a directory");
-    for (const name of readdirSync(directory).sort()) {
+    const listing = known(directory) ?? readListingOf(directory);
+    // An entry's kind comes from its directory listing, which never follows a link, so only directories are read again.
+    for (const name of [...listing.keys()].sort((a, b) => a < b ? -1 : a > b ? 1 : 0)) {
       const path = join(directory, name);
+      const isDirectory = listing.get(name) === "directory";
       if (isGitMetadata(directory, name)) {
-        const stats = lstatSync(path);
         // Existing nested repositories are registrations, not another file tree to inspect.
-        if (stats.isDirectory()) yield bounded(Buffer.from(JSON.stringify([relative(request.treeRoot, path), "directory"])));
+        if (isDirectory) yield bounded(Buffer.from(JSON.stringify([relative(request.treeRoot, path), "directory"])));
         else yield* metadata(path, relative(request.treeRoot, path), depth + 1);
-      } else if (!shared.has(path) && lstatSync(path).isDirectory()) yield* tree(path, depth + 1);
+      } else if (!shared.has(path) && isDirectory) yield* tree(path, depth + 1);
     }
   }
   function* entries(): Generator<Buffer> {
@@ -283,12 +327,52 @@ export function observeCopyTopology(request: CopyTopologyRequest): StateDigest {
   return digestStateEntries(entries());
 }
 
-/** Writes V4 only after parent-side Git setup, preserving the original file observation maps. */
-export function finalizePrivateCopy(job: Extract<PrivateCopyJob, { readonly kind: "finalize" }>): RecordedCopy {
-  const topology = observeCopyTopology({ copyRoot: job.copy.copyRoot, treeRoot: job.treeRoot, shared: job.copy.shared, privateGitDir: job.copy.git.kind === "repository" ? job.copy.git.privateGitDir : null });
-  const copy: RecordedCopy = { ...job.copy, execution: { kind: "file-only-v4", treeRoot: job.treeRoot, baseline: { repository: job.repository, topology } } };
-  writePrivateCopyRecord(job.home, copy);
+/** The topology of the copy that `listings` were read from, as `observeCopyTopology` observes it: the scan's fresh
+ *  listing of each copy directory stands in for reading it again, and a directory above the copy root is read. */
+export function scannedTopology(request: CopyTopologyRequest, listings: ReadonlyMap<string, HeldListing>): StateDigest {
+  return observeCopyTopology(request, directory => {
+    const inCopy = relative(request.copyRoot, directory);
+    return inCopy.startsWith("..") || isAbsolute(inCopy) ? undefined : listings.get(inCopy)?.entries;
+  });
+}
+
+/** Writes V4 only after parent-side Git setup, with the take's file observation maps (`entries`). Answers the record without them.
+ *  The topology baseline reads the copy's directories from `mirrored`, the state the take's mirror left in the copy,
+ *  and reads the rest for real: the copy root (which holds the generated `.git` pointer), the tree above it, each Git
+ *  metadata entry, and the private Git directory. Parent-side Git setup writes only the private Git directory. */
+export function finalizePrivateCopy(job: Extract<PrivateCopyJob, { readonly kind: "finalize" }>, entries: CopiedEntries, mirrored: MirrorState): FinalizedCopy {
+  const { copyRoot } = job.copy;
+  const listings = mirroredListings(copyRoot, mirrored);
+  const topology = observeCopyTopology({ copyRoot, treeRoot: job.treeRoot, shared: job.copy.shared, privateGitDir: job.copy.git.kind === "repository" ? job.copy.git.privateGitDir : null },
+    directory => directory === copyRoot ? undefined : listings.get(directory));
+  const copy: FinalizedCopy = { ...job.copy, execution: { kind: "file-only-v4", treeRoot: job.treeRoot, baseline: { repository: job.repository, topology } } };
+  writePrivateCopyRecord(job.home, { ...copy, ...entries });
   return copy;
+}
+
+/** The entries of each directory that a mirror left below `root`, by absolute path. */
+function mirroredListings(root: string, state: MirrorState): Map<string, Map<string, EntryKind>> {
+  const listings = new Map<string, Map<string, EntryKind>>();
+  const entriesOf = (directory: string) => {
+    let entries = listings.get(directory);
+    if (!entries) listings.set(directory, entries = new Map());
+    return entries;
+  };
+  const add = (path: string, kind: EntryKind) => { entriesOf(join(root, dirname(path))).set(path.slice(path.lastIndexOf(sep) + 1), kind); };
+  for (const directory of state.directories) {
+    entriesOf(join(root, directory));
+    if (directory !== "") add(directory, "directory");
+  }
+  for (const path of state.files.keys()) add(path, "file");
+  for (const path of state.links.keys()) add(path, "link");
+  for (const [path, placeholder] of state.shared) add(path, placeholder.kind);
+  return listings;
+}
+
+/** A directory's entries, read for real. Throws when `directory` is not a directory. */
+function readListingOf(directory: string): ReadonlyMap<string, EntryKind> {
+  if (!lstatSync(directory).isDirectory()) throw new Error("Copy tree root is not a directory");
+  return new Map(readdirSync(directory, { withFileTypes: true }).map(entry => [entry.name, entryKind(entry)]));
 }
 
 /** The private index starts as a copy of the real one; a repository with no index

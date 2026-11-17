@@ -103,12 +103,9 @@ const allowance: ProviderAllowanceFactory = ({ candidates, usage, settings }) =>
 export const githubCopilotModule = {
   id: "provider-github-copilot",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "github_copilot", value: { definition, createClient, usageReader: createCopilotUsageReader(), affordability: createAffordability, allowance } },
     { domain: "settings", id: "provider-github-copilot", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow models through a GitHub Copilot subscription" } },
     { domain: "settings", id: `provider-github-copilot:${MONTHLY_CREDIT_CAP.key}`, value: MONTHLY_CREDIT_CAP },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

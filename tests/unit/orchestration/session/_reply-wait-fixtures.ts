@@ -2,7 +2,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import type { ChatInput } from "../../../../src/infra/chat-input"
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/message-session"
-import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
+import type { DispatchedToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { holdQueuedBackgroundNotification, type HeldBackgroundNotification } from "../../../../src/orchestration/session/conversation/queued-background-notifications"
 import { dropQueuedUserInput } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
@@ -14,6 +14,7 @@ import { createSessionMessaging, type SessionMessaging } from "../../../../src/o
 import { workflowParentBinding } from "../../../helpers/workflow-parent"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 export const REPLY_WAIT_KIND = "session.reply_wait"
 export const unregisters: (() => void)[] = []
@@ -122,8 +123,8 @@ export function runChild(tasks: BackgroundWorkRegistry, childSessionId: string):
   })
 }
 
-function context(sessionId: string, toolUseId: string): ToolContext {
-  return {
+function context(sessionId: string, toolUseId: string): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: "/scratch",
     userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
     artifactScopeId: sessionId,
@@ -131,7 +132,7 @@ function context(sessionId: string, toolUseId: string): ToolContext {
     sessionId,
     conversationId: `${sessionId}-conversation`,
     toolUseId,
-  }
+  })
 }
 
 export async function message(messaging: SessionMessaging, from: { readonly id: string; readonly tasks?: BackgroundWorkRegistry }, toolUseId: string, input: { readonly to: string; readonly text?: string; readonly wait?: boolean }) {

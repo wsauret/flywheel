@@ -136,21 +136,29 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     attachProjection: input.attachChildProjection,
   })
   const sessionMessaging = deps.childSessions ? createSessionMessaging({ manager: input.manager, projectionReader: input.projectionReader, eventWriter: input.eventWriter }, deps.childSessions) : undefined
-  const observerContext = {
-    getBudgetInfo: async () => {
-      const { max_invocations, max_tokens } = toBudgetLimits(deps.captureRuntimeConfig().budget ?? DEFAULT_BUDGET)
-      if (max_invocations === 0 && max_tokens === null) return null
-      return {
-        remainingCalls: max_invocations > 0 ? Math.max(0, max_invocations - await infra.budgetStore.getInvocationsUsed()) : Number.POSITIVE_INFINITY,
-        remainingTokens: max_tokens !== null ? Math.max(0, max_tokens - await infra.budgetStore.getTokensUsed()) : Number.POSITIVE_INFINITY,
-      }
+  // The budget gate and the budget notice read one usage: the attempts that
+  // the workflow's own store counts, and the tokens of every member, which
+  // each member records in its own session.
+  const budgetUsage = {
+    getInvocationsUsed: () => infra.budgetStore.getInvocationsUsed(),
+    getTokensUsed: async () => {
+      const { policy } = await readWorkflowUsage(input.projectionReader, sessionId)
+      return { reported: policy.totalInputTokens + policy.totalOutputTokens, unmeasuredRequests: policy.unmeasuredRequests }
     },
-    getContextPercent: async () => (await infra.budgetStore.getContextUtilization()).percent,
+  }
+  const getBudgetInfo = async () => {
+    const { max_invocations, max_tokens } = toBudgetLimits(deps.captureRuntimeConfig().budget ?? DEFAULT_BUDGET)
+    if (max_invocations === 0 && max_tokens === null) return null
+    return {
+      remainingCalls: max_invocations > 0 ? Math.max(0, max_invocations - await budgetUsage.getInvocationsUsed()) : Number.POSITIVE_INFINITY,
+      remainingTokens: max_tokens !== null ? Math.max(0, max_tokens - (await budgetUsage.getTokensUsed()).reported) : Number.POSITIVE_INFINITY,
+    }
   }
   // The chat seam belongs to the chat runner; the workflow host composes only
-  // the batch observers declared for its own seam. Each agent gets its own.
-  const createAgentObserverChain = () => createObserverChain(moduleSelection.observers.flatMap((declaration) =>
-    declaration.seam === "workflow" ? [declaration.observer(observerContext)] : []))
+  // the batch observers declared for its own seam. Each agent gets its own,
+  // whose context notice reads the agent's own context.
+  const createAgentObserverChain = (getContextPercent: () => Promise<number>) => createObserverChain(moduleSelection.observers.flatMap((declaration) =>
+    declaration.seam === "workflow" ? [declaration.observer({ getBudgetInfo, getContextPercent })] : []))
   let workerCallback: ReturnType<typeof createWorkerCallback> | null = null
   const getWorkerCallback = (): ReturnType<typeof createWorkerCallback> => {
     if (workerCallback) return workerCallback
@@ -231,13 +239,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
       if (stopped) return stopped
       return await workflowBudgetRefusal({
         budget: deps.captureRuntimeConfig().budget ?? DEFAULT_BUDGET,
-        usage: {
-          getInvocationsUsed: () => infra.budgetStore.getInvocationsUsed(),
-          getTokensUsed: async () => {
-            const { policy } = await readWorkflowUsage(input.projectionReader, sessionId)
-            return { reported: policy.totalInputTokens + policy.totalOutputTokens, unmeasuredRequests: policy.unmeasuredRequests }
-          },
-        },
+        usage: budgetUsage,
         reader: input.projectionReader,
         sessionId,
       })

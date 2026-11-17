@@ -20,9 +20,9 @@ import {
   type LockOwnership,
 } from "../../../../src/infra/ownership-file-lock.js";
 import { Log } from "../../../../src/infra/log.js";
-import { bootIdentity, processStart } from "../../../../src/infra/process-container.js";
-import { createProcessHolders, processHolders } from "../../../../src/infra/process-holder.js";
+import { processHolders } from "../../../../src/infra/process-holder.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
+import { hostKernel, processHoldersOver } from "../../../helpers/process-holders.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -77,9 +77,9 @@ describe("ownership file lock", () => {
   test("a process that cannot read its own identity takes a free lock with a record naming its pid alone, and names its identity once the read succeeds", async () => {
     const lockPath = makeTmpLockPath();
     let failing = true;
-    const holders = createProcessHolders({
-      start: (pid) => (pid === process.pid && failing ? { kind: "unproven" } : processStart(pid)),
-      boot: () => bootIdentity(),
+    const holders = await processHoldersOver({
+      start: (pid) => (pid === process.pid && failing ? { kind: "unproven" } : hostKernel.start(pid)),
+      boot: hostKernel.boot,
     });
     const own = spyOn(processHolders, "own").mockImplementation(() => holders.own());
     const warn = spyOn(Log.create({ service: "process-holder" }), "warn").mockImplementation(() => {});

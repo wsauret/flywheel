@@ -5,13 +5,14 @@ import { HandoffCorrectionExhausted, fromStreamError, isAgentRuntimeError, toFai
 import { AllCandidatesExhaustedError, QuotaCoordinationError } from "../../../../src/orchestration/agent-runtime/llm/errors"
 import { ThinkingStallError } from "../../../../src/orchestration/agent-runtime/llm/thinking-stall"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types"
 import { asModelClient } from "./_model-client"
 import type { ProviderErrorCopy } from "../../../../src/infra/llm/provider-error-copy"
 import { describeAgentFailure, formatAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message"
 import { PersistenceWriteRefused } from "../../../../src/infra/event-store-types.js"
 
-function makeOptions(overrides?: Partial<AgentOptions>): AgentOptions {
+function makeOptions(overrides?: AgentOptionsOverride): AgentOptions {
   return {
     model: "claude-haiku-4-5-20251001",
     ...testDirectories("/scratch"),

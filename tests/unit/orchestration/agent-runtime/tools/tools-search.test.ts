@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import * as ripgrep from "../../../../../src/orchestration/agent-runtime/tools/ripgrep.js";
-import { handleSearchError, searchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/search.js";
+import { searchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/search.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { canonicalMutationPath } from "../../../../../src/infra/file-mutation-queue.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
@@ -596,13 +596,21 @@ describe("search tool", () => {
     }
   });
 
-  it("maps each native stop to its own narrow-your-search guidance", () => {
-    const cpu = handleSearchError(new ripgrep.SearchStoppedError("cpu-limit"), "needle", tmpDir, tmpDir);
-    const wall = handleSearchError(new ripgrep.SearchStoppedError("wall-backstop"), "needle", tmpDir, tmpDir);
+  it("maps each native stop to its own narrow-your-search guidance", async () => {
+    const stoppedAt = async (stop: ripgrep.SearchStoppedError["stop"]) => {
+      const native = spyOn(ripgrep, "grep").mockRejectedValue(new ripgrep.SearchStoppedError(stop));
+      try {
+        return await searchDefinition.execute({ pattern: "needle" }, makeContext({ executionCwd: tmpDir }));
+      } finally {
+        native.mockRestore();
+      }
+    };
+    const cpu = await stoppedAt("cpu-limit");
+    const wall = await stoppedAt("wall-backstop");
 
     expect(cpu).toEqual({ outcome: "error", content: expect.stringContaining("stopped after 30s of processing time") });
     expect(wall).toEqual({ outcome: "error", content: expect.stringContaining("stopped after 120s of waiting on file reads") });
-    const busy = handleSearchError(new ripgrep.SearchStoppedError("no-worker"), "needle", tmpDir, tmpDir);
+    const busy = await stoppedAt("no-worker");
     expect(busy).toEqual({ outcome: "error", content: expect.stringContaining("did not start: other searches kept the search capacity busy") });
   });
 

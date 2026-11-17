@@ -18,8 +18,8 @@ const log = Log.create({ service: "llm-openai-chatgpt" });
 interface StringFields { [key: string]: string }
 interface ChatGptBackendError { readonly response: Response; readonly quotaExhausted: boolean }
 
-export const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
-export const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
+const CHATGPT_SSE_ZSTD_MIN_BYTES = 1_024;
+const CHATGPT_SSE_ZSTD_MAX_BYTES = 1_048_576;
 
 /** Builds the ChatGPT backend client. `availability` is the account binding
  *  every usage header and terminal error on this transport is folded into.

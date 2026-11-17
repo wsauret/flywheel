@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import {
-  loadTreeSitterParser,
-  treeSitterWasmFile,
-} from "../../../src/infra/tree-sitter-parser.js";
+import { loadTreeSitterParser } from "../../../src/infra/tree-sitter-parser.js";
 
 describe("tree-sitter parser registry", () => {
   it("loads each semantic grammar once from the checkout, whatever native directory a parent build exports", async () => {
@@ -37,12 +34,5 @@ describe("tree-sitter parser registry", () => {
     expect(tree?.rootNode.hasError).toBe(false);
     expect(tree?.rootNode.descendantsOfType("command")).toHaveLength(3);
     tree?.delete();
-  });
-
-  it("publishes canonical packaged asset names", () => {
-    expect(treeSitterWasmFile("bash")).toBe("tree-sitter-bash.wasm");
-    expect(treeSitterWasmFile("javascript")).toBe("tree-sitter-javascript.wasm");
-    expect(treeSitterWasmFile("typescript")).toBe("tree-sitter-typescript.wasm");
-    expect(treeSitterWasmFile("tsx")).toBe("tree-sitter-tsx.wasm");
   });
 });

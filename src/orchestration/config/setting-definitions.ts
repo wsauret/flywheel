@@ -10,9 +10,9 @@ import { installedConfigSections, installedModules } from "../module-catalog.js"
 import { settingCatalogRowFor, type SettingCatalogRow } from "../../protocol/setting-catalog.js";
 import { DEFAULT_WRITE_SYNTAX_THEME_ID, WRITE_SYNTAX_THEME_IDS, WRITE_SYNTAX_THEME_OPTIONS, WriteSyntaxThemeIdSchema } from "../../protocol/write-syntax-theme.js";
 
-export const DEFAULT_PROACTIVE_COMPACTION_THRESHOLD = 270_000;
+const DEFAULT_PROACTIVE_COMPACTION_THRESHOLD = 270_000;
 export const MIN_PROACTIVE_COMPACTION_THRESHOLD = 50_000;
-export const DEFAULT_THEME_SELECTION = "flywheel";
+const DEFAULT_THEME_SELECTION = "flywheel";
 const DEFAULT_FOREGROUND_BASH_HOLD_SECONDS = 240;
 const MAX_FOREGROUND_BASH_HOLD_SECONDS = 2_147_483;
 

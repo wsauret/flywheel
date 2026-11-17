@@ -9,7 +9,7 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createRuntimeEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createProjectExecutionState } from "../../../../src/orchestration/app-service/project-execution-state.js"
 import { createProjectStateClient, ProjectStateRefusedError } from "../../../../src/orchestration/app-service/project-state-client.js"
-import { decodeProjectStateRequest, decodeProjectStateStored, encodeProjectStateResponseFrame, encodeProjectStateStored, operationUnits, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+import { decodeProjectStateMessage, decodeProjectStateRequest, encodeProjectStateResponseFrame, encodeProjectStateStored, operationUnits, type ProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 import { createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state-sessions.js"
 import { createProjectStateService } from "../../../../src/orchestration/app-service/project-state-worker.js"
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
@@ -45,8 +45,8 @@ function fixture() {
     notifySessionChange: (change) => receiveChange?.(change),
     onStored: store.onStored,
     notifyStored(events) {
-      const notification = decodeProjectStateStored(structuredClone(encodeProjectStateStored(events)))
-      if (!notification) throw new Error("invalid stored notification")
+      const notification = decodeProjectStateMessage(structuredClone(encodeProjectStateStored(events)))
+      if (notification?.kind !== "stored") throw new Error("invalid stored notification")
       receiveStored?.(notification.events)
     },
     close: () => store.close(),

@@ -30,14 +30,14 @@ import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../protoco
 import { Schema } from "effect";
 
 /** Persistent brief seats are retained for compatibility, not editable defaults. */
-export class PerBriefDefaultsRetiredError extends Schema.TaggedError<PerBriefDefaultsRetiredError>()(
+class PerBriefDefaultsRetiredError extends Schema.TaggedError<PerBriefDefaultsRetiredError>()(
   "PerBriefDefaultsRetiredError",
   { message: Schema.String },
 ) {}
 
 /** The store travels inside the session variant so a session-scoped
  *  controller cannot be constructed without it. */
-export type AssignmentScope = { kind: "defaults" } | {
+type AssignmentScope = { kind: "defaults" } | {
   kind: "session"; sessionId: string; roleCaptureStore: RoleCaptureStore;
 } | {
   kind: "workflow-agent"; sessionId: string; roleCaptureStore: RoleCaptureStore;

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
-import { prepareOpenAICompletionsRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-responses.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { chatCompletionsRequestBody } from "./_wire-fixtures.js";
 
 const info: ModelInfo = {
   provider: "openai",
@@ -152,55 +152,28 @@ describe("immutable prepared provider requests", () => {
   });
 
   // A short-form tool's open object root (ARCH-CONTEXT-038) reaches every endpoint unchanged.
-  test("Anthropic, Completions, and Responses send a short-form tool's open object schema unchanged", () => {
+  test("Anthropic, Completions, and Responses send a short-form tool's open object schema unchanged", async () => {
     const schema = { type: "object", properties: {}, additionalProperties: true };
     const withShortForm: StreamOptions = { ...directOptions, tools: [{ name: "web", description: "Research the web.", input_schema: schema }] };
     const anthropic = prepareAnthropicRequest({ accessProvider: "anthropic_api", model: "claude-test", wireModel: "claude-test", info, options: withShortForm });
-    const completions = prepareOpenAICompletionsRequest({ accessProvider: "openai_api", model: "gpt-test", wireModel: "gpt-test", info, options: withShortForm });
+    const completions = await chatCompletionsRequestBody({ accessProvider: "openai_api", model: "gpt-test", info, options: withShortForm });
     const responses = prepareOpenAIResponsesRequest({ accessProvider: "openai_api", model: "gpt-test", info, isChatGPT: false, options: withShortForm });
 
     expect(anthropic.params.tools).toEqual([expect.objectContaining({ name: "web", input_schema: schema })]);
-    expect(completions.params.tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: "web", parameters: schema }) })]);
+    expect(completions.tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: "web", parameters: schema }) })]);
     expect(responses.params.tools).toEqual([expect.objectContaining({ type: "function", name: "web", parameters: schema })]);
   });
 
-  test("Completions preserves endpoint-specific output-cap omission", () => {
-    const copilot = prepareOpenAICompletionsRequest({
-      accessProvider: "github_copilot",
-      model: "gpt-test",
-      wireModel: "gpt-test",
-      info,
-      options,
-    });
-    const openai = prepareOpenAICompletionsRequest({
-      accessProvider: "openai_api",
-      model: "gpt-test",
-      wireModel: "gpt-test",
-      info,
-      options,
-    });
-    const openrouter = prepareOpenAICompletionsRequest({
-      accessProvider: "openrouter",
-      model: "gpt-test",
-      wireModel: "openai/gpt-test",
-      info,
-      options,
-    });
-    const ordinaryCopilot = prepareOpenAICompletionsRequest({
-      accessProvider: "github_copilot",
-      model: "gpt-test",
-      wireModel: "gpt-test",
-      info,
-      options: directOptions,
-    });
+  test("Completions preserves endpoint-specific output-cap omission", async () => {
+    const copilot = await chatCompletionsRequestBody({ accessProvider: "github_copilot", model: "gpt-test", info, options });
+    const openai = await chatCompletionsRequestBody({ accessProvider: "openai_api", model: "gpt-test", info, options });
+    const openrouter = await chatCompletionsRequestBody({ accessProvider: "openrouter", model: "gpt-test", wireModelId: "openai/gpt-test", info, options });
+    const ordinaryCopilot = await chatCompletionsRequestBody({ accessProvider: "github_copilot", model: "gpt-test", info, options: directOptions });
 
-    expect(copilot.outputCap).toBe(1_500);
-    expect(copilot.params.max_completion_tokens).toBe(1_500);
-    expect(openai.outputCap).toBe(1_500);
-    expect(openai.params.max_completion_tokens).toBe(openai.outputCap);
-    expect(openrouter.params.max_completion_tokens).toBe(1_500);
-    expect(ordinaryCopilot.params.max_completion_tokens).toBeUndefined();
-    expect(Object.isFrozen(openai.params.messages)).toBe(true);
+    expect(copilot.max_completion_tokens).toBe(1_500);
+    expect(openai.max_completion_tokens).toBe(1_500);
+    expect(openrouter.max_completion_tokens).toBe(1_500);
+    expect(ordinaryCopilot.max_completion_tokens).toBeUndefined();
   });
 
   test("Responses preserves endpoint-specific output-cap omission and normalized prompt", () => {

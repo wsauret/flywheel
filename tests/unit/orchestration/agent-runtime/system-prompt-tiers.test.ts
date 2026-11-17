@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { buildSystemPrompt, buildSystemPromptParts } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt, SYSTEM_PROMPT_SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { withSessionNotes } from "./context/_loop-fixtures.js";
+import { chatCompletionsRequestBody } from "./llm/_wire-fixtures.js";
 import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import type { ConversationMessage, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../src/infra/llm/models.js";
-import { prepareOpenAICompletionsRequest } from "../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { resolveOpenAISystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
@@ -145,9 +145,9 @@ describe("providers without cache breakpoints receive the tiers joined in order"
     cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" }, modalities: { input: ["text"], output: ["text"] }, contextLimit: 20_000, outputLimit: 4_000,
   };
 
-  test("chat completions prepends one system message with the joined text", () => {
-    const prepared = prepareOpenAICompletionsRequest({ accessProvider: "openai_api", model: "gpt-test", wireModel: "gpt-test", info, options });
-    expect(prepared.params.messages[0]).toEqual({ role: "system", content: joined });
+  test("chat completions prepends one system message with the joined text", async () => {
+    const body = await chatCompletionsRequestBody({ accessProvider: "openai_api", model: "gpt-test", info, options });
+    expect(body.messages).toEqual([{ role: "system", content: joined }, expect.objectContaining({ role: "user" })]);
   });
 
   test("responses instructions carry the joined text", () => {

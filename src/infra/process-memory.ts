@@ -31,7 +31,7 @@ const SAMPLE_INTERVAL_MS = 60_000;
 const STEP_BYTES = 1024 ** 3;
 
 /** A footprint that moved a whole step from the last recorded level. */
-export interface MemoryStep {
+interface MemoryStep {
   readonly footprintBytes: number;
   readonly previousFootprintBytes: number;
 }
@@ -54,7 +54,7 @@ export function ensureProcessMemorySampler(): void {
  *  `record` and becomes the new level; a smaller move changes nothing, so
  *  slow drift records once it adds up to a step. A read that returns nothing
  *  is skipped. */
-export function createProcessMemorySampler(readFootprint: () => number | undefined, record: (step: MemoryStep) => void): () => void {
+function createProcessMemorySampler(readFootprint: () => number | undefined, record: (step: MemoryStep) => void): () => void {
   let level: number | undefined;
   return () => {
     const footprintBytes = readFootprint();

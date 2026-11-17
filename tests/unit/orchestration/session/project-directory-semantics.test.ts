@@ -17,7 +17,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { createMemoryTool } from "../../../../src/orchestration/modules/learning/tools/memory.js"
 import { writeDefinition } from "../../../../src/orchestration/agent-runtime/tools/write.js"
-import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+import type { DispatchedToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
 import { executionCwdFromSession, requireSessionExecutionCwd } from "../../../../src/orchestration/session/session-execution-directory.js"
@@ -27,6 +27,7 @@ import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-s
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures.js"
 import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 interface Repo {
   readonly root: string
@@ -51,8 +52,8 @@ function repository(prefix: string): Repo {
 
 /** A tool context whose two directories differ, with the durable writer a
  *  learning write needs to report success. */
-function toolContext(executionCwd: string, projectRoot: string): ToolContext {
-  return {
+function toolContext(executionCwd: string, projectRoot: string): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd,
     userDataRoot: `${projectRoot}/.test-account`,
     projectRoot,
@@ -60,7 +61,7 @@ function toolContext(executionCwd: string, projectRoot: string): ToolContext {
     artifactScopeId: "project-directory-semantics",
     retrievalSessionId: "project-directory-semantics",
     sessionEventWriter: createRecordingFileMutationStore().writer,
-  }
+  })
 }
 
 /** The project's event store, over the state generation this test owns until it

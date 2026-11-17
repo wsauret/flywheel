@@ -3,10 +3,11 @@ import { describe, expect, test } from "bun:test";
 import { newTestRunner } from "../../../helpers/agent-runner.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js";
+import type { AgentOptionsOverride } from "./_runner-options.js";
 import type { ProviderStreamEvent } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient } from "./_model-client.js";
 
-function makeOptions(overrides?: Partial<AgentOptions>): AgentOptions {
+function makeOptions(overrides?: AgentOptionsOverride): AgentOptions {
   return {
     model: "claude-haiku-4-5-20251001",
     purpose: { kind: "interactive-chat" },

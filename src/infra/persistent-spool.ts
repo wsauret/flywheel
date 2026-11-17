@@ -64,7 +64,7 @@ export interface SpoolHolders {
 }
 
 /** What the kernel answers about the processes a spool names. */
-export interface SpoolHolderProbe {
+interface SpoolHolderProbe {
   identify(pid: number): ProcessIdentity
   /** Whether a process still runs in process group `pgid`. Only macOS and
    *  Linux have groups: there the writer is launched as the leader of a new

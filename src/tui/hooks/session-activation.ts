@@ -1,4 +1,4 @@
-import type { SessionCatalogRow, RuntimeClient } from "../../protocol/app-service-types.js"
+import type { SessionCatalogRow, SessionRow, RuntimeClient } from "../../protocol/app-service-types.js"
 import { resolveSessionRoute, type SessionRoute } from "../../protocol/client/held-session-details.js"
 import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { errorMessage } from "../../infra/error-message.js"
@@ -29,15 +29,15 @@ interface SessionActivatorByIdDeps {
   showToast: ShellServices["showToast"]
 }
 
-/** A session's route through the shared resolver: a listed chat from its
- *  catalog row, every other link through a passive detail read, which the
- *  runtime holds nothing for. */
+/** A session's route through the shared resolver: each session from the row
+ *  this client holds for it, and every other one through a passive detail
+ *  read, which the runtime holds nothing for. */
 export function readSessionRoute(
   client: Pick<RuntimeClient, "query">,
-  rows: readonly SessionCatalogRow[],
+  heldRow: (sessionId: string) => SessionRow | undefined,
   sessionId: string,
 ): Promise<SessionRoute | undefined> {
-  return resolveSessionRoute(async (id) => rows.find((row) => row.id === id) ?? (await client.query({ type: "sessionDetail", sessionId: id })).view?.row, sessionId)
+  return resolveSessionRoute(async (id) => heldRow(id) ?? (await client.query({ type: "sessionDetail", sessionId: id })).view?.row, sessionId)
 }
 
 /** Opens a session named by id, as a transcript link or a search hit names
@@ -49,7 +49,7 @@ export function readSessionRoute(
  *  carries, and only a session the runtime no longer has is reported. */
 export function createSessionActivatorById(deps: SessionActivatorByIdDeps): (sessionId: string) => Promise<void> {
   return async function activateSessionById(sessionId: string): Promise<void> {
-    const route = await readSessionRoute(deps.appService, deps.rows(), sessionId)
+    const route = await readSessionRoute(deps.appService, (id) => deps.rows().find((row) => row.id === id), sessionId)
     if (!route) {
       deps.showToast({ message: `Session ${sessionId} no longer exists`, variant: "error" })
       return

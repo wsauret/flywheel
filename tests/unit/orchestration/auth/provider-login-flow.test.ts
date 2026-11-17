@@ -75,7 +75,7 @@ describe("provider login flow", () => {
       settle: async (account: AccessProviderAccountIdentity) => { settled.push(account); },
     };
 
-    const flow = providerLoginFlow("external_login", [external]);
+    const flow = providerLoginFlow("external_login", [{ definition: external }]);
     expect(flow?.flow).toBe("browser");
     if (flow?.flow !== "browser") return;
     await flow.login(options);

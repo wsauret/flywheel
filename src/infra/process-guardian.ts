@@ -42,7 +42,7 @@ const log = Log.create({ service: "process-guardian" })
  *  second record of the same fact: the ledger is these leases' durable copy,
  *  which only this guardian and the guardian after it read. */
 
-export interface GuardianHost {
+interface GuardianHost {
   readonly control: ReadableStream<Uint8Array>
   send(reply: GuardianReply): void
   inspect(ref: ContainerRef): ContainerIdentity
@@ -66,7 +66,7 @@ export interface GuardianHost {
   readonly ledger?: GuardianLedger
 }
 
-export interface GuardianLimits {
+interface GuardianLimits {
   readonly maxContainers: number
   readonly maxGenerations: number
   readonly maxRetiredTokens: number
@@ -77,7 +77,7 @@ export interface GuardianLimits {
  *  holds: a container whose supervisor still runs, or one a probe could not
  *  answer for. The same period as a supervisor's watch of its guardian, whose
  *  check is what ends such a container. */
-export const GUARDIAN_LEDGER_RECHECK_MS = 250
+const GUARDIAN_LEDGER_RECHECK_MS = 250
 
 const DEFAULT_GUARDIAN_LIMITS: GuardianLimits = {
   maxContainers: GUARDIAN_MAX_OWNED_CONTAINERS,
@@ -101,7 +101,7 @@ interface Lease {
  *  host sends a frame it could not have produced - and sweeps first, because a
  *  host that is speaking a protocol Flywheel does not define is a host whose
  *  owned processes must not be left running. */
-export async function runProcessGuardian(host: GuardianHost, limits: GuardianLimits): Promise<void> {
+async function runProcessGuardian(host: GuardianHost, limits: GuardianLimits): Promise<void> {
   // The capability the first frame of this channel established. Until it
   // exists the guardian owns nothing and answers nothing, so an unauthenticated
   // peer cannot reach a single mutation.

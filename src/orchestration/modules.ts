@@ -457,8 +457,8 @@ export function moduleProtocolRows(moduleIds: readonly ModuleId[], modules: read
       const configSettings = declaredSettings.flatMap((control) => control.control === "config-boolean" || control.control === "config-number-list" ? [control] : [])
       return {
         id,
-        installed: module.availability.kind === "available",
-        effective: module.availability.kind === "available" && selected.has(id) && missing.length === 0,
+        installed: true,
+        effective: selected.has(id) && missing.length === 0,
         dependencies,
         ...(missing.length === 0 ? {} : { dependencyError: `${id} requires ${missing.join(", ")}` }),
         ...(setting === undefined ? {} : { setting }),

@@ -8,7 +8,7 @@ import { handoffDefinition, createHandoffTool } from "../../../../../src/orchest
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
-import type { RuntimeTool, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { RuntimeTool, ToolDispatchContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
 import { handoffToolSchemaFromOutput } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
 import { compileOutput } from "../../../../../src/workflows/output-contract/compile.js";
@@ -56,7 +56,7 @@ const diagnosis = {
 } as const satisfies OutputObject;
 
 /** Runs one handoff call through the dispatcher, as a model's call runs. */
-function submit(tool: RuntimeTool, input: { [key: string]: unknown }, ctx: ToolContext) {
+function submit(tool: RuntimeTool, input: { [key: string]: unknown }, ctx: ToolDispatchContext) {
   return executePreparedTool(prepareToolCall({ id: "call-handoff", name: "handoff", input }, new Map([["handoff", tool]]), admitEveryTool), ctx);
 }
 

@@ -131,7 +131,7 @@ export interface CommandSupervisorHost {
   sleep(ms: number): Promise<void>
 }
 
-export interface CommandSupervisorOutcome {
+interface CommandSupervisorOutcome {
   readonly code: number | null
   readonly signal: NodeJS.Signals | null
 }

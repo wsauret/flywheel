@@ -27,7 +27,6 @@ const PROBE_ID = "papercuts"
 const probeModule = {
   id: PROBE_ID,
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "cli", id: "probe", value: {
       usage: "Usage: flywheel probe ping [args]",
@@ -37,8 +36,6 @@ const probeModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const accountHomes = temporaryDirectories()

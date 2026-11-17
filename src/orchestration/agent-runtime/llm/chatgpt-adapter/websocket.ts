@@ -84,8 +84,6 @@ function getCachedWebSocketInputDelta(body: RequestBody, continuation: NonNullab
 	return currentInput.slice(baseline.length);
 }
 
-export { getCachedWebSocketInputDelta };
-
 function buildCachedWebSocketRequestBody(entry: CachedWebSocketConnection, body: RequestBody): RequestBody {
 	const continuation = entry.continuation;
 	if (!continuation) return body;

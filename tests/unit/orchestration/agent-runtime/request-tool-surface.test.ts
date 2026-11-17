@@ -15,6 +15,7 @@ import { prepareLocalTokenizer } from "../../../../src/infra/local-tokenizer.js"
 import * as localTokenizer from "../../../../src/infra/local-tokenizer.js";
 import { tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js";
 
 const fullModules = () => composeRealmModuleSnapshot({ moduleIds: SHIPPED_MODULES.map((module) => module.id) });
 interface UnknownRecord { [key: string]: unknown }
@@ -48,7 +49,7 @@ describe("request tool surface", () => {
       semanticBundle: null, personaBaseline: false, registryOrder: 80,
     } as const
     const module: FirstPartyModule = {
-      id: "development", dependencies: [], availability: { kind: "available" }, observers: [], gates: [],
+      id: "development", dependencies: [],
       contributions: [
         { domain: "tools", id: "diagnostic-shell", value: { kind: "tool", name: "diagnostic-shell", declaration: { ...policy, registrations: {
           "diagnostic-shell": { capabilities: [], exposedName: shell.name, create: () => ({ tool: shell }) },
@@ -86,10 +87,10 @@ describe("request tool surface", () => {
         const prepared = prepareToolCall(
           { id: `denied-${name}`, name, input: {} }, restricted.tools, restricted.executionAdmission,
         );
-        const result = await executePreparedTool(prepared, {
+        const result = await executePreparedTool(prepared, dispatchedToolContext({
           executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), capabilityAccess: NO_CAPABILITY_ACCESS,
           artifactScopeId: "strict-profile", retrievalSessionId: "strict-profile",
-        });
+        }));
         expect(result.outcome).toBe("error");
       }
       expect(execute).not.toHaveBeenCalled();
@@ -341,14 +342,14 @@ describe("request tool surface", () => {
       admitted.tools,
       admitted.executionAdmission,
     );
-    const result = await executePreparedTool(prepared, {
+    const result = await executePreparedTool(prepared, dispatchedToolContext({
       executionCwd: process.cwd(),
       projectRoot: process.cwd(),
       userDataRoot: `${process.cwd()}/.test-account`,
       artifactScopeId: "memory-call",
       retrievalSessionId: "memory-call",
       capabilityAccess: NO_CAPABILITY_ACCESS,
-    });
+    }));
 
     expect(result).toEqual({ content: "executed", outcome: "ok" });
     expect(executions).toBe(1);

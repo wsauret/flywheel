@@ -122,11 +122,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const chatgptModule = {
   id: "provider-chatgpt",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "chatgpt", value: { definition, createClient, usageReader: createChatGPTUsageReader(), resetConsumer: createChatGPTResetConsumer() } },
     { domain: "settings", id: "provider-chatgpt", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow OpenAI models through a ChatGPT subscription" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

@@ -2,7 +2,7 @@ import type { Schema } from "effect";
 import { RUNTIME_EVENT_DEFINITIONS as runtimeEventDefinitions } from "./runtime-fact-mapper.js";
 
 export type { AssistantEventData, RateLimitEventData, UsageData } from "./runtime-event-payload-types.js";
-export type RuntimeEventActor = "agent" | "flywheel" | "provider" | "workflow";
+type RuntimeEventActor = "agent" | "flywheel" | "provider" | "workflow";
 export const RUNTIME_EVENT_DEFINITIONS = runtimeEventDefinitions;
 
 interface RuntimeEventDefinition<T extends string, A extends RuntimeEventActor, S extends Schema.Decoder<unknown, never>> {
@@ -19,19 +19,3 @@ export type RuntimeEvent = RuntimeEventFor<typeof RUNTIME_EVENT_DEFINITIONS[numb
 export const RUNTIME_EVENT_TYPES: readonly RuntimeEvent["type"][] = RUNTIME_EVENT_DEFINITIONS.map(({ type }) => type);
 export const DURABLE_RUNTIME_EVENT_TYPES: readonly RuntimeEvent["type"][] = RUNTIME_EVENT_DEFINITIONS.filter((definition) => definition.durable).map(({ type }) => type);
 export const DEBUG_RUNTIME_EVENT_TYPES: readonly RuntimeEvent["type"][] = RUNTIME_EVENT_DEFINITIONS.filter((definition) => definition.debug).map(({ type }) => type);
-
-const runtimeEventDefinitionsByType = new Map(
-  RUNTIME_EVENT_DEFINITIONS.map((definition) => [definition.type, definition]),
-);
-
-export function runtimeEventActor(type: RuntimeEvent["type"]): RuntimeEventActor {
-  const definition = runtimeEventDefinitionsByType.get(type);
-  if (!definition) throw new Error(`No runtime event definition registered for ${type}`);
-  return definition.actor;
-}
-
-export type RuntimeEventDurableMapper = NonNullable<typeof RUNTIME_EVENT_DEFINITIONS[number]["durable"]>;
-
-export function runtimeEventDurableMapper(type: RuntimeEvent["type"]): RuntimeEventDurableMapper | undefined {
-  return runtimeEventDefinitionsByType.get(type)?.durable;
-}

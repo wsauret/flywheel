@@ -70,12 +70,7 @@ export function createCodeTool(options: CodeToolOptions): RuntimeTool {
     unboundedDuration: true,
     async execute(input, context): Promise<ToolResult> {
       const { source } = Schema.decodeUnknownSync(CodeInput)(input)
-      const parentToolUseId = context.toolUseId
-      const createBatch = context.createNestedToolDispatchBatch
-      if (parentToolUseId === undefined || createBatch === undefined) {
-        return { outcome: "error", content: "Code runtime is unavailable because this call has no nested dispatch owner." }
-      }
-      return await options.service.run({ source, tools: options.tools, parentToolUseId, createBatch }, context)
+      return await options.service.run({ source, tools: options.tools, parentToolUseId: context.toolUseId, createBatch: context.createNestedToolDispatchBatch }, context)
     },
   }
 }

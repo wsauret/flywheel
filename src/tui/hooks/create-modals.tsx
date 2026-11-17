@@ -2,7 +2,7 @@
 
 import type { SignInPage } from "../terminal-attach.js"
 import { createMemo, type Accessor } from "solid-js"
-import type { SessionCatalogError, SessionCatalogRow, AttachedRuntimeClient, RuntimeClient } from "../../protocol/app-service-types.js"
+import type { SessionCatalogRow, AttachedRuntimeClient, RuntimeClient } from "../../protocol/app-service-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import type { RuntimeAuthProfileScope } from "../../protocol/auth-profile-selection-protocol-types.js"
 import type { ModuleRow, ModuleRowAction } from "../../protocol/protocol-module.js"
@@ -12,7 +12,6 @@ import type { ModalContext } from "../components/modal-stack.js"
 import { openExternalUrl } from "../../infra/open-external-url.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { Clipboard } from "../utils/clipboard.js"
-import { sessionModelLabel } from "./active-model-label.js"
 import type { SettingsOperations, SettingsStore } from "./create-settings-store.js"
 import type { RuntimeConfigCache, ShellServices, ShellSignals } from "./shell-state.js"
 import { useAuthModal } from "./use-auth-modal.js"
@@ -98,10 +97,9 @@ interface ModalsDeps {
   signals: ShellSignals
   services: ShellServices
   appService: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">
-  sessions: Accessor<readonly SessionCatalogRow[]>
-  sessionCatalogErrors: Accessor<readonly SessionCatalogError[]>
-  sessionCount: Accessor<number>
   tabs: Accessor<readonly TabInfo[]>
+  /** How many session tabs are open, which the status modal reports. */
+  activeSessionCount: Accessor<number>
   appVersion: string
   chat: ChatModeHook
   startChat: () => Promise<SessionCreationSettlement>
@@ -162,7 +160,7 @@ export function createModalModals(deps: ModalsDeps) {
   const { modal, signals, services, switchForeground, startChat, clipboard } = deps
   const sessionChangesModal = useSessionChangesModal({
     modal, view: signals.sessionChanges,
-    renderModal: () => <LazySessionChangesModal view={signals.sessionChanges()} controls={sessionChangesModal} projectRoot={signals.projectRoot()} diffColors={() => signals.runtimeConfig()?.values.diffColors ?? "theme"} />,
+    renderModal: () => <LazySessionChangesModal view={signals.sessionChanges()} controls={sessionChangesModal} projectRoot={signals.projectRoot()} diffColors={() => signals.display.diffColors} />,
   })
   // The launch-derived capability this modal layer needs, narrowed at its own
   // boundary rather than handed the launcher itself.
@@ -235,10 +233,6 @@ export function createModalModals(deps: ModalsDeps) {
       return row === null ? undefined : effectiveSessionShortTitle(row.title, row.shortTitle)
     },
   })
-  const activeModelLabel = createMemo(() => {
-    const foregroundId = signals.foregroundId()
-    return sessionModelLabel(foregroundId ? signals.roleView(foregroundId) : undefined, signals.chatDefault())
-  })
   const commandPalette = useCommandPalette({
     modal,
     renderModal: () => <LazyCommandPalette state={commandPalette.commandPaletteState()} onClose={() => modal.clear()} onRowClick={commandPalette.handleRowClick} />,
@@ -281,8 +275,6 @@ export function createModalModals(deps: ModalsDeps) {
     navigateToProcess: deps.navigateToProcess,
     openTarget: deps.openTarget,
   })
-  const activeSessionCount = createMemo(() => deps.tabs().filter((tab) => tab.kind === "session").length)
-  const sessionCount = deps.sessionCount
   const foregroundBudget = () => {
     const sessionId = signals.foregroundId()
     return sessionId ? signals.budgetView(sessionId) : undefined
@@ -292,10 +284,10 @@ export function createModalModals(deps: ModalsDeps) {
       sessionId: signals.foregroundId(),
       sessionKind: signals.sessionKind(),
       sessionState: signals.sessionState(),
-      modelLabel: activeModelLabel(),
+      modelLabel: signals.activeModelLabel(),
       budget: foregroundBudget(),
-      activeSessionCount: activeSessionCount(),
-      sessionCount: sessionCount(),
+      activeSessionCount: deps.activeSessionCount(),
+      sessionCount: signals.sessionCount(),
       appVersion: deps.appVersion,
       projectRoot: signals.projectRoot(),
       executionCwd: signals.sessionExecutionCwd(),
@@ -344,8 +336,8 @@ export function createModalModals(deps: ModalsDeps) {
         statusView={signals.statusView}
         now={sessionModal.pickerNow()}
         confirmDeleteSessionId={sessionModal.modalConfirmDelete()}
-        showThinking={deps.settings.values.showThinking}
-        diffColors={() => deps.settings.values.diffColors}
+        showThinking={signals.display.showThinking}
+        diffColors={() => signals.display.diffColors}
       />
     ),
     signals,
@@ -353,7 +345,7 @@ export function createModalModals(deps: ModalsDeps) {
     showToast: services.showToast,
     clipboard,
     sessions: signals.listedSessions,
-    sessionCatalogErrors: deps.sessionCatalogErrors,
+    sessionCatalogErrors: signals.sessionCatalogErrors,
     activateSession: deps.activateSession,
     activateSessionById: deps.activateSessionById,
     closeChat: deps.closeChat,
@@ -457,7 +449,7 @@ export function createModalModals(deps: ModalsDeps) {
   const findModal = useFindModal({
     modal,
     appService: deps.appService,
-    sessions: deps.sessions,
+    sessions: signals.sessionCatalogRows,
     foregroundSessionId: signals.foregroundId,
     activateSession: deps.activateSession,
     showToast: services.showToast,
@@ -481,6 +473,5 @@ export function createModalModals(deps: ModalsDeps) {
     modelModal, commandPalette, themeModal, profileModal, sessionModal, settingsModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
     statusModal, helpModal, backgroundModal,
     findModal,
-    activeSessionCount, sessionCount, activeModelLabel,
   }
 }

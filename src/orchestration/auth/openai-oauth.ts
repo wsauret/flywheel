@@ -18,7 +18,7 @@ import type { BrowserLoginPorts } from "../../infra/llm/access-provider.js";
 const log = Log.create({ service: "openai-oauth" });
 
 const TOKEN_URL = `${ISSUER}/oauth/token`;
-export const MAX_OAUTH_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_OAUTH_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_TOKEN_LENGTH = 8 * 1024;
 
 function parseTokenResponse(raw: unknown): TokenResponse {
@@ -56,7 +56,7 @@ export class ChatGPTTokenRefreshError extends Error {
   }
 }
 
-export function requestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
+function requestSignal(timeoutMs: number, signal?: AbortSignal): AbortSignal {
   const timeout = AbortSignal.timeout(timeoutMs);
   return mergeAbortSignals(signal, timeout);
 }

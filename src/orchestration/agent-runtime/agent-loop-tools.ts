@@ -33,7 +33,7 @@ import type { LlmToolOutputPart } from "../../infra/llm/tool-output-part-schema.
 import { interruptedToolText } from "./llm/heal-messages.js";
 import { prepareToolCall, type ExecutionAdmission, type PreparedToolCall, type ToolExecutionGate } from "./tools/tool-dispatch.js";
 import { createNestedToolDispatchBatch, createNestedToolFactPublisher, executeDispatchedTool } from "./tools/nested-tool-dispatch.js";
-import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolResult } from "./tools/types.js";
+import { runtimeToolExecution, type RuntimeTool, type ToolAttributionIdentity, type ToolContext, type ToolDispatchContext, type ToolResult } from "./tools/types.js";
 import { writeToolLifecycleDiagnostic } from "./tools/tool-lifecycle-diagnostics.js";
 import { assertNever } from "../../infra/assert-never.js";
 import type { ToolOutcome } from "../../infra/tool-outcome.js";
@@ -169,7 +169,7 @@ interface ToolEntry {
   finalization?: Promise<Exit.Exit<void, PersistenceWriteRefused>>;
   finalized?: SettledToolCall;
   attributionIdentity?: ToolAttributionIdentity;
-  context?: ToolContext;
+  context?: ToolDispatchContext;
 }
 
 interface FinalizeContext {
@@ -220,8 +220,8 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
 
   // A foreground call rides the turn signal; a background call rides its
   // owner's durable signal, so a turn end does not stop it.
-  function callContext(call: ToolCall, signal: AbortSignal | undefined, attributionIdentity?: ToolAttributionIdentity): ToolContext {
-    const context: ToolContext = {
+  function callContext(call: ToolCall, signal: AbortSignal | undefined, attributionIdentity?: ToolAttributionIdentity): ToolDispatchContext {
+    const context: ToolDispatchContext = {
       ...deps.toolContext,
       signal,
       ...(attributionIdentity ? {
@@ -235,16 +235,16 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
         output: text,
         ...(call.modelRequestId ? { modelRequestId: call.modelRequestId } : {}),
       }),
+      createNestedToolDispatchBatch: (options) => createNestedToolDispatchBatch({
+        ...options,
+        context,
+        gate: concurrencyGate,
+        publisher: createNestedToolFactPublisher(context),
+        ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
+        ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
+        executionAdmission: deps.executionAdmission,
+      }),
     };
-    context.createNestedToolDispatchBatch = (options) => createNestedToolDispatchBatch({
-      ...options,
-      context,
-      gate: concurrencyGate,
-      publisher: createNestedToolFactPublisher(context),
-      ...(deps.executionWhitelist ? { executionWhitelist: deps.executionWhitelist } : {}),
-      ...(deps.toolExecutionGate ? { toolExecutionGate: deps.toolExecutionGate } : {}),
-      executionAdmission: deps.executionAdmission,
-    });
     return context;
   }
 

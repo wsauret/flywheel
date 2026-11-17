@@ -70,7 +70,7 @@ export type BackgroundIndexPart =
   | { readonly kind: "launches" }
 
 /** How the rows of a tree change after its build. */
-export interface BackgroundIndexSink {
+interface BackgroundIndexSink {
   updated(row: BackgroundWorkRow): void
   removed(rowId: string): void
 }

@@ -7,6 +7,7 @@ import { terminateWorker } from "../../../../../src/infra/worker-termination.js"
 import { createEditDefinition } from "../../../../../src/orchestration/agent-runtime/tools/edit.js"
 import { createStreamingEditValidationService } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation.js"
 import type { StreamingEditValidationWorkerReply, StreamingEditValidationWorkerRequest } from "../../../../../src/orchestration/agent-runtime/tools/streaming-edit-validation-protocol.js"
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 
 function nextResult(worker: Worker): Promise<StreamingEditValidationWorkerReply> {
   return new Promise((resolve, reject) => {
@@ -160,12 +161,12 @@ describe("streaming edit validation worker", () => {
         await release.promise
       })
       await queued.promise
-      const editing = createEditDefinition().execute(input, {
+      const editing = createEditDefinition().execute(input, dispatchedToolContext({
         executionCwd: root,
         userDataRoot: `${root}/.test-account`, projectRoot: root,
         artifactScopeId: "stale-preview",
         retrievalSessionId: "stale-preview",
-      })
+      }))
       await Promise.resolve()
       writeFileSync(path, "publication race\n")
       release.resolve()

@@ -14,6 +14,7 @@ import { createShellRuntime } from "../../../src/orchestration/agent-runtime/too
 import type { ShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime-types.js"
 import type { ToolResult } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js"
 
 /** A mutation command against a real Git repository, real clones, and a real
  *  shell, shared by the mutation integration files. */
@@ -64,10 +65,10 @@ export function repositoryHarness() {
       executionCwd: root, userDataRoot: `${root}/.test-account`, projectRoot: root, scratchDir: join(root, ".flywheel", "scratch"),
       availableTools: new Set(["bash", "edit", "write"]), artifactScopeId: "bash-mutation", retrievalSessionId: "bash-mutation", sessionId: "bash-mutation", toolUseId: "bash-mutations-1",
     }
-    const mutation = (command: string, beforeLaunch?: BeforeLaunch) => createBashDefinition().execute({ mutates: true, command }, {
+    const mutation = (command: string, beforeLaunch?: BeforeLaunch) => createBashDefinition().execute({ mutates: true, command }, dispatchedToolContext({
       ...bashContext,
       spawnOwned: beforeLaunch ? async (cmd, options) => { await beforeLaunch(cmd); return await generation.spawnOwned(cmd, options) } : generation.spawnOwned,
-    })
+    }))
     // Each session owns one shell runtime, whose real pool and real process table decide reuse.
     const runtimes: ShellRuntime[] = []
     const session = (): SessionCommand => {
@@ -75,7 +76,7 @@ export function repositoryHarness() {
       runtimes.push(runtime)
       return async command => {
         const printRoot = process.platform === "win32" ? "\n(Get-Location).Path" : "\npwd"
-        const result = await createBashDefinition().execute({ mutates: true, command: command + printRoot }, { ...bashContext, spawnOwned: generation.spawnOwned, shell: runtime.client })
+        const result = await createBashDefinition().execute({ mutates: true, command: command + printRoot }, dispatchedToolContext({ ...bashContext, spawnOwned: generation.spawnOwned, shell: runtime.client }))
         await privateCopyRemovals()
         const content = String(result.content)
         const printed = [...content.matchAll(/^(.*[\\/]mutations[\\/][0-9a-f-]{36})[\\/]tree[\\/].*$/gm)].at(-1)

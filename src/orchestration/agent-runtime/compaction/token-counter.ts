@@ -246,7 +246,7 @@ export function estimateMessageTokens(message: ConversationMessage, imageTokens:
  *  request replays and its model reads at `position`. `replay` is the
  *  message's deliberation replay within its request, by default as a request
  *  of that message alone. */
-export function estimateMessageTokensWithPolicy(
+function estimateMessageTokensWithPolicy(
   message: ConversationMessage,
   policy: TokenCountingPolicy,
   position: TurnPosition = "current",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { resolveSubagentRole } from "../../../../src/orchestration/config/role-selection.js";
-import { validateRoleIds, isKnownRoleId } from "../../../../src/orchestration/config/roles.js"
+import { validateRoleIds } from "../../../../src/orchestration/config/roles.js"
 
 // ---------------------------------------------------------------------------
 // Known role discovery with custom persona roles (T4)
@@ -8,8 +8,7 @@ import { validateRoleIds, isKnownRoleId } from "../../../../src/orchestration/co
 
 describe("known role discovery", () => {
   it("accepts a custom persona role as a known role", () => {
-    expect(isKnownRoleId("reviewer")).toBe(true);
-    expect(isKnownRoleId("implementer")).toBe(true);
+    expect(validateRoleIds(["reviewer", "implementer"])).toEqual([]);
   });
 
   it("still prunes unknown non-persona roles", () => {
@@ -19,7 +18,7 @@ describe("known role discovery", () => {
   });
 
   it("accepts a step-agent slot using a discovered persona role", () => {
-    expect(isKnownRoleId("brief.implement.persona.reviewer")).toBe(true);
+    expect(validateRoleIds(["brief.implement.persona.reviewer"])).toEqual([]);
   });
 
 });
