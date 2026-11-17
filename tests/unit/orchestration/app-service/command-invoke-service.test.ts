@@ -32,7 +32,6 @@ const invocations: Array<{ readonly host: CommandHost; readonly argument: string
 const syntheticModule = {
   id: "synthetic-commands",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "commands", id: "echo", value: {
       id: "echo",
@@ -56,8 +55,6 @@ const syntheticModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const REVISION = 7
@@ -146,7 +143,7 @@ describe("command invocation", () => {
 
   test("/doctor reports every enabled module's health section in publication order, and a failed check reports its failure without hiding the others", async () => {
     const healthModule = (id: string, sections: readonly ModuleHealthCheck[]): FirstPartyModule => ({
-      id, dependencies: [], availability: { kind: "available" }, observers: [], gates: [],
+      id, dependencies: [],
       contributions: sections.map((value) => ({ domain: "health" as const, id: value.title, value })),
     })
     const healthy = healthModule("healthy", [{ title: "Library", check: async (host) => ({ attention: false, lines: [`Reads ${host.authDirectory()}.`] }) }])
@@ -314,13 +311,10 @@ describe("command invocation", () => {
     const methodModule = {
       id: "synthetic-methods",
       dependencies: [],
-      availability: { kind: "available" },
       contributions: [{ domain: "commands", id: "review-method", value: {
         id: "review-method", title: "Review method", description: "Starts the code review method", aliases: [],
         execute: async (host) => host.session?.startMethod({ skill: "code-review", label: "/review-method" }) ?? { kind: "none" },
       } }],
-      observers: [],
-      gates: [],
     } as const satisfies FirstPartyModule
     const all = await repoAvailability(MODULE_IDS)
     const composition = catalog([...repoModules, methodModule])

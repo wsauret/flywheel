@@ -12,7 +12,7 @@ import { createKeepAwake, NO_KEEP_AWAKE } from "./keep-awake.js"
 import { configSection } from "../../config/config-section.js"
 
 export const remoteModule = {
-  id: "remote", dependencies: [], availability: { kind: "available" },
+  id: "remote", dependencies: [],
   host: "account",
   service: { handle: remoteService, create: createRemoteService },
   protocol: moduleProtocol({ contract: remoteProtocol, create: createRemoteProtocol }),
@@ -47,5 +47,4 @@ export const remoteModule = {
     { domain: "settings", id: "remote", value: { control: "binary", group: "Remote", label: "Remote access", description: "Access this machine from paired devices" } },
     { domain: "settings", id: "remote-keep-awake", value: { control: "config-boolean", section: remoteConfigSection.key, key: "keep_awake", defaultValue: true, group: "Remote", label: "Keep Awake For Phone", description: "Keep this machine awake while a phone uses a runtime it started?" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule

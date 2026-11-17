@@ -160,7 +160,7 @@ export interface AccountModuleProtocolRoutes extends ModuleProtocolRoutes {
  *  under its discriminant. Installed, not enabled: a disabled module keeps its
  *  durable history readable (ARCH-STRUCTURE-029), so its domains stay served. */
 export function composeModuleProtocolRuntimes(modules: readonly FirstPartyModule[], services: Omit<ModuleProtocolServices, "enabled">, enabledModuleIds: () => readonly string[], accountAttached = false): ModuleProtocolRoutes {
-  const runtimes = modules.flatMap((module) => module.host !== "account" && !(accountAttached && module.host === "control") && module.protocol && module.availability.kind === "available"
+  const runtimes = modules.flatMap((module) => module.host !== "account" && !(accountAttached && module.host === "control") && module.protocol
     ? [module.protocol.create({ ...services, enabled: () => enabledModuleIds().includes(module.id) })]
     : [])
   return protocolRoutes(runtimes)
@@ -168,7 +168,7 @@ export function composeModuleProtocolRuntimes(modules: readonly FirstPartyModule
 
 /** Account queries and mutations share the same account-side service instance. */
 export function composeAccountModuleProtocolRuntimes(modules: readonly FirstPartyModule[], services: Omit<AccountModuleProtocolServices, "enabled">, enabledModuleIds: () => readonly string[]): AccountModuleProtocolRoutes {
-  return protocolRoutes(modules.flatMap((module) => (module.host === "account" || module.host === "control") && module.protocol && module.availability.kind === "available"
+  return protocolRoutes(modules.flatMap((module) => (module.host === "account" || module.host === "control") && module.protocol
     ? [module.protocol.create({ ...services, enabled: () => enabledModuleIds().includes(module.id) })]
     : []))
 }
@@ -208,7 +208,7 @@ function protocolRoutes(runtimes: readonly ReturnType<ModuleProtocolContribution
 /** The background Worker's lookup: the durable reader every installed module
  *  declares for a domain, keyed by domain name. */
 export function composeModuleBackgroundReaders(modules: readonly FirstPartyModule[], reader: EventReader, context: { readonly projectRoot: string }): (domain: ProtocolBackgroundDomain, sessionId: string) => Promise<ModuleBackgroundAnswer> {
-  const readers = new Map(modules.flatMap((module) => module.protocol?.background && module.availability.kind === "available" ? Object.entries(module.protocol.background(reader, context)) : []))
+  const readers = new Map(modules.flatMap((module) => module.protocol?.background ? Object.entries(module.protocol.background(reader, context)) : []))
   return (domain, sessionId) => {
     const read = readers.get(domain)
     if (!read) throw new Error(`No installed module serves the ${domain} domain from durable history`)

@@ -212,13 +212,10 @@ describe("protocol module registry composition", () => {
     const syntheticModule = {
       id: "development",
       dependencies: [],
-      availability: { kind: "available" },
       // The runtime and readers above are typed against their own contract; only the erasure into a contribution is unchecked, because `moduleProtocol` accepts only a contract of the shipped registry and this one is outside it by design.
       // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: no typed erasure exists for a contract outside the shipped registry
       protocol: { contract: syntheticProtocol, create: runtime, background } as never,
       contributions: [],
-      observers: [],
-      gates: [],
     } as const satisfies FirstPartyModule
     const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
     const routes = composeModuleProtocolRuntimes([syntheticModule], {

@@ -12,7 +12,6 @@ export const projectNotificationsModule = {
   id: "project-notifications",
   host: "control",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: projectNotificationsService, create: createProjectNotificationsService },
   protocol: moduleProtocol({ contract: projectNotificationsProtocol, create: createProjectNotificationsProtocol }),
   facts: { prefixes: ["project.notification."] },
@@ -39,5 +38,4 @@ export const projectNotificationsModule = {
     seam: "notify",
     observer: (episode, modules) => modules.get(projectNotificationsService)?.sink.apply(episode),
   }],
-  gates: [],
 } as const satisfies FirstPartyModule

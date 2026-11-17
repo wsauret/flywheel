@@ -37,17 +37,13 @@ const constructions: string[] = []
 const greeterModule = {
   id: "greeter",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: greeterService, create: () => { constructions.push("greeter"); return { greeting: "hello", dispose() {} } } },
   contributions: [],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const probeModule = {
   id: "probe",
   dependencies: ["greeter"],
-  availability: { kind: "available" },
   service: {
     handle: probeService,
     create: (services: ModuleProcessServices): ProbeService => {
@@ -57,7 +53,6 @@ const probeModule = {
   },
   contributions: [],
   observers: [{ seam: "notify", observer: (episode, modules) => { modules.get(probeService)?.received.push(episode) } }],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const catalog: readonly FirstPartyModule[] = [probeModule, greeterModule]

@@ -8,7 +8,6 @@ import { createSideQuestionProtocol } from "./protocol.js"
 export const sideQuestionModule = {
   id: "side-question",
   dependencies: [],
-  availability: { kind: "available" },
   protocol: moduleProtocol({ contract: sideQuestionProtocol, create: createSideQuestionProtocol }),
   contributions: [
     { domain: "chatHosts", id: "side-question", value: { handle: sideQuestionHost, create: createChatSideQuestions } },
@@ -27,6 +26,4 @@ export const sideQuestionModule = {
     } },
     { domain: "settings", id: "side-question", value: { control: "binary", group: "Tools", label: "Side questions", description: "Ask temporary contextual questions with /btw" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

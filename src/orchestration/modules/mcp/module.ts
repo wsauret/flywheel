@@ -34,7 +34,6 @@ async function commandClaudeLogins(directories: CliCommandContext["directories"]
 export const mcpModule = {
   id: "mcp",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: mcpService, portable: true, create: createMcpService },
   runtime: { handle: mcpRuntime, create: createMcpRuntime },
   protocol: moduleProtocol({ contract: mcpProtocol, create: createMcpProtocol }),
@@ -65,6 +64,4 @@ export const mcpModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

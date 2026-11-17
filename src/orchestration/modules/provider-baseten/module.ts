@@ -57,10 +57,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const basetenModule = {
   id: "provider-baseten",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "baseten", value: { definition, createClient } },
     { domain: "settings", id: "provider-baseten", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Baseten models through an API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;

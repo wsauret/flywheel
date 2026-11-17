@@ -145,9 +145,8 @@ test("session snapshot and whole patches share history, keep captured context, a
     return created
   } }
   const module = {
-    id: "side-question", dependencies: [], availability: { kind: "available" },
+    id: "side-question", dependencies: [],
     contributions: [{ domain: "chatHosts", id: "side-question", value: contribution }],
-    observers: [], gates: [],
   } as const satisfies FirstPartyModule
   // The real chat lifecycle owns the hosts and retires one whose module the selection no longer includes.
   const { lifecycle } = makeLifecycle({ moduleSelection: () => composeModules([module], { disabledModuleIds: enabled ? [] : ["side-question"] }) })

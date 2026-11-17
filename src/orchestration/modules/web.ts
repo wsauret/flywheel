@@ -36,13 +36,10 @@ const WEB_TOOL_CONTRIBUTION = {
 export const webModule = {
   id: "web",
   dependencies: [],
-  availability: { kind: "available" },
   runtime: { handle: webRuntime, create: (services) => services.webSearch },
   contributions: [
     { domain: "tools", id: "web", value: { kind: "tool", name: "web", declaration: WEB_TOOL_CONTRIBUTION, associatedPromptRosterIds: ["web"] } },
     { domain: "promptRosters", id: "web", value: { definition: "web", visibility: "model-invocable" } },
     { domain: "settings", id: "web", value: { control: "binary", label: "Web", description: "Allow agents to search and retrieve public web content" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

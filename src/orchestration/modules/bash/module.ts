@@ -63,13 +63,10 @@ export const bashModule = {
   id: "bash",
   headless: { order: 0 },
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "tools", id: "bash", value: { kind: "tool", name: "bash", declaration: bash } },
     // Methods that only a shell can run, such as the worktree lifecycle that the shell's worktree gate names (ARCH-STRUCTURE-031).
     { domain: "definitions", id: "bash", value: { kind: "bundle", root: fileURLToPath(new URL("definitions", import.meta.url)) } },
     { domain: "settings", id: "bash", value: { control: "binary", group: "Tools", label: "Bash", description: "Warning: disabling Bash removes subprocess execution." } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

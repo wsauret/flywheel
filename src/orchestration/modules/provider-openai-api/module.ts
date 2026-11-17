@@ -83,10 +83,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const openaiApiModule = {
   id: "provider-openai-api",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "openai_api", value: { definition, createClient } },
     { domain: "settings", id: "provider-openai-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow OpenAI models through an API key" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule;
