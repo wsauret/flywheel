@@ -1,0 +1,68 @@
+src/infra/owned-command-supervisor.ts
+  h_4b47e9e4a8b456 134
+src/infra/owned-command.ts
+  h_4b47e9e4a8b456 19
+src/infra/owned-subprocess.ts
+  h_4b47e9e4a8b456 13
+src/infra/persistent-spool.ts
+  h_4b47e9e4a8b456 67
+src/infra/process-guardian-protocol.ts
+  h_4b47e9e4a8b456 34
+src/infra/process-guardian.ts
+  h_4b47e9e4a8b456 45,69,80,104
+src/infra/process-holder.ts
+  h_4b47e9e4a8b456 60,89
+src/infra/process-memory.ts
+  h_4b47e9e4a8b456 34,57
+src/infra/startup-timeline.ts
+  h_4b47e9e4a8b456 35
+src/infra/startup-trace.ts
+  h_4b47e9e4a8b456 36,61
+src/infra/wall-clock-sleep.ts
+  h_4b47e9e4a8b456 7
+src/infra/windows-private-directory-acl.ts
+  h_4b47e9e4a8b456 9,14
+tests/helpers/process-holders.ts
+  h_4b47e9e4a8b456 1-43
+tests/release/lib/retained-heap.ts
+  h_4b47e9e4a8b456 16-23
+tests/release/scenarios/parallel-workflow-agents.ts
+  h_4b47e9e4a8b456 6,14
+tests/release/scenarios/workflow-load-provider.ts
+  h_4b47e9e4a8b456 2
+tests/unit/infra/auth/auth-lock.test.ts
+  h_4b47e9e4a8b456 23,25,80-82
+tests/unit/infra/guardian-ledger.test.ts
+  h_4b47e9e4a8b456 8,12,52-53,59,78-79,86,88,92-93,100-101,110,116-117,124-125
+tests/unit/infra/owned-command.test.ts
+  h_4b47e9e4a8b456 4,148
+tests/unit/infra/persistent-spool.test.ts
+  h_4b47e9e4a8b456 11,15-16
+tests/unit/infra/process-guardian-protocol.test.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/infra/process-guardian.test.ts
+  h_4b47e9e4a8b456 1-2,6,8,10-12,17-30,57,68-73,84,87,93-113,118-119,127-131,137-147,167,298-301,303,307-308,421,434,450,464,479,494,598,615,626-628,631,671,685,698,702,713,724,728
+tests/unit/infra/process-holder.test.ts
+  h_4b47e9e4a8b456 5-6,18,53-54,67,72,75-77,80,84,99-100,105-106,113,122
+tests/unit/infra/process-memory.test.ts
+  h_4b47e9e4a8b456 1-2,4-6,8,11-20,22-64,66,70-71,74-75,81-82,85-86
+tests/unit/infra/process-supervisor.test.ts
+  h_4b47e9e4a8b456 7,22
+tests/unit/infra/startup-timeline.test.ts
+  h_4b47e9e4a8b456 2-4
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 21-22
+tests/unit/orchestration/session/pid-lock.test.ts
+  h_4b47e9e4a8b456 3,9,45,47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b41f3d3080e9b13c8ba6f7cce0fa7092889ebea5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
