@@ -1,4 +1,6 @@
 import type { StoredFact } from "../../../infra/event-store-types.js"
+import { Log } from "../../../infra/log.js"
+import { coalesceRepeats } from "../../../infra/repeat-coalescer.js"
 import { projectNotificationsCursor, type ProjectNotificationPatchPayload } from "../../../protocol/modules/project-notifications.js"
 import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
 import { parseProjectNotificationFact } from "./facts.js"
@@ -19,6 +21,12 @@ interface ProjectNotificationPublisherDeps {
   readonly schedule?: (reconcile: () => void, intervalMs: number) => () => void
 }
 
+const log = Log.create({ service: "project-notification-publisher" })
+
+/** A failing journal read or publish usually keeps failing on every poll, so
+ *  one count an hour shows that it continues without filling the log. */
+const FAILURE_WINDOW_MS = 60 * 60_000
+
 const scheduleInterval = (reconcile: () => void, intervalMs: number): (() => void) => {
   const timer = setInterval(reconcile, intervalMs)
   return () => clearInterval(timer)
@@ -29,10 +37,25 @@ export function createProjectNotificationPublisher(deps: ProjectNotificationPubl
   let accepting = true
   let publishedSeq = -1
   let tail = Promise.resolve()
-  const failures: unknown[] = []
+  // Shutdown only needs to know that publication failed, so the first failure
+  // and a count keep that contract in constant memory while a poll fails once
+  // a second for the life of the project.
+  let failed: { readonly first: unknown; count: number } | undefined
+  const failures = coalesceRepeats<string>({
+    windowMs: FAILURE_WINDOW_MS,
+    first: (_condition, errorType) => log.warn("notification publication failed", { errorType }),
+    repeated: (_condition, repeats) => log.warn("notification publication failures repeated", { count: repeats.count, windowMs: repeats.windowMs }),
+  })
   const own = (read: () => Promise<readonly StoredFact[]>): Promise<void> => {
     const task = tail.then(read).then(publishFacts)
-    tail = task.catch((error: unknown) => { failures.push(error) })
+    tail = task.then(
+      () => failures.end(),
+      (error: unknown) => {
+        if (failed) failed.count += 1
+        else failed = { first: error, count: 1 }
+        failures.observe("publication", error instanceof Error ? error.name : typeof error)
+      },
+    )
     return task
   }
 
@@ -68,7 +91,8 @@ export function createProjectNotificationPublisher(deps: ProjectNotificationPubl
     reconcile,
     async settled() {
       await tail
-      if (failures.length) throw new AggregateError(failures, "Notification publication failed")
+      failures.end()
+      if (failed) throw new Error(`Notification publication failed ${failed.count} times`, { cause: failed.first })
     },
     closeAdmission() {
       if (!accepting) return
