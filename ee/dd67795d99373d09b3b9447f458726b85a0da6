@@ -1,0 +1,212 @@
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 154
+src/orchestration/workflow-host/launch-origin.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/workflow-host/path-workflow.ts
+  h_4b47e9e4a8b456 61,74,449
+src/orchestration/workflow-host/publish.ts
+  h_4b47e9e4a8b456 38
+src/workflows/context-bundle/workflow-request.ts
+  h_4b47e9e4a8b456 40
+src/workflows/definition-assets.ts
+  h_4b47e9e4a8b456 4,109-119,121-130,134-139
+src/workflows/definition-provenance-projection.ts
+  h_4b47e9e4a8b456 40
+src/workflows/definitions/override-baselines.ts
+  h_4b47e9e4a8b456 37,118
+src/workflows/definitions/override-staleness.ts
+  h_4b47e9e4a8b456 9,127
+src/workflows/output-contract/accept.ts
+  h_4b47e9e4a8b456 156
+src/workflows/output-contract/types.ts
+  h_4b47e9e4a8b456 38
+src/workflows/output-contract/workflow-completion.ts
+  h_4b47e9e4a8b456 437
+src/workflows/retired-bindings.ts
+  h_4b47e9e4a8b456 85
+src/workflows/session-fact-source.ts
+  h_4b47e9e4a8b456 29
+src/workflows/skill-context.ts
+  h_4b47e9e4a8b456 27
+src/workflows/skill-schema.ts
+  h_4b47e9e4a8b456 257
+src/workflows/skills.ts
+  h_4b47e9e4a8b456 51
+src/workflows/vm/attempt-runner.ts
+  h_4b47e9e4a8b456 166
+src/workflows/vm/commit-host.ts
+  h_4b47e9e4a8b456 31
+src/workflows/vm/completion-order.ts
+  h_4b47e9e4a8b456 5
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 274,283,291-292,298,300,304,333,426
+src/workflows/vm/host-commit-controller.ts
+  h_4b47e9e4a8b456 207
+src/workflows/vm/recovery-fold.ts
+  h_4b47e9e4a8b456 38,71,81,111,142
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 1,50
+src/workflows/vm/structural-admission.ts
+  h_4b47e9e4a8b456 23,136
+tests/fixtures/retired-workflows/built-in/bench-implement.yaml
+  h_4b47e9e4a8b456 1-14
+tests/fixtures/retired-workflows/built-in/bench-plan.yaml
+  h_4b47e9e4a8b456 1-14
+tests/fixtures/retired-workflows/built-in/debug.yaml
+  h_4b47e9e4a8b456 1-37
+tests/fixtures/retired-workflows/built-in/implement.yaml
+  h_4b47e9e4a8b456 1-43
+tests/fixtures/retired-workflows/built-in/qa.yaml
+  h_4b47e9e4a8b456 1-34
+tests/fixtures/retired-workflows/built-in/raindrop-audit.yaml
+  h_4b47e9e4a8b456 1-19
+tests/fixtures/retired-workflows/retained-project.ts
+  h_4b47e9e4a8b456 1,28
+tests/helpers/workflow-files.ts
+  h_4b47e9e4a8b456 12,62-70
+tests/helpers/workflow-root-fixtures.ts
+  h_4b47e9e4a8b456 52-58
+tests/integration/orchestration/retired-step-grammar.test.ts
+  h_4b47e9e4a8b456 2,4,7,32,153
+tests/integration/orchestration/workflow-authoring-examples.test.ts
+  h_4b47e9e4a8b456 3,14,30,35,53,135-160,242,271,349
+tests/unit/bench/chat-ab-claude-code-test1.test.ts
+  h_4b47e9e4a8b456 2,6,12,58-59
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 13,446,449,457
+tests/unit/orchestration/app-service/_background-index-fixtures.ts
+  h_4b47e9e4a8b456 25,105,107
+tests/unit/orchestration/app-service/runtime-session-contract.test.ts
+  h_4b47e9e4a8b456 23,89
+tests/unit/orchestration/migrations/_pre-cutover-control.ts
+  h_4b47e9e4a8b456 16,143-154
+tests/unit/orchestration/migrations/pre-rename-workflow-history.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/orchestration/migrations/workflow-definition-identity-skill-catalog.test.ts
+  h_4b47e9e4a8b456 39,395
+tests/unit/orchestration/modules/workflows/launching-session-authority.test.ts
+  h_4b47e9e4a8b456 7,15,19,86,90
+tests/unit/orchestration/workflow-host/_path-launch-fixtures.ts
+  h_4b47e9e4a8b456 55-56
+tests/unit/orchestration/workflow-host/_path-workflow-fixtures.ts
+  h_4b47e9e4a8b456 3,23-24
+tests/unit/orchestration/workflow-host/_workflow-controller-fixtures.ts
+  h_4b47e9e4a8b456 20,41,304
+tests/unit/orchestration/workflow-host/_workflow-host-fixtures.ts
+  h_4b47e9e4a8b456 9,102
+tests/unit/orchestration/workflow-host/factory-handoff-durability.test.ts
+  h_4b47e9e4a8b456 8,28-31
+tests/unit/orchestration/workflow-host/path-workflow.test.ts
+  h_4b47e9e4a8b456 18,23,248,265-266,270,279,286,288,290-291,673-689,691-694
+tests/unit/orchestration/workflow-host/workflow-controller-launch-origins.test.ts
+  h_4b47e9e4a8b456 6,23-24,62,113,173
+tests/unit/orchestration/workflow-host/workflow-controller-path-launch.test.ts
+  h_4b47e9e4a8b456 10,98,102,120,234-235,256-257,283,291
+tests/unit/orchestration/workflow-host/workflow-deps.test.ts
+  h_4b47e9e4a8b456 8,21-22
+tests/unit/orchestration/workflow-host/workflow-launch-required-skills.test.ts
+  h_4b47e9e4a8b456 5,81
+tests/unit/workflows/definitions/definition-assets.test.ts
+  h_4b47e9e4a8b456 2-3,6,10,12,71-73,75-87,93-99,116-123,127-129,131-133
+tests/unit/workflows/definitions/definition-provenance-store.test.ts
+  h_4b47e9e4a8b456 6,12,21-22,24,28,72,108,173,199,234,268,299,336,363,381,428,473,503
+tests/unit/workflows/definitions/definition-staleness.test.ts
+  h_4b47e9e4a8b456 2,7-15
+tests/unit/workflows/definitions/override-baselines.test.ts
+  h_4b47e9e4a8b456 9,16-20,36,53,69,79-90,97,107,135,148
+tests/unit/workflows/definitions/skill-corpus-boundary.test.ts
+  h_4b47e9e4a8b456 38-42,48-50
+tests/unit/workflows/definitions/skill-loader-roots.test.ts
+  h_4b47e9e4a8b456 6,10-12
+tests/unit/workflows/output-contract/check.test.ts
+  h_4b47e9e4a8b456 5-6,27-33,66-67,71-73,177,179,184,188,199
+tests/unit/workflows/output-contract/types.test.ts
+  h_4b47e9e4a8b456 5,38-39
+tests/unit/workflows/output-contract/workflow-completion.test.ts
+  h_4b47e9e4a8b456 4,466-468,481
+tests/unit/workflows/queue/context-accumulator-boundaries.test.ts
+  h_4b47e9e4a8b456 4,170,199
+tests/unit/workflows/queue/queue-fact-source.test.ts
+  h_4b47e9e4a8b456 8,93,165,283,286
+tests/unit/workflows/retired-bindings.test.ts
+  h_4b47e9e4a8b456 6,11,92,95
+tests/unit/workflows/skill-context.test.ts
+  h_4b47e9e4a8b456 6,13-15
+tests/unit/workflows/vm/_machine-semantics-fixtures.ts
+  h_4b47e9e4a8b456 6-7,52,63,76,79
+tests/unit/workflows/vm/_sqlite-vm-driver.ts
+  h_4b47e9e4a8b456 12,40-41,48,182-184,222,373,402-404,418
+tests/unit/workflows/vm/_tree-fixtures.ts
+  h_4b47e9e4a8b456 5,125
+tests/unit/workflows/vm/bootstrap-validation.test.ts
+  h_4b47e9e4a8b456 12,80
+tests/unit/workflows/vm/commit-host.test.ts
+  h_4b47e9e4a8b456 8,11,103,157,175,180,215,223,249,251,256,264,299,314,321,325,362,395
+tests/unit/workflows/vm/commit-protocol.test.ts
+  h_4b47e9e4a8b456 360
+tests/unit/workflows/vm/companions.test.ts
+  h_4b47e9e4a8b456 7,23,30,38,40,191
+tests/unit/workflows/vm/compile-votes.test.ts
+  h_4b47e9e4a8b456 3,25-32
+tests/unit/workflows/vm/completion-order.test.ts
+  h_4b47e9e4a8b456 3,26-28,30-35
+tests/unit/workflows/vm/continuation-domain.test.ts
+  h_4b47e9e4a8b456 10,22,26,86,94,104,146,151,153
+tests/unit/workflows/vm/definition-identity.test.ts
+  h_4b47e9e4a8b456 30,441,467-497,499-501,507,512-513
+tests/unit/workflows/vm/drift.test.ts
+  h_4b47e9e4a8b456 56,88
+tests/unit/workflows/vm/fact-fold.test.ts
+  h_4b47e9e4a8b456 7,14,37,133,136,142,144,149,221,347,391,395,463,550,553,563,566-567
+tests/unit/workflows/vm/graph-model.test.ts
+  h_4b47e9e4a8b456 9,14,230,232,236-237
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 17,52,108,140,422,473,549
+tests/unit/workflows/vm/host-test-support.ts
+  h_4b47e9e4a8b456 139-147,154,170
+tests/unit/workflows/vm/host.test.ts
+  h_4b47e9e4a8b456 11-15,28,33-63,324,328,331,333,335,338,360-363
+tests/unit/workflows/vm/machine-lifecycle.test.ts
+  h_4b47e9e4a8b456 6,54,66,72,81,94,103-104,107,111,115,134,154,166,179
+tests/unit/workflows/vm/machine-recovery.test.ts
+  h_4b47e9e4a8b456 4,51,94-96,103,105,111-112,118,133-134,143-144
+tests/unit/workflows/vm/machine-semantics.test.ts
+  h_4b47e9e4a8b456 6,22,26,89,117-118,145,152,156,165-166,175,186,226,262,273,280,284,305,316,331,386,463,491,507,522,524,529,549,579,610
+tests/unit/workflows/vm/phase-containers.test.ts
+  h_4b47e9e4a8b456 6-7,119,138,146,149,302,305
+tests/unit/workflows/vm/pipeline-ordering.test.ts
+  h_4b47e9e4a8b456 14,686-687
+tests/unit/workflows/vm/recovery-atomicity.test.ts
+  h_4b47e9e4a8b456 26,299,328
+tests/unit/workflows/vm/recovery-fold.test.ts
+  h_4b47e9e4a8b456 7,15,24-66,68-74,76-78,80,125-128,136-137,158,235,242,246,252,259-260,263,273,276,285,289,292,296,306-307,314-315,326-327
+tests/unit/workflows/vm/recovery.test.ts
+  h_4b47e9e4a8b456 14,57,61,66,69-70,76
+tests/unit/workflows/vm/rehydration.test.ts
+  h_4b47e9e4a8b456 8,287,328,336,342,353
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 27,29-30,40,115-122,129,134,159,194,221,235,257,268,283,288,299,311,326,331,337,349,354,360,374,379,385,400,410,415,426,447,462,467,474,497,503,516,522,538,544,558,564,606,631
+tests/unit/workflows/vm/retired-built-in-definitions.test.ts
+  h_4b47e9e4a8b456 4-6,8-9,33-37,65-68,83
+tests/unit/workflows/vm/selecting-joins.test.ts
+  h_4b47e9e4a8b456 11,345,397,467
+tests/unit/workflows/vm/session-fact-types.test.ts
+  h_4b47e9e4a8b456 6,8,10,153,210
+tests/unit/workflows/vm/step-failure.test.ts
+  h_4b47e9e4a8b456 3,46,90,98,108,111,126,134,138,165,171,185,193,198,203,205,213,219
+tests/unit/workflows/vm/transition-invariants.test.ts
+  h_4b47e9e4a8b456 5,61-62,70,77,82
+tests/unit/workflows/workflow-authoring-skill.test.ts
+  h_4b47e9e4a8b456 4,8,11,20,88,135-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eedd67795d99373d09b3b9447f458726b85a0da6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
