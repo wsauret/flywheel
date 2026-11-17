@@ -1,0 +1,54 @@
+src/orchestration/modules/experiments/auto-resume-guards.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/modules/experiments/operation-owner.ts
+  h_4b47e9e4a8b456 8-9,17,29
+src/orchestration/modules/experiments/protocol.ts
+  h_4b47e9e4a8b456 48,55,84,252,295
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 24
+src/orchestration/modules/learning/learning-journal.ts
+  h_4b47e9e4a8b456 59
+src/orchestration/modules/learning/learning-review.ts
+  h_4b47e9e4a8b456 55,75,471
+tests/integration/local/learning-preparation-responsiveness.test.ts
+  h_4b47e9e4a8b456 8,96
+tests/unit/orchestration/agent-runtime/tools/_fixtures.ts
+  h_4b47e9e4a8b456 1,12,90-96
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 22,83-85
+tests/unit/orchestration/app-service/command-invoke-service.test.ts
+  h_4b47e9e4a8b456 9,27,249
+tests/unit/orchestration/modules/experiments/auto-resume-guards.test.ts
+  h_4b47e9e4a8b456 2,9-12,14,16-18
+tests/unit/orchestration/modules/experiments/chat-runtime-persistence.test.ts
+  h_4b47e9e4a8b456 21
+tests/unit/orchestration/modules/experiments/experiment-command.test.ts
+  h_4b47e9e4a8b456 6,46
+tests/unit/orchestration/modules/experiments/experiment-skills.test.ts
+  h_4b47e9e4a8b456 6,33
+tests/unit/orchestration/modules/experiments/operation-owner.test.ts
+  h_4b47e9e4a8b456 10,25-32
+tests/unit/orchestration/modules/experiments/protocol-projection.test.ts
+  h_4b47e9e4a8b456 5,7,10-13,15-16,18-19,75-76,84,97-98,123-156,161-163,178,316,327,354-355,380-383
+tests/unit/orchestration/modules/experiments/tools/log-experiment.test.ts
+  h_4b47e9e4a8b456 5,10-12
+tests/unit/orchestration/modules/experiments/tools/run-experiment.test.ts
+  h_4b47e9e4a8b456 4,7
+tests/unit/orchestration/modules/learning/learning-journal.test.ts
+  h_4b47e9e4a8b456 27-28
+tests/unit/orchestration/modules/learning/learning-review.test.ts
+  h_4b47e9e4a8b456 10,12,20-22
+tests/unit/orchestration/modules/learning/self-improvement-review-inputs.test.ts
+  h_4b47e9e4a8b456 40,45-46,65,73,95,105,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6289b0158442c3b3c06386d691a95666a4953b3a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
