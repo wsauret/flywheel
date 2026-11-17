@@ -108,11 +108,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const anthropicApiModule = {
   id: "provider-anthropic-api",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "anthropic_api", value: { definition, createClient } },
     { domain: "settings", id: "provider-anthropic-api", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow Anthropic models through an API key" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

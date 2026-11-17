@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { environmentReminder } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
+import { createModelReminders } from "../../../../src/orchestration/agent-runtime/llm/runtime-reminders";
 import { ENGINE_INSTRUCTIONS } from "../../../helpers/hosted-engine-text.js";
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
@@ -73,7 +73,7 @@ describe("ConversationTree.appendMessage", () => {
   it("keeps the reminder label of an environment or date reminder, and gives it to one that a build before 2026-11-01 wrote without it", async () => {
     const tree = await openTree();
     const date = "<system-reminder>\nCurrent local date: 2026-10-30.\n</system-reminder>\n";
-    const environment = environmentReminder({ kind: "environment", workingDirectory: "/work/two", isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" }, SHELL_CAPABILITIES);
+    const environment = String(createModelReminders("fixture-model", 200_000)([{ kind: "user", origin: "human", content: "Start." }], "/work/two", SHELL_CAPABILITIES)[0]?.content);
     const entries = [
       { kind: "user", content: "Start.", origin: "human" },
       { kind: "user", content: date, origin: "system", framing: "reminder" },

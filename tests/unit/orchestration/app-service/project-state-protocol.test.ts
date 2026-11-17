@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { decodeProjectStateRequest, decodeProjectStateResponse, decodeProjectStateStartupStep, decodeProjectStateStored, encodeProjectStateResponse, encodeProjectStateStartupStep } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+import { decodeProjectStateRequest, decodeProjectStateResponse, decodeProjectStateMessage, decodeProjectStateStartupStep, encodeProjectStateResponse, encodeProjectStateStartupStep } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 
 /** A response frame built by hand, for bodies that typed code cannot encode. */
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a msgpack body that typed code cannot encode
@@ -44,7 +44,7 @@ describe("project state protocol", () => {
       getOwnPropertyDescriptor(target, key) { reads++; return Reflect.getOwnPropertyDescriptor(target, key) },
     })
     const fact = { aggregateId: "a", type: "one", version: 1, timestamp: 1, actor: "test", sessionId: "s", payload, position: 2, id: "e", seq: 0 }
-    expect(decodeProjectStateStored({ flywheel: "state.stored", events: [fact] })).toBeDefined()
+    expect(decodeProjectStateMessage({ flywheel: "state.stored", events: [fact] })).toMatchObject({ kind: "stored" })
     expect(reads).toBe(0)
 
     // A response carries a body no family schema accepts, which only its reader judges.

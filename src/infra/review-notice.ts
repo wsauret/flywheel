@@ -25,10 +25,8 @@ export const ReviewNoticeMutationSchema = Schema.Struct({
   mutation: Schema.optionalKey(MutationDiffSchema),
 });
 
-export type ReviewNoticeMutation = typeof ReviewNoticeMutationSchema.Type;
-
 /** One ordered manifest carries all review actions and their evidence. Skill and
- * memory journals still use ReviewNoticeMutation before the notice is retained. */
+ * memory journals still use ReviewNoticeMutationSchema before the notice is retained. */
 export const ReferenceReviewNoticeFields = {
   mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
   reviewMutations: Schema.optionalKey(Schema.Never),

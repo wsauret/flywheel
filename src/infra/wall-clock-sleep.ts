@@ -4,7 +4,7 @@ import { abortableSleep } from "./abort.js"
  *  again. A timer counts monotonic time, which stops while the machine
  *  sleeps, so a wait for a stated wall-clock time ends at most this long
  *  after the machine wakes past that time. */
-export const WALL_CLOCK_CHECK_MS = 60_000
+const WALL_CLOCK_CHECK_MS = 60_000
 
 export interface WallClock {
   readonly now: () => number

@@ -252,7 +252,7 @@ export interface RuntimeTool {
    *  otherwise take (ask_user waits on a human). Every other tool is
    *  presumed to complete quickly, so a hang is presumed a bug. */
   unboundedDuration?: true;
-  execute: (input: RuntimeToolInput, context: ToolContext) => Promise<ToolResult>;
+  execute: (input: RuntimeToolInput, context: DispatchedToolContext) => Promise<ToolResult>;
 }
 
 /** What a tool shows the model without the authority that runs it. A
@@ -385,14 +385,6 @@ export interface ToolContext {
   /** Generic live execution-output channel. Tools may report ephemeral,
    *  accumulated, tail-capped output here while work is still running. */
   onExecutionOutput?: (text: string) => void;
-  /** Execution-scoped nested dispatch factory. The turn dispatcher sets it on every call that it runs, in the
-   *  foreground and in the background, and a nested batch passes its context on to each nested call. */
-  createNestedToolDispatchBatch?: (options: {
-    readonly tools: ReadonlyMap<string, RuntimeTool>;
-    readonly parentToolUseId: string;
-    readonly modelRequestId?: string;
-    readonly onNestedStart?: (breadcrumb: string) => void;
-  }) => NestedToolDispatchBatch;
   /** Session-scoped scratchpad directory (`<sessionDir>/scratch`) for agent
    *  scratch scripts and temp files. Disposable workspace deleted with the
    *  session; nothing projects from it. The bash tool creates it lazily (and
@@ -418,7 +410,7 @@ export interface ToolContext {
   readLedger?: FileReadLedger;
   /** Successful skill loads effective for this runner. Read-only to tool policy. */
   effectiveBundledSkillIds?: ReadonlySet<string>;
-  /** Set per-call by executePreparedTool; the tool_use block's ID from the LLM response. */
+  /** The tool_use block's ID from the LLM response. Present on every dispatched call (`DispatchedToolContext`). */
   toolUseId?: string;
   /** Set per-call by executePreparedTool: the UTF-8 bytes of text this call's result can hold before the
    *  tool-output boundary cuts it, which is that boundary's per-result cap less the notices dispatch prepends. A
@@ -471,6 +463,25 @@ export interface ToolContext {
    *  Absent in tool contexts without a turn commit path. */
   turnHasVisibleText?: () => boolean;
 }
+
+/** Opens a nested batch that runs a tool's own calls under this call's id. */
+export type CreateNestedToolDispatchBatch = (options: {
+  readonly tools: ReadonlyMap<string, RuntimeTool>;
+  readonly parentToolUseId: string;
+  readonly modelRequestId?: string;
+  readonly onNestedStart?: (breadcrumb: string) => void;
+}) => NestedToolDispatchBatch;
+
+/** The context that the turn dispatcher hands the dispatch seam for one call, in the foreground, in the background,
+ *  and in a nested batch, which passes the factory on to each nested call. */
+export type ToolDispatchContext = ToolContext & {
+  createNestedToolDispatchBatch: CreateNestedToolDispatchBatch;
+};
+
+/** The context a tool executes with: the dispatch seam (`executePreparedTool`) names the call. */
+export type DispatchedToolContext = ToolDispatchContext & {
+  toolUseId: string;
+};
 
 export interface BashOperations {
   writeScript(path: string, content: string): Promise<number>;

@@ -8,8 +8,9 @@ import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { installedChildSessionHistory } from "../../../../src/orchestration/session/module-session-operations.js"
-import { createProjectExecutionRuntime, createProjectExecutionKernel } from "../../../../src/orchestration/app-service/project-execution-composition.js"
-import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership.js"
+import { createProjectExecutionRuntime } from "../../../../src/orchestration/app-service/project-execution-composition.js"
+import * as runtimeChatKernel from "../../../../src/orchestration/app-service/runtime-chat-kernel.js"
+import type { RuntimeChatKernel } from "../../../../src/orchestration/app-service/runtime-chat-kernel.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { createChatRunnerLoader } from "../../../../src/orchestration/app-service/chat-runner-loader.js"
 import { createContinuationLanes } from "../../../../src/orchestration/session/planned-session-continuation.js"
@@ -18,7 +19,6 @@ import { mockRunner, quietSupervisorCollaborators, testSessionAuthAdmission } fr
 import { createSessionViewLoader } from "../../../../src/orchestration/session-store/view.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules } from "../../../helpers/request-tool-surface.js"
-import { fakeProjections } from "./app-service-doubles.js"
 import { servedProjectState } from "./_served-project-state-fixture.js"
 import { ACCOUNT_UPDATES_ONLY } from "../../../../src/orchestration/app-service/settings-mutations.js"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
@@ -58,6 +58,23 @@ function composeExecution(f: ReturnType<typeof fixture>, persistent: ReturnType<
     },
     persistentProcesses: persistent.client(), allowPersistentProcesses: false,
   })
+}
+
+/** Composes the executor and returns the chat kernel that it assembled. */
+async function composeExecutionKernel(f: ReturnType<typeof fixture>, persistent: ReturnType<typeof createPersistentProcessManager>) {
+  let kernel: RuntimeChatKernel | undefined
+  const assemble = runtimeChatKernel.assembleRuntimeChatKernel
+  const capture = spyOn(runtimeChatKernel, "assembleRuntimeChatKernel").mockImplementation(async (...args) => {
+    kernel = await assemble(...args)
+    return kernel
+  })
+  try {
+    const composition = await composeExecution(f, persistent)
+    if (kernel === undefined) throw new Error("the executor assembled no chat kernel")
+    return { composition, kernel }
+  } finally {
+    capture.mockRestore()
+  }
 }
 
 test("execution composition opens no primary state connection and leaves its authority usable after shutdown", async () => {
@@ -147,8 +164,8 @@ test("a chat opened in the executor records the profile that serves it, not the 
 
 test("remote kernel uses the existing supervisor and chat runner delivery path", async () => {
   const f = fixture()
-  const ownership = createRuntimeOwnership(() => {})
-  const kernel = await createProjectExecutionKernel(f.paths.projectRoot, f.state, ownership, fakeProjections().backgroundLane)
+  const persistent = createPersistentProcessManager()
+  const { composition, kernel } = await composeExecutionKernel(f, persistent)
   const delivered: string[] = []
   const authAdmission = testSessionAuthAdmission()
   const supervisor = createRuntimeSupervisor({
@@ -188,16 +205,17 @@ test("remote kernel uses the existing supervisor and chat runner delivery path",
     expect(f.requests).toContain("append")
   } finally {
     await supervisor.disposeAll()
-    await ownership.releaseAcquired()
+    await composition.dispose({ clientsHold: false })
+    persistent.releaseAll()
     expect(f.state.available).toBe(true)
     await f.close()
   }
-})
+}, WORKER_BOOT_TEST_TIMEOUT_MS)
 
 test("a settled child releases the conversation tree its writer held in the executor", async () => {
   const f = fixture()
-  const ownership = createRuntimeOwnership(() => {})
-  const kernel = await createProjectExecutionKernel(f.paths.projectRoot, f.state, ownership, fakeProjections().backgroundLane)
+  const persistent = createPersistentProcessManager()
+  const { composition, kernel } = await composeExecutionKernel(f, persistent)
   try {
     const parentSessionId = await kernel.manager.createChat({ initialState: "inactive" })
     const parent = await kernel.manager.read(parentSessionId)
@@ -233,10 +251,11 @@ test("a settled child releases the conversation tree its writer held in the exec
     await child.settle()
     expect(createConversationTreeProjection(kernel.projectionReader, childConversationId)).not.toBe(held)
   } finally {
-    await ownership.releaseAcquired()
+    await composition.dispose({ clientsHold: false })
+    persistent.releaseAll()
     await f.close()
   }
-})
+}, WORKER_BOOT_TEST_TIMEOUT_MS)
 
 test("the cut's handoff is heard at the cut, so the stop that follows is the planned replacement's even before the account's state names it", async () => {
   const f = fixture()

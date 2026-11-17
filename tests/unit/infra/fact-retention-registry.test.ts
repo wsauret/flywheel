@@ -39,11 +39,8 @@ describe("fact prefix claims at composition", () => {
   const module = (id: FirstPartyModule["id"], prefixes: readonly string[]): FirstPartyModule => ({
     id,
     dependencies: [],
-    availability: { kind: "available" },
     facts: { prefixes },
     contributions: [],
-    observers: [],
-    gates: [],
   })
 
   test("two modules cannot claim one prefix or a nested one", () => {

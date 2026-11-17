@@ -88,22 +88,6 @@ export function beginTierResolutionOperation(options: TierResolutionOptions): Ti
   return { ...options, [operationFamilyCatalogCache]: new Map() };
 }
 
-export async function resolveModelForTier(
-  tier: ModelTier,
-  family: ModelFamily,
-  availableModels: ReadonlySet<string> | undefined,
-  options: TierResolutionOptions,
-): Promise<string> {
-  const catalog = await catalogForFamily(family, availableModels, options);
-  for (const candidateTier of TIER_RESOLUTION_ORDER[tier]) {
-    const model = catalog.tiers[candidateTier][0];
-    if (model) return model;
-  }
-  const unranked = catalog.unranked[0];
-  if (unranked) return unranked;
-  throw new Error(`No assignable ${family} models were returned by provider listing.`);
-}
-
 export async function resolveModelForTierAcrossFamilies(
   tier: ModelTier,
   availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>> | undefined,

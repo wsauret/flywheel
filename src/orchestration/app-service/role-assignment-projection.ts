@@ -67,7 +67,7 @@ function projectWorkflowRoleAssignments(roles: ResolvedRoles, personas: AgentPer
   return projectRoleAssignments(Object.fromEntries(entries))
 }
 
-export function projectRoleAssignments(roles: RoleSettings): RuntimeRoleAssignments {
+function projectRoleAssignments(roles: RoleSettings): RuntimeRoleAssignments {
   return Object.fromEntries(Object.entries(roles).flatMap(([role, assignment]) =>
     assignment.model === undefined || assignment.effort === undefined ? [] : [[
       role, { model: assignment.model, effort: assignment.effort },

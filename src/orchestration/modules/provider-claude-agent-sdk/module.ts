@@ -162,7 +162,6 @@ export function createClaudeAgentSdkModule(seams: ClaudeAgentSdkSeams = {}) {
   return {
     id: CLAUDE_AGENT_SDK_MODULE_ID,
     dependencies: [],
-    availability: { kind: "available" },
     service: { handle: claudeAgentSdkService, portable: true, create: (services: PortableModuleServices) => createClaudeAgentSdkService(services, seams) },
     contributions: [
       { domain: "providers", id: definition.id, value: { definition, createClient, usageReader: claudeUsageReader(seams) } },
@@ -176,8 +175,6 @@ export function createClaudeAgentSdkModule(seams: ClaudeAgentSdkSeams = {}) {
       } },
     ],
     sessionHistory: { framing: historicalEngineFraming },
-    observers: [],
-    gates: [],
   } as const satisfies FirstPartyModule;
 }
 

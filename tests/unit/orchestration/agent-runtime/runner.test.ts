@@ -6,6 +6,7 @@ import { isRecord } from "../../../../src/infra/record.js"
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 import type { ModelClient } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory"
 import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
@@ -461,7 +462,7 @@ describe("prompt sources take effect at the person's message", () => {
   /** Drives a chat runner through a person turn with a mid-turn write to both
    *  sources, a background turn, and a second person turn. Returns each
    *  request's source markers and the number of memory store reads. */
-  async function driveTurns(start: "seeded instruction" | "queued message", overrides: Partial<AgentOptions> = {}) {
+  async function driveTurns(start: "seeded instruction" | "queued message", overrides: AgentOptionsOverride = {}) {
     const project = directory("runner-turn-sources-")
     writeFileSync(join(project, "AGENTS.md"), "INSTRUCTIONS V1")
     let memory = "MEMORY V1"

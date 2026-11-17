@@ -7,25 +7,21 @@ import { roleCapture } from "../../../helpers/role-capture.js"
 import type { RoleSettings, RoleAssignmentSnapshot } from "../../../../src/orchestration/session/schemas.js"
 import type { WorkflowLaunchAgentModels } from "../../../../src/infra/workflow-types.js"
 import { createRoleAssignmentReader } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
-import { createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
 import { sessionServingSelection } from "../../../../src/protocol/role-protocol-types.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
+/** The role reading that the role projection publishes for the member. */
 async function publishedRoles(snapshot: RoleAssignmentSnapshot, capture: ReturnType<typeof roleCapture>, local: RoleAssignmentSnapshot = { defaults: {}, overrides: {} }) {
-  const projection = createRoleProtocolProjection({
-    manager: { subscribe: () => () => {} },
-    publish: (input) => ({ ...input, position: 1, prevPosition: 0 }),
-    readRoles: createRoleAssignmentReader({
-      readSession: async () => ({ kind: "workflow-agent", workflowMembership: { kind: "attempt", workflowId: "workflow", attemptId: "build" }, roleAssignments: local }),
-      inheritedRoles: async () => snapshot,
-      capture: async () => capture,
-      personas: async () => new Map([["build", { id: "explorer", roles: ["explorer"] }]]),
-      workflowSeat: async () => ({ briefId: "demo.build", definitionId: "build" }),
-      childRole: async () => undefined,
-      userDataRoot: "/scratch",
-    }),
+  const readRoles = createRoleAssignmentReader({
+    readSession: async () => ({ kind: "workflow-agent", workflowMembership: { kind: "attempt", workflowId: "workflow", attemptId: "build" }, roleAssignments: local }),
+    inheritedRoles: async () => snapshot,
+    capture: async () => capture,
+    personas: async () => new Map([["build", { id: "explorer", roles: ["explorer"] }]]),
+    workflowSeat: async () => ({ briefId: "demo.build", definitionId: "build" }),
+    childRole: async () => undefined,
+    userDataRoot: "/scratch",
   })
-  try { return await projection.snapshot("workflow") } finally { await projection.dispose() }
+  return await readRoles("workflow")
 }
 
 const workflow = loadedWorkflow({

@@ -496,7 +496,7 @@ Whatever the caller, a loaded body is ordinary durable history rather than harne
 
 ## TUI Shell
 
-`src/tui/shell.tsx` is a composition site. It creates shell state, modals, command dispatch, keyboard handling, prompt history, foreground switching, and header/output/prompt layout. The session store is runtime-side state; the shell reads protocol-fed session caches through `RuntimeClient`.
+`src/tui/shell.tsx` is a composition site. It creates the one shell state, provides it through `useShellState()`, and composes one owner per concern in the order they read each other: `src/tui/shell-composer.tsx` (drafts, chat submissions, prompt history, then the command dispatch, keyboard handling, and prompt area), `src/tui/shell-navigation.ts` (tabs, foreground switching, and the places that a link, an id, or a module names), `src/tui/shell-overlays.ts` (the module slot host, the kernel modals, and the surface router), and `src/tui/shell-header.tsx` (tabs bar and header statistics). Where two owners call each other, as when a modal opens a session whose viewer opens the modal, the earlier owner calls a late binding (`src/tui/hooks/late-binding.ts`). The code that builds the target of the call binds it before the shell mounts: the shell layout for a call between owners, and the owner itself for a call between its own parts. The session store is runtime-side state; the shell reads protocol-fed session caches through `RuntimeClient`.
 
 Important hooks and components:
 

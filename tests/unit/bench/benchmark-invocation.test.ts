@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { UsageEntry } from "../../../src/infra/llm/usage-entry.js";
-import type { Agent, AgentFactory, AgentOptions, AgentRunResult, RuntimeToolSurfaces } from "../../../src/orchestration/agent-runtime/types.js";
+import type { Agent, AgentFactory, AgentOptions, AgentRunResult, OmitAgentOptions, RuntimeToolSurfaces } from "../../../src/orchestration/agent-runtime/types.js";
 import { createBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting.js";
 import { invokeBenchmarkAgent } from "../../../src/orchestration/modules/development/benchmark/invocation.js";
 
@@ -18,7 +18,7 @@ const BASE_USAGE: UsageEntry = {
   currency: "USD", coverage: "complete",
 };
 
-function options(onEvent: AgentOptions["onEvent"] = () => undefined): Omit<AgentOptions, "conversation" | "lifecycle" | "runtimeSurfaces"> {
+function options(onEvent: AgentOptions["onEvent"] = () => undefined): OmitAgentOptions<AgentOptions, "conversation" | "lifecycle" | "runtimeSurfaces"> {
   return {
     model: "model",
     purpose: { kind: "persona-benchmark" },

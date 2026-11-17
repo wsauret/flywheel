@@ -13,12 +13,18 @@ import { createProjectStateSessionManager } from "../../../../src/orchestration/
 import type { ProjectStateControlOperation, ProjectStateExecutionOperation, ProjectStateRequest, ProjectStateResponseFrame, ProjectStateResult } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import { pack } from "msgpackr"
-import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, encodeProjectStateResponseFrame, decodeProjectStateResponse, decodeProjectStateRequest, readProjectStateResponseFrame } from "../../../../src/orchestration/app-service/project-state-protocol.js"
+import { PROJECT_STATE_MAX_BYTES, encodeProjectStateRequest, encodeProjectStateResponse, encodeProjectStateResponseFrame, decodeProjectStateResponse, decodeProjectStateRequest, decodeProjectStateMessage } from "../../../../src/orchestration/app-service/project-state-protocol.js"
 import { ParentPublicationContendedError } from "../../../../src/orchestration/session/manager.js"
 import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication.js"
 import { buildSessionContent, buildSessionContentManifest, readSessionContentRecords } from "../../../../src/infra/session-content.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { closeFixtures, fixture } from "./_project-state-worker-fixture.js"
+
+/** The response frame a state client reads from `bytes`, with its body unread. */
+function responseFrame(bytes: Uint8Array) {
+  const message = decodeProjectStateMessage(bytes)
+  return message?.kind === "response" ? message.frame : undefined
+}
 
 afterEach(closeFixtures)
 
@@ -451,7 +457,7 @@ describe("project state channel", () => {
       await executorEndpoint.send(encodeProjectStateRequest({ id, lane: "control", operation: { kind: "facts.page", query: { aggregateId: "a" }, maxRows: 1, maxBytes: 1024, ...(evidence ? { evidence } : {}) } }))
       await requested.promise
       // The account read nothing of the body, so it never refuses the frame.
-      expect(workerAnswers?.(readProjectStateResponseFrame(workerFrame(workerRequests.at(-1)!.id))!)).toBe(true)
+      expect(workerAnswers?.(responseFrame(workerFrame(workerRequests.at(-1)!.id))!)).toBe(true)
       await arrived.promise
       return received.at(-1)!
     }
@@ -459,7 +465,7 @@ describe("project state channel", () => {
     const result = { kind: "facts", facts: [stateHarness().storedFact], contentRows: [], upperPosition: 5, continuationPosition: null, encodedBytes: 1 } as const
     let served: ProjectStateResponseFrame | undefined
     const page = await relayed(7, (workerId) => (served = encodeProjectStateResponseFrame({ id: workerId, head: 5, result })).bytes)
-    const frame = readProjectStateResponseFrame(page)
+    const frame = responseFrame(page)
     expect(frame?.id).toBe(7)
     expect(page.subarray(frame?.bodyOffset)).toEqual(served!.bytes.subarray(served!.bodyOffset))
     expect(decodeProjectStateResponse(page)).toEqual({ id: 7, head: 5, result })
@@ -477,24 +483,24 @@ describe("project state channel", () => {
     expect([...canonical.subarray(0, 3)]).toEqual([0xde, 0x00, 0x02])
     const wide = new Uint8Array([0xdf, 0x00, 0x00, 0x00, 0x02, ...canonical.subarray(3)])
     const widePage = await relayed(10, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), wide])))
-    expect(widePage.subarray(readProjectStateResponseFrame(widePage)?.bodyOffset)).toEqual(wide)
+    expect(widePage.subarray(responseFrame(widePage)?.bodyOffset)).toEqual(wide)
     expect(decodeProjectStateResponse(widePage)).toEqual({ id: 10, head: 5, result })
 
     // Bytes that are not MessagePack at all (0xc1 is never used) still reach
     // the executor unchanged, and the executor refuses them.
     const garbage = new Uint8Array([0xc1, 0xff, 0x00])
     const garbled = await relayed(11, (workerId) => new Uint8Array(Buffer.concat([pack(workerId), garbage])))
-    expect(garbled.subarray(readProjectStateResponseFrame(garbled)?.bodyOffset)).toEqual(garbage)
+    expect(garbled.subarray(responseFrame(garbled)?.bodyOffset)).toEqual(garbage)
     expect(decodeProjectStateResponse(garbled)).toBeUndefined()
 
     // A body no reader accepts still reaches the executor, whose decode is the
     // boundary that refuses it; a body the account consumes itself is read there.
     const unreadable = (workerId: number) => new Uint8Array(Buffer.concat([pack(workerId), pack({ result: { kind: "unknown" } })]))
     const invalid = await relayed(8, unreadable)
-    expect(readProjectStateResponseFrame(invalid)?.id).toBe(8)
+    expect(responseFrame(invalid)?.id).toBe(8)
     expect(decodeProjectStateResponse(invalid)).toBeUndefined()
     const own = account.countByAggregate("a")
-    expect(workerAnswers?.(readProjectStateResponseFrame(unreadable(workerRequests.at(-1)!.id))!)).toBe(false)
+    expect(workerAnswers?.(responseFrame(unreadable(workerRequests.at(-1)!.id))!)).toBe(false)
 
     // A Worker that goes away fails the relayed request in its own words.
     arrived = Promise.withResolvers()

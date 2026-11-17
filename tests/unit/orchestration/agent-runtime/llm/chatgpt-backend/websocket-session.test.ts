@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import assert from "node:assert/strict";
 import { Effect, Exit, Scope } from "effect";
-import { acquireWebSocket, isWebSocketSseFallbackActive, parseWebSocket, recordWebSocketFailure, recordWebSocketSuccess, retainWebSocketSession, type WebSocketEvent, type WebSocketOptions } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
+import { acquireWebSocket, isWebSocketSseFallbackActive, parseWebSocket, recordWebSocketFailure, recordWebSocketSuccess, retainWebSocketSession } from "../../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket-session.js";
+
+/** The event and option shapes that a fake socket shares with the runtime WebSocket. */
+interface WebSocketEvent { readonly data?: string; readonly message?: string; readonly code?: number; readonly reason?: string; readonly wasClean?: boolean }
+interface WebSocketOptions { readonly headers?: { [name: string]: string } }
 
 const originalNow = Date.now;
 

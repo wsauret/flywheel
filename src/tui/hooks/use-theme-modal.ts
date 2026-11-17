@@ -5,7 +5,8 @@ import { createListModalKeys } from "../components/modal-list-keys.js"
 import { filterOptions, flattenWithCategories } from "../components/modal-select-helpers.js"
 import type { ModalSelectOption, FilteredResult } from "../components/modal-select-types.js"
 import type { ModalContext, ModalHandle } from "../components/modal-stack.js"
-import { mutateRuntimeConfig, type RuntimeConfigCache, type ShellServices } from "./shell-state.js"
+import { mutateRuntimeConfig } from "./create-settings-store.js"
+import type { RuntimeConfigCache, ShellServices } from "./shell-state.js"
 import { errorMessage } from "../../infra/error-message.js"
 
 interface ThemeModalDeps {

@@ -24,7 +24,7 @@ import type { GateAdmission } from "./tool-concurrency-gate.js";
 import { coerceToolCallInput, describeInputRepair, type CoercedToolCallInput } from "./coerce-input.js";
 import { formatToolInputProblems, validateToolInput } from "./validate-input.js";
 import { toolNamesForActions } from "./tool-exposure-planner.js";
-import type { RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
+import type { DispatchedToolContext, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolDispatchContext, ToolResult } from "./types.js";
 import { createToolRegistry, shellCommandOf } from "../../tool-catalog.js";
 import { TOOL_RESULT_MAX_BYTES } from "../compaction/truncation.js";
 
@@ -218,7 +218,7 @@ function nameSimilarity(a: string, b: string): number {
 
 /** Applies the repair ladder to a call, stamping the original name so the
  *  tool.input.completed fact records the repair. Identity when no repair. */
-export function repairToolCall(call: ToolCall, tools: ReadonlyMap<string, RuntimeTool>): ToolCall {
+function repairToolCall(call: ToolCall, tools: ReadonlyMap<string, RuntimeTool>): ToolCall {
   const repaired = repairToolName(call.name, tools);
   if (repaired === null) return call;
   log.info("tool name auto-repaired", { from: call.name, to: repaired, toolUseId: call.id });
@@ -348,7 +348,7 @@ export async function preparedToolAdmission(prepared: PreparedToolCall, context:
 
 export async function executePreparedTool(
   prepared: PreparedToolCall,
-  context: ToolContext,
+  context: ToolDispatchContext,
   options: { watchdogMs?: number; gate?: ToolExecutionGate } = {},
 ): Promise<ToolResult> {
   await ensureAdmissionPrepared(prepared, context, context.signal);
@@ -380,7 +380,7 @@ export async function executePreparedTool(
     timer = setTimeout(() => watchdog.abort(), watchdogMs);
   };
   const { onExecutionOutput, ...baseContext } = context;
-  const ctx: ToolContext = {
+  const ctx: DispatchedToolContext = {
     ...baseContext,
     signal: watchdog ? mergeAbortSignals(context.signal, watchdog.signal) : context.signal,
     toolUseId: call.id,

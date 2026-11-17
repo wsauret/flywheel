@@ -83,7 +83,7 @@ const MASKABLE_INPUT_FIELDS: Readonly<MaskableInputFields> = {
   apply_patch: ["input"],
 };
 
-export interface StaleMaskResult {
+interface StaleMaskResult {
   /** Transformed copy for the provider call; input messages are not mutated. */
   messages: ConversationMessage[];
   cutoffIndex: number;
@@ -204,7 +204,7 @@ interface CutoffState {
   zoneEntered: number;
 }
 
-export interface CutoffDecision {
+interface CutoffDecision {
   cutoffIndex: number;
   activeZone: number;
   zoneAdvanced: boolean;
@@ -213,7 +213,7 @@ export interface CutoffDecision {
 /** Static cutoff: a zone opens exactly once (when usage first crosses its
  *  threshold); the cutoff is frozen at messages.length-at-entry × coverage and
  *  never re-derived while the zone is unchanged, and never decreases. */
-export function decideCutoff(messageCount: number, usageRatio: number, state: CutoffState): CutoffDecision {
+function decideCutoff(messageCount: number, usageRatio: number, state: CutoffState): CutoffDecision {
   let activeZone = -1;
   for (let zone = ZONE_THRESHOLDS.length - 1; zone >= 0; zone -= 1) {
     // SAFETY: zone indexes a module-const array within bounds.
@@ -237,7 +237,7 @@ export function decideCutoff(messageCount: number, usageRatio: number, state: Cu
 
 /** Pure transform: mask every eligible tool result strictly before the cutoff.
  *  Never mutates the input messages or their content arrays. */
-export function maskStaleToolResults(
+function maskStaleToolResults(
   messages: ReadonlyArray<ConversationMessage>,
   cutoffIndex: number,
 ): StaleMaskResult | null {

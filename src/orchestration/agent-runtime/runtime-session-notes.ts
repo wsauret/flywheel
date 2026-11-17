@@ -14,10 +14,8 @@ export function createRuntimeSessionNotes(
   conversationId: string | undefined,
   owner: DurableOwner | undefined,
 ): AgentLoopOptions["checkpoint"] {
-  const reader = options.sessionEventReader;
-  const writer = options.sessionEventWriter;
-  if (!conversationId || !owner || !reader || !writer) return undefined;
-  return createConversationCheckpointOwner(reader, writer, owner, conversationId);
+  if (!conversationId || !owner || !options.sessionEventWriter) return undefined;
+  return createConversationCheckpointOwner(options.sessionEventReader, options.sessionEventWriter, owner, conversationId);
 }
 
 /** Imports the conversation's checkpoint notes that a build before the checkpoint kept as Markdown files, once. It
@@ -28,10 +26,8 @@ export async function importLegacyRuntimeSessionNotes(
   conversationId: string | undefined,
   owner: DurableOwner | undefined,
 ): Promise<void> {
-  const reader = options.sessionEventReader;
-  const writer = options.sessionEventWriter;
-  if (!conversationId || !owner || !reader || !writer || !resources.notesDirectory) return;
-  await importLegacyCheckpointNotes(reader, writer, owner, conversationId, resources.notesDirectory);
+  if (!conversationId || !owner || !options.sessionEventWriter || !resources.notesDirectory) return;
+  await importLegacyCheckpointNotes(options.sessionEventReader, options.sessionEventWriter, owner, conversationId, resources.notesDirectory);
 }
 
 export function assembleInitialRequestContextWithSessionNotes(

@@ -362,7 +362,7 @@ function dynamicDefault(entry: ConfigReferenceEntry, definition: Definition, aut
   return valueAtPath(configValue(result.success), entry.concreteSegments.slice(schemaPath.length));
 }
 
-export function configReferenceFor(definitions: readonly Definition[], schema: Schema.Decoder<unknown, never>): ConfigReference {
+function configReferenceFor(definitions: readonly Definition[], schema: Schema.Decoder<unknown, never>): ConfigReference {
   const defaults = decodedDefaults(schema);
   const root = schema.ast;
   if (!SchemaAST.isObjects(root)) throw new Error("Configuration schema root must be a struct");

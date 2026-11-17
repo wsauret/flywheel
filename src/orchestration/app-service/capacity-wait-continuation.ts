@@ -76,7 +76,7 @@ type Continued = "continued" | "refused" | "pending"
  *  could not start, which the account's wake tries again, and the earliest
  *  time of a row left for later, at which the account wakes the project
  *  next. Never rejects. */
-export async function continueCapacityWaits(input: CapacityWaitContinuationInput): Promise<{ readonly pending: number; readonly next: number | null }> {
+async function continueCapacityWaits(input: CapacityWaitContinuationInput): Promise<{ readonly pending: number; readonly next: number | null }> {
   let unheld: readonly CapacityWaitRow[]
   try {
     unheld = (await capacityContinuations(input.projectionReader)).filter((continuation) => !input.ledger.held(continuationTargetId(continuation.target)))

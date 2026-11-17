@@ -126,7 +126,6 @@ const iosSimulator = {
 export const developmentModule = {
   id: "development",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: iosSimulatorService, create: createDevelopmentService },
   runtime: { handle: developmentRuntime, create: createDevelopmentRuntime },
   contributions: [
@@ -154,6 +153,4 @@ export const developmentModule = {
     },
     { domain: "cli", id: "claude-sdk", value: claudeSdkNoun },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

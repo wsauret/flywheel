@@ -1,5 +1,7 @@
 import { describe, expect, it } from "bun:test"
-import { createStartupTimeline, type StartupTimelineRecord } from "../../../src/infra/startup-timeline.js"
+import { createStartupTimeline, type StartupTimelineOptions } from "../../../src/infra/startup-timeline.js"
+
+type StartupTimelineRecord = Parameters<NonNullable<StartupTimelineOptions["emit"]>>[0]
 
 function timeline(stages: readonly string[] = ["connect", "hydrate"]) {
   let time = 100

@@ -2,7 +2,7 @@ import { describe, expect, it, spyOn } from "bun:test";
 import { Effect } from "effect";
 import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
-import { boundedStringCodeModeOutput, type RuntimeTool, type ToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { boundedStringCodeModeOutput, type RuntimeTool, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
 import { codeModeRuntimeOver, codeModeServices, codeToolOver, scriptedWorker } from "../../../../helpers/code-mode-worker.js";
@@ -10,6 +10,8 @@ import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.j
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
+import { turnDispatchHarnesses } from "../../agent-runtime/_turn-dispatch.js";
 
 function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool {
   return {
@@ -25,12 +27,13 @@ function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool
 }
 
 const codeModeService = codeModeServices();
+const { harness: turnHarness } = turnDispatchHarnesses();
 
 function fixture(tools: RuntimeTool[], limits: Partial<CodeModeLimits> = {}, service = codeModeService({ limits })) {
   const eligibleTools = new Map(tools.map((tool) => [tool.name, tool]));
   const facts: string[] = [];
   const outputs: string[] = [];
-  const base: ToolContext = {
+  const base = dispatchedToolContext({
     executionCwd: process.cwd(),
     userDataRoot: "/scratch/test-account", projectRoot: process.cwd(),
     artifactScopeId: "session",
@@ -38,7 +41,7 @@ function fixture(tools: RuntimeTool[], limits: Partial<CodeModeLimits> = {}, ser
     sessionId: "session",
     toolUseId: "outer",
     onExecutionOutput: (output) => outputs.push(output),
-  };
+  });
   base.createNestedToolDispatchBatch = (options) => createNestedToolDispatchBatch({
     ...options,
     executionAdmission: () => ({ ok: true }),
@@ -85,6 +88,21 @@ function captureLogTimers() {
 }
 
 describe("code tool", () => {
+  it("A code tool call dispatched by the loop runs nested calls through the batch that the dispatch seam built", async () => {
+    const nestedIds: string[] = [];
+    const read = runtimeTool("read", async (_input, context) => {
+      nestedIds.push(context.toolUseId);
+      return { content: "nested answer", outcome: "ok" };
+    });
+    const code = codeToolOver(new Map([[read.name, read]]), codeModeService());
+    const call = { id: "call-code", name: "code", input: { source: "return (await tools.read({})).content" } };
+    const turn = turnHarness({ tools: new Map([[code.name, code], [read.name, read]]) });
+    turn.onToolUse(call);
+    const { toolResults } = await turn.settle([call]);
+    expect(toolResults.map(({ toolUseId, outcome, content }) => ({ toolUseId, outcome, content }))).toEqual([{ toolUseId: "call-code", outcome: "ok", content: [{ type: "text", text: "nested answer" }] }]);
+    expect(nestedIds).toEqual(["call-code#1"]);
+  });
+
   it("uses the mirrored Code Mode description and guidelines", () => {
     const { tool } = fixture([]);
     const description = [
@@ -337,7 +355,7 @@ describe("code tool", () => {
     const run = fixture([runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }))]);
     const begin = `-----BEGIN ${"PRIVATE KEY"}-----`;
     const end = `-----END ${"PRIVATE KEY"}-----`;
-    const inner = run.context.createNestedToolDispatchBatch!;
+    const inner = run.context.createNestedToolDispatchBatch;
     run.context.createNestedToolDispatchBatch = (options) => inner({
       ...options,
       onNestedStart: () => options.onNestedStart?.(`-> fixture ${begin}\n${"private-body".repeat(6_000)}\n${end}`),
@@ -544,7 +562,7 @@ describe("code tool", () => {
       await release.promise;
       return { content: "ok", outcome: "ok" };
     })]);
-    const inner = run.context.createNestedToolDispatchBatch!;
+    const inner = run.context.createNestedToolDispatchBatch;
     run.context.createNestedToolDispatchBatch = (options) => inner({ ...options, onNestedStart: () => {} });
     try {
       const execution = run.tool.execute({
@@ -604,7 +622,7 @@ describe("code tool", () => {
     const run = fixture([]);
     const inner = run.context.createNestedToolDispatchBatch;
     run.context.createNestedToolDispatchBatch = (options) => {
-      const batch = inner!(options);
+      const batch = inner(options);
       return { ...batch, close: () => Effect.die(new Error("terminal publication failed")) };
     };
 

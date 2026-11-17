@@ -39,11 +39,8 @@ const probeService = moduleServiceHandle<ProbeService>("probe")
 const probeModule = {
   id: "probe",
   dependencies: [],
-  availability: { kind: "available" },
   service: { handle: probeService, create: (services: ModuleProcessServices): ProbeService => ({ greeting: configSection(services.config.snapshot().config, probeSection).greeting, dispose() {} }) },
   contributions: [{ domain: "config", id: probeSection.key, value: probeSection }],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule
 
 const catalog: readonly FirstPartyModule[] = [probeModule]

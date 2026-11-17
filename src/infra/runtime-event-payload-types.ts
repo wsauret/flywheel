@@ -4,7 +4,6 @@ import { LlmToolOutputPartSchema } from "./llm/tool-output-part-schema.js";
 import { ContentBlockSchema } from "./runtime-content-blocks.js";
 import { TOOL_OUTCOME_VALUES } from "./tool-outcome.js";
 import { MutationEvidenceSchema } from "./mutation-evidence-schema.js";
-import { MutationEvidenceResultDetailsSchema } from "./runtime-mutation-evidence.js";
 // External boundary (agent/provider runtime streams): `.passthrough()` is the contract —
 // provider events carry extra fields we must not reject (ARCH-BOUNDARIES-001). Each payload type is the
 // schema's inferred `.Type`, so the schema is the single source of truth for both shape and parse.
@@ -58,13 +57,6 @@ const UserEventToolResultSchema = Schema.StructWithRest(Schema.Struct({
 }), [UnknownRecordSchema]);
 export const ToolResultEventDataSchema = Schema.StructWithRest(Schema.Struct({
   ...ToolResultFields,
-  parent_tool_use_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
-}), [UnknownRecordSchema]);
-
-/** Current mutation result boundary. Earlier streams keep the literal schema above. */
-export const ToolResultEventDataV2Schema = Schema.StructWithRest(Schema.Struct({
-  ...ToolResultFields,
-  details: Schema.optionalKey(MutationEvidenceResultDetailsSchema),
   parent_tool_use_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
 }), [UnknownRecordSchema]);
 export const ToolResultAckDataSchema = Schema.StructWithRest(Schema.Struct({

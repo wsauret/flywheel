@@ -1,6 +1,6 @@
 import { createBackgroundIndexFollower, type BackgroundIndexView } from "./create-background-index.js"
 import type { Accessor } from "solid-js"
-import { batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
+import { batch, createContext, createEffect, createMemo, createSignal, onCleanup, untrack, useContext } from "solid-js"
 import type { BackoffOptions } from "../../infra/backoff.js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { ToolStreamingText } from "../../infra/output-blocks.js"
@@ -11,16 +11,15 @@ import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
 import { createToastPresenter } from "../utils/toast-presenter.js"
-import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus, FrontendOutputBlock } from "../../protocol/app-service-types.js"
+import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../protocol/app-service-types.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"
 import type { UpdateStatusView } from "../../protocol/update-protocol-types.js"
 import type { RuntimeModulesView } from "../../protocol/module-protocol-types.js"
-import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigMutationResult, type RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
+import { runtimeConfigCursor, type RuntimeConfigMutation, type RuntimeConfigValues, type RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
 import { gitAiAttributionCursor, type GitAiAttributionStatus } from "../../protocol/git-ai-attribution-protocol-types.js"
 import { gitCursor, type GitView } from "../../protocol/git-protocol-types.js"
 import type { RuntimeIdentity } from "../../protocol/client/runtime-identity.js"
-import type { ChatSubmissionWindow } from "../../protocol/client/chat-submissions.js"
 import type { CommandCatalogReadiness } from "../../protocol/client/slash-route.js"
 import { commandUsageCursor, type CommandUsageView } from "../../protocol/command-usage-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
@@ -49,9 +48,11 @@ import { sessionLoadFailure } from "./session-load-failure.js"
 import { withSnapshotHydrationLimit } from "./snapshot-hydration-limit.js"
 import { createTranscriptVisibilityRefresh } from "./create-transcript-visibility-refresh.js"
 import { createSessionChangesIntake, type SessionChangesView } from "./create-session-changes.js"
+import { createSettingsStore, type SettingsStore } from "./create-settings-store.js"
 import { createSessionDetailCache, createSessionSurface, type SessionDetailCache, type SessionSurface, type SessionSurfaceOptions } from "./create-session-surface.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
 import type { SpinnerStatusSource } from "./create-spinner-status.js"
+import { sessionModelLabel } from "./active-model-label.js"
 
 // The terminal-title prefix is a TUI concern with exactly one consumer.
 const TERMINAL_TITLE_BASE = "flywheel"
@@ -65,6 +66,19 @@ export type AgentState = "idle" | "active"
 export type ForegroundTarget =
   | { readonly kind: "session"; readonly sessionId: string }
   | { readonly kind: "pending"; readonly key: string }
+
+/** The configuration values the shell displays. Each reads the settings
+ *  store's published view, with the setting's reset value in force until the
+ *  first view. */
+interface ShellDisplay {
+  readonly showBuild: boolean
+  readonly fontTipDismissed: boolean
+  readonly showThinking: boolean
+  readonly diffColors: RuntimeConfigValues["diffColors"]
+  /** Undefined until the first view: the context gauge waits for the
+   *  person's threshold instead of measuring against a default. */
+  readonly compactionThreshold: number | undefined
+}
 
 /** Pure reactive state: signals and derived memos. */
 export interface ShellSignals {
@@ -128,10 +142,15 @@ export interface ShellSignals {
    *  and any configuration error, from the one workspace projection. Undefined
    *  until its first snapshot; the shell holds no selection of its own. */
   moduleSelection: Accessor<RuntimeModulesView | undefined>
-  runtimeConfig: Accessor<RuntimeConfigView | undefined>
+  display: ShellDisplay
   gitAiAttribution: Accessor<GitAiAttributionStatus | undefined>
   /** Reads the branch for a session, or the project directory before its row is known. */
   branch(sessionId?: string): string | undefined
+  /** A session's catalog row, or the held detail row of a session the
+   *  catalog does not list, such as a child. */
+  sessionRow(sessionId: string): SessionRow | undefined
+  /** The model the foreground session serves, or the new-chat default. */
+  activeModelLabel: Accessor<string | undefined>
   /** Slash token -> lifetime use count, account-global, as the runtime publishes it. */
   commandUsage: Accessor<ReadonlyMap<string, number>>
   /** Built-in command metadata contributed by enabled capability modules. */
@@ -216,8 +235,27 @@ export interface ShellServices {
   /** Any session's held detail row, for a reader that names a session no
    *  surface shows. */
   sessionDetails: Pick<SessionDetailCache, "retain" | "view">
+  /** The settings view and writes over the runtime configuration. */
+  settings: SettingsStore
+  /** Registers the one reader of the transcript cache's adoption and change
+   *  notices. The shell's chat submissions read this state, so they register
+   *  after it exists; no notice arrives before the first output read. A shell
+   *  state that no composer reads has no reader, and its notices go nowhere. */
+  observeOutput(observer: TranscriptCacheObserver): void
 }
 export interface ShellState { readonly signals: ShellSignals; readonly services: ShellServices }
+
+type TranscriptCacheObserver = Required<Pick<Parameters<typeof createOutputTranscriptCache>[0], "onBlocksAdopted" | "onTranscriptChange">>
+
+const ShellStateContext = createContext<ShellState>()
+/** Gives the shell's owners the one shell state that the shell creates. */
+export const ShellStateProvider = ShellStateContext.Provider
+
+export function useShellState(): ShellState {
+  const state = useContext(ShellStateContext)
+  if (state === undefined) throw new Error("The shell state is read outside its provider")
+  return state
+}
 
 
 export interface RuntimeConfigCache {
@@ -239,18 +277,6 @@ function publishedMutation(view: RuntimeConfigView | undefined, command: Runtime
   }
   if (command.setting.id === "module") return JSON.stringify(view.values.moduleSections[command.setting.section]?.[command.setting.key]) === JSON.stringify(command.setting.desired)
   return JSON.stringify(view.values[command.setting.id]) === JSON.stringify(command.setting.desired)
-}
-
-/** Dispatch one config CAS and settle only after its committed value is present in the shared protocol cache. */
-export async function mutateRuntimeConfig(
-  config: RuntimeConfigCache,
-  appService: Pick<RuntimeClient, "dispatch">,
-  command: RuntimeConfigMutation,
-): Promise<RuntimeConfigMutationResult> {
-  const result = await appService.dispatch(command)
-  if (result.kind !== "committed" && result.kind !== "committed-with-durability-warning" && result.kind !== "committed-with-degraded-application") return result
-  if (await config.settlePublication(command, result.revision)) return result
-  return { kind: "disposed", message: "Configuration updates are unavailable." }
 }
 
 /** The one client-side RuntimeConfigView cache. Composition creates it before
@@ -363,9 +389,6 @@ export function createShellState(deps: {
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   /** Override the transcript recovery retry schedule at the composition boundary. */
   transcriptRecoveryBackoff?: BackoffOptions
-  /** Receives adopted runtime blocks and their resident window for delivery confirmation. */
-  onBlocksAdopted?: (sessionId: string, blocks: readonly FrontendOutputBlock[], window: ChatSubmissionWindow) => void
-  onTranscriptChange?: Parameters<typeof createOutputTranscriptCache>[0]["onTranscriptChange"]
   /** The identity of the service the terminal's attach reached, which the
    *  welcome card shows before the first catalog snapshot. Never rejects. */
   attachedIdentity?: Promise<RuntimeIdentity | undefined>
@@ -394,6 +417,20 @@ export function createShellState(deps: {
     setForegroundTarget(value === undefined ? undefined : { kind: "session", sessionId: value })
   }
 
+  const settings = createSettingsStore(deps.runtimeConfig, deps.appService)
+  const publishedValues = (): RuntimeConfigValues | undefined => {
+    const state = settings.publication()
+    return state.kind === "ready" ? state.view.values : undefined
+  }
+  const display: ShellDisplay = {
+    get showBuild() { return settings.showBuild() ?? false },
+    get fontTipDismissed() { return publishedValues()?.fontTipDismissed ?? false },
+    get showThinking() { return settings.values.showThinking },
+    get diffColors() { return settings.values.diffColors },
+    get compactionThreshold() { return publishedValues()?.proactiveCompactionThreshold },
+  }
+  let outputObserver: TranscriptCacheObserver | undefined
+
   const moduleIntakes = createModuleDomainIntakes({ appService: deps.appService, hydration })
   const sessionCatalog = createSessionCatalog({ appService: deps.appService, projectRoot: deps.projectRoot, attachedIdentity: deps.attachedIdentity })
   const intake = {
@@ -405,15 +442,15 @@ export function createShellState(deps: {
     // a live snapshot/delta and a paged range both write the one block list it holds.
     output: createOutputTranscriptCache({
       appService: deps.appService,
-      onBlocksAdopted: deps.onBlocksAdopted,
-      onTranscriptChange: deps.onTranscriptChange,
+      onBlocksAdopted: (sessionId, blocks, window) => outputObserver?.onBlocksAdopted(sessionId, blocks, window),
+      onTranscriptChange: (sessionId, change) => outputObserver?.onTranscriptChange(sessionId, change),
       // A real millisecond clock, NOT deps.now (the 1s-ticked display clock):
       // the cache forwards `now` to the live intake's 16ms frame batching, and a
       // second-quantized clock broke its flush-when-idle fast path (and made
       // every cache read that touches `now` a reactive subscriber of the ticker).
       now: () => Date.now(),
       activeSessions: () => new Set(sessionCatalog.rows().filter((row) => row.lifecycleState === "active").map((row) => row.id)),
-      includeThinkingContent: () => deps.runtimeConfig.view()?.values.showThinking ?? false,
+      includeThinkingContent: () => display.showThinking,
       ...(deps.transcriptRecoveryBackoff ? { recoveryBackoff: deps.transcriptRecoveryBackoff } : {}),
     }),
     status: createStatusCache({ appService: hydration }),
@@ -443,6 +480,11 @@ export function createShellState(deps: {
     ...moduleIntakes,
   } satisfies RuntimeDomainIntakeBindings
   const { output: transcriptCache, status: statusCache, budget: budgetCache, question: questionCache, roles: roleCache, runtime: transportHealth, auth: authCache, updates: updateCache, modules: moduleCache, config, commands: commandCatalog, gitAiAttribution, git, commandUsage } = intake
+  const sessionRow = (sessionId: string): SessionRow | undefined => sessionCatalog.row(sessionId) ?? intake.session_detail.view(sessionId)?.row
+  const activeModelLabel = createMemo(() => {
+    const id = foregroundId()
+    return sessionModelLabel(id === undefined ? undefined : roleCache.view(id), sessionCatalog.chatDefault())
+  })
   // The one rule for which sessions the Sessions list shows. The status line
   // counts these rows, so the count never includes a row the list hides.
   const listedSessions = createMemo(() => {
@@ -632,12 +674,14 @@ export function createShellState(deps: {
     auth: authCache.view,
     updateStatus: updateCache.view,
     moduleSelection: moduleCache.view,
-    runtimeConfig: config.view,
+    display,
     gitAiAttribution: gitAiAttribution.status,
     branch: (sessionId = foregroundId()) => {
-      const row = sessionId === undefined ? undefined : sessionCatalog.row(sessionId) ?? intake.session_detail.view(sessionId)?.row
+      const row = sessionId === undefined ? undefined : sessionRow(sessionId)
       return git.view().directories[row?.executionCwd ?? sessionCatalog.projectRoot()]?.branch
     },
+    sessionRow,
+    activeModelLabel,
     commandUsage: commandUsage.counts,
     builtInCommands,
     offCommands: commandCatalog.offCommands,
@@ -681,6 +725,8 @@ export function createShellState(deps: {
     appService: deps.appService,
     transcripts: transcriptCache,
     sessionDetails: intake.session_detail,
+    settings,
+    observeOutput: (observer: TranscriptCacheObserver) => { outputObserver = observer },
     createSessionSurface: (id: Accessor<string | undefined>, options?: SessionSurfaceOptions) => createSessionSurface(
       { ...sessionSurfaceDeps, onTranscriptFailure: showMountedTranscriptFailure },
       id,

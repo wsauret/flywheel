@@ -12,9 +12,8 @@ describe("chat module host session lifetime", () => {
     let disposed = 0
     const instance = { async dispose() { disposed += 1 }, noteUserTurn() { userTurns += 1 } }
     const module = {
-      id: "synthetic-host", dependencies: [], availability: { kind: "available" },
+      id: "synthetic-host", dependencies: [],
       contributions: [{ domain: "chatHosts", id: "synthetic-host", value: { handle, create: () => { created += 1; return instance } } }],
-      observers: [], gates: [],
     } as const satisfies FirstPartyModule
     const { lifecycle, resolvers, runnerOptions } = makeLifecycle({ moduleSelection: () => composeModules([module]) })
     expect(lifecycle.chatModuleHosts.get(handle)).toBe(instance)
@@ -41,9 +40,8 @@ describe("chat module host session lifetime", () => {
     let disposals = 0
     const instance = { dispose() { disposals += 1; return released.promise } }
     const module = {
-      id: "synthetic-host", dependencies: [], availability: { kind: "available" },
+      id: "synthetic-host", dependencies: [],
       contributions: [{ domain: "chatHosts", id: "synthetic-host", value: { handle, create: () => instance } }],
-      observers: [], gates: [],
     } as const satisfies FirstPartyModule
     let enabled = true
     const { lifecycle } = makeLifecycle({ moduleSelection: () => composeModules([module], { disabledModuleIds: enabled ? [] : ["synthetic-host"] }) })

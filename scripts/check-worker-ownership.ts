@@ -53,7 +53,7 @@ const APPROVED_SPAWNER_SITES = [
   { role: "hard-exit-clock", file: "src/infra/process-watchdog.ts", owner: "createWorker", factory: "embeddedWorkerSpawnerSource" },
   { role: "hard-exit-clock", file: "src/infra/hard-exit-clock.ts", owner: undefined, factory: "createBoundedWorkerSpawner" },
   { role: "streaming-edit-validation", file: "src/orchestration/agent-runtime/tools/streaming-edit-validation.ts", owner: "createStreamingEditValidationService", factory: "createBoundedWorkerSpawner" },
-  { role: "bash-private-copy", file: "src/orchestration/agent-runtime/tools/bash-private-copy-jobs.ts", owner: "runPrivateCopyJob", factory: "createBoundedWorkerSpawner" },
+  { role: "bash-private-copy", file: "src/orchestration/agent-runtime/tools/bash-private-copy-jobs.ts", owner: "createPrivateCopyJobs", factory: "createBoundedWorkerSpawner" },
   { role: "models-document", file: "src/infra/llm/models-document-job.ts", owner: "runModelsDocumentJob", factory: "createBoundedWorkerSpawner" },
   { role: "code-mode-invocation", file: "src/orchestration/modules/code-mode/worker-pool.ts", owner: "spawnInvocationWorker", factory: "createBoundedWorkerSpawner" },
   { role: "runtime-maintenance", file: "src/orchestration/app-service/runtime-maintenance-owner.ts", owner: "runMaintenanceWorkerJob", factory: "createBoundedWorkerSpawner" },

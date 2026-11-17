@@ -83,7 +83,7 @@ Not: Excluding development tooling with a build-time flag or a development-build
 
 ## ARCH-STRUCTURE-014: Contributions are owner-typed and closed
 
-A module declares one id, its dependencies, its availability, and owner-typed contributions and hooks. Orchestration defines the closed map of contribution domains, so a module cannot contribute an unknown bag or create a reverse dependency. A contribution is a narrow, host-owned structural value, never a planner or client implementation union.
+A module declares one id, its dependencies, owner-typed contributions, and only the hooks it has. Orchestration defines the closed map of contribution domains, so a module cannot contribute an unknown bag or create a reverse dependency. A contribution is a narrow, host-owned structural value, never a planner or client implementation union.
 
 ## ARCH-STRUCTURE-015: Observers observe and gates are singletons
 
@@ -134,7 +134,7 @@ Not: A complete enabled snapshot, or a second opt-in polarity behind a risk conf
 
 ## ARCH-STRUCTURE-025: The stated selection persists and the effective selection composes
 
-Persistence keeps the person's stated selection, and composition and admission read the effective selection derived from it, in which a module whose dependency is off or unavailable is also off. Flywheel never cascades a disable into the stored selection and never rewrites an invalid one. A module's own selection policy decides validity.
+Persistence keeps the person's stated selection, and composition and admission read the effective selection derived from it, in which a module whose dependency is off is also off. Flywheel never cascades a disable into the stored selection and never rewrites an invalid one. A module's own selection policy decides validity.
 
 Because: Cascading or repairing would guess the person's intent and hide dependency errors.
 

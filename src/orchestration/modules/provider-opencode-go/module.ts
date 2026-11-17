@@ -89,11 +89,8 @@ const createClient: AccessProviderFactory = async (build) => {
 export const opencodeGoModule = {
   id: "provider-opencode-go",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "providers", id: "opencode_go", value: { definition, createClient, usageReader: createOpenCodeGoUsageReader() } },
     { domain: "settings", id: "provider-opencode-go", value: { control: "binary", group: "Model providers", label: definition.displayName, description: "Allow supported models through an OpenCode Go subscription" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

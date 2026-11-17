@@ -2,8 +2,6 @@ import { describe, expect, test } from "bun:test";
 import {
   createStaleToolResultMasker,
   maskStaleForTurn,
-  decideCutoff,
-  maskStaleToolResults,
   maskToolResultsById,
 } from "../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types";
@@ -52,40 +50,37 @@ function conversation(turns: number): ConversationMessage[] {
   return messages;
 }
 
-describe("decideCutoff (static, frozen between zone advances)", () => {
-  test("below all thresholds: no cutoff", () => {
-    const decision = decideCutoff(100, 0.29, { previousCutoff: 0, zoneEntered: -1 });
-    expect(decision.cutoffIndex).toBe(0);
-    expect(decision.zoneAdvanced).toBe(false);
+/** The mask that the first request of a conversation restored at `cutoffIndex` sends: every eligible block before
+ *  the cutoff, masked. */
+function maskBefore(messages: ConversationMessage[], cutoffIndex: number) {
+  return createStaleToolResultMasker({ cutoffIndex, zone: 0 }).mask(messages, 0.3);
+}
+
+describe("the masker's cutoff (static, frozen between zone advances)", () => {
+  test("below all thresholds nothing is masked", () => {
+    expect(createStaleToolResultMasker().mask(conversation(49), 0.29)).toBeNull();
   });
 
-  test("entering a zone freezes the cutoff at entry-length coverage", () => {
-    const entered = decideCutoff(100, 0.31, { previousCutoff: 0, zoneEntered: -1 });
-    expect(entered.zoneAdvanced).toBe(true);
-    expect(entered.cutoffIndex).toBe(60);
-
-    // Same zone, more messages: cutoff must NOT drift.
-    const later = decideCutoff(180, 0.35, { previousCutoff: 60, zoneEntered: 0 });
-    expect(later.zoneAdvanced).toBe(false);
-    expect(later.cutoffIndex).toBe(60);
-  });
-
-  test("usage dropping never retreats the cutoff", () => {
-    const decision = decideCutoff(150, 0.1, { previousCutoff: 60, zoneEntered: 0 });
-    expect(decision.cutoffIndex).toBe(60);
-  });
-
-  test("a higher zone advances the cutoff once", () => {
-    const decision = decideCutoff(200, 0.46, { previousCutoff: 60, zoneEntered: 0 });
-    expect(decision.zoneAdvanced).toBe(true);
-    expect(decision.cutoffIndex).toBe(160);
+  test("a zone freezes the cutoff at its entry coverage, lower usage never retreats it, and a higher zone advances it once", () => {
+    const masker = createStaleToolResultMasker();
+    const messages = conversation(49); // 100 messages
+    const grow = (turns: number) => { for (let turn = 0; turn < turns; turn += 1) messages.push(...toolTurn(`late-${messages.length}`, "bash", { command: "late" }, BIG)); };
+    expect(masker.mask(messages, 0.31)!.cutoffIndex).toBe(60);
+    // Same zone, more messages: the cutoff does not drift.
+    grow(40);
+    expect(masker.mask(messages, 0.35)!.cutoffIndex).toBe(60);
+    expect(masker.mask(messages, 0.1)!.cutoffIndex).toBe(60);
+    grow(10);
+    expect(masker.mask(messages, 0.46)!.cutoffIndex).toBe(160);
+    grow(1);
+    expect(masker.mask(messages, 0.5)!.cutoffIndex).toBe(160);
   });
 });
 
-describe("maskStaleToolResults", () => {
+describe("masking before the cutoff", () => {
   test("masks eligible tool results before the cutoff with a recover handle", () => {
     const messages = conversation(5);
-    const result = maskStaleToolResults(messages, messages.length);
+    const result = maskBefore(messages, messages.length);
     expect(result).not.toBeNull();
     expect(result!.masksApplied).toBe(5);
     expect(result!.bytesSaved).toBeGreaterThan(0);
@@ -100,20 +95,23 @@ describe("maskStaleToolResults", () => {
   test("never mutates the input messages", () => {
     const messages = conversation(3);
     const snapshot = structuredClone(messages);
-    maskStaleToolResults(messages, messages.length);
+    maskBefore(messages, messages.length);
     expect(messages).toEqual(snapshot);
   });
 
-  test("placeholder bytes are identical across passes (cache-prefix invariant)", () => {
+  test("tool results older than the cutoff are masked once and stay masked", () => {
+    const masker = createStaleToolResultMasker();
     const messages = conversation(4);
-    const first = maskStaleToolResults(messages, 6);
-    const second = maskStaleToolResults(messages, 6);
-    expect(first!.messages).toEqual(second!.messages);
+    const first = masker.mask(messages, 0.31)!;
+    messages.push(...toolTurn("tu-late", "bash", { command: "late" }, BIG));
+    const second = maskStaleForTurn({ masker, messages, estimatedContextTokens: 35, contextLimit: 100 });
+    expect(second.staleMasking?.maskedToolUseIds).toEqual(first.maskedToolUseIds);
+    expect(second.messages.slice(0, first.cutoffIndex)).toEqual(first.messages.slice(0, first.cutoffIndex));
   });
 
   test("messages at or after the cutoff are untouched", () => {
     const messages = conversation(4);
-    const result = maskStaleToolResults(messages, 3);
+    const result = maskBefore(messages, 3);
     expect(result!.maskedToolUseIds).toEqual(["tu-0"]);
     expect(result!.messages.slice(3)).toEqual(messages.slice(3));
   });
@@ -133,7 +131,7 @@ describe("maskStaleToolResults", () => {
       ...toolTurn("tu-web", "web", { search_query: [{ q: "x" }] }, BIG),
       ...toolTurn("tu-src", "read", { path: "src/index.ts" }, BIG),
     ];
-    const result = maskStaleToolResults(messages, messages.length);
+    const result = maskBefore(messages, messages.length);
     expect(result!.maskedToolUseIds).toEqual(["tu-resource", "tu-web", "tu-src"]);
     const placeholder = result!.messages[22];
     expect(placeholder?.kind === "toolResult" && placeholder.content[0]?.type === "text" ? placeholder.content[0].text : "")
@@ -148,7 +146,7 @@ describe("maskStaleToolResults", () => {
       ...toolTurn("tu-plain", "bash", { command: "more" }, BIG),
       { kind: "user", content: "keep going" },
     ];
-    const result = maskStaleToolResults(messages, messages.length);
+    const result = maskBefore(messages, messages.length);
     expect(result!.maskedToolUseIds).toEqual(["tu-receipt", "tu-plain"]);
     const masked = result!.messages[2];
     expect(masked).toEqual({
@@ -168,7 +166,7 @@ describe("maskStaleToolResults", () => {
       ...toolTurn("tu-err", "bash", { command: "boom" }, BIG, { isError: true }),
       { kind: "toolResult", toolUseId: "tu-orphan", content: [{ type: "text", text: BIG }] },
     ];
-    expect(maskStaleToolResults(messages, messages.length)).toBeNull();
+    expect(maskBefore(messages, messages.length)).toBeNull();
   });
 
   test("image-bearing tool results are masked with the image count", () => {
@@ -177,7 +175,7 @@ describe("maskStaleToolResults", () => {
       { kind: "assistant", content: [{ type: "tool_use", id: "tu-img", name: "read", input: { path: "shot.png" } }] },
       { kind: "toolResult", toolUseId: "tu-img", content: [{ type: "image", mediaType: "image/png", data: "a".repeat(4000) }] },
     ];
-    const result = maskStaleToolResults(messages, messages.length);
+    const result = maskBefore(messages, messages.length);
     expect(result!.masksApplied).toBe(1);
     const masked = result!.messages[2];
     expect(masked?.kind === "toolResult" && masked.content[0]?.type === "text" ? masked.content[0].text : "")
@@ -188,7 +186,7 @@ describe("maskStaleToolResults", () => {
 describe("maskToolResultsById (audit reconstruction parity)", () => {
   test("replaying the recorded id set reproduces the masked messages byte-for-byte", () => {
     const messages = conversation(6);
-    const live = maskStaleToolResults(messages, 9);
+    const live = maskBefore(messages, 9);
     const replayed = maskToolResultsById(messages, live!.maskedToolUseIds);
     expect(replayed).toEqual(live!.messages);
   });
@@ -295,7 +293,7 @@ describe("createStaleToolResultMasker (per-conversation state)", () => {
     const second = masker.mask(messages, 0.4);
     expect(second!.cutoffIndex).toBe(first!.cutoffIndex);
     expect(second!.messages[2]).toBe(first!.messages[2]);
-    expect(second).toMatchObject(maskStaleToolResults(messages, first!.cutoffIndex)!);
+    expect(second).toMatchObject(maskBefore(messages, first!.cutoffIndex)!);
     expect(first!.messages).toHaveLength(22);
     expect(second!.messages).toHaveLength(24);
 
@@ -331,7 +329,7 @@ describe("tool-use input masking (mutation payloads)", () => {
       ...writeTurn("w-1", "src/a.ts"),
       ...writeTurn("w-2", "src/b.ts"),
     ];
-    const result = maskStaleToolResults(messages, 3);
+    const result = maskBefore(messages, 3);
     expect(result).not.toBeNull();
     expect(result!.maskedToolUseInputIds).toEqual(["w-1"]);
 
@@ -362,7 +360,7 @@ describe("tool-use input masking (mutation payloads)", () => {
       ...toolTurn("s-1", "write", { path: "src/tiny.ts", content: "short" }, "wrote"),
       ...toolTurn("ref-1", "write", { path: "AGENTS.md", content: BIG }, "wrote"),
     ];
-    const result = maskStaleToolResults(messages, messages.length);
+    const result = maskBefore(messages, messages.length);
     expect(result).not.toBeNull();
     expect(result!.maskedToolUseInputIds).toEqual(["e-1", "e-2", "e-3", "e-4", "e-5", "p-1"]);
 
@@ -412,8 +410,8 @@ describe("tool-use input masking (mutation payloads)", () => {
       ...writeTurn("w-1", "src/a.ts"),
       { kind: "user", content: "more" },
     ];
-    const first = maskStaleToolResults(messages, messages.length);
-    const second = maskStaleToolResults(messages, messages.length);
+    const first = maskBefore(messages, messages.length);
+    const second = maskBefore(messages, messages.length);
     expect(second).toEqual(first);
   });
 
@@ -425,7 +423,7 @@ describe("tool-use input masking (mutation payloads)", () => {
     ];
     // Cutoff at index 2: the write's tool_use (index 1) is stale, its result
     // (index 2) is not; the bash turn is live.
-    const live = maskStaleToolResults(messages, 2);
+    const live = maskBefore(messages, 2);
     expect(live).not.toBeNull();
     expect(live!.maskedToolUseInputIds).toEqual(["w-1"]);
     expect(live!.maskedToolUseIds).toEqual([]);

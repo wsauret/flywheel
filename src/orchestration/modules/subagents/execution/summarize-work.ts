@@ -22,7 +22,7 @@ import { mergeAbortSignals } from "../../../../infra/abort.js";
 import { errorMessage } from "../../../../infra/error-message.js";
 import { Log } from "../../../../infra/log.js";
 import { bridgeExternalPromise } from "../../../agent-runtime/external-promise-bridge.js";
-import { failureTerminal, type Agent, type RunnableAgentOptions } from "../../../agent-runtime/types.js";
+import { failureTerminal, type Agent, type OmitAgentOptions, type RunnableAgentOptions } from "../../../agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
 import { createAgentHost } from "../../../runner/host.js";
@@ -51,7 +51,7 @@ The summary MUST be concrete: name files, commands, search patterns where releva
 
 /** The options of the summary's side call that its caller owns: where it runs, how its model is selected and its
  *  usage settled, and the chat tree whose agent host serves it. */
-type SummaryRunnerOptions = Omit<RunnableAgentOptions, "purpose" | "conversation" | "lifecycle" | "maxLLMCalls" | "onEvent">;
+type SummaryRunnerOptions = OmitAgentOptions<RunnableAgentOptions, "purpose" | "conversation" | "lifecycle" | "maxLLMCalls" | "onEvent">;
 
 export interface SummarizeSubagentWorkInput {
   records: ReadonlyArray<SubagentToolCallRecord>;

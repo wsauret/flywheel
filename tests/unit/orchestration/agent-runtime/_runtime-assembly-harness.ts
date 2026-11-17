@@ -12,6 +12,7 @@ import { testDirectories } from "../../../helpers/directories.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient } from "./_model-client.js"
+import type { AgentOptionsOverride } from "./_runner-options.js"
 
 /** The notice of an agent that may call no tool. */
 export const CALL_NO_TOOLS = "## Tools\n\nCall no tools. Every tool call is refused; answer in text."
@@ -47,7 +48,7 @@ function purposeFor(promptKind: PromptKind): AgentOptions["purpose"] {
  *  to its options. `onLifetime` sees the provider lifetime that each client of the runner is built with. */
 export async function assembledRuntime(
   promptKind: PromptKind,
-  override: Partial<RunnableAgentOptions> = {},
+  override: AgentOptionsOverride<RunnableAgentOptions> = {},
   definitions = repoDefinitions(),
   runtimeClient?: ReturnType<typeof modelClient>,
   providerSessionLifetime?: ProviderSessionLifetime,

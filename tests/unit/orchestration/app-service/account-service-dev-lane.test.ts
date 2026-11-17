@@ -4,8 +4,7 @@ import { join } from "node:path"
 import { sourceCheckout } from "../../../../src/infra/cli-subprocess.js"
 import { accountServicePlatform, createAccountServiceInstallation } from "../../../../src/orchestration/app-service/account-service-installation.js"
 import { SERVICE_NAMES } from "../../../../src/orchestration/app-service/account-service-registration.js"
-import { systemdUnitPath } from "../../../../src/orchestration/app-service/account-service-systemd.js"
-import { bytesOf, fixture, missing, plistPath, retired, taskXmlPath, textOf } from "./_account-service-fixtures.js"
+import { bytesOf, fixture, missing, plistPath, retired, taskXmlPath, textOf, unitPath } from "./_account-service-fixtures.js"
 
 /** The dev lane registers its own job, which runs the checkout's entry
  *  through Bun, beside the installed lane's job (ARCH-RUNTIME-008, PI-REMOTE-024). */
@@ -40,8 +39,8 @@ describe("dev lane registration", () => {
 
     await devPlatform(setup, ["/home/test/.bun/bin/bun", "--conditions=browser", "/home/test/flywheel/scripts/dev.ts"]).install()
 
-    expect(textOf(setup.files.get(systemdUnitPath({ ...setup.platform, names: SERVICE_NAMES.dev })))).toContain(`ExecStart="/home/test/.bun/bin/bun" "--conditions=browser" "/home/test/flywheel/scripts/dev.ts" serve\n`)
-    expect(setup.files.has(systemdUnitPath(setup.platform))).toBe(false)
+    expect(textOf(setup.files.get("/scratch/test/.config/systemd/user/flywheel-serve-dev.service"))).toContain(`ExecStart="/home/test/.bun/bin/bun" "--conditions=browser" "/home/test/flywheel/scripts/dev.ts" serve\n`)
+    expect(setup.files.has(unitPath)).toBe(false)
     expect(setup.commands).toContainEqual(["systemctl", "--user", "enable", "--no-reload", "--now", SERVICE_NAMES.dev.systemdUnit])
   })
 

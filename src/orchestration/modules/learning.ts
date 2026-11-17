@@ -158,7 +158,6 @@ const memoryNoun = {
 export const learningModule = {
   id: "learning",
   dependencies: [],
-  availability: { kind: "available" },
   runtime: { handle: learningRuntime, create: createLearningRuntime },
   // Memory, skill, and improvement families, defined in `src/workflows/`.
   facts: { prefixes: ["memory.", "skill.", "improvement."], sessionSchemas: () => [...ImprovementFactSchemas, ...MemoryFactSchemas, ...SkillFactSchemas] as const },
@@ -202,6 +201,4 @@ export const learningModule = {
       },
     } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule;

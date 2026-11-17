@@ -4,12 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { GrepMatch, GrepResult } from "../../../../../src/orchestration/agent-runtime/tools/ripgrep.js";
-import {
-  formatContentOutput,
-  formatMatchingFilesOutput,
-  validateSearchInput,
-} from "../../../../../src/orchestration/agent-runtime/tools/search.js";
+import { formatContentOutput, searchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/search.js";
 import type { RankOptions } from "../../../../../src/orchestration/agent-runtime/tools/search-ranking.js";
+import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
 
 function asString(content: string | unknown): string {
@@ -44,9 +41,21 @@ describe("search ranking", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  // Ranking is ON by default (benchmark gate passed). These drive the observable
-  // units the executor composes (formatContentOutput / formatMatchingFilesOutput)
-  // with rankingEnabled: true.
+  /** Writes each file under the search root with its content. */
+  function write(files: { readonly [file: string]: string }): void {
+    for (const [file, content] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(tmpDir, file)), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, file), content);
+    }
+  }
+
+  async function matchingFiles(input: RuntimeToolInput): Promise<string> {
+    return asString((await searchDefinition.execute({ pattern: "target", ...input }, makeContext({ executionCwd: tmpDir }))).content);
+  }
+
+  // Ranking is ON by default (benchmark gate passed). Content cases drive the
+  // content formatter the executor composes with rankingEnabled: true; the
+  // matching_files cases search real files, which always rank.
   describe("ranking-on content output", () => {
     it("orders the definition before the usage in content mode", () => {
       const matches: GrepMatch[] = [
@@ -78,7 +87,7 @@ describe("search ranking", () => {
       expect(content.split("# src/a.ts").length - 1).toBe(1);
     });
 
-    it("soft-weights source above test in content and matching_files modes", () => {
+    it("soft-weights source above test in content and matching_files modes", async () => {
       const matches: GrepMatch[] = [
         { path: "tests/x.test.ts", lineNumber: 1, line: "target()" },
         { path: "src/x.ts", lineNumber: 1, line: "target()" },
@@ -89,9 +98,8 @@ describe("search ranking", () => {
       expect(content.indexOf("src/x.ts")).toBeLessThan(content.indexOf("tests/x.test.ts"));
 
       // matching_files comparator is keyed on the comparator, not the rank stage.
-      const files = asString(
-        formatMatchingFilesOutput(matches, grepResult(matches), makeContext({ executionCwd: tmpDir }), 200, RANK_ON).content,
-      );
+      write({ "tests/x.test.ts": "target()\n", "src/x.ts": "target()\n" });
+      const files = await matchingFiles({});
       const srcAt = files.indexOf("src/x.ts");
       const testAt = files.indexOf("tests/x.test.ts");
       expect(srcAt).toBeGreaterThan(-1);
@@ -99,13 +107,9 @@ describe("search ranking", () => {
       expect(srcAt).toBeLessThan(testAt);
     });
 
-    it("carries a best-target [def] summary clause in matching_files mode", () => {
-      const matches: GrepMatch[] = [
-        { path: "src/y.ts", lineNumber: 1, line: "target()" },
-        { path: "src/x.ts", lineNumber: 1, line: "export function target() {}" },
-      ];
-      const out = formatMatchingFilesOutput(matches, grepResult(matches), makeContext({ executionCwd: tmpDir }), 200, RANK_ON);
-      const content = asString(out.content);
+    it("carries a best-target [def] summary clause in matching_files mode", async () => {
+      write({ "src/y.ts": "target()\n", "src/x.ts": "export function target() {}\n" });
+      const content = await matchingFiles({});
       const summaryLine = content.split("\n")[0] ?? "";
       expect(summaryLine).toContain("; best: src/x.ts [def]");
       // The [def] token never appears inside a content line.
@@ -164,20 +168,18 @@ describe("search ranking", () => {
       expect(unranked).not.toContain("# src/target.ts");
     });
 
-    it("parses the prefer_tests ranking toggle", async () => {
-      const normal = await validateSearchInput({ pattern: "target" }, { executionCwd: tmpDir });
-      const preferred = await validateSearchInput({ pattern: "target", prefer_tests: true }, { executionCwd: tmpDir });
-      if (normal.kind !== "ok") throw new Error(normal.result.content.toString());
-      if (preferred.kind !== "ok") throw new Error(preferred.result.content.toString());
+    it("ranks tests first only when prefer_tests is set", async () => {
+      write({ "tests/x.test.ts": "target()\n", "src/x.ts": "target()\n" });
+      const listed = (content: string) => content.split("\n\n")[1]?.split("\n");
 
-      expect(normal.rank.preferTests).toBe(false);
-      expect(preferred.rank.preferTests).toBe(true);
+      expect(listed(await matchingFiles({}))).toEqual(["src/x.ts", "tests/x.test.ts"]);
+      expect(listed(await matchingFiles({ prefer_tests: true }))).toEqual(["tests/x.test.ts", "src/x.ts"]);
     });
   });
 
-  // The rankingEnabled:false path (the benchmark-harness off-baseline and the
-  // revert switch) must behave exactly as the old window/round-robin code did:
-  // no char-budget trim, pure mtime-descending file order, and no [def]/best clause.
+  // The rankingEnabled:false content path (the benchmark-harness off-baseline)
+  // must behave exactly as the old window/round-robin code did: no char-budget
+  // trim. Searches never turn ranking off in matching_files mode.
   describe("ranking-off (flag) output", () => {
     it("does not char-cap content (no budget trim when ranking is off)", () => {
       // One file so the whole set sits inside a single file-window group; with
@@ -205,33 +207,6 @@ describe("search ranking", () => {
       // No budget drop occurred, so no "; showing" truncation note.
       expect(off).toContain("30 match(es) in 1 file(s)");
       expect(off).not.toContain("; showing");
-    });
-
-    it("orders matching_files by mtime descending with no [def]/best clause", () => {
-      // newer.ts written second so it is the more-recent file; older.ts first.
-      const olderPath = path.join(tmpDir, "older.ts");
-      const newerPath = path.join(tmpDir, "newer.ts");
-      fs.writeFileSync(olderPath, "export function target() {}\n");
-      fs.writeFileSync(newerPath, "target()\n");
-      const now = Date.now();
-      fs.utimesSync(olderPath, new Date(now - 60_000), new Date(now - 60_000));
-      fs.utimesSync(newerPath, new Date(now), new Date(now));
-
-      const matches: GrepMatch[] = [
-        { path: "older.ts", lineNumber: 1, line: "export function target() {}" },
-        { path: "newer.ts", lineNumber: 1, line: "target()" },
-      ];
-      const content = asString(
-        formatMatchingFilesOutput(matches, grepResult(matches), makeContext({ executionCwd: tmpDir }), 200, RANK_OFF).content,
-      );
-
-      // mtime-descending: the newer (usage-only) file precedes the older
-      // definition-holding file -- the opposite of the ranking-on promotion.
-      expect(content.indexOf("newer.ts")).toBeLessThan(content.indexOf("older.ts"));
-      // No definition promotion / [def] / best clause leaks into the default path.
-      expect(content).not.toContain("[def]");
-      expect(content).not.toContain("; best:");
-      expect(content.split("\n")[0]).toContain("Found matches in 2 file(s)");
     });
   });
 });

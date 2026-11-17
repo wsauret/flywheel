@@ -10,13 +10,14 @@ import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evi
 import { readSessionContentRange, type SessionContentNode } from "../../../../../../src/infra/session-content.js";
 import type { CapabilityCheck } from "../../../../../../src/infra/capability-text.js";
 import { createMemoryTool } from "../../../../../../src/orchestration/modules/learning/tools/memory.js";
-import { capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { type DispatchedToolContext, capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { CapabilityGrant } from "../../../../../../src/orchestration/config/module-policy.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, type ModuleId } from "../../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps, admitEveryTool, requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
+import { dispatchedToolContext } from "../../../../../helpers/dispatched-tool-context.js";
 
 type SessionFact = Parameters<NonNullable<ToolContext["sessionEventWriter"]>["record"]>[0];
 interface UnknownRecord { [key: string]: unknown }
@@ -64,8 +65,8 @@ function storedStub(): StoredFact {
   return { id: `evt-${recorded.length}`, position: recorded.length, seq: recorded.length, aggregateId: "session:sess-test", sessionId: "sess-test", type: "memory.written", version: 3, timestamp: 0, actor: "flywheel", payload: {} };
 }
 
-function makeContext(record?: (fact: SessionFact) => Promise<StoredFact | null>): ToolContext {
-  return {
+function makeContext(record?: (fact: SessionFact) => Promise<StoredFact | null>): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: join(TMP, "project"),
     userDataRoot: join(TMP, "account"), projectRoot: join(TMP, "project"),
     // The tool context's sessionId is the conversation id, never the session.
@@ -84,12 +85,12 @@ function makeContext(record?: (fact: SessionFact) => Promise<StoredFact | null>)
       transaction: async (run) => { run(); },
       dispose: () => {},
     },
-  };
+  });
 }
 
 /** A context of a runtime that records nothing: no session event writer at all. */
-function makeWriterlessContext(): ToolContext {
-  return { executionCwd: join(TMP, "project"), userDataRoot: join(TMP, "account"), projectRoot: join(TMP, "project"), sessionId: "conv-test", artifactScopeId: "sess-test", retrievalSessionId: "sess-test" };
+function makeWriterlessContext(): DispatchedToolContext {
+  return dispatchedToolContext({ executionCwd: join(TMP, "project"), userDataRoot: join(TMP, "account"), projectRoot: join(TMP, "project"), sessionId: "conv-test", artifactScopeId: "sess-test", retrievalSessionId: "sess-test" });
 }
 
 function auditJournalEntries(): readonly string[] {

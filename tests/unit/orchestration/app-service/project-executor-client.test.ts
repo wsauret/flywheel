@@ -1,6 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
 import { join } from "node:path"
-import { ProjectExecutorStartupError, projectExecutorCommand } from "../../../../src/orchestration/app-service/project-executor-client.js"
 import { decodeProjectExecutorCommand } from "../../../../src/orchestration/app-service/project-executor-protocol.js"
 import type { ExecutorWedgeProof } from "../../../../src/orchestration/app-service/executor-responsiveness.js"
 import { createChatDefaultRefreshOwner } from "../../../../src/orchestration/app-service/model-assignment-admission.js"
@@ -388,12 +387,11 @@ test.each([
 
 test("a start that the account's admission refuses is not the executor's own end", async () => {
   const admission = Promise.withResolvers<void>()
-  const launched = Promise.withResolvers<void>()
-  const host = fixture({ admission: admission.promise, launched: () => launched.resolve() })
+  const host = fixture({ admission: admission.promise })
   const client = host.acquire()
   const heard: Array<readonly [string, boolean]> = []
   client.onEnding((cause, own) => { heard.push([cause, own]) })
-  await launched.promise
+  await host.launched
   admission.reject(new Error("admission refused"))
   await client.closed
   expect(heard).toEqual([["could not start", false]])
@@ -484,12 +482,11 @@ test("a start whose lifecycle channel detaches and is not reattached within the 
 })
 
 test("an executor whose channels never authenticate is sent no start, and is proven wedged at the thirtieth period from its launch", async () => {
-  const launched = Promise.withResolvers<void>()
-  const host = fixture({ wrongCredential: true, heartbeatIntervalMs: 5, launched: () => launched.resolve() })
+  const host = fixture({ wrongCredential: true, heartbeatIntervalMs: 5 })
   const client = host.acquire()
   const proofs: ExecutorWedgeProof[] = []
   client.onWedged((proof) => { proofs.push(proof) })
-  await launched.promise
+  await host.launched
   await host.clock.advance(29 * 5)
   expect(proofs).toEqual([])
   await host.clock.advance(5)
@@ -500,11 +497,28 @@ test("an executor whose channels never authenticate is sent no start, and is pro
   await expect(client.ready).rejects.toThrow()
 })
 
-test("source and packaged commands select the same internal role", () => {
-  expect(projectExecutorCommand("/runtime/bun")).toEqual([
+test("source and packaged commands select the same internal role", async () => {
+  // The executor re-enters the build that runs the account, as that build's
+  // own executable names it.
+  const launchedAs = async (execPath: string) => {
+    const running = process.execPath
+    const host = fixture()
+    process.execPath = execPath
+    let client: ReturnType<typeof host.acquire>
+    try {
+      client = host.acquire()
+      await host.launched
+    } finally {
+      process.execPath = running
+    }
+    await client.ready
+    await client.stop()
+    return host.command()
+  }
+  expect(await launchedAs("/runtime/bun")).toEqual([
     "/runtime/bun", "--conditions=browser", expect.stringContaining(join("scripts", "project-executor.ts")), "--internal-role=project-executor",
   ])
-  expect(projectExecutorCommand("C:\\build\\flywheel.exe")).toEqual(["C:\\build\\flywheel.exe", "--internal-role=project-executor"])
+  expect(await launchedAs("C:\\build\\flywheel.exe")).toEqual(["C:\\build\\flywheel.exe", "--internal-role=project-executor"])
   expect(decodeProjectExecutorCommand({ kind: "run", id: 1, sessionId: "s", command: ["sh"] })).toBeUndefined()
 })
 
@@ -525,10 +539,9 @@ test("termination owns pending admission and prevents all later acquisition", as
 
 test("the executor launches while admission is pending and acts only after it resolves", async () => {
   const admission = Promise.withResolvers<void>()
-  const launched = Promise.withResolvers<void>()
-  const host = fixture({ admission: admission.promise, launched: () => launched.resolve() })
+  const host = fixture({ admission: admission.promise })
   const client = host.acquire()
-  await launched.promise
+  await host.launched
   // Let the executor's channels authenticate so the hold is proven past the handshake.
   await new Promise((resolve) => setTimeout(resolve, 5))
   expect(host.observations).toEqual(["launch"])
@@ -541,15 +554,12 @@ test("the executor launches while admission is pending and acts only after it re
 
 test("a rejected admission after launch terminates the executor and rejects readiness", async () => {
   const admission = Promise.withResolvers<void>()
-  const launched = Promise.withResolvers<void>()
-  const host = fixture({ admission: admission.promise, launched: () => launched.resolve() })
+  const host = fixture({ admission: admission.promise })
   const client = host.acquire()
-  await launched.promise
+  await host.launched
   admission.reject(new Error("admission refused"))
   const error = await client.ready.catch((reason: unknown) => reason)
-  expect(error).toBeInstanceOf(ProjectExecutorStartupError)
-  if (!(error instanceof ProjectExecutorStartupError)) throw new Error("expected project executor startup error")
-  expect(error.message).toBe("admission refused")
+  expect(error).toMatchObject({ name: "ProjectExecutorStartupError", message: "admission refused" })
   expect(await client.closed).toMatchObject({ settled: true })
   expect(host.observations).toContain("terminate")
   expect(host.observations).not.toContain("guardian")
@@ -560,12 +570,11 @@ test("a rejected admission after launch terminates the executor and rejects read
 
 test("a start that cannot write the project's state names that cause", async () => {
   const admission = Promise.withResolvers<void>()
-  const launched = Promise.withResolvers<void>()
-  const host = fixture({ admission: admission.promise, launched: () => launched.resolve() })
+  const host = fixture({ admission: admission.promise })
   const client = host.acquire()
   const causes: string[] = []
   client.onEnding((cause) => { causes.push(cause) })
-  await launched.promise
+  await host.launched
   // A start failure crosses from the executor as text, so the cause is read
   // from the message: here a file write that met a full disk.
   admission.reject(new Error("Module definition reconciliation preparation failed: the contained operation cannot open part of its path (code=ENOSPC, errno=28, operation=openat)"))

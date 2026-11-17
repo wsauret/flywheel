@@ -18,6 +18,7 @@ import { tryOpenConversationTree } from "../../../../src/orchestration/session/c
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js";
 
 const roots: string[] = [];
 
@@ -159,7 +160,7 @@ describe("streaming tool validation and failure", () => {
       expect(await preparedToolAdmission(prepared, { executionCwd: root })).toMatchObject({ kind: "paths" });
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: call.id, name: call.name, input: {} }]);
       emitToolInputComplete(output.dispatchRuntimeEvent, call);
-      const result = await executePreparedTool(prepared, {
+      const result = await executePreparedTool(prepared, dispatchedToolContext({
         executionCwd: root,
         userDataRoot: `${root}/.test-account`, projectRoot: root,
         scratchDir: join(root, "scratch"),
@@ -169,7 +170,7 @@ describe("streaming tool validation and failure", () => {
         sessionEventWriter: factWriter,
         flushCanonicalMessages: async () => {},
         toolNames: { logical: name => name === "apply_patch" ? "edit" : name, presented: name => name },
-      });
+      }));
       expect(result).toMatchObject({
         outcome: "error",
         details: {

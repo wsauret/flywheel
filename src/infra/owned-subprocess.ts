@@ -10,7 +10,7 @@ const log = Log.create({ service: "owned-subprocess" })
  *  `unacknowledged` means the container is gone but its lease is not: the token
  *  stays on the guardian's kill list until the guardian sweeps it at host exit,
  *  so an owner still holding it has not become settled. */
-export type OwnershipSettlement = "surrendered" | "unacknowledged"
+type OwnershipSettlement = "surrendered" | "unacknowledged"
 
 export interface OwnedProcessExit extends OwnedExitStatus {
   /** Ownership is part of the settlement, not a detail of it. */

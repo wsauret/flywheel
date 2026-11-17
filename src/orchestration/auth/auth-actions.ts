@@ -64,7 +64,7 @@ export class LoginRefusedError extends Error {
 /** Completes provider catalog reconciliation after a credential commit. */
 export type AuthCatalogSettlement = (account: AccessProviderAccountIdentity, authDirectory: string, signal?: AbortSignal) => Promise<void>;
 
-export class AuthSettlementConflictError extends Error {
+class AuthSettlementConflictError extends Error {
   constructor(options: { readonly cause: unknown }) {
     super("Catalog settlement failed after the credential changed concurrently", options);
     this.name = "AuthSettlementConflictError";
@@ -212,7 +212,7 @@ export async function reconnectWithApiKey(providerId: CredentialProviderId, inst
 /** The ports a client supplies to an OAuth login beside the flow's own: the
  *  profile the credential lands in, the settlement that confirms it, and the
  *  launch authority that runs an external login's program. */
-export interface OAuthLoginOptions {
+interface OAuthLoginOptions {
   /** The claimed external-login episode. Its owner renews only after catalog settlement. */
   readonly loginQuestionId?: string;
   readonly authDir: string;
@@ -247,33 +247,34 @@ function isOAuthDefinition(definition: AccessProviderDefinition): definition is 
   return definition.auth.kind === "oauth";
 }
 
-// deps exist for test injection only: the abort-vs-persist race cannot be
-// exercised through module mocks without cross-file mock.module leakage.
-interface OAuthLoginDeps {
-  readonly start: (ports: DeviceCodeLoginPorts & BrowserLoginPorts) => Promise<OAuthLoginResult>;
-  readonly persist: SubscriptionPersist;
-  readonly resolve: typeof resolveAuthContext;
-  readonly settle?: AuthCatalogSettlement;
-  /** Reads the usage, and with it the plan, of an account; the provider's usage reader by default. */
-  readonly readUsage?: SubscriptionUsageReader;
+/** One provider that a login can run on: its definition, and the usage reader that reads the plan of its accounts. */
+interface LoginProvider {
+  readonly definition: AccessProviderDefinition;
+  readonly usageReader?: SubscriptionUsageReader | undefined;
+}
+
+/** Every installed access provider with its usage reader, also of a module that is off. */
+const installedLoginProviders = (): readonly LoginProvider[] =>
+  installedAccessProviderDefinitions().map((definition) => ({ definition, usageReader: installedUsageReader(definition.id) }));
+
+/** A login that adds an account, with the usage reader of its provider. */
+interface AccountAddition {
+  readonly usageReader: SubscriptionUsageReader | undefined;
 }
 
 /** Runs one provider's declared OAuth flow and stores the account it yields.
  *  The flow answers its own ports (a device code, an authorize URL); this
  *  function owns what every flow shares: the abort check, the append, the
- *  catalog settlement, and the fresh snapshot. */
-export async function loginWithOAuth(definition: OAuthDefinition, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, deps: Partial<OAuthLoginDeps> = {}): Promise<AuthContext> {
-  return storeOAuthLogin(definition, options, { start: definition.auth.start, persist: persistSubscription, resolve: resolveAuthContext, ...deps }, true);
-}
-
-/** Runs the flow and stores its account. A new account of a provider that declares a free plan first passes the
- *  free-plan rule (PI-MODEL-069), and the plan that its sign-in read is saved in the profile's usage authority under
- *  the stored account; a reconnect replaces an account in its own place and adds none. */
-async function storeOAuthLogin(definition: OAuthDefinition, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, deps: OAuthLoginDeps, adds: boolean): Promise<AuthContext> {
-  const result = await deps.start(options);
+ *  catalog settlement, and the fresh snapshot.
+ *
+ *  A login that adds an account passes `addition`: a new account of a provider that declares a free plan first
+ *  passes the free-plan rule (PI-MODEL-069), and the plan that its sign-in read is saved in the profile's usage
+ *  authority under the stored account. A reconnect replaces an account in its own place and passes no addition. */
+async function storeOAuthLogin(definition: OAuthDefinition, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, persist: SubscriptionPersist, addition?: AccountAddition): Promise<AuthContext> {
+  const result = await definition.auth.start(options);
   if (options.signal?.aborted) throw new Error("Login cancelled");
   const credentialId = credentialIdOf(definition);
-  const ruled = adds && definition.usage?.freePlan !== undefined;
+  const ruled = addition !== undefined && definition.usage?.freePlan !== undefined;
   // Opened only when the rule reads or saves a plan.
   let opened: UsageAuthority | undefined;
   const usage = (): UsageAuthority => {
@@ -281,12 +282,12 @@ async function storeOAuthLogin(definition: OAuthDefinition, options: OAuthLoginO
     return opened;
   };
   try {
-    const admission = ruled ? await admitFreePlanAddition(definition, result, options, deps.readUsage ?? installedUsageReader(definition.id), usage) : undefined;
-    const persisted = await appendSubscription(credentialId, result.identity, oauthCredentialDto(result.credential), options.authDir, options.writeAccess, deps.persist, options.signal, admission?.review);
+    const admission = ruled ? await admitFreePlanAddition(definition, result, options, addition.usageReader, usage) : undefined;
+    const persisted = await appendSubscription(credentialId, result.identity, oauthCredentialDto(result.credential), options.authDir, options.writeAccess, persist, options.signal, admission?.review);
     if (persisted.persisted) {
       if (admission?.reading !== undefined) recordSignedInPlan(usage, admission.reading, persisted.instanceId);
       await settleOrRollback(
-        deps.settle ?? options.settle,
+        options.settle,
         { kind: "subscription", providerId: definition.id, instanceId: persisted.instanceId },
         options.authDir,
         () => persisted.receipt === undefined
@@ -304,7 +305,7 @@ async function storeOAuthLogin(definition: OAuthDefinition, options: OAuthLoginO
   } finally {
     opened?.dispose();
   }
-  return deps.resolve({ authDir: options.authDir, resolveKey: options.resolveKey, credentialProviderIds: installedCredentialProviderIds(), credentialSlotClassifier: installedCredentialSlotClassifier() });
+  return freshContext(options.authDir, options.resolveKey);
 }
 
 interface FreePlanAdmission {
@@ -404,16 +405,12 @@ function recordSignedInPlan(usage: () => UsageAuthority, reading: SubscriptionUs
  *  instance still holds the credential captured when the flow started. The
  *  flow's reported identity replaces the stored one, because reconnecting
  *  as another account is the account changing. */
-export async function reconnectWithOAuth(definition: OAuthDefinition, instanceId: string, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, deps: Pick<OAuthLoginDeps, "start" | "resolve"> = { start: definition.auth.start, resolve: resolveAuthContext }): Promise<boolean> {
+async function reconnectWithOAuth(definition: OAuthDefinition, instanceId: string, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts): Promise<boolean> {
   const credentialId = credentialIdOf(definition);
   const selected = selectedInstance(credentialId, instanceId, options.authDir);
   const previous = runtimeCredential(selected.credential);
   let replaced = false;
-  await storeOAuthLogin(definition, { ...options, ...(previous.type === "oauth" ? { previous } : {}) }, {
-    start: deps.start,
-    persist: reconnectPersistence(instanceId, selected.credential, (value) => { replaced = value; }),
-    resolve: deps.resolve,
-  }, false);
+  await storeOAuthLogin(definition, { ...options, ...(previous.type === "oauth" ? { previous } : {}) }, reconnectPersistence(instanceId, selected.credential, (value) => { replaced = value; }));
   return replaced;
 }
 
@@ -435,10 +432,13 @@ async function loginWithExternal(definition: ExternalLoginDefinition, options: O
  *  URL and takes a pasted code. A fold over the installed definitions: adding
  *  a provider registers its flow on its definition and never edits a dispatch
  *  site. The caller must admit the provider through its effective module
- *  selection before invoking the returned flow. */
-export function providerLoginFlow(providerId: string, definitions: readonly AccessProviderDefinition[] = installedAccessProviderDefinitions()): ProviderOAuthLogin | undefined {
-  const definition = definitions.find((candidate) => candidate.id === providerId);
-  if (definition !== undefined && isExternalLoginDefinition(definition)) {
+ *  selection before invoking the returned flow. The provider's usage reader
+ *  reads the plan of the account that a login adds, for the free-plan rule. */
+export function providerLoginFlow(providerId: string, providers: readonly LoginProvider[] = installedLoginProviders()): ProviderOAuthLogin | undefined {
+  const provider = providers.find(({ definition }) => definition.id === providerId);
+  if (provider === undefined) return undefined;
+  const { definition, usageReader } = provider;
+  if (isExternalLoginDefinition(definition)) {
     return {
       flow: "browser",
       login: (options) => loginWithExternal(definition, options),
@@ -448,8 +448,8 @@ export function providerLoginFlow(providerId: string, definitions: readonly Acce
       },
     };
   }
-  if (definition === undefined || !isOAuthDefinition(definition)) return undefined;
-  const login = (options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts) => loginWithOAuth(definition, options);
+  if (!isOAuthDefinition(definition)) return undefined;
+  const login = (options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts) => storeOAuthLogin(definition, options, persistSubscription, { usageReader });
   const reconnect = (instanceId: string, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts) => reconnectWithOAuth(definition, instanceId, options);
   return definition.auth.flow === "browser" ? { flow: "browser", login, reconnect } : { flow: "device-code", login, reconnect };
 }

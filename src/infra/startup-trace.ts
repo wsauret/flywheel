@@ -33,7 +33,7 @@ export function traceShellMount(renderer: FrameSource): void {
   renderer.on("frame", contentFrame)
 }
 
-export interface ReleaseMemorySample {
+interface ReleaseMemorySample {
   readonly timestampMs: number
   readonly heapUsed: number
   readonly rss: number
@@ -58,7 +58,7 @@ export interface ReleaseMemoryEvidence {
 
 /** A fixed epoch plus a monotonic clock lets the harness and executor share interval bounds.
  * Bun's hrtime and nanoseconds clocks instead start anew in each process. */
-export function releaseMeasurementNow(): number {
+function releaseMeasurementNow(): number {
   return performance.timeOrigin + performance.now()
 }
 

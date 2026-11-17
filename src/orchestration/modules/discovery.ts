@@ -23,12 +23,9 @@ function declaration(tool: RuntimeTool, order: number, summary?: string): ToolDe
 export const discoveryModule = {
   id: "discovery",
   dependencies: [],
-  availability: { kind: "available" },
   contributions: [
     { domain: "tools", id: "list", value: { kind: "tool", name: "list", declaration: declaration(listDefinition, 2, "List file and directory paths, shallow or by glob pattern.") } },
     { domain: "tools", id: "search", value: { kind: "tool", name: "search", declaration: declaration(searchDefinition, 5, "Search file contents with ripgrep regex or literal patterns.") } },
     { domain: "settings", id: "discovery", value: { control: "binary", group: "Tools", label: "Discovery", description: "Allow agents to search file contents and list paths" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

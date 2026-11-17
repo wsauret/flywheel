@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { normalizeModelScores } from "../../../../../src/infra/llm/model-scores-document.js";
 import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 import { capabilityAccessHolding } from "../../agent-runtime/tools/_fixtures.js";
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 
 function snapshot(models: readonly string[]) {
   return normalizeModelScores({
@@ -51,7 +52,7 @@ test("models reads live eligibility while its request prefix stays byte-identica
   const tool = before.request.tools.get("models");
   expect(tool).toBeDefined();
   if (!tool) throw new Error("models must be available");
-  const context = { executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "models", retrievalSessionId: "models" };
+  const context = dispatchedToolContext({ executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "models", retrievalSessionId: "models" });
   const first = await tool.execute({}, context);
   expect(first.outcome).toBe("ok");
   expect(typeof first.content).toBe("string");
@@ -90,9 +91,9 @@ test("models reads live eligibility while its request prefix stays byte-identica
 test("models returns tiers per supported effort with attribution and exact absence reasons, never raw benchmarks", async () => {
   const tool = createModelsTool(async () => roleCapture(["gpt-6-luna", "claude-opus-5.5", "gpt-unmapped"]), "/scratch",
     async () => snapshot(["gpt-6-luna"]), () => ["gpt-6-luna", "gpt-unmapped"]);
-  const result = await tool.execute({}, {
+  const result = await tool.execute({}, dispatchedToolContext({
     executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "models-scores", retrievalSessionId: "models-scores",
-  });
+  }));
   if (typeof result.content !== "string") throw new Error("models must return JSON text");
   const output = JSON.parse(result.content);
   expect(output.attribution).toBe("Tiers derived by Flywheel from Terminal-Bench and BenchLM.ai data.");

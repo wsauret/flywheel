@@ -1,19 +1,10 @@
 import type { DefinitionRootWatch } from "./definition-root-watcher.js"
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js"
-import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js"
-import {
-  commandCatalogCursor,
-  type BuiltInCommandDescriptor,
-  type RuntimeCommandCatalog,
-} from "../../protocol/command-catalog-protocol-types.js"
+import type { FirstPartyModuleSnapshot } from "../modules.js"
+import { commandCatalogCursor, type RuntimeCommandCatalog } from "../../protocol/command-catalog-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
 import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
 import { builtInCommandDeclarations, builtInCommandDescriptor, offCommandDescriptors } from "./kernel-commands.js"
-
-/** Kernel metadata plus metadata contributed by every enabled capability module. */
-export function getBuiltInCommands(moduleSnapshot: FirstPartyModuleComposition): readonly BuiltInCommandDescriptor[] {
-  return builtInCommandDeclarations(moduleSnapshot).map(builtInCommandDescriptor)
-}
 
 export interface CommandCatalogProjection {
   snapshot(): RuntimeCommandCatalog
@@ -49,10 +40,10 @@ export function createCommandCatalogProjection(options: {
   const build = (): RuntimeCommandCatalog => {
     const moduleSnapshot = options.moduleSelection()
     revision += 1
-    const builtInCommands = getBuiltInCommands(moduleSnapshot)
     return {
       revision,
-      builtInCommands,
+      // Kernel commands plus the commands of every enabled capability module.
+      builtInCommands: builtInCommandDeclarations(moduleSnapshot).map(builtInCommandDescriptor),
       // A client asks this list only about a token that nothing published runs.
       offCommands: offCommandDescriptors(moduleSnapshot),
     }

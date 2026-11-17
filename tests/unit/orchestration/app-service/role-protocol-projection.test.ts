@@ -1,18 +1,21 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { composeRoleProtocolProjection, createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
+import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { composeRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection.js"
 import { createRuntimeOwnership } from "../../../../src/orchestration/app-service/runtime-ownership.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createWorkflowRunWriter } from "../../../../src/orchestration/modules/workflows/run-facts.js"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow } from "../session/_session-manager-fixtures.js"
-import { createRoleAssignmentReader, projectRoleAssignments } from "../../../../src/orchestration/app-service/role-assignment-projection.js"
-import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
+import type { SessionManager, SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import type { ReplayedSession } from "../../../../src/orchestration/session/schemas.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { sessionServingLabel } from "../../../../src/protocol/role-protocol-types.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
-import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import type { ProviderConnectionCapture } from "../../../../src/orchestration/agent-runtime/factory.js"
+import { buildDurableSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
+import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import { authStatusCursor } from "../../../../src/protocol/auth-status-protocol-types.js"
 
@@ -31,6 +34,28 @@ function chat(model: string): ReplayedSession {
 
 afterEach(cleanupTmpRoot)
 
+/** The role projection as the runtime composes it, over `manager`, with no
+ *  workflow history, auth publication, or profile edit. */
+function composedProjection(deps: {
+  readonly manager: Pick<SessionManager, "subscribe" | "read">
+  readonly publish: (input: RuntimeUiPatchInput) => RuntimeUiPatch
+  readonly capture?: ProviderConnectionCapture
+  readonly reader?: Parameters<typeof composeRoleProtocolProjection>[1]["reader"]
+}) {
+  const capture = deps.capture ?? roleCapture(["gpt-5", "gpt-6", "chat-model"])
+  return composeRoleProtocolProjection(createRuntimeOwnership(() => {}), {
+    manager: deps.manager,
+    publish: deps.publish,
+    reader: deps.reader ?? asAsyncEventReadSurface(inMemoryEventReader([])),
+    userDataRoot: "/scratch",
+    capture: async () => capture,
+    definitions: repoDefinitions(),
+    bus: { addListener: () => {}, removeListener: () => {} },
+    onStored: () => () => {},
+    onProfilesChanged: () => async () => {},
+  })
+}
+
 describe("role protocol projection", () => {
   test("does not publish a delayed read after disposal", async () => {
     const read = Promise.withResolvers<ReplayedSession | null>()
@@ -38,14 +63,14 @@ describe("role protocol projection", () => {
     let listener: ((change: SessionMetadataChange) => void) | undefined
     let held = false
     const published: RuntimeUiPatchInput[] = []
-    const projection = createRoleProtocolProjection({
+    const projection = composedProjection({
       manager: {
         subscribe: (onChange) => { listener = onChange; return () => { listener = undefined } },
-      },
-      readRoles: async () => {
-        if (!held) return null
-        started.resolve()
-        return { assignments: projectRoleAssignments((await read.promise)?.roleAssignments?.overrides ?? {}) }
+        read: async () => {
+          if (!held) return null
+          started.resolve()
+          return await read.promise
+        },
       },
       publish: (input) => { published.push(input); return { ...input, position: 1, prevPosition: 0 } },
     })
@@ -63,21 +88,21 @@ describe("role protocol projection", () => {
     const sessions = new Map<string, ReplayedSession>([["session-1", chat("gpt-5")]])
     const listeners = new Set<(change: SessionMetadataChange) => void>()
     const published: RuntimeUiPatchInput[] = []
-    const projection = createRoleProtocolProjection({
+    const projection = composedProjection({
       manager: {
         subscribe: (listener) => {
           listeners.add(listener)
           return () => { listeners.delete(listener) }
         },
+        read: async (sessionId) => sessions.get(sessionId) ?? null,
       },
-      readRoles: async (sessionId) => ({ assignments: projectRoleAssignments(sessions.get(sessionId)?.roleAssignments?.overrides ?? {}) }),
       publish: (input) => {
         published.push(input)
         return { ...input, position: published.length, prevPosition: published.length - 1 }
       },
     })
 
-    expect(await projection.snapshot("session-1")).toEqual({ assignments: { chat: { model: "gpt-5", effort: "medium" } } })
+    expect(await projection.snapshot("session-1")).toMatchObject({ assignments: { chat: { model: "gpt-5", effort: "medium" } } })
 
     sessions.set("session-1", chat("gpt-6"))
     for (const listener of listeners) listener({ kind: "changed", sessionIds: ["session-1"] })
@@ -86,7 +111,7 @@ describe("role protocol projection", () => {
     for (const listener of listeners) listener({ kind: "deleted", sessionId: "session-1" })
     await Bun.sleep(0)
 
-    expect(published).toEqual([
+    expect(published).toMatchObject([
       {
         cursor: { scope: "session", domain: "roles", sessionId: "session-1" },
         payload: { kind: "roles.updated", roles: { assignments: { chat: { model: "gpt-6", effort: "medium" } } } },
@@ -101,41 +126,56 @@ describe("role protocol projection", () => {
     expect(listeners.size).toBe(0)
   })
   test.each(["explorer", "chat"])("publishes the %s child's runner selection and a viewer edit on the same cursor", async (roleId) => {
-    let snapshot = { defaults: {}, overrides: {} }
-    let listener: ((change: SessionMetadataChange) => void) | undefined
-    const published: RuntimeUiPatchInput[] = []
-    const changed = Promise.withResolvers<void>()
-    const readRoles = createRoleAssignmentReader({
-      readSession: async () => ({ kind: "subagent", roleAssignments: snapshot }),
-      childRole: async () => ({ roleId }),
-      capture: async () => roleCapture(["chat-model", "persona-model", "edited-model"], {
-        chat: { model: "chat-model", effort: "low" },
-        explorer: { model: "persona-model", effort: "high" },
-      }),
-      personas: async () => new Map(),
-      inheritedRoles: async () => ({ defaults: {}, overrides: {} }),
-      workflowSeat: async () => undefined,
-      userDataRoot: "/scratch",
-    })
-    const projection = createRoleProtocolProjection({
-      manager: { subscribe: (fn) => { listener = fn; return () => {} } },
-      readRoles,
-      publish: (input) => { published.push(input); changed.resolve(); return { ...input, position: 1, prevPosition: 0 } },
-    })
-    expect(sessionServingLabel(await projection.snapshot("child") ?? undefined)).toBe(roleId === "chat" ? "chat-model low" : "persona-model high")
-    expect((await projection.snapshot("child"))?.serving?.slot).toEqual({ kind: "role", roleId })
-    snapshot = { defaults: {}, overrides: { [roleId]: { model: "edited-model", effort: "medium" } } }
-    listener?.({ kind: "changed", sessionIds: ["child"] })
-    await changed.promise
-    expect(published).toMatchObject([{
-      cursor: { scope: "session", domain: "roles", sessionId: "child" },
-      payload: { kind: "roles.updated", roles: { serving: { selection: { model: "edited-model", effort: "medium" } } } },
-    }])
-    expect(sessionServingLabel(await readRoles("child") ?? undefined)).toBe("edited-model medium")
-    // A session Chat setting takes over a persona child, and becomes its serving seat.
-    snapshot = { defaults: {}, overrides: { chat: { model: "chat-model", effort: "high" } } }
-    expect((await readRoles("child"))?.serving).toEqual({ slot: { kind: "role", roleId: "chat" }, selection: { model: "chat-model", effort: "high" } })
-    await projection.dispose()
+    const { deps, store } = makeDepsWithStore(makeTmpDir())
+    try {
+      // The child's run names the agent that serves it: a persona with its
+      // own role, or the general agent, which the chat role serves.
+      await asAsyncEventWriter(store).append(prepareSessionFactAppend("child", buildDurableSubagentCreated({
+        childSessionId: "child", childRunId: "run", conversationId: "child-conversation",
+        parentSessionId: "parent", parentConversationId: "parent-conversation", parentToolCallId: "parent-tool",
+        persona: roleId === "chat" ? { name: "general", kind: "general" } : { name: "explorer", kind: "persona" },
+        capabilityGrant: { operation: "subagent", required: [], capabilities: [], moduleIds: [], requireWorkflowConfirmation: false, workflowsMode: "off", identity: "test" },
+        admittedModuleIds: [], skillsRevision: 1, model: "persona-model", tools: [], executionCwd: "/scratch/flywheel-test",
+        budget: { maxTurns: 10, maxTokens: 1000 }, parentDepth: 0, description: "child",
+      })))
+      let snapshot = { defaults: {}, overrides: {} }
+      let listener: ((change: SessionMetadataChange) => void) | undefined
+      const published: RuntimeUiPatchInput[] = []
+      const changed = Promise.withResolvers<void>()
+      const projection = composedProjection({
+        manager: {
+          subscribe: (fn) => { listener = fn; return () => {} },
+          read: async (sessionId) => sessionId !== "child" ? null : {
+            label: "Child", lastUpdated: "2026-08-31T00:00:00.000Z", lifecycleState: "active", executionCwd: "/scratch/flywheel-test",
+            kind: "subagent", command: "subagent", conversationId: "child-conversation",
+            launchedFrom: { parentSessionId: "parent", conversationId: "parent-conversation", toolUseId: "parent-tool" },
+            roleAssignments: snapshot,
+          },
+        },
+        reader: deps.projectionReader,
+        capture: roleCapture(["chat-model", "persona-model", "edited-model"], {
+          chat: { model: "chat-model", effort: "low" },
+          explorer: { model: "persona-model", effort: "high" },
+        }),
+        publish: (input) => { published.push(input); changed.resolve(); return { ...input, position: 1, prevPosition: 0 } },
+      })
+      expect(sessionServingLabel(await projection.snapshot("child") ?? undefined)).toBe(roleId === "chat" ? "chat-model low" : "persona-model high")
+      expect((await projection.snapshot("child"))?.serving?.slot).toEqual({ kind: "role", roleId })
+      snapshot = { defaults: {}, overrides: { [roleId]: { model: "edited-model", effort: "medium" } } }
+      listener?.({ kind: "changed", sessionIds: ["child"] })
+      await changed.promise
+      expect(published).toMatchObject([{
+        cursor: { scope: "session", domain: "roles", sessionId: "child" },
+        payload: { kind: "roles.updated", roles: { serving: { selection: { model: "edited-model", effort: "medium" } } } },
+      }])
+      expect(sessionServingLabel(await projection.snapshot("child") ?? undefined)).toBe("edited-model medium")
+      // A session Chat setting takes over a persona child, and becomes its serving seat.
+      snapshot = { defaults: {}, overrides: { chat: { model: "chat-model", effort: "high" } } }
+      expect((await projection.snapshot("child"))?.serving).toEqual({ slot: { kind: "role", roleId: "chat" }, selection: { model: "chat-model", effort: "high" } })
+      await projection.dispose()
+    } finally {
+      store.close()
+    }
   })
   test.each([3, 30])("a run settings change reads the run policy once for %s card rows", async (members) => {
     const { deps, store } = makeDepsWithStore(makeTmpDir())
@@ -226,20 +266,23 @@ describe("role protocol projection", () => {
   test.each([3, 30])("a local edit reads only the changed session among %s card rows", async (members) => {
     let listener: ((change: SessionMetadataChange) => void) | undefined
     const requests = countStateRequests(asAsyncEventReadSurface(inMemoryEventReader([])))
+    const reads: string[] = []
     const completed = Promise.withResolvers<void>()
-    const projection = createRoleProtocolProjection({
-      manager: { subscribe: (fn) => { listener = fn; return () => {} } },
-      readRoles: async (sessionId) => {
-        await requests.reader.readSlice({ aggregateId: `session:${sessionId}`, limit: 1 })
-        return { assignments: {} }
+    const projection = composedProjection({
+      manager: {
+        subscribe: (fn) => { listener = fn; return () => {} },
+        read: async (sessionId) => { reads.push(sessionId); return chat("chat-model") },
       },
+      reader: requests.reader,
       publish: (input) => { completed.resolve(); return { ...input, position: 1, prevPosition: 0 } },
     })
     for (let index = 0; index < members; index++) await projection.snapshot(`agent-${index}`)
     requests.take()
+    reads.length = 0
     listener?.({ kind: "changed", sessionIds: ["agent-0"] })
     await completed.promise
-    expect(requests.take().map(({ aggregateId }) => aggregateId)).toEqual(["session:agent-0"])
+    expect(reads).toEqual(["agent-0"])
+    expect(requests.take()).toEqual([])
     await projection.dispose()
   })
 })

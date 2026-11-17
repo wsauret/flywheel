@@ -8,7 +8,7 @@ import { readBoundedSpoolTail, type BoundedSpoolTail, type RandomAccessSpool } f
 import type { AdvertisedTool, ToolContext, RuntimeTool, RuntimeToolInput, ToolResult } from "./types.js";
 import { parseWorkflowTargets } from "../../../protocol/client/workflow-addresses.js";
 
-export const PROCESS_TOOL_NAME = "process";
+const PROCESS_TOOL_NAME = "process";
 /** The targeting rules that a child with addresses states beside them in its status, so they reach only an agent
  *  that has such a child (ARCH-CONTEXT-033). */
 const CHILD_ADDRESS_GUIDANCE = "These addresses name item keys and named-agent ids for targeted direction, and agent session ids for direct messages and replies. Never substitute an agent session id for this child's process id. When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";

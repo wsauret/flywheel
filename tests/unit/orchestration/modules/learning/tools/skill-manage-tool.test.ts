@@ -6,9 +6,9 @@ import type { SessionNoticeOperation } from "../../../../../../src/infra/session
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
 import { readSessionContentRange, type SessionContentNode } from "../../../../../../src/infra/session-content.js";
-import { resolveToolPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js";
+import { resolveToolRowPresentation } from "../../../../../../src/infra/tools/tool-display-registry.js";
 import { createSkillManageTool, type SkillManageToolDeps } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
-import type { CapabilityAccess, RuntimeTool, ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { CapabilityAccess, DispatchedToolContext, RuntimeTool } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { requestAdmission } from "../../../../../helpers/request-tool-surface.js";
 import { composeRealmModuleSnapshot } from "../../../../../../src/orchestration/modules.js";
@@ -63,7 +63,7 @@ function makeTool(publishDefinitions?: SkillManageToolDeps["publishDefinitions"]
 
 // A writer that resolves null wrote nothing, which the tool treats as a failed
 // audit record, so the accepting fake resolves a stored-event stand-in.
-function makeContext(): ToolContext {
+function makeContext(): DispatchedToolContext {
   return makeToolContext({
     executionCwd: CWD,
     projectRoot: CWD,
@@ -181,7 +181,7 @@ describe("skill_manage tool", () => {
     expect(recorded[0]?.payload.name).toBe("provider-quirks");
     // The row a user reads is resolved from the same raw input, through the
     // same normalization, so it names exactly this package.
-    expect(resolveToolPresentation("skill_manage", { action: "save", name: " Provider-Quirks " }, CWD))
+    expect(resolveToolRowPresentation("skill_manage", { action: "save", name: " Provider-Quirks " }, CWD).presentation)
       .toEqual({ name: "Save Skill", detail: "provider-quirks" });
   });
 

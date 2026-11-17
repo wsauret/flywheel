@@ -43,7 +43,7 @@ export interface AuthProfileManagerOptions {
 }
 
 /** A create or rename would make display-name selection ambiguous. */
-export class AuthProfileDisplayNameConflictError extends Error {
+class AuthProfileDisplayNameConflictError extends Error {
   readonly _tag = "AuthProfileDisplayNameConflictError" as const;
   readonly displayName: string;
 

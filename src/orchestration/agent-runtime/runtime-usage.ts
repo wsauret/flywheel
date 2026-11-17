@@ -1,11 +1,13 @@
 import type { UsageEntry } from "../../infra/llm/usage-entry.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
 import { createTurnUsageTracker, type TurnUsageTracker } from "./turn-usage-tracker.js";
-import type { AgentOptions } from "./types.js";
+import type { AgentDurableFacts, AgentOptions } from "./types.js";
 import { createProcessUsageSettlement, createSessionUsageSettlement, recoverSessionUsageSettlements, type UsageSettlement } from "./usage-settlement.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
+import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
+import type { SessionFactWriter } from "../session/session-fact-writer.js";
 
-type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile" | "sessionEventReader" | "sessionEventWriter">;
+type RuntimeUsageOptions = Pick<AgentOptions, "onEvent" | "usageObserver" | "usageProfile"> & AgentDurableFacts;
 type RuntimeUsageConversation = Pick<RuntimeConversation, "requestAccounting" | "sessionId" | "aggregateId" | "artifactScopeId">;
 
 /** The usage stream that a conversation's requests charge: its request accounting's, else its session's, else its
@@ -32,16 +34,17 @@ export async function prepareRuntimeUsage(
   const commitPublishedUsage = (entry: UsageEntry): boolean => commitUsage(entry, true);
   const commitProcessUsage = (entry: UsageEntry): boolean => commitUsage(entry, false);
   const usageProfile = options.usageProfile;
-  const usageReader = requestAccounting?.reader ?? options.sessionEventReader;
-  const usageWriter = requestAccounting?.writer ?? options.sessionEventWriter;
-  const owner: DurableOwner | undefined = requestAccounting?.owner ?? (sessionId && aggregateId ? { kind: "session", sessionId } : undefined);
+  const durable: { owner: DurableOwner; reader: AsyncEventStateReadSurface; writer: SessionFactWriter } | undefined = requestAccounting
+    ?? (options.sessionEventWriter && sessionId && aggregateId
+      ? { owner: { kind: "session", sessionId }, reader: options.sessionEventReader, writer: options.sessionEventWriter }
+      : undefined);
   const usageSettlement = usageProfile
-    ? owner && usageWriter && usageReader
-      ? createSessionUsageSettlement({ owner, reader: usageReader, writer: usageWriter, acquireAuthority: usageProfile.acquireAuthority, onCommitted: commitPublishedUsage })
+    ? durable
+      ? createSessionUsageSettlement({ ...durable, acquireAuthority: usageProfile.acquireAuthority, onCommitted: commitPublishedUsage })
       : createProcessUsageSettlement({ acquireAuthority: usageProfile.acquireAuthority, onCommitted: commitProcessUsage })
     : undefined;
-  if (usageSettlement && usageProfile && aggregateId && owner && usageWriter && usageReader) {
-    await recoverSessionUsageSettlements({ owner, reader: usageReader, writer: usageWriter, acquireAuthority: usageProfile.acquireAuthority, onCommitted: commitPublishedUsage }, usageSettlement);
+  if (usageSettlement && usageProfile && aggregateId && durable) {
+    await recoverSessionUsageSettlements({ ...durable, acquireAuthority: usageProfile.acquireAuthority, onCommitted: commitPublishedUsage }, usageSettlement);
   }
   return { usageTracker, usageSettlement, budgetStreamId };
 }

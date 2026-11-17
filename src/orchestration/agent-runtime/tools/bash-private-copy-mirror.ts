@@ -68,9 +68,11 @@ export interface MirrorState {
   /** The listing of each target directory ("" is the target itself) that
    *  is still exact after the mirror: one its own writes did not change. */
   readonly listings: ReadonlyMap<string, HeldListing>;
+  /** Every directory the mirror left in its target ("" is the target itself), shared placeholders excepted. */
+  readonly directories: ReadonlySet<string>;
 }
 
-type EntryKind = "file" | "directory" | "link" | "other";
+export type EntryKind = "file" | "directory" | "link" | "other";
 
 /** A directory's entries as one read found them, with the directory's
  *  identity and stamps from just before that read. Adding, removing, or
@@ -102,7 +104,7 @@ function sameStamps(stats: BigIntStats, listing: HeldListing): boolean {
   return `${stats.dev}:${stats.ino}` === listing.identity && stats.mtimeNs === listing.mtimeNs && stats.ctimeNs === listing.ctimeNs;
 }
 
-function entryKind(entry: Dirent): EntryKind {
+export function entryKind(entry: Dirent): EntryKind {
   if (entry.isFile()) return "file";
   if (entry.isDirectory()) return "directory";
   return entry.isSymbolicLink() ? "link" : "other";
@@ -158,6 +160,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
   const links = new Map<string, MirroredLink>();
   const shared = new Map<string, SharedPlaceholder>();
   const listings = new Map<string, HeldListing>();
+  const directories = new Set<string>();
   const targetEntry = (path: string) => lstatSync(join(target, path), { bigint: true, throwIfNoEntry: false });
   const remove = (path: string): void => {
     rmSync(join(target, path), { recursive: true, force: true, maxRetries: 3 });
@@ -168,14 +171,15 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
     tally.recloned += 1;
   };
 
-  // A file the source no longer holds as a regular file leaves the target as well.
-  const record = (path: string, observed: FileFingerprint | undefined): void => {
+  // A file the source no longer holds as a regular file leaves the target as
+  // well. `placed` is the target file's stats when the caller just read them.
+  const record = (path: string, observed: FileFingerprint | undefined, placed?: BigIntStats): void => {
     const state = observed ?? observeFileState(join(source, path));
     if (state.kind !== "file") {
       remove(path);
       return;
     }
-    const stats = lstatSync(join(target, path), { bigint: true });
+    const stats = placed ?? lstatSync(join(target, path), { bigint: true });
     const racy = !observed || state.mtimeNs >= startedNs - RACY_WINDOW_NS || state.ctimeNs >= startedNs - RACY_WINDOW_NS;
     files.set(path, {
       source: request.pin && racy ? { ...state, sha256: sha256Of(join(target, path)) } : state,
@@ -190,13 +194,14 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
   const adoptClone = (path: string, observedFiles: ReadonlyMap<string, FileFingerprint>, observedLinks: ReadonlyMap<string, string>): void => {
     const cloned = targetEntry(path);
     if (cloned?.isDirectory()) {
+      directories.add(path);
       for (const name of readdirSync(join(target, path))) adoptClone(join(path, name), observedFiles, observedLinks);
     } else if (cloned?.isSymbolicLink()) {
       // A link retargeted between its observation and the clone has no
       // observation that matches the clone, so the next mirror replaces it.
       const text = readlinkSync(join(target, path));
       links.set(path, { source: observedLinks.get(path) === text ? text : undefined, target: text });
-    } else if (cloned?.isFile()) record(path, observedFiles.get(path));
+    } else if (cloned?.isFile()) record(path, observedFiles.get(path), cloned);
   };
 
   // Every entry below the directory is observed first and cloned after, so the
@@ -226,7 +231,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
     if (state.kind === "file" && before && sameObservedState(state, before.source) && (before.source.sha256 === undefined || sha256Of(join(source, path)) === before.source.sha256)) {
       const existing = targetEntry(path);
       if (existing?.isFile() && sameObservedState(fileFingerprint(existing), before.target)) {
-        record(path, state);
+        record(path, state, existing);
         return;
       }
     }
@@ -274,6 +279,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
   };
 
   const mirrorDirectory = (directory: string): void => {
+    directories.add(directory);
     // A previous command may have removed write permission from a target
     // directory, which would make the removals below fail.
     if (prior && PERMISSION_BITS) {
@@ -314,7 +320,7 @@ export function mirrorTree(request: MirrorRequest): MirrorState {
 
   mkdirSync(target, { recursive: true });
   mirrorDirectory("");
-  return { files, links, shared, listings };
+  return { files, links, shared, listings, directories };
 }
 
 function sha256Of(path: string): string {

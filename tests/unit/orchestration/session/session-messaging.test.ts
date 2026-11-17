@@ -5,7 +5,7 @@ import type { ConversationMessage } from "../../../../src/orchestration/agent-ru
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
 import { createListSessionsTool } from "../../../../src/orchestration/agent-runtime/tools/list-sessions"
 import { createMessageSessionTool } from "../../../../src/orchestration/agent-runtime/tools/message-session"
-import type { ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
+import type { DispatchedToolContext } from "../../../../src/orchestration/agent-runtime/tools/types"
 import { trackTurnHop } from "../../../../src/orchestration/agent-runtime/turn-hop"
 import { decodeQueuedUserInputCell, QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
 import { registerLiveSessionControl, registerLiveWorkflowControl } from "../../../../src/orchestration/session/live-session-control"
@@ -27,6 +27,7 @@ import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../
 import { fourLaneControl, wideBindings } from "../../workflows/vm/_tree-fixtures"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 import { openAIResponsesTarget } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js";
 
 afterEach(() => {
   cleanupTmpRoot()
@@ -53,8 +54,8 @@ function startedHop(input: ChatInput): number {
   return trackTurnHop(() => history).current()
 }
 
-function context(sessionId: string, toolUseId: string, history: readonly ConversationMessage[] = [], hop = 0): ToolContext {
-  const toolContext: ToolContext = {
+function context(sessionId: string, toolUseId: string, history: readonly ConversationMessage[] = [], hop = 0): DispatchedToolContext {
+  const toolContext = dispatchedToolContext({
     executionCwd: "/scratch",
     userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
     artifactScopeId: sessionId,
@@ -64,7 +65,7 @@ function context(sessionId: string, toolUseId: string, history: readonly Convers
     toolUseId,
     turnHop: () => hop,
     conversationHistory: () => history,
-  }
+  })
   return toolContext
 }
 

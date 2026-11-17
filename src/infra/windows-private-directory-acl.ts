@@ -6,12 +6,12 @@ const ACL_TIMEOUT_MS = 2_000;
 const SID_PATTERN = /\bS-\d-\d+(?:-\d+)+\b/;
 
 
-export interface WindowsPrivateDirectoryAclCommandResult {
+interface WindowsPrivateDirectoryAclCommandResult {
   readonly success: boolean;
   readonly stdout: string;
 }
 
-export interface WindowsPrivateDirectoryAclOperations {
+interface WindowsPrivateDirectoryAclOperations {
   readonly platform: NodeJS.Platform;
   readonly nativeAcl: () => WindowsPrivateDirectoryAclPort;
 }

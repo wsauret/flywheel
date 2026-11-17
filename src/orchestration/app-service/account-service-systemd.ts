@@ -12,7 +12,7 @@ import { answered, assertOk, failure, type ServiceCommandOutput, type ServiceCom
 
 const log = Log.create({ service: "account-service-installation" })
 
-export function systemdUnitPath(platform: Pick<AccountServicePlatform, "accountHome" | "env" | "names">): string {
+function systemdUnitPath(platform: Pick<AccountServicePlatform, "accountHome" | "env" | "names">): string {
   const configHome = platform.env.XDG_CONFIG_HOME || posix.join(platform.accountHome, ".config")
   return posix.join(configHome, "systemd", "user", platform.names.systemdUnit)
 }

@@ -1,16 +1,33 @@
-import { describe, expect, spyOn, test } from "bun:test"
+import { afterEach, describe, expect, spyOn, test } from "bun:test"
+import * as fs from "node:fs"
 import { rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
+import * as containerMark from "../../../src/infra/container-mark.js"
 import type { GroupMarkReading } from "../../../src/infra/container-mark.js"
-import type { AbandonedLease, GuardianLedger } from "../../../src/infra/guardian-ledger.js"
+import { platformGuardianLedger, type AbandonedLease, type GuardianLedger } from "../../../src/infra/guardian-ledger.js"
 import { Log } from "../../../src/infra/log.js"
-import { GUARDIAN_LEDGER_RECHECK_MS, runProcessGuardian, type GuardianHost } from "../../../src/infra/process-guardian.js"
-import { encodeGuardianFrame, type GuardianReply, type GuardianRequest } from "../../../src/infra/process-guardian-protocol.js"
+import { ownedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
+import { runProcessGuardianMain } from "../../../src/infra/process-guardian.js"
+import { decodeGuardianReply, encodeGuardianFrame, type GuardianReply, type GuardianRequest } from "../../../src/infra/process-guardian-protocol.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { CAPABILITY, GENERATION, IMPOSTOR, adopt, closeGeneration, hello, open, release } from "./_guardian-frames.js"
 
 const encoder = new TextEncoder()
+/** The test's own waits. The guardian's waits go through `Bun.sleep`, which
+ *  each probe replaces. */
+const realSleep = Bun.sleep
+const realWriteSync = fs.writeSync
+/** What the replaced `process.exit` throws, so the guardian's exit ends its
+ *  run instead of this test process. */
+const EXITED = new Error("the guardian exited")
+
+/** The production guardian runs on this process's own streams, kernel, and
+ *  ledger, so each probe replaces them and every case restores them. */
+const restores: (() => void)[] = []
+afterEach(() => {
+  for (const restore of restores.splice(0)) restore()
+})
 
 interface GuardianProbe {
   readonly replies: GuardianReply[]
@@ -37,7 +54,7 @@ interface GuardianProbe {
   /** Ownership tokens the guardian released, in order. */
   readonly forgotten: string[]
   /** Called at each of the guardian's waits, with how many it has made. A
-   *  promise it returns holds every wait but the ledger's recheck. */
+   *  promise it returns holds that wait. */
   onSleep: (count: number) => Promise<void> | void
   send(...requests: readonly GuardianRequest[]): void
   /** Bytes exactly as given, for a peer that is not speaking this protocol. */
@@ -48,7 +65,12 @@ interface GuardianProbe {
 }
 interface ContainerIdentities { [pid: number]: string | undefined }
 
-function guardianProbe(containers: ContainerIdentities, limits: { maxContainers?: number; maxGenerations?: number; killGraceMs?: number } = {}, ledger?: GuardianLedger): GuardianProbe {
+/** Runs the production guardian over a scripted kernel. Its control channel
+ *  is a stream the test writes, its replies are what it writes to standard
+ *  output, and its clock moves only by the time it waits, so a kill grace
+ *  costs no wall time. On a platform that keeps a guardian ledger, `ledger`
+ *  stands in for it; the default holds nothing. */
+function guardianProbe(containers: ContainerIdentities, ledger: GuardianLedger = ledgerProbe().ledger): GuardianProbe {
   const replies: GuardianReply[] = []
   const signals: string[] = []
   const populated = new Set(Object.keys(containers).map(Number))
@@ -59,24 +81,42 @@ function guardianProbe(containers: ContainerIdentities, limits: { maxContainers?
   const escapes = new Set<number>()
   const forgotten: string[] = []
   let sleeps = 0
+  let now = Date.now()
   let enqueue: (line: string) => void = () => {}
   let end: () => void = () => {}
-  const control = new ReadableStream<Uint8Array>({
+  const control: ReturnType<typeof Bun.stdin.stream> = new ReadableStream({
     start(controller) {
       enqueue = (line) => controller.enqueue(encoder.encode(line))
       end = () => controller.close()
     },
   })
-  const host: GuardianHost = {
-    control,
-    send: (reply) => replies.push(reply),
-    inspect: ({ pid }) => {
+  const spies = [
+    spyOn(Log, "init").mockImplementation(async () => {}),
+    spyOn(Bun.stdin, "stream").mockImplementation(() => control),
+    spyOn(fs, "writeSync").mockImplementation((fd: number, text: string | NodeJS.ArrayBufferView) => {
+      if (typeof text !== "string") return realWriteSync(fd, text)
+      if (fd !== 1) return realWriteSync(fd, text)
+      replies.push(decodeGuardianReply(text.trimEnd()) ?? expect.unreachable(`the guardian wrote a reply this test cannot read: ${text}`))
+      return text.length
+    }),
+    spyOn(process, "exit").mockImplementation(() => { throw EXITED }),
+    spyOn(Date, "now").mockImplementation(() => now),
+    spyOn(Bun, "sleep").mockImplementation((ms) => {
+      sleeps += 1
+      const held = probe.onSleep(sleeps)
+      if (typeof ms === "number") now += ms
+      // A wait that is not held still yields one macrotask. The ledger's
+      // recheck repeats for as long as the guardian serves, and a wait that
+      // only yields microtasks would starve the test's own timers.
+      return held ?? new Promise<void>((resolve) => setImmediate(resolve))
+    }),
+    spyOn(ownedProcessBackend, "inspect").mockImplementation(({ pid }) => {
       if (unproven.has(pid)) return { kind: "unproven" }
       if (others.has(pid)) return { kind: "other" }
       const identity = containers[pid]
       return identity === undefined ? { kind: "absent" } : { kind: "container", identity }
-    },
-    container: ({ pid }) => ({
+    }),
+    spyOn(ownedProcessBackend, "ending").mockImplementation(({ pid }) => ({
       signal: (signal) => {
         signals.push(`${signal}:${pid}`)
         if (!diesOnSignal.has(pid)) return
@@ -84,32 +124,27 @@ function guardianProbe(containers: ContainerIdentities, limits: { maxContainers?
         containers[pid] = undefined
       },
       populated: () => populated.has(pid),
-    }),
-    escaped: ({ pid }) => ({
+    })),
+    // Every reference this guardian stops owning is reported, so a case can
+    // prove that a lease never ends without the container being released.
+    spyOn(ownedProcessBackend, "forget").mockImplementation(({ token }) => { forgotten.push(token) }),
+    spyOn(containerMark, "markedOutsideGroup").mockImplementation((pid) => ({
       signal: (signal) => {
         signals.push(`${signal}:outside:${pid}`)
         escapes.delete(pid)
       },
       populated: () => escapes.has(pid),
-    }),
-    groupMark: ({ pid }) => groupMarks.get(pid),
-    // Every reference this guardian stops owning is reported, so a case can
-    // prove that a lease never ends without the container being released.
-    forget: ({ token }) => { forgotten.push(token) },
-    sleep: (ms) => {
-      sleeps += 1
-      const held = probe.onSleep(sleeps)
-      // The ledger's recheck is the one wait that repeats for as long as the
-      // guardian serves, so it yields to the test's own timers.
-      return ms === GUARDIAN_LEDGER_RECHECK_MS ? Bun.sleep(1) : held ?? Promise.resolve()
-    },
-    ...(ledger === undefined ? {} : { ledger }),
-  }
-  const finished = runProcessGuardian(host, {
-    maxContainers: limits.maxContainers ?? 2,
-    maxGenerations: limits.maxGenerations ?? 2,
-    maxRetiredTokens: 2,
-    killGraceMs: limits.killGraceMs ?? 0,
+    })),
+    spyOn(containerMark, "groupMarkReading").mockImplementation((_mark, pid) => groupMarks.get(pid)),
+    ...(platformGuardianLedger === undefined ? [] : [
+      spyOn(platformGuardianLedger, "hold").mockImplementation((lease) => { ledger.hold(lease) }),
+      spyOn(platformGuardianLedger, "drop").mockImplementation((token, guardianPid) => { ledger.drop(token, guardianPid) }),
+      spyOn(platformGuardianLedger, "abandoned").mockImplementation(() => ledger.abandoned()),
+    ]),
+  ]
+  restores.push(() => { for (const spy of spies) spy.mockRestore() })
+  const finished = runProcessGuardianMain().catch((error: unknown) => {
+    if (error !== EXITED) throw error
   })
   const probe: GuardianProbe = {
     onSleep: () => {},
@@ -129,7 +164,7 @@ function guardianProbe(containers: ContainerIdentities, limits: { maxContainers?
       for (let attempt = 0; attempt < 100; attempt += 1) {
         const found = replies.find((reply) => reply.id === id)
         if (found) return found
-        await Bun.sleep(1)
+        await realSleep(1)
       }
       throw new Error(`the guardian never answered request ${id}`)
     },
@@ -260,13 +295,17 @@ describe("process guardian authority", () => {
   })
 
   test("refuses adoption past the admission bound", async () => {
-    const probe = guardianProbe({ 101: "a", 102: "b", 103: "c" })
+    // The guardian holds at most 256 containers.
+    const pids = Array.from({ length: 257 }, (_, index) => 1_000 + index)
+    const probe = guardianProbe(Object.fromEntries(pids.map((pid) => [pid, `identity-${pid}`])))
+    for (const pid of pids) probe.diesOnSignal.add(pid)
 
-    probe.send(hello(1), open(2), adopt(3, "owned:1", 101), adopt(4, "owned:2", 102), adopt(5, "owned:3", 103))
+    probe.send(hello(1), open(2), ...pids.map((pid, index) => adopt(3 + index, `owned:${pid}`, pid)))
     probe.endControl()
     await probe.finished
 
-    expect(probe.replies.at(-1)).toEqual({ v: 1, kind: "rejected", id: 5, reason: "at-capacity" })
+    expect(probe.replies.filter((reply) => reply.kind === "adopted")).toHaveLength(256)
+    expect(probe.replies.at(-1)).toEqual({ v: 1, kind: "rejected", id: 3 + 256, reason: "at-capacity" })
   })
 
   test("retires a released token so the same token can never own a second container", async () => {
@@ -379,7 +418,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe(containers)
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     containers[101] = "recycled"
     probe.endControl()
     await probe.finished
@@ -392,7 +431,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe(containers)
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     // The leader is gone, so nothing leads the group any more, but a descendant
     // still holds it. Ownership ends with the container, not with the leader.
     delete containers[101]
@@ -408,7 +447,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe({ 101: "a" })
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     probe.others.add(101)
     probe.send(closeGeneration(4))
 
@@ -422,7 +461,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe({ 101: "a" })
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     // Nothing was proved about this pid: not that it is still the container
     // that was leased, and not that its leader is gone. A kill on no evidence
     // is a kill of whatever now holds the number.
@@ -437,7 +476,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe({ 101: "a" })
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     probe.unproven.add(101)
     probe.send(closeGeneration(4))
 
@@ -452,7 +491,7 @@ describe("process guardian authority", () => {
     const probe = guardianProbe(containers)
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
-    await Bun.sleep(0)
+    await realSleep(0)
     delete containers[101]
     probe.populated.delete(101)
     probe.endControl()
@@ -556,7 +595,7 @@ describe("guardian generation close", () => {
     probe.send(adopt(4, "owned:1", 101), adopt(5, "owned:2", 102, "gen:other"), closeGeneration(6))
     await probe.answer(6)
     probe.send(open(7), adopt(8, "owned:3", 102))
-    await Bun.sleep(1)
+    await realSleep(1)
 
     expect(probe.signals).toEqual(["SIGTERM:101"])
     expect(probe.replies.slice(-2)).toEqual([
@@ -573,7 +612,7 @@ describe("guardian generation close", () => {
     probe.send(hello(1), open(2), closeGeneration(3))
     await probe.answer(3)
     probe.send(closeGeneration(4), closeGeneration(5, "gen:nobody"))
-    await Bun.sleep(1)
+    await realSleep(1)
 
     expect(probe.replies.slice(-2)).toEqual([
       { v: 1, kind: "closed", id: 4, generation: GENERATION, remaining: 0 },
@@ -584,10 +623,12 @@ describe("guardian generation close", () => {
   })
 })
 
-describe("process guardian ledger", () => {
+// Windows keeps no ledger: `KILL_ON_JOB_CLOSE` ends a container once its
+// last Flywheel handle closes.
+describe.skipIf(platformGuardianLedger === undefined)("process guardian ledger", () => {
   test("records each lease it holds, removes its own record when the lease ends, and keeps the record of a container its sweep could not empty", async () => {
     const records = ledgerProbe()
-    const probe = guardianProbe({ 101: "a", 102: "b" }, {}, records.ledger)
+    const probe = guardianProbe({ 101: "a", 102: "b" }, records.ledger)
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101), adopt(4, "owned:2", 102))
     await probe.answer(4)
@@ -627,7 +668,7 @@ describe("process guardian ledger", () => {
       // The same, and the launch still runs a process outside that group.
       abandonedLease("owned:escaped", 328, "identity-328"),
     )
-    const probe = guardianProbe({ 322: "identity-322", 324: "new" }, {}, records.ledger)
+    const probe = guardianProbe({ 322: "identity-322", 324: "new" }, records.ledger)
     probe.populated.add(321)
     probe.diesOnSignal.add(321)
     probe.groupMarks.set(321, "marked")
@@ -641,7 +682,7 @@ describe("process guardian ledger", () => {
 
     probe.send(hello(1))
     await probe.answer(1)
-    for (let attempt = 0; attempt < 100 && records.dropped.length < 5; attempt += 1) await Bun.sleep(1)
+    for (let attempt = 0; attempt < 100 && records.dropped.length < 5; attempt += 1) await realSleep(1)
     probe.endControl()
     await probe.finished
 
@@ -654,11 +695,11 @@ describe("process guardian ledger", () => {
 
   test("removes a dead guardian's record of a command it adopted since, and leaves its own record and the command alone", async () => {
     const records = ledgerProbe(abandonedLease("owned:adopted", 327, "c"))
-    const probe = guardianProbe({ 327: "c" }, {}, records.ledger)
+    const probe = guardianProbe({ 327: "c" }, records.ledger)
 
     probe.send(hello(1), open(2), adopt(3, "owned:adopted", 327))
     await probe.answer(3)
-    for (let attempt = 0; attempt < 100 && records.left.size > 0; attempt += 1) await Bun.sleep(1)
+    for (let attempt = 0; attempt < 100 && records.left.size > 0; attempt += 1) await realSleep(1)
 
     expect(records.dropped).toEqual([record("owned:adopted", DEAD_GUARDIAN)])
     expect([...records.held.keys()]).toEqual(["owned:adopted"])
@@ -669,7 +710,7 @@ describe("process guardian ledger", () => {
 
   test("sweeps its own leases at channel end and waits for a recovery pass in progress at most the kill grace", async () => {
     const records = ledgerProbe(abandonedLease("owned:orphan", 321, "identity-321"))
-    const probe = guardianProbe({ 101: "a" }, { killGraceMs: 60_000 }, records.ledger)
+    const probe = guardianProbe({ 101: "a" }, records.ledger)
     probe.populated.add(321)
     probe.diesOnSignal.add(101)
     let resume: () => void = () => {}
@@ -680,11 +721,11 @@ describe("process guardian ledger", () => {
 
     probe.send(hello(1), open(2), adopt(3, "owned:1", 101))
     await probe.answer(3)
-    for (let attempt = 0; attempt < 100 && !probe.signals.includes("SIGTERM:321"); attempt += 1) await Bun.sleep(1)
+    for (let attempt = 0; attempt < 100 && !probe.signals.includes("SIGTERM:321"); attempt += 1) await realSleep(1)
     probe.endControl()
     try {
       const waited = (async () => {
-        for (let attempt = 0; attempt < 100; attempt += 1) await Bun.sleep(1)
+        for (let attempt = 0; attempt < 100; attempt += 1) await realSleep(1)
         return "still waiting"
       })()
       expect(await Promise.race([probe.finished.then(() => "finished"), waited])).toBe("finished")

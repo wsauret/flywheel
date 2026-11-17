@@ -60,7 +60,6 @@ const probe = {
 const probeModule = {
   id: "probe",
   dependencies: [],
-  availability: { kind: "available" },
   runtime: {
     handle: probeRuntime,
     create: (services: ModuleRuntimeServices): ProbeRuntime => {
@@ -78,7 +77,6 @@ const probeModule = {
       },
     } },
   ],
-  observers: [],
   gates: [{ seam: "toolExposure", gate: ({ modules }) => new Map((modules.get(probeRuntime)?.forbid ?? []).map((name) => [name, "forbidden by the probe charter"])) }],
 } as const satisfies FirstPartyModule;
 

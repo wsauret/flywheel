@@ -4,7 +4,7 @@ import type { FirstPartyModule } from "../../modules.js"
 import { bugReportsService, createBugReportsService } from "./service.js"
 
 export const bugReportsModule = {
-  id: "bug-reports", dependencies: [], availability: { kind: "available" }, host: "account",
+  id: "bug-reports", dependencies: [], host: "account",
   service: { handle: bugReportsService, create: (services) => createBugReportsService({ ...services.directories, enabled: services.enabled, ...(services.readFaultReport === undefined ? {} : { readFaultReport: services.readFaultReport }) }) },
   protocol: moduleProtocol({
     contract: bugReportsProtocol,
@@ -28,5 +28,4 @@ export const bugReportsModule = {
     { domain: "commands", id: BUG_REPORT_COMMAND, value: { id: BUG_REPORT_COMMAND, title: BUG_REPORT_COMMAND_NAME, description: "Send a bug report with an optional note", aliases: [], opens: BUG_REPORT_SURFACE } },
     { domain: "settings", id: "bug-reports", value: { control: "binary", group: "Interface", label: "Bug reports", description: "Send crash reports to Flywheel automatically and allow /report" } },
   ],
-  observers: [], gates: [],
 } as const satisfies FirstPartyModule

@@ -20,6 +20,7 @@ import { createChildSessionControl } from "../../../../src/orchestration/session
 import { createProcessTool } from "../../../../src/orchestration/agent-runtime/tools/process.js"
 import { createWaitToolPolicy } from "../../../../src/orchestration/agent-runtime/agent-loop-wait.js"
 import { processSettled } from "../../../helpers/process-settled.js"
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 afterEach(cleanupProjectRoots)
 
@@ -77,7 +78,7 @@ describe("workflow parent restoration", () => {
         try {
           await children.restoreTracking("parent", replacement)
           const tool = createProcessTool(replacement)
-          const context = { executionCwd: deps.projectRoot, userDataRoot: `${deps.projectRoot}/.test-account`, projectRoot: deps.projectRoot, artifactScopeId: "parent", retrievalSessionId: "parent" }
+          const context = dispatchedToolContext({ executionCwd: deps.projectRoot, userDataRoot: `${deps.projectRoot}/.test-account`, projectRoot: deps.projectRoot, artifactScopeId: "parent", retrievalSessionId: "parent" })
           const result = await tool.execute({ action: "wait", soft_timeout: 60 }, context)
           expect(result.outcome).toBe("ok")
           let parked = false

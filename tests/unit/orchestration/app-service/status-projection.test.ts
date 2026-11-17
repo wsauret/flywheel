@@ -17,10 +17,10 @@ import type { StoredFact } from "../../../../src/infra/event-store-types.js"
 import { NO_CHANGED_TOOLS, type OutputChangeBatch } from "../../../../src/infra/output/output-block-delta.js"
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { entry, flush, NOTHING_OWED, sink, store, until } from "./_status-projection-fixtures.js"
-import { createProcessorClaims } from "../../../../src/orchestration/agent-runtime/tools/processor-claims.js"
 import { makeMockOwnedProcess } from "../agent-runtime/tools/_bash-fixtures.js"
 import { processSettled } from "../../../helpers/process-settled.js"
 import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
+import { freshProcessorClaims } from "../../../helpers/processor-claims.js"
 
 const dbDirectory = mkdtempSync(join(tmpdir(), "fw-status-projection-"))
 const dbFile = join(dbDirectory, "flywheel.sqlite")
@@ -134,7 +134,7 @@ describe("status projection", () => {
   test("a processor hold change republishes the held tool calls of its session only", async () => {
     const s = store({ "chat-1": entry({ runnerState: "streaming" }), "chat-2": entry({ runnerState: "streaming" }) })
     const out = sink()
-    const claims = createProcessorClaims()
+    const claims = await freshProcessorClaims()
     const projection = createStatusProjection({ sessionStore: s.store, publish: out.publish, flushOutput: async () => {}, outputPosition: out.outputPosition, ...NOTHING_OWED, processorHolds: claims })
     claims.claim(makeMockOwnedProcess({ token: "owned:a", exited: new Promise(() => {}) }), { order: 1, exempt: false, sessionId: "chat-1", toolUseId: "toolu_1" })
     expect((await projection.snapshot("chat-1"))?.processorHeldToolCallIds).toEqual([])

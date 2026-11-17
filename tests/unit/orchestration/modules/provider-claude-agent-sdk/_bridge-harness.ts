@@ -6,12 +6,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, parse } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
 import { Log } from "../../../../../src/infra/log.js";
-import { environmentReminder, parseRuntimeReminder } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
+import { createModelReminders, parseRuntimeReminder, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/runtime-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
@@ -174,7 +175,27 @@ export const U2: MessageParam = { role: "user", content: [{ type: "text", text: 
  *  `U1_WITH_ENVIRONMENT` states. */
 export const MACOS_ENVIRONMENT = { kind: "environment", workingDirectory: "/work", isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" } as const;
 
-export const U1_WITH_ENVIRONMENT: MessageParam = { role: "user", content: [{ type: "text", text: "Read a." }, { type: "text", text: environmentReminder(MACOS_ENVIRONMENT, SHELL_CAPABILITIES) }] };
+/** The opening environment reminder that canonical history holds for a context that opened in `environment`: the
+ *  reminder that the shared producer writes for a directory outside every repository (the file system root), with
+ *  the facts that `environment` states in place of this host's. It throws when the text does not read back as
+ *  `environment`, so a change of the reminder's wording fails here and not as a silent mismatch in the bridge. */
+export function openingEnvironmentReminder(environment: HostEnvironment): string {
+  const [opening] = createModelReminders("fixture-model", 200_000)([{ kind: "user", origin: "human", content: "Start." }], parse(process.cwd()).root, SHELL_CAPABILITIES);
+  if (typeof opening?.content !== "string") throw new Error("The producer wrote no opening environment reminder");
+  const facts = new Map([
+    ["Platform", environment.platform], ["OS release", environment.osVersion], ["Shell", environment.shell],
+    ["Working directory", environment.workingDirectory], ["Git repository", environment.isGitRepo ? "yes" : "no"],
+  ]);
+  const reminder = opening.content.split("\n").map((line) => {
+    const name = /^ - ([^:]+): /.exec(line)?.[1];
+    const value = name === undefined ? undefined : facts.get(name);
+    return value === undefined ? line : ` - ${name}: ${value}`;
+  }).join("\n");
+  if (!isDeepStrictEqual(parseRuntimeReminder(reminder), environment)) throw new Error(`The opening environment reminder does not state ${JSON.stringify(environment)}`);
+  return reminder;
+}
+
+export const U1_WITH_ENVIRONMENT: MessageParam = { role: "user", content: [{ type: "text", text: "Read a." }, { type: "text", text: openingEnvironmentReminder(MACOS_ENVIRONMENT) }] };
 
 /** The origins that preparation gives the blocks of a request that a test writes by hand, whose canonical entries the
  *  test does not state: each Flywheel reminder and each text of the shared host is the runtime's, and every other

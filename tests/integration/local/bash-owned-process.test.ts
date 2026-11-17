@@ -12,9 +12,10 @@ import { createBashDefinition } from "../../../src/orchestration/agent-runtime/t
 
 const bashDefinition = createBashDefinition()
 import { loadBashParser } from "../../../src/orchestration/agent-runtime/tools/bash-parser.js"
-import type { ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js"
+import type { DispatchedToolContext, ToolContext } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { createRealProcessFixture, processAlive, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { capabilityAccessHolding } from "../../unit/orchestration/agent-runtime/tools/_fixtures.js"
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js"
 
 /** Bash ownership against the real guardian: every command bash starts is a
  *  container the guardian owns before the payload runs, and the only things
@@ -47,8 +48,8 @@ afterEach(() => {
   expect(leftBehind).toEqual([])
 })
 
-function toolContext(scratch: RealProcessFixture, generation: LauncherScope, overrides: Partial<ToolContext> = {}): ToolContext {
-  return {
+function toolContext(scratch: RealProcessFixture, generation: LauncherScope, overrides: Partial<ToolContext> = {}): DispatchedToolContext {
+  return dispatchedToolContext({
     executionCwd: scratch.dir,
     userDataRoot: `${scratch.dir}/.test-account`, projectRoot: scratch.dir,
     scratchDir: scratch.dir,
@@ -58,7 +59,7 @@ function toolContext(scratch: RealProcessFixture, generation: LauncherScope, ove
     sessionId: "bash-ownership",
     capabilityAccess: capabilityAccessHolding(["background-commands"]),
     ...overrides,
-  }
+  })
 }
 
 /** The container's own pid, written by the shell bash launched. */

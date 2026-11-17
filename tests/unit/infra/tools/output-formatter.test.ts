@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { getToolDisplay, resolveToolPresentation } from "../../../../src/infra/tools/tool-display-registry";
+import { getToolDisplay, resolveToolRowPresentation } from "../../../../src/infra/tools/tool-display-registry";
 import * as path from "node:path";
 
 describe("output-formatter", () => {
@@ -28,7 +28,7 @@ describe("output-formatter", () => {
 
     it("extracts an update header from apply_patch input", () => {
       const input = "*** Begin Patch\n*** Update File: src/example.ts\n@@\n-before\n+after\n*** End Patch";
-      expect(resolveToolPresentation("apply_patch", { input }, executionCwd)).toEqual({
+      expect(resolveToolRowPresentation("apply_patch", { input }, executionCwd).presentation).toEqual({
         name: "Edit",
         detail: "src/example.ts",
       });
@@ -45,7 +45,7 @@ describe("output-formatter", () => {
         "*** Update File: src/current.ts",
         "*** End Patch",
       ].join("\n");
-      expect(resolveToolPresentation("apply_patch", { input }, executionCwd)).toEqual({
+      expect(resolveToolRowPresentation("apply_patch", { input }, executionCwd).presentation).toEqual({
         name: "Edit",
         detail: "",
       });

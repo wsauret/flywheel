@@ -14,6 +14,7 @@ import { createSessionMessaging } from "../../../../src/orchestration/session/se
 import { publishTestSubagent } from "../session/_session-manager-fixtures.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorWithRunner, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { unusedChildSessionControl } from "../../../helpers/child-session-control.js"
+import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 let ctx: SupervisorTestContext
 beforeEach(() => { ctx = createSupervisorTestContext() })
@@ -281,9 +282,9 @@ describe("RuntimeSupervisor disposal", () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => { notices.push(text) } })
     const unregister = registerLiveSessionControl(reader, { sessionId: waiter, state: async () => "running", deliver: async (_input, decide) => decide("running"), notify: async () => true })
     try {
-      const sent = await createMessageSessionTool(messaging, tasks).execute({ target: "session", to: addressee, text: "Which file?", wait: true }, {
+      const sent = await createMessageSessionTool(messaging, tasks).execute({ target: "session", to: addressee, text: "Which file?", wait: true }, dispatchedToolContext({
         executionCwd: ctx.baseDir, userDataRoot: `${ctx.baseDir}/.test-account`, projectRoot: ctx.baseDir, artifactScopeId: waiter, retrievalSessionId: waiter, sessionId: waiter, conversationId: `${waiter}-conversation`, toolUseId: "ask-1",
-      })
+      }))
       expect(sent.content).toStartWith(`Waiting on ${addressee}`)
 
       await supervisor.disposeAll()

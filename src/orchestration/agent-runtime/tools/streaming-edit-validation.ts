@@ -24,7 +24,7 @@ interface InFlight extends StreamingEditValidationWorkerIdentity {
   readonly sequence: number
 }
 
-export interface StreamingEditValidationWorker {
+interface StreamingEditValidationWorker {
   onmessage: ((event: MessageEvent<StreamingEditValidationWorkerReply>) => void) | null
   addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void
   postMessage(message: StreamingEditValidationWorkerRequest, transfer: Transferable[]): void

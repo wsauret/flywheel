@@ -1,7 +1,3 @@
-type ModuleAvailability =
-  | { readonly kind: "available" }
-  | { readonly kind: "unavailable"; readonly reason: string };
-
 type ModuleContribution<Contributions extends object> = {
   readonly [Domain in keyof Contributions]: {
     readonly domain: Domain;
@@ -34,12 +30,13 @@ type ModuleGateDeclaration<Gates extends object> = {
 export interface ModuleDescriptor<Contributions extends object, Observers extends object, Gates extends object> {
   readonly id: string;
   readonly dependencies: readonly string[];
-  readonly availability: ModuleAvailability;
   /** Declares that enabled module work can outlive its initiating foreground turn. */
   readonly producesBackgroundWork?: boolean;
   readonly contributions: readonly ModuleContribution<Contributions>[];
-  readonly observers: readonly ModuleObserver<Observers>[];
-  readonly gates: readonly ModuleGateDeclaration<Gates>[];
+  /** Absent when the module observes no seam. */
+  readonly observers?: readonly ModuleObserver<Observers>[];
+  /** Absent when the module gates no seam. */
+  readonly gates?: readonly ModuleGateDeclaration<Gates>[];
 }
 
 export interface ModuleCompositionOptions<Contributions extends object> {
@@ -92,7 +89,7 @@ export function composeModules<Contributions extends object, Observers extends o
   }
 
   const gateSeams = new Set<string>();
-  for (const gate of modules.flatMap((module) => module.gates)) {
+  for (const gate of modules.flatMap((module) => module.gates ?? [])) {
     const seam = String(gate.seam);
     if (gateSeams.has(seam)) throw new Error(`Duplicate gate for seam: ${seam}`);
     gateSeams.add(seam);
@@ -102,10 +99,10 @@ export function composeModules<Contributions extends object, Observers extends o
   for (const id of disabled) {
     if (!modulesById.has(id)) throw new Error(`Unknown disabled capability module id: ${id}`);
   }
-  // A module whose dependency is off or unavailable is off too, and comes back with it, so
+  // A module whose dependency is off is off too, and comes back with it, so
   // turning a base off never makes a selection invalid and never loses the
   // person's choice for a dependent module (ARCH-STRUCTURE-025).
-  const enabledIds = new Set([...modulesById.values()].filter((module) => module.availability.kind === "available" && !disabled.has(module.id)).map((module) => module.id));
+  const enabledIds = new Set([...modulesById.values()].filter((module) => !disabled.has(module.id)).map((module) => module.id));
   let changed = true;
   while (changed) {
     changed = false;
@@ -119,8 +116,8 @@ export function composeModules<Contributions extends object, Observers extends o
   const enabled = [...modulesById.values()].filter((module) => enabledIds.has(module.id)).sort((left, right) => left.id.localeCompare(right.id));
 
   const contributions = installedContributions.filter((contribution) => enabledIds.has(contribution.module));
-  const gates = enabled.flatMap((module) => module.gates).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
-  const observers = enabled.flatMap((module) => module.observers).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
+  const gates = enabled.flatMap((module) => module.gates ?? []).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
+  const observers = enabled.flatMap((module) => module.observers ?? []).toSorted((left, right) => String(left.seam).localeCompare(String(right.seam)));
   const warnings = [...(options.warnWhenEmpty ?? [])]
     .filter((domain) => !contributions.some((contribution) => contribution.domain === domain))
     .map((domain) => `No ${String(domain)} contributions are enabled`)

@@ -2,11 +2,23 @@ import { describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { modelConfigValidity } from "../../../../src/orchestration/app-service/model-assignment-service.js";
+import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { authDir } from "../../../../src/infra/paths.js";
+import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js";
+import { createRuntimeModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-service.js";
+import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
+import { createRuntimeConfigOwner } from "../../../../src/orchestration/config/runtime-config-owner.js";
+import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema.js";
 import { pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
-import { createPersonaRegistryOwner } from "../../../../src/workflows/agents/registry.js";
-import { repoDefinitions } from "../../../helpers/project-definitions.js";
+import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
+import { createPersonaRegistryOwner, type PersonaRegistryRevision } from "../../../../src/workflows/agents/registry.js";
+import { testDirectories } from "../../../helpers/directories.js";
+import { fakeListingClient } from "../../../helpers/fake-listing-client.js";
+import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
+import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
+import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js";
+import { AVAILABLE_MODELS, managerDouble, pickerEligibility, providerModelCatalogs } from "../app-service/model-assignment-service-fixtures.js";
 
 async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "flywheel-step-pruning-"));
@@ -14,6 +26,60 @@ async function withTempDir(run: (dir: string) => Promise<void>): Promise<void> {
     await run(dir);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+}
+
+const UNUSED_EVENT_WRITER = {
+  append: async () => { throw new Error("unused event writer") },
+  appendBatch: async () => { throw new Error("unused event writer") },
+  pruneSupersededEvents: async () => { throw new Error("unused event writer") },
+} satisfies AsyncEventWriter;
+
+/** Opens the model picker's defaults of the `personal` profile over
+ *  `configPath` while the project's persona registry is `personaRevision`.
+ *  The listing prunes the stale role sections before it reads them. */
+async function openPicker(dir: string, configPath: string, personaRevision: PersonaRegistryRevision): Promise<void> {
+  const directories = testDirectories(dir);
+  const definitionRevision = { ...repoDefinitions().captureRevision(), personaRevision, personas: personaRevision.personas };
+  const availability = await createDefinitionAvailability({
+    definitions: { captureRevision: () => definitionRevision },
+    modules: repoModules,
+    capabilities: { state: () => ({ ...decodeModuleState(""), capabilities: [], moduleIds: [] }) },
+    agentTypes: { disabled: () => [] },
+  });
+  const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath, watch: false });
+  const moduleSelection = () => composeFirstPartyModules();
+  try {
+    const service = createRuntimeModelAssignmentService({
+      roleCaptureStore: managerDouble(),
+      sessionStore: { get: () => undefined },
+      projectRoot: dir,
+      eventStore: asAsyncEventReadSurface(inMemoryEventReader([])),
+      eventWriter: UNUSED_EVENT_WRITER,
+      availability,
+      moduleSelection,
+      config: () => runtimeConfig.snapshot().config,
+      refreshConfig: async () => (await runtimeConfig.refresh()).config,
+      configDepsForScope: () => ({
+        userDataRoot: directories.userDataRoot,
+        authDirectory: () => authDir(directories.userDataRoot, "personal"),
+        authProfileId: () => "personal",
+        resolveKey: async () => undefined,
+        moduleSelection,
+        configPath,
+        config: CONFIG_DEFAULTS,
+        auth: { providers: new Map(), credentialLineages: {}, droppedCredentials: [] },
+        availableModels: AVAILABLE_MODELS,
+        providerModelEligibility: pickerEligibility,
+        providerModelCatalogs,
+        listingClient: fakeListingClient(AVAILABLE_MODELS),
+        modelsClient: fakeModelsClient,
+        modelInfos: fakeModelsClient.modelInfos,
+      }),
+    });
+    await service.loadAssignments({ scope: { kind: "defaults" }, slots: [] });
+  } finally {
+    await runtimeConfig.dispose();
   }
 }
 
@@ -47,7 +113,7 @@ describe("step model assignments", () => {
       const configPath = join(dir, "flywheel.toml");
       const valid = ["brief.myflow.review", "brief.debug.fix"];
       await writeFile(configPath, valid.map((id) => `[profiles.personal.roles."${id}"]\nmodel = "gpt-5-mini"\n`).join("\n"));
-      pruneStaleConfig(modelConfigValidity({ personas: new Map(), resolutions: [] }), { configPath, authProfileId: () => "personal" });
+      await openPicker(dir, configPath, { revision: "none", personas: new Map(), resolutions: [] });
       updateModelAssignments({ mutations: [{ slot: roleSlot("chat"), patch: { model: "gpt-5.5" } }] }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       for (const id of valid) expect(text).toContain(`[profiles.personal.roles."${id}"]`);
@@ -66,14 +132,13 @@ describe("step model assignments", () => {
       const sections = ["custom-auditor", "custom-scout", "removed-role"];
       await writeFile(configPath, sections.map((id) => `[profiles.personal.roles."${id}"]\nmodel = "gpt-5-mini"\n`).join("\n"));
       const owner = createPersonaRegistryOwner(join(dir, "no-bundled-personas"));
-      const options = { configPath, authProfileId: () => "personal" };
 
-      pruneStaleConfig(modelConfigValidity(owner.load(repoDefinitions().skills(), undefined, agentsDir)), options);
+      await openPicker(dir, configPath, owner.load(repoDefinitions().skills(), undefined, agentsDir));
       const kept = await readFile(configPath, "utf8");
       for (const id of sections) expect(kept).toContain(`[profiles.personal.roles."${id}"]`);
 
       await writeFile(brokenPath, "---\nname: scout\ndescription: Scouts.\nrole: custom-scout\ntools: [read]\n---\nScout.\n");
-      pruneStaleConfig(modelConfigValidity(owner.load(repoDefinitions().skills(), undefined, agentsDir)), options);
+      await openPicker(dir, configPath, owner.load(repoDefinitions().skills(), undefined, agentsDir));
       const pruned = await readFile(configPath, "utf8");
       expect(pruned).toContain('[profiles.personal.roles."custom-scout"]');
       expect(pruned).not.toContain('[profiles.personal.roles."removed-role"]');

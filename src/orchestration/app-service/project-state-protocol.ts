@@ -221,7 +221,7 @@ export function isDegradedStoredFact(fact: StoredFact): boolean {
   return fact.payload.kind === "degraded" && typeof fact.payload.reason === "string" && keys.length === 2
 }
 
-export function decodeProjectStateStored(value: unknown): ProjectStateStored | undefined {
+function decodeProjectStateStored(value: unknown): ProjectStateStored | undefined {
   try {
     return Schema.decodeUnknownSync(StoredSchema, { onExcessProperty: "error" })(value)
   } catch {
@@ -305,7 +305,7 @@ export interface ProjectStateResponseFrame {
 
 /** Reads only the request id of a response frame, or undefined for bytes
  *  that do not start with a request id and continue with a body. */
-export function readProjectStateResponseFrame(bytes: Uint8Array): ProjectStateResponseFrame | undefined {
+function readProjectStateResponseFrame(bytes: Uint8Array): ProjectStateResponseFrame | undefined {
   let id: unknown
   let bodyOffset: number | undefined
   try {

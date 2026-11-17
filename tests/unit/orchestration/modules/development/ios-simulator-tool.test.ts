@@ -1,17 +1,18 @@
 import { describe, expect, test } from "bun:test"
 import type { McpCallResult } from "../../../../../src/orchestration/agent-runtime/mcp-result.js"
-import type { RuntimeToolInput, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
+import type { RuntimeToolInput, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
 import {
   createIosSimulatorTool,
   type IosSimulatorRequest,
   type IosSimulatorToolDeps,
 } from "../../../../../src/orchestration/modules/development/ios-simulator-tool.js"
+import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js"
 
 interface ToolArguments {
   readonly [key: string]: unknown
 }
 
-const CONTEXT: ToolContext = { executionCwd: "/repo", projectRoot: "/repo", userDataRoot: "/scratch/user", artifactScopeId: "ios-simulator-test", retrievalSessionId: "ios-simulator-test" }
+const CONTEXT = dispatchedToolContext({ executionCwd: "/repo", projectRoot: "/repo", userDataRoot: "/scratch/user", artifactScopeId: "ios-simulator-test", retrievalSessionId: "ios-simulator-test" })
 
 /** One call of the tool as the agent runtime makes it. */
 function executeIosSimulator(deps: IosSimulatorToolDeps, input: RuntimeToolInput, signal?: AbortSignal): Promise<ToolResult> {

@@ -15,7 +15,7 @@ import { createClaudeAgentSdkClient } from "../../../../src/orchestration/module
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { asModelClient } from "../agent-runtime/_model-client.js"
-import { makeOptions } from "../agent-runtime/_runner-options.js"
+import { makeOptions, type AgentOptionsOverride } from "../agent-runtime/_runner-options.js"
 import { fakeAvailability } from "../agent-runtime/llm/_provider-chain-harness.js"
 import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
 
@@ -119,7 +119,7 @@ function session(initial: readonly ResolvedRole[]) {
     trees.push(lifetime?.sharedHost)
     return claudeClient(model, lifetime, hosts.registry, () => { anticipations += 1 })
   }
-  const prestartOptions = (overrides: Partial<AgentOptions>, providerSession: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({ ...makeOptions({ agentRegistry: new Map(), agentsMd: "", ...overrides }), providerSession })
+  const prestartOptions = (overrides: AgentOptionsOverride, providerSession: ProviderSession): AgentOptions & { readonly providerSession: ProviderSession } => ({ ...makeOptions({ agentRegistry: new Map(), agentsMd: "", ...overrides }), providerSession })
   const engines = createSessionEngines({
     sessionId: TREE,
     resolveRoles: async (): Promise<ResolvedRoles> => new Map([["chat", { roleId: "chat", model: "gpt-5.5", effort: "medium" }], ...roles.map((role): [string, ResolvedRole] => [role.roleId, role])]),

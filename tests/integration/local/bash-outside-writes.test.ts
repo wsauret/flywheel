@@ -10,6 +10,7 @@ import { prepareToolCall } from "../../../src/orchestration/agent-runtime/tools/
 import { admitEveryTool } from "../../helpers/request-tool-surface.js";
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
+import { dispatchedToolContext } from "../../helpers/dispatched-tool-context.js";
 
 const directory = temporaryDirectories();
 
@@ -21,14 +22,14 @@ test("the real bash tool refuses an outside delete before any command runs", asy
   writeFileSync(join(outside, "keep.txt"), "keep");
   const launcher = await createCliLauncher();
   const generation = launcher.scope.open();
-  const context = {
+  const context = dispatchedToolContext({
     executionCwd: projectRoot, projectRoot,
     userDataRoot: join(base, "account", ".flywheel"),
     scratchDir: join(projectRoot, ".flywheel", "scratch"),
     artifactScopeId: "outside-write", retrievalSessionId: "outside-write",
     sessionId: "outside-write", toolUseId: "outside-delete",
     spawnOwned: generation.spawnOwned,
-  };
+  });
   const tool = createBashDefinition({ persistentProcesses: true });
   const remove = process.platform === "win32"
     ? `Remove-Item -Recurse -Force ${quotePowerShell(outside)}`

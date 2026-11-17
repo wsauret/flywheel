@@ -41,12 +41,9 @@ const askUser = {
 export const askUserModule = {
   id: "ask-user",
   dependencies: [],
-  availability: { kind: "available" },
   attended: true,
   contributions: [
     { domain: "tools", id: "ask_user", value: { kind: "tool", name: "ask_user", declaration: askUser } },
     { domain: "settings", id: "ask-user", value: { control: "binary", group: "Tools", label: "Ask user", description: "Allow agents to ask you structured questions" } },
   ],
-  observers: [],
-  gates: [],
 } as const satisfies FirstPartyModule

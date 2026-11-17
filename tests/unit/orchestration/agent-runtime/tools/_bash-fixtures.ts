@@ -4,10 +4,10 @@ import type { OwnedProcess } from "../../../../../src/infra/owned-subprocess.js"
 import { executeDispatchedTool } from "../../../../../src/orchestration/agent-runtime/tools/nested-tool-dispatch.js";
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import type { BashOperations, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import type { BashOperations, RuntimeTool, RuntimeToolInput, ToolContext, ToolDispatchContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 
 /** A call as the dispatcher runs it: input repair, the tool's execution policy, then its execution. */
-export function dispatchTool(def: RuntimeTool, input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
+export function dispatchTool(def: RuntimeTool, input: RuntimeToolInput, context: ToolDispatchContext): Promise<ToolResult> {
   return Effect.runPromise(executeDispatchedTool({
     prepared: prepareToolCall({ id: "call-1", name: def.name, input }, new Map([[def.name, def]]), () => ({ ok: true })),
     context,
