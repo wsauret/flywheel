@@ -96,7 +96,7 @@ Each release archive also includes the unmodified Claude engine binary from `@an
 
 ## Benchmark material
 
-Some benchmark tasks under `bench/tasks/implement/` copy material from external datasets and projects. This material keeps its upstream licenses, and Flywheel's repository license does not relicense it. The DS-1000 data stays under its CC BY-SA license. Each task folder holds its provenance record, its copy ledger, and the full license and notice texts, so this file does not repeat them. The task folders also keep the notices of the runtimes, Python wheels, and bundled libraries that the tasks use, such as Python, Node.js, and the libraries that Redis bundles. The other tasks and fixtures under `bench/` are Flywheel's own material.
+Some benchmark tasks copy material from external datasets and projects, and the table below names their task folders. This material keeps its upstream licenses, and Flywheel's repository license does not relicense it. The DS-1000 data stays under its CC BY-SA license. Each task folder holds its provenance record, its copy ledger, and the full license and notice texts, so this file does not repeat them. The task folders also keep the notices of the runtimes, Python wheels, and bundled libraries that the tasks use, such as Python, Node.js, and the libraries that Redis bundles. The other tasks and fixtures under `bench/` are Flywheel's own material.
 
 | Upstream | Source | License | Provenance and license texts |
 |---|---|---|---|

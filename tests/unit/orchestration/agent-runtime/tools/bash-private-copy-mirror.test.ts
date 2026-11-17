@@ -177,6 +177,14 @@ describe("private copy mirror", () => {
     fs.writeFileSync(path.join(copyRoot, "src", "stray.txt"), "stray\n");
     fs.writeFileSync(path.join(copyRoot, "a.txt"), "idle write\n");
     fs.rmSync(path.join(copyRoot, "src", "b.txt"));
+    // The settled clock runs ahead of the file system's, so the racy window
+    // does not cover these writes. Real idle time gives them a timestamp tick
+    // of their own; on a coarse tick (Windows) they can share one with the
+    // first take's writes or the next take's removals, which then change no
+    // stamp. The settled clock's time is after the scan and is no tick the
+    // test writes in.
+    const idle = new Date();
+    fs.utimesSync(path.join(copyRoot, "src"), idle, idle);
 
     take(root, { prior: scanned.refreshed });
 
