@@ -98,8 +98,9 @@ export function beforeScenarioBudgetCut<Definition extends AgentDefinition>(pers
   return { ...persona, systemPrompt }
 }
 
-/** A bundled reviewer-uat persona as the builds before its scratchpad rule shipped it. Throws when the rule is
- *  missing, so a later edit of the rule updates this fixture. */
+/** A bundled reviewer-uat persona as the builds before its scratchpad rule shipped it. Start from
+ *  {@link beforeLeanPersonaText}, because that edit came later. Throws when the rule is missing, so a later edit of
+ *  the rule updates this fixture. */
 export function beforeUatScratchpadRule<Definition extends AgentDefinition>(persona: Definition): Definition {
   if (persona.kind !== "persona" || persona.name !== "reviewer-uat") return persona
   const rule = "\n\n{{if:bash}}\nCreate every fixture, isolated home, and evidence file inside your scratchpad, and name each one with a literal path, not a shell variable; the shell refuses other writes.\n{{end}}"
@@ -120,7 +121,40 @@ function restoreClauses<Definition extends AgentDefinition>(persona: Definition,
   return { ...persona, description, systemPrompt }
 }
 
-/** A bundled persona as the builds before 2026-11-11 shipped it: explorer claimed that it runs on a cheaper model. */
+/** Each clause that the lean-prompt edit of 2026-11-14 rewrote, paired with the text it replaced. */
+const LEAN_TEXT_BEFORE: ReadonlyMap<string, readonly (readonly [current: string, retired: string])[]> = new Map([
+  ["explorer", [
+    [
+      "Fast investigation: codebase questions, git history, and targeted external lookups such as documentation. It answers a targeted question and stops early, or researches exhaustively when the brief asks for full coverage.",
+      "Fast read-only investigation. Answers codebase questions, digs through git history, and makes targeted external lookups such as documentation. Cannot modify files. The brief selects one of two modes, targeted question-answering with early stopping (the default) or exhaustive enumerate-then-read facet research when the brief asks for full coverage.",
+    ],
+  ]],
+  ["implementer", [[
+    "- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n- Start with one batched read of every file and test your task names; never read one file per turn.",
+    "Beyond the method composed ahead of these instructions:\n\n- The part of your brief labeled Design intent is fixed. Everything else in the brief is implementation design you may revise when the code requires it; record each deviation in your result.\n- Follow established local patterns unless the pattern is itself inelegant; report any deliberate deviation.\n\nExecution discipline:\n\n- Start with one batched read of every file and test your task names; never read one file per turn.\n- Work in focused read, edit, and test batches. Revisit files when new evidence or a revised approach requires it.\n{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}\n- Track the files you change yourself and report them in files_modified; never consult git for this.\n\nWhen evidence contradicts the Design intent, or an explicit prohibition of the person or a missing external prerequisite prevents every viable next action, message your parent with message_session and wait for its reply. Never hand off unfinished work as complete.\n\nWhen finished, submit your structured result using the completion tool provided by your environment. Include these fields:\n- summary: outcomes, material plan deviations with evidence and rationale, any work that is not done, and any remaining follow-ups for parent review\n- files_modified: files created or changed\n- commands_run: commands executed with exit codes and the result each proved",
+  ]]],
+  ["reviewer-mechanism", [[
+    "Verifies the runtime claims that a plan or review relies on, such as what survives a crash, what races, what runs when, whether a path is reachable, and whether a write is durable, by tracing each claim to the code. Runs after the domain reviewers, on the premises they tagged UNVERIFIED and the runtime claims of the plan, and returns one verdict with file:line per claim.",
+    "Use this agent to verify the BEHAVIORAL and RUNTIME claims a plan or review relies on - what survives a crash, what races what, what executes when, whether a code path is reachable, whether a write is durable - by tracing them to ground truth in the code instead of reasoning from plausibility. It runs as a second wave after the domain reviewers, on the premises they tagged UNVERIFIED plus any runtime claim the plan itself asserts. It has no severity opinions; it returns one verdict per claim using the reviewer protocol's verdict vocabulary, each with a file:line.",
+  ]]],
+  ["reviewer-uat", [[
+    "User acceptance testing: exercises the live system against the acceptance criteria without reading source, to catch criteria never exercised, cross-cutting regressions, and error paths that fail in practice. Use it when the change touches an exercisable surface (CLI, UI, HTTP, file output), not for internal refactors.",
+    "User acceptance testing (UAT) from outside the code surface: exercises the live system against the ticket's acceptance criteria without reading source. Catches what code-reading reviewers cannot: criteria never actually exercised, cross-cutting regressions, error paths that fail badly in practice. Include when the change touches an exercisable surface (CLI, UI, HTTP, file output); skip for pure internal refactors.",
+  ]]],
+])
+
+const GENERAL_DESCRIPTION_BEFORE_LEAN = "A clone of the dispatching agent that uses your model and system instructions with registry-approved tools derived from your current surface. It also receives its child handoff and declared nested-role tools. Use it when a subtask needs your full intelligence and judgment but you want only its conclusion in your context. Set fork: true to also copy your conversation."
+
+/** A built-in agent as the builds before the lean-prompt edit of 2026-11-14 shipped it (refer to
+ *  {@link LEAN_TEXT_BEFORE}); the general agent read {@link GENERAL_DESCRIPTION_BEFORE_LEAN}. Throws when a rewritten
+ *  clause is missing, so a later edit of these personas updates this fixture. */
+export function beforeLeanPersonaText<Definition extends AgentDefinition>(definition: Definition): Definition {
+  if (definition.kind === "general") return { ...definition, description: GENERAL_DESCRIPTION_BEFORE_LEAN }
+  return restoreClauses(definition, LEAN_TEXT_BEFORE.get(definition.name) ?? [])
+}
+
+/** A bundled persona as the builds before 2026-11-11 shipped it: explorer claimed that it runs on a cheaper model.
+ *  Start from {@link beforeLeanPersonaText}, because that edit came later. */
 export function beforeExplorerModelClaim<Definition extends AgentDefinition>(persona: Definition): Definition {
   return persona.name === "explorer" ? restoreClauses(persona, [["Fast read-only investigation. Answers", "Fast read-only investigation on a cheaper model. Answers"]]) : persona
 }
@@ -147,7 +181,7 @@ export function beforeAgentTypeMarkers<Definition extends AgentDefinition>(perso
 /** A bundled persona as it read from the capability-text edit of 2026-11-07 (78b5473c9) to the agent-type edit of
  *  2026-11-10: every later edit undone, and the bundled mark kept. */
 export function atCapabilityMarkers<Definition extends AgentDefinition>(definition: Definition): Definition {
-  return beforeAgentTypeMarkers(beforeUatScratchpadRule(beforeExplorerModelClaim(definition)))
+  return beforeAgentTypeMarkers(beforeUatScratchpadRule(beforeExplorerModelClaim(beforeLeanPersonaText(definition))))
 }
 
 /** Each clause of a bundled persona that the capability-text edit of
@@ -195,7 +229,7 @@ const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: 
  *  when a rewritten clause is missing, so a later edit of these personas
  *  updates this fixture. */
 export function atCapabilityTextBase(definition: AgentDefinition): AgentDefinition {
-  if (definition.kind !== "persona") return definition;
+  if (definition.kind !== "persona") return beforeLeanPersonaText(definition);
   const { bundled: _mark, ...persona } = atCapabilityMarkers(definition);
   return restoreClauses(persona, CAPABILITY_TEXT_AT_BASE.get(persona.name) ?? []);
 }

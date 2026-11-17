@@ -45,7 +45,7 @@ describe("a model workflow launch through its parent chat actor", () => {
       runsWorkflows: (options) => {
         if (options.purpose.kind !== "workflow-agent") return quietAgent(options)
         started.resolve()
-        return { send() {}, end() {}, abort() {}, done: outcome.promise }
+        return { send() {}, abort() {}, done: outcome.promise }
       },
     })
     const parentId = await parentChat(ctx)
@@ -79,7 +79,7 @@ describe("a model workflow launch through its parent chat actor", () => {
     const composition = compose(ctx, { realChat: true, reconcilesThroughParentActor: true, runsWorkflows: (options) => {
       if (options.purpose.kind !== "workflow-agent") return quietAgent(options)
       started.resolve()
-      return { send() {}, end() {}, abort() {}, done: outcome.promise }
+      return { send() {}, abort() {}, done: outcome.promise }
     } })
     const parentId = await parentChat(ctx)
     await composition.supervisor.activateSession(parentId)
@@ -109,7 +109,7 @@ describe("a model workflow launch through its parent chat actor", () => {
     const composition = compose(ctx, { realChat: true, reconcilesThroughParentActor: true, runsWorkflows: (options) => {
       if (options.purpose.kind !== "workflow-agent") return quietAgent(options)
       started.resolve()
-      return { send() {}, end() {}, abort() {}, done: outcome.promise }
+      return { send() {}, abort() {}, done: outcome.promise }
     } })
     const parentId = await parentChat(ctx)
     await composition.supervisor.activateSession(parentId)

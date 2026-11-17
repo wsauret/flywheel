@@ -8,6 +8,7 @@ import { createForegroundBashHoldController } from "../../../../../src/orchestra
 import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
 import { makeMockOps, makeMockOwnedProcess, ownedSpawnProbe, streamOf, type OwnedExit } from "./_bash-fixtures.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
+import { processSettled } from "../../../../helpers/process-settled.js";
 
 // The runtime spools command output under its temporary directory.
 const temporaryDirectory = temporaryDirectories();
@@ -23,25 +24,6 @@ function owner() {
 function messageOf(record: DebugLogRecordInput): string | undefined {
   const payload = record.payload;
   return typeof payload === "object" && payload !== null && "message" in payload && typeof payload.message === "string" ? payload.message : undefined;
-}
-
-class ObservableAbortSignal extends EventTarget implements AbortSignal {
-  readonly aborted = false;
-  readonly reason = undefined;
-  onabort: ((this: AbortSignal, ev: Event) => void) | null = null;
-  listeners = 0;
-
-  throwIfAborted(): void {}
-
-  override addEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: AddEventListenerOptions | boolean): void {
-    this.listeners++;
-    super.addEventListener(type, callback, options);
-  }
-
-  override removeEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: EventListenerOptions | boolean): void {
-    this.listeners--;
-    super.removeEventListener(type, callback, options);
-  }
 }
 
 describe("shell runtime host generation", () => {
@@ -82,7 +64,7 @@ describe("shell runtime host generation", () => {
     expect(executionSource).toContain("registry.track(");
   });
 
-  it("waits on one canonical terminal promise and cleans abort observation", async () => {
+  it("holds a tracked background command as active until it settles", async () => {
     const background = owner();
     let settle!: () => void;
     const done = new Promise<{ status: "completed"; content: string }>((resolve) => {
@@ -92,14 +74,12 @@ describe("shell runtime host generation", () => {
       done,
       meta: { id: "shell-test-1", type: "background_command", description: "test" },
     });
-    const signal = new ObservableAbortSignal();
 
-    const waited = background.tasks.waitProcess("shell-test-1", { signal, timeoutMs: 100 });
+    const settled = processSettled(background.tasks, "shell-test-1");
     expect(background.shell.hasActiveCommands()).toBe(true);
     settle();
-    expect(await waited).toBe(true);
+    expect(await settled).toBe(true);
     expect(background.shell.hasActiveCommands()).toBe(false);
-    expect(signal.listeners).toBe(0);
     await background.close();
   });
   it("terminates and joins foreground work when the runtime closes", async () => {

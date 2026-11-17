@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 import { configReference, configReferenceFor } from "../../../../src/orchestration/config/config-reference.js";
 import { decodeConfigObject } from "../../../../src/orchestration/config/loader.js";
-import { flywheelConfigKeys } from "../../../../src/orchestration/config/schema.js";
+import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { McpConfigSchema } from "../../../../src/orchestration/modules/mcp/config.js";
 import { disabledAgentTypes } from "../../../../src/orchestration/module-catalog.js";
 import { isRecord, type UnknownRecord } from "../../../../src/infra/record.js";
@@ -58,7 +58,7 @@ describe("configuration reference", () => {
 describe("configuration reference coverage", () => {
   test("covers every public schema root and omits retired roots", () => {
     const roots = new Set(configReference().entries.map(({ schemaPath }) => schemaPath.split(".")[0]));
-    const decodedRoots = new Set([...flywheelConfigKeys()].map((key) => key === "disabled_modules" ? "modules" : key));
+    const decodedRoots = new Set(Object.keys(installedConfigSchema().fields));
     expect([...roots].toSorted()).toEqual([...decodedRoots].toSorted());
     for (const retired of ["capability_modules", "enabled_modules", "features", "queue"]) expect(roots.has(retired)).toBe(false);
   });

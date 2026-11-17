@@ -11,7 +11,7 @@ const { OutputProjector } = await import("../../../../src/infra/output/output-pr
 const { RuntimeEventProjector } = await import("../../../../src/infra/output/runtime-event-projector.js")
 const { handleStreamEvent } = await import("../../../../src/orchestration/agent-runtime/assistant-turn-result.js")
 const { emitAgentStreamEvent } = await import("../../../../src/orchestration/agent-runtime/runner-stream-events.js")
-const { createThinkingAccumulator, emitTurnAssistant } = await import("../../../../src/orchestration/agent-runtime/emit.js")
+const { emitTurnAssistant } = await import("../../../../src/orchestration/agent-runtime/emit.js")
 const { createTurnUsageTracker } = await import("../../../../src/orchestration/agent-runtime/turn-usage-tracker.js")
 const { RequestToolMap } = await import("../../../helpers/request-tool-surface.js")
 import type { ThinkingBlock as ThinkingBlockType } from "../../../../src/infra/output-blocks.js"
@@ -32,7 +32,7 @@ describe("thinking disclosure", () => {
       costTracker: createTurnUsageTracker({ emit: () => {}, budgetStreamId: "thinking-disclosure" }),
       providerSessionKey: "thinking-disclosure",
       parentToolUseId: undefined,
-      thinking: createThinkingAccumulator(),
+      thinking: { sawDelta: false },
       tools: new RequestToolMap(),
     }
     // The runtime's own projection of one provider stream feeds the row, as

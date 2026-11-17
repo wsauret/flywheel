@@ -12,15 +12,16 @@ import { Database } from "bun:sqlite"
 import { join } from "node:path"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { acceptanceWorkflow, SqliteVmDriver } from "../../workflows/vm/_sqlite-vm-driver.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 import { createWorkflowsProtocol } from "../../../../src/orchestration/modules/workflows/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createSessionBudgetStore } from "../../../../src/orchestration/session/budget-store.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { composeModuleServices } from "../../../../src/infra/module-service.js"
 import type { WorkflowDetail } from "../../../../src/protocol/modules/workflows.js"
 import { countStateRequests } from "../../../helpers/state-requests.js"
 import { Log } from "../../../../src/infra/log.js"
 import { publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures.js"
+import { recordRuntimeEvent } from "../session/_budget-store-fixtures.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
@@ -64,7 +65,6 @@ describe("workflow-scoped view projection", () => {
       publish: (patch: RuntimeUiPatchInput) => { patches.push(patch); return sequencer.publish(patch) },
     })
     const writers: ReturnType<typeof createSessionFactWriter>[] = []
-    const budgets: ReturnType<typeof createSessionBudgetStore>[] = []
     try {
       const id = await publishTestWorkflow(f.manager, { id: "usage" })
       const member = await startTestWorkflowMember(f.manager, f.store, id)
@@ -82,8 +82,7 @@ describe("workflow-scoped view projection", () => {
         }
         detailReads.length = 0
         const writer = createSessionFactWriter({ owner, writer: asAsyncEventWriter(f.store) })
-        const budget = createSessionBudgetStore({ sessionId: owner.kind === "session" ? member : id, owner, emitter: () => {}, reader: f.reader, recorder: writer.record })
-        writers.push(writer); budgets.push(budget)
+        writers.push(writer)
         let workflowVisits = 0
         const iterate = Map.prototype[Symbol.iterator]
         // Each map iteration returns its native iterator, whose steps count the visits to held details.
@@ -99,7 +98,7 @@ describe("workflow-scoped view projection", () => {
           return entries
         })
         try {
-          await budget.recordRuntimeEvent({ type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1000, output_tokens: 200 } } })
+          await recordRuntimeEvent(writer.record, { type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1000, output_tokens: 200 } } })
           await Bun.sleep(0)
         } finally { iteration.mockRestore() }
         visits.push(workflowVisits)
@@ -110,7 +109,7 @@ describe("workflow-scoped view projection", () => {
       const details = patches.flatMap(patch => patch.payload.kind === "workflow_detail.changed" && patch.payload.view ? [patch.payload.view] : [])
       expect(details.map(detail => detail.totals.totalCost)).toEqual([1.5, 3])
       expect(details.at(-1)?.policyUsage).toMatchObject({ totalCost: 3, totalInputTokens: 2000, totalOutputTokens: 400 })
-    } finally { for (const budget of budgets) budget.dispose(); for (const writer of writers) writer.dispose(); protocol.dispose(); f.store.close() }
+    } finally { for (const writer of writers) writer.dispose(); protocol.dispose(); f.store.close() }
   })
   test("a usage batch and one agent's entry each cost the held detail the same reads, whatever the number of started agents", async () => {
     /** Whether a published detail satisfies `holds` within about two seconds. */
@@ -146,11 +145,10 @@ describe("workflow-scoped view projection", () => {
       })
       const owner = { kind: "session" as const, sessionId: member.sessionId }
       const facts = createSessionFactWriter({ owner, writer })
-      const budget = createSessionBudgetStore({ sessionId: member.sessionId, owner, emitter: () => {}, reader: f.reader, recorder: facts.record })
       try {
         expect((await protocol.serve.workflowDetail({ type: "workflowDetail", workflowId: "wide" })).view?.admittedActions).not.toContain("workflow.resume")
         counter.take()
-        await budget.recordRuntimeEvent({ type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1000, output_tokens: 200 } } })
+        await recordRuntimeEvent(facts.record, { type: "model.turn.completed", data: { total_cost_usd: 1.5, usage: { input_tokens: 1000, output_tokens: 200 } } })
         const usagePublished = await published(details, (detail) => detail.totals.totalCost === 1.5)
         const usage = counter.take().length
         // A person's interrupt of one agent admits Resume of the workflow.
@@ -160,7 +158,7 @@ describe("workflow-scoped view projection", () => {
         const entryPublished = await published(details, (detail) => detail.admittedActions.includes("workflow.resume"))
         const entry = counter.take().length
         return { usagePublished, usage, entryPublished, entry }
-      } finally { budget.dispose(); facts.dispose(); protocol.dispose(); f.store.close() }
+      } finally { facts.dispose(); protocol.dispose(); f.store.close() }
     }
     const narrow = await costs(10)
     const wide = await costs(150)
@@ -344,11 +342,11 @@ describe("workflow-scoped view projection", () => {
     if (!work || !review || "repeat" in work || "repeat" in review) throw new Error("Expected acceptance phases")
     const driver = new SqliteVmDriver({
       root: tmp("workflow-protocol-conditional-"), retain: true,
-      workflow: { ...acceptanceWorkflow, phases: [
+      workflow: loadedWorkflow({ ...acceptanceWorkflow, phases: [
         { ...work, phase: "investigate", name: "Investigate" },
         { ...work, phase: "fix", name: "Fix", if: "investigate" },
         { ...review, phase: "verify", name: "Verify", if: "fix" },
-      ] },
+      ] }),
     })
     try {
       await driver.initialize()

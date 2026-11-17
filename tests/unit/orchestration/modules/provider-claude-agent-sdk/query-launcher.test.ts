@@ -36,6 +36,7 @@ function trackedLauncher(config: QueryLauncherConfig, sdkQuery: QueryFunction): 
 
 interface HookStep { readonly turnId: string; readonly index: number; readonly messageCount: number }
 type HookSend = (step: HookStep) => AsyncGenerator<never, string>;
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the hook input that the Claude engine passes to a plugin hook
 type HookHandler = ($: unknown, step: HookStep, send: HookSend) => AsyncGenerator<never, unknown>;
 
 /** The `turn.step` hook of the plugin copy that a query loads, driven as the CLI's mod API drives it: `$.env` reads

@@ -120,15 +120,12 @@ describe("standalone benchmark admission", () => {
             ...capture,
             eligibility: {
               ...base, revision,
-              candidateOffering: (candidate, model, policy) => {
-                const offering = base.candidateOffering?.(candidate, model, policy);
-                return offering ? {
-                  ...offering, wireModelId: `${offering.wireModelId}${wireSuffix}`,
-                  ...(omitReasoning && offering.resolvedModelMetadata ? {
-                    resolvedModelMetadata: { ...offering.resolvedModelMetadata, cost: { ...offering.resolvedModelMetadata.cost, reasoning: undefined } },
-                  } : {}),
-                } : undefined;
-              },
+              candidateOfferings: (candidate, model, policy) => base.candidateOfferings(candidate, model, policy).map((offering) => ({
+                ...offering, wireModelId: `${offering.wireModelId}${wireSuffix}`,
+                ...(omitReasoning && offering.resolvedModelMetadata ? {
+                  resolvedModelMetadata: { ...offering.resolvedModelMetadata, cost: { ...offering.resolvedModelMetadata.cost, reasoning: undefined } },
+                } : {}),
+              })),
             },
           }),
         }, seats);

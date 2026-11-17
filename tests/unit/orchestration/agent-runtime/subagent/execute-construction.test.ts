@@ -201,7 +201,7 @@ describe("subagent tool — execute runner construction", () => {
     it("states the shell rules of closure and turn economy only to a child that has bash", () => {
       const shelled = buildSubagentTask("You are a worker.", holding(["read", "bash", "handoff"]), 30);
       const unshelled = buildSubagentTask("You are a worker.", holding(["read", "handoff"]), 30);
-      for (const rule of ["run the narrowest check that proves each change", "Never re-run a failing test or command", "bash is for scripts, pipelines, and multi-command chains"]) {
+      for (const rule of ["run the narrowest check that proves each change", "Run a suite-level or project-wide gate at most once"]) {
         expect(shelled).toContain(rule);
         expect(unshelled).not.toContain(rule);
       }

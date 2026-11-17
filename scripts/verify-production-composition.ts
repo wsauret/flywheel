@@ -32,7 +32,7 @@ export function parseVerifierArguments(args: readonly string[]): VerifierArgumen
   throw new Error("Usage: bun run scripts/verify-production-composition.ts [--binary <path>]");
 }
 
-async function run(command: readonly string[], env: StringEnvironment): Promise<string> {
+async function captureCommandOutput(command: readonly string[], env: StringEnvironment): Promise<string> {
   const process = Bun.spawn([...command], { cwd: ROOT, env, stdout: "pipe", stderr: "pipe", windowsHide: true });
   const [stdout, stderr, exit] = await Promise.all([
     new Response(process.stdout).text(),
@@ -78,12 +78,12 @@ async function main(args: readonly string[]): Promise<void> {
       if (key !== "FLYWHEEL_PROJECT_ROOT" && value !== undefined) inherited[key] = value;
     }
     const env = { ...inherited, HOME: home, USERPROFILE: home, FLYWHEEL_INTERNAL_COMPOSITION_PROBE: "1" };
-    if (options.mode === "standalone") await run(["bun", "run", "build:binary"], env);
-    const source = parseProbeOutput(await run(["bun", "--conditions=browser", "run", "src/cli/index.ts", "--project-root", project], env));
+    if (options.mode === "standalone") await captureCommandOutput(["bun", "run", "build:binary"], env);
+    const source = parseProbeOutput(await captureCommandOutput(["bun", "--conditions=browser", "run", "src/cli/index.ts", "--project-root", project], env));
     const binary = options.mode === "binary" ? options.path : hostBinaryPath(ROOT);
     const carried = findDevelopmentMarkers(await Bun.file(binary).bytes());
     if (carried.length > 0) throw new Error(`Release build carries the development module: ${carried.map((marker) => JSON.stringify(marker)).join(", ")}`);
-    const compiled = parseProbeOutput(await run([binary, "--project-root", project], env));
+    const compiled = parseProbeOutput(await captureCommandOutput([binary, "--project-root", project], env));
     if (source.evidence.buildKind !== "source" || JSON.stringify(source.evidence.bundledSourceKinds) !== '["filesystem"]') {
       throw new Error(`Source probe provenance was ${JSON.stringify(source.evidence)}`);
     }

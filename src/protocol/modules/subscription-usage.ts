@@ -433,9 +433,9 @@ export const subscriptionUsageProtocol = defineProtocolModule({
     defineProtocolQuery({ query: "usage.history", input: UsageHistoryQueryFields, result: UsageHistoryResultSchema, deadline: "control" }),
   ],
   mutations: [
-    defineProtocolMutation({ type: "usage.open", fields: UsageOpenMutationFields, result: UsageMutationResultSchema, policy: "lossless" }),
-    defineProtocolMutation({ type: "usage.refresh", fields: UsageRefreshMutationFields, result: UsageMutationResultSchema, policy: "lossless" }),
-    defineProtocolMutation({ type: "usage.apply_reset", fields: UsageApplyResetMutationFields, result: UsageApplyResetResultSchema, policy: "lossless" }),
+    defineProtocolMutation({ type: "usage.open", fields: UsageOpenMutationFields, result: UsageMutationResultSchema }),
+    defineProtocolMutation({ type: "usage.refresh", fields: UsageRefreshMutationFields, result: UsageMutationResultSchema }),
+    defineProtocolMutation({ type: "usage.apply_reset", fields: UsageApplyResetMutationFields, result: UsageApplyResetResultSchema }),
   ],
 })
 

@@ -3,11 +3,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { ManagedRuntime } from "effect"
 import type { RuntimeEventStore } from "../../src/infra/sqlite-event-store.js"
-import { EventReaderService, EventStoreLive, LocalEventStoreService, type EventStoreRuntime } from "../../src/infra/event-store-effect.js"
+import { EventReaderService, EventStoreLive, EventStoreWriterService, LocalEventStoreService, type EventStoreRuntime } from "../../src/infra/event-store-effect.js"
 import { resolveEventStoreDbFile } from "../../src/infra/paths.js"
 import { createRuntimeSupervisor } from "../../src/orchestration/app-service/runtime-supervisor.js"
 import type { RuntimeRunnerCapabilities, RuntimeSupervisor, RuntimeSupervisorDeps } from "../../src/orchestration/app-service/runtime-supervisor-types.js"
 import { createChatRunnerLoader } from "../../src/orchestration/app-service/chat-runner-loader.js"
+import { createTranscriptProjectionCache } from "../../src/orchestration/app-service/transcript-projection-cache.js"
+import { createSessionViewLoader } from "../../src/orchestration/session-store/view.js"
 import type { ChatRunnerDeps } from "../../src/orchestration/chat/runner.js"
 import type { ChatRunner } from "../../src/orchestration/chat/runner-types.js"
 import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
@@ -28,7 +30,7 @@ import { fixtureDefinitions } from "../helpers/project-definitions.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../helpers/request-tool-surface.js"
 import { authProviders } from "../helpers/auth-context.js"
 import type { ConversationMessage } from "../../src/orchestration/agent-runtime/llm/types.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../src/infra/event-store-types.js"
 import { tryOpenConversationTree } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { unusedChildSessionControl } from "../helpers/child-session-control.js"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
@@ -48,8 +50,13 @@ export interface SupervisorTestContext {
 
 type SupervisorOverrides =
   & Partial<Omit<RuntimeRunnerCapabilities, "runnerLoader">>
-  & Pick<RuntimeSupervisorDeps, "onRunnerDone" | "onRunnerError" | "resumeWorkflow" | "reconcileChildSessionCompletions">
-  & { readonly createRunner?: (deps: ChatRunnerDeps) => Promise<ChatRunner> }
+  & Partial<Pick<RuntimeSupervisorDeps, "onRunnerError" | "resumeWorkflow" | "reconcileChildSessionCompletions">>
+  & {
+    readonly createRunner?: (deps: ChatRunnerDeps) => Promise<ChatRunner>
+    /** The one reader the supervisor, its transcript cache, and its session
+     *  view loader read through, such as a counting reader. */
+    readonly reader?: AsyncEventStateReadSurface
+  }
 
 
 /** Builds the SQLite-backed context the RuntimeSupervisor tests share: a real
@@ -100,13 +107,37 @@ export function supervisorConversationFixture(currentContext: () => SupervisorTe
   return { chatConversationId, appendConversation, commitUserTurn }
 }
 
+/** The supervisor collaborators a test does not exercise, each quiet: a child
+ *  sweep reconciles nothing, no module work is retained, no stop of a bound
+ *  child or kept command runs, no replacement is planned, a runner error is
+ *  dropped, and a retired agent question's workflow resume refuses. */
+export function quietSupervisorCollaborators(): Pick<RuntimeSupervisorDeps, "retainedOperations" | "sessionStops" | "replacementHandoff" | "onReplacementStop" | "keeper" | "onRunnerError" | "resumeWorkflow" | "reconcileChildSessionCompletions"> {
+  return {
+    retainedOperations: [],
+    sessionStops: async () => undefined,
+    replacementHandoff: () => undefined,
+    onReplacementStop: () => {},
+    keeper: { terminate: () => false, close: async () => {} },
+    onRunnerError: () => {},
+    resumeWorkflow: async () => { throw new Error("Supervisor test must inject resumeWorkflow") },
+    reconcileChildSessionCompletions: async () => ({ reconciledCount: 0, workflowAggregateReads: 0 }),
+  }
+}
+
+/** The one builder of a supervisor's production dependencies over the test
+ *  context: the real reader, writer, session view loader, and transcript cache
+ *  of `ctx`, with `quietSupervisorCollaborators` for the rest. A test spreads
+ *  the result and replaces what it asserts on. The session store's settlement
+ *  also disposes the transcript cache. */
 export function supervisorBaseDeps(
   ctx: SupervisorTestContext,
   sessionStore: SessionStore = ctx.sessionStore,
   overrides: Partial<SupervisorOverrides> = {},
-): Parameters<typeof createRuntimeSupervisor>[0] {
+): RuntimeSupervisorDeps {
   const composition = supervisorTestComposition()
-  const reader = ctx.runtime.runSync(EventReaderService)
+  const reader = overrides.reader ?? ctx.runtime.runSync(EventReaderService)
+  const writer = ctx.runtime.runSync(EventStoreWriterService)
+  const transcriptCache = createTranscriptProjectionCache({ sessionStore, reader, projectionReader: reader, projectRoot: ctx.baseDir })
   const capabilities: RuntimeRunnerCapabilities = {
     definitions: composition.runner.definitions,
     moduleSelection: composition.runner.moduleSelection,
@@ -131,18 +162,20 @@ export function supervisorBaseDeps(
     manager: ctx.manager,
     directories: testDirectories(ctx.baseDir),
     runtime: ctx.runtime,
-    store: reader,
     projectionReader: reader,
+    writer,
+    transcriptCache,
+    sessionViewLoader: createSessionViewLoader({ reader, projectionReader: reader, writer }),
     runnerCapabilities: async () => capabilities,
     authProfileId: () => "default",
     lifecycle: {
-      settleSessionStore: async (causeOf) => { await ctx.workflowHosts.disposeAll(causeOf); await sessionStore.disposeAll() },
+      settleSessionStore: async (causeOf) => { await ctx.workflowHosts.disposeAll(causeOf); await sessionStore.disposeAll(); await transcriptCache.dispose() },
       settleAuthAdmission: () => composition.authAdmission.dispose(),
     },
     continuationLanes: ctx.continuationLanes,
     // No client attaches to a supervisor under test unless the test says so.
     clientsHold: () => false,
-    ...(overrides.onRunnerDone ? { onRunnerDone: overrides.onRunnerDone } : {}),
+    ...quietSupervisorCollaborators(),
     ...(overrides.onRunnerError ? { onRunnerError: overrides.onRunnerError } : {}),
     ...(overrides.resumeWorkflow ? { resumeWorkflow: overrides.resumeWorkflow } : {}),
     ...(overrides.reconcileChildSessionCompletions ? { reconcileChildSessionCompletions: overrides.reconcileChildSessionCompletions } : {}),

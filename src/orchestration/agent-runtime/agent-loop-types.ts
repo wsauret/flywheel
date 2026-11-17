@@ -211,7 +211,7 @@ export interface AgentLoopOptions {
   /** Attempt planned by the initial request admission. */
   initialPlannedAttempt?: ServingAttempt;
   /** One request-composition owner for modules, tools, prompt bytes, provider
-   *  clients and planning, transformers, execution gates, and billing. */
+   *  clients and planning, execution gates, and billing. */
   tools: RequestToolSurfaceOwner;
   /** Builds the request-stable prompt from the planned serving attempt and the
    *  one interaction profile captured for this request. */
@@ -219,8 +219,6 @@ export interface AgentLoopOptions {
   /** The system-origin messages for the next request, decided from the history: the modules' standing-mode
    *  reminders (turn-reminders.ts), then the capability narrowing statement when one is due (capability-narrowing.ts). */
   turnReminders?: (messages: readonly ConversationMessage[]) => Promise<readonly ConversationMessage[]>;
-  /** Literal headless prompts bypass model and provider guidance byte-for-byte. */
-  literalSystemPrompt?: boolean;
   /** Holds the first request of this run behind a sibling that writes the
    *  same cached prompt prefix. Only the runtimes of agents of a workflow carry it
    *  (prompt-prefix-hold.ts). */
@@ -261,6 +259,9 @@ export interface AgentLoopOptions {
    *  the loop then has no background dispatch surface. */
   background?: BackgroundExecutionOwner;
   onEvent: (event: StreamEvent) => void;
+  /** The run publishes no context measurement (`context_update`): its requests, such as a side question or a work
+   *  summary, are not the conversation's own context. */
+  hidesContextUsage?: boolean;
   onSystemMessage?: (message: string, level?: "info" | "error") => void;
   onNotice?: (operation: SessionNoticeOperation) => void;
   onNotification?: (episode: NotificationEpisodeInput) => void;

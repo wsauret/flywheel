@@ -16,23 +16,23 @@ export function checkpointToolDefinition(kind: CheckpointToolKind): AdvertisedTo
     name: `checkpoint_${kind}`,
     action: "ui_meta",
     description: kind === "read"
-      ? "Read one section of your conversation's current typed checkpoint, or omit section for an overview. Working notes returns JSON pages of at most 4,000 Unicode characters; start at offset 0 and repeat with nextOffset until it is null. All earlier versions remain inspectable through recorded history."
+      ? "Read one section of your checkpoint, or omit section for an overview."
       : kind === "replace"
-        ? "Replace one section of your conversation's checkpoint. The complete checkpoint must fit 24,576 UTF-8 bytes; oversized writes are refused, never truncated. Read the section before replacing it."
-        : "Add a dated decision to your conversation's checkpoint in the user's own words, naming the decision it replaces, or null when it replaces none. The complete checkpoint must fit 24,576 UTF-8 bytes.",
+        ? "Replace one section of your checkpoint. Read the section first."
+        : "Add one user decision to your checkpoint.",
     inputSchema: {
       type: "object",
       properties: kind === "read" ? {
         section: { type: "string", enum: [...CHECKPOINT_SECTIONS] },
-        offset: { type: "integer", minimum: 0, description: "Zero-based Unicode character offset for workingNotes only. Defaults to 0. Continue with the returned nextOffset." },
+        offset: { type: "integer", minimum: 0, description: "workingNotes only. Character offset of a 4,000-character page; omit for the first page, then pass nextOffset until it is null." },
       } : kind === "decide" ? {
-        date: { type: "string", description: "Decision date, YYYY-MM-DD." },
+        date: { type: "string", description: "YYYY-MM-DD." },
         words: { type: "string", description: "The user's exact words." },
         replaces: { anyOf: [{ type: "string" }, { type: "null" }], description: "The earlier decision this replaces, or null." },
       } : {
         section: { type: "string", enum: [...CHECKPOINT_SECTIONS] },
         value: {
-          description: "Replacement section. designIntent: {text, approved} or its text alone, saved as a draft unless approved is true; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: durable history entry ids; other sections: a string.",
+          description: "designIntent: {text, approved} or text alone; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: [entry id]; other sections: a string.",
           anyOf: [
             { type: "string" },
             { type: "object", properties: { text: { type: "string" }, approved: { type: "boolean", description: "True only after the person approved this design intent. Omitted means a draft." } }, required: ["text"], additionalProperties: false },

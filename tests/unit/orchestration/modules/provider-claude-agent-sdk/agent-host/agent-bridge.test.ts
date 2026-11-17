@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { Effect, Exit, Schema, Scope } from "effect";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -14,10 +14,11 @@ import { originsOf } from "../_bridge-harness.js";
 import type { BridgeRequest } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
 import { createHostedAgent, type HostedAgentConfig } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.js";
 import { agentFilePath } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-file.js";
-import { conversationTierEntry, createHostedAgentEntries, DISPATCH_TEXT, ENGINE_INSTRUCTIONS } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { createHostedAgentEntries, DISPATCH_TEXT } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
+import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../../helpers/hosted-engine-text.js";
 import type { HostStepItem } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-gate.js";
 import { releaseLiveBridges, resumeLiveBridges } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/live-bridges.js";
-import { createHostRegistry, hostKey, type HostRegistry } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
+import { hostKey, processAgentHosts, type HostRegistry } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import type { AgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/shared-tree.js";
@@ -26,6 +27,8 @@ import { silentVersions } from "../../../../../../src/orchestration/modules/prov
 import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
 
 const directory = temporaryDirectories();
+// A case that leases from the hosts of this process leaves no host there.
+afterEach(() => processAgentHosts.drain());
 /** The chat tree of every agent of this suite, which the suite holds while it runs. */
 const TREE = holdSharedTree("tree", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false, disabledTypes: [] })).tree;
 
@@ -259,7 +262,7 @@ describe("a hosted agent's anticipated request", () => {
     ["the module turned off", (_registry: HostRegistry) => { releaseLiveBridges(); }, false, 1],
     ["a drain at shutdown", (registry: HostRegistry) => registry.drain(), false, 0],
   ] as const)("on a host that %s closes asks the session to plan again %d times", async (_name, drain, served, stale) => {
-    const registry = createHostRegistry();
+    const registry = processAgentHosts;
     const { host } = fakeHost(served);
     const owner = watchDemand();
     const agent = createHostedAgent({ ...hostedConfig({ lease: (place) => registry.lease(place, () => host), drain: registry.drain }), demand: owner.demand });
@@ -394,7 +397,7 @@ describe("a hosted agent's request that its consumer leaves", () => {
 
 describe("the module turned off", () => {
   test("ends a session's claims and an idle agent's host at once, and the host of a running request once that request settled, which it does in full", async () => {
-    const registry = createHostRegistry();
+    const registry = processAgentHosts;
     const closes: string[] = [];
     const stops: string[] = [];
     /** Opens a host whose every admitted step answers in full. */
@@ -452,7 +455,7 @@ describe("the module turned off", () => {
     ["ends the host that it then leases once it settled, without a session's demand", false, false],
     ["and on again before it streams keeps its host", false, true],
   ] as const)("while an admitted request waits after its anticipation, the module turned off %s", async (_name, withDemand, onAgain) => {
-    const registry = createHostRegistry();
+    const registry = processAgentHosts;
     const closes: string[] = [];
     const stops: string[] = [];
     const host: AgentHost = {

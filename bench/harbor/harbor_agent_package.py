@@ -95,7 +95,11 @@ PUBLISHER_IDENTITY = {
 # repository holds only package refs, so every Git call here turns trace2
 # events off through Git's own environment switch, which overrides the config.
 _NO_TRACE2 = {"GIT_TRACE2_EVENT": "0"}
-_PACKAGE_REF = re.compile(r"refs/heads/main|refs/heads/build/[0-9a-f]{12}|refs/tags/flywheel-v\d+\.\d+\.\d+-[0-9a-f]{12}")
+# The agent repository also holds the wrappers of reference harnesses that a
+# comparison run launches, each on its own `<harness>-<version>-wrapper`
+# branch. Harbor fetches the one ref and commit that a launch names, so a
+# wrapper beside the packages never changes which agent a trial runs.
+_PACKAGE_REF = re.compile(r"refs/heads/main|refs/heads/build/[0-9a-f]{12}|refs/tags/flywheel-v\d+\.\d+\.\d+-[0-9a-f]{12}|refs/heads/[a-z0-9][a-z0-9.-]*-wrapper")
 
 
 def _git(repository: Path, *arguments: str, env: dict | None = None, input_bytes: bytes | None = None) -> bytes:
@@ -365,7 +369,7 @@ def _remote_commit(url: str, ref: str) -> str | None:
 
 
 def require_package_refs_only(refs: dict[str, str]) -> None:
-    """Refuse an agent repository that holds any ref beyond package refs."""
+    """Refuse an agent repository that holds any ref beyond package refs and reference-harness wrapper branches."""
     foreign = sorted(ref for ref in refs if ref != "HEAD" and not _PACKAGE_REF.fullmatch(ref))
     if foreign:
         raise RuntimeError(f"the agent repository holds refs that are not package refs: {', '.join(foreign)}")

@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { replaceFileOnWindows } from "./windows-file-replacement.js";
-import { ContainedPathError, type ContainedDirectoryOptions, validateComponent } from "./descriptor-directory-contract.js";
+import { ContainedPathError, validateComponent, type ContainedDirectoryOptions } from "./descriptor-directory-contract.js";
 import { errnoCode } from "./error-message.js";
 import type { WindowsPrivateDirectoryAclPort } from "./windows-private-directory-acl.js";
 

@@ -61,6 +61,7 @@ describe("which client the hosted page loads", () => {
 })
 
 describe("asking the relay which client a machine serves", () => {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the relay's JSON response body, malformed on purpose in some cases
   function answering(status: number, body: unknown) {
     const asked: string[] = []
     const fetcher = async (url: string) => {

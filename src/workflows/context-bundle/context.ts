@@ -325,6 +325,7 @@ export function expandJoinReferences(value: HandoffValue, contentOf: (attemptId:
     used += bytes;
     expanded.set(item, { ...item, handoff: { ...reference, content } });
   }
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one item of an agent's delivered handoff, kept as it was sent
   return { value: { ...value, items: items.map((item: unknown) => expanded.get(item) ?? item) }, unexpanded, shownBytes: used };
 }
 

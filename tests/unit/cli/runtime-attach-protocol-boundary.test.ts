@@ -5,9 +5,10 @@ import { join } from "node:path"
 import { createAccountRuntimeAttach, type RuntimeIdentity } from "../../../src/cli/runtime-attach.js"
 import type { TerminalSuccessor } from "../../../src/cli/terminal-handoff.js"
 import { currentBuildLink, versionsDir } from "../../../src/infra/paths.js"
+import { executableBuild } from "../../../src/infra/update/live-builds.js"
 import { useWin32ContainedDirectories } from "../../helpers/win32-contained-directories.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
-import { installedBuildId, readRunningBuild } from "../../../src/orchestration/app-service/runtime-executable.js"
+import { installedBuildId, type RunningBuild } from "../../../src/orchestration/app-service/runtime-executable.js"
 
 describe("account runtime attach at a protocol boundary", () => {
   const NEXT = RUNTIME_PROTOCOL_VERSION + 1
@@ -60,9 +61,11 @@ describe("account runtime attach at a protocol boundary", () => {
         return join(directory, "flywheel-bin.exe")
       }
       const windows = { platform: "win32" as const, execPath: place("a".repeat(64)) }
+      // The build this terminal runs, as it reads it off its own executable at its start.
+      const readStarted = (): RunningBuild => ({ kind: "installed", ...executableBuild(windows.execPath)! })
       const updated = { pid: 2, holder: { kind: "without-identity", pid: 2 }, version: "0.1.0", protocolVersion: NEXT, buildId: "b".repeat(64) } satisfies RuntimeIdentity
       try {
-        const atStart = readRunningBuild(windows)
+        const atStart = readStarted()
         // An update activates a newer build, which serves in a protocol this
         // terminal cannot speak.
         place(updated.buildId)
@@ -77,7 +80,7 @@ describe("account runtime attach at a protocol boundary", () => {
         expect(followed).toHaveLength(1)
         // The build this terminal runs is its own immutable directory, so
         // reading it again still names the build it started from.
-        expect(readRunningBuild(windows)).toEqual(atStart)
+        expect(readStarted()).toEqual(atStart)
       } finally { rmSync(root, { recursive: true, force: true }) }
     })
   });

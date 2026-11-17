@@ -32,6 +32,7 @@ import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js"
 import { readyAttempt } from "../../../../src/workflows/vm/frontier.js"
+import { loadingSummaries } from "../../../helpers/session-detail-projection.js"
 
 const RESTING: StatusView = {
   activity: "absent", activityStartedAt: null, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0,
@@ -134,7 +135,12 @@ describe("session detail publisher", () => {
     if (!siblingMember || !targetMember) throw new Error("Missing concurrent members")
     const read = createSessionDetailReader({
       projectRoot, reader, projectionReader: reader,
-      sessionStore: { get: (id) => workflowEntry({ conversationId: id === targetMember.sessionId ? targetMember.conversationId : siblingMember.conversationId, runnerState: "streaming", streamPhase: "generating" }) },
+      source: {
+        kind: "live",
+        sessionStore: { get: (id) => workflowEntry({ conversationId: id === targetMember.sessionId ? targetMember.conversationId : siblingMember.conversationId, runnerState: "streaming", streamPhase: "generating" }) },
+        summaries: loadingSummaries(),
+        processorHolds: { heldToolCallIds: () => [] },
+      },
       manager,
     })
     const p = publisher({ onStored: store.onStored, read })

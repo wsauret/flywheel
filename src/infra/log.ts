@@ -38,10 +38,10 @@ export namespace Log {
   }
 
   type Logger = {
-    debug(message?: unknown, extra?: LogFields): void
-    info(message?: unknown, extra?: LogFields): void
-    warn(message?: unknown, extra?: LogFields): void
-    error(message?: unknown, extra?: LogFields): void
+    debug(message?: string | Error, extra?: LogFields): void
+    info(message?: string | Error, extra?: LogFields): void
+    warn(message?: string | Error, extra?: LogFields): void
+    error(message?: string | Error, extra?: LogFields): void
     /** A logger of the same service whose every record also carries
      *  `context`, such as the project and generation of one instance. The
      *  result is not cached, so two instances never share context. */
@@ -52,7 +52,7 @@ export namespace Log {
 
   // Declared ahead of `Default`, which binds the first logger at module load.
   const bind = (resolved: LogFields): Logger => {
-    function emit(levelName: Level, message: unknown, extra?: LogFields) {
+    function emit(levelName: Level, message: string | Error | undefined, extra?: LogFields) {
       const merged = { ...resolved, ...extra }
       const sessionId = resolveSessionId(merged)
       const payload: { [key: string]: unknown } = {}
@@ -81,16 +81,16 @@ export namespace Log {
     }
 
     const result: Logger = {
-      debug(message?: unknown, extra?: LogFields) {
+      debug(message?: string | Error, extra?: LogFields) {
         if (shouldLog("DEBUG")) emit("DEBUG", message, extra)
       },
-      info(message?: unknown, extra?: LogFields) {
+      info(message?: string | Error, extra?: LogFields) {
         if (shouldLog("INFO")) emit("INFO", message, extra)
       },
-      warn(message?: unknown, extra?: LogFields) {
+      warn(message?: string | Error, extra?: LogFields) {
         if (shouldLog("WARN")) emit("WARN", message, extra)
       },
-      error(message?: unknown, extra?: LogFields) {
+      error(message?: string | Error, extra?: LogFields) {
         if (shouldLog("ERROR")) emit("ERROR", message, extra)
       },
       with(context: LogFields) {
@@ -178,14 +178,6 @@ export namespace Log {
    *  test process or a supervisor whose output channel is gone. */
   export const suppress = (): void => {
     unconfigured = "none"
-  }
-
-  /** Whether a record at `input` from this realm reaches a destination: it
-   *  passes the level, and the realm has a sink or a stderr fallback. For a
-   *  caller that durably records that a person was shown a record. The debug
-   *  log stays non-durable, so true does not prove that a file write landed. */
-  export const delivers = (input: Level): boolean => {
-    return shouldLog(input) && (DebugLog.isOpen() || openAccountLog() || unconfigured === "stderr")
   }
 
   const sessionContext = new AsyncLocalStorage<string>()

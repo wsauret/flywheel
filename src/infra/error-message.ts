@@ -97,10 +97,10 @@ export function errorDetail(err: unknown): ErrorDetail {
   return { kind: typeof err, message, value: message }
 }
 
-function safeStringify(value: unknown): string {
+function safeStringify(error: unknown): string {
   try {
-    return JSON.stringify(value)
+    return JSON.stringify(error)
   } catch {
-    return Object.prototype.toString.call(value)
+    return Object.prototype.toString.call(error)
   }
 }

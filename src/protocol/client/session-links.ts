@@ -2,11 +2,6 @@ const SESSION_PREFIX = "flywheel://session/"
 const WORKFLOW_PREFIX = "flywheel://workflow/"
 const AGENT_FRAGMENT = "#agent="
 
-/** Opens an actual conversation session. Workflow aggregates use workflowLink. */
-export function sessionLink(sessionId: string): string {
-  return `${SESSION_PREFIX}${sessionId}`
-}
-
 /** Reads a session URI. Unrecognized protocols and empty addresses return undefined. */
 export function parseSessionLink(uri: string | undefined): { readonly sessionId: string } | undefined {
   if (uri === undefined || !uri.startsWith(SESSION_PREFIX)) return undefined
@@ -15,11 +10,6 @@ export function parseSessionLink(uri: string | undefined): { readonly sessionId:
   const sessionId = hash === -1 ? rest : rest.slice(0, hash)
   if (sessionId === "") return undefined
   return { sessionId }
-}
-
-/** Opens workflow orchestration, optionally at one logical agent. */
-export function workflowLink(workflowId: string, agentNodeId?: string): string {
-  return `${WORKFLOW_PREFIX}${workflowId}${agentNodeId === undefined ? "" : `${AGENT_FRAGMENT}${encodeURIComponent(agentNodeId)}`}`
 }
 
 /** Reads only workflow URIs, never interpreting a workflow id as a session. */

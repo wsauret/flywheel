@@ -166,8 +166,8 @@ Each entry: the canonical term, its definition, and the synonyms it retires. Ret
 - **file mutation operation**: the recoverable ordered publication checkpoint for one file mutation. In-flight kind `file.mutation`; TypeScript stem `FileMutationOperation`; each cell stores proof metadata and one cursor, never file bytes.
 - **module**: a selectable feature bundle (skills module, bash module). Config key and protocol domain use the module stem; the Settings section is Modules. Retires: capability module, capability (in this sense), plugin (reserved for external plugin systems), features, core-tools, runtime-tools, harness capability.
 - **capability**: an admission grant that scopes what a context may do (capability access, capability grant). This is the word's only meaning. The guardian's byte token is the guardian token; service ports are ports.
-- **gate**: a seam that can refuse or replace an operation, always qualified (module gate, concurrency gate). Locks are not gates.
-- **hook**: an owner-typed module seam callback (observer, transformer, gate are the three hook kinds). Solid reactive helpers are not hooks in type names; `use-*` files export reactive accessors and `create-*` files export factories.
+- **gate**: a seam that can refuse an operation, always qualified (module gate, concurrency gate). Locks are not gates.
+- **hook**: an owner-typed module seam callback (observer and gate are the two hook kinds). Solid reactive helpers are not hooks in type names; `use-*` files export reactive accessors and `create-*` files export factories.
 - **MCP server**: an external tool provider. The manager's port types are ports, not capabilities.
 
 ### Observability

@@ -40,7 +40,6 @@ function judgeAgent(entries: readonly UsageEntry[], terminal: AgentRunTerminal =
         message: { content: [{ type: "text", text }] },
       }));
     },
-    end: () => undefined,
     abort: () => undefined,
     done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }),
   });

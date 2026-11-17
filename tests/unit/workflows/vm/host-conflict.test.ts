@@ -10,6 +10,8 @@ import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js
 import { queuedAttempts } from "../../../../src/workflows/vm/structural-admission.js"
 import type { WorkflowEvent } from "../../../../src/workflows/vm/events.js"
 import { attemptOf, itemList, mapSkills, mapWorkflow } from "./_map-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { quietHostDeps } from "./host-test-support.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -22,7 +24,7 @@ const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id, writes:
 
 /** A workflow whose phase build has the named agents left and right, and
  *  whose phase ship runs after it. */
-const phaseWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const phaseWorkflow = loadedWorkflow({
   id: "sqlite-phases",
   name: "SQLite phases",
   phases: [{ phase: "build", agents: [{ agent: "left", ...record("left") }, { agent: "right", ...record("right") }] }, { phase: "ship", ...record("ship") }],
@@ -34,7 +36,7 @@ describe("workflow VM host SQLite conflicts", () => {
     // tail queue 49 of the 50 attempts, so one slot remains.
     const encoded = Schema.encodeSync(WorkflowDefinitionSchema)(mapWorkflow)
     const [plan0, implement, , tail0] = encoded.phases
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...encoded,
       phases: [
         { ...plan0, output: { summary: "The plan.", fields: { items: itemList(47) } }, retry: { max: 2 } },
@@ -100,6 +102,7 @@ describe("workflow VM host SQLite conflicts", () => {
     }
     const ran: string[] = []
     const host = (startMode: "launch" | "operator_resume", hostWriter: AsyncGuardedEventWriter) => createWorkflowVmHost({
+      ...quietHostDeps(hostWriter),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode,
@@ -144,6 +147,7 @@ describe("workflow VM host SQLite conflicts", () => {
     ]
     const ran: string[] = []
     const host = createWorkflowVmHost({
+      ...quietHostDeps(asAsyncEventWriter(vm.store)),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "launch",
@@ -190,6 +194,7 @@ describe("workflow VM host SQLite conflicts", () => {
     let workers = 0
     const emitted: WorkflowRuntimeEvent[] = []
     const host = createWorkflowVmHost({
+      ...quietHostDeps(writer),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "launch",
@@ -243,6 +248,7 @@ describe("workflow VM host SQLite conflicts", () => {
     }
     const workers: string[] = []
     const host = createWorkflowVmHost({
+      ...quietHostDeps(writer),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "operator_resume",
@@ -277,7 +283,7 @@ describe("workflow VM host SQLite conflicts", () => {
       { definitionId: "work", status: "completed" },
       { definitionId: "review", status: "completed" },
     ])
-    expect(vm.context()?.entries.map(({ definitionId }) => definitionId)).toEqual(["work", "review"])
+    expect((await vm.context())?.entries.map(({ definitionId }) => definitionId)).toEqual(["work", "review"])
     expect(vm.events().filter(({ type }) => type === "handoff.written")).toHaveLength(2)
     expect(vm.events().filter(({ type }) => type === "handoff.validated")).toHaveLength(2)
     expect(vm.events().filter(({ type }) => type === "context.accumulated")).toHaveLength(2)

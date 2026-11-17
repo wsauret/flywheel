@@ -8,19 +8,21 @@ import { createProviderModelPreferenceService } from "../../../../src/orchestrat
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 
 describe("FlywheelAppService catalog discovery", () => {
   test("catalog scheduling acknowledges while owner-held discovery is pending", async () => {
     const store = fakeSessionStore(new Map())
     const manager = fakeManager()
-    const models = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+    const models = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
     const held = Promise.withResolvers<void>()
     const entered = Promise.withResolvers<void>()
     let calls = 0
     const owner = createEligibilityPreparation({
       allowTrainingRoutes: () => false,
       userDataRoot: "/unused", resolveKey: async () => undefined,
-      moduleSelection: () => composeFirstPartyModules([]), prepare: models.prepare, publish: models.publish, current: models.state,
+      moduleSelection: () => composeFirstPartyModules([]), observeAuth: diskAuthObservation(() => composeFirstPartyModules([])), prepare: models.prepare, publish: models.publish, current: models.state,
       inputRevision: () => ({ auth: "a", preferences: "p" }), resolveAuth: async () => testAuthContext(),
       resolveCatalog: async ({ discoveryMode }) => {
         if (discoveryMode === "refresh") { calls += 1; entered.resolve(); await held.promise }

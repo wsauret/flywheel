@@ -7,8 +7,8 @@ import { asAsyncEventReadSurface, type AsyncGuardedEventWriter, type LocalSqlite
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context"
 import { createConversationTree, readReconciledBranch } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
-import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
-import { buildDurableSubagentCreated, recordSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
+import { prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
+import { buildDurableSubagentCreated } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { recoverStaleSubagentRuns } from "../../../../src/orchestration/modules/subagents/history/subagent-run-recovery"
 import { loadSubagentRunsFromEvents } from "../../../../src/orchestration/modules/subagents/history/subagent-run-projection"
 
@@ -30,6 +30,25 @@ function localAsyncWriter(store: LocalSqliteEventStore): AsyncGuardedEventWriter
     appendBatchGuarded: async (events) => store.appendBatchGuarded(events),
     pruneSupersededEvents: async (aggregateId, eventType) => store.pruneSupersededEvents(aggregateId, eventType),
   }
+}
+
+/** A run row as version 1 of `child_run.created` recorded it, stamped with
+ *  the conversation of the runner that dispatched it. Current runs record
+ *  version 3; stores keep the older rows. */
+function appendStampedLegacyRun(
+  store: LocalSqliteEventStore,
+  sessionId: string,
+  run: { childRunId: string; toolUseId: string; modelRequestId: string; conversationId: string; description: string },
+): void {
+  store.append({
+    aggregateId: `session:${sessionId}`,
+    type: "child_run.created",
+    version: 1,
+    timestamp: Date.now(),
+    actor: "flywheel",
+    sessionId,
+    payload: { ...run, kind: "subagent", agentType: "explorer", model: "claude-test", maxTurns: 4, tools: ["read"], executionCwd: tmpDir },
+  })
 }
 
 describe("stale subagent run recovery", () => {
@@ -93,21 +112,7 @@ describe("stale subagent run recovery", () => {
     await tree.appendMessage({ kind: "user", content: "dispatch something" })
     await tree.getStorage().dispose()
 
-    const factWriter = createSessionFactWriter({ sessionId, writer })
-    recordSubagentCreated(factWriter, {
-      childRunId: "child-1",
-      toolUseId: "tool-1",
-      modelRequestId: "request-1",
-      conversationId,
-      agentType: "explorer",
-      description: "explore the repo",
-      model: "claude-test",
-      maxTurns: 4,
-      tools: ["read"],
-      executionCwd: tmpDir,
-    })
-    await Bun.sleep(5)
-    factWriter.dispose()
+    appendStampedLegacyRun(store, sessionId, { childRunId: "child-1", toolUseId: "tool-1", modelRequestId: "request-1", conversationId, description: "explore the repo" })
 
     // The store holds no provider-request audit facts at all; recovery must
     // resolve the conversation from the run entry alone.
@@ -138,21 +143,7 @@ describe("stale subagent run recovery", () => {
       await tree.appendMessage({ kind: "user", content: `step of ${conversationId}` })
       await tree.getStorage().dispose()
     }
-    const factWriter = createSessionFactWriter({ sessionId, writer })
-    recordSubagentCreated(factWriter, {
-      childRunId: "child-b",
-      toolUseId: "tool-b",
-      modelRequestId: "request-b",
-      conversationId: second,
-      agentType: "explorer",
-      description: "explore for step b",
-      model: "claude-test",
-      maxTurns: 4,
-      tools: ["read"],
-      executionCwd: tmpDir,
-    })
-    await Bun.sleep(5)
-    factWriter.dispose()
+    appendStampedLegacyRun(store, sessionId, { childRunId: "child-b", toolUseId: "tool-b", modelRequestId: "request-b", conversationId: second, description: "explore for step b" })
 
     const projectionReader = asAsyncEventReadSurface(store)
     const result = await recoverStaleSubagentRuns({ sessionId, reader: projectionReader, projectionReader, writer, projectRoot: tmpDir, fallbackConversationId: first })

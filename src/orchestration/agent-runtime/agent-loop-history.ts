@@ -46,7 +46,7 @@ export function createLoopMessageWriters(input: {
 }
 
 /** Writes a user message through redaction before echoing its canonical content to observers. */
-export function createLoopUserWriter(
+function createLoopUserWriter(
   append: (message: ConversationMessage, humanTyped?: boolean) => Promise<ConversationMessage>,
   observe: AgentLoopOptions["onUserMessage"],
 ) {
@@ -221,7 +221,7 @@ function trailingTurnInput(messages: readonly ConversationMessage[]): Conversati
  *  tree before the runner started (chat sends, workers) or carried in a fork
  *  seed - so the first message of every life gets its
  *  model.user_message.recorded fact. */
-export function seedResumedTurn(messages: readonly ConversationMessage[], onUserMessage?: AgentLoopOptions["onUserMessage"]): void {
+function seedResumedTurn(messages: readonly ConversationMessage[], onUserMessage?: AgentLoopOptions["onUserMessage"]): void {
   const tail = trailingTurnInput(messages);
   if (tail?.kind === "user") onUserMessage?.(tail.content, tail.origin === "system" ? "system" : "user", tail);
 }

@@ -4,7 +4,7 @@ import { createEffect, onCleanup, untrack } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 
 /** OSC 11 sequence that sets the terminal's default background color. */
-export function oscDefaultBackground(color: RGBA): string {
+function oscDefaultBackground(color: RGBA): string {
   const [r, g, b] = color.toInts()
   const hex = ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)
   return `\x1b]11;#${hex}\x07`

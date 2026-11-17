@@ -4,7 +4,7 @@ import { createHash } from "node:crypto"
 import { loadWorkflowFiles } from "../../../helpers/workflow-files.js"
 import { loopBody, mapStages, walkFlow, whileMap } from "../../../../src/workflows/retired-step-grammar/schema.js"
 import { retiredBuiltInDefinition, retiredBuiltInText } from "../../../../src/workflows/vm/retired-built-in-definitions.js"
-import { agentRecords, WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
+import { agentRecords, WorkflowDefinitionSchema, type AuthoredWorkflow } from "../../../../src/workflows/workflow-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { convertStepGrammar } from "../../../../src/workflows/retired-step-grammar/convert.js"
 
@@ -27,7 +27,7 @@ const BASE_SHA256 = new Map([
 ])
 const IDS = [...BASE_SHA256.keys()]
 
-function installedOrConverted(id: string): WorkflowDefinition {
+function installedOrConverted(id: string): AuthoredWorkflow {
   const base = retiredBuiltInDefinition(id)
   if (!base) throw new Error(`no base text for ${id}`)
   return Schema.decodeUnknownSync(WorkflowDefinitionSchema)(convertStepGrammar(base).document)

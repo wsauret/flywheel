@@ -1,10 +1,8 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { COMPLETION_AGENT_RESULTS_CAP_BYTES, readWorkflowCompletionEvidence, terminalWorkflow, workflowCompletionContent } from "../../../../src/workflows/output-contract/workflow-completion.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
@@ -16,6 +14,7 @@ import { createWorkflowContextStore } from "../../../../src/workflows/context-bu
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 import type { WorkflowTree } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import type { WorkflowTreeV1Schema } from "../../../../src/workflows/view/schemas.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The facts as builds before the phase tree wrote them: each agent of a
  *  single phase is a top-level step, and a parallel phase holds its steps. */
@@ -53,7 +52,7 @@ describe("the workflow completion result", () => {
     { named: true, failed: false },
     { named: true, failed: true },
   ])("keeps every agent result (named $named, failed $failed)", async ({ named, failed }) => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "completion-chain", name: "Completion chain",
       phases: named
         ? [{ phase: "pair", agents: [{ agent: "first", ...record("first") }, { agent: "second", ...record("second") }] }, { phase: "last", ...record("last") }]
@@ -94,7 +93,7 @@ describe("the workflow completion result", () => {
   })
 
   it("collapses the retries of one agent, and keeps each record that runs the same brief apart", async () => {
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...sequentialWorkflow,
       phases: [
         { ...sequentialWorkflow.phases[0], retry: { max: 2, stuck: false } },
@@ -142,7 +141,7 @@ describe("the workflow completion result", () => {
     }
     const source = { phase: "source", name: "Source", brief: "List items.", output: listOutput, writes: [] }
     const [work, review] = sequentialWorkflow.phases
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...sequentialWorkflow,
       phases: loop === "while"
         ? [{ repeat: { while: "source.items", max: 2 }, phases: [source, work] }]
@@ -191,7 +190,7 @@ describe("the workflow completion result", () => {
 
   it("keeps an item that a reassessment replaced in graph order", async () => {
     const list = { type: "list", max: 2, unique: "id", of: { type: "object", fields: { id: { type: "string" }, goal: { type: "string" } } } }
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "completion-replaced", name: "Replaced item",
       guardrails: { max_mutations_per_attempt: 10, max_parallel: 1 },
       phases: [
@@ -272,7 +271,7 @@ describe("the workflow completion result", () => {
 
   it("reports both phases that a condition skipped as skipped", async () => {
     const [work, review] = sequentialWorkflow.phases
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       ...sequentialWorkflow,
       phases: [
         { phase: "investigate", name: "Investigate", brief: "Investigate.", writes: [], output: { fields: { hypothesis: { type: "string" } } } },
@@ -304,7 +303,7 @@ describe("the workflow completion result", () => {
 
   it("names each named agent that failed, beside the result of the agent that finished", async () => {
     const [work, review] = sequentialWorkflow.phases
-    const independent = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const independent = loadedWorkflow({
       ...sequentialWorkflow,
       phases: [{ phase: "both", agents: [{ ...work, phase: undefined, agent: "work" }, { ...review, phase: undefined, agent: "review" }].map(({ phase: _phase, ...agent }) => agent) }],
     })
@@ -365,7 +364,7 @@ describe("the workflow completion result", () => {
 
   it("fans out over the salvaged list of a delivered handoff, and folds the findings of a delivered item agent into its join", async () => {
     const text = (description: string) => ({ type: "string", description })
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "salvaged-fan-out", name: "Salvaged fan-out",
       phases: [
         { phase: "find", ...record("find"), output: { summary: "The findings.", fields: { findings: { type: "list", description: "The findings.", max: 2, unique: "id", of: { type: "object", fields: { id: text("The id."), title: text("The title.") } } } } } },

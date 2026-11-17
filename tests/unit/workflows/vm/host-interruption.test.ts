@@ -7,7 +7,6 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, typ
 import { wireSessionSubscribers } from "../../../../src/orchestration/session/create-session-infra.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { acquireSessionResources } from "../../../../src/orchestration/session/session-resources-service.js"
-import { composeWorkflowHostLifecycle } from "../../../../src/orchestration/workflow-host/lifecycle.js"
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js"
 import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
@@ -16,6 +15,7 @@ import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host-types.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
+import { quietHostDeps } from "./host-test-support.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -49,6 +49,7 @@ function host(
 ) {
   const reader = asAsyncEventReadSurface(vm.store)
   return createWorkflowVmHost({
+    ...quietHostDeps(writer),
     servedConversations: async () => new Set(),
     requestAddenda: async () => [],
     startMode,
@@ -294,6 +295,7 @@ describe("workflow VM host SQLite interruption", () => {
       },
     })
     const settlementHost = createWorkflowVmHost({
+      ...quietHostDeps(asAsyncEventWriter(vm.store)),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "launch",
@@ -308,7 +310,8 @@ describe("workflow VM host SQLite interruption", () => {
       emit: () => {},
       now: () => 100,
       lifecycle: {
-        flushConversation: () => { order.push("conversation") },
+        ...quietHostDeps(asAsyncEventWriter(vm.store)).lifecycle,
+        settleBackground: () => { order.push("background") },
         drainWriter: () => { order.push("writer") },
         disposeProjections: () => { order.push("projections") },
       },
@@ -323,7 +326,7 @@ describe("workflow VM host SQLite interruption", () => {
     releaseWorker?.()
     expect(await disposing).toEqual({ kind: "disposed" })
     await running
-    expect(order).toEqual(["worker", "conversation", "writer", "projections"])
+    expect(order).toEqual(["worker", "background", "writer", "projections"])
   })
 
   it("commits abort responsively and disposes production resources only after the held worker settles", async () => {
@@ -338,7 +341,7 @@ describe("workflow VM host SQLite interruption", () => {
     // tell "finalize ran" apart from "finalize drained".
     const timeline: string[] = []
     bus.subscribeToType("workflow.attempt.interrupted", () => { timeline.push("workflow.attempt.interrupted") }, { delivery: "direct", deliveryClass: "durable" })
-    const disposalSteps = ["worker", "conversation", "adapters", "remaining"]
+    const disposalSteps = ["worker", "background", "remaining"]
     const resourceScope = Scope.makeUnsafe("sequential")
     // This driver's store is the synchronous tooling shape, so the lane the
     // session resources write through is created over it here. The runtime
@@ -388,6 +391,7 @@ describe("workflow VM host SQLite interruption", () => {
       },
     })
     const productionHost = createWorkflowVmHost({
+      ...quietHostDeps(asAsyncEventWriter(vm.store)),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "launch",
@@ -403,14 +407,16 @@ describe("workflow VM host SQLite interruption", () => {
       emit: (event) => { emit(event.type, { sessionId: vm.sessionId, data: event.data }) },
       now: () => 100,
       onPostPreflight: () => { wireSessionSubscribers(bus, resources) },
-      lifecycle: composeWorkflowHostLifecycle(resources.lifecycle, {
-        flushConversation: () => { timeline.push("conversation") },
-        disposeAdapters: () => { timeline.push("adapters") },
+      lifecycle: {
+        settleBackground: () => { timeline.push("background") },
+        drainEventBus: resources.lifecycle.drainEventBus,
+        drainWriter: resources.lifecycle.drainWriter,
+        disposeProjections: resources.lifecycle.disposeProjections,
         disposeRemaining: async () => {
           timeline.push("remaining")
           await Effect.runPromise(Scope.close(resourceScope, Exit.fail(new Error("workflow aborted"))))
         },
-      }),
+      },
     })
 
     const running = productionHost.run()

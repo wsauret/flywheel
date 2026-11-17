@@ -7,7 +7,7 @@ import type { Accessor } from "solid-js"
 /** The one slice of a row the controls read: its id for the mutation, its
  *  kind for the mutation type, the actions it admits, and the parent's tool
  *  call that Stop terminates. */
-export type ControlledSessionRow = Pick<SessionRow, "id" | "kind" | "admittedActions" | "parentSessionId" | "parentToolUseId">
+type ControlledSessionRow = Pick<SessionRow, "id" | "kind" | "admittedActions" | "parentSessionId" | "parentToolUseId">
 
 interface SessionControlsDeps {
   /** The foreground session's row with its admitted actions. */

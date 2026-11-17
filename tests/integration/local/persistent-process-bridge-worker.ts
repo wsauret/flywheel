@@ -2,6 +2,7 @@ import { connectPersistentProcessBridge } from "../../../src/infra/persistent-pr
 
 declare const self: {
   addEventListener(type: "message", listener: (event: MessageEvent) => void): void
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: mirrors the worker global postMessage, which takes any structured-clone value
   postMessage(message: unknown, transfer: readonly unknown[]): void
 }
 

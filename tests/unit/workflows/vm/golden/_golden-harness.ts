@@ -13,6 +13,7 @@ import { buildWorkflowControlInitializedFact, parseWorkflowSessionFact } from ".
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import type { CanonicalOutcome, CanonicalScenario } from "./_canonical-scenarios.js"
+import { quietHostDeps } from "../host-test-support.js"
 
 interface MemoryStore extends EventReader, AsyncGuardedEventWriter {
   readonly events: StoredFact[]
@@ -60,6 +61,7 @@ export async function runCanonicalScenario(scenario: CanonicalScenario): Promise
     },
   }
   const makeHost = (startMode: WorkflowVmStartMode, attemptRunner = outcomeRunner): WorkflowVmHost => createWorkflowVmHost({
+    ...quietHostDeps(store),
     servedConversations: async () => new Set(),
     requestAddenda: async () => [],
     startMode,

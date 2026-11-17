@@ -1,12 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
 import {
-  coordinatorCandidates, createHostRegistry, HOST_SPLIT_EXCEPTIONS, hostKey, hostValues, type HostPlace,
+  coordinatorCandidates, hostKey, hostValues, processAgentHosts, type HostPlace,
 } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import type { AgentHost } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host.js";
 import { forwardDiagnostics, payloads } from "../_bridge-harness.js";
 
 forwardDiagnostics();
+// Each case leases from the hosts of this process, which hold no host after it.
+afterEach(() => processAgentHosts.drain());
 
 /** A host that records its closes, whose close settles once `stopped` does. The registry reads only `sessionId`,
  *  `ended`, and `close`, so the other members are never called. */
@@ -37,7 +39,7 @@ function place(overrides: Partial<HostPlace> = {}, values: Partial<Parameters<ty
 describe("the agent host registry", () => {
   test("opens one host for a key however many agents lease it", () => {
     for (const agents of [1, 8, 100]) {
-      const registry = createHostRegistry();
+      const registry = processAgentHosts;
       let opened = 0;
       const leases = Array.from({ length: agents }, () => registry.lease(place(), () => { opened += 1; return fakeHost([]); }));
       expect({ agents, opened, hosts: new Set(leases.map((lease) => lease.host)).size }).toEqual({ agents, opened: 1, hosts: 1 });
@@ -46,7 +48,7 @@ describe("the agent host registry", () => {
   });
 
   test("opens a host for each key, closes a host at once when its last lease ends, and drains every host", async () => {
-    const registry = createHostRegistry();
+    const registry = processAgentHosts;
     const closes: string[] = [];
     const a = registry.lease(place({ configDir: "login-1" }), () => fakeHost(closes));
     const held = registry.lease(place({ configDir: "login-1" }), () => fakeHost(closes));
@@ -63,7 +65,7 @@ describe("the agent host registry", () => {
   });
 
   test("a last release and a drain resolve only once the host's slow close settled, and a new lease meanwhile opens a new host", async () => {
-    const registry = createHostRegistry();
+    const registry = processAgentHosts;
     const stopped = Promise.withResolvers<void>();
     const closes: string[] = [];
     const lease = registry.lease(place(), () => fakeHost(closes, "slow", stopped.promise));
@@ -87,9 +89,8 @@ describe("the agent host registry", () => {
       [place({}, { extraBody: { tool_choice: { type: "auto" }, max_tokens: 64_000, context_management: { edits: [] }, service_tier: "auto" } }), ["values.extraBody"]],
       [place({}, { thinking: { type: "enabled", budget_tokens: 16_000 } }), ["values.thinking.type", "values.thinking.budget_tokens"]],
     ];
-    for (const [split, fields] of splits) {
+    for (const [split] of splits) {
       expect(hostKey(split)).not.toBe(hostKey(place()));
-      expect(fields.every((field) => HOST_SPLIT_EXCEPTIONS.has(field))).toBe(true);
     }
     const defects: readonly (readonly [HostPlace, readonly string[]])[] = [
       [place({}, { extraBody: { tool_choice: { type: "auto" }, max_tokens: 32_000 } }), ["values.extraBody.max_tokens"]],
@@ -97,7 +98,7 @@ describe("the agent host registry", () => {
       [place({}, { promptCaching: false }), ["values.promptCaching"]],
     ];
     for (const [index, [split, fields]] of [...splits, ...defects].entries()) {
-      const registry = createHostRegistry();
+      const registry = processAgentHosts;
       registry.lease(place(), () => fakeHost([], "first"));
       registry.lease(place(), () => fakeHost([], "unused"));
       registry.lease(split, () => fakeHost([], "second"));

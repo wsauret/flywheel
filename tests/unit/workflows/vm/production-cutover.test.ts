@@ -3,12 +3,13 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { createWorkflowContextStore } from "../../../../src/workflows/context-bundle/context-store.js"
 import { createWorkflowViewStore } from "../../../../src/workflows/view/view-store.js"
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js"
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
 import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
+import { quietHostDeps } from "./host-test-support.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -26,7 +27,7 @@ function workflowStores(vm: SqliteVmDriver) {
 
 describe("workflow VM production cutover", () => {
   it("runs confirmed and adjusted reassessment of a repeat's items through the production host", async () => {
-    const workflow: WorkflowDefinition = {
+    const workflow = loadedWorkflow({
       id: "production-reassessment",
       name: "Production reassessment",
       phases: [
@@ -40,7 +41,7 @@ describe("workflow VM production cutover", () => {
         },
         { phase: "tail", brief: "Do the tail work.", name: "tail", writes: [] },
       ],
-    }
+    })
     const vm = new SqliteVmDriver({
       workflow,
       skills: testSkillRevision([]),
@@ -92,6 +93,7 @@ describe("workflow VM production cutover", () => {
       recordInvocation: async () => {},
     })
     const host = createWorkflowVmHost({
+      ...quietHostDeps(asAsyncEventWriter(vm.store)),
       servedConversations: async () => new Set(),
       requestAddenda: async () => [],
       startMode: "launch",

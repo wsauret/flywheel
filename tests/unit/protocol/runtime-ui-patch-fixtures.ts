@@ -1,5 +1,5 @@
 import type { RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime-ui-protocol-types.js"
-import { sideQuestionCursor, sideQuestionRequestCursor, type SideQuestionHistoryView } from "../../../src/protocol/modules/side-question.js"
+import { sideQuestionCursor, sideQuestionRequestCursor, type SideQuestionView } from "../../../src/protocol/modules/side-question.js"
 
 const sessionRow = {
   id: "session-1", kind: "chat", title: "Session", lifecycleState: "active", notices: [],
@@ -99,13 +99,17 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
     cursor: sideQuestionCursor("session-1"), position: 17, prevPosition: 11,
     payload: { kind: "side-question.changed", view: {
       revision: 1, exchanges: [{ id: "exchange-1", question: "Question", answer: "Answer" }],
-    } satisfies SideQuestionHistoryView },
+    } satisfies Pick<SideQuestionView, "revision" | "exchanges"> },
   },
   "side-question-request.changed": {
     cursor: sideQuestionRequestCursor("session-1"), position: 17, prevPosition: 11,
     payload: { kind: "side-question-request.changed", view: {
       current: { id: "request-1", question: "Next question", answer: "", state: "running" },
     } },
+  },
+  "side-question-request.appended": {
+    cursor: sideQuestionRequestCursor("session-1"), position: 18, prevPosition: 17,
+    payload: { kind: "side-question-request.appended", text: "Partial" },
   },
 } satisfies { readonly [Kind in RuntimeUiPatchPayload["kind"]]: RuntimeUiPatch & { readonly payload: Extract<RuntimeUiPatchPayload, { readonly kind: Kind }> } }
 

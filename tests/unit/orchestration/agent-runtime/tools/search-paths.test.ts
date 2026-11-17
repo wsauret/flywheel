@@ -4,7 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { searchDefinition } from "../../../../../src/orchestration/agent-runtime/tools/search.js";
-import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { executePreparedTool, prepareToolCall, type ToolExecutionGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
+import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
+import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./_fixtures.js";
 import * as ripgrep from "../../../../../src/orchestration/agent-runtime/tools/ripgrep.js";
@@ -23,7 +25,7 @@ describe("search path resolution", () => {
   });
 
   async function dispatchSearch(input: RuntimeToolInput, context = makeContext({ executionCwd: tmpDir })) {
-    const prepared = prepareToolCall({ id: "search-call", name: "search", input }, new Map([["search", searchDefinition]]));
+    const prepared = prepareToolCall({ id: "search-call", name: "search", input }, new Map([["search", searchDefinition]]), admitEveryTool);
     const result = await executePreparedTool(prepared, context);
     if (typeof result.content !== "string") throw new Error("search returned non-text content");
     return { outcome: result.outcome, content: result.content, input: prepared.input };
@@ -171,6 +173,22 @@ describe("search path resolution", () => {
     expect(refused.outcome).toBe("error");
     expect(refused.content).toContain(path.join(tmpDir, "a.txt b.txt"));
     expect(refused.content).toContain("'a.txt', 'b.txt'");
+  });
+
+  it("declares the canonical search root as the reserved path of a search and of a read with search arguments", async () => {
+    seedRoots();
+    const reserved: Array<readonly string[]> = [];
+    const gate: ToolExecutionGate = (gateInput) => {
+      reserved.push(gateInput.preparedReservedPaths);
+      return { kind: "allow" };
+    };
+    const tools = new Map([["search", searchDefinition], ["read", readDefinition]]);
+    for (const [name, input] of [["search", { pattern: "needle", path: "src" }], ["read", { pattern: "needle", path: "src" }], ["search", { pattern: "needle" }]] as const) {
+      const result = await executePreparedTool(prepareToolCall({ id: name, name, input }, tools, admitEveryTool), makeContext({ executionCwd: tmpDir }), { gate });
+      expect(result.outcome).toBe("ok");
+    }
+    const src = fs.realpathSync.native(path.join(tmpDir, "src"));
+    expect(reserved).toEqual([[src], [src], [fs.realpathSync.native(tmpDir)]]);
   });
 
   it("moves a glob in the path into the glob filter", async () => {

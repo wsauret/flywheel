@@ -1,11 +1,11 @@
-import { createAccountModuleAnswerReader } from "../protocol/account-attach.js"
+import { createAccountModuleAnswerReader, type AccountModuleAnswerHandler } from "../protocol/account-attach.js"
 
 /** One `module` attach: writes its preface and reads answers until the
  *  service ends the request. A close before the first byte cannot say why on
  *  the wire: a service refuses an attach it cannot read by closing it, which
  *  is what an older build does with the `module` intent, and a current
  *  service that accepted the request and then exited closes the same way. */
-export function requestAccountModule(socketPath: string, preface: Uint8Array, onAnswer: (answer: unknown) => void): Promise<void> {
+export function requestAccountModule(socketPath: string, preface: Uint8Array, onAnswer: AccountModuleAnswerHandler): Promise<void> {
   const reader = createAccountModuleAnswerReader()
   return new Promise((resolve, reject) => {
     let settled = false

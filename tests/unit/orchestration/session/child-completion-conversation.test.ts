@@ -16,7 +16,7 @@ async function parentConversation() {
   stores.push(store)
   const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store })
   const sessionId = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent", initialState: "inactive" })
-  const input = { reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) }
+  const input = { reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) }
   return { store, sessionId, conversationId: "parent-conversation", input }
 }
 

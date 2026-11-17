@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test"
-import { createDefinitionStalenessProjection } from "../../../../src/orchestration/modules/definition-overrides/protocol.js"
+import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { createDefinitionOverridesProtocol } from "../../../../src/orchestration/modules/definition-overrides/protocol.js"
 import type { DefinitionOverrideOperations, DefinitionStalenessReport } from "../../../../src/workflows/definitions/override-staleness.js"
+import { fixedDefinitions } from "../../../helpers/project-definitions.js"
 
 /** Operations whose report a test sets, with the subscription the projection
  *  publishes from and a `list` that reloads the way the service does. */
@@ -8,11 +10,32 @@ function operations(initial: DefinitionStalenessReport) {
   let report = initial
   const listeners = new Set<(report: DefinitionStalenessReport) => void>()
   const notify = () => { for (const listener of listeners) listener(report) }
-  const overrides: Pick<DefinitionOverrideOperations, "list" | "subscribe"> = {
+  const unused = () => { throw new Error("the protocol only lists and subscribes") }
+  const overrides: DefinitionOverrideOperations = {
     list: async () => { notify(); return report },
     subscribe: (listener: (report: DefinitionStalenessReport) => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+    available: unused, diff: unused, prepare: unused, apply: unused, refresh: unused, proposal: unused, finalizeSkillPublication: unused,
   }
   return { overrides, set: (next: DefinitionStalenessReport) => { report = next; notify() }, listeners }
+}
+
+const SNAPSHOT_POSITION = 41
+
+/** The module's protocol runtime over `overrides`, publishing into `published`. */
+function protocol(overrides: DefinitionOverrideOperations | undefined, published: RuntimeUiPatchInput[] = []) {
+  const runtime = createDefinitionOverridesProtocol({
+    definitions: { ...fixedDefinitions(), ...(overrides ? { definitionOverrides: overrides } : {}) },
+    publish: (patch) => { published.push(patch); return undefined },
+    snapshotPosition: () => SNAPSHOT_POSITION,
+  })
+  return {
+    async snapshot() {
+      const result = await runtime.serve.definitionStalenessSnapshot({ type: "definitionStalenessSnapshot" })
+      expect(result.snapshotPosition).toBe(SNAPSHOT_POSITION)
+      return result.definitionStaleness
+    },
+    dispose: runtime.dispose,
+  }
 }
 
 function override(status: "current" | "upstream-changed", index: number, valid = true) {
@@ -31,9 +54,9 @@ function override(status: "current" | "upstream-changed", index: number, valid =
 }
 
 test("a snapshot reloads through the operations and publishes one complete latest-collapsible view per change", async () => {
-  const published: unknown[] = []
+  const published: RuntimeUiPatchInput[] = []
   const ops = operations({ overrides: [], diagnostics: [] })
-  const projection = createDefinitionStalenessProjection({ overrides: ops.overrides, publish: (patch) => published.push(patch) })
+  const projection = protocol(ops.overrides, published)
   expect((await projection.snapshot()).reviewCount).toBe(0)
   expect(published).toHaveLength(1)
   await projection.snapshot()
@@ -55,7 +78,7 @@ test("a rejected override is a problem, not an override in effect, and waits for
     overrides: [override("upstream-changed", 0), override("upstream-changed", 1, false)],
     diagnostics: [{ path: "/prompt-1.md", layer: "user", message: "missing description" }],
   })
-  const projection = createDefinitionStalenessProjection({ overrides: ops.overrides, publish: () => {} })
+  const projection = protocol(ops.overrides)
 
   const view = await projection.snapshot()
 
@@ -66,8 +89,8 @@ test("a rejected override is a problem, not an override in effect, and waits for
 })
 
 test("a composition without override operations answers the empty view and publishes nothing", async () => {
-  const published: unknown[] = []
-  const projection = createDefinitionStalenessProjection({ overrides: undefined, publish: (patch) => published.push(patch) })
+  const published: RuntimeUiPatchInput[] = []
+  const projection = protocol(undefined, published)
   expect(await projection.snapshot()).toEqual({ overrides: [], diagnostics: [], reviewCount: 0 })
   expect(published).toEqual([])
   projection.dispose()

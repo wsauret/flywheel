@@ -2,7 +2,7 @@ import { afterEach, expect, spyOn, test } from "bun:test"
 
 import { Log } from "../../../src/infra/log.js"
 import { ownedProcessBackend, type OwnedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
-import { createProcessSupervisor } from "../../../src/infra/process-supervisor.js"
+import { createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { payloadThatRunsForever } from "../../helpers/payload.js"
 import { createRealProcessFixture, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 
@@ -31,7 +31,7 @@ test("an owner that fails when told of its guardian's loss keeps no launch from 
       return Object.assign(launch, { stop: () => { stopped.push(launch.pid); stop() } })
     },
   }
-  const supervisor = createProcessSupervisor({ killGraceMs: 200, backend })
+  const supervisor = createProcessSupervisor({ killGraceMs: 200, backend, guardianCommand: guardianCommand() })
   const log = Log.create({ service: "process-supervisor" })
   const error = spyOn(log, "error")
 

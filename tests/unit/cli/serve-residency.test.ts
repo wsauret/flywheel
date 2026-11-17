@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 
-import { createRegistrationFollower, rememberAnsweredLoginHome, serveResidency } from "../../../src/cli/serve.js"
+import { createRegistrationFollower, rememberAnsweredLoginHome, serveResidency } from "../../../src/cli/serve-retirement.js"
 import { Log } from "../../../src/infra/log.js"
 import { ServeLifetime } from "../../../src/orchestration/app-service/serve-lifetime.js"
 

@@ -52,16 +52,12 @@ describe("streamAssistantTurn durable request evidence", () => {
     expect(providerDispatched).toBe(false)
   })
 
-  test("reuses one durable transformer application across provider failover", async () => {
-    const calls: Array<{ attribution: string; contextApplication: unknown; interactionProfileId: string; omittedTools: ReadonlyArray<{ name: string; reason: string }> }> = []
+  test("reuses one prepared attempt's request evidence across provider failover", async () => {
+    const calls: Array<{ attribution: string; interactionProfileId: string; omittedTools: ReadonlyArray<{ name: string; reason: string }> }> = []
     const auditIds: string[] = []
     const begun: string[] = []
     const closed: string[] = []
     const measured: number[] = []
-    const applications = [{
-      applicationId: "application-1", transformerId: "transformer-1", seam: "modelContext", order: 1,
-      outcome: "error" as const, inputHash: "a".repeat(64), outputHash: "a".repeat(64),
-    }]
     const interactionProfile = resolveModelInteractionProfile("gpt-6-luna", "openai")
     const client = chain({
       candidates: [subscriptionCandidate("chatgpt"), subscriptionCandidate("github_copilot")],
@@ -80,19 +76,18 @@ describe("streamAssistantTurn durable request evidence", () => {
     const requestAudit: ProviderRequestAuditWriter = {
       async recordRequest(input) {
         auditIds.push(input.requestId)
-        calls.push({ attribution: input.attribution.accessProvider, contextApplication: input.contextApplication, interactionProfileId: input.interactionProfileId, omittedTools: input.omittedTools })
+        calls.push({ attribution: input.attribution.accessProvider, interactionProfileId: input.interactionProfileId, omittedTools: input.omittedTools })
         return { requestId: `request-${calls.length}`, turn: input.turn }
       },
       recordResponse() {}, recordUsage() {}, recordStreamStarted() {}, recordStreamEvent() {}, recordStreamCompleted() {},
     }
 
     await streamAssistantTurn({
-      client, executionCwd: "/scratch", messages: [{ kind: "user", content: "hello" }], tools: [], systemPrompt: stableSystemPrompt("transformed"),
+      client, executionCwd: "/scratch", messages: [{ kind: "user", content: "hello" }], tools: [], systemPrompt: stableSystemPrompt("system"),
       interactionProfile,
       prepareAttempt: (): PreparedRequestAttempt => ({
-        systemPrompt: stableSystemPrompt("transformed"), tools: [], attemptStaticTokens: 1,
+        systemPrompt: stableSystemPrompt("system"), tools: [], attemptStaticTokens: 1,
         auditTools: [],
-        contextApplication: { identity: "context-1", applications },
         interactionProfileId: "default",
         omittedTools: [{ name: "hidden", reason: "not admitted" }],
       }),
@@ -111,8 +106,8 @@ describe("streamAssistantTurn durable request evidence", () => {
     })
 
     expect(calls).toEqual([
-      { attribution: "chatgpt", contextApplication: { identity: "context-1", applications }, interactionProfileId: "default", omittedTools: [{ name: "hidden", reason: "not admitted" }] },
-      { attribution: "github_copilot", contextApplication: { identity: "context-1", applications }, interactionProfileId: "default", omittedTools: [{ name: "hidden", reason: "not admitted" }] },
+      { attribution: "chatgpt", interactionProfileId: "default", omittedTools: [{ name: "hidden", reason: "not admitted" }] },
+      { attribution: "github_copilot", interactionProfileId: "default", omittedTools: [{ name: "hidden", reason: "not admitted" }] },
     ])
     expect(new Set(auditIds).size).toBe(2)
     expect(begun).toEqual(auditIds)

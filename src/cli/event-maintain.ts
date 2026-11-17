@@ -18,7 +18,7 @@ import {
 } from "../orchestration/session/event-store-maintenance.js"
 import { dedupToolContent, type ToolContentDedupResult } from "../orchestration/migrations/tool-content-dedup.js"
 import { CliArgsError, type CliArgsResult, parseArgsResult } from "../infra/cli-args.js"
-import { ContainedDirectory } from "../infra/descriptor-directory.js"
+import { openExistingContainedDirectory } from "../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../infra/directory-authorities.js"
 import { acquireProjectStateGeneration, type ProjectStateLease } from "../orchestration/project-state-lease.js"
 
@@ -104,7 +104,7 @@ export async function runMaintain(argv: readonly string[], projectRoot: string):
  *  another process owns it. The window is released on refusal, so the refusal
  *  never keeps a runtime from starting. */
 function exclusiveGeneration(projectRoot: string): ProjectStateLease | "held" {
-  const flywheel = ContainedDirectory.openExisting(projectRoot, [FLYWHEEL_DIR_NAME])
+  const flywheel = openExistingContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME])
   if (!flywheel) throw new Error(`this project holds no Flywheel state: ${projectRoot}`)
   const generation = acquireProjectStateGeneration(flywheel)
   if (!generation.otherOwnersLive) return generation

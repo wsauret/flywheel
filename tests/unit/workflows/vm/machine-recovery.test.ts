@@ -1,5 +1,4 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import {
   initializeWorkflow,
   replayWorkflow,
@@ -9,13 +8,13 @@ import {
 import { compileWorkflowControl, launchGuardrailLimits } from "../../../../src/workflows/vm/compile.js";
 import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
 import type { DecodedWorkflowEvent, WorkflowProposalEncoding } from "../../../../src/workflows/vm/events.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { workflowProgress, workflowSummaryText } from "../../../../src/protocol/client/workflow-progress.js";
 import { frontendView } from "./_tree-fixtures.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js";
 import { acknowledge, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 describe("workflow machine recovery semantics", () => {
   it.each([
@@ -166,7 +165,7 @@ describe("workflow machine recovery semantics", () => {
   describe("a failed agent of an item before encoding 14", () => {
     /** A review over three items, then one agent; the review of `b` fails,
      *  and so does the agent when `soloFails`. */
-    const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    const workflow = loadedWorkflow({
       id: "items",
       name: "Items",
       input: { fields: { items: { type: "list", description: "The items.", max: 3, unique: "id", of: { type: "object", fields: { id: { type: "string", description: "The item id." } } } } } },

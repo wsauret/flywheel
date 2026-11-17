@@ -4,8 +4,17 @@ import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/comm
 import {
   initializeWorkflow,
   replayWorkflow,
+  transitionDecodedWorkflow,
   transitionWorkflow,
 } from "../../../../src/workflows/vm/transition.js";
+import type { DecodedWorkflowEvent } from "../../../../src/workflows/vm/events.js";
+import type { WorkflowMachineState } from "../../../../src/workflows/vm/control-types.js";
+
+/** A follow-up run event as a build before 2026-10-03 proposed it, at
+ *  encoding 13, the last that holds one. */
+function recorded(state: WorkflowMachineState, event: DecodedWorkflowEvent) {
+  return transitionDecodedWorkflow(state, event, 13);
+}
 
 function control(status: CommittedWorkflowControl["status"] = "ready"): CommittedWorkflowControl {
   const ownership = { _tag: "workflow", workflowDefinitionId: "fake" } as const;
@@ -115,21 +124,16 @@ describe("workflow machine lifecycle", () => {
     expect(aborted.state.context.pending).toBeNull();
 
     const completed = initializeWorkflow(control("completed"));
-    const followUp = acknowledge(transitionWorkflow(completed.state, {
+    const followUp = acknowledge(recorded(completed.state, {
       type: "FOLLOW_UP_REQUESTED", input: { text: "Explain" }, identity: { kind: "identified", inputID: "input-1" }, conversationId: "follow-up-1", requestSequence: 1,
     }));
     expect(followUp.state.lifecycle).toBe("follow_up");
-    expect(followUp.command).toMatchObject({
-      kind: "run_follow_up", input: { input: { text: "Explain" }, conversationId: "follow-up-1", requestSequence: 1 },
-    });
-    const done = acknowledge(transitionWorkflow(followUp.state, { type: "FOLLOW_UP_SUCCEEDED", conversationId: "follow-up-1", requestSequence: 1 }));
+    expect(followUp.command).toEqual({ kind: "none" });
+    const done = acknowledge(recorded(followUp.state, { type: "FOLLOW_UP_SUCCEEDED", conversationId: "follow-up-1", requestSequence: 1 }));
     expect(done.state.lifecycle).toBe("completed");
 
     const recovered = acknowledge(transitionWorkflow(replayWorkflow(followUp.state.context.committed), { type: "RECOVER", progressed: [] }));
-    expect(recovered.command).toMatchObject({
-      kind: "run_follow_up",
-      input: { input: { text: "Explain" }, conversationId: "follow-up-1", requestSequence: 1 },
-    });
+    expect(recovered.command).toEqual({ kind: "none" });
     expect(recovered.state.context.committed.followUp).toEqual({
       conversationId: "follow-up-1",
       requestSequence: 1,
@@ -137,18 +141,18 @@ describe("workflow machine lifecycle", () => {
       pendingInput: { text: "Explain" },
     });
 
-    expect(transitionWorkflow(executing.state, {
+    expect(recorded(executing.state, {
       type: "FOLLOW_UP_REQUESTED", input: { text: "Steer" }, identity: { kind: "identified", inputID: "steer-1" }, conversationId: "not-follow-up", requestSequence: 1,
     })).toEqual({ state: executing.state, command: { kind: "none" } });
   });
 
-  it("resumes an aborted follow-up only after its ordinary resume commit", () => {
-    const requested = acknowledge(transitionWorkflow(initializeWorkflow(control("completed")).state, {
+  it("replays the Resume of an aborted recorded follow-up only after its ordinary resume commit", () => {
+    const requested = acknowledge(recorded(initializeWorkflow(control("completed")).state, {
       type: "FOLLOW_UP_REQUESTED", input: { text: "Keep this exact prompt" }, identity: { kind: "identified", inputID: "input-1" }, conversationId: "follow-up-1", requestSequence: 1,
     }));
-    const aborted = acknowledge(transitionWorkflow(requested.state, { type: "ABORT", reason: "operator" }));
+    const aborted = acknowledge(recorded(requested.state, { type: "ABORT", reason: "operator" }));
     const before = aborted.state.context.committed;
-    const proposed = transitionWorkflow(replayWorkflow(before), { type: "RESUME", readers: {} });
+    const proposed = recorded(replayWorkflow(before), { type: "RESUME", readers: {} });
     expect(proposed.command.kind).toBe("commit");
     expect(proposed.state.context.committed).toEqual(before);
     expect(proposed.state.context.pending?.facts.map(({ type }) => type)).toEqual([
@@ -164,7 +168,7 @@ describe("workflow machine lifecycle", () => {
       type: "COMMIT_SUCCEEDED", proposalId: proposed.state.context.pending!.proposalId,
       aggregateSeq: resumed.state.context.committed.aggregateSeq,
     }).command.kind).toBe("none");
-    expect(() => transitionWorkflow(resumed.state, {
+    expect(() => recorded(resumed.state, {
       type: "FOLLOW_UP_SUCCEEDED", conversationId: "follow-up-1", requestSequence: 2,
     })).toThrow("request 2");
   });

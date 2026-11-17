@@ -5,8 +5,10 @@ import { createRequestStreamTelemetry } from "../../../../src/orchestration/agen
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { asModelClient, attemptHistoryTarget, ownHistoryTarget } from "./_model-client.js"
+import { withDebugTier } from "../../../helpers/debug-tier.js"
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js"
-import type { AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
+import { handleStreamEvent, settledTextOf, type AssistantTurnResult } from "../../../../src/orchestration/agent-runtime/assistant-turn-result.js"
+import type { SettledTextOf } from "../../../../src/orchestration/agent-runtime/generation-measurement.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../src/orchestration/agent-runtime/assistant-turn-attempt.js"
 
@@ -53,8 +55,21 @@ function recordingAudit(): RecordingAudit {
   return { writer, recorded }
 }
 
-async function measureOutput(events: readonly (readonly [number, ProviderStreamEvent])[], prepare = async () => {}) {
+/** The turn result that an attempt folds its stream events into, which the measurement reads settled text from. */
+function turnResult() {
+  const result: AssistantTurnResult = {
+    outcome: { kind: "ok", stopReason: "unknown" }, assistantContent: [], toolCalls: [], assistantMetadata: undefined,
+    lastAssistantMetadata: undefined, usageAnchor: undefined, terminalEvent: undefined, transportContext: undefined,
+  }
+  return {
+    fold: (event: ProviderStreamEvent) => { handleStreamEvent(event, result) },
+    textOf: ((blockKey) => settledTextOf(result, blockKey)) satisfies SettledTextOf,
+  }
+}
+
+async function measureOutput(events: readonly (readonly [number, ProviderStreamEvent])[], prepare = async () => {}, textOf?: SettledTextOf) {
   let now = 0
+  const result = turnResult()
   const clock = spyOn(performance, "now").mockImplementation(() => now)
   const counted: string[] = []
   const summaries: Parameters<NonNullable<ProviderRequestAuditWriter["recordStreamSummary"]>>[1][] = []
@@ -68,12 +83,13 @@ async function measureOutput(events: readonly (readonly [number, ProviderStreamE
   try {
     for (const [at, event] of events) {
       now = at
+      result.fold(event)
       await telemetry.observeNormalized(event)
       expect(counted).toEqual([])
     }
     now += 100_000
-    await telemetry.complete("ok")
-    await telemetry.complete("ok")
+    await telemetry.complete("ok", textOf ?? result.textOf)
+    await telemetry.complete("ok", textOf ?? result.textOf)
     expect(summaries).toHaveLength(1)
     return { generation: summaries[0]!.generation, counted, summaries }
   } finally {
@@ -81,15 +97,53 @@ async function measureOutput(events: readonly (readonly [number, ProviderStreamE
   }
 }
 
+const HIGH_VOLUME_SUMMARY = {
+  rawEventCount: 1002,
+  countsByKind: { stream_attempt_start: 1, stream_retry: 1, text_delta: 1000 },
+  recovery: { streamRetryCount: 1, reasoningDisabledRetryCount: 1 },
+}
+
+/** A writer that keeps the raw event kinds, the summary, and the order of the stream records. */
+function budgetWriter() {
+  const order: string[] = []
+  const rawKinds: string[] = []
+  let summary: Parameters<NonNullable<ProviderRequestAuditWriter["recordStreamSummary"]>>[1] | undefined
+  const writer: ProviderRequestAuditWriter = {
+    recordRequest: (input) => ({ requestId: "request-budget", turn: input.turn }),
+    recordResponse() {},
+    recordUsage() {},
+    recordStreamStarted() { order.push("started") },
+    recordStreamEvent(_handle, input) { rawKinds.push(input.kind) },
+    recordStreamCompleted() { order.push("completed") },
+    recordStreamSummary(_handle, input) {
+      order.push("summary")
+      summary = input
+    },
+  }
+  return { writer, order, rawKinds, summary: () => summary }
+}
+
+/** One attempt start, 1000 text deltas, and one retry, then completion. */
+async function observeHighVolume(writer: ProviderRequestAuditWriter): Promise<void> {
+  const telemetry = createRequestStreamTelemetry(writer, { requestId: "request-budget", turn: 1 })
+  if (!telemetry) throw new Error("expected stream telemetry for a writer and a handle")
+  await telemetry.observeNormalized({ kind: "stream_attempt_start", disableReasoning: true })
+  for (let i = 0; i < 1000; i++) {
+    await telemetry.observeNormalized({ kind: "text_delta", text: "x", blockKey: `text:${i}` })
+  }
+  await telemetry.observeNormalized({ kind: "stream_retry", attempt: 1, maxAttempts: 1, reason: "blip", delayMs: 1, error: { message: "blip" } })
+  await telemetry.complete("ok", () => "x")
+}
+
 describe("streamAssistantTurn telemetry", () => {
-  test("fences a handoff before asynchronous telemetry can delay its publication", async () => {
+  test("fences a handoff before asynchronous telemetry can delay its publication", () => withDebugTier(async () => {
     const telemetryEntered = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()
     let fenced = false
     let published = false
     const writer = {
       ...recordingAudit().writer,
-      recordStreamEvent(_handle: unknown, event: { kind: string }) {
+      recordStreamEvent(...[, event]: Parameters<ProviderRequestAuditWriter["recordStreamEvent"]>) {
         if (event.kind !== "tool_input_start") return
         telemetryEntered.resolve()
         return release.promise
@@ -106,7 +160,7 @@ describe("streamAssistantTurn telemetry", () => {
     release.resolve()
     await streaming
     await attempt.close()
-  })
+  }))
   test("counts assembled blocks once, independently of chunk boundaries and terminal replacement", async () => {
     const first = await measureOutput([
       [1000, { kind: "text_delta", blockKey: "a", text: "hello " }],
@@ -131,6 +185,24 @@ describe("streamAssistantTurn telemetry", () => {
     expect(replaced.generation).toMatchObject({ outputTokens: 3, durationMs: 1000 })
   })
 
+  test("measures a 3-block answer with the same timings and counts, counting the turn result's settled text", async () => {
+    const answer = [
+      [1000, { kind: "text_delta", blockKey: "a", text: "one " }],
+      [2000, { kind: "text_delta", blockKey: "a", text: "two" }],
+      [3000, { kind: "text_delta", blockKey: "b", text: "three " }],
+      [4500, { kind: "text_delta", blockKey: "b", text: "four" }],
+      [5000, { kind: "text_delta", blockKey: "c", text: "five " }],
+      [7000, { kind: "text_delta", blockKey: "c", text: "six" }],
+    ] as const
+    const measured = await measureOutput(answer)
+    expect(measured.counted).toEqual(["one two", "three four", "five six"])
+    expect(measured.generation).toEqual({ kind: "recorded", basis: "O200kBase", outputTokens: 25, durationMs: 4500, measuredBlocks: 3, excludedBlocks: 0 })
+    // The measurement holds no streamed text: what it counts is what the turn result reports.
+    const settled = await measureOutput(answer, undefined, (blockKey) => `settled ${blockKey}`)
+    expect(settled.counted).toEqual(["settled a", "settled b", "settled c"])
+    expect(settled.generation).toMatchObject({ durationMs: 4500, measuredBlocks: 3, excludedBlocks: 0 })
+  })
+
   test("unions overlapping output intervals and excludes reasoning, waiting and inter-block gaps", async () => {
     const result = await measureOutput([
       [100, { kind: "thinking_delta", blockKey: "r", text: "reasoning" }],
@@ -144,7 +216,7 @@ describe("streamAssistantTurn telemetry", () => {
       [6000, { kind: "text_delta", blockKey: "b", text: "gh" }],
       [9000, { kind: "done", stopReason: "end_turn" }],
     ])
-    expect(result.counted).toEqual(["abcd", '{ "b": 1 }', "efgh"])
+    expect(result.counted).toEqual(["abcd", "efgh", '{ "b": 1 }'])
     expect(result.generation).toMatchObject({ outputTokens: 18, durationMs: 2500, measuredBlocks: 3, excludedBlocks: 0 })
     const stall = await measureOutput([
       [1000, { kind: "text_delta", blockKey: "a", text: "x" }],
@@ -337,7 +409,7 @@ describe("streamAssistantTurn telemetry", () => {
       await telemetry.observeNormalized({ kind: "text_delta", text: "a", blockKey: "a" })
       now = 2000
       await telemetry.observeNormalized({ kind: "text_delta", text: "b", blockKey: "a" })
-      await expect(telemetry.complete("ok")).rejects.toBe(failure)
+      await expect(telemetry.complete("ok", () => "ab")).rejects.toBe(failure)
       expect(summaries).toBe(0)
     } finally {
       clock.mockRestore()
@@ -360,8 +432,8 @@ describe("streamAssistantTurn telemetry", () => {
       }
       now = 17001
       await telemetry.observe({ source: "watchdog", kind: "thinking_stall", metadata: { elapsedMs: 6000 } })
-      await telemetry.complete("ok")
-      await telemetry.complete("ok")
+      await telemetry.complete("ok", () => undefined)
+      await telemetry.complete("ok", () => undefined)
       expect(summaries).toHaveLength(1)
       expect(summaries[0]).toMatchObject({
         rawEventCount: 6,
@@ -380,7 +452,7 @@ describe("streamAssistantTurn telemetry", () => {
     }
   })
 
-  test("a stream event record carries the size and hash of its text, never the text", async () => {
+  test("a stream event record carries the size and hash of its text, never the text", () => withDebugTier(async () => {
     const metadata: unknown[] = []
     const telemetry = createRequestStreamTelemetry({
       ...recordingAudit().writer,
@@ -390,42 +462,29 @@ describe("streamAssistantTurn telemetry", () => {
     await telemetry.observeNormalized({ kind: "text_delta", text, blockKey: "block-1" })
 
     expect(metadata).toEqual([{ text: { chars: text.length, bytes: Buffer.byteLength(text), xxhash32: Bun.hash.xxHash32(text, 0).toString(16) } }])
-  })
+  }))
 
-  test("high-volume raw stream telemetry is budgeted and summarized before completion", async () => {
-    const order: string[] = []
-    const rawKinds: string[] = []
-    let summary: { rawEventCount: number; countsByKind: { [kind: string]: number }; recovery: { streamRetryCount: number } } | undefined
-    const writer: ProviderRequestAuditWriter = {
-      recordRequest: (input) => ({ requestId: "request-budget", turn: input.turn }),
-      recordResponse() {},
-      recordUsage() {},
-      recordStreamStarted() { order.push("started") },
-      recordStreamEvent(_handle, input) { rawKinds.push(input.kind) },
-      recordStreamCompleted() { order.push("completed") },
-      recordStreamSummary(_handle, input) {
-        order.push("summary")
-        summary = input
-      },
-    }
-    const telemetry = createRequestStreamTelemetry(writer, { requestId: "request-budget", turn: 1 })
-    expect(telemetry).toBeDefined()
+  test("with the debug tier on, high-volume raw stream telemetry is sampled and summarized before completion", () => withDebugTier(async () => {
+    const { writer, order, rawKinds, summary } = budgetWriter()
+    await observeHighVolume(writer)
 
-    await telemetry!.observeNormalized({ kind: "stream_attempt_start", attempt: 1, maxAttempts: 1, isFinalAttempt: true, sawThinkingStall: false, disableReasoning: true, isRetry: false })
-    for (let i = 0; i < 650; i++) {
-      await telemetry!.observeNormalized({ kind: "text_delta", text: "x", blockKey: `text:${i}` })
-    }
-    await telemetry!.observeNormalized({ kind: "stream_retry", attempt: 1, maxAttempts: 1, reason: "blip", delayMs: 1, error: { message: "blip" } })
-    await telemetry!.complete("ok")
-
-    expect(rawKinds.length).toBeLessThan(650)
+    expect(rawKinds.length).toBeLessThan(1002)
+    expect(rawKinds.length).toBeGreaterThan(0)
     expect(rawKinds).toContain("stream_retry")
-    expect(summary).toMatchObject({
-      rawEventCount: 652,
-      countsByKind: { stream_attempt_start: 1, stream_retry: 1, text_delta: 650 },
-      recovery: { streamRetryCount: 1, reasoningDisabledRetryCount: 1 },
-    })
+    expect(summary()).toMatchObject(HIGH_VOLUME_SUMMARY)
     expect(order.indexOf("summary")).toBeLessThan(order.indexOf("completed"))
+  }))
+
+  test("with the debug tier off, a delta is observed synchronously, and a high-volume stream records no raw event and one summary with the same counts", async () => {
+    const { writer, order, rawKinds, summary } = budgetWriter()
+    // The attempt awaits only a returned promise, so a synchronous observation costs no await per delta.
+    const synchronous = createRequestStreamTelemetry(budgetWriter().writer, { requestId: "request-synchronous", turn: 1 })!
+    expect(synchronous.observeNormalized({ kind: "text_delta", text: "x", blockKey: "text:sync" })).toBeUndefined()
+    await observeHighVolume(writer)
+
+    expect(rawKinds).toEqual([])
+    expect(summary()).toMatchObject(HIGH_VOLUME_SUMMARY)
+    expect(order).toEqual(["started", "summary", "completed"])
   })
 
   test("a streamed turn records the audit sequence with the summary before completion", async () => {

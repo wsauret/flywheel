@@ -18,6 +18,5 @@ export const webExaModule = {
     { domain: "settings", id: "web-exa", value: { control: "binary", group: "Web retrieval", label: "Exa web search", description: "Use Exa as a web retrieval backend" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule;

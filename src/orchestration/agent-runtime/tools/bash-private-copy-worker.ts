@@ -35,7 +35,7 @@ globalThis.addEventListener("message", (event: MessageEvent<PrivateCopyJob>) => 
       globalThis.postMessage({ kind: "done", value } satisfies PrivateCopyAnswer, []);
       return;
     }
-    const scanned = scanCopyChanges(job.copy);
+    const scanned = scanCopyChanges(job.copy, job.baseListings);
     // Changed bytes move to the owner instead of being copied; this Worker ends with its answer.
     const transfer = [...new Set(scanned.changes.flatMap(change => change.after?.buffer instanceof ArrayBuffer ? [change.after.buffer] : []))];
     globalThis.postMessage({ kind: "done", value: scanned } satisfies PrivateCopyAnswer, transfer);

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBenchmarkCatalog, RESEARCH_TASKS_CHANGED } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
-import { appendJsonLine } from "../../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { appendFixtureLine } from "../../helpers/json-lines-fixture.js";
 import {
   planPersonaBenchmark,
   runPersonaBenchmark,
@@ -105,8 +105,8 @@ describe("benchmark stored-record validation", () => {
     const root = await syntheticProject();
     const { plan, resultsDir } = await storedRun(root);
     const attempt = cancelledAttempt(plan.tasks[0]!.id, "1f0f9c2e-0000-4000-8000-000000000001");
-    await appendJsonLine(join(resultsDir, "events.jsonl"), attempt);
-    await appendJsonLine(join(resultsDir, "events.jsonl"), attempt);
+    await appendFixtureLine(join(resultsDir, "events.jsonl"), attempt);
+    await appendFixtureLine(join(resultsDir, "events.jsonl"), attempt);
 
     await expect(runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [])))
       .rejects.toThrow(`Duplicate attempt record ${attempt.attemptId}`);
@@ -119,7 +119,7 @@ describe("benchmark stored-record validation", () => {
     const verdict = { repeat: 0, slotA: "model-a@medium", slotB: "model-b@high", winner: "tie" };
     const accounting = cancelledAttempt(task, "unused").accounting;
     for (const [index, terminal] of ["failed", "completed", "completed"].entries()) {
-      await appendJsonLine(join(resultsDir, "events.jsonl"), {
+      await appendFixtureLine(join(resultsDir, "events.jsonl"), {
         kind: "judge-attempt",
         attemptId: `1f0f9c2e-0000-4000-8000-00000000000${index}`,
         at: `2026-09-10T00:00:0${index}.000Z`,
@@ -130,7 +130,7 @@ describe("benchmark stored-record validation", () => {
         accounting,
       });
     }
-    await appendJsonLine(join(resultsDir, "events.jsonl"), pairScore(task, verdict));
+    await appendFixtureLine(join(resultsDir, "events.jsonl"), pairScore(task, verdict));
 
     const outcome = await runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []));
 
@@ -144,7 +144,7 @@ describe("benchmark stored-record validation", () => {
     const { plan, resultsDir } = await storedRun(root, "rescore");
     const verdict = { repeat: 0, slotA: "model-a@medium", slotB: "model-b@high", winner: "tie" };
     for (let row = 0; row < 2; row++) {
-      await appendJsonLine(join(resultsDir, "events.jsonl"), pairScore(plan.tasks[0]!.id, verdict));
+      await appendFixtureLine(join(resultsDir, "events.jsonl"), pairScore(plan.tasks[0]!.id, verdict));
     }
 
     await expect(runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [])))
@@ -156,7 +156,7 @@ describe("benchmark stored-record validation", () => {
     const { plan, resultsDir } = await storedRun(root);
     const task = plan.tasks[0]!.id;
     for (const slots of [{ slotA: "model-a@medium", slotB: "model-b@high" }, { slotA: "model-b@high", slotB: "model-a@medium" }]) {
-      await appendJsonLine(join(resultsDir, "events.jsonl"), pairScore(task, { repeat: 0, ...slots, winner: "tie" }));
+      await appendFixtureLine(join(resultsDir, "events.jsonl"), pairScore(task, { repeat: 0, ...slots, winner: "tie" }));
     }
 
     await expect(runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [])))
@@ -166,7 +166,7 @@ describe("benchmark stored-record validation", () => {
   it("rejects a verdict whose winner is neither participant", async () => {
     const root = await syntheticProject();
     const { plan, resultsDir } = await storedRun(root);
-    await appendJsonLine(join(resultsDir, "events.jsonl"), pairScore(plan.tasks[0]!.id, {
+    await appendFixtureLine(join(resultsDir, "events.jsonl"), pairScore(plan.tasks[0]!.id, {
       repeat: 0,
       slotA: "model-a@medium",
       slotB: "model-b@high",
@@ -187,7 +187,7 @@ describe("benchmark stored-record validation", () => {
       const { plan, resultsDir } = await storedRun(root);
       const base = { task: plan.tasks[0]!.id, repeat: 0, slotA: "model-a@medium", slotB: "model-b@high", winner: "tie" };
       const { task, ...verdict } = { ...base, ...corruption };
-      await appendJsonLine(join(resultsDir, "events.jsonl"), pairScore(task, verdict));
+      await appendFixtureLine(join(resultsDir, "events.jsonl"), pairScore(task, verdict));
 
       await expect(runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [])))
         .rejects.toThrow(message);
@@ -197,7 +197,7 @@ describe("benchmark stored-record validation", () => {
   it("rejects a stored repeat that is not a zero-based index", async () => {
     const root = await syntheticProject();
     const { plan, resultsDir } = await storedRun(root);
-    await appendJsonLine(join(resultsDir, "events.jsonl"), { ...cancelledAttempt(plan.tasks[0]!.id, "1f0f9c2e-0000-4000-8000-000000000002"), repeat: -1 });
+    await appendFixtureLine(join(resultsDir, "events.jsonl"), { ...cancelledAttempt(plan.tasks[0]!.id, "1f0f9c2e-0000-4000-8000-000000000002"), repeat: -1 });
 
     await expect(runPersonaBenchmark(plan, deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [])))
       .rejects.toThrow(/events.jsonl:1 does not match its schema/);

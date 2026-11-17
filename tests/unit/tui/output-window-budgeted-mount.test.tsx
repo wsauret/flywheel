@@ -12,9 +12,9 @@ import { describe, expect, it, spyOn } from "bun:test"
 import { createSignal } from "solid-js"
 import { createComponent } from "solid-js/web"
 import type { FrontendOutputBlock } from "../../../src/protocol/app-service-types.js"
-import type { OutputTranscriptView, TranscriptSnapshot, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
+import type { OutputTranscriptView, TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
-import { widenTowards } from "../../../src/tui/output-window/output-window-viewport.js"
+import { widenTowards } from "../../../src/tui/output-window/mount-range.js"
 import { scrollFrameHook } from "../../helpers/scroll-frame-hook.js"
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../src/infra/output-blocks.js"
 import { ManualClock } from "@opentui/core/testing"
@@ -23,6 +23,8 @@ import { getToolDisplay, resolveToolPresentation } from "../../../src/infra/tool
 import { createBlockDisclosureChannel } from "../../../src/tui/context/block-disclosure.js"
 import { mutationEvidenceFixture } from "./output-blocks/_mutation-evidence-fixture.js"
 import { makeView, renderScheduledFrame, renderWindow as renderScheduledWindow, snapshot, transcriptOf } from "./_output-window-transcript.js"
+
+type TranscriptWindow = TranscriptSnapshot["window"]
 
 describe("widenTowards", () => {
   const r = (start: number, end: number) => ({ start, end })

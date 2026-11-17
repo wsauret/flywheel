@@ -26,11 +26,21 @@ import { ChildSessionBody } from "../../../../src/tui/components/child-session-b
 import { createTranscriptInView } from "../../../../src/tui/hooks/transcript-in-view.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
 import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
-import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const renders: Awaited<ReturnType<typeof testRender>>[] = []
 const unexpectedQuery = async (): Promise<never> => { throw new Error("unexpected query") }
 afterEach(() => { for (const render of renders.splice(0)) render.renderer.destroy() })
+
+function subagentDetail(id: string): RuntimeSessionDetailView {
+  const row = { ...viewerSurface("subagent").summary()!, id }
+  if (row.kind !== "subagent") throw new Error("expected a subagent row")
+  return { id, source: "durable", kind: "subagent", conversationId: "conversation", budget: null, row, status: {
+    activity: "idle", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, activeBackgroundCommands: [],
+    activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], waitingOnBackgroundWork: false, startedAt: 0, streamingStartedAt: null,
+    accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [],
+  } }
+}
 
 function textByContent(root: Renderable, content: string): TextRenderable | undefined {
   const nodes: Renderable[] = [root]
@@ -47,7 +57,7 @@ async function renderViewer(surface: SessionSurface, input: ReturnType<typeof cr
       sessionIntro={{ runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
         branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}
-      showThinking={false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
+      showThinking={() => false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
       roleView={() => undefined} childStatus={() => ({ waitingOn: undefined })} ensureChildViews={() => {}}
       modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={() => {}} followBackground={() => () => {}} compactionThreshold={() => 40_000} {...props} />
   </TickPoolProvider></ThemeProvider>, size)
@@ -67,7 +77,7 @@ function openerViewerProps(overrides: Partial<ReturnType<Parameters<typeof creat
     sessionIntro: { runtimeIdentity: () => ({ version: "test", buildId: null }), showBuild: () => false, projectRoot: () => "/repo", accountHome: "/home", userDataRoot: "/home/.flywheel",
       branchName: () => undefined, modelLabel: () => "Child model", profileName: () => undefined,
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },
-    showThinking: false, diffColors: () => "theme",
+    showThinking: () => false, diffColors: () => "theme",
     roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
     modelLabel: () => "Child model", onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, followBackground: () => () => {}, compactionThreshold: () => undefined,
     ...overrides,
@@ -222,7 +232,7 @@ describe("child session viewer", () => {
     const surfaces = new Map([
       ["outer", viewerSurface("subagent", {
         sessionId: () => "outer",
-        summary: () => ({ ...outerRow, id: "outer", childSessionIds: ["subagent"] }),
+        summary: () => ({ ...outerRow, id: "outer", childSessionIds: ["subagent", "gone"] }),
         transcript: transcriptOf([{
           kind: "agentGroup", containerKind: "subagent", id: "explorer", toolUseId: "dispatch",
           label: "Explorer", description: "Inspect repository", status: "completed",
@@ -231,16 +241,22 @@ describe("child session viewer", () => {
           kind: "agentGroup", containerKind: "subagent", id: "stranger", toolUseId: "other",
           label: "Stranger", description: "Named elsewhere", status: "completed",
           linkUri: "flywheel://session/elsewhere", children: [], totalToolCount: 0, timestamp: 2,
+        }, {
+          kind: "agentGroup", containerKind: "subagent", id: "gone", toolUseId: "deleted",
+          label: "Departed", description: "Deleted since", status: "completed",
+          linkUri: "flywheel://session/gone", children: [], totalToolCount: 0, timestamp: 3,
         }]),
       })],
       ["subagent", viewerSurface("subagent", { sessionId: () => "subagent" })],
     ])
     const places = createChildViewerOpener({
-      viewerLayer: overlay.viewer, navigateUri, showToast: () => {}, provide: (children) => children(), openModuleSession: () => false,
-      kindOf: (sessionId) => sessionId === "subagent" ? "subagent" : undefined, dispatchCommand: async () => false,
+      viewerLayer: overlay.viewer, navigateUri, showToast: () => {}, openModuleSession: async () => false,
+      client: { query: runtimeQuery({ sessionDetail: (request) => ({ view: request.sessionId === "subagent" ? subagentDetail("subagent") : null }) }) },
+      dispatchCommand: async () => false,
       viewer: (sessionId) => openerViewerProps({ createSurface: () => surfaces.get(sessionId)! }),
     })
     places.openChild({ id: "outer", kind: "subagent" })
+    await Bun.sleep(0)
     const outer = overlay.viewer.stack[0]!
     const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
       <For each={overlay.viewer.stack}>{(entry) => <box position="absolute">{typeof entry.element === "function" ? entry.element() : entry.element}</box>}</For>
@@ -252,6 +268,7 @@ describe("child session viewer", () => {
     const rows = render.captureCharFrame().split("\n")
     const explorerRow = rows.findIndex((row) => row.includes("Explorer"))
     await render.mockMouse.click(rows[explorerRow]!.indexOf("Explorer") + 2, explorerRow)
+    await Bun.sleep(0)
     await render.flush()
 
     expect(navigateUri).not.toHaveBeenCalled()
@@ -269,14 +286,24 @@ describe("child session viewer", () => {
     await render.mockMouse.click(strangerRows[strangerRow]!.indexOf("Stranger") + 2, strangerRow)
     expect(navigateUri).toHaveBeenCalledWith("flywheel://session/elsewhere")
     expect(overlay.viewer.stack).toEqual([outer])
+
+    // A listed child that no longer exists also goes to the shell's route
+    // walk, which reports the missing session.
+    await render.flush()
+    const goneRows = render.captureCharFrame().split("\n")
+    const goneRow = goneRows.findIndex((row) => row.includes("Departed"))
+    await render.mockMouse.click(goneRows[goneRow]!.indexOf("Departed") + 2, goneRow)
+    await Bun.sleep(0)
+    expect(navigateUri).toHaveBeenCalledWith("flywheel://session/gone")
+    expect(overlay.viewer.stack).toEqual([outer])
   })
   it("reports a module viewer that fails to open instead of leaving the rejection unhandled", async () => {
     const overlay = createOverlayLayers()
     const toasts: string[] = []
     const timeout = RuntimeCallTimeout.forDeadline(5_000)
     const places = createChildViewerOpener({
-      viewerLayer: overlay.viewer, navigateUri: () => {}, showToast: (toast) => { toasts.push(toast.message) }, provide: (children) => children(),
-      openModuleSession: () => Promise.reject(timeout), kindOf: () => undefined, dispatchCommand: async () => false, viewer: () => openerViewerProps(),
+      viewerLayer: overlay.viewer, navigateUri: () => {}, showToast: (toast) => { toasts.push(toast.message) },
+      openModuleSession: () => Promise.reject(timeout), client: { query: unexpectedQuery }, dispatchCommand: async () => false, viewer: () => openerViewerProps(),
     })
     places.openChild({ id: "member", kind: "workflow-agent" })
     // A rejection nobody handled fails this test once this turn ends.
@@ -292,21 +319,15 @@ describe("child session viewer", () => {
     const toasts: { message: string; variant: string }[] = []
     let detailHolds = 0
     let detailReleases = 0
-    const row = { ...viewerSurface("subagent").summary()!, id: "subagent" }
-    if (row.kind !== "subagent") throw new Error("expected a subagent row")
-    const detail: RuntimeSessionDetailView = { id: "subagent", source: "durable", kind: "subagent", conversationId: "conversation", budget: null, row, status: {
-      activity: "idle", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0, activeBackgroundCommands: [],
-      activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [], waitingOnBackgroundWork: false, startedAt: 0, streamingStartedAt: null,
-      accumulatedActiveMs: 0, compactionStartedAt: null, replyWaits: [],
-    } }
+    const detail = subagentDetail("subagent")
     const none = { ensure: () => {}, ensureMany: () => {}, view: () => undefined }
     let transcriptCache: ReturnType<typeof createOutputTranscriptCache> | undefined
     const render = await testRender(() => {
       const transcripts = createOutputTranscriptCache({ appService: runtime.client })
       transcriptCache = transcripts
       const open = createChildViewerOpener({
-        viewerLayer: overlay.viewer, navigateUri: () => {}, showToast: (toast) => { toasts.push(toast) }, provide: (children) => children(), openModuleSession: () => false,
-        kindOf: () => undefined,
+        viewerLayer: overlay.viewer, navigateUri: () => {}, showToast: (toast) => { toasts.push(toast) }, openModuleSession: async () => false,
+        client: { query: unexpectedQuery },
         dispatchCommand: async () => false,
         viewer: () => openerViewerProps({
           submissions: createChatSubmissions({ lanes: { onLane: () => () => {} }, dispatch: async (sessionId, input) => {

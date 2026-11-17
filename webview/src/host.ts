@@ -157,6 +157,7 @@ export interface ClientHost {
   readonly hostContract?: number
   readonly capabilities: HostCapabilities
   readonly onSummary?: (summary: ClientSummary) => void
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
 }
 

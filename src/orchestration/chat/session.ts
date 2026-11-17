@@ -8,11 +8,9 @@ import { Log } from "../../infra/log.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { ModelFamily } from "../../infra/llm/model-family.js"
 import type { AnyBlock, ConnectionState } from "../../infra/output-blocks.js"
-import { toRuntimeEvent } from "../../infra/events.js"
-import { RUNTIME_EVENT_TYPES, type RuntimeEvent } from "../../infra/runtime-event-types.js"
+import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
 import { nestedFactProjectionEvents } from "../../infra/output/nested-fact-projection.js"
 import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js"
-import { mapRuntimeEventToAgentStreamEvents } from "../agent-runtime/runtime-event-mapper.js"
 import { createChatControls } from "./controls.js"
 import type { ChatRunner } from "./runner-types.js"
 import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
@@ -39,7 +37,7 @@ import type { ProjectDefinitionRegistry } from "../../workflows/definition-regis
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
-import type { ChildSessionAuthority, ModuleChatObserver } from "../module-seams.js"
+import type { ChildSessionAuthority } from "../module-seams.js"
 import type { SessionMessaging } from "../session/session-messaging.js"
 import type { createChatInvocationCompletion } from "./runner-completion.js"
 
@@ -180,16 +178,6 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
   const wiredSubscribers = wireSessionSubscribers(eventBus, infra, deps.metricsWriter, sessionId)
   const eventUnsubs: Unsubscribe[] = [...wiredSubscribers.unsubscribes]
 
-  // The chat seam module observer reads the agent's own normalized runtime events.
-  let moduleObserver: ModuleChatObserver | undefined
-  eventUnsubs.push(
-    eventBus.subscribeToTypes(RUNTIME_EVENT_TYPES, (e) => {
-      const data = e.data
-      if ("parent_tool_use_id" in data && data.parent_tool_use_id != null) return
-      for (const event of mapRuntimeEventToAgentStreamEvents(toRuntimeEvent(e))) moduleObserver?.onEvent?.(event)
-    }, { deliveryClass: "ui", label: "chat-module-observer" }),
-  )
-
   const session = createOutputSession({ updateEntry, sessionId, executionCwd })
   const applyNestedStoredFact = async (stored: Parameters<typeof infra.toolExecutionStore.applyStoredFact>[0]): Promise<void> => {
     // Hydrate before the fact crosses the infra boundary: nested-fact
@@ -223,7 +211,6 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
   const lifecycle = createChatRunnerLifecycle({
     deps, eventBus, session, state, askUser, setConnectionState, applyNestedStoredFact,
     awaitDurableFacts: wiredSubscribers.awaitDurableFacts,
-    installModuleObserver: (observer) => { moduleObserver = observer },
   })
 
   // Both interruption writes (a turn-end record no parked loop writes,
@@ -426,7 +413,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     hold: () => inSession(() => lifecycle.hold()),
     capabilities: () => inSession(() => lifecycle.capabilities()),
     setShown: (shown) => inSession(() => { lifecycle.setShown(shown) }),
-    seedDisplayBlocks: (blocks: readonly AnyBlock[]) => inSession(() => session.seedBlocks(blocks)),
+    seedDisplayBlocks: (blocks: readonly AnyBlock[], sequenceStart: number) => inSession(() => session.seedBlocks(blocks, sequenceStart)),
     publishCommittedNotice: (notice) => inSession(() => { session.pushSystemMessage(notice.message, notice.timestamp, { id: notice.id }); session.flush() }),
     answerQuestion: (toolUseId, answers) => inSession(() => askUser.answerQuestion(toolUseId, answers)),
     cancelQuestion: (toolUseId) => inSession(() => askUser.cancelQuestion(toolUseId)),

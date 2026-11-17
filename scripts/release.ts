@@ -43,7 +43,7 @@ function fail(reason: string): never {
   process.exit(1);
 }
 
-function run(command: string[]): string {
+function captureCommandOutput(command: string[]): string {
   const result = Bun.spawnSync(command, { cwd: ROOT, stdout: "pipe", stderr: "pipe", windowsHide: true });
   if (result.exitCode !== 0) fail(`\`${command.join(" ")}\` failed:\n${result.stdout.toString().trim()}\n${result.stderr.toString().trim()}`.trim());
   return result.stdout.toString().trim();
@@ -84,7 +84,7 @@ const dryRun = process.argv.includes("--dry-run");
 
 // The worktree must be clean, untracked files included: the tag names one
 // commit, and everything the gates saw must be inside it.
-const dirty = run(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
+const dirty = captureCommandOutput(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
 if (dirty !== "") fail(`the worktree is not clean:\n${dirty}\nrelease from a fresh worktree of this repository, never a clone: git worktree add -b release ../flywheel-release origin/main`);
 
 // An official release carries the maintainers' report endpoint, which only the
@@ -110,9 +110,9 @@ step("checking the Claude engine pin (bun run check:claude-engine)", ["bun", "ru
 const refresh = Bun.spawnSync(["bun", "run", "scripts/refresh-models-snapshot.ts"], { cwd: ROOT, stdout: "inherit", stderr: "inherit", windowsHide: true });
 if (refresh.exitCode !== 0) {
   console.warn("release: bundled models.dev snapshot refresh failed; shipping the committed snapshot");
-} else if (run(["git", "status", "--porcelain", "--", "src/infra/llm/models-bundled.txt"]) !== "") {
-  run(["git", "add", "src/infra/llm/models-bundled.txt"]);
-  run(["git", "commit", "-m", "chore: refresh bundled models.dev snapshot"]);
+} else if (captureCommandOutput(["git", "status", "--porcelain", "--", "src/infra/llm/models-bundled.txt"]) !== "") {
+  captureCommandOutput(["git", "add", "src/infra/llm/models-bundled.txt"]);
+  captureCommandOutput(["git", "commit", "-m", "chore: refresh bundled models.dev snapshot"]);
 }
 
 // Latest published release on the public repository, or none for the first.
@@ -125,7 +125,7 @@ if (latestTag !== undefined && latest === undefined) fail(`the latest release ${
 // `latest`: after a rollback, `latest` points at an older release while the
 // rolled-back version's tag still exists, and the next release must move
 // past both (a downloaded version is never republished).
-const localTags = run(["git", "tag", "--list", "v*"])
+const localTags = captureCommandOutput(["git", "tag", "--list", "v*"])
   .split("\n")
   .map((line) => parseSemanticVersion(line.trim().replace(/^v/, "")))
   .filter((candidate) => candidate !== undefined);
@@ -140,7 +140,7 @@ const next =
   : `${base.major}.${base.minor}.${base.patch + 1}`;
 const tag = `v${next}`;
 
-if (run(["git", "tag", "--list", tag]) !== "") fail(`the tag ${tag} already exists in this repository`);
+if (captureCommandOutput(["git", "tag", "--list", tag]) !== "") fail(`the tag ${tag} already exists in this repository`);
 
 // The version is committed before the gates and builds, so the gated tree,
 // the tagged tree, and the built archives all state one version. A package
@@ -159,16 +159,16 @@ if (bumped !== packageText) await Bun.write(packageFile, bumped);
 // main never names a digest that the tagged tree does not produce.
 step("building the Claude plugin and pinning it in the marketplace (bun run build:claude-plugin)", ["bun", "run", "build:claude-plugin", "--marketplace", PUBLIC_REPO]);
 const pluginBytes = await Bun.file(join(DIST, CLAUDE_PLUGIN_ARCHIVE)).arrayBuffer();
-if (run(["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "package.json", CLAUDE_MARKETPLACE_FILE]) !== "") {
-  run(["git", "add", "package.json", CLAUDE_MARKETPLACE_FILE]);
-  run(["git", "commit", "-m", `release: ${tag}`]);
+if (captureCommandOutput(["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "package.json", CLAUDE_MARKETPLACE_FILE]) !== "") {
+  captureCommandOutput(["git", "add", "package.json", CLAUDE_MARKETPLACE_FILE]);
+  captureCommandOutput(["git", "commit", "-m", `release: ${tag}`]);
 }
 
 // Native legal attribution is generated where Cargo registry sources exist,
 // before lint checks the frozen publication inputs without requiring Rust.
 step("refreshing native dependency licenses", ["bun", "run", "scripts/cargo-license-ledger.ts", "crates/ripgrep"]);
 step("refreshing the release license bundle", ["bun", "run", "licenses:generate"]);
-const legalDirty = run(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
+const legalDirty = captureCommandOutput(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
 if (legalDirty !== "") fail(`license generation changed the release tree:\n${legalDirty}`);
 
 // The gates that used to run on the runners: lint, tests, boundaries, and
@@ -181,14 +181,14 @@ step("gating the tree (bun run test:ci)", ["bun", "run", "test:ci"], { ...proces
 // qualification tiers here: the fake-host tier in the no-api suite and the live tier on this host's Claude login
 // in the auth profile that FLYWHEEL_LIVE_AUTH_PROFILE names. The release-readiness passes on Linux and Windows owe
 // the same.
-const engine = engineBump(readFileSync(join(ROOT, "bun.lock"), "utf8"), latestTag === undefined ? undefined : { tag: latestTag, lockText: run(["git", "show", `${latestTag}:bun.lock`]) });
+const engine = engineBump(readFileSync(join(ROOT, "bun.lock"), "utf8"), latestTag === undefined ? undefined : { tag: latestTag, lockText: captureCommandOutput(["git", "show", `${latestTag}:bun.lock`]) });
 console.log(`release: ${engine.detail}`);
 if (engine.bumped) step("qualifying the Claude engine bump (bun run test:integration:all)", ["bun", "run", "test:integration:all"]);
 
 // Rebuild the universal tokenizer once. Every target build below copies these
 // exact bytes, after the offline verifier proves their digest and ABI.
 step("rebuilding tokenizer", ["bun", "run", "build:tokenizer"]);
-const tokenizerDirty = run(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
+const tokenizerDirty = captureCommandOutput(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
 if (tokenizerDirty !== "") fail(`the tokenizer rebuild changed the release tree:\n${tokenizerDirty}`);
 step("offline-verifying tokenizer", ["bun", "run", "build:tokenizer", "--verify"]);
 
@@ -242,7 +242,7 @@ if (dryRun) {
   process.exit(0);
 }
 
-const unsynced = publishReleaseToMain(tag, (args) => run(["git", ...args]));
+const unsynced = publishReleaseToMain(tag, (args) => captureCommandOutput(["git", ...args]));
 
 const refused = await publishRelease(
   tag,

@@ -316,7 +316,6 @@ describe("terminal outage failover", () => {
     await expect(requestEvents(client, {
       ...streamOptions,
       signal: controller.signal,
-      attemptProducedEvidence: () => true,
     })).rejects.toThrow("stream closed before response.completed");
     expect(built).toEqual(["openai_api"]);
     expect(availability.serviceEntryCount()).toBe(0);

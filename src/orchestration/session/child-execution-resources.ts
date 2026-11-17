@@ -1,5 +1,5 @@
 import { Effect, Exit, Scope } from "effect"
-import { ContainedDirectory } from "../../infra/descriptor-directory.js"
+import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"
 import { createEmit, EventBus, type EmitFn } from "../../infra/event-bus.js"
 import { FLYWHEEL_EVENT_TYPES } from "../../infra/events.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
@@ -38,7 +38,7 @@ export interface ChildExecutionResources {
  * only a directory this call created for an exclusively held, unreserved id. */
 export function prepareChildExecutionOwner(sessionId: string, projectRoot: string, reserved: boolean) {
   const relativeDir = sessionRelativeDir(sessionId)
-  const existing = ContainedDirectory.openExisting(projectRoot, directoryComponents(relativeDir))
+  const existing = openExistingContainedDirectory(projectRoot, directoryComponents(relativeDir))
   const created = existing === undefined
   existing?.close()
   const rollback = () => {

@@ -18,7 +18,7 @@ import { openRouterReportedChargeUsd } from "../../../../../src/orchestration/mo
 /** The provider module passes the wire id it resolved from its catalog; the
  *  adapter never folds one itself. */
 const OPENROUTER = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
-import type { ConversationMessage, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage, LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 
@@ -28,6 +28,7 @@ import { Redacted } from "effect";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { openrouterModule } from "../../../../../src/orchestration/modules/provider-openrouter/module.js";
+import { basetenModule } from "../../../../../src/orchestration/modules/provider-baseten/module.js";
 import { fakeAvailability } from "./_provider-chain-harness.js";
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 
@@ -64,7 +65,7 @@ const FINISH_CHUNK = {
 };
 
 async function drain(
-  client: Awaited<ReturnType<typeof createOpenAIChatCompletionsAdapter>>,
+  client: LLMClient,
   overrides: Partial<StreamOptions> = {},
 ): Promise<{ events: ProviderStreamEvent[]; error: Error | undefined }> {
   const events: ProviderStreamEvent[] = [];
@@ -287,6 +288,24 @@ describe("DeepSeek thinking params", () => {
     const params = await sent({ outputTokenLimit: 1_500 });
     expect(params?.max_tokens).toBe(1_500);
     expect(params?.max_completion_tokens).toBeUndefined();
+  });
+});
+
+describe("Baseten reasoning params", () => {
+  test.each([
+    ["max", ["none", "low", "medium", "high", "max"], "max"],
+    ["medium", ["none", "low", "medium", "high", "max"], "medium"],
+    ["off", ["none", "low", "high", "max"], "none"],
+    ["off", ["low", "high", "max"], undefined],
+  ] as const)("sends effort %s from declared tiers %j as %s, also with a forced tool", async (reasoningEffort, reasoningEfforts, expected) => {
+    const capture: Capture = {};
+    const info = { ...REASONING_INFO, provider: "baseten", id: "deepseek-v4.1-flash-1017", reasoningEfforts };
+    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), info.id, info, { accessProvider: "baseten" });
+    const { error } = await drain(adapter, { reasoningEffort, tools: [{ name: "read", description: "read", input_schema: { type: "object" } }], toolChoice: "any" });
+    expect(error).toBeUndefined();
+    expect(capture.params?.reasoning_effort).toBe(expected);
+    expect(capture.params?.thinking).toBeUndefined();
+    expect(capture.params?.reasoning).toBeUndefined();
   });
 });
 
@@ -573,4 +592,44 @@ test("the OpenRouter module sends each request with the output cap of that reque
     globalThis.fetch = originalFetch;
   }
   expect(sent).toEqual([64_000, 8_000]);
+});
+
+test("the Baseten module sends its exact wire, max effort, and session affinity even with caching disabled", async () => {
+  const metadata = providerModelInfo({ provider: "baseten", id: "deepseek-v4.1-flash-1017", reasoning: true, reasoningEfforts: ["none", "low", "high", "max"] });
+  const candidate = { kind: "singleton", providerId: "baseten", spendMode: "direct_api" } as const;
+  const attribution = { candidate, wireModelId: "deepseek-ai/DeepSeek-V4.1-Flash-1017", dataUse: "standard", resolvedModelMetadata: metadata } as const;
+  const build: AccessProviderBuild = {
+    notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
+    candidate, providerIdentity: { name: "Baseten API Key", credential: "api_key" },
+    model: metadata.id, wireModelId: attribution.wireModelId, family: "openai",
+    modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
+    connection: {
+      id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
+      auth: { providers: new Map([["baseten", { kind: "api_key", key: Redacted.make("baseten-test-key") }]]), credentialLineages: {}, droppedCredentials: [] },
+      subscriptionCredentials: new Map(),
+    },
+    classifySlot: () => "metered", availability: fakeAvailability({}).availability, projectRoot: "/scratch",
+    attribution, recordModelRefusal: () => {},
+  };
+  const sent: { url: string; headers: Headers; params: UnknownRecord }[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = Object.assign(async (url: string | URL | Request, init?: RequestInit) => {
+    sent.push({ url: String(url), headers: new Headers(init?.headers), params: JSON.parse(String(init?.body)) });
+    return new Response(`data: ${JSON.stringify(FINISH_CHUNK)}\n\ndata: [DONE]\n\n`, { headers: { "content-type": "text/event-stream" } });
+  }, { preconnect: originalFetch.preconnect });
+  try {
+    const adapter = await basetenModule.contributions[0].value.createClient(build);
+    const client = await (await adapter.stage({ attribution, accountOfferings: [] })).connect();
+    const result = await drain(client, { reasoningEffort: "max", providerSessionKey: "stable-session", cacheRetention: "none" });
+    expect(result.error).toBeUndefined();
+    expect(result.events.find((event) => event.kind === "done")).toMatchObject({ stopReason: "end_turn" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  expect(sent).toHaveLength(1);
+  expect(sent[0]?.url).toBe("https://inference.baseten.co/v1/chat/completions");
+  expect(sent[0]?.headers.get("authorization")).toBe(`Bearer ${"baseten-test-key"}`);
+  expect(sent[0]?.headers.get("x-session-affinity")).toBe("stable-session");
+  expect(sent[0]?.params).toMatchObject({ model: attribution.wireModelId, reasoning_effort: "max" });
+  expect(sent[0]?.params).not.toHaveProperty("prompt_cache_key");
 });

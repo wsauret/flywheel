@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it } from "bun:test"
+import { afterAll, afterEach, describe, expect, it, spyOn } from "bun:test"
 import { POSIX_FILE_MODES } from "../../helpers/posix-modes.js"
 import * as fs from "node:fs"
 import * as os from "node:os"
@@ -24,6 +24,14 @@ afterEach(async () => {
   roots.clear()
 })
 
+/** The records the log wrote under `baseDir`, as type and message. */
+function written(baseDir: string): { readonly type: string; readonly message: unknown }[] {
+  return [...scanDebugLogFiles(listDebugLogFiles(resolveDebugLogDirectory(baseDir)))].map((record) => ({
+    type: record.type,
+    message: typeof record.payload === "object" && record.payload !== null && "message" in record.payload ? record.payload.message : undefined,
+  }))
+}
+
 afterAll(() => {
   fs.rmSync(TMP_ROOT, { recursive: true, force: true })
 })
@@ -31,28 +39,41 @@ afterAll(() => {
 describe("Log global sink", () => {
   it("delivers a record only when it passes the level and the realm has a destination", async () => {
     // The test preload suppresses this realm, so nothing is delivered until init.
-    expect(Log.delivers("WARN")).toBe(false)
-    await Log.init({ dir: makeTmpDir() })
-    expect(Log.delivers("WARN")).toBe(true)
-    expect(Log.delivers("DEBUG")).toBe(false)
+    const stderr = spyOn(process.stderr, "write")
+    try {
+      Log.Default.warn("before init")
+      expect(stderr).not.toHaveBeenCalled()
+    } finally {
+      stderr.mockRestore()
+    }
+    const baseDir = makeTmpDir()
+    await Log.init({ dir: baseDir })
+    Log.Default.warn("after init")
+    Log.Default.debug("below the level")
+    await Log.closeGlobal()
+
+    expect(written(baseDir)).toEqual([{ type: "log.warn", message: "after init" }])
   })
 
   it("reads FLYWHEEL_LOG_LEVEL in any letter case and warns about a value that names no level", async () => {
     const configured = process.env.FLYWHEEL_LOG_LEVEL
     try {
       process.env.FLYWHEEL_LOG_LEVEL = " debug "
-      await Log.init({ dir: makeTmpDir() })
-      expect(Log.delivers("DEBUG")).toBe(true)
+      const debugDir = makeTmpDir()
+      await Log.init({ dir: debugDir })
+      Log.Default.debug("at the configured level")
+      await Log.closeGlobal()
+      expect(written(debugDir)).toContainEqual({ type: "log.debug", message: "at the configured level" })
 
       const baseDir = makeTmpDir()
       process.env.FLYWHEEL_LOG_LEVEL = "verbose"
       await Log.init({ dir: baseDir, level: "INFO" })
       await Log.init({ dir: baseDir })
+      Log.Default.debug("below the level that stays")
       await Log.closeGlobal()
-      expect(Log.delivers("DEBUG")).toBe(false)
+      expect(written(baseDir)).toEqual([{ type: "log.warn", message: "FLYWHEEL_LOG_LEVEL is not a log level, so the level stays as it was" }])
       const records = [...scanDebugLogFiles(listDebugLogFiles(resolveDebugLogDirectory(baseDir)))]
-      expect(records.map((record) => record.type)).toEqual(["log.warn"])
-      expect(records[0]!.payload).toMatchObject({ message: "FLYWHEEL_LOG_LEVEL is not a log level, so the level stays as it was", value: "verbose" })
+      expect(records[0]!.payload).toMatchObject({ value: "verbose" })
     } finally {
       if (configured === undefined) delete process.env.FLYWHEEL_LOG_LEVEL
       else process.env.FLYWHEEL_LOG_LEVEL = configured
@@ -66,7 +87,7 @@ describe("Log global sink", () => {
     // A sink opened without Log.init keeps the level that the realm has.
     const baseDir = makeTmpDir()
     await DebugLog.init({ dir: baseDir })
-    expect(Log.delivers("DEBUG")).toBe(false)
+    Log.Default.debug("below the default level")
     DebugLog.record({ type: "model.stream.event_observed", payload: { requestId: "r1", sequence: 1 } })
     await DebugLog.close()
     expect(listDebugLogFiles(resolveDebugLogDirectory(baseDir))).toEqual([])

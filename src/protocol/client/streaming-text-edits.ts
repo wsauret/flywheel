@@ -2,7 +2,6 @@ import { Schema } from "effect"
 import { ToolStreamingTextSchema } from "../../infra/output-blocks.js"
 import type { EditableValue, StreamingToolTextOp, ValueEdit, ValuePath } from "../../infra/output/output-block-delta.js"
 import type { FrontendOutputBlock, FrontendToolStreamingText } from "../app-service-types.js"
-import { frontendToolStreamingTextBytes, frontendUtf8Bytes } from "../frontend-output-block-metrics.js"
 import type { OutputView } from "../output-protocol-types.js"
 
 const isToolStreamingText = Schema.is(ToolStreamingTextSchema)
@@ -159,32 +158,4 @@ function applyEdit(value: EditableValue, edit: ValueEdit): EditableValue | typeo
 
 function isObject(value: EditableValue): value is { readonly [key: string]: EditableValue | undefined } {
   return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-/** What the streaming changes cost on the wire, for the delta size bound. */
-export function streamingToolTextOpsBytes(ops: readonly StreamingToolTextOp[]): number {
-  let bytes = 0
-  for (const op of ops) {
-    bytes += frontendUtf8Bytes(op.toolUseId)
-    if (op.kind === "set") bytes += frontendToolStreamingTextBytes(op.entry)
-    else if (op.kind === "edit") bytes += valueEditsBytes(op.edits)
-  }
-  return bytes
-}
-
-/** What a list of edits costs on the wire, for the delta size bound. */
-export function valueEditsBytes(edits: readonly ValueEdit[]): number {
-  let bytes = 0
-  for (const edit of edits) bytes += editBytes(edit)
-  return bytes
-}
-
-function editBytes(edit: ValueEdit): number {
-  switch (edit.kind) {
-    case "append":
-    case "window": return frontendUtf8Bytes(edit.text)
-    case "push": return frontendUtf8Bytes(JSON.stringify(edit.items))
-    case "assign": return frontendUtf8Bytes(JSON.stringify(edit.value))
-    case "delete": return 0
-  }
 }

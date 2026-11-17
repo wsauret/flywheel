@@ -283,6 +283,11 @@ export function createAccountAttachResponseReader(onStartupPhase?: (phase: Runti
   return { push }
 }
 
+/** Receives one answer of a `module` attach as the account service sent it;
+ *  the module's CLI decodes it into its own answer type. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: one answer line from the account service socket, which the module's CLI decodes
+export type AccountModuleAnswerHandler = (answer: unknown) => void
+
 type AccountModuleAnswerEvent =
   | { readonly kind: "answer"; readonly payload: unknown }
   | { readonly kind: "end" }

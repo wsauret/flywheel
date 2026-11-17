@@ -265,7 +265,6 @@ function optionalText(value: unknown, at: string): string | undefined {
 
 export {
   createSubscriptionAccountIdentity as accountKeyFromIdentity,
-  subscriptionSubjectDigest as quotaSubjectDigest,
   subscriptionAccountIdentityFromRef as accountKeyFromRef,
   subscriptionAccountIdentityKey as keyString,
 } from "./subscription-account-identity.js";

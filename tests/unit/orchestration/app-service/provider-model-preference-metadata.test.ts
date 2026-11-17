@@ -7,6 +7,7 @@ import { authProviders } from "../../../helpers/auth-context.js";
 import { TEST_CATALOG_LIMITS } from "../../../helpers/model-catalog-fixtures.js";
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
 
 const CANDIDATE = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" } as const;
 const ACCOUNT_KEY = accessProviderAccountKey(CANDIDATE);
@@ -20,7 +21,6 @@ test("preference mutations retain enriched canonical metadata and release dates"
     displayName: "OpenRouter",
     shortName: "OpenRouter",
     rank: 1,
-    supportedFamilies: ["openai"],
     configHints: [],
     catalogId: undefined,
     dynamicCatalog: {
@@ -75,7 +75,7 @@ test("preference mutations retain enriched canonical metadata and release dates"
     disabled: new Set<string>(),
     effective: new Set(["gpt-6.1-sol"]),
   };
-  const service = createProviderModelPreferenceService({
+  const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id,
     allowTrainingRoutes: () => false,
     persist: async () => "preferences-next",

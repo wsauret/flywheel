@@ -31,6 +31,7 @@ function profile(authDir: string, account: OsAccount, forgotten: LoginKey[] = []
 }
 
 /** Writes the CLI's global config for a login, as the CLI does: a token-free `oauthAccount` beside other state. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the oauthAccount that the Claude CLI writes, in any shape
 function writeLogin(path: string, oauthAccount: unknown): void {
   mkdirSync(join(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify({ numStartups: 3, projects: {}, oauthAccount }));

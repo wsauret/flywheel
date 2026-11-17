@@ -57,8 +57,7 @@ describe("BranchHistoryBuilder", () => {
       message("cs1", "s1", { kind: "compactionSummary", content: "summary" }),
       { id: "c1", parentId: "cs1", timestamp: T0, kind: "compaction", summary: "summary", retainedMessages: [], sourceLeafId: "cs1", tokensBefore: 100, tokensAfter: 10 },
       { id: "b1", parentId: "c1", timestamp: T0, kind: "branch_summary", fromId: "u1", summary: "branch" },
-      { id: "l1", parentId: "b1", timestamp: T0, kind: "label", targetId: "b1", label: "saved" },
-      { id: "i1", parentId: "l1", timestamp: T0, kind: "session_info", name: "session" },
+      { id: "i1", parentId: "b1", timestamp: T0, kind: "session_info" },
       { id: "leaf1", parentId: "i1", timestamp: T0, kind: "leaf", targetId: "i1" },
     ]
     const builder = new BranchHistoryBuilder({ executionCwd: CWD })

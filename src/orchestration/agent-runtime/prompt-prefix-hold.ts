@@ -30,11 +30,11 @@ import type { PreparedServingRequest, ProviderStreamEvent, ServingAttempt } from
 /** The longest time a follower waits for its leader's first response. A
  *  first response usually arrives well inside it, and a follower that waits
  *  longer loses more time than the cache write it saves. */
-export const PREFIX_HOLD_CAP_MS = 5_000
+const PREFIX_HOLD_CAP_MS = 5_000
 /** How long a key stays warm after its leader's first response. It is shorter
  *  than the shortest provider cache lifetime (five minutes), so a warm key
  *  always names a prefix that the provider still holds. */
-export const PREFIX_WARM_MS = 270_000
+const PREFIX_WARM_MS = 270_000
 
 export interface PrefixHoldClock {
   now(): number

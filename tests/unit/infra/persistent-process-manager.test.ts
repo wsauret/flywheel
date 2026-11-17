@@ -27,6 +27,7 @@ function fakeProcess(pid: number): PersistentSubprocess & { stops: number; relea
 /** Two in-process endpoints joined back to back, the shape the project executor serves the bridge over. */
 function endpointPair(): readonly [InternalProcessEndpoint<unknown, unknown>, InternalProcessEndpoint<unknown, unknown>] {
   interface Side {
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a message from the peer process over the shared transport
     readonly messages: Set<(message: unknown) => void | Promise<void>>
     readonly closes: Set<(reason: Error) => void>
     readonly closed: PromiseWithResolvers<void>

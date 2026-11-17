@@ -6,7 +6,7 @@ import { selectStartupDirectories } from "../../src/infra/directory-authorities.
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import { ChatRoutingFailure, chatRoutingGuidance, runChatRoutingTask } from "../../src/orchestration/modules/development/benchmark/chat-routing-run.js";
 import { completionIndex, planMatrix, runMatrix } from "../../src/orchestration/modules/development/benchmark/matrix-runner.js";
-import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord } from "../../src/orchestration/modules/development/benchmark/run-store.js";
+import { createRoutingRunStore, type RoutingAttemptRecord, type RoutingConfig, type RoutingRunRecord, type RoutingRunStore } from "../../src/orchestration/modules/development/benchmark/chat-routing-store.js";
 import { parseVariant, type VariantSpec } from "../../src/orchestration/modules/development/benchmark/variant.js";
 import { createBackgroundExecutionOwner } from "../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js";
@@ -148,7 +148,7 @@ interface RoutingExecutionOptions {
   readonly groups: readonly (readonly RoutingCell[])[];
   readonly completed: ReadonlySet<string>;
   readonly fixtures: RoutingConfig["fixtures"];
-  readonly store: import("../../src/orchestration/modules/development/benchmark/run-store.js").RoutingRunStore;
+  readonly store: RoutingRunStore;
   readonly run: (cell: RoutingCell) => Promise<import("../../src/orchestration/modules/development/benchmark/chat-routing-run.js").ChatRoutingOutcome>;
 }
 

@@ -56,8 +56,8 @@ test("conversion transfers linked execution units and held input without alterin
     contentRows: [nestedOwnContent],
     payload: { toolUseId: "nested-own-call", outcome: "ok", contentBytes: nestedOwnContent.bytes, contentSha256: nestedOwnContent.sha256, contentPreview: "Nested content preview", contentTruncated: false } })
   const db = new Database(f.dbFile)
-  const damagedOutput = f.store.append({ aggregateId: "session:old", sessionId: "old", parentEventId: question.id, timestamp: 9, actor: "agent", type: "tool.execution_output.recorded", version: 1, payload: {} })
-  db.query("update event set payload = ? where id = ?").run("{", damagedOutput.id)
+  const damagedOutput = f.store.append({ aggregateId: "session:old", sessionId: "old", timestamp: 9, actor: "agent", type: "tool.execution_output.recorded", version: 1, payload: {} })
+  db.query("update event set payload = ?, parent_event_id = ? where id = ?").run("{", question.id, damagedOutput.id)
   const content = "Retained tool result"
   const sha256 = createHash("sha256").update(content).digest("hex")
   f.store.append({ aggregateId: "conversation:generation-one", sessionId: "old", type: "chat.entries.appended", version: 2, actor: "flywheel", timestamp: 10,
@@ -128,8 +128,9 @@ test("conversion gives each generation only the content closure its moved rows r
     }
     const call = f.store.append({ aggregateId: "session:old", sessionId: "old", type: "agent_input.requested", version: 3, actor: "agent", timestamp: 3,
       payload: JSON.parse('{"interactionId":"question-one","conversationId":"generation-one","toolUseId":"call-one","request":[]}') })
-    f.store.append({ aggregateId: "session:old", sessionId: "old", parentEventId: call.id, type: "tool.execution_output.recorded", version: 1, actor: "agent", timestamp: 4,
+    const linkedOutput = f.store.append({ aggregateId: "session:old", sessionId: "old", type: "tool.execution_output.recorded", version: 1, actor: "agent", timestamp: 4,
       payload: { damaged: { manifestRoot: manifest.root } } })
+    db.query("update event set parent_event_id = ? where id = ?").run(call.id, linkedOutput.id)
     f.store.append({ aggregateId: "session:old", sessionId: "old", type: "tool.result.recorded", version: 1, actor: "flywheel", timestamp: 5, contentRows: [unreferenced],
       payload: { toolUseId: "unowned-call", outcome: "ok", contentBytes: unreferenced.bytes, contentSha256: unreferenced.sha256, contentPreview: unreferenced.content, contentTruncated: false } })
     const scope = (sessionId: string) => db.query<{ sha256: string }, [string]>("select sha256 from tool_content where session_id = ? order by sha256").all(sessionId).map(row => row.sha256)

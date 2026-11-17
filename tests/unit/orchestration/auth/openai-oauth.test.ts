@@ -2,21 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, mock, spyOn } from "bun:te
 import type { Serve, Server } from "bun";
 import { Redacted } from "effect";
 
-import * as authStore from "../../../../src/infra/auth/auth-store.js";
-import * as authStoreMutations from "../../../../src/infra/auth/auth-store-mutations.js";
 import { CHATGPT_BACKEND_API_BASE } from "../../../../src/infra/auth/openai-auth-types.js";
 import { fakeFetch } from "../../../helpers/fake-fetch.js";
-const savedCredentials: unknown[] = [];
-
-function installStorageMocks(): void {
-  spyOn(authStoreMutations, "setCredential").mockImplementation(async (_id, cred) => {
-    savedCredentials.push(cred);
-  });
-  spyOn(authStore, "getCredential").mockReturnValue(undefined);
-  spyOn(authStore, "loadAuthStoreWithDiagnostics").mockReturnValue({ revision: "missing", store: {}, credentialLineages: {}, dropped: [], diagnostics: [], conditions: [] });
-  spyOn(authStoreMutations, "deleteCredential").mockImplementation(async () => {});
-}
-
 /** The callback handler a test drives, as the browser's request reaches it. */
 type CallbackFetch = (req: Request) => Promise<Response>;
 
@@ -84,9 +71,7 @@ describe("refreshAccessToken", () => {
   };
   beforeEach(async () => {
     mock.restore();
-    savedCredentials.length = 0;
     openedUrls.length = 0;
-    installStorageMocks();
     const moduleUrl = new URL("../../../../src/orchestration/auth/openai-oauth.ts", import.meta.url);
     const mod: typeof import("../../../../src/orchestration/auth/openai-oauth.js") = await import(`${moduleUrl.href}?openai-oauth-test=${crypto.randomUUID()}`);
     refreshAccessToken = mod.refreshAccessToken;
@@ -281,8 +266,6 @@ describe("refreshAccessToken", () => {
     });
 
     expect(Redacted.value(result.accessToken)).toBe("browser-access");
-    // startBrowserFlow no longer persists credentials -- auth-actions.ts is the single writer
-    expect(savedCredentials).toHaveLength(0);
     expect(stopped).toEqual([false, false]);
     expect(openedUrls).toHaveLength(1);
     expect(instructions).toHaveLength(1);

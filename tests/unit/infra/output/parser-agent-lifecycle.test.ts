@@ -67,20 +67,18 @@ describe("RuntimeEventProjector — agent lifecycle", () => {
       ], "agent_1"), 1030);
       parser.dispatch(makeToolResultEvent("child_1"), 1040);
 
+      // The subagent's own calls render in its session, never in the card.
       blocks = projector.getBlocks();
       expect(blocks).toHaveLength(1);
       agent = agentGroup(blocks[0]);
       expect(agent.status).toBe("active");
-      expect(agent.children).toHaveLength(1);
-      expect(agent.children[0]?.name).toBe("bash");
-      expect(agent.children[0]?.status).toBe("completed");
+      expect(agent.children).toHaveLength(0);
 
       parser.dispatch(makeToolResultEvent("agent_1", { content: "done" }), 1050);
 
       blocks = projector.getBlocks();
       agent = agentGroup(blocks[0]);
       expect(agent.status).toBe("completed");
-      expect(agent.children).toHaveLength(1);
     });
 
   });

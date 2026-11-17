@@ -95,7 +95,7 @@ const CHANNEL_INFO = "flywheel-sealed-channel-v1"
 /** The most plaintext one sealed frame carries. Small next to the relay's
  *  16 MiB frame ceiling, large enough that framing costs nothing measurable,
  *  and about a second on a 2 Mbit/s link. */
-export const SEALED_FRAME_MAX_BYTES = 256 * 1024
+const SEALED_FRAME_MAX_BYTES = 256 * 1024
 
 const subtle = crypto.subtle
 const textEncoder = new TextEncoder()
@@ -107,9 +107,8 @@ interface DirectionalKeys {
 }
 
 /** HKDF-SHA256 over the shared secret, then two AES-256-GCM keys, one per
- *  direction, so the two ends never share a nonce space. Exported for the known
- *  vector test; nothing else calls it directly. */
-export async function deriveSealedKeys(sharedSecret: Uint8Array, salt: Uint8Array, info: Uint8Array): Promise<{ runtimeToDevice: Uint8Array; deviceToRuntime: Uint8Array }> {
+ *  direction, so the two ends never share a nonce space. */
+async function deriveSealedKeys(sharedSecret: Uint8Array, salt: Uint8Array, info: Uint8Array): Promise<{ runtimeToDevice: Uint8Array; deviceToRuntime: Uint8Array }> {
   const ikm = await subtle.importKey("raw", ownedBytes(sharedSecret), "HKDF", false, ["deriveBits"])
   const bits = new Uint8Array(await subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: ownedBytes(salt), info: ownedBytes(info) }, ikm, KEY_BYTES * 2 * 8))
   return { runtimeToDevice: bits.slice(0, KEY_BYTES), deviceToRuntime: bits.slice(KEY_BYTES) }

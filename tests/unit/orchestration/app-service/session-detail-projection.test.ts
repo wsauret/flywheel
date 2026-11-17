@@ -5,7 +5,7 @@ import { FIXTURE_EXECUTION_CWD, temporaryDirectories } from "../../../helpers/di
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStore, type EventStoreReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createSessionDetailProjection as createDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
+import { createSessionDetailReader } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
 import { fixture } from "./_project-control-client-fixture.js"
 import { durableRow } from "./_frontend-projection-fixtures.js"
@@ -27,13 +27,14 @@ import { projectBlocksFromEntries } from "../../../../src/orchestration/session/
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { publishTestWorkflow, startTestWorkflowMember } from "../session/_session-manager-fixtures.js"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
-function createSessionDetailProjection(deps: Omit<Parameters<typeof createDetailProjection>[0], "reader" | "projectionReader"> & {
+function createSessionDetailProjection(deps: Omit<Parameters<typeof testSessionDetailProjection>[0], "reader" | "projectionReader"> & {
   reader: EventStoreReadSurface
-  projectionReader?: Parameters<typeof createDetailProjection>[0]["projectionReader"]
+  projectionReader?: Parameters<typeof testSessionDetailProjection>[0]["projectionReader"]
 }) {
   const reader = asAsyncEventReadSurface(deps.reader)
-  return createDetailProjection({ ...deps, reader, projectionReader: deps.projectionReader ?? reader })
+  return testSessionDetailProjection({ ...deps, reader, projectionReader: deps.projectionReader ?? reader })
 }
 
 function entry(activeForegroundBashToolCallIds: readonly string[]): ChatSessionEntry {
@@ -93,17 +94,37 @@ function subagentMetadata(lifecycleState: "active" | "inactive") {
   }
 }
 
+/** The executor's detail of one chat, whose runtime summary states settled
+ *  totals. */
 function projection(lifecycleState: "active" | "inactive", liveEntry?: ChatSessionEntry) {
+  const row = {
+    id: "chat-1", kind: "chat" as const, title: "Chat", lifecycleState, notices: [], inputMode: { kind: "chat" as const },
+    lastUpdated: "2026-01-01T00:00:00.000Z", executionCwd: FIXTURE_EXECUTION_CWD, totalsLoading: false as const,
+    totalCost: 0, totalBilledCost: 0, priceUnavailable: false, totalTokens: 0, contextPercent: 0, contextPromptTokens: 0, durationMs: 0,
+  }
   return createSessionDetailProjection({
     projectRoot: FIXTURE_EXECUTION_CWD,
     sessionStore: { get: () => liveEntry },
     manager: { read: async () => metadata(lifecycleState) },
     reader: inMemoryEventReader([]),
+    summaries: { admit: async () => {}, view: () => ({ totalsLoading: false, row }), subscribe: () => () => {}, settled: async () => {}, dispose() {} },
   })
 }
 
-function summaryIndex(readImmediate: SessionSummaryIndex["readImmediate"]): Pick<SessionSummaryIndex, "readImmediate"> {
-  return { readImmediate }
+/** The account history's detail of one chat whose totals the summary
+ *  index states. */
+function backgroundDetail(lifecycleState: "active" | "inactive", readImmediate: SessionSummaryIndex["readImmediate"]) {
+  const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
+  return {
+    sessionDetail: createSessionDetailReader({
+      projectRoot: FIXTURE_EXECUTION_CWD,
+      manager: { read: async () => metadata(lifecycleState) },
+      reader,
+      projectionReader: reader,
+      source: { kind: "background", summaryIndex: { readImmediate } },
+    }),
+    dispose: async () => {},
+  }
 }
 
 describe("history query status projection", () => {
@@ -124,7 +145,7 @@ describe("history query status projection", () => {
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId(interruptedTurnEnd("person"), "cut"))
     await tree.appendMessage({ kind: "user", content: CONTINUATION_MESSAGES.resumed, origin: "system" })
     await tree.appendMessage({ kind: "assistant", content: [{ type: "text", text: "Durable answer." }] })
-    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, priorBlocks: projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot }) })
+    const live = createOutputSession({ updateEntry: () => {}, sessionId: memberId, executionCwd: projectRoot, prior: { blocks: projectBlocksFromEntries(await tree.getBranch(), { executionCwd: projectRoot }), sequenceStart: 0 } })
     tree.getStorage().dispose()
     live.pushSystemMessage("Background work still runs.", 2)
     live.pushUserMessage("Wrap up.", 3, { queued: true })
@@ -192,21 +213,21 @@ describe("history query status projection", () => {
       notices: [], inputMode: { kind: "chat" as const }, lastUpdated: "2026-01-01T00:00:00.000Z",
       executionCwd: FIXTURE_EXECUTION_CWD, totalsLoading: false as const, ...totals, durationMs: 100,
     }
-    const history = createSessionDetailProjection({
+    const history = source === "index" ? backgroundDetail("inactive", async (sessionIds) => ({
+      status: "ready", throughPosition: 1,
+      summaries: new Map(sessionIds.map((sessionId) => [sessionId, {
+        budget: { ...totals, outputTokens: 10 }, duration: { accumulatedActiveMs: 100 }, diffStats: null,
+        averageGenerationTokensPerSecond: 18.2, errors: {},
+      }])),
+    })) : createSessionDetailProjection({
       projectRoot: FIXTURE_EXECUTION_CWD, manager: { read: async () => metadata("inactive") },
       sessionStore: { get: () => live ? entry([]) : undefined },
       reader: inMemoryEventReader([]),
-      ...(source === "index" ? { summaryIndex: summaryIndex(async (sessionIds) => ({
-        status: "ready", throughPosition: 1,
-        summaries: new Map(sessionIds.map((sessionId) => [sessionId, {
-          budget: { ...totals, outputTokens: 10 }, duration: { accumulatedActiveMs: 100 }, diffStats: null,
-          averageGenerationTokensPerSecond: 18.2, errors: {},
-        }])),
-      })) } : { summaries: {
+      summaries: {
         admit: async () => {},
         view: () => loading ? { totalsLoading: true as const } : { totalsLoading: false as const, row, averageGenerationTokensPerSecond: 18.2 },
         subscribe: () => () => {}, settled: async () => {}, dispose() {},
-      } }),
+      },
     })
     const f = fixture()
     f.metadata.set("chat-1", durableRow("chat-1", { lifecycleState: "inactive" }))
@@ -333,13 +354,7 @@ describe("history query status projection", () => {
   })
 
   test("durable detail distinguishes loading totals from a settled budget-scope error", async () => {
-    const loading = createSessionDetailProjection({
-      projectRoot: FIXTURE_EXECUTION_CWD,
-      sessionStore: { get: () => undefined },
-      manager: { read: async () => metadata("inactive") },
-      reader: inMemoryEventReader([]),
-      summaryIndex: summaryIndex(async () => ({ status: "loading", throughPosition: 0, summaries: new Map() })),
-    })
+    const loading = backgroundDetail("inactive", async () => ({ status: "loading", throughPosition: 0, summaries: new Map() }))
     await expect(loading.sessionDetail("chat-1")).resolves.toMatchObject({
       view: {
         budget: { totalsLoading: true },
@@ -348,21 +363,15 @@ describe("history query status projection", () => {
     })
     expect((await loading.sessionDetail("chat-1")).view?.row.totalCost).toBeUndefined()
 
-    const failedBudget = createSessionDetailProjection({
-      projectRoot: FIXTURE_EXECUTION_CWD,
-      sessionStore: { get: () => undefined },
-      manager: { read: async () => metadata("inactive") },
-      reader: inMemoryEventReader([]),
-      summaryIndex: summaryIndex(async (sessionIds) => ({
-        status: "ready",
-        throughPosition: 4,
-        summaries: new Map(sessionIds.map((sessionId) => [sessionId, {
-          duration: { accumulatedActiveMs: 9 },
-          diffStats: { added: 2, modified: 1, removed: 0 },
-          errors: { budget: "damaged usage" },
-        }])),
-      })),
-    })
+    const failedBudget = backgroundDetail("inactive", async (sessionIds) => ({
+      status: "ready",
+      throughPosition: 4,
+      summaries: new Map(sessionIds.map((sessionId) => [sessionId, {
+        duration: { accumulatedActiveMs: 9 },
+        diffStats: { added: 2, modified: 1, removed: 0 },
+        errors: { budget: "damaged usage" },
+      }])),
+    }))
     await expect(failedBudget.sessionDetail("chat-1")).resolves.toMatchObject({
       view: {
         budget: null,

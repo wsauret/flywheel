@@ -1,7 +1,7 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
-import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf } from "../../app/screen-stack.js"
+import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf, type HistoryEntryState } from "../../app/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/view-state.js"
 
@@ -15,8 +15,8 @@ export type WorkflowPlace =
 
 export interface HistoryPort {
   readonly state: unknown
-  pushState(state: unknown): void
-  replaceState(state: unknown): void
+  pushState(state: HistoryEntryState): void
+  replaceState(state: HistoryEntryState): void
   back(): void
   addPopStateListener(listener: (event: { readonly state: unknown }) => void): void
   removePopStateListener(listener: (event: { readonly state: unknown }) => void): void
@@ -101,6 +101,7 @@ export function createWorkflowNavigation(options: {
   readonly selected: Accessor<string | undefined>
   readonly select: (id: string) => void
 }, port: HistoryPort = browserHistory()) {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a browser history entry, which another page of the same tab can have written
   const atEntry = (state: unknown): Here | undefined => { const place = placeOf(state); return place && { place, named: sessionOf(state) } }
   const [here, setHere] = createSignal(atEntry(port.state))
   const place = createMemo(() => here()?.place)

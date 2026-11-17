@@ -9,10 +9,11 @@ import { MutationEvidenceSchema } from "../../../../../src/infra/mutation-eviden
 import { parseFileMutationOperationHeader, readFileMutationOperation } from "../../../../../src/orchestration/session/file-mutation-operation.js";
 
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
+import { testBaseTools, admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import { MAX_FILE_EDIT_BYTES } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
 import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
+import type { InFlightPayload } from "../../../../../src/infra/event-store-types.js";
 
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
 const runTool = (
@@ -20,7 +21,7 @@ const runTool = (
   ctx: Parameters<typeof executePreparedTool>[1],
   tools: Parameters<typeof prepareToolCall>[1],
   options?: Parameters<typeof executePreparedTool>[2],
-) => executePreparedTool(prepareToolCall(call, tools), ctx, options);
+) => executePreparedTool(prepareToolCall(call, tools, admitEveryTool), ctx, options);
 
 
 describe("write tool", () => {
@@ -94,7 +95,7 @@ describe("write tool", () => {
         ...recorder.writer,
         // Preparation is in-flight state, so the ordering runs through both
         // channels: the point of the test is that it lands before any bytes.
-        swapInFlight: (kind: string, key: string, expectedRaw: string | null, payload: unknown | null) => {
+        swapInFlight: (kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null) => {
           order.push(`prepared:${fs.existsSync(target)}`);
           return recorder.writer.swapInFlight!(kind, key, expectedRaw, payload);
         },

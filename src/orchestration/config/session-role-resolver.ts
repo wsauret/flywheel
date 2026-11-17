@@ -15,6 +15,7 @@ import { registeredRoleIds, captureRoleResolver, resolveRoleFromModels, type Rol
 import { beginTierResolutionOperation, type TierResolutionOptions } from "./model-tiers.js"
 import type { CaptureProviderConnection, ProviderConnectionCapture } from "../agent-runtime/factory.js"
 import { workflowRunOwner } from "../module-catalog.js"
+import type { AgentPersonaRoles } from "./role-selection.js"
 
 type MaterializeRoleSnapshotDeps = {
   readonly userDataRoot: string
@@ -31,37 +32,60 @@ function roleAssignmentsFromResolvedRoles(roles: ResolvedRoles): RoleAssignments
   return Object.fromEntries([...roles].map(([roleId, role]) => [roleId, roleAssignmentEntryFromSelection(role)]))
 }
 
-/** Chooses one whole saved object before applying independently fixed launch fields.
- * Profile settings stay live. The defaults table contains only authored launch fields. */
-export function effectiveRoleAssignments(snapshot: RoleAssignmentSnapshot, profileRoles: RoleSettings = {}): RoleSettings {
+/** One seat's effective setting. `defaultEffort` is the effort of a
+ *  workflow default that names no model; it stays in force when the model
+ *  that serves the seat cannot take it as authored. */
+type EffectiveRoleSetting = RoleSettingEntry & { readonly defaultEffort?: string }
+
+/** The one ranking of a session's authored settings, which requests and the
+ * model picker both read. For each agent record with a workflow default (refer
+ * to `briefDefaultRoleId`), the narrowest setting that a person saved for the
+ * agent or its workflow wins as a whole: its record, its persona under its
+ * brief, its persona, its brief, then the Workflow Agent. A person's setting
+ * that names only an effort keeps the default model. Then the workflow's
+ * default, whose unset fields follow the profile's persona or Workflow Agent
+ * setting. `personas` names each record's persona roles, by record id. Profile
+ * settings stay live. */
+export function effectiveRoleAssignments(snapshot: RoleAssignmentSnapshot, profileRoles: RoleSettings = {}, personas?: AgentPersonaRoles) {
   const defaults = normalizeRoleAssignments(snapshot.defaults)
   const overrides = normalizeRoleAssignments(snapshot.overrides)
   const profile = Object.fromEntries(Object.entries(normalizeRoleAssignments(profileRoles)).filter(([id]) => parseBriefRoleId(id) === undefined))
-  const settings: { [roleId: string]: RoleSettingEntry } = {}
+  const settings: { [roleId: string]: EffectiveRoleSetting } = {}
   const ids = new Set([...Object.keys(profile), ...Object.keys(overrides)])
   for (const id of ids) {
     if (RETIRED_COMPACTION_ROLE_IDS.has(id)) continue
     settings[id] = applicableSetting(id, overrides) ?? applicableSetting(id, profile) ?? {}
   }
-  for (const [id, fixed] of Object.entries(defaults)) {
+  for (const [id, authored] of Object.entries(defaults)) {
     const selector = parseBriefRoleId(id)
     if (selector?.definitionId === undefined) continue
-    const follows = overrides[id] ?? applicableSetting(briefAtRoleId(selector.briefId, selector.definitionId), overrides)
-      ?? applicableSetting(briefRoleId(selector.briefId), overrides)
-      ?? applicableSetting(briefRoleId(selector.briefId), profile) ?? {}
-    settings[briefAtRoleId(selector.briefId, selector.definitionId)] = { ...follows, ...fixed }
+    const recordSeat = briefAtRoleId(selector.briefId, selector.definitionId)
+    const personaRoles = personas?.get(selector.definitionId)?.roles ?? []
+    const person = firstSetting([recordSeat, ...personaRoles.map((role) => briefPersonaRoleId(selector.briefId, role)), ...personaRoles, briefRoleId(selector.briefId), "workflow-agent"], overrides)
+    const workflowDefault = { ...firstSetting([...personaRoles, "workflow-agent"], profile), ...authored }
+    settings[recordSeat] = person?.model !== undefined ? person
+      : person !== undefined ? { ...workflowDefault, ...person }
+      : { ...workflowDefault, ...(selector.defaultFields === "effort" ? { defaultEffort: authored.effort } : {}) }
   }
   return settings
 }
 
-function applicableSetting(roleId: string, settings: RoleSettings): RoleSettingEntry | undefined {
+/** A workflow agent's settings: its run's, under its own session's. */
+export function withInheritedRoles(inherited: RoleAssignmentSnapshot, own: RoleAssignmentSnapshot): RoleAssignmentSnapshot {
+  return { defaults: { ...inherited.defaults, ...own.defaults }, overrides: { ...inherited.overrides, ...own.overrides } }
+}
+
+function applicableSetting<Setting>(roleId: string, settings: { readonly [roleId: string]: Setting }): Setting | undefined {
   const selector = parseBriefRoleId(roleId)
   const role = selector?.personaRole ?? roleId
   const parent = parentRoleId(role)
-  const chain = selector?.personaRole
+  return firstSetting(selector?.personaRole
     ? [roleId, ...(parent ? [briefPersonaRoleId(selector.briefId, parent)] : []), role, ...(parent ? [parent] : [])]
-    : selector ? [roleId, briefRoleId(selector.briefId), "workflow-agent"] : [roleId, ...(parent ? [parent] : [])]
-  return chain.map((id) => settings[id]).find((setting) => setting !== undefined)
+    : selector ? [roleId, briefRoleId(selector.briefId), "workflow-agent"] : [roleId, ...(parent ? [parent] : [])], settings)
+}
+
+function firstSetting<Setting>(roleIds: readonly string[], settings: { readonly [roleId: string]: Setting }): Setting | undefined {
+  return roleIds.map((id) => settings[id]).find((setting) => setting !== undefined)
 }
 
 /** Builds authored role policy, leaving absent fields to inherit from the profile. */
@@ -128,50 +152,45 @@ export async function ensureSessionRoleSnapshot(deps: {
 
 /** Resolves replayed authored fields against the current immutable profile capture.
  * No request selection is written back to session metadata. */
-export async function resolveSessionRoles(snapshot: RoleAssignmentSnapshot, capture: ProviderConnectionCapture, userDataRoot: string, additionalRoleIds: Iterable<string> = [], inherited?: RoleAssignmentSnapshot): Promise<ResolvedRoles> {
+export async function resolveSessionRoles(snapshot: RoleAssignmentSnapshot, capture: ProviderConnectionCapture, userDataRoot: string, additionalRoleIds: Iterable<string> = [], inherited?: RoleAssignmentSnapshot, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
   const resolve = captureRoleResolver({
     selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: capture.runtimeConfig.allowTrainingRoutes,
   }, userDataRoot)
   return resolveSessionSettings(snapshot, capture.runtimeConfig.profileRoles, async (roleId, setting) => {
     const result = await resolve(roleId, setting)
     return result.kind === "selected" ? result.role : undefined
-  }, additionalRoleIds, undefined, inherited)
+  }, additionalRoleIds, undefined, inherited, personas)
 }
 
 /** Previews the same authored policy as requests, using the picker's admitted catalog.
  * Only `requestedRoleIds` resolve. A request resolves a brief seat only when a
  * setting names it, so a preview never generates one either: an unset seat
  * falls through to the next seat that its agent reads. */
-export function previewSessionRoles(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], available: ReadonlyMap<ModelFamily, ReadonlySet<string>>, options: TierResolutionOptions, requestedRoleIds: Iterable<string>): Promise<ResolvedRoles> {
+export function previewSessionRoles(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], available: ReadonlyMap<ModelFamily, ReadonlySet<string>>, options: TierResolutionOptions, requestedRoleIds: Iterable<string>, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
   const operation = beginTierResolutionOperation(options)
   const requested = new Set(requestedRoleIds)
   const generated = [...requested].filter((roleId) => parseBriefRoleId(roleId) === undefined)
-  return resolveSessionSettings(snapshot, profileRoles, (roleId, setting) => resolveRoleFromModels(roleId, setting, available, operation), generated, requested)
+  return resolveSessionSettings(snapshot, profileRoles, (roleId, setting) => resolveRoleFromModels(roleId, setting, available, operation), generated, requested, undefined, personas)
 }
 
-async function resolveSessionSettings(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], resolve: (roleId: string, setting: RoleSetting) => Promise<ResolvedRole | undefined>, additionalRoleIds: Iterable<string>, onlyRoleIds?: ReadonlySet<string>, inherited?: RoleAssignmentSnapshot): Promise<ResolvedRoles> {
+async function resolveSessionSettings(snapshot: RoleAssignmentSnapshot, profileRoles: FlywheelConfig["profiles"][string]["roles"], resolve: (roleId: string, setting: RoleSetting) => Promise<ResolvedRole | undefined>, additionalRoleIds: Iterable<string>, onlyRoleIds?: ReadonlySet<string>, inherited?: RoleAssignmentSnapshot, personas?: AgentPersonaRoles): Promise<ResolvedRoles> {
   const profile = Object.fromEntries(Object.entries(profileRoles).filter(([id]) => parseBriefRoleId(canonicalRoleId(id)) === undefined).map(([id, role]) => [canonicalRoleId(id), {
     model: role.model, effort: role.effort, providerOptions: role.provider_options,
   }]))
-  const settings = inherited
-    ? { ...effectiveRoleAssignments(inherited, profile), ...normalizeRoleAssignments(snapshot.overrides) }
-    : effectiveRoleAssignments(snapshot, profile)
+  const settings = effectiveRoleAssignments(inherited ? withInheritedRoles(inherited, snapshot) : snapshot, profile, personas)
   const ids = new Set([...registeredRoleIds(additionalRoleIds), ...Object.keys(settings)])
   const roles = new Map<RoleId, ResolvedRole>()
   for (const roleId of ids) {
     if (onlyRoleIds && !onlyRoleIds.has(roleId)) continue
-    const setting = applicableSetting(roleId, settings) ?? applicableSetting(roleId, profile) ?? {}
+    const setting: EffectiveRoleSetting = applicableSetting(roleId, settings) ?? applicableSetting(roleId, profile) ?? {}
+    // A record's agents run as its persona, so its coded preferences are the persona's.
     const selector = parseBriefRoleId(roleId)
-    const fixedEntry = selector?.definitionId === undefined ? undefined : Object.entries({ ...inherited?.defaults, ...snapshot.defaults }).find(([id]) => {
-      const fixed = parseBriefRoleId(id)
-      return fixed?.definitionId === selector.definitionId && fixed.briefId === selector.briefId && fixed.fixed === "effort"
-    })?.[1]
-    const fixedEffort = fixedEntry?.effort
-    const role = await resolve(selector?.personaRole ?? roleId, { model: setting.model, effort: setting.effort, fixedEffort, provider_options: setting.providerOptions })
+    const codedRole = selector?.personaRole ?? (selector?.definitionId === undefined ? undefined : personas?.get(selector.definitionId)?.roles[0]) ?? roleId
+    const role = await resolve(codedRole, { model: setting.model, effort: setting.effort, defaultEffort: setting.defaultEffort, provider_options: setting.providerOptions })
     if (role) roles.set(roleId, {
       ...role,
       roleId,
-      setting: { ...setting, ...(fixedEffort === undefined ? {} : { fixedEffort }) },
+      setting,
       ...(applicableSetting(roleId, snapshot.overrides) ? { settingScope: "session" as const } : applicableSetting(roleId, profile) ? { settingScope: "profile" as const } : {}),
     })
   }
@@ -185,6 +204,8 @@ export function createSessionRoleResolver(deps: {
   userDataRoot?: string
   capture?: CaptureProviderConnection
   requiredRoleIds?: ReadonlySet<string>
+  /** For a workflow agent's session, the persona roles of its agent record, by record id. */
+  personas?: AgentPersonaRoles
 }): RoleResolver {
   const projection = createSingleSessionMetadataProjection(deps.reader, deps.sessionId)
   return async (requestCapture) => {
@@ -195,7 +216,7 @@ export function createSessionRoleResolver(deps: {
     if (session.kind === "workflow-agent" && !inherited) throw new Error(`Workflow not found: ${session.workflowMembership.workflowId}`)
     const capture = requestCapture ?? await deps.capture?.()
     return capture
-      ? resolveSessionRoles(snapshot, capture, deps.userDataRoot ?? deps.projectRoot, deps.requiredRoleIds, inherited?.roleAssignments)
-      : resolvedRolesFromAssignments(inherited ? { ...effectiveRoleAssignments(inherited.roleAssignments), ...normalizeRoleAssignments(snapshot.overrides) } : effectiveRoleAssignments(snapshot))
+      ? resolveSessionRoles(snapshot, capture, deps.userDataRoot ?? deps.projectRoot, deps.requiredRoleIds, inherited?.roleAssignments, deps.personas)
+      : resolvedRolesFromAssignments(effectiveRoleAssignments(inherited ? withInheritedRoles(inherited.roleAssignments, snapshot) : snapshot, {}, deps.personas))
   }
 }

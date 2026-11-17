@@ -4,7 +4,7 @@ import * as path from "node:path"
 
 import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js"
+import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"
 import { registerSharedHolderIn, releaseSharedHolderIn, sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { accountServeRecordPath, LOG_DIR } from "../../../src/infra/paths.js"
@@ -566,7 +566,7 @@ describe("planned interruption and automatic continuation", () => {
 
   test("a successor does not open a project a previous service of its lane still holds until that service has gone", async () => {
     const project = makeProject("project-g")
-    const flywheel = ContainedDirectory.open(project, [FLYWHEEL_DIR_NAME], { privateDirectories: true })
+    const flywheel = openContainedDirectory(project, [FLYWHEEL_DIR_NAME], { privateDirectories: true })
     // This test process stands in for a predecessor still closing the
     // project after it withdrew its socket: a live process of the same lane
     // that holds the project's serving gate.

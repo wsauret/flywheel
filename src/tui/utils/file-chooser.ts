@@ -13,7 +13,7 @@ export type FileChoice =
  *  picked path per line, or nothing when the platform has no chooser to ask.
  *  macOS asks the system through osascript, Windows through the .NET
  *  open-file dialog, Linux through zenity or kdialog, whichever is installed. */
-export function fileChooserCommand(platform: NodeJS.Platform, which: (tool: string) => string | null, title: string): readonly string[] | undefined {
+function fileChooserCommand(platform: NodeJS.Platform, which: (tool: string) => string | null, title: string): readonly string[] | undefined {
   if (platform === "darwin" && which("osascript")) {
     const prompt = title.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
     return [

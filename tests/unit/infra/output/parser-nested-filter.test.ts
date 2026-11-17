@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
 import { OutputProjector } from "../../../../src/infra/output/output-projector";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
-import { makeAgentDispatchedEvent, makeToolResultEvent } from "./_parser-fixtures";
+import { makeToolResultEvent } from "./_parser-fixtures";
 
 // Nested (subagent) deltas carry parent_tool_use_id; the projector filters them
 // from the parent chat log. Subagent output stays visible only through the
@@ -34,10 +34,10 @@ describe("nested subagent deltas are filtered from the parent chat log", () => {
   });
 });
 
-// A subagent dispatched from inside another subagent renders as a single
-// child row in the dispatcher's box, never as a top-level agent block; the
-// grandchild's interior events are dropped entirely.
-describe("nested subagent dispatches render as child rows", () => {
+// A subagent's own calls, including a subagent it dispatches, render in its
+// own session. A nested event that reaches the parent adds no block, no row
+// of the card, and no streaming tool text.
+describe("a subagent's calls stay out of the parent's transcript", () => {
   let projector: OutputProjector;
   let parser: RuntimeEventProjector;
 
@@ -57,83 +57,23 @@ describe("nested subagent dispatches render as child rows", () => {
     };
   }
 
-  function dispatchParentAgent(): void {
+  it("adds neither a block nor a card row for a nested dispatch, its result, or its interior", () => {
     parser.dispatch(toolInputCompleted("parent-tool-1", "subagent", { persona: "explorer", description: "Scout the repo", prompt: "look around" }), 1000);
-  }
+    const card = projector.getBlocks();
+    expect(card).toHaveLength(1);
+    expect(card[0]).toMatchObject({ kind: "agentGroup", children: [] });
 
-  function agentGroups() {
-    return projector.getBlocks().filter((b) => b.kind === "agentGroup");
-  }
-
-  it("renders a nested dispatch as a row in the parent box, not a top-level agent block", () => {
-    dispatchParentAgent();
-    expect(agentGroups()).toHaveLength(1);
-
-    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "reviewer-code-quality", description: "Review the change", prompt: "review" }, "parent-tool-1"), 2000);
-
-    const groups = agentGroups();
-    expect(groups).toHaveLength(1);
-    const parent = groups[0];
-    if (parent?.kind !== "agentGroup") throw new Error("expected agent group");
-    expect(parent.children).toHaveLength(1);
-    expect(parent.children[0]?.name).toBe("subagent");
-    expect(parent.children[0]?.presentation.detail).toContain("Review the change");
-  });
-
-  it("drops the nested subagent's interior events instead of leaking them top-level", () => {
-    dispatchParentAgent();
-    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "explorer", description: "Nested scout", prompt: "go" }, "parent-tool-1"), 2000);
-
-    const before = projector.getBlocks().length;
+    projector.apply({ type: "tool-use", toolUseId: "nested-1", name: "subagent", input: {}, timestamp: 2000, parentToolUseId: "parent-tool-1" });
+    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "explorer", description: "Nested scout", prompt: "go" }, "parent-tool-1"), 2100);
     parser.dispatch(toolInputCompleted("gc-tool-1", "read", { path: "src/index.ts" }, "nested-1"), 3000);
-
-    expect(projector.getBlocks()).toHaveLength(before);
-    const parent = agentGroups()[0];
-    if (parent?.kind !== "agentGroup") throw new Error("expected agent group");
-    expect(parent.children).toHaveLength(1);
-  });
-
-  it("completes the nested row when the dispatch's final tool result lands", () => {
-    dispatchParentAgent();
-    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "explorer", description: "Nested scout", prompt: "go" }, "parent-tool-1"), 2000);
     parser.dispatch(makeToolResultEvent("nested-1"), 4000);
 
-    const parent = agentGroups()[0];
-    if (parent?.kind !== "agentGroup") throw new Error("expected agent group");
-    expect(parent.children[0]?.status).toBe("completed");
+    expect(projector.getBlocks()).toEqual(card);
   });
 
-  it("treats subagent lifecycle events for a nested row as no-ops", () => {
-    dispatchParentAgent();
-    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "explorer", description: "Nested scout", prompt: "go" }, "parent-tool-1"), 2000);
-
-    const before = projector.getBlocks();
-    parser.dispatch(makeAgentDispatchedEvent("nested-1"), 2500);
-    expect(projector.getBlocks()).toEqual(before);
-  });
-
-  it("materializes a streaming-start nested dispatch as a row once its input completes", () => {
-    dispatchParentAgent();
-    projector.apply({ type: "tool-use", toolUseId: "nested-1", name: "subagent", input: {}, timestamp: 2000, parentToolUseId: "parent-tool-1" });
-    projector.apply({ type: "tool-input-complete", toolUseId: "nested-1", name: "subagent", input: { persona: "explorer", description: "Nested scout", prompt: "go" }, timestamp: 2100, parentToolUseId: "parent-tool-1" });
-
-    const groups = agentGroups();
-    expect(groups).toHaveLength(1);
-    const parent = groups[0];
-    if (parent?.kind !== "agentGroup") throw new Error("expected agent group");
-    expect(parent.children).toHaveLength(1);
-    expect(parent.children[0]?.presentation.detail).toContain("Nested scout");
-  });
-
-  it("drops grandchild execution output instead of exposing it as streaming tool text", () => {
-    dispatchParentAgent();
-    parser.dispatch(toolInputCompleted("nested-1", "subagent", { persona: "explorer", description: "Nested scout", prompt: "go" }, "parent-tool-1"), 2000);
-
-    projector.apply({ type: "tool-execution-output", toolUseId: "gc-tool-1", output: "grandchild output", parentToolUseId: "nested-1" });
-    expect(projector.snapshot().streamingToolText["gc-tool-1"]).toBeUndefined();
-
-    // Control: execution output whose parent is a real agent block still streams.
+  it("streams no execution output of a call under a subagent", () => {
+    parser.dispatch(toolInputCompleted("parent-tool-1", "subagent", { persona: "explorer", description: "Scout the repo", prompt: "look around" }), 1000);
     projector.apply({ type: "tool-execution-output", toolUseId: "child-tool-1", output: "child output", parentToolUseId: "parent-tool-1" });
-    expect(projector.snapshot().streamingToolText["child-tool-1"]?.content).toBe("child output");
+    expect(projector.snapshot().streamingToolText).toEqual({});
   });
 });

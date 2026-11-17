@@ -5,14 +5,14 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { LaunchedHost } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
-import { createHostRegistry, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
+import { processAgentHosts, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
-import { createLoginObservations, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
+import { createLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { agentLoop, dispatchedIds, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, registryProxy, SYSTEM, textOf, TREE, wireMessages } from "./_agent-host.js";
+import { agentLoop, dispatchedIds, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, textOf, TREE, wireMessages } from "./_agent-host.js";
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js";
 import { captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until } from "./_claude-sdk-client.js";
 import type { FakeReply, RecordedRequest } from "./_fake-host.js";
@@ -26,13 +26,10 @@ const hostLaunches = () => diagnostics.payloads("provider.claude_sdk.engine.laun
 /** A dispatcher deadline that a stalled response passes long before the engine's own timeouts end it. */
 const DISPATCHER_STEP_DEADLINE_MS = 3_000;
 
-let registry: HostRegistry;
-afterEach(async () => { await registry.drain(); });
-const agentHosts = registryProxy(() => registry);
+afterEach(async () => { await processAgentHosts.drain(); });
 
 describe("the shared agent host's recovery", () => {
   test("a failed request ends only its agent, and the next request starts it again under a new id with its history", async () => {
-    registry = createHostRegistry();
     let failed = false;
     await onFakeHost(temporary, hostScript((request) => {
       if (!failed && lastUserTexts(request).some((text) => text.startsWith("Fail"))) {
@@ -53,11 +50,10 @@ describe("the shared agent host's recovery", () => {
       // The retry is a new agent: its dispatch names an id that no earlier frame named.
       const retriedIds = dispatchedIds(host.requests).filter((id) => !earlier.has(id));
       expect(retriedIds).toHaveLength(1);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("an engine crash fails the request that streams, and the next request starts the agent on a new host from its history", async () => {
-    registry = createHostRegistry();
     const launched: LaunchedHost[] = [];
     let hung = false;
     await onFakeHost(temporary, hostScript((request) => {
@@ -74,11 +70,10 @@ describe("the shared agent host's recovery", () => {
       expect(retried.error).toBeUndefined();
       expect(streamedToolCalls(retried)[0]?.name).toBe("lookup");
       expect(launched).toHaveLength(2);
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { const host = launch(input); launched.push(host); return host; }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { const host = launch(input); launched.push(host); return host; }; } } });
   }, 120_000);
 
   test("a stalled agent's continuation dispatches once, the engine's wrapper follows the request-only text, and its later tool rounds extend its turn", async () => {
-    registry = createHostRegistry();
     let stalled = false;
     const lookups = (request: RecordedRequest): FakeReply => {
       const results = wireMessages(request).flatMap((message) => typeof message.content === "string" ? [] : message.content.filter((block) => block.type === "tool_result")).length;
@@ -129,27 +124,26 @@ describe("the shared agent host's recovery", () => {
         const held = result.events.flatMap((event) => event.kind === "transport_context" ? event.context.additions.filter(({ kind }) => kind === "request-context") : []);
         expect(held).toEqual([{ part: "message", kind: "request-context", at: 0, value: "held-from-dispatch" }]);
       }
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a host that ends after a request planned a delivery fails that attempt as transient, and the request prepared again dispatches on a new host", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     let leases = 0;
     const counted: HostRegistry = {
       lease: (...input) => {
-        const lease = registry.lease(...input);
+        const lease = processAgentHosts.lease(...input);
         leases += 1;
         let released = false;
         return { host: lease.host, opened: lease.opened, release: () => { if (!released) { released = true; leases -= 1; } return lease.release(); } };
       },
-      drain: (...input) => registry.drain(...input),
+      drain: (...input) => processAgentHosts.drain(...input),
     };
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const [call] = streamedToolCalls(await agent.request());
       agent.result(call?.id ?? "", "VALUE");
-      agent.beforeStream = () => registry.drain();
+      agent.beforeStream = () => processAgentHosts.drain();
       const lost = await agent.request();
       expect(lost.error).toMatchObject({ failure: { _tag: "TransientNetworkFailure" } });
       expect(leases).toBe(1);
@@ -168,7 +162,6 @@ describe("the shared agent host's recovery", () => {
     ["partial bytes", { blocks: [{ text: "Sending" }], open: true }],
     ["no bytes", { blocks: [], silent: true }],
   ] as const satisfies ReadonlyArray<readonly [string, FakeReply]>)("a dispatcher request that stalls with %s closes its host at the dispatcher's deadline, fails its agent as transient, and a later agent is served on a new host", async (_kind, stall) => {
-    registry = createHostRegistry();
     let stalled = false;
     await onFakeHost(temporary, (request, index) => {
       if (isDispatcher(request) && !stalled) {
@@ -186,11 +179,10 @@ describe("the shared agent host's recovery", () => {
       expect(hostLaunches()).toHaveLength(2);
       await until(() => diagnostics.payloads("provider.claude_sdk.host.closed").length > 0, "the stalled host's close");
       expect(diagnostics.payloads("provider.claude_sdk.host.closed").map(({ reason }) => reason)).toEqual(["dispatcher-stalled"]);
-    }, { seams: { agentHosts, dispatcherStepDeadlineMs: DISPATCHER_STEP_DEADLINE_MS } });
+    }, { seams: { dispatcherStepDeadlineMs: DISPATCHER_STEP_DEADLINE_MS } });
   }, 120_000);
 
   test("an undeliverable result starts the agent again, and the record names the result's kind", async () => {
-    registry = createHostRegistry();
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const [call] = streamedToolCalls(await agent.request());
@@ -199,11 +191,10 @@ describe("the shared agent host's recovery", () => {
       const second = await agent.request();
       expect(second.error).toBeUndefined();
       expect(diagnostics.payloads("provider.claude_sdk.host.agent_dispatched").at(-1)).toMatchObject({ trigger: "undeliverable-result", result: "error-over-limit" });
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test("a dispatcher request that fails is recorded once, with its status, by the next record", async () => {
-    registry = createHostRegistry();
     // The engine (CLI 2.1.321) answers an HTTP 400 that it does not recognise by sending the request once more without
     // `thinking-token-count-2026-05-13`, so the host fails that resend too, and each failed request is recorded once.
     let failures = 0;
@@ -222,12 +213,11 @@ describe("the shared agent host's recovery", () => {
       expect(failures).toBe(2);
       expect(hidden.filter(({ status }) => status !== 200)).toEqual(Array.from({ length: failures }, () => ({ source: "agent-host-dispatcher", status: 400 })));
       expect(hidden.filter(({ status }) => status === 200)).toHaveLength(host.requests.filter(isDispatcher).length - failures);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 
   test.each([[404, "model_not_found"], [403, "authentication_failed"], [429, "rate_limit"]] as const)(
     "a coordinator request refused with %d moves the coordinator to the next model for the host's life, and no agent, login, or quota sees the failure", async (status, kind) => {
-      registry = createHostRegistry();
       const quota = fakeAvailability({});
       const refusals: Array<readonly [string, ModelRefusal]> = [];
       const outcomes: RequestOutcome[] = [];
@@ -261,12 +251,11 @@ describe("the shared agent host's recovery", () => {
       }, {
         model: "claude-opus-5-5",
         build: { availability: quota.availability, recordModelRefusal: (wireModelId, refusal) => { refusals.push([wireModelId, refusal]); } },
-        seams: { agentHosts, observations: { ...createLoginObservations(), recordRequest: (_login, outcome) => { outcomes.push(outcome); } } },
+        seams: { observations: { ...createLoginObservations(), recordRequest: (_login, outcome) => { outcomes.push(outcome); } } },
       });
     }, 120_000);
 
   test("a dispatcher request that the service answers with a 404 of another resource refuses no model and moves no coordinator: the frame fails with the service's answer, and each request, the engine's resend too, is recorded once", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     let failed = 0;
     await onFakeHost(temporary, (request, index) => {
@@ -288,7 +277,6 @@ describe("the shared agent host's recovery", () => {
   }, 120_000);
 
   test("with paid use off, a host that one client anticipated and another served stops on extra usage and tells the person through the composition's notify seam", async () => {
-    registry = createHostRegistry();
     const notices: NotificationEpisodeInput[] = [];
     const overage = { "anthropic-ratelimit-unified-overage-in-use": "true", "anthropic-ratelimit-unified-overage-status": "allowed" };
     await onFakeHost(temporary, (request, index) => {
@@ -306,22 +294,20 @@ describe("the shared agent host's recovery", () => {
       expect(diagnostics.payloads("provider.claude_sdk.host.closed")).toMatchObject([{ reason: "extra-usage" }]);
       expect(notices).toEqual([expect.objectContaining({ type: "raise", occurrence: expect.objectContaining({ title: "Claude extra usage stopped" }) })]);
       expect(hostLaunches()).toHaveLength(1);
-    }, { seams: { agentHosts }, build: { notify: (episode) => { notices.push(episode); } } });
+    }, { build: { notify: (episode) => { notices.push(episode); } } });
   }, 120_000);
 
   test("an engine that cannot start fails the request as a route that is down, after one launch", async () => {
-    registry = createHostRegistry();
     let launches = 0;
     await onFakeHost(temporary, hostScript(lookupThenAnswer), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       const result = await agent.request();
       expect(result.error).toMatchObject({ failure: { _tag: "RouteUnavailableFailure" } });
       expect(launches).toBe(1);
-    }, { seams: { agentHosts, createHostLauncher: (config) => { const launch = createHostLauncher({ ...config, enginePath: `${config.enginePath}-missing` }); return (input) => { launches += 1; return launch(input); }; } } });
+    }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher({ ...config, enginePath: `${config.enginePath}-missing` }); return (input) => { launches += 1; return launch(input); }; } } });
   }, 120_000);
 
   test("a step that the engine starts by itself is refused, and the agent's next request starts it under a new id", async () => {
-    registry = createHostRegistry();
     let empty = false;
     await onFakeHost(temporary, hostScript(() => {
       if (!empty) {
@@ -338,7 +324,7 @@ describe("the shared agent host's recovery", () => {
       agent.history.push({ kind: "user", origin: "human", content: "Again." });
       expect((await agent.request()).error).toBeUndefined();
       expect(new Set(dispatchedIds(host.requests)).size).toBe(2);
-    }, { seams: { agentHosts } });
+    });
   }, 120_000);
 });
 
@@ -353,7 +339,7 @@ function accountObservers() {
     options: (model: string) => ({
       model,
       build: { availability: quota.availability, recordModelRefusal: (wireModelId: string, refusal: ModelRefusal) => { refusals.push([wireModelId, refusal]); } },
-      seams: { agentHosts, observations: { ...createLoginObservations(), recordRequest: (_login: unknown, outcome: RequestOutcome) => { outcomes.push(outcome); } } },
+      seams: { observations: { ...createLoginObservations(), recordRequest: (_login: LoginKey, outcome: RequestOutcome) => { outcomes.push(outcome); } } },
     }),
   };
 }
@@ -399,7 +385,6 @@ const COORDINATORS = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"
 
 describe("the shared agent host's coordinator", () => {
   test("a host that a Haiku agent opened goes on past Haiku, so an Opus agent of the host runs after the service refused the Haiku coordinator", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     const { failed, reply } = coordinatorRefused(onHaiku);
     await onFakeHost(temporary, reply, async ({ host, stage, projectRoot }) => {
@@ -416,7 +401,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("a host whose every coordinator model the service refuses records each refusal and fails its agent as transient", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     const { failed, reply } = coordinatorRefused(() => true);
     await onFakeHost(temporary, reply, async ({ stage, projectRoot }) => {
@@ -434,7 +418,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("a Haiku agent whose Haiku coordinator is rate limited and whose other coordinators are refused keeps its own model unrefused", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     await onFakeHost(temporary, (request, index) => isDispatcher(request) ? (onHaiku(request) ? { blocks: [], status: 429 } : modelRefused(request)) : hostScript(lookupThenAnswer)(request, index), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
@@ -446,7 +429,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("after every coordinator model failed, the host's next frame starts again at the first model", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     let limited = true;
     await onFakeHost(temporary, (request, index) => isDispatcher(request) && limited ? { blocks: [], status: 429 } : hostScript(lookupThenAnswer)(request, index), async ({ host, stage, projectRoot }) => {
@@ -464,7 +446,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("concurrent agents that wait on a refused coordinator each start once on the next model", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     const { failed, reply } = coordinatorRefused(onHaiku);
     await onFakeHost(temporary, reply, async ({ host, stage, projectRoot }) => {
@@ -481,7 +462,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("a coordinator refused after it started one agent of its frame starts only the other agent again, on the next model", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     let split = false;
     // The Haiku coordinator serves frames of one agent. In the first frame of several agents it sends one message,
@@ -510,7 +490,6 @@ describe("the shared agent host's coordinator", () => {
   }, 120_000);
 
   test("a coordinator refused in a resume frame resumes the agent once on the next model", async () => {
-    registry = createHostRegistry();
     const account = accountObservers();
     let refusing = false;
     const { failed, reply } = coordinatorRefused((request) => refusing && onHaiku(request));

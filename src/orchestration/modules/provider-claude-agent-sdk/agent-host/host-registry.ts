@@ -103,7 +103,7 @@ function newestFirst(left: string | undefined, right: string | undefined): numbe
 
 /** Each field of a host place that can differ inside one chat tree, by its path in `hostPlaceDifference`, with the
  *  reason that the split is accepted. A difference in any other field is a defect. */
-export const HOST_SPLIT_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
+const HOST_SPLIT_EXCEPTIONS: ReadonlyMap<string, string> = new Map([
   ["configDir", "A different login runs its own engine."],
   ["extraUsage", "A change of spend mode: the usage reports of a host carry no agent id."],
   ["gitRepository", "The engine states the git status of its process directory, which must agree with the agent's directory."],
@@ -127,7 +127,7 @@ export function hostKey(place: HostPlace): string {
 /** The paths of the fields in which `a` and `b` differ, each once: a dotted path to each differing value, where an
  *  array is one value, and `values.extraBody` for every field of a role's extra_body. Empty when the places give one
  *  key. */
-export function hostPlaceDifference(a: HostPlace, b: HostPlace): readonly string[] {
+function hostPlaceDifference(a: HostPlace, b: HostPlace): readonly string[] {
   const left = leaves(a);
   const right = leaves(b);
   const paths = new Set([...left.keys(), ...right.keys()].filter((path) => orderedJson(left.get(path)) !== orderedJson(right.get(path))));
@@ -175,7 +175,7 @@ interface Entry {
   closed: Promise<void> | undefined;
 }
 
-export function createHostRegistry(): HostRegistry {
+function createHostRegistry(): HostRegistry {
   const entries = new Map<string, Entry>();
   /** The closes that run now. A closing host serves no new lease, so it leaves `entries` at once, and `drain` waits for
    *  its close here. */

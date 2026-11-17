@@ -41,26 +41,18 @@ export interface McpClaudeEngine {
   dispose(): Promise<void>;
 }
 
-export interface McpClaudeEngineOptions {
-  readonly launch: () => Promise<ClaudeEngineSession>;
-  /** How often a connected server's status is read again, to see a lost connection or changed tools. */
-  readonly pollMs?: number;
-  /** How long a started sign-in waits for the person. */
-  readonly signInTimeoutMs?: number;
-}
-
-/** The MCP engine of this process on the account credential directory `authDir`. Its own directory there holds the
- *  sign-ins of the servers that use Claude, for every project and auth profile of the account, and is never the
+/** The engine session of this process on the account credential directory `authDir`. Its own directory there holds
+ *  the sign-ins of the servers that use Claude, for every project and auth profile of the account, and is never the
  *  directory of a Claude login. Every Flywheel process of the account runs its engine on it; the engine locks each
  *  token refresh across processes. */
-export function processClaudeEngine(authDir: string, launcher: LauncherScope): McpClaudeEngine {
-  return createMcpClaudeEngine({
-    launch: () => launchClaudeEngineSession({ host: processEngineHost(osAccount()), configDir: join(authDir, "mcp-claude-engine"), launcher }),
-  });
+export function accountEngineSession(authDir: string, launcher: LauncherScope): () => Promise<ClaudeEngineSession> {
+  return () => launchClaudeEngineSession({ host: processEngineHost(osAccount()), configDir: join(authDir, "mcp-claude-engine"), launcher });
 }
 
+/** How often a connected server's status is read again, to see a lost connection or changed tools. */
 const POLL_MS = 5_000;
 const SETTLE_POLL_MS = 250;
+/** How long a started sign-in waits for the person. */
 const SIGN_IN_TIMEOUT_MS = 10 * 60_000;
 
 /** One server registered on the engine until `release` runs. */
@@ -92,7 +84,7 @@ interface LiveConnection {
  *  same while the Flywheel server keeps its name and URL: a removed and added server, or one whose client switches
  *  back to Claude, finds its sign-in again. A digest keeps the name inside the characters the engine allows in a
  *  tool name. */
-export function engineServerName(server: string, url: string): string {
+function engineServerName(server: string, url: string): string {
   return `fw_${createHash("sha256").update(`${server}\0${url}`).digest("hex").slice(0, 16)}`;
 }
 
@@ -101,9 +93,8 @@ export function engineToolPart(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/gu, "_");
 }
 
-export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaudeEngine {
-  const pollMs = options.pollMs ?? POLL_MS;
-  const signInTimeoutMs = options.signInTimeoutMs ?? SIGN_IN_TIMEOUT_MS;
+/** The MCP engine of this process, which runs on the engine sessions that `launch` starts (`accountEngineSession`). */
+export function processClaudeEngine(launch: () => Promise<ClaudeEngineSession>): McpClaudeEngine {
   /** The holders of each engine server, oldest first. The engine has one config per server, and it is the oldest
    *  holder's: a replacement registry that warms beside the live one shares the engine server but never changes the
    *  config that the live registry's calls use. Its config applies when the older holders release, at the handoff. */
@@ -117,7 +108,7 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
 
   function start(): Promise<ClaudeEngineSession> {
     const startedAt = Date.now();
-    const started = options.launch().then((running) => {
+    const started = launch().then((running) => {
       log.info("MCP engine started", { servers: registrations.size, durationMs: Date.now() - startedAt });
       void running.ended.then(() => ended(running));
       return running;
@@ -209,7 +200,7 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
         poller = undefined;
         schedulePoll();
       });
-    }, pollMs);
+    }, POLL_MS);
   }
 
   async function poll(): Promise<void> {
@@ -321,7 +312,7 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
         url: started.authUrl,
         redirectUrl: started.callbackPort === undefined ? "" : `http://localhost:${started.callbackPort}/callback`,
         async complete() {
-          const deadline = Date.now() + signInTimeoutMs;
+          const deadline = Date.now() + SIGN_IN_TIMEOUT_MS;
           while (true) {
             const now = (await running.status()).find((entry) => entry.name === held.engineName);
             if (now?.status === "connected") return;

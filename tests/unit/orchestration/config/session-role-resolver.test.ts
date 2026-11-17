@@ -7,6 +7,7 @@ import { createSessionRoleResolver, ensureSessionRoleSnapshot, resolveSessionRol
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { roleCapture } from "../../../helpers/role-capture.js"
 import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/role-selection.js"
+import type { RoleSettings } from "../../../../src/orchestration/session/schemas.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -71,7 +72,7 @@ test("ignores profile brief settings but resolves authored record settings at ea
   expect((await resolveSessionRoles(saved, roleCapture(["claude-opus-5.5"], profile), "/scratch", slots)).get("brief.plan.at.worker")).toMatchObject({ model: "claude-opus-5.5", effort: "medium" })
 })
 
-test("keeps launch effort independent of an unreachable model, and resolves unfixed fields live", async () => {
+test("keeps a default effort independent of an unreachable model, and resolves unset fields live", async () => {
   const snapshot = { defaults: {
     "brief.review.at.worker.effort": { effort: "max" },
     "brief.review.at.other.model": { model: "lost-model" },
@@ -84,10 +85,48 @@ test("keeps launch effort independent of an unreachable model, and resolves unfi
   expect(snapshot.defaults["brief.review.at.worker.effort"]).toEqual({ effort: "max" })
   const persona = await resolveSessionRoles(snapshot, roleCapture(["gpt-6-luna", "gpt-6.1-sol"], {
     explorer: { model: "gpt-6-luna", effort: "low" },
-  }), "/scratch")
+  }), "/scratch", [], undefined, new Map([["worker", { roles: ["explorer"] }]]))
   expect(resolveWorkflowAgentRole({ briefId: "review", definitionId: "worker" }, persona, "explorer")).toMatchObject({
     model: "gpt-6-luna", effort: "high",
   })
+})
+
+test("ranks a person's setting for the agent or its workflow above the workflow's default", async () => {
+  const run = (overrides = {}) => ({ defaults: {
+    "brief.review.at.worker.model": { model: "record-model" },
+    "brief.review.at.other": { model: "record-model", effort: "low" },
+    "brief.review.at.third.effort": { effort: "max" },
+  }, overrides })
+  const own = (overrides = {}) => ({ defaults: {}, overrides })
+  const capture = () => roleCapture(["record-model", "gpt-6-luna"], { "workflow-agent": { model: "gpt-6-luna", effort: "medium" } })
+  const resolve = async (inherited: ReturnType<typeof run>, snapshot: ReturnType<typeof own>) => resolveSessionRoles(snapshot, capture(), "/scratch", [], inherited)
+  const unset = await resolve(run(), own())
+  expect(unset.get("brief.review.at.worker")).toMatchObject({ model: "record-model", effort: "medium" })
+  expect(unset.get("brief.review.at.other")).toMatchObject({ model: "record-model", effort: "low" })
+  // An effort-only setting keeps the default model.
+  expect((await resolve(run(), own({ "brief.review.at.worker": { effort: "high" } }))).get("brief.review.at.worker"))
+    .toMatchObject({ model: "record-model", effort: "high" })
+  const agent = await resolve(run(), own({
+    "brief.review.at.other": { model: "gpt-6-luna", effort: "high" },
+    "brief.review.at.third": { model: "record-model", effort: "low" },
+  }))
+  expect(agent.get("brief.review.at.other")).toMatchObject({ model: "gpt-6-luna", effort: "high" })
+  expect(agent.get("brief.review.at.third")).toMatchObject({ model: "record-model", effort: "low" })
+  expect((await resolve(run({ "brief.review": { model: "gpt-6-luna", effort: "low" } }), own())).get("brief.review.at.other"))
+    .toMatchObject({ model: "gpt-6-luna", effort: "low" })
+  // A person's persona setting ranks above the default; the profile's persona
+  // setting fills only the fields that the default leaves unset.
+  const personas = new Map(["worker", "other", "third"].map((id) => [id, { roles: ["explorer"] }]))
+  const asPersona = async (overrides: RoleSettings, profile = {}) => {
+    const roles = await resolveSessionRoles(own(overrides), roleCapture(["record-model", "gpt-6-luna"], profile), "/scratch", [], run(), personas)
+    return (definitionId: string) => resolveWorkflowAgentRole({ briefId: "review", definitionId }, roles, "explorer")
+  }
+  const saved = await asPersona({ explorer: { model: "gpt-6-luna", effort: "high" } })
+  for (const id of ["worker", "other", "third"]) expect(saved(id)).toMatchObject({ model: "gpt-6-luna", effort: "high" })
+  const profiled = await asPersona({}, { explorer: { model: "gpt-6-luna", effort: "low" }, "workflow-agent": { model: "record-model", effort: "medium" } })
+  expect(profiled("worker")).toMatchObject({ model: "record-model", effort: "low" })
+  // gpt-6-luna takes the default effort max at its nearest supported effort.
+  expect(profiled("third")).toMatchObject({ model: "gpt-6-luna", effort: "high" })
 })
 
 test("returns no roles for a ready empty profile without inventing models or changing settings", async () => {

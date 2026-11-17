@@ -1,13 +1,10 @@
 import { assertNever } from "../../infra/assert-never.js";
 import { maxEventLoopLagBetween } from "../../infra/event-loop-lag.js";
-import type { ProviderRequestOutcome, ProviderStreamSummary, ProviderStreamTelemetryEvent } from "../session/provider-request-audit-types.js";
-import type { ProviderStreamEvent, StreamTelemetryObservation, StreamTelemetryObserveResult, StreamTelemetrySink } from "./llm/types.js";
+import { DebugLog } from "../../infra/debug-log.js";
+import type { ProviderRequestOutcome, ProviderStreamSummary } from "../session/provider-request-audit-types.js";
+import type { ProviderStreamEvent, StreamTelemetryObservation, StreamTelemetryObserveResult, StreamTelemetrySink, TelemetryFields } from "./llm/types.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
-import { createGenerationMeasurement, type GenerationMeasurementTokenizer } from "./generation-measurement.js";
-
-interface TelemetryMetadata {
-  [key: string]: unknown;
-}
+import { createGenerationMeasurement, type GenerationMeasurementTokenizer, type SettledTextOf } from "./generation-measurement.js";
 
 interface NumberByKey {
   [key: string]: number;
@@ -34,8 +31,11 @@ const RAW_STREAM_ALWAYS_KEEP_KINDS = new Set([
 const BIG_GAP_MS = 5_000;
 
 interface RequestStreamTelemetry extends StreamTelemetrySink {
-  observeNormalized(event: ProviderStreamEvent): Promise<void>;
-  complete(outcome: ProviderRequestOutcome): Promise<void>;
+  /** Counts one canonical stream event. It returns a promise only when the debug tier records the event and its
+   *  writer acknowledges asynchronously; otherwise it is synchronous. */
+  observeNormalized(event: ProviderStreamEvent): StreamTelemetryObserveResult;
+  /** Records the stream summary once. `textOf` reads the settled text of each streamed text block. */
+  complete(outcome: ProviderRequestOutcome, textOf: SettledTextOf): Promise<void>;
 }
 
 // Stream telemetry is raw audit data. It records provider/normalized facts for
@@ -51,6 +51,9 @@ export function createRequestStreamTelemetry(
 
 function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderRequestAuditHandle, tokenizer?: GenerationMeasurementTokenizer): RequestStreamTelemetry {
   const generation = createGenerationMeasurement(tokenizer);
+  // Resolved once per request: with the raw event family's tier off, an event
+  // updates the summary's counters and builds no record.
+  const recordsEvents = DebugLog.records("model.stream.event_observed");
   const startedAt = performance.now();
   const startedWallAt = Date.now();
   let previousAt = startedAt;
@@ -61,7 +64,7 @@ function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderReq
   const countsBySource = new Map<string, number>();
   const countsByKind = new Map<string, number>();
   let firstVisibleDeltaMs: number | undefined;
-  let previousVisibleDelta: Pick<ProviderStreamTelemetryEvent, "elapsedMs" | "kind"> | undefined;
+  let previousVisibleDelta: { readonly elapsedMs: number; readonly kind: string } | undefined;
   const interDeltaGaps: number[] = [];
   const watchdogStalls: number[] = [];
   const bigGapTransitions = new Map<string, number>();
@@ -74,64 +77,50 @@ function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderReq
     const now = performance.now();
     sequence++;
     lastEventKind = observation.kind;
-    const telemetryEvent = {
-      sequence,
-      timestamp: Date.now(),
-      source: observation.source,
-      kind: observation.kind,
-      elapsedMs: Math.round(now - startedAt),
-      sincePreviousMs: Math.round(now - previousAt),
-      metadata: observation.metadata ? { ...observation.metadata } : {},
-    } satisfies ProviderStreamTelemetryEvent;
-    increment(countsBySource, telemetryEvent.source);
-    increment(countsByKind, telemetryEvent.kind);
-    if (telemetryEvent.source === "watchdog" && telemetryEvent.kind === "thinking_stall") {
-      watchdogStalls.push(stallDurationMs(telemetryEvent));
-    }
-    if (isVisibleDelta(telemetryEvent)) {
-      firstVisibleDeltaMs ??= telemetryEvent.elapsedMs;
-      if (previousVisibleDelta) {
-        const gap = Math.max(0, telemetryEvent.elapsedMs - previousVisibleDelta.elapsedMs);
-        interDeltaGaps.push(gap);
-        if (gap >= BIG_GAP_MS) increment(bigGapTransitions, `${previousVisibleDelta.kind}->${telemetryEvent.kind}`);
-      }
-      previousVisibleDelta = { elapsedMs: telemetryEvent.elapsedMs, kind: telemetryEvent.kind };
-    }
-    if (telemetryEvent.source === "normalized" && telemetryEvent.kind === "stream_retry") streamRetryCount += 1;
-    if (telemetryEvent.source === "normalized" && telemetryEvent.kind === "stream_attempt_start" && telemetryEvent.metadata.disableReasoning === true) {
-      reasoningDisabledRetryCount += 1;
-    }
+    const elapsedMs = Math.round(now - startedAt);
+    const sincePreviousMs = Math.round(now - previousAt);
     previousAt = now;
-    if (!shouldRecordRaw(telemetryEvent, rawStored)) return;
+    increment(countsBySource, observation.source);
+    increment(countsByKind, observation.kind);
+    if (observation.source === "watchdog" && observation.kind === "thinking_stall") {
+      watchdogStalls.push(stallDurationMs(fieldsOf(observation), sincePreviousMs));
+    }
+    if (observation.source === "normalized" && STREAM_SUMMARY_VISIBLE_DELTA_KINDS.has(observation.kind)) {
+      firstVisibleDeltaMs ??= elapsedMs;
+      if (previousVisibleDelta) {
+        const gap = Math.max(0, elapsedMs - previousVisibleDelta.elapsedMs);
+        interDeltaGaps.push(gap);
+        if (gap >= BIG_GAP_MS) increment(bigGapTransitions, `${previousVisibleDelta.kind}->${observation.kind}`);
+      }
+      previousVisibleDelta = { elapsedMs, kind: observation.kind };
+    }
+    if (!recordsEvents || !shouldRecordRaw(observation.kind, sequence, rawStored)) return;
     rawStored++;
-    const result = writer.recordStreamEvent(handle, {
+    return writer.recordStreamEvent(handle, {
       sequence,
       source: observation.source,
       kind: observation.kind,
-      elapsedMs: telemetryEvent.elapsedMs,
-      sincePreviousMs: telemetryEvent.sincePreviousMs,
-      metadata: telemetryEvent.metadata,
+      elapsedMs,
+      sincePreviousMs,
+      metadata: fieldsOf(observation),
     });
-    return result;
   }
 
-  async function observeNormalized(event: ProviderStreamEvent): Promise<void> {
+  function observeNormalized(event: ProviderStreamEvent): StreamTelemetryObserveResult {
     if (completed) return;
     generation.observe(event, performance.now());
-    await observe({
-      source: "normalized",
-      kind: event.kind,
-      metadata: normalizedMetadata(event),
-    });
+    if (event.kind === "stream_retry") streamRetryCount += 1;
+    if (event.kind === "stream_attempt_start" && event.disableReasoning) reasoningDisabledRetryCount += 1;
+    return observe({ source: "normalized", kind: event.kind, metadata: () => normalizedMetadata(event) });
   }
 
-  async function complete(outcome: ProviderRequestOutcome): Promise<void> {
+  async function complete(outcome: ProviderRequestOutcome, textOf: SettledTextOf): Promise<void> {
     if (completed) return;
     completed = true;
     const completedAt = Date.now();
     const durationMs = Math.round(performance.now() - startedAt);
     const loopLagMs = maxEventLoopLagBetween(startedAt, performance.now());
-    const measurement = await generation.complete();
+    const measurement = await generation.complete(textOf);
     await pendingStart;
     await writer.recordStreamSummary?.(handle, {
       rawEventCount: sequence,
@@ -167,6 +156,13 @@ function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderReq
   return { observe, observeNormalized, complete };
 }
 
+/** A copy of the observation's fields, built at most once per recorded observation. */
+function fieldsOf(observation: StreamTelemetryObservation): TelemetryFields {
+  const { metadata } = observation;
+  if (metadata === undefined) return {};
+  return typeof metadata === "function" ? metadata() : { ...metadata };
+}
+
 type BasicMetadataEvent = Extract<ProviderStreamEvent, {
   kind:
     | "provider_response_started"
@@ -184,7 +180,7 @@ type ToolMetadataEvent = Extract<ProviderStreamEvent, { kind: "tool_input_start"
 type NoticeMetadataEvent = Extract<ProviderStreamEvent, { kind: "provider_status" }>;
 type RetryMetadataEvent = Extract<ProviderStreamEvent, { kind: "stream_attempt_start" | "stream_retry" | "stream_resample" }>;
 
-function normalizedMetadata(event: ProviderStreamEvent): TelemetryMetadata {
+function normalizedMetadata(event: ProviderStreamEvent): TelemetryFields {
   if (isBasicMetadataEvent(event)) return basicMetadata(event);
   if (isToolMetadataEvent(event)) return toolMetadata(event);
   if (isNoticeMetadataEvent(event)) return noticeMetadata(event);
@@ -225,7 +221,7 @@ function isRetryMetadataEvent(event: ProviderStreamEvent): event is RetryMetadat
   return event.kind === "stream_attempt_start" || event.kind === "stream_retry" || event.kind === "stream_resample";
 }
 
-function basicMetadata(event: BasicMetadataEvent): TelemetryMetadata {
+function basicMetadata(event: BasicMetadataEvent): TelemetryFields {
   switch (event.kind) {
     case "provider_response_started":
     case "text_complete":
@@ -270,7 +266,7 @@ function basicMetadata(event: BasicMetadataEvent): TelemetryMetadata {
   }
 }
 
-function toolMetadata(event: ToolMetadataEvent): TelemetryMetadata {
+function toolMetadata(event: ToolMetadataEvent): TelemetryFields {
   switch (event.kind) {
     case "tool_input_start":
       return { toolUseId: event.toolUseId, name: event.name };
@@ -290,23 +286,17 @@ function toolMetadata(event: ToolMetadataEvent): TelemetryMetadata {
   }
 }
 
-function noticeMetadata(event: NoticeMetadataEvent): TelemetryMetadata {
+function noticeMetadata(event: NoticeMetadataEvent): TelemetryFields {
   return {
     message: summarizeText(event.message),
     ...(event.level ? { level: event.level } : {}),
   };
 }
 
-function retryMetadata(event: RetryMetadataEvent): TelemetryMetadata {
+function retryMetadata(event: RetryMetadataEvent): TelemetryFields {
   switch (event.kind) {
     case "stream_attempt_start":
-      return {
-        attempt: event.attempt,
-        isRetry: event.isRetry,
-        isFinalAttempt: event.isFinalAttempt,
-        sawThinkingStall: event.sawThinkingStall,
-        disableReasoning: event.disableReasoning,
-      };
+      return { disableReasoning: event.disableReasoning };
     case "stream_retry":
       return {
         attempt: event.attempt,
@@ -322,10 +312,10 @@ function retryMetadata(event: RetryMetadataEvent): TelemetryMetadata {
   }
 }
 
-function shouldRecordRaw(event: ProviderStreamTelemetryEvent, rawStored: number): boolean {
+function shouldRecordRaw(kind: string, sequence: number, rawStored: number): boolean {
   if (rawStored < RAW_STREAM_RECENT_EVENT_LIMIT) return true;
-  if (RAW_STREAM_ALWAYS_KEEP_KINDS.has(event.kind)) return true;
-  return event.sequence % RAW_STREAM_SAMPLE_EVERY === 0;
+  if (RAW_STREAM_ALWAYS_KEEP_KINDS.has(kind)) return true;
+  return sequence % RAW_STREAM_SAMPLE_EVERY === 0;
 }
 
 function summarizeInterDelta(
@@ -347,13 +337,9 @@ function summarizeInterDelta(
   };
 }
 
-function isVisibleDelta(event: ProviderStreamTelemetryEvent): boolean {
-  return event.source === "normalized" && STREAM_SUMMARY_VISIBLE_DELTA_KINDS.has(event.kind);
-}
-
-function stallDurationMs(event: ProviderStreamTelemetryEvent): number {
-  const elapsedMs = event.metadata.elapsedMs;
-  return typeof elapsedMs === "number" && Number.isFinite(elapsedMs) ? elapsedMs : event.sincePreviousMs;
+function stallDurationMs(fields: TelemetryFields, sincePreviousMs: number): number {
+  const elapsedMs = fields.elapsedMs;
+  return typeof elapsedMs === "number" && Number.isFinite(elapsedMs) ? elapsedMs : sincePreviousMs;
 }
 
 function increment(map: Map<string, number>, key: string): void {
@@ -369,13 +355,13 @@ function percentile(sorted: readonly number[], fraction: number): number {
   return sorted[index] ?? 0;
 }
 
-function summarizeValue(value: unknown): TelemetryMetadata {
+function summarizeValue(value: unknown): TelemetryFields {
   return summarizeText(stringify(value));
 }
 
 /** The size and hash of a stream's text, never the text: conversation
  *  content lives in the event store, and the hash tells two events apart. */
-function summarizeText(text: string): TelemetryMetadata {
+function summarizeText(text: string): TelemetryFields {
   return {
     chars: text.length,
     bytes: Buffer.byteLength(text, "utf8"),

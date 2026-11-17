@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -10,8 +11,6 @@ import type { RoleSettings, Session } from "../../../../src/orchestration/sessio
 import type { WorkflowLaunchBinding } from "../../../../src/orchestration/session/child-session-publication.js";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff";
-import { Schema } from "effect";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile";
 import { flattenWorkflowView } from "../../../../src/workflows/vm/view-flatten";
@@ -24,6 +23,7 @@ import { replayWorkflow, transitionWorkflow } from "../../../../src/workflows/vm
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js";
 import { composeWorkflowCompanions } from "../../../../src/workflows/vm/companions.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
+import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
 
 /** Commits one control transition with the companion facts the runtime publishes. */
 export async function advanceTestWorkflow(manager: SessionManager, store: EventStoreReadSurface, workflowId: string, event: Parameters<typeof transitionWorkflow>[1]): Promise<void> {
@@ -141,11 +141,18 @@ export async function publishTestWorkflow(
   } = {},
 ): Promise<string> {
   const workflowDefinitionId = opts.workflowDefinitionId ?? "fixture-workflow";
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
-    id: workflowDefinitionId,
-    name: opts.name ?? "Fixture workflow",
-    phases: [{ phase: TEST_BINDING_ID, brief: `Do the ${TEST_SKILL.id} work.`, name: TEST_SKILL.id, writes: [] }],
-  });
+  // The bindings come from the test skill, so the definition carries no
+  // loaded briefs; its id may be one that no workflow file can name.
+  const workflow: WorkflowDefinition = {
+    ...Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+      id: workflowDefinitionId,
+      name: opts.name ?? "Fixture workflow",
+      phases: [{ phase: TEST_BINDING_ID, brief: `Do the ${TEST_SKILL.id} work.`, name: TEST_SKILL.id, writes: [] }],
+    }),
+    provenance: { layer: "project", filePath: "fixture-workflow.workflow.yaml", id: workflowDefinitionId },
+    briefs: new Map(),
+    inputContract: null,
+  };
   const bindings = testResolvedAgents([testResolvedAgent(TEST_BINDING_ID, TEST_SKILL, { name: TEST_SKILL.name })]);
   const control = compileWorkflowControl(workflow, bindings, { skills: testSkillRevision([TEST_SKILL]) });
   const queueFacts = queueFactsForState(null, flattenWorkflowView(control, bindings)).map(parseWorkflowSessionFact);

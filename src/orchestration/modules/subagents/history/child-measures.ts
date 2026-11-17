@@ -45,7 +45,7 @@ interface ChildFold {
 
 /** The fold of one child's measured facts, for a projection of the child's
  *  session aggregate. */
-export const CHILD_MEASURE_FOLD = {
+const CHILD_MEASURE_FOLD = {
   factTypes: [...BUDGET_FACT_TYPES, ...TOOL_EXECUTION_FACT_TYPES, "subagent.completed"],
   initialState(): ChildFold {
     return {
@@ -96,7 +96,7 @@ export function createChildMeasureReader(reader: AsyncEventReadSurface): ChildMe
 /** The measure that `fold` states before the completion `completionEventId`,
  *  or through its last folded fact when it holds no such completion. Throws
  *  the row's error when the fold stopped at a row this build cannot decode. */
-export function measureBefore(fold: ChildFold, completionEventId: string | undefined): ChildMeasure {
+function measureBefore(fold: ChildFold, completionEventId: string | undefined): ChildMeasure {
   if (fold.corrupt) throw fromCorruptRow(fold.corrupt)
   return (completionEventId === undefined ? undefined : prefixGet(fold.completions, completionEventId)) ?? measureOf(fold)
 }

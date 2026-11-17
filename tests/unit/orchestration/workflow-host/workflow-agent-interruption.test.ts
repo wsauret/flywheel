@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from "bun:test"
-import { ManagedRuntime, Schema } from "effect"
+import { ManagedRuntime } from "effect"
 import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
@@ -11,7 +11,6 @@ import { createWorkflowRunner } from "../../../../src/orchestration/workflow-hos
 import type { WorkflowWake } from "../../../../src/orchestration/workflow-host/runner-types"
 import { EARLIER_AGENT_SESSION_REFUSAL, resolveWorkflowDeliveryAddress } from "../../../../src/orchestration/workflow-host/workflow-addressing"
 import { holdAddressedWorkflowMessage, WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema"
 import { fixtureSkills, workflow } from "../../workflows/vm/host-test-support"
 import { cleanupProjectRoots, createCapabilities, createDeps, makeWorkflowDeps, noConversationRecall } from "./_workflow-controller-fixtures"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
@@ -30,12 +29,13 @@ import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline"
 import { activeTimeMs } from "../../../../src/protocol/client/session-time"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 async function fixture(queuedSuccessor = false, opening?: "before" | "assembling", messageAtPublication = false) {
   const root = mkdtempSync(join(tmpdir(), "workflow-target-interrupt-"))
   const runtime = ManagedRuntime.make(EventStoreLive(resolveEventStoreDbFile(root)))
   const store = await runtime.runPromise(EventStoreService)
-  const definition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  const definition = loadedWorkflow({
     ...workflow,
     phases: [
       { phase: "both", agents: [{ agent: "a", brief: "Do the work.", name: "A", writes: [] }, { agent: "b", brief: "Do the work.", name: "B", writes: [] }] },
@@ -90,7 +90,7 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
       },
       definitionRevision: revision,
       createAgent(options) {
-        if (options.purpose.kind !== "workflow-agent") return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
+        if (options.purpose.kind !== "workflow-agent") return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
         const id = options.purpose.workflowAttemptId
         if (cutOpening) {
           cutOpening = false

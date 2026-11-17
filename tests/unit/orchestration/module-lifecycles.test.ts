@@ -7,7 +7,7 @@ import type { ToolHistorySummary } from "../../../src/orchestration/module-seams
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader.js"
 
 function owner(id: string, hooks: Partial<Pick<FirstPartyModule, "sessionHistory" | "maintenance" | "definitionReconciliation" | "workspaceMigrations">>): FirstPartyModule {
-  return { id, dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], transformers: [], gates: [], ...hooks }
+  return { id, dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], gates: [], ...hooks }
 }
 const directories = { userDataRoot: "/scratch/module-lifecycle/.flywheel", accountHome: "/scratch/module-lifecycle", projectRoot: "/scratch/module-lifecycle/project", executionCwd: "/scratch/module-lifecycle/project" }
 const reader = asAsyncEventReadSurface(inMemoryEventReader([]))

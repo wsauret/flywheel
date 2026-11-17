@@ -261,6 +261,6 @@ describe("subagent tool — general agent dispatch", () => {
     const registry = await loadStandalonePersonaRegistry(path.join(os.tmpdir(), "flywheel-nonexistent-personas"), noSkills);
     const general = registry.get("general");
     expect(general?.kind).toBe("general");
-    expect(general?.description).toContain("clone of the dispatching agent");
+    expect(general?.description).toContain("A clone of you.");
   });
 });

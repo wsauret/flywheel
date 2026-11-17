@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { Redacted } from "effect";
 
 import { captureProviderConnection, type AuthContext, type SubscriptionCredentials } from "../../../../../src/infra/auth/auth-context.js";
-import { testProviderRegistry } from "../../../../helpers/provider-authority.js";
+import { testEligibility, testProviderRegistry } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { resolveCapturedRole } from "../../../../../src/orchestration/config/role-resolution.js";
@@ -12,14 +12,13 @@ describe("role resolution through captured ChatGPT auth", () => {
   const capture = (auth: AuthContext, subscriptionCredentials: SubscriptionCredentials = new Map(), providerId?: string) => ({
     connection: captureProviderConnection({ profileId: "default", authDir: "/scratch/flywheel-chatgpt-validation/auth", auth, subscriptionCredentials }),
     providers: testProviderRegistry(),
-    eligibility: {
+    eligibility: testEligibility({
       modelIds: new Set(["gpt-6.1-sol"]),
-      modelUnavailableReason: () => undefined,
-      candidateOffering: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate, model: string) =>
+      candidateOfferings: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate, model: string) =>
         candidate.providerId === providerId
-          ? { candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const }
-          : undefined,
-    },
+          ? [{ candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const }]
+          : [],
+    }),
     runtimeConfig: testRuntimeConfigCapture(),
     admit: () => { throw new Error("Validation tests do not admit clients"); },
   });

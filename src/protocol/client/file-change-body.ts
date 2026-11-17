@@ -15,7 +15,7 @@ export type FileChangeBody =
   | { readonly kind: "proposed"; readonly proposedDiff: ProvisionalDiff }
   | { readonly kind: "unavailable" }
 
-export type MutationDiffRow =
+type MutationDiffRow =
   | { readonly path: string; readonly kind: "context"; readonly text: string; readonly oldLine: number; readonly newLine: number }
   | { readonly path: string; readonly kind: "remove"; readonly text: string; readonly oldLine: number }
   | { readonly path: string; readonly kind: "add"; readonly text: string; readonly newLine: number }
@@ -104,7 +104,7 @@ export function presentsAsFileChange(tool: Pick<FrontendToolEntry, "declaresMuta
 }
 
 /** The one line a shell mutation's row shows in place of its command until it settles. */
-export const SHELL_MUTATION_RUNNING = "bash command is running…"
+const SHELL_MUTATION_RUNNING = "bash command is running…"
 
 type ShellMutationRow = Pick<FrontendToolEntry, "declaresMutation" | "mutationEvidence" | "presentation" | "status">
 
@@ -209,7 +209,7 @@ export function removedDirectoryGroups(entries: readonly MutationFilesEntry[], f
 const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
 /** Parses renderer-neutral rows from canonical unified diffs. */
-export function parseMutationDiffRows(mutation: MutationDiff): MutationDiffRow[] {
+function parseMutationDiffRows(mutation: MutationDiff): MutationDiffRow[] {
   const rows: MutationDiffRow[] = []
   for (const file of mutation.files) {
     let oldLine: number | undefined
@@ -296,6 +296,7 @@ export function fileDiffFiles(
       const text = isExpanded ? patch?.text : entry.preview
       const allRows = text === undefined ? [] : parseMutationDiffRows({ version: 1, files: [{ path: file.path, change: file.change, unifiedDiff: text }], omissions: [] })
       const selected = isExpanded ? allRows : allRows.slice(0, TOOL_PREVIEW_LINE_LIMIT)
+      const readStatus = isExpanded ? patch?.status ?? "idle" as const : entry.preview === undefined ? "idle" as const : "ready" as const
       return [{
         id: file.path, path: file.displayPath,
         action: file.change === "added" ? "add" as const : file.change === "removed" ? "delete" as const : "update" as const,
@@ -308,8 +309,7 @@ export function fileDiffFiles(
         renderedLines: file.retainedLines, sourceOmittedLines: file.omittedLines,
         omittedLines: file.omittedLines + file.retainedLines - selected.length,
         expanded: isExpanded, evidence: file,
-        evidenceStatus: file.patch.kind === "omitted" ? "omitted" as const : file.patch.kind === "unavailable" ? "unavailable" as const
-          : isExpanded ? patch?.status ?? "idle" as const : entry.preview === undefined ? "idle" as const : "ready" as const,
+        evidenceStatus: file.patch.kind === "omitted" || file.patch.kind === "unavailable" ? file.patch.kind : readStatus,
         ...(file.patch.kind === "omitted" ? { omissionReason: file.patch.reason } : {}),
       }]
     }) ?? []

@@ -1,26 +1,25 @@
-import type { FrontendMutation, RuntimeQuery } from "../app-service-types.js"
-import { PROTOCOL_MODULE_MUTATIONS, PROTOCOL_MODULE_READS } from "../modules.js"
-import { protocolMutationTable, protocolQueryTable } from "../protocol-module.js"
+import type { FrontendMutation } from "../app-service-types.js"
+import { PROTOCOL_MODULE_MUTATIONS } from "../modules.js"
+import { protocolMutationTable } from "../protocol-module.js"
 
-/** Compile-time coverage of the protocol surface the editor host exposes.
+/** Compile-time coverage of the mutations the editor host exposes.
  *
  *  The editor shell in `webview/editor/` gates every mutation through this
- *  table, and a mutation or query the editor silently does not know about is
+ *  table, and a mutation the editor silently does not know about is
  *  invisible in review: nothing breaks, a capability just never reaches the
- *  editor. So every member of both wire unions must be classified here, and
- *  the `never` default turns an unclassified addition into a type error
+ *  editor. So every member of the mutation union must be classified here, and
+ *  the mapped table type turns an unclassified addition into a type error
  *  instead of a quiet gap.
  *
  *  "exposed" means some command, view, or client sheet in the webview dispatches it.
  *  "omitted" is the explicit decision not to surface it in the editor, stated
- *  as an entry so the decision survives review. A module's reads and mutations
- *  are exposed unless its protocol home declares `editor: "omitted"`, so both
- *  tables state only kernel rows by hand. */
+ *  as an entry so the decision survives review. A module's mutations are
+ *  exposed unless its protocol home declares `editor: "omitted"`, so the
+ *  table states only kernel rows by hand. */
 export type ProtocolExposure = "exposed" | "omitted"
 
 /** One entry per wire type: a member the table lacks, or a key the union lost, is a type error. */
 type MutationExposureTable = { readonly [T in FrontendMutation["type"]]: ProtocolExposure }
-type QueryExposureTable = { readonly [T in RuntimeQuery["type"]]: ProtocolExposure }
 
 const MUTATION_EXPOSURE = {
   "session.changes.undo": "exposed",
@@ -83,53 +82,6 @@ const MUTATION_EXPOSURE = {
   ...protocolMutationTable(PROTOCOL_MODULE_MUTATIONS, (mutation) => mutation.editor === "omitted" ? "omitted" : "exposed"),
 } satisfies MutationExposureTable
 
-const QUERY_EXPOSURE = {
-  sessionChangeSummary: "exposed",
-  sessionChanges: "exposed",
-  sessionChangeDiff: "exposed",
-  mutationFiles: "exposed",
-  mutationPatchWindow: "exposed",
-  sessionBackgroundWork: "exposed",
-  snapshot: "exposed",
-  outputWindow: "exposed",
-  outputRange: "exposed",
-  outputGroupChildren: "exposed",
-  outputBlockBody: "exposed",
-  projectFiles: "exposed",
-  statusSnapshot: "exposed",
-  budgetSnapshot: "exposed",
-  questionSnapshot: "exposed",
-  roleSnapshot: "exposed",
-  authStatusSnapshot: "exposed",
-  authProfileDeletionPreview: "exposed",
-  updateSnapshot: "exposed",
-  moduleSnapshot: "exposed",
-  configSnapshot: "exposed",
-  sessionDetail: "exposed",
-  sessionDetailSnapshot: "exposed",
-  recallQueuedMessage: "exposed",
-  commandCatalog: "exposed",
-  modelAssignments: "exposed",
-  sessionModelPlan: "omitted",
-  modelOptions: "exposed",
-  effortOptions: "exposed",
-  modelRoles: "exposed",
-  "provider_models.query": "exposed",
-  gitAiAttributionSnapshot: "exposed",
-  gitSnapshot: "exposed",
-  commandUsageSnapshot: "exposed",
-  transcriptSearch: "exposed",
-  ...protocolQueryTable(PROTOCOL_MODULE_READS, (read) => read.editor === "omitted" ? "omitted" : "exposed"),
-} satisfies QueryExposureTable
-
 export function mutationTypeExposure(type: FrontendMutation["type"]): ProtocolExposure {
   return MUTATION_EXPOSURE[type]
-}
-
-export function mutationExposure(mutation: FrontendMutation): ProtocolExposure {
-  return mutationTypeExposure(mutation.type)
-}
-
-export function queryExposure(query: RuntimeQuery): ProtocolExposure {
-  return QUERY_EXPOSURE[query.type]
 }

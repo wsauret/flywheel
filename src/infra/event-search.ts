@@ -402,8 +402,6 @@ function eventSearchText(event: StoredFact): string {
     event.actor,
     event.sessionId,
     event.runId,
-    event.parentEventId,
-    event.causedByEventId,
     JSON.stringify(event.payload),
   ].filter((value) => value != null).join("\n")
 }

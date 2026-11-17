@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { appendCredentialInstance } from "../../../../../src/infra/auth/auth-store-mutations.js";
+import { appendCredentialInstanceWithReceipt } from "../../../../../src/infra/auth/auth-store-mutations.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
 import { CHATGPT_BACKEND_API_BASE } from "../../../../../src/infra/auth/openai-auth-types.js";
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
@@ -12,7 +12,7 @@ import { planToolExposure } from "../../../../../src/orchestration/agent-runtime
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { WebSearchError, type WebSearchCommand, type WebSearchPort, type WebSearchProvider, type WebSearchResponse, type WebSearchRunOptions } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
+import { WebSearchError, type WebSearchCommand, type WebSearchPort, type WebSearchProvider, type WebSearchResponse } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
 import { createChatGptWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/chatgpt.js";
 import { createWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/select.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
@@ -82,7 +82,7 @@ describe("web tool execution", () => {
   });
 
   it("passes the dedicated retrieval scope to the capability", async () => {
-    let seen: { command: WebSearchCommand; options: WebSearchRunOptions } | undefined;
+    let seen: { command: WebSearchCommand; options: Parameters<WebSearchPort["run"]>[1] } | undefined;
     const tool = createWebTool(capability({
       run: async (command, options) => {
         seen = { command, options };
@@ -192,7 +192,7 @@ describe("chatgpt web search boundary", () => {
     // profile directory keeps those locks inside the temporary directory.
     const dir = join(temporaryDirectory("web-search-auth-"), "default");
     await mkdir(dir);
-    await appendCredentialInstance("chatgpt", { id: "chatgpt-account", identity: "acct-1", credential: { type: "oauth", access: "test-access", refresh: "test-refresh", expires: Date.now() + 3_600_000, accountId: "acct-1" } }, dir, (providerId) => providerId === "chatgpt" ? "subscription" : "metered");
+    await appendCredentialInstanceWithReceipt("chatgpt", { id: "chatgpt-account", identity: "acct-1", credential: { type: "oauth", access: "test-access", refresh: "test-refresh", expires: Date.now() + 3_600_000, accountId: "acct-1" } }, dir, (providerId) => providerId === "chatgpt" ? "subscription" : "metered");
     return dir;
   }
 

@@ -83,7 +83,7 @@ describe("RuntimeEventProjector file validation and failure", () => {
     parser.dispatch(toolInputDeltaEvent(id, '{"path":"test.ts","content":"draft'));
     parser.dispatch(toolPreviewCheckEvent(id, { type: "set", advice: "Review" }));
     if (settlement === "retry" || settlement === "interrupted") {
-      projector.apply({ type: "abandon-tool-inputs", reason: settlement });
+      projector.apply({ type: "abandon-tool-inputs" });
     } else {
       parser.dispatch(createRuntimeEvent("tool.result.recorded", {
         type: "tool.result.recorded",

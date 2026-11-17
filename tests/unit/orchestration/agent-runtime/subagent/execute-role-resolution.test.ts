@@ -28,7 +28,7 @@ describe("subagent tool — execute role resolution", () => {
         resolveRoles: async () => new Map([
           ["explorer", {
             roleId: "explorer", model: "claude-sonnet-4-6", effort: "medium",
-            setting: { ...setting, fixedEffort: "medium" }, settingScope: "session",
+            setting: { ...setting, defaultEffort: "medium" }, settingScope: "session",
           }],
         ]),
         createRunner: factory,

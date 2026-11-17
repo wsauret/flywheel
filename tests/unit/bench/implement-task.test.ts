@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
-import { createBenchmarkCatalog, DEFAULT_IMPLEMENTER_TIMEOUT_MS } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
+import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { implementQualityJudgeInputIdentity } from "../../../src/orchestration/modules/development/benchmark/implement-scoring.js";
 import {
   captureImplementation,
@@ -21,6 +21,8 @@ const catalog = createBenchmarkCatalog(process.cwd());
 const temporaryDirectory = temporaryDirectories();
 const PLAN = MINIMAL_IMPLEMENTATION_PLAN;
 const IMPLEMENT_TASKS_DIR = join(process.cwd(), "bench/tasks/implement");
+/** The run limit of an implementation task that states none. */
+const IMPLEMENTER_TIMEOUT_MS = 25 * 60 * 1_000;
 let captureAddCommand: readonly string[] | undefined;
 let captureResetCommand: readonly string[] | undefined;
 const commandEnvs: ({ [key: string]: string | undefined } | undefined)[] = [];
@@ -64,6 +66,7 @@ describe("shared implementation task loading", () => {
     await mkdir(join(taskDir, "acceptance"), { recursive: true });
     await Bun.write(join(taskDir, "plan.json"), JSON.stringify(PLAN));
     await Bun.write(join(taskDir, "manifest.json"), JSON.stringify({ traps: [], judgment: [] }));
+    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a task.json sandbox field that the loader rejects, malformed on purpose
     const rejects = async (sandbox: unknown, message: string) => {
       await Bun.write(join(taskDir, "task.json"), JSON.stringify({ id: "bad-task", stratum: "s", sandbox }));
       await expect(loadImplementTasks(join(taskDir, ".."))).rejects.toThrow(message);
@@ -86,7 +89,7 @@ describe("shared implementation task loading", () => {
         expect(task.prompt).toContain(PLAN_FILE);
       }
       expect(task.prompt).not.toContain("phase-level verification");
-      expect(task.timeoutMs).toBe(DEFAULT_IMPLEMENTER_TIMEOUT_MS);
+      expect(task.timeoutMs).toBe(IMPLEMENTER_TIMEOUT_MS);
     }
   });
 
@@ -185,7 +188,7 @@ describe("shared implementation task loading", () => {
       const benchmarkTask = {
         ...task,
         prompt: "Implement the plan.",
-        timeoutMs: task.timeoutMs ?? DEFAULT_IMPLEMENTER_TIMEOUT_MS,
+        timeoutMs: task.timeoutMs ?? IMPLEMENTER_TIMEOUT_MS,
       };
       const original = implementQualityJudgeInputIdentity([benchmarkTask]);
       expect(original).toBe("68363c6081c8eaca4610c9cf4d47ddb368b1b2f643861f1decfbb40172d03182");

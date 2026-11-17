@@ -400,8 +400,6 @@ function storedFields(fact: StoredFact): Omit<StoredFact, "payload"> {
     position: fact.position, id: fact.id, aggregateId: fact.aggregateId, seq: fact.seq, type: fact.type,
     version: fact.version, timestamp: fact.timestamp, actor: fact.actor, sessionId: fact.sessionId,
     ...(fact.runId ? { runId: fact.runId } : {}),
-    ...(fact.parentEventId ? { parentEventId: fact.parentEventId } : {}),
-    ...(fact.causedByEventId ? { causedByEventId: fact.causedByEventId } : {}),
   }
 }
 

@@ -8,7 +8,7 @@ import { fixedTurnOutputBound } from "../../../../src/orchestration/agent-runtim
 import { settleTurn } from "../../../../src/orchestration/agent-runtime/agent-turn-settlement.js";
 import type { ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js";
-import { RequestToolMap } from "../../../helpers/request-tool-surface.js";
+import { RequestToolMap, admitEveryTool } from "../../../helpers/request-tool-surface.js";
 
 it("emits ordered tool lifecycle diagnostics when the trace is enabled", async () => {
   const root = canonicalDirectory(tmpdir(), "test project root");
@@ -30,6 +30,7 @@ it("emits ordered tool lifecycle diagnostics when the trace is enabled", async (
   const turnScope = Scope.makeUnsafe();
   const dispatcher = createTurnDispatcher({
     tools: new RequestToolMap([[tool.name, tool]]),
+    executionAdmission: admitEveryTool,
     toolContext: context,
     signal: undefined,
     background: undefined,

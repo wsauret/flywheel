@@ -111,7 +111,6 @@ const mcpAuthenticate = defineProtocolMutation({
   type: "mcp.authenticate",
   fields: { server: Schema.String },
   result: McpRepairResultSchema,
-  policy: "lossless",
 })
 
 /** Start a new connection attempt for one failed server. Configuration and
@@ -120,7 +119,6 @@ const mcpReconnect = defineProtocolMutation({
   type: "mcp.reconnect",
   fields: { server: Schema.String },
   result: McpRepairResultSchema,
-  policy: "lossless",
 })
 
 /** A committed save can report publication or connection-application degradation. */
@@ -135,27 +133,23 @@ const mcpSetEnabled = defineProtocolMutation({
   type: "mcp.setEnabled",
   fields: { ...selectedFields, enabled: Schema.Boolean },
   result: McpManagementResultSchema,
-  policy: "lossless",
 })
 /** Choose the MCP client of one HTTP server in the scope that defines it. */
 const mcpSetClient = defineProtocolMutation({
   type: "mcp.setClient",
   fields: { ...selectedFields, client: Schema.Literals(["flywheel", "claude"]) },
   result: McpManagementResultSchema,
-  policy: "lossless",
 })
 /** Turn the account's claude.ai connectors on or off for every project. */
 const mcpSetClaudeAiConnectors = defineProtocolMutation({
   type: "mcp.setClaudeAiConnectors",
   fields: { enabled: Schema.Boolean },
   result: McpManagementResultSchema,
-  policy: "lossless",
 })
 const mcpRemove = defineProtocolMutation({
   type: "mcp.remove",
   fields: selectedFields,
   result: McpManagementResultSchema,
-  policy: "lossless",
 })
 
 export interface McpEnabledAction {

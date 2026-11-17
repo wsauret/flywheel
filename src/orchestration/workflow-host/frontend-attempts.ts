@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.j
 import { workflowLaunchTitle } from "../../infra/output/deferred-agent-meta.js"
 import type { FrontendAttempt, WorkflowAgentPersona } from "../../protocol/workflow-view-protocol-types.js"
 import { getPersonaMetadataIndex } from "../../workflows/agents/agent-roles.js"
-import { parentRoleId } from "../config/roles.js"
+import { personaRoleChain } from "../config/role-selection.js"
 import { readToolExecutions } from "../session/tool-execution-projection.js"
 import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
 import type { AttemptRow, WorkflowView } from "../../workflows/view/types.js"
@@ -49,9 +49,7 @@ export function agentPersonas(lineage: Pick<DefinitionLineageView, "definitions"
   for (const loaded of Object.values(lineage.definitions)) {
     if (loaded.kind !== "agent" || loaded.definition.policy.persona === undefined) continue
     const id = loaded.definition.policy.persona
-    const role = roleOf(id)
-    const parent = role === undefined ? undefined : parentRoleId(role)
-    personas.set(loaded.definition.definitionId, { id, roles: role === undefined ? [] : parent === undefined ? [role] : [role, parent] })
+    personas.set(loaded.definition.definitionId, { id, roles: personaRoleChain(roleOf(id)) })
   }
   return personas
 }

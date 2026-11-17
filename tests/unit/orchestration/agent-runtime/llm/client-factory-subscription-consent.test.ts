@@ -8,14 +8,14 @@ import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
-import { resetSharedLlmClients } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients } from "../../../../../src/orchestration/config/llm-clients.js";
 import { captureSubscriptionAdmission } from "../../../../../src/orchestration/subscription-spend-consent/admission-capture.js";
 import { createSubscriptionSpendConsentCaptureCache } from "../../../../../src/orchestration/subscription-spend-consent/capture-cache.js";
 import type { SubscriptionSpendConsentCapture } from "../../../../../src/orchestration/subscription-spend-consent/subscription-spend-consent-service.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
-import { testCapabilityModules, testProviderEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testCapabilityModules, testEligibility, testProviderEligibility, testProviderRegistry, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { createProfileFixture, definition, registry, writeAccounts } from "../../auth/provider-observations/_service-fixtures.js";
 
@@ -23,7 +23,7 @@ describe("subscription consent serving composition", () => {
   const { profile, cleanup } = createProfileFixture()
   afterEach(() => {
     // A later catalog refresh must not recreate this test's deleted profile.
-    resetSharedLlmClients()
+    clearSharedModelListingClients()
     cleanup()
   })
   const auth = {
@@ -79,10 +79,10 @@ describe("subscription consent serving composition", () => {
     const runtime = createAgentRuntime({ notify: () => {}, awaitModelAccessSettled: async () => {},
       profileId, getAuth: () => connection.auth, definitions: repoDefinitions(), moduleSelection: testCapabilityModules(), captureRuntimeConfig: testRuntimeConfigCapture,
       authDirectory: () => directory, connection, userDataRoot: directory,
-      getProviderModelEligibility: () => ({
+      getProviderModelEligibility: () => testEligibility({
         modelUnavailableReason: eligibility.modelUnavailableReason,
         candidateModelUnavailableReason: (candidate) => candidate.spendMode === "automatic" ? undefined : "automatic only",
-        candidateOffering: eligibility.candidateOffering,
+        candidateOfferings: eligibility.candidateOfferings,
       }),
       captureSubscriptionAdmission: (candidates, providerSettings) => captureSubscriptionAdmission({
         candidates, providerSettings, registry: testProviderRegistry(), profile: { id: profileId, directory }, pool,

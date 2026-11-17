@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
 import type { ToolAction } from "../../../../src/infra/workflow-types.js"
-import { foldTranscript, type TranscriptWindow } from "../../../../src/protocol/client/transcript-model.js"
-import { presentTerminalTranscript, visibleBlockIdentity, type ToolRun, type VisibleBlock } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
+import type { TranscriptWindow } from "../../../../src/protocol/client/transcript-model.js"
+import { terminalTranscript, visibleBlockIdentity, type ToolRun, type VisibleBlock } from "../../../../src/tui/output-blocks/visible-output-blocks.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 
 /** The action the runtime puts on the wire for each fixture tool. */
@@ -26,8 +26,7 @@ const text = (content: string, timestamp: number): FrontendOutputBlock => ({ kin
 const thinking = (content: string, timestamp: number): FrontendOutputBlock => ({ kind: "thinking", id: `thinking:${timestamp}`, content, status: "completed", timestamp })
 
 const window = (startBlockIndex: number, predecessorBlock: FrontendOutputBlock | null = null): TranscriptWindow => ({ startBlockIndex, predecessorBlock, predecessorRow: null })
-const present = (blocks: readonly FrontendOutputBlock[], showThinking: boolean | undefined, at?: TranscriptWindow) => presentTerminalTranscript(foldTranscript(blocks, showThinking, at))
-const rows = (blocks: readonly FrontendOutputBlock[], showThinking = false, at?: TranscriptWindow) => present(blocks, showThinking, at).timelineBlocks
+const rows = (blocks: readonly FrontendOutputBlock[], showThinking = false, at?: TranscriptWindow) => terminalTranscript(blocks, showThinking, at).timelineBlocks
 function run(row: VisibleBlock | undefined): ToolRun {
   if (row?.kind !== "toolRun") throw new Error("expected a tool run")
   return row
@@ -36,7 +35,7 @@ function run(row: VisibleBlock | undefined): ToolRun {
 describe("terminal presentation: runs by category", () => {
   it("groups sent and received messages between shell calls under Ran without losing disclosure identity", () => {
     const incoming: FrontendOutputBlock = { kind: "userMessage", id: "received", content: "Use main.ts", timestamp: 2, pending: false, injected: false, from: { sessionId: "sender", name: "Sender", relation: "sibling" } }
-    const result = present([tool("bash", 1), incoming, tool("message_session", 3), tool("bash", 4)], false)
+    const result = terminalTranscript([tool("bash", 1), incoming, tool("message_session", 3), tool("bash", 4)], false)
     expect(result.timelineBlocks).toHaveLength(1)
     expect(run(result.timelineBlocks[0]).category).toBe("exec")
     expect(run(result.timelineBlocks[0]).children.map(child => child.id)).toEqual(["bash-1", "received", "message_session-3", "bash-4"])
@@ -73,20 +72,20 @@ describe("terminal presentation: runs by category", () => {
   })
 
   it("waits to show an exec run until its first command is renderable, and keeps a visible run active while its next command starts", () => {
-    const waiting = present([streaming("bash", 1, "bash-1", "")], false)
+    const waiting = terminalTranscript([streaming("bash", 1, "bash-1", "")], false)
     expect(waiting.timelineBlocks).toEqual([])
     expect(waiting.zeroHeightBlockIndices).toEqual([0])
-    const ready = present([streaming("bash", 1, "bash-1", "bun run test")], false)
+    const ready = terminalTranscript([streaming("bash", 1, "bash-1", "bun run test")], false)
     expect(ready.timelineBlocks).toMatchObject([{ kind: "toolRun", category: "exec", children: [{ id: "bash-1" }] }])
     expect(ready.zeroHeightBlockIndices).toEqual([])
-    const continued = present([tool("bash", 1, { id: "bash-1", presentation: { name: "Bash", detail: "bun run test" } }), streaming("bash", 2, "bash-2", "")], false)
+    const continued = terminalTranscript([tool("bash", 1, { id: "bash-1", presentation: { name: "Bash", detail: "bun run test" } }), streaming("bash", 2, "bash-2", "")], false)
     expect(continued.timelineBlocks).toMatchObject([{ kind: "toolRun", category: "exec", status: "active", children: [{ id: "bash-1" }, { id: "bash-2" }] }])
     expect(continued.zeroHeightBlockIndices).toEqual([1])
   })
 
   it("hides code rows and folds their nested rows into one Executed run", () => {
     const nested = tool("linear.get_issue", 2, { runCategoryOverride: "execute" })
-    const projected = present([tool("code", 1), nested, tool("code", 3), tool("read", 4, { runCategoryOverride: "execute" })], false)
+    const projected = terminalTranscript([tool("code", 1), nested, tool("code", 3), tool("read", 4, { runCategoryOverride: "execute" })], false)
     expect(projected.timelineBlocks).toHaveLength(1)
     expect(run(projected.timelineBlocks[0]).category).toBe("execute")
     expect(run(projected.timelineBlocks[0]).children.map((child) => child.name)).toEqual(["linear.get_issue", "read"])
@@ -95,7 +94,7 @@ describe("terminal presentation: runs by category", () => {
 
   it("hides a failed script entirely; the error lives in the durable fact, not the transcript", () => {
     const failed: FrontendToolEntry = { ...tool("code", 3), status: "error", errorMessage: "script failed" }
-    const projected = present([tool("read", 2, { runCategoryOverride: "execute" }), failed], false)
+    const projected = terminalTranscript([tool("read", 2, { runCategoryOverride: "execute" }), failed], false)
     expect(run(projected.timelineBlocks[0]).children.map((child) => [child.name, child.status])).toEqual([["read", "completed"]])
     expect(projected.zeroHeightBlockIndices).toEqual([1])
   })
@@ -181,8 +180,8 @@ describe("terminal presentation preserves the shared model", () => {
   ]
   for (const showThinking of [false, true]) {
     it(`shows every row and call of the model in order, with the same dividers (thinking ${showThinking ? "shown" : "hidden"})`, () => {
-      const model = foldTranscript(blocks, showThinking)
-      const terminal = presentTerminalTranscript(model)
+      const terminal = terminalTranscript(blocks, showThinking)
+      const model = terminal.model
       const modelContent = model.rows.flatMap((row) => row.kind === "toolStretch" ? row.members.map(blockIdentity) : [blockIdentity(row)])
       const terminalContent = terminal.timelineBlocks.flatMap((row) => row.kind === "toolRun" ? row.children.map(blockIdentity) : [visibleBlockIdentity(row)])
       expect(terminalContent).toEqual(modelContent)

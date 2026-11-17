@@ -17,6 +17,14 @@ export interface Fact { readonly label: string; readonly value: string; readonly
 export function Facts(props: { rows: readonly Fact[] }) {
   const { theme } = useTheme()
   const width = () => Math.max(0, ...props.rows.map((row) => row.label.length))
-  const color = (tone: FactTone | undefined) => tone === "muted" ? theme.textMuted : tone === "success" ? theme.success : tone === "warning" ? theme.warning : tone === "error" ? theme.error : theme.text
+  const color = (tone: FactTone | undefined) => {
+    switch (tone) {
+      case "muted": return theme.textMuted
+      case "success": return theme.success
+      case "warning": return theme.warning
+      case "error": return theme.error
+      default: return theme.text
+    }
+  }
   return <box flexDirection="column"><For each={props.rows}>{(row) => <box flexDirection="row" gap={2} alignItems="flex-start"><text fg={theme.textMuted} flexShrink={0}>{row.label.padEnd(width())}</text><text fg={color(row.tone)} flexShrink={1} overflow="hidden" wrapMode={row.wrap ? "word" : "none"} truncate={!row.wrap}>{row.value}</text></box>}</For></box>
 }

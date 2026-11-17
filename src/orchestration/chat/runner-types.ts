@@ -101,10 +101,11 @@ export interface ChatRunner extends Runner {
    *  has settled, and never rejects: what it cannot adopt is left for a later
    *  host. Every turn waits for it before its first model request. */
   adoptHandedOver(): Promise<void>
-  /** Seed the display blocks the store accumulated before attach. The store's
+  /** Seed the display blocks the store accumulated before attach, whose first
+   *  block sits at absolute index `sequenceStart`. The store's
    *  attachChatRunner calls this in the same synchronous frame that makes the
    *  runner the block authority, so no pre-runner append can fall between the
    *  capture and the handoff. */
-  seedDisplayBlocks(blocks: readonly AnyBlock[]): void
+  seedDisplayBlocks(blocks: readonly AnyBlock[], sequenceStart: number): void
   publishCommittedNotice?(notice: { readonly id: string; readonly message: string; readonly timestamp: number }): void
 }

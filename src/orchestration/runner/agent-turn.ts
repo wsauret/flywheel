@@ -1,7 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
 import { isAbortError } from "../../infra/abort.js"
-import { probeLoopUnit } from "../../infra/event-loop-lag.js"
 import type { AgentTurnOptions } from "./agent-turn-types.js"
 import { AgentTurnAborted } from "./agent-turn-types.js"
 import { runWithResilience } from "../agent-runtime/agent-resilience.js"
@@ -49,11 +48,7 @@ export async function runAgentTurn(opts: AgentTurnOptions): Promise<AgentRunResu
       return { durationMs: 0, servedRequests: tally.served, terminal: { kind: "api_error", message: errorMessage(err), recovery: { kind: "retry" } } }
     } finally {
       priorLLMCalls += tally.requests
-      if (ctx) {
-        const context = ctx
-        try { probeLoopUnit("runner-teardown", "context.end", () => context.end()) }
-        finally { relinquishContext() }
-      }
+      relinquishContext()
     }
   }
 

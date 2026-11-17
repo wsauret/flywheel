@@ -1,6 +1,5 @@
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { AsyncEventReadSurface, StoredFact } from "../../infra/event-store-types.js";
-import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
 import type { BudgetLimits } from "../../workflows/budget.js";
 import type { SessionRuntimeFact } from "./session-runtime-event-types.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
@@ -45,18 +44,13 @@ export interface BudgetMetrics {
 }
 
 export interface SessionBudgetStore {
-  recordRuntimeEvent(event: RuntimeEvent): Promise<void>;
   applyStoredFact(event: StoredFact): Promise<void>;
-  getTotalCost(): Promise<number>;
   recordInvocation(): Promise<void>;
   getInvocationsUsed(): Promise<number>;
   getTokensUsed(): Promise<number>;
-  getOutputTokensUsed(): Promise<number>;
   /** The current metrics, for an owner that shows them before the next change. */
   metrics(): Promise<BudgetMetrics>;
-  recordContextUtilization(promptTokens: number, contextWindow: number): Promise<void>;
   getContextUtilization(): Promise<ContextUtilization>;
-  isExhausted(budgetLimits: BudgetLimits): Promise<boolean>;
   dispose(): void;
   // Must be called before each new model run; total_cost_usd is cumulative
   // within a run; a new run resets to 0, so the baseline must follow.

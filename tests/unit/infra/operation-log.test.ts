@@ -15,10 +15,10 @@ function recordingLogger() {
   return {
     calls,
     log: {
-      debug: (message?: unknown, extra?: LogFields) => { calls.push({ level: "debug", message, extra }) },
-      info: (message?: unknown, extra?: LogFields) => { calls.push({ level: "info", message, extra }) },
-      warn: (message?: unknown, extra?: LogFields) => { calls.push({ level: "warn", message, extra }) },
-      error: (message?: unknown, extra?: LogFields) => { calls.push({ level: "error", message, extra }) },
+      debug: (message?: string | Error, extra?: LogFields) => { calls.push({ level: "debug", message, extra }) },
+      info: (message?: string | Error, extra?: LogFields) => { calls.push({ level: "info", message, extra }) },
+      warn: (message?: string | Error, extra?: LogFields) => { calls.push({ level: "warn", message, extra }) },
+      error: (message?: string | Error, extra?: LogFields) => { calls.push({ level: "error", message, extra }) },
     } satisfies OperationLogger,
   }
 }

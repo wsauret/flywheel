@@ -54,7 +54,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
   let resources: SessionResources | null = null
   const agentInputs = createWorkflowAgentInputs({
     store: opts.projectionReader, sessionId, wake: opts.wake, restore: opts.startMode !== "launch",
-    onChange: () => { publishInterruption(); notifyLiveWorkChanged(opts.projectionReader) },
+    onChange: () => { publishInterruption(); notifyLiveWorkChanged(opts.projectionReader, `workflow:${sessionId}`) },
     runningAgents: () => {
       const started = startedAgents(committedQueue)
       const ids = new Set(started.map(({ agent }) => agent.id))
@@ -121,7 +121,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
   const subscribeToAttemptEvents = (): void => {
     for (const type of ["workflow.attempt.started", "workflow.attempt.completed", "workflow.attempt.failed", "workflow.attempt.interrupted"] as const) eventBus.subscribeToType(type, async () => {
       await readQueue()
-      notifyLiveWorkChanged(opts.projectionReader)
+      notifyLiveWorkChanged(opts.projectionReader, `workflow:${sessionId}`)
     }, { delivery: "direct", deliveryClass: "critical", label: "workflow-committed-attempt-projection" })
   }
 
@@ -155,7 +155,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
       eventStore,
       projectionReader: opts.projectionReader,
       eventWriter,
-      ...(opts.manager ? { manager: opts.manager } : {}),
+      manager: opts.manager,
       recall: opts.recall,
       attachChildProjection: opts.attachChildProjection,
       initializeInfra: () => {
@@ -191,14 +191,12 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
           resolveRoles: created.resolveRoles,
           createRunner: deps.createAgent, auth: deps.auth, projectRoot, userDataRoot: deps.userDataRoot, accountHome: deps.accountHome,
           // The workflow's agents name their tree root through the session manager, so the title does too.
-          ...(opts.manager ? { treeRootSessionId: await treeRootSessionIdOf(opts.manager, sessionId) } : {}),
+          treeRootSessionId: await treeRootSessionIdOf(opts.manager, sessionId),
         }), deps.headless)
       },
-      lifecycle: {
-        disposeRemaining: async () => {
-          titleGeneration?.abort()
-          await Effect.runPromise(Scope.close(resourceScope, runOutcome === "ok" ? Exit.void : Exit.fail(new Error("workflow failed"))))
-        },
+      disposeRemaining: async () => {
+        titleGeneration?.abort()
+        await Effect.runPromise(Scope.close(resourceScope, runOutcome === "ok" ? Exit.void : Exit.fail(new Error("workflow failed"))))
       },
     })
     createdRuntime = created

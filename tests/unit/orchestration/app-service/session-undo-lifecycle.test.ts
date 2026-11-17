@@ -144,7 +144,6 @@ for (const terminal of ["error", "ended"] as const) {
       ...supervisorBaseDeps(ctx, { ...ctx.sessionStore, remove: async id => { removals++; await ctx.sessionStore.remove(id) } }, {
         createRunner: async deps => { attached.resolve(deps); return mockRunner(deps.sessionId) },
         onRunnerError: (_id, message) => { notifications.push(message) },
-        onRunnerDone: () => { notifications.push("ended") },
       }),
       undoChanges: async (_request, signal) => { calls++; started.resolve(signal); return settle.promise },
     })
@@ -177,7 +176,7 @@ for (const terminal of ["error", "ended"] as const) {
       expect(await queuedAfter).toEqual({ status: "refused", message: "Session is closing" })
       await closing
       expect(calls).toBe(1)
-      expect(notifications).toEqual([terminal === "error" ? "Session history flush failed: disk full" : "ended"])
+      expect(notifications).toEqual(terminal === "error" ? ["Session history flush failed: disk full"] : [])
       expect(ctx.sessionStore.has(id)).toBe(false)
       if (action === "delete") expect(await ctx.manager.read(id)).toBeNull()
       else expect(await ctx.manager.read(id)).toMatchObject({ lifecycleState: "inactive", label: "Keep my title", providerConversationId: "provider-thread", seedContext: "retained seed" })

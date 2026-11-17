@@ -51,7 +51,7 @@ export interface SettlementEvidence {
   readonly unreadBlockType?: string;
 }
 
-export type AssemblyStep =
+type AssemblyStep =
   | { readonly kind: "continue" }
   /** The stop of a tool block whose input is not JSON, which the assembler holds. The CLI also closes an open block
    *  when the connection drops, so only a stop reason after it shows that the service sent it. */
@@ -119,16 +119,17 @@ export function createAssistantAssembler(declaredTools: ReadonlyMap<string, unkn
       inputNotObject: count("not-object"),
       inputRepairable: tools.filter((slot) => slot.fault !== undefined && parseAnthropicToolInput(slot.json, asRecord(declaredTools.get(slot.name))).parseError === undefined).length,
     };
-    const answers = stopReason === "end_turn" || stopReason === "stop_sequence";
-    const rule: SettlementRule = toolUses.undeclared > 0 ? "undeclared-tool"
-      : unreadBlocks > 0 ? "unread-block"
-      : toolUses.inputNotJson > 0 ? "tool-input-not-json"
-      : toolUses.inputNotObject > 0 ? "tool-input-not-object"
-      : stopReason === "tool_use" ? (tools.length > 0 ? "tool-calls" : "tool-use-without-calls")
-      : !answers ? "other-stop-reason"
-      : tools.length > 0 ? "end-with-calls"
-      : visibleText > 0 ? "visible-answer"
-      : "blank-answer";
+    const settlementRule = (): SettlementRule => {
+      if (toolUses.undeclared > 0) return "undeclared-tool";
+      if (unreadBlocks > 0) return "unread-block";
+      if (toolUses.inputNotJson > 0) return "tool-input-not-json";
+      if (toolUses.inputNotObject > 0) return "tool-input-not-object";
+      if (stopReason === "tool_use") return tools.length > 0 ? "tool-calls" : "tool-use-without-calls";
+      if (stopReason !== "end_turn" && stopReason !== "stop_sequence") return "other-stop-reason";
+      if (tools.length > 0) return "end-with-calls";
+      return visibleText > 0 ? "visible-answer" : "blank-answer";
+    };
+    const rule = settlementRule();
     const evidence: SettlementEvidence = {
       rule, stopReason,
       blocks: {

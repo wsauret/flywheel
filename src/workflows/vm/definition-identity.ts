@@ -2,7 +2,6 @@ import { Schema, SchemaTransformation } from "effect"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import { reachableAgentNames, workflowAgentSubagents } from "../agents/subagent-reachability.js"
 import type { ResolvedAgent } from "../agent-resolution.js"
-import { workflowInputContract } from "../brief.js"
 import { hashContent, hashDefinition, Sha256Schema } from "../definition-hash.js"
 import { canonicalAgentPolicy, canonicalWorkflowRecord, phaseStructure } from "../definition-records.js"
 import { skillClosureIds } from "../skill-closure.js"
@@ -411,6 +410,14 @@ export const DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID = "workflow-d
 const DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_REASON =
   "Control recorded an explorer persona whose description claimed a cheaper model; the session adopts the same persona without that claim, because the current definitions prove the claim is the only difference."
 
+/** Explorer, implementer, reviewer-mechanism, reviewer-uat, and the general agent lost text that other parts of the
+ *  prompt already state, and the bundled implementation skill stopped composing implementation-planning. Resume
+ *  records this adoption through `withLeanPersonaText` and `withoutLeanPromptDependencies`. Remove after
+ *  2027-05-14. */
+export const DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID = "workflow-definition-identity-lean-persona-text-v1"
+const DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_REASON =
+  "Control recorded built-in agents and bundled skill dependencies as they read before the lean-prompt edit of 2026-11-14; the session adopts them as they read now, because the current definitions prove the clauses and dependencies that edit removed are the only difference."
+
 /** The strict ordered chain of definition-identity adoptions. Replay accepts
  * recorded adoptions only in increasing order and only once each, so a session
  * that already adopted an earlier migration can still receive a later one.
@@ -444,6 +451,7 @@ export const DEFINITION_IDENTITY_MIGRATIONS = [
   { id: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_ID, reason: DEFINITION_IDENTITY_FAMILY_ROLE_GRANTS_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_ID, reason: DEFINITION_IDENTITY_CAPABILITY_MARKERS_MIGRATION_REASON },
   { id: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_ID, reason: DEFINITION_IDENTITY_EXPLORER_MODEL_CLAIM_MIGRATION_REASON },
+  { id: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_ID, reason: DEFINITION_IDENTITY_LEAN_PERSONA_TEXT_MIGRATION_REASON },
 ] as const
 
 export type DefinitionIdentityMigrationId = typeof DEFINITION_IDENTITY_MIGRATIONS[number]["id"]
@@ -535,7 +543,7 @@ export interface DefinitionIdentityVersionOverride {
  *  input reads. A change to the contract is a graph drift; a change to its
  *  descriptions or examples is not. */
 function graphSha256(workflow: WorkflowDefinition): string {
-  const contract = workflowInputContract(workflow)
+  const contract = workflow.inputContract
   const phases = phaseStructure(workflow.phases)
   return hashDefinition(contract === null ? { phases } : { phases, input: contract.schemaSha256 }).sha256
 }

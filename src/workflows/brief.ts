@@ -23,6 +23,7 @@ import {
   WORKFLOW_INPUT_SOURCE_ID,
   type AgentRecordKeys,
   type AgentRecordRef,
+  type AuthoredWorkflow,
   type WorkflowDefinition,
 } from "./workflow-schema.js";
 
@@ -97,7 +98,7 @@ type Origin = AssetLocation | undefined;
 
 /** The workflow and the reader of its contract files. */
 interface LoadContext {
-  readonly workflow: WorkflowDefinition;
+  readonly workflow: AuthoredWorkflow;
   readonly reader: DefinitionAssetReader;
 }
 
@@ -115,14 +116,14 @@ function withCountedListDefaults(output: OutputObject, counted: ReadonlySet<stri
   return { output: defaulted.length === 0 ? output : { ...output, fields }, defaulted };
 }
 
-function at(origin: Origin, workflow: WorkflowDefinition): string {
+function at(origin: Origin, workflow: AuthoredWorkflow): string {
   return origin ? describeAsset(origin) : `workflow "${workflow.id}"`;
 }
 
 /** Resolve one authored path. A `bundled:` path names Flywheel's own file
  *  from any origin, so a definition rebuilt from its record, which has no
  *  file, still reads its bundled files from the running build. */
-function resolveRef(origin: Origin, ref: string, workflow: WorkflowDefinition): AssetLocation {
+function resolveRef(origin: Origin, ref: string, workflow: AuthoredWorkflow): AssetLocation {
   if (!origin && !isBundledAssetRef(ref)) throw new Error(`${at(origin, workflow)} has no file location, so it cannot read ${JSON.stringify(ref)}`);
   return resolveAssetRef(origin, ref);
 }
@@ -203,7 +204,7 @@ function outputRole(declared: typeof OutputRefSchema.Type | undefined, origin: O
 
 /** The inline briefs of a workflow, keyed by the name that runs them: each
  *  phase and each named agent that states `brief`. */
-function inlineBriefs(workflow: WorkflowDefinition): ReadonlyMap<string, AgentRecordKeys & { readonly brief: string }> {
+function inlineBriefs(workflow: AuthoredWorkflow): ReadonlyMap<string, AgentRecordKeys & { readonly brief: string }> {
   const inline = new Map<string, AgentRecordKeys & { readonly brief: string }>();
   for (const entry of workflow.phases) {
     for (const phase of isRepeat(entry) ? entry.phases : [entry]) {
@@ -263,7 +264,7 @@ function loadBrief(
 
 /** The `each` source of each record of a `reassess` phase, keyed by
  *  definition id. */
-function reassessSources(workflow: WorkflowDefinition): ReadonlyMap<string, string> {
+function reassessSources(workflow: AuthoredWorkflow): ReadonlyMap<string, string> {
   const sources = new Map<string, string>();
   for (const entry of workflow.phases) {
     if (!isRepeat(entry) || isWhileRepeat(entry.repeat) || entry.repeat.reassess === undefined) continue;
@@ -292,7 +293,7 @@ function sourceItem(source: string, briefs: ReadonlyMap<string, LoadedBrief>, in
  *  `RegisteredReducer.admittedLists`). A reference or a join that does not
  *  resolve counts nothing here, because compilation refuses it where it is
  *  located. */
-function structuralLists(workflow: WorkflowDefinition): ReadonlyMap<string, StructuralLists> {
+function structuralLists(workflow: AuthoredWorkflow): ReadonlyMap<string, StructuralLists> {
   const counted = new Map<string, Set<string>>();
   const admitted = new Map<string, Set<string>>();
   const add = (lists: Map<string, Set<string>>, definitionId: string, field: string): void => {
@@ -355,7 +356,7 @@ export interface BriefLoad {
  *  run that rebuilds the file from its record holds the same contracts as
  *  its launch. A named workflow declares each `max`. */
 export function loadBriefs(
-  workflow: WorkflowDefinition,
+  workflow: AuthoredWorkflow & Pick<WorkflowDefinition, "provenance">,
   origin: Origin,
   reader: DefinitionAssetReader = definitionAssets,
   input: CompiledInput | null = null,
@@ -363,7 +364,7 @@ export function loadBriefs(
   const context: LoadContext = { workflow, reader };
   const reassessing = reassessSources(workflow);
   const structural = structuralLists(workflow);
-  const defaults = workflow.provenance?.layer === "session";
+  const defaults = workflow.provenance.layer === "session";
   const inline = inlineBriefs(workflow);
   const briefs = new Map<string, LoadedBrief>();
   const failed = new Map<string, Error>();
@@ -391,7 +392,7 @@ export function loadBriefs(
  *  declares none. A path resolves relative to the workflow file. Throws a
  *  message that names the workflow and the file at fault. */
 export function loadWorkflowInputContract(
-  workflow: WorkflowDefinition,
+  workflow: AuthoredWorkflow,
   origin: Origin,
   reader: DefinitionAssetReader = definitionAssets,
 ): CompiledInput | null {
@@ -401,16 +402,4 @@ export function loadWorkflowInputContract(
   } catch (error) {
     throw new Error(`Workflow "${workflow.id}" input: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
-}
-
-/** The compiled `input` contract of a workflow, or null when it declares
- *  none. A bare definition that no loader published compiles here with no
- *  file location, so only an inline contract can resolve. */
-export function workflowInputContract(workflow: WorkflowDefinition): CompiledInput | null {
-  return workflow.inputContract !== undefined ? workflow.inputContract : loadWorkflowInputContract(workflow, undefined);
-}
-
-/** The loaded inline briefs of a workflow. */
-export function workflowBriefs(workflow: WorkflowDefinition): LoadedBriefs {
-  return workflow.briefs ?? loadBriefs(workflow, undefined, definitionAssets, workflowInputContract(workflow)).briefs;
 }

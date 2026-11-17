@@ -139,7 +139,8 @@ describe("workflow prompt hygiene", () => {
 
       expect(method).toContain("Revise or drop the implementation plan");
       expect(method).toContain("Missing paths, extra callers, inaccurate estimates, and a failed planned approach require investigation");
-      expect(method).toContain("not a permission boundary");
+      expect(method).toContain("Load the `implementation-planning` skill to plan the split.");
+      expect(await readSkill("implementation-planning")).toContain("not a permission boundary");
       expect(method).not.toContain("Do not redesign, broaden scope");
       expect(persona).toMatch(/requiredSkills:\s*\n\s*- implementation/);
       expect(persona).not.toContain("instead of guessing or expanding scope");
@@ -149,9 +150,8 @@ describe("workflow prompt hygiene", () => {
       const body = await readSkill("implementation");
 
       expect(body).toMatch(/newly discovered uncertainty/i);
-      expect(body).toMatch(/each material hypothesis/i);
-      expect(body).toMatch(/fresh focused experiment or real observation/i);
-      expect(body).toMatch(/remaining work[\s\S]{0,120}not a blocker/i);
+      // The core prompt owns the hypothesis and experiment rules; the skill keeps the rule that a failed approach is retried.
+      expect(body).toMatch(/failed planned approach require investigation and a revised attempt, not a blocked result/i);
     });
 
   });

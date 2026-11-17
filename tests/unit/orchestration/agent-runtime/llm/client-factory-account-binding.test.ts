@@ -8,7 +8,7 @@ import { storedTokensToCredential } from "../../../../../src/infra/auth/openai-a
 import { authDir, modelsSnapshotFile } from "../../../../../src/infra/paths.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { fakeModelsClient, modelInfo } from "../../../../helpers/model-tier-fixtures.js";
-import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient, resetSharedLlmClients } from "../../../../../src/orchestration/config/llm-clients.js";
+import { clearSharedModelListingClients, getSharedModelListingClient, getSharedModelsClient } from "../../../../../src/orchestration/config/llm-clients.js";
 import { createAdmittedClient, createClient, type AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import type { AdapterAdmission } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
@@ -28,7 +28,7 @@ import { fixedDefinitions } from "../../../../helpers/project-definitions.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
 import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
 import { asModelClient } from "../_model-client.js";
-import { testCapabilityModules, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { testCapabilityModules, testEligibility, testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { SESSION_TITLE_PURPOSE } from "../../../../../src/orchestration/session/session-title.js";
 
@@ -85,15 +85,14 @@ describe("provider credential binding", () => {
     const noKeysAuth = { providers: authProviders(), credentialLineages: {}, droppedCredentials: [] };
     const auth = { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, oauth: ["github_copilot"] }) };
     const directories = testDirectories("/scratch");
-    const eligibility = {
+    const eligibility = testEligibility({
       modelIds: new Set(["gpt-6-luna"]),
-      modelUnavailableReason: () => undefined,
-      candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{
         candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const,
         catalogMetadata: { supportedEndpoints: ["/responses"] },
         resolvedModelMetadata: modelInfo("openai", model, "fixture", 2, 8, "2026-10-01"),
-      }),
-    };
+      }],
+    });
     let authDirectoryReads = 0;
     const connection = captureProviderConnection({
       profileId: "default", auth, authDir: CREDENTIALS,
@@ -177,12 +176,11 @@ describe("provider credential binding", () => {
     const connection = captureProviderConnection({
       authDir: directory, auth: { providers: new Map(), droppedCredentials: [], credentialLineages: {} }, subscriptionCredentials: credentials,
     });
-    const plan = createAccessProviderSelection([definition]).plan("claude-opus-4.5", connection, {
-      modelUnavailableReason: () => undefined,
-      candidateOffering: (candidate, model) => ({
+    const plan = createAccessProviderSelection([definition]).plan("claude-opus-4.5", connection, testEligibility({
+      candidateOfferings: (candidate, model) => [{
         candidate, wireModelId: model, dataUse: "standard", transport: "anthropic-messages",
-      }),
-    });
+      }],
+    }));
     if (plan.kind !== "admitted") throw new Error(plan.reason);
     const expected: AccessProviderCandidate[] = [
       ...(["included", "automatic"] as const).flatMap((spendMode) => ["included", "unknown"].map((instanceId) => ({
@@ -231,13 +229,12 @@ describe("provider credential binding", () => {
           providers.selection.definitions, { kind: "persisted", authDir: profileDir, classifySlot: credentialSlotClassifier(providers.composition) },
         ),
       });
-      const eligibility = {
-        modelUnavailableReason: () => undefined,
-        candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({
+      const eligibility = testEligibility({
+        candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{
           candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-responses" as const,
           resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-        }),
-      };
+        }],
+      });
       const plan = providers.selection.plan("gpt-5.5", connection, eligibility);
       const client = await createAdmittedClient(plan, fakeModelsClient, connection, {
         notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
@@ -314,22 +311,21 @@ describe("provider credential binding", () => {
         getProviderModelEligibility: () => {
           eligibilityReads += 1;
           const captured = disabled;
-          return {
+          return testEligibility({
             modelUnavailableReason: (provider: string, model: string) => captured.has(provider) ? `${provider} is disabled for ${model}.` : undefined,
-            candidateModelUnavailableReason: () => undefined,
-            candidateOffering: (candidate, model: string, allowTrainingRoutes: boolean) => {
+            candidateOfferings: (candidate, model: string, allowTrainingRoutes: boolean) => {
               trainingPolicyReads.push(allowTrainingRoutes);
               const resolvedModelMetadata = fakeModelsClient.modelInfos.get(model);
               if (resolvedModelMetadata === undefined) throw new Error(`Missing fixture metadata for ${model}`);
-              return {
+              return [{
                 candidate,
                 wireModelId: model,
                 dataUse: allowTrainingRoutes ? "contributor" as const : "standard" as const,
                 transport: "openai-responses" as const,
                 resolvedModelMetadata,
-              } as const;
+              }];
             },
-          };
+          });
         },
       },
     );
@@ -356,8 +352,8 @@ describe("provider credential binding", () => {
       builds.push(`${build.candidate.providerId}@${build.attribution.eligibilityRevision}`);
       return factory(build);
     }]));
-    const published = (revision: number, refused: ReadonlySet<string> = new Set()) => ({
-      profileId: "default", revision, candidateModelUnavailableReason: () => undefined, candidateOffering: liveOffering,
+    const published = (revision: number, refused: ReadonlySet<string> = new Set()) => testEligibility({
+      profileId: "default", revision, candidateOfferings: (candidate, model) => [liveOffering(candidate, model)],
       modelUnavailableReason: (provider: string) => refused.has(provider) ? `${provider} no longer offers the model` : undefined,
     });
     const client = await createClient("gpt-5.5", fakeModelsClient, LIVE_ELIGIBILITY_AUTH, {
@@ -389,10 +385,10 @@ describe("provider credential binding", () => {
     const listed = listedInfo("gpt-5.5");
     const published = (revision: number, catalogProvenance: "last-known-good" | "live", contextLimit: number, modelIds: readonly string[]) => {
       const candidateOffering = (candidate: AccessProviderCandidate, model: string) => ({ ...liveOffering(candidate, model), catalogProvenance, resolvedModelMetadata: { ...listedInfo(model), contextLimit } });
-      return {
-        profileId: "default", revision, modelIds: new Set(modelIds), modelUnavailableReason: () => undefined, candidateModelUnavailableReason: () => undefined, candidateOffering,
+      return testEligibility({
+        profileId: "default", revision, modelIds: new Set(modelIds),
         candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [candidateOffering(candidate, model)],
-      };
+      });
     };
     const client = await createClient("gpt-5.5", fakeModelsClient, { ...LIVE_ELIGIBILITY_AUTH, providers: authProviders({ apiKeys: { openai_api: "test-openai-key" } }) }, {
       ...liveClientOptions(), providers: { ...registry, factories }, getProviderModelEligibility: () => published(0, "live", listed.contextLimit, ["gpt-5.5"]),
@@ -424,16 +420,15 @@ describe("provider credential binding", () => {
       auth: LIVE_ELIGIBILITY_AUTH,
       subscriptionCredentials: new Map(),
     });
-    const eligibility = () => ({
+    const eligibility = () => testEligibility({
       modelUnavailableReason: (provider: string) => disabled.has(provider) ? `${provider} disabled` : undefined,
-      candidateModelUnavailableReason: () => undefined,
-      candidateOffering: (candidate: AccessProviderCandidate, model: string) => ({
+      candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [{
         candidate,
         wireModelId: model,
         dataUse: "standard" as const,
         transport: "openai-responses" as const,
         resolvedModelMetadata: fakeModelsClient.modelInfos.get(model),
-      }),
+      }],
     });
     const plan = providers.selection.plan("gpt-5.5", connection, eligibility());
     if (plan.kind !== "admitted") throw new Error("expected admitted plan");
@@ -458,7 +453,7 @@ describe("provider credential binding", () => {
   });
 
   test("model listings retain one generation per auth directory and enabled provider identity", () => {
-    resetSharedLlmClients();
+    clearSharedModelListingClients();
     const complete = composeFirstPartyModules();
     const anthropicOnly = composeRealmModuleSnapshot({ moduleIds: ["anthropic"] });
     const first = getSharedModelListingClient("/accounts/a", "/profiles/a", complete);
@@ -471,10 +466,10 @@ describe("provider credential binding", () => {
     clearSharedModelListingClients("/profiles/a");
     expect(getSharedModelListingClient("/accounts/a", "/profiles/a", complete)).not.toBe(first);
     expect(getSharedModelListingClient("/accounts/a", "/profiles/b", anthropicOnly)).toBe(otherProfile);
-    resetSharedLlmClients();
+    clearSharedModelListingClients();
   });
   test("shared model listings read the models.dev catalog the owned refresh published", async () => {
-    resetSharedLlmClients();
+    clearSharedModelListingClients();
     // An account root of its own: the shared test home carries the models.dev
     // snapshot a sibling test archived, and an archive stands in for the live
     // document by design, which is not what this case measures.
@@ -510,11 +505,11 @@ describe("provider credential binding", () => {
       expect(models.get("opencode_go")).toEqual(new Set(["deepseek-live-only"]));
     } finally {
       globalThis.fetch = originalFetch;
-      resetSharedLlmClients();
+      clearSharedModelListingClients();
     }
   });
   test("each account keeps one models generation that listing refresh retains and that archives only under that account", async () => {
-    resetSharedLlmClients();
+    clearSharedModelListingClients();
     const firstRoot = join(temporaryDirectory("fw-models-first-"), ".flywheel");
     const secondRoot = join(temporaryDirectory("fw-models-second-"), ".flywheel");
     const first = getSharedModelsClient(firstRoot);
@@ -532,7 +527,7 @@ describe("provider credential binding", () => {
       expect(existsSync(modelsSnapshotFile(firstRoot))).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
-      resetSharedLlmClients();
+      clearSharedModelListingClients();
     }
   });
 });

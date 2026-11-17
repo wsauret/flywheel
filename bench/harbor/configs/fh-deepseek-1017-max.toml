@@ -44,6 +44,7 @@ disabled_modules = [
   "papercuts",
   "project-notifications",
   "provider-anthropic-api",
+  "provider-baseten",
   "provider-claude-agent-sdk",
   "provider-github-copilot",
   "provider-google-api",

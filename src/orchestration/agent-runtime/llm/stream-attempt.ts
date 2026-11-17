@@ -1,43 +1,29 @@
 import { mergeAbortSignals } from "../../../infra/abort.js";
-import { StreamIdleTimeoutError } from "./errors.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { reasoningRepetitionDetector } from "./reasoning-repetition.js";
-import { createStreamDeadline, type StreamDeadlineOptions, type StreamTimeoutEvent, type StreamTimeoutPhase } from "./stream-watchdog.js";
+import { createStreamLiveness, type AttemptLiveness, type StreamLiveness, type StreamLivenessOptions } from "./stream-liveness.js";
 import type { StreamOptions } from "./types.js";
 
 export interface StreamAttemptStartEvent {
   readonly kind: "stream_attempt_start";
-  readonly attempt: 1;
-  readonly maxAttempts: 1;
-  readonly isFinalAttempt: true;
-  readonly sawThinkingStall: false;
   /** The attempt requests reasoning off because it is the last resample of a response that repeated itself
    *  (`RepetitionGuard`). */
   readonly disableReasoning: boolean;
-  readonly isRetry: false;
-}
-
-interface StreamAttemptDeadlineOptions extends Omit<StreamDeadlineOptions, "onTimeout"> {
-  onTimeout?: (event: StreamTimeoutEvent) => void;
-  timeoutError?: (event: StreamTimeoutEvent) => Error | undefined;
-  timeoutMessage?: (event: StreamTimeoutEvent) => string;
 }
 
 export interface StreamAttempt {
   readonly signal: AbortSignal;
-  startStreamDeadline(options: StreamAttemptDeadlineOptions): void;
-  resetStreamDeadline(timeoutMs?: number, phase?: StreamTimeoutPhase): void;
-  recordStreamKeepalive(): void;
-  /** Takes one reasoning delta of the response. When the attempt detects repetition and the reasoning collapsed
-   *  into it, the attempt aborts and fails with `DegenerateRepetitionError`. */
-  observeReasoning(text: string): void;
+  /** Arms the attempt's one liveness owner. The deadline starts at the first report (`preStream` or `frame`);
+   *  when it expires the attempt aborts and fails with its typed timeout. Each reasoning delta also feeds the
+   *  attempt's repetition guard. An attempt arms liveness at most once. */
+  armLiveness(options: StreamLivenessOptions): StreamLiveness;
   throwIfStreamTimedOut(): void;
 }
 
 type StreamAttemptOptions = Pick<StreamOptions, "signal" | "repetitionGuard">;
 
 /**
- * Owns one adapter stream attempt, from its deadline through iterator cleanup.
+ * Owns one adapter stream attempt, from its liveness through iterator cleanup.
  * The adapter generator is created once and is never replayed.
  *
  * A caller's abort ends the attempt with the caller's own reason, whatever
@@ -54,76 +40,43 @@ export async function* withStreamAttempt<Event>(
   const abort = new AbortController();
   const signal = mergeAbortSignals(options.signal, abort.signal);
   const failAttempt = (error: unknown): never => { throw options.signal?.aborted ? options.signal.reason : error; };
-  let deadline: ReturnType<typeof createStreamDeadline> | undefined;
-  let deadlineOptions: StreamAttemptDeadlineOptions | undefined;
-  let callbackFailure: { error: unknown } | undefined;
+  let liveness: AttemptLiveness | undefined;
+  let repetitionFailure: { error: unknown } | undefined;
   const repetition = options.repetitionGuard === "detect" ? reasoningRepetitionDetector() : undefined;
 
+  const observeReasoning = (text: string): void => {
+    if (repetitionFailure) return;
+    const detected = repetition?.observe(text);
+    if (detected === undefined) return;
+    // The adapter's catch reads this failure through `throwIfStreamTimedOut` once the abort ends its stream.
+    repetitionFailure = { error: normalizeProviderAttemptFailure(detected) };
+    abort.abort();
+  };
+
   const throwIfStreamTimedOut = (): void => {
-    if (callbackFailure) throw callbackFailure.error;
-    const timeout = deadline?.timeout;
-    if (!timeout) return;
-    const error = deadlineOptions?.timeoutError?.(timeout)
-      ?? new StreamIdleTimeoutError(
-        deadlineOptions?.timeoutMessage?.(timeout)
-          ?? `Provider stream ${timeout.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
-        timeout.phase,
-      );
-    throw normalizeProviderAttemptFailure(error);
+    const failure = repetitionFailure ?? liveness?.failure;
+    if (failure) throw failure.error;
   };
 
   const attempt: StreamAttempt = {
     signal,
-    startStreamDeadline(nextOptions) {
-      if (deadline) throw new Error("stream deadline already started for attempt");
-      deadlineOptions = nextOptions;
-      deadline = createStreamDeadline({
-        ...nextOptions,
-        onTimeout: (event) => {
-          try {
-            nextOptions.onTimeout?.(event);
-          } catch (error) {
-            callbackFailure = { error };
-          } finally {
-            abort.abort();
-          }
-        },
-      });
-    },
-    resetStreamDeadline(timeoutMs, phase) {
-      deadline?.reset(timeoutMs, phase);
-    },
-    recordStreamKeepalive() {
-      deadline?.keepalive();
-    },
-    observeReasoning(text) {
-      if (callbackFailure) return;
-      const detected = repetition?.observe(text);
-      if (detected === undefined) return;
-      // The adapter's catch reads this failure through `throwIfStreamTimedOut` once the abort ends its stream.
-      callbackFailure = { error: normalizeProviderAttemptFailure(detected) };
-      abort.abort();
+    armLiveness(livenessOptions) {
+      if (liveness) throw new Error("stream liveness already armed for attempt");
+      liveness = createStreamLiveness(livenessOptions, { onExpired: () => { abort.abort(); }, onReasoning: observeReasoning });
+      return liveness;
     },
     throwIfStreamTimedOut,
   };
 
   try {
-    yield {
-      kind: "stream_attempt_start",
-      attempt: 1,
-      maxAttempts: 1,
-      isFinalAttempt: true,
-      sawThinkingStall: false,
-      disableReasoning: options.repetitionGuard === "reasoning_off",
-      isRetry: false,
-    };
+    yield { kind: "stream_attempt_start", disableReasoning: options.repetitionGuard === "reasoning_off" };
     try {
       for await (const event of run(attempt)) {
-        const resumeDeadline = deadline?.pause();
+        const resume = liveness?.pause();
         try {
           yield event;
         } finally {
-          resumeDeadline?.();
+          resume?.();
         }
       }
       attempt.throwIfStreamTimedOut();
@@ -132,6 +85,6 @@ export async function* withStreamAttempt<Event>(
       failAttempt(error);
     }
   } finally {
-    await deadline?.close();
+    liveness?.close();
   }
 }

@@ -83,7 +83,7 @@ export function familyCommandOptions(argv: readonly string[], usage: string, acc
   return options;
 }
 
-async function execute<Task extends { readonly id: string }, Grade extends object, Manifest extends CampaignManifest, Outcome extends CampaignOutcome, Judgement>(
+async function dispatchFamilyAction<Task extends { readonly id: string }, Grade extends object, Manifest extends CampaignManifest, Outcome extends CampaignOutcome, Judgement>(
   argv: readonly string[], command: FamilyCommand<Task, Grade, Manifest, Outcome, Judgement>,
 ): Promise<void> {
   const options = familyCommandOptions(argv, command.usage, { reservedEvaluation: command.reservedEvaluation, baseline: command.baselineJudge });
@@ -101,7 +101,7 @@ async function execute<Task extends { readonly id: string }, Grade extends objec
 export function runFamilyCommand<Task extends { readonly id: string }, Grade extends object, Manifest extends CampaignManifest, Outcome extends CampaignOutcome, Judgement>(
   argv: readonly string[], command: FamilyCommand<Task, Grade, Manifest, Outcome, Judgement>,
 ): void {
-  execute(argv, command).catch((error: unknown) => {
+  dispatchFamilyAction(argv, command).catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   });

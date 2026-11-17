@@ -212,7 +212,6 @@ export const StreamAbandonedDataSchema = Schema.StructWithRest(Schema.Struct({
   reason: Schema.Literals(["failed", "interrupted", "retry"]),
   parent_tool_use_id: Schema.optionalKey(Schema.String),
 }), [UnknownRecordSchema]);
-export type GenericEventData = typeof GenericEventDataSchema.Type;
 export const CompactionStartedDataSchema = Schema.StructWithRest(Schema.Struct({
   parent_tool_use_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
 }), [UnknownRecordSchema]);

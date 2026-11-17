@@ -9,13 +9,13 @@ import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
 import type { FrontendEvent, FrontendMutation, MutationResult, RuntimeTransportHealth } from "../../../../src/protocol/app-service-types.js"
 import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
 import { RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { bunSocketServerLayer } from "../../../../src/orchestration/app-service/bun-socket-rpc.js"
 import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
 import { createSocketRuntimeClient } from "../../../../src/orchestration/app-service/socket-runtime-client.js"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { socketRpcServerLayer } from "../../../helpers/socket-rpc-server.js"
 
 type UsageRecordResult = MutationResult<Extract<FrontendMutation, { readonly type: "command_usage.record" }>>
 
@@ -46,7 +46,7 @@ async function heldRuntime() {
     Layer.provide(runtimeHandlers({ client: service, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: "0.1.0" })),
     Layer.provide(runtimeProtocolSocketServer),
     Layer.provide(layerMsgPack),
-    Layer.provide(bunSocketServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
+    Layer.provide(socketRpcServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
   ))
   await server.runPromise(Effect.void)
   await listening.promise

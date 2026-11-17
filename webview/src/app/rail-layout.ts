@@ -8,8 +8,8 @@ const COLLAPSED_KEY = "flywheel.rail.collapsed"
 
 /** Narrow enough to keep the transcript usable beside it, wide enough that a
  *  long title still reads: the same span a sidebar gets in an editor. */
-export const RAIL_WIDTH_MIN_PX = 192
-export const RAIL_WIDTH_MAX_PX = 448
+const RAIL_WIDTH_MIN_PX = 192
+const RAIL_WIDTH_MAX_PX = 448
 
 export interface RailLayout {
   /** A width the person chose, in pixels; absent when the stylesheet's own

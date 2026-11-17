@@ -6,9 +6,8 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { parseProjectionFact } from "../../../../src/infra/event-projection.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreAppend, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session.js"
-import { createSessionMetadataProjection } from "../../../../src/orchestration/session/session-metadata-projection.js"
+import { createSessionMetadataProjection, sessionMetadataStateOf } from "../../../../src/orchestration/session/session-metadata-projection.js"
 import { parseSessionMetadataFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
 import { createConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { parseConversationTreeFact, salvageConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts.js"
@@ -26,6 +25,7 @@ import { assertOutputBlocksEquivalent, outputSeamBlocks } from "../runner/_outpu
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { tailRequest } from "./_output-projection-fixtures.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 // Edit diffs reach the live stream in the tool result `details` and the durable
 // side in the matching `tool.result.recorded` fact. Kept under the 20-hunk-line
@@ -68,7 +68,7 @@ const strictAgreementFamilies = ["session_metadata", "chat_tree"] as const
 const strictAgreementRoutes: StrictAgreementRoutes = {
   session_metadata: {
     owningDirectStrictParser: (event: StoredFact) => asJson(parseSessionMetadataFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload }).payload),
-    productionProjectionBoundary: async (event: StoredFact, store: ReturnType<typeof createSqliteEventStore>) => asJson((await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay()).sessions[event.sessionId]),
+    productionProjectionBoundary: async (event: StoredFact, store: ReturnType<typeof createSqliteEventStore>) => asJson(sessionMetadataStateOf(await createSessionMetadataProjection(asAsyncEventReadSurface(store)).replay(), event.sessionId).sessions[event.sessionId]),
   },
   chat_tree: {
     owningDirectStrictParser: (event: StoredFact) => asJson(parseConversationTreeFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload }).payload),
@@ -377,7 +377,7 @@ describe("live/derived output equivalence", () => {
         payload: { toolUseId: "write-1", outcome: "ok", details: { mutationEvidence } },
       })
 
-      const projection = createSessionDetailProjection({
+      const projection = testSessionDetailProjection({
         projectRoot: tmpDir,
         sessionStore: { get: () => undefined },
         manager: { read: async () => ({ label: "Pipeline", lastUpdated: "2026-01-01T00:00:00.000Z", lifecycleState: "inactive" as const, name: "Pipeline", kind: "chat" as const, command: "chat" as const, conversationId, executionCwd: realpathSync(tmpDir) }) },
@@ -486,7 +486,7 @@ describe("live/derived output equivalence", () => {
       await tree.getStorage().dispose()
 
       const readBody = async () => {
-        const projection = createSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
+        const projection = testSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
         try {
           const range = await projection.outputRange(sessionId, tailRequest)
           if (range.kind !== "ok") throw new Error("expected durable budget range")
@@ -559,7 +559,7 @@ describe("live/derived output equivalence", () => {
       await tree.getStorage().dispose()
 
       const request = { anchor: { kind: "tail" as const }, maxBlocks: 200, maxBytes: 1024 * 1024 }
-      const openProjection = createSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
+      const openProjection = testSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
       const preview = await openProjection.outputWindow(sessionId, request)
       const full = await openProjection.outputRange(sessionId, request)
       expect(preview.range).toEqual(full)
@@ -567,7 +567,7 @@ describe("live/derived output equivalence", () => {
 
       store.close()
       store = createSqliteEventStore(dbPath)
-      const reopenedProjection = createSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
+      const reopenedProjection = testSessionDetailProjection({ projectRoot: tmpDir, sessionStore: { get: () => undefined }, manager, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store) })
       const reopened = await reopenedProjection.outputRange(sessionId, request)
       expect(reopened).toEqual(full)
       expect(preview.totalBlocks).toBe(96)

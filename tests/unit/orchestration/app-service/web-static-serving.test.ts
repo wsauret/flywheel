@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { mkdir, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { buildControlUiCspHeader } from "../../../../src/orchestration/app-service/web-serving/control-ui-csp"
-import { classifyControlUiRequest } from "../../../../src/orchestration/app-service/web-serving/control-ui-routing"
+import { applyControlUiSecurityHeaders } from "../../../../src/orchestration/app-service/web-serving/control-ui-csp"
 import { serveControlUiStatic as serveProjectPage } from "../../../../src/orchestration/app-service/web-serving/control-ui-static"
 import { temporaryDirectories } from "../../../helpers/directories"
 
@@ -35,7 +34,7 @@ function request(pathname: string, init?: RequestInit) {
 
 describe("Control UI browser security", () => {
   test("the policy allows only the served origin and its socket", () => {
-    const csp = buildControlUiCspHeader()
+    const csp = applyControlUiSecurityHeaders(new Headers()).get("Content-Security-Policy")
 
     expect(csp).toContain("script-src 'self'")
     expect(csp).toContain("frame-ancestors 'none'")
@@ -47,16 +46,21 @@ describe("Control UI browser security", () => {
 })
 
 describe("fixed-root SPA routing", () => {
-  test("uses HTML Accept negotiation only for missing SPA routes", () => {
-    expect(classifyControlUiRequest({ pathname: "/sessions/1", method: "GET", accept: "text/html" })).toEqual({ kind: "serve", spaFallback: true })
-    expect(classifyControlUiRequest({ pathname: "/sessions/1", method: "GET", accept: "application/json" })).toEqual({ kind: "serve", spaFallback: false })
-    expect(classifyControlUiRequest({ pathname: "/sessions/1", method: "POST", accept: "text/html" })).toEqual({ kind: "not-control-ui" })
+  test("only a read of a page address falls back to the SPA", async () => {
+    const root = await makeRoot()
+    const post = await serveControlUiStatic(request("/sessions/1", { method: "POST", headers: { Accept: "text/html" } }), resolved(root))
+
+    expect(post.status).toBe(404)
   })
 
-  test("names a bundle file by the identity of the build it belongs to", () => {
-    expect(classifyControlUiRequest({ pathname: `/client/${identity}/local/webview.js`, method: "GET" })).toEqual({ kind: "client", identity, path: "local/webview.js" })
-    expect(classifyControlUiRequest({ pathname: `/client/${identity}`, method: "GET", accept: "text/html" })).toEqual({ kind: "serve", spaFallback: true })
-    expect(classifyControlUiRequest({ pathname: "/client/not-an-identity/local/webview.js", method: "GET", accept: "application/json" })).toEqual({ kind: "serve", spaFallback: false })
+  test("names a bundle file by the identity of the build it belongs to", async () => {
+    const root = await makeRoot()
+    const bare = await serveControlUiStatic(request(`/client/${identity}`, { headers: { Accept: "text/html" } }), resolved(root))
+    const malformed = await serveControlUiStatic(request("/client/not-an-identity/local/webview.js", { headers: { Accept: "application/json" } }), resolved(root))
+
+    expect(bare.status).toBe(200)
+    expect(await bare.text()).toContain("Flywheel")
+    expect(malformed.status).toBe(404)
   })
 })
 

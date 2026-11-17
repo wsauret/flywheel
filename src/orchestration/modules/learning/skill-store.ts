@@ -19,7 +19,7 @@
 import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import type { LearningScope } from "../../../infra/learning-scope.js";
-import { ContainedPathError } from "../../../infra/descriptor-directory.js";
+import { ContainedPathError } from "../../../infra/descriptor-directory-contract.js";
 import { removeFileUnder, requireContainedDirectory, writeFileUnder } from "../../../infra/write-file-under.js";
 import { planLockPaths, planSkillMutation, planStaleness } from "./skill-mutation-plan.js";
 import { skillSemanticAuditEvidenceIsCurrent } from "./skill-semantic-audit.js";

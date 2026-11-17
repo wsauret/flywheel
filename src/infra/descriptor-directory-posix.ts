@@ -8,21 +8,7 @@ import { join, resolve } from "node:path";
 import { bindLibc, libcError, NO_LIBC_REASON } from "./libc.js";
 import { openAt } from "./open-at.js";
 import { readDirAt, type DirectoryEntry } from "./read-dir-at.js";
-import {
-  ContainedFileTooLargeError,
-  ContainedPathError,
-  type ContainedDirectoryBackend,
-  type ContainedDirectoryContract,
-  type ContainedDirectoryOptions,
-  type ContainedOwnedFile,
-  type ContainedFileMetadata,
-  type ContainedFileSnapshot,
-  type ContainedRegularFileEntry,
-  type FileMutationAttemptResult,
-  type ContainedStreamOptions,
-  sameFileSnapshot,
-  validateComponent,
-} from "./descriptor-directory-contract.js";
+import { ContainedFileTooLargeError, ContainedPathError, sameFileSnapshot, validateComponent, type ContainedDirectory, type ContainedDirectoryBackend, type ContainedDirectoryOptions, type ContainedFileMetadata, type ContainedFileSnapshot, type ContainedOwnedFile, type ContainedRegularFileEntry, type ContainedStreamOptions, type FileMutationAttemptResult } from "./descriptor-directory-contract.js";
 import { componentBuffer } from "./descriptor-directory-posix-component.js";
 
 /** The base is opened as a directory and read-only; a symlink at its own final
@@ -208,7 +194,7 @@ function walk(baseFd: number, dirs: readonly string[], privateDirectory: boolean
 }
 
 /** One POSIX directory held open for the length of one window. */
-class PosixContainedDirectory implements ContainedDirectoryContract {
+class PosixContainedDirectory implements ContainedDirectory {
   readonly #fd: number;
   readonly #path: string;
   #canonicalPath: string | undefined;
@@ -605,7 +591,7 @@ class PosixContainedDirectory implements ContainedDirectoryContract {
     fsyncSync(this.#fd);
   }
 
-  renameInto(name: string, target: ContainedDirectoryContract, targetName: string): void {
+  renameInto(name: string, target: ContainedDirectory, targetName: string): void {
     if (!(target instanceof PosixContainedDirectory)) {
       throw new TypeError("contained directories must use the same platform backend");
     }

@@ -79,12 +79,6 @@ export function nextGraphemeBoundary(text: string, offset: number): number {
   return text.length
 }
 
-export function truncateText(text: string, maxLen: number): string {
-  if (maxLen < 4) return text.slice(0, maxLen)
-  if (text.length <= maxLen) return text
-  return `${text.slice(0, maxLen - 1)}…`
-}
-
 /** Truncate text to a terminal display width without splitting grapheme clusters. */
 export function truncateToWidth(text: string, maxWidth: number, marker = "..."): string {
   if (maxWidth <= 0) return ""

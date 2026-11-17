@@ -63,14 +63,11 @@ export interface RuntimeUiPatchInput {
 
 /** Why a `runtime.invalidate` voids a client's resident state. `overflow`
  * dropped patches on a healthy stream, so an after-edge replay repairs it.
- * `reconnect_required` is a workspace transport loss. `protocol_violation` is
- * a client-detected wire schema decode failure: the client and worker disagree
- * on the patch vocabulary, which is a producer bug no reconnect can heal. It
- * is log-only: not fatal and not user-actionable, so the UI ignores it.
+ * `reconnect_required` is a workspace transport loss.
  * `rebase` announces a new absolute coordinate baseline for a cursor (a
  * reactivated session's shell rebases block indexes onto the durable fold), so
  * the resident window itself is void, not just its tail. */
-export type RuntimeInvalidationReason = "overflow" | "reconnect_required" | "protocol_violation" | "rebase"
+export type RuntimeInvalidationReason = "overflow" | "reconnect_required" | "rebase"
 
 /** What an ordered patch carries. The `session` cursor publishes one full
  * catalog row per changed session. The six statistics (`totalCost`,

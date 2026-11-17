@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { modelConfigValidity } from "../../../../src/orchestration/app-service/model-assignment-service.js";
-import { pruneStaleConfig, updateModelAssignment } from "../../../../src/orchestration/config/writer.js";
+import { pruneStaleConfig, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
 import { roleSlot } from "../../../../src/orchestration/config/role-selection.js";
 import { createPersonaRegistryOwner } from "../../../../src/workflows/agents/registry.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
@@ -48,7 +48,7 @@ describe("step model assignments", () => {
       const valid = ["brief.myflow.review", "brief.debug.fix"];
       await writeFile(configPath, valid.map((id) => `[profiles.personal.roles."${id}"]\nmodel = "gpt-5-mini"\n`).join("\n"));
       pruneStaleConfig(modelConfigValidity({ personas: new Map(), resolutions: [] }), { configPath, authProfileId: () => "personal" });
-      updateModelAssignment(roleSlot("chat"), { model: "gpt-5.5" }, { configPath, authProfileId: () => "personal" });
+      updateModelAssignments({ mutations: [{ slot: roleSlot("chat"), patch: { model: "gpt-5.5" } }] }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       for (const id of valid) expect(text).toContain(`[profiles.personal.roles."${id}"]`);
       expect(text).toContain('model = "gpt-5.5"');
@@ -179,8 +179,8 @@ describe("step model assignments", () => {
   test("clearing the final field from a step-agent section removes that empty section from TOML", async () => {
     await withTempDir(async (dir) => {
       const configPath = join(dir, "flywheel.toml");
-      await updateModelAssignment(roleSlot("brief.plan-review.persona.reviewer"), { model: "gpt-5-mini" }, { configPath, authProfileId: () => "personal" });
-      await updateModelAssignment(roleSlot("brief.plan-review.persona.reviewer"), { model: null }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan-review.persona.reviewer"), patch: { model: "gpt-5-mini" } }] }, { configPath, authProfileId: () => "personal" });
+      await updateModelAssignments({ mutations: [{ slot: roleSlot("brief.plan-review.persona.reviewer"), patch: { model: null } }] }, { configPath, authProfileId: () => "personal" });
       const text = await readFile(configPath, "utf8");
       expect(text).not.toContain("brief.plan-review.persona.reviewer");
     });

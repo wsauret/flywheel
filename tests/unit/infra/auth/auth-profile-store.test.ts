@@ -1,10 +1,10 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { POSIX_FAILURE_STAGING } from "../../../helpers/posix-failure-staging.js";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { AuthProfileRetirementsError } from "../../../../src/infra/auth/auth-profile-retirements.js";
-import { ContainedDirectory, ContainedPathError } from "../../../../src/infra/descriptor-directory.js";
+import { ContainedPathError } from "../../../../src/infra/descriptor-directory-contract.js";
+import * as containedDirectories from "../../../../src/infra/descriptor-directory.js";
 import { authDir } from "../../../../src/infra/paths.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { HOLDS_DIRECTORY_VALUES } from "../../../helpers/held-directory-values.js";
@@ -25,8 +25,10 @@ describe("AuthProfileStore", () => {
     (await store.create("work")).close();
     const file = join(root, "auth", ".profile-retirements.json");
     writeFileSync(file, bytes);
-    expect(() => store.inspect()).toThrow(AuthProfileRetirementsError);
-    await expect(store.create("other")).rejects.toThrow(AuthProfileRetirementsError);
+    const separator = sep === "\\" ? "\\\\" : sep;
+    const unreadableLedger = new RegExp(`^Cannot read auth profile transfers at .+${separator}auth${separator}\\.profile-retirements\\.json\\.`);
+    expect(() => store.inspect()).toThrow(unreadableLedger);
+    await expect(store.create("other")).rejects.toThrow(unreadableLedger);
     expect(readFileSync(file, "utf8")).toBe(bytes);
     expect(existsSync(authDir(root, "work"))).toBe(true);
   });
@@ -309,7 +311,7 @@ describe("AuthProfileStore", () => {
     });
     const watcher = store.watchCatalog(() => {}, (error) => { throw error; }, { revalidateMs: 1 });
     await Bun.sleep(5);
-    const opens = spyOn(ContainedDirectory, "openExisting");
+    const opens = spyOn(containedDirectories, "openExistingContainedDirectory");
     try {
       const held = store.inspect();
       opens.mockClear();
@@ -358,7 +360,7 @@ describe("AuthProfileStore", () => {
     const controlled = fs.watch(root, () => {});
     const watching = spyOn(fs, "watch").mockImplementation(() => controlled);
     const watcher = store.watchCatalog(() => {}, (error) => { throw error; }, { revalidateMs: 5 });
-    const opens = spyOn(ContainedDirectory, "openExisting");
+    const opens = spyOn(containedDirectories, "openExistingContainedDirectory");
     const until = async (predicate: () => boolean): Promise<void> => {
       for (let attempt = 0; attempt < 400 && !predicate(); attempt += 1) await Bun.sleep(5);
       expect(predicate()).toBe(true);

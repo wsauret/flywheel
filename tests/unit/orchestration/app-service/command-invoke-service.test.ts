@@ -57,7 +57,6 @@ const syntheticModule = {
     } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule
 
@@ -147,7 +146,7 @@ describe("command invocation", () => {
 
   test("/doctor reports every enabled module's health section in publication order, and a failed check reports its failure without hiding the others", async () => {
     const healthModule = (id: string, sections: readonly ModuleHealthCheck[]): FirstPartyModule => ({
-      id, dependencies: [], availability: { kind: "available" }, observers: [], transformers: [], gates: [],
+      id, dependencies: [], availability: { kind: "available" }, observers: [], gates: [],
       contributions: sections.map((value) => ({ domain: "health" as const, id: value.title, value })),
     })
     const healthy = healthModule("healthy", [{ title: "Library", check: async (host) => ({ attention: false, lines: [`Reads ${host.authDirectory()}.`] }) }])
@@ -321,7 +320,6 @@ describe("command invocation", () => {
         execute: async (host) => host.session?.startMethod({ skill: "code-review", label: "/review-method" }) ?? { kind: "none" },
       } }],
       observers: [],
-      transformers: [],
       gates: [],
     } as const satisfies FirstPartyModule
     const all = await repoAvailability(MODULE_IDS)

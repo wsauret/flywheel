@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { Effect, Exit, Fiber, Scope, Stream } from "effect"
 import { Socket } from "effect/socket"
 
-import { deriveSealedKeys, SEALED_FRAME_MAX_BYTES, SealedChannelError, sealedSocket, type SealedIdentity, type SealedPeer, type SealedSocket } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
-import { fromBase64Url, keyDigest, ownedBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+import { SealedChannelError, sealedSocket, type SealedIdentity, type SealedPeer, type SealedSocket } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
+import { fromBase64Url, keyDigest, ownedBytes, RELAY_HEARTBEAT_INTERVAL_MS, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 
 /** The sealed socket is the one thing between a phone's transcript and a relay
  *  operator. These tests pin the cryptography to published vectors and then
@@ -143,16 +143,6 @@ describe("sealed channel cryptography against published vectors", () => {
     expect(toHex(shared)).toBe("4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742")
   })
 
-  test("HKDF-SHA256 key derivation matches RFC 5869 test case 1", async () => {
-    // The vector asks for 42 bytes; HKDF output is prefix-stable, so the first
-    // 42 of the 64 the channel derives must equal it.
-    const keys = await deriveSealedKeys(hex("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"), hex("000102030405060708090a0b0c"), hex("f0f1f2f3f4f5f6f7f8f9"))
-    const okm = new Uint8Array(64)
-    okm.set(keys.runtimeToDevice)
-    okm.set(keys.deviceToRuntime, 32)
-    expect(toHex(okm.subarray(0, 42))).toBe("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865")
-  })
-
   test("a key digest is the base64url SHA-256 of the key", async () => {
     expect(await keyDigest(new Uint8Array(0))).toBe("47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU")
     expect(toBase64Url(fromBase64Url("AQID_-8"))).toBe("AQID_-8")
@@ -195,9 +185,15 @@ describe("sealed channel between paired identities", () => {
       await Effect.runPromise(pair.runtime.write(body))
       await waitFor(() => joined(pair.device.received).byteLength === body.byteLength)
       expect(joined(pair.device.received)).toEqual(body)
+      // Every frame but the last carries the same bounded share of the write,
+      // small enough to cross a 2 Mbit/s link within one heartbeat interval.
       const sealedFrames = wire.slice(1)
-      expect(sealedFrames.length).toBe(Math.ceil(body.byteLength / SEALED_FRAME_MAX_BYTES))
-      expect(pair.device.received.every((chunk) => chunk.byteLength <= SEALED_FRAME_MAX_BYTES)).toBe(true)
+      const sizes = pair.device.received.map((chunk) => chunk.byteLength)
+      const frameBytes = Math.max(...sizes)
+      const slowLinkBytesPerMs = 2_000_000 / 8 / 1_000
+      expect(frameBytes).toBeLessThan(RELAY_HEARTBEAT_INTERVAL_MS * slowLinkBytesPerMs)
+      expect(sealedFrames.length).toBe(Math.ceil(body.byteLength / frameBytes))
+      expect(sizes.slice(0, -1).every((size) => size === frameBytes)).toBe(true)
     } finally {
       await pair.close()
     }

@@ -50,7 +50,6 @@ describe("chat runner lifecycle secret redaction (provenance policy)", () => {
       const done = new Promise<AgentRunResult>((resolve) => { resolveRunnerDone = resolve })
       return {
         send() {},
-        end() {},
         abort() {},
         done,
       }

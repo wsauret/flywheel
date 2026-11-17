@@ -21,6 +21,7 @@ import type { FirstPartyModuleComposition, ToolExposureGate } from "../../module
 import type { KernelToolDeps } from "./kernel-tool-deps.js";
 import { exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";
 import type { AdvertisedTool, RuntimeTool, ToolProfile } from "./types.js";
+import { shortFormTool } from "./short-form.js";
 import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../protocol/module-ids.js";
 
 const CONTRACT_MISMATCH_REASON = "not selected by the request file edit contract";
@@ -98,12 +99,14 @@ export interface ToolExposurePlan {
 interface Refinement {
   readonly name: string;
   readonly refine: NonNullable<ToolFactoryResult["refine"]>;
+  readonly form: ToolForm;
   /** The reason that the agent may not call the settled tool, which stays advertised. */
   readonly unusable?: string;
 }
 
 interface Deferred {
   readonly create: DeferredToolFactory;
+  readonly form: ToolForm;
   readonly registrationId: string;
   readonly identity: string;
   readonly granted: boolean;
@@ -170,7 +173,8 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
       continue;
     }
     const turnedOffReason = admission.turnedOff && moduleDisabledReason(admission.turnedOff);
-    const built = registration.create({ kernel, modules });
+    const form = toolForm(kernel, registration);
+    const built = formed(registration.create({ kernel, modules }), form);
     const advertisedUnusable = kernel.treeHosted
       ? turnedOffReason !== undefined ? advertisedOf(built, turnedOffReason) : built.unusable
       : undefined;
@@ -183,13 +187,13 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
       tools.set(tool.name, tool);
       registrationIds.set(tool.name, registrationId);
       registrationIdentities.set(tool.name, identity);
-      if (built.refine) refinements.push({ name: tool.name, refine: built.refine, ...(advertisedUnusable ? { unusable: advertisedUnusable.reason } : {}) });
+      if (built.refine) refinements.push({ name: tool.name, refine: built.refine, form, ...(advertisedUnusable ? { unusable: advertisedUnusable.reason } : {}) });
     }
     if (built.reason) omitted.push({ name: exposedName, reason: built.reason });
     if (built.omissions) omitted.push(...built.omissions);
     if (built.deferred) {
       if (deferred) throw new Error(`Tool registrations '${deferred.registrationId}' and '${registrationId}' both defer construction`);
-      deferred = { create: built.deferred, registrationId, identity, granted: grants(input.granted, registration), ...(turnedOffReason === undefined ? {} : { unusable: turnedOffReason, turnedOff: admission.turnedOff }) };
+      deferred = { create: built.deferred, form, registrationId, identity, granted: grants(input.granted, registration), ...(turnedOffReason === undefined ? {} : { unusable: turnedOffReason, turnedOff: admission.turnedOff }) };
     }
   }
   for (const name of contractMismatches) {
@@ -200,10 +204,11 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
   // from another tool's settlement. An unusable tool is advertised only to
   // keep the tree's tool list whole, so it carries no channel or authority.
   const planned: ReadonlyMap<string, RuntimeTool> = new Map([...tools].filter(([name]) => !unusable.has(name)));
-  for (const { name, refine, unusable: refusal } of refinements) {
+  for (const { name, refine, form, unusable: refusal } of refinements) {
     const settled = refine(planned);
     if (settled.tool) {
-      tools.set(name, refusal === undefined ? settled.tool : unusableTool(settled.tool, refusal));
+      const tool = form(settled.tool);
+      tools.set(name, refusal === undefined ? tool : unusableTool(tool, refusal));
     } else {
       tools.delete(name);
       registrationIds.delete(name);
@@ -238,7 +243,8 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
   if (deferred) {
     const built = deferred.create(eligibleTools, namespaces);
     omitted.push(...built.omissions);
-    const tool = !deferred.granted ? ungrantedTool(built.tool) : deferred.unusable === undefined ? built.tool : unusableTool(built.tool, deferred.unusable);
+    const formedTool = deferred.form(built.tool);
+    const tool = !deferred.granted ? ungrantedTool(formedTool) : deferred.unusable === undefined ? formedTool : unusableTool(formedTool, deferred.unusable);
     if (!deferred.granted) ungranted.add(tool.name);
     if (deferred.unusable !== undefined) unusable.add(tool.name);
     for (const id of deferred.turnedOff ?? []) turnedOff.add(id);
@@ -261,10 +267,38 @@ function grants(granted: ToolGrant | undefined, registration: RegisteredTool): b
 }
 
 /** A tool the agent sees but may not call. Its advertised fields are the
- *  definition's, and its call returns the refusal before any body runs. */
+ *  definition's, and its call returns the refusal before any body runs. A
+ *  short-form tool keeps its short form but gives no contract, and its open
+ *  schema admits every call to the refusal. */
 function refusedTool(tool: AdvertisedTool, refusal: string): RuntimeTool {
-  const { prepareAdmission: _admission, reservedPaths: _paths, ...advertised } = tool;
-  return { ...advertised, isConcurrencySafe: true, execute: async () => ({ content: refusal, outcome: "error" }) };
+  const { prepareAdmission: _admission, reservedPaths: _paths, contract: _contract, ...advertised } = tool;
+  return {
+    ...advertised,
+    ...tool.shortForm ? { inputValidationSchema: undefined } : {},
+    isConcurrencySafe: true,
+    execute: async () => ({ content: refusal, outcome: "error" }),
+  };
+}
+
+/** The form in which the tree offers a registration's tools. */
+type ToolForm = <Tool extends AdvertisedTool>(tool: Tool) => Tool;
+const FULL_FORM: ToolForm = (tool) => tool;
+
+/** The tree's attendance fixes the form once (ARCH-CONTEXT-038), so every agent and request of the tree, refused or
+ *  not, advertises the same bytes for the tool. */
+function toolForm(kernel: KernelToolDeps, registration: RegisteredTool): ToolForm {
+  const shortForm = registration.shortForm;
+  if (!shortForm || (shortForm.trees === "unattended" && kernel.unattendedTree !== true)) return FULL_FORM;
+  return (tool) => shortFormTool(tool, shortForm.summary);
+}
+
+function formed(built: ToolFactoryResult, form: ToolForm): ToolFactoryResult {
+  if (form === FULL_FORM) return built;
+  return {
+    ...built,
+    ...built.tool ? { tool: form(built.tool) } : {},
+    ...built.unusable ? { unusable: { ...built.unusable, tool: form(built.unusable.tool) } } : {},
+  };
 }
 
 /** Whether the agent's modules admit a registration. An agent omits a registration whose capability it lacks, except

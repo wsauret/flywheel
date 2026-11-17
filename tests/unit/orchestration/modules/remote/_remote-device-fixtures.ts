@@ -2,9 +2,10 @@ import { Effect, Exit, Fiber, Scope, Stream } from "effect"
 import { Socket } from "effect/socket"
 
 import type { RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
-import type { DeviceChannel } from "../../../../../src/protocol/modules/remote/relay-channel.js"
+import { openPairingChannel, type DeviceChannel } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { sealedSocket, type SealedIdentity, type SealedPeer, type SealedSocket } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
-import { asKeyPair, keyDigest, ownedBytes } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+import { asKeyPair, decodeJsonFrame, decodePairingResult, fromBase64Url, keyDigest, ownedBytes, parsePairingCodeUrl } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
 
 /** A phone's side of the relay for tests of a runtime placement: its
@@ -68,3 +69,24 @@ export const waitFor = async (condition: () => boolean, timeoutMs = 5_000): Prom
     await new Promise((resolve) => setTimeout(resolve, 10))
   }
 }
+
+/** Pairs a fresh device through the relay at `relayUrl` with the full
+ *  exchange and returns its identity. */
+export async function pairDevice(relayUrl: string, remote: RemoteAccess, label = "test phone", existingDevice?: Awaited<ReturnType<typeof deviceIdentity>>) {
+  const window = await remote.openPairing()
+  await viewWhere(remote, (view) => view.connection === "connected")
+  const code = parsePairingCodeUrl(window.code)
+  const runtimeId = await keyDigest(fromBase64Url(code.publicKey))
+  const device = existingDevice ?? await deviceIdentity()
+  const ws = await openPairingChannel(relayUrl, runtimeId, code.windowId)
+  const channel = await sealDevice(ws, device, { kind: "pairing", secret: fromBase64Url(code.secret) })
+  await Effect.runPromise(channel.write(text(JSON.stringify({ type: "pair.request", label }))))
+  await waitFor(() => channel.received.length === 1)
+  const result = decodeJsonFrame(decodePairingResult, fromText(channel.received[0]!))
+  await channel.close()
+  return { device, result, runtimeId, code }
+}
+
+/** The "Remote device paired" occurrences that `operations` raise. */
+export const pairedNotices = (operations: readonly NotificationEpisodeInput[]) =>
+  operations.flatMap((operation) => operation.type === "raise" && operation.occurrence.title === "Remote device paired" ? [operation.occurrence] : [])

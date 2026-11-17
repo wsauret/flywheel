@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime-ui-protocol-types.js"
-import { createCursorIntake, createIntakeRegistry, type RecoveryRequest } from "../../../src/protocol/client/cursor-intake.js"
+import { createCursorIntake, type RecoveryRequest } from "../../../src/protocol/client/cursor-intake.js"
 import { createRuntimeUiPatchSequencer } from "../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 
 const CURSOR: RuntimeCursorIdentity = { scope: "session", domain: "output", sessionId: "s1" }
@@ -324,31 +324,5 @@ describe("cursor intake over a publish-on-change sequencer", () => {
     expect(applied).toEqual(["pending", "none", "pending"])
     expect(recovered).toEqual([])
     expect(timers).toBe(0)
-  })
-})
-
-describe("intake registry", () => {
-  test("routes a patch to the receiver bound to its cursor", () => {
-    const registry = createIntakeRegistry()
-    const applied: string[] = []
-    const intake = createCursorIntake({
-      cursor: CURSOR,
-      onApply: (delivered) => { applied.push(payloadId(delivered.payload)) },
-      onRecover: () => {},
-    })
-    intake.seed(10)
-    registry.register(intake, CURSOR)
-
-    expect(registry.deliver(patch(11, 10))).toBe(true)
-    expect(applied).toEqual(["b11"])
-  })
-
-  test("unregister stops delivery", () => {
-    const registry = createIntakeRegistry()
-    const intake = createCursorIntake({ cursor: CURSOR, onApply: () => {}, onRecover: () => {} })
-    const unregister = registry.register(intake, CURSOR)
-    unregister()
-    expect(registry.size).toBe(0)
-    expect(registry.deliver(patch(11, 10))).toBe(false)
   })
 })

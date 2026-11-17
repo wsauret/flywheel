@@ -29,14 +29,14 @@ const UNCONFIRMED_SEND = "Flywheel did not confirm that the message arrived. Edi
 
 /** What a command with no words of its own answers when its connection
  *  ended first. It shows no entry, so nothing sends it again. */
-export const UNCONFIRMED_COMMAND = "Flywheel did not confirm that the command arrived. Run it again if it does not start."
+const UNCONFIRMED_COMMAND = "Flywheel did not confirm that the command arrived. Run it again if it does not start."
 
 /** What Up says about a message on its way: one still being sent, or one
  *  that waits for the connection. Until the runtime answers, the message
  *  may already be recorded, so it cannot come back for editing, and Up
  *  says so instead of reaching the runtime's queued recall or history. A
  *  client shows both as queued and offers no Edit control for either. */
-export const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
+const WAITING_RECALL = "Flywheel is still sending this message, so you cannot edit it now. If the connection is down, Flywheel sends it when the connection returns."
 
 function undelivered(delivery: ChatSubmissionDelivery): boolean {
   return delivery.kind === "failed" || delivery.kind === "unconfirmed"

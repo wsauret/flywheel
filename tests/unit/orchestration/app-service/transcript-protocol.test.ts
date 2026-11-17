@@ -8,7 +8,6 @@ import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
 import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputGroupChildrenSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
@@ -28,6 +27,7 @@ import { indexOutputBlocks } from "../../../../src/orchestration/session/convers
 import type { HydratedOutputGroupChildren, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
 import { workflowControlInitializedEvent } from "../../workflows/vm/_workflow-control-fixtures.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 function textBlock(index: number, content = `content-${index}`): AnyBlock {
   return { kind: "text", id: `text-${index}`, content, timestamp: index }
@@ -270,7 +270,7 @@ describe("bounded output history protocol", () => {
       const deps = { projectRoot: FIXTURE_EXECUTION_CWD, sessionStore: { get: () => entry }, manager: { read: async () => durableSession() }, reader, projectionReader: reader }
       const cache = createTranscriptProjectionCache(deps)
       let projected = 0
-      const projection = createSessionDetailProjection({ ...deps, transcriptCache: { ...cache, projectBlock: (sessionId, block) => { projected += 1; return cache.projectBlock(sessionId, block) } } })
+      const projection = testSessionDetailProjection({ ...deps, transcriptCache: { ...cache, projectBlock: (sessionId, block) => { projected += 1; return cache.projectBlock(sessionId, block) } } })
       try {
         for (const id of ids) {
           const blockId = `userMessage:${id}`
@@ -363,7 +363,7 @@ describe("bounded output history protocol", () => {
         return surface.readPage(...args)
       },
     }
-    const projection = createSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD,
+    const projection = testSessionDetailProjection({ projectRoot: FIXTURE_EXECUTION_CWD,
       sessionStore: { get: () => undefined },
       manager: { read: async () => durableSession() },
       reader,
@@ -561,11 +561,11 @@ function temporaryStore(prefix: string) {
 
 /** A session detail projection whose reader and projection reader are both
  *  `store`. A part the case leaves out reads as no session. */
-function detailProjection(options: Partial<Pick<Parameters<typeof createSessionDetailProjection>[0], "projectRoot" | "sessionStore" | "manager">> & {
+function detailProjection(options: Partial<Pick<Parameters<typeof testSessionDetailProjection>[0], "projectRoot" | "sessionStore" | "manager">> & {
   readonly store?: Parameters<typeof asAsyncEventReadSurface>[0]
 } = {}) {
   const reader = asAsyncEventReadSurface(options.store ?? inMemoryEventReader([]))
-  return createSessionDetailProjection({
+  return testSessionDetailProjection({
     projectRoot: options.projectRoot ?? FIXTURE_EXECUTION_CWD,
     sessionStore: options.sessionStore ?? { get: () => undefined },
     manager: options.manager ?? { read: async () => null },

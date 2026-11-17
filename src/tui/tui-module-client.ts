@@ -29,7 +29,7 @@ export interface TuiModuleClient {
   readonly provide: (children: () => JSX.Element) => JSX.Element
   readonly openUri: (uri: string) => Promise<boolean>
   readonly openTarget?: (target: BackgroundWorkTarget) => Promise<boolean>
-  readonly openSession: (session: Pick<SessionRow, "id" | "kind">) => boolean | Promise<boolean>
+  readonly openSession: (session: Pick<SessionRow, "id" | "kind">) => Promise<boolean>
   readonly restore: (route: LaunchModalRoute) => Promise<boolean>
   readonly activity?: { readonly matches: (block: AgentGroupBlock) => boolean; readonly render: (props: AgentGroupBlockProps) => JSX.Element }
 }

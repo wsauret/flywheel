@@ -24,7 +24,6 @@ export const subagentsProtocol = defineProtocolModule({
       type: "subagent.interrupt",
       fields: { sessionId: Schema.NonEmptyString },
       result: SubagentControlResultSchema,
-      policy: "lossless",
     }),
     // Resume continues the child from its recorded context under its
     // original parent binding, with no new message.
@@ -32,7 +31,6 @@ export const subagentsProtocol = defineProtocolModule({
       type: "subagent.resume",
       fields: { sessionId: Schema.NonEmptyString },
       result: SubagentControlResultSchema,
-      policy: "lossless",
     }),
   ],
 })

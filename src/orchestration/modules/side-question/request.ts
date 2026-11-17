@@ -16,8 +16,10 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
     run: async (request: SideQuestionRun) => {
       const role = (await deps.resolveRoles()).get("chat")
       const signal = mergeAbortSignals(background.signal, request.signal)
-      const output = new OutputProjector({ executionCwd: deps.executionCwd })
+      // A change listener makes the builder record the changes the answer follows.
+      const output = new OutputProjector({ executionCwd: deps.executionCwd, onChange: () => {} })
       const fold = new RuntimeEventProjector(output)
+      const followAnswer = answerFollower(output, request)
       const host = createAgentHost({ createRunner: deps.createAgent })
       return host.runTurn({
         createContextOptions: () => ({
@@ -62,7 +64,7 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
             else if (event.type === "budget.stream.completed") emit("budget.stream.completed", { sessionId: deps.sessionId, data: event.data })
             else {
               fold.dispatch(event)
-              request.onAnswer(output.getBlocks().flatMap((block) => block.kind === "text" ? [block.content] : []).join("\n\n"))
+              followAnswer()
             }
           },
         }),
@@ -71,4 +73,34 @@ export function createChatSideQuestions(input: ChatModuleHostInput) {
       })
     },
   })
+}
+
+/** Follows the answer, the text blocks joined by blank lines, through the
+ *  builder's recorded changes. Text appended to the last text block, or a new
+ *  text block after every other, extends the answer, so a streamed token
+ *  costs its own length; any other change to a text block, which a
+ *  reconciliation or a retraction makes, derives the answer whole again. */
+function answerFollower(output: OutputProjector, request: Pick<SideQuestionRun, "onAnswer" | "onAppend">): () => void {
+  let lastTextId: string | undefined
+  return () => {
+    const batch = output.drainChanges()
+    let whole = batch.fullResync
+    let appended = ""
+    for (const change of batch.changes) {
+      if (change.kind === "append-content") {
+        if (change.identity.kind !== "text") continue
+        if (change.identity.id === lastTextId) appended += change.text
+        else whole = true
+      } else if (change.block.kind !== "text") continue
+      else if (change.kind === "insert" && !output.getBlocks().slice(change.index + 1).some((block) => block.kind === "text")) {
+        appended += (lastTextId === undefined ? "" : "\n\n") + change.block.content
+        lastTextId = change.block.id
+      } else whole = true
+    }
+    if (whole) {
+      const texts = output.getBlocks().filter((block) => block.kind === "text")
+      lastTextId = texts.at(-1)?.id
+      request.onAnswer(texts.map((block) => block.content).join("\n\n"))
+    } else if (appended) request.onAppend(appended)
+  }
 }

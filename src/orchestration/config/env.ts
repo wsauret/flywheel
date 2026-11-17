@@ -13,7 +13,7 @@ type MutableRoleConfig = NonNullable<NonNullable<ConfigOverrides["roles"]>[strin
 
 type EnvSetter = (envKey: string, val: string, config: ConfigOverrides) => string | undefined;
 
-function ensure<K extends keyof ConfigOverrides>(
+function ensureConfigSection<K extends keyof ConfigOverrides>(
   config: ConfigOverrides,
   key: K,
   create: () => NonNullable<ConfigOverrides[K]>,
@@ -26,7 +26,7 @@ function ensure<K extends keyof ConfigOverrides>(
 }
 
 function ensureRole(config: ConfigOverrides, roleId: string): MutableRoleConfig {
-  const roles = ensure(config, "roles", () => ({}));
+  const roles = ensureConfigSection(config, "roles", () => ({}));
   const existing = roles[roleId];
   if (existing) return existing;
   const created: MutableRoleConfig = {};
@@ -98,21 +98,21 @@ const ENV_MAP = {
   FLYWHEEL_WORKER_EFFORT: setEffort((c, val) => { ensureRole(c, WORKFLOW_AGENT_ROLE_ID).effort = val }),
   FLYWHEEL_WORKFLOW_AGENT_MODEL: setString((c, val) => { ensureRole(c, WORKFLOW_AGENT_ROLE_ID).model = val }),
   FLYWHEEL_WORKFLOW_AGENT_EFFORT: setEffort((c, val) => { ensureRole(c, WORKFLOW_AGENT_ROLE_ID).effort = val }),
-  FLYWHEEL_BUDGET_MAX_INVOCATIONS: setInt((c, val) => { ensure(c, "budget", () => ({})).max_invocations = val }),
-  FLYWHEEL_BUDGET_MAX_TOKENS: setInt((c, val) => { ensure(c, "budget", () => ({})).max_tokens = val }),
-  FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: setInt((c, val) => { ensure(c, "budget", () => ({})).max_wall_clock_minutes = val }),
+  FLYWHEEL_BUDGET_MAX_INVOCATIONS: setInt((c, val) => { ensureConfigSection(c, "budget", () => ({})).max_invocations = val }),
+  FLYWHEEL_BUDGET_MAX_TOKENS: setInt((c, val) => { ensureConfigSection(c, "budget", () => ({})).max_tokens = val }),
+  FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: setInt((c, val) => { ensureConfigSection(c, "budget", () => ({})).max_wall_clock_minutes = val }),
   // Retired spellings of FLYWHEEL_WORKFLOW_MAX_ATTEMPTS, set before it so the
   // current spelling wins when both are set. Remove after 2027-04-30.
-  FLYWHEEL_QUEUE_MAX_STEPS: setInt((c, val) => { ensure(c, "workflow", () => ({})).max_attempts = val }),
-  FLYWHEEL_WORKFLOW_MAX_STEPS: setInt((c, val) => { ensure(c, "workflow", () => ({})).max_attempts = val }),
-  FLYWHEEL_WORKFLOW_MAX_ATTEMPTS: setInt((c, val) => { ensure(c, "workflow", () => ({})).max_attempts = val }),
+  FLYWHEEL_QUEUE_MAX_STEPS: setInt((c, val) => { ensureConfigSection(c, "workflow", () => ({})).max_attempts = val }),
+  FLYWHEEL_WORKFLOW_MAX_STEPS: setInt((c, val) => { ensureConfigSection(c, "workflow", () => ({})).max_attempts = val }),
+  FLYWHEEL_WORKFLOW_MAX_ATTEMPTS: setInt((c, val) => { ensureConfigSection(c, "workflow", () => ({})).max_attempts = val }),
   FLYWHEEL_PROACTIVE_COMPACTION_THRESHOLD: setInt((c, val) => { c.proactive_compaction_threshold = val }),
   // Named for what the user turns off, stored as what the runtime reads.
   // A variable named for disabling only ever disables. A falsy value leaves
   // the durable setting alone instead of re-enabling an install the user
   // deliberately turned off, which is the direction that replaces a binary
   // without asking.
-  FLYWHEEL_DISABLE_AUTOUPDATE: setBoolean((c, val) => { if (val) ensure(c, "updates", () => ({})).auto_install = false }),
+  FLYWHEEL_DISABLE_AUTOUPDATE: setBoolean((c, val) => { if (val) ensureConfigSection(c, "updates", () => ({})).auto_install = false }),
 } satisfies EnvSetters;
 
 const RoleTableSchema = Schema.Record(Schema.String, TierConfigSchema);

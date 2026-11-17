@@ -77,7 +77,7 @@ describe("RuntimeModelAssignmentService", () => {
 
   test("session-scoped save on a transient chat writes the materialized snapshot", async () => {
     const manager = managerDouble()
-    const result = await modelAssignmentService(manager).saveEffort({ scope: { kind: "session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low" })
+    const result = await modelAssignmentService(manager).saveEffort({ scope: { kind: "session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low", expected: { kind: "absent" } })
     expect(result).toEqual({ label: "Chat" })
     expect((await manager.read("chat-new"))?.roleAssignments?.overrides.chat).toEqual({ model: "gpt-5-mini", effort: "low" })
   })
@@ -85,7 +85,7 @@ describe("RuntimeModelAssignmentService", () => {
   test("a save clears a pinned provider in the session snapshot", async () => {
     const manager = managerDouble()
     manager.seed("chat-new", DEFAULT_ROLES)
-    await modelAssignmentService(manager).saveEffort({ scope: { kind: "session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low" })
+    await modelAssignmentService(manager).saveEffort({ scope: { kind: "session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low", expected: { kind: "absent" } })
     expect((await manager.read("chat-new"))?.roleAssignments?.overrides.chat).toEqual({ model: "gpt-5-mini", effort: "low" })
   })
 
@@ -105,7 +105,7 @@ describe("RuntimeModelAssignmentService", () => {
 
   test("a reset answers only for the slots the selection still assigns", async () => {
     const service = modelAssignmentService(managerDouble(), DEFAULT_ROLES, await availabilityOwner(["skills"]))
-    const result = await service.resetDefaults({ scope: { kind: "session", sessionId: "chat-new" }, slots: [roleSlot("chat"), roleSlot("explorer")] })
+    const result = await service.resetDefaults({ scope: { kind: "session", sessionId: "chat-new" }, slots: [roleSlot("chat"), roleSlot("explorer")], expected: {} })
     expect(result.rows.map((row) => row.slot.roleId)).toEqual(["chat"])
   })
 })

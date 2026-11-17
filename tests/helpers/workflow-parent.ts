@@ -9,7 +9,7 @@ import type { WorkflowLaunchBinding } from "../../src/orchestration/session/chil
 import { projectBlocksFromEntries } from "../../src/orchestration/session/conversation/conversation-block-projection.js"
 import { buildSessionContext } from "../../src/orchestration/session/conversation/conversation-tree-context.js"
 import { readTranscript } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { isSettledRecord } from "../../src/orchestration/session/conversation/turn-end-record.js"
+import { turnEndOfEntry } from "../../src/orchestration/session/conversation/turn-end-record.js"
 import type { MessageEntry } from "../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../src/orchestration/workflow-host/launch-operation-contract.js"
 
@@ -60,7 +60,7 @@ export async function expectSettledLaunchParent(input: {
   const turnEnd = await readChatTurnEnd(input.reader, parent.conversationId)
   expect(turnEnd).toEqual({ end: { reason: "settled" }, recorded: true })
   const branch = await readTranscript({ conversationId: parent.conversationId, sessionId: input.parentSessionId, store: input.reader }) ?? []
-  const records = branch.flatMap((entry) => entry.kind === "message" && isSettledRecord(entry) && entry.message?.kind === "user" ? [entry.message] : [])
+  const records = branch.flatMap((entry) => entry.kind === "message" && turnEndOfEntry(entry)?.reason === "settled" && entry.message?.kind === "user" ? [entry.message] : [])
   expect(records.length).toBeGreaterThan(0)
   const children = await Promise.all((parent.childSessionIds ?? []).map((childSessionId) => input.manager.read(childSessionId)))
   const launchCalls = new Set(children.flatMap((child) => child?.launchedFrom?.toolUseId ?? []))

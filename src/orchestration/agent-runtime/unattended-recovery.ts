@@ -79,7 +79,7 @@ const FIRST_PAUSE_MS = 5_000
 
 /** The longest that a wait for the model's access audit lasts before the
  *  run asks the providers again. */
-export const WAIT_LIMIT_MS = 6 * 60 * 60 * 1000
+const WAIT_LIMIT_MS = 6 * 60 * 60 * 1000
 
 const log = Log.create({ service: "unattended-recovery" })
 

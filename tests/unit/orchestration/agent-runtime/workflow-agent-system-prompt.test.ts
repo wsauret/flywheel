@@ -1,18 +1,18 @@
 import { describe, expect, it } from "bun:test";
-import {
-  buildSystemPrompt as buildSystemPromptTiers,
-  type ToolPromptFields,
-} from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt as buildSystemPromptTiers } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
+import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 
-// The prompt of an agent of a workflow: the unattended block and the stable
+// The prompt of an agent of a workflow: its unattended finishing section and the stable
 // tier that every such agent shares. The assembler suite owns the prompt kinds
 // that every runner shares; this suite owns what only an agent of a workflow gets.
 
 interface UnknownRecord { [key: string]: unknown }
+
+const WORKFLOW_AGENT: AgentPurpose = { kind: "workflow-agent", briefScope: { briefId: "implement" }, workflowAttemptId: "implement:attempt:1" };
 
 const agentsMd = "Always use Bun, not Node.";
 const CORE_SECTIONS = ["CONSTRAINTS:"];
@@ -34,7 +34,7 @@ const buildSystemPrompt = (...args: Parameters<typeof buildSystemPromptTiers>): 
 
 describe("buildSystemPrompt -- agent of a workflow", () => {
   const build = (overrides: UnknownRecord = {}) =>
-    buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", unattended: true, agentsMd, ...overrides }));
+    buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", purpose: WORKFLOW_AGENT, unattended: true, agentsMd, ...overrides }));
 
   it("contains core sections, tool guidelines, and agentsMd", () => {
     const result = build();
@@ -51,10 +51,12 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
   });
 
   // Only a root chat asks the person (PI-AGENT-024, PI-AGENT-082): an agent reaches its
-  // parent, and the block names no question tool and no blocked handoff.
-  it("tells the agent it runs unattended and that its channel is message_session to its parent", () => {
+  // parent through its session identity section, and its finishing section names no
+  // question tool and no blocked handoff.
+  it("opens the agent's finishing section with its unattended run", () => {
     const result = build({ tools: [...TOOLS, spec("message_session")] });
-    for (const text of ["WORKING UNATTENDED:", "never pauses your work", "message your parent with message_session"]) expect(result).toContain(text);
+    expect(result).toContain("# Finishing the work\n- No person reads your messages while you work, and ending a turn with only a message never pauses your work.\n");
+    expect(result).not.toContain("WORKING UNATTENDED:");
     expect(result).not.toContain("ask_user");
     expect(result).not.toMatch(/blocked (handoff|outcome)/);
   });
@@ -63,15 +65,11 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
   // the block must not send it to a tool it lacks (PI-AGENT-024).
   it("tells an agent without message_session that no parent can answer, so it decides and states its assumptions", () => {
     const result = build();
-    expect(result).toContain("WORKING UNATTENDED:");
     expect(result).toContain("No parent can answer during this run. When a choice needs the design, decide on your own judgment and state each assumption in your handoff.");
     expect(result).not.toContain("message_session");
     expect(build({ tools: [...TOOLS, spec("message_session")] })).not.toContain("No parent can answer");
   });
 
-  it("renders the unattended block only from the unattended surface", () => {
-    expect(build({ unattended: undefined })).not.toContain("WORKING UNATTENDED:");
-  });
 });
 
 // Every agent of a workflow gets the same stable tier with the doctrine, so

@@ -316,6 +316,7 @@ export function normalizeMcpTools(server: string, value: unknown): McpToolHit[] 
 }
 
 export function normalizeMcpCallResult(
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the tool result an MCP server returns
   value: unknown,
   secrets: ReadonlyArray<Redacted.Redacted<string>> = [],
 ): McpCallResult {

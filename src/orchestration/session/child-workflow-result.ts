@@ -12,7 +12,7 @@ const MAX_CONFLICT_RETRIES = 3
 
 interface ChildWorkflowResultInput {
   readonly reader: AsyncEventStateReadSurface
-  readonly projectionReader?: AsyncEventStateReadSurface
+  readonly projectionReader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
   readonly parentSessionId: string
   readonly toolUseId: string
@@ -27,7 +27,7 @@ interface ChildWorkflowResultInput {
  * Returns false when the call already holds a Stop, or holds another result
  * and the caller has no live run to stop. */
 export async function recordChildWorkflowStop(input: ChildWorkflowResultInput & { readonly stoppedBy: "person" | "agent"; readonly correctPriorResult?: boolean }): Promise<boolean> {
-  const handoff = await readTerminalHandoff(input.projectionReader ?? input.reader, input.childSessionId)
+  const handoff = await readTerminalHandoff(input.projectionReader, input.childSessionId)
   return await recordChildWorkflowResult(input, "Child workflow stop", input.stoppedBy === "person" ? "stopped" : "cancelled",
     (label) => workflowStopContent({ label, sessionId: input.childSessionId, stoppedBy: input.stoppedBy, handoff }), input.correctPriorResult)
 }
@@ -43,7 +43,7 @@ export async function recordChildWorkflowStartFailure(input: ChildWorkflowResult
 
 async function recordChildWorkflowResult(input: ChildWorkflowResultInput, operation: string, outcome: ToolOutcome, content: (label: string) => string, correctPriorResult = false): Promise<boolean> {
   for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt += 1) {
-    const reader = input.projectionReader ?? input.reader
+    const reader = input.projectionReader
     const expectedSeq = await reader.aggregateSeq(`session:${input.parentSessionId}`) + 1
     const tool = await readToolExecution(reader, input.parentSessionId, input.toolUseId)
     if (!tool || tool.resultOutcome === "stopped" || tool.resultOutcome === "cancelled") return false

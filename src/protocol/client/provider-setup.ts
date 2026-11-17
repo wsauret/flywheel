@@ -30,7 +30,7 @@ const authSnapshotPolicy = runtimeCallPolicies.authStatusSnapshot
  *  snapshot read. Past it, that read has failed, so waiting longer cannot
  *  help. The send then goes on, and the runtime's own failure names the
  *  remedy when no provider is set up. */
-export const PROVIDER_SETUP_WAIT_MS = authSnapshotPolicy.deadlineMs
+const PROVIDER_SETUP_WAIT_MS = authSnapshotPolicy.deadlineMs
 
 /** The provider setup a send is decided by. A known setup answers at once.
  *  While the view is loading, the send waits for `known`, which settles when

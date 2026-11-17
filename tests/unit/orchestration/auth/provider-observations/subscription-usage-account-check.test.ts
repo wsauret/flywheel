@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { type SubscriptionUsageOutcome, type SubscriptionUsageReport, CHATGPT_RATE_LIMIT_RESET_TYPE } from "../../../../../src/infra/llm/subscription-usage.js"
+import type { SubscriptionUsageOutcome, SubscriptionUsageReport } from "../../../../../src/infra/llm/subscription-usage.js"
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
 import { createProfileFixture, definition, registry, report, writeAccounts } from "./_service-fixtures.js"
 
@@ -85,7 +85,7 @@ describe("account-scoped subscription usage checks", () => {
       { spendSources: [{ kind: "prepaid", availability: "available" }] },
       { providerStatus: "warning" },
       { label: "renamed", plan: "new plan" },
-      { resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" }] } },
+      { resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available" }] } },
     ] satisfies Partial<SubscriptionUsageReport>[]) {
       const previous = service.snapshot()
       const updatedReport: SubscriptionUsageReport = { ...nextReport, ...change, observedAtMs: ++now }
@@ -163,7 +163,7 @@ describe("account-scoped subscription usage checks", () => {
         }
         return { kind: "success" as const, report: {
           ...observation, metrics,
-          resetCredits: { availableCount: resetApplied ? 0 : 1, credits: resetApplied ? [] : [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" as const }] },
+          resetCredits: { availableCount: resetApplied ? 0 : 1, credits: resetApplied ? [] : [{ id: "credit", resetType: "codex_rate_limits", status: "available" as const }] },
         } }
       }])), new Map([["chatgpt", async () => {
         resetApplied = true
@@ -221,7 +221,7 @@ describe("account-scoped subscription usage checks", () => {
         if (hold) { started.resolve(); await release.promise }
         return { kind: "success" as const, report: {
           ...report(id, 10_000 + reads[id]),
-          resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available" as const }] },
+          resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available" as const }] },
         } }
       }])), new Map([["a", async () => { resetStarted.resolve(); return { kind: "nothingToReset" as const } }]])),
       thresholds: () => [], now: () => 10_000,

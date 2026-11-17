@@ -285,7 +285,7 @@ interface WorkflowGuardrailLimits {
 export function launchGuardrailLimits(workflow: WorkflowDefinition, setting: number): WorkflowGuardrailLimits {
   const declared = workflow.guardrails;
   return {
-    maxAttempts: declared?.max_attempts ?? (workflow.provenance?.layer === "session" ? undefined : setting),
+    maxAttempts: declared?.max_attempts ?? (workflow.provenance.layer === "session" ? undefined : setting),
     maxMutationsPerAttempt: declared?.max_mutations_per_attempt ?? 3,
     maxInserts: declared?.max_inserts ?? 20,
   };

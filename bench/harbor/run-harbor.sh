@@ -47,7 +47,8 @@ import sys
 package = json.load(open(sys.argv[1], encoding="utf-8"))["agent_package"]
 print(f"Agent package: {package['repository']} {package['ref']} at {package['commit']}")
 PY2
-if [ "$(scalar_field "$PLAN" execution_mode)" = hosted ]; then
+EXECUTION_MODE=$(scalar_field "$PLAN" execution_mode)
+if [ "$EXECUTION_MODE" = hosted ]; then
   echo "Preparation plan: $PLAN"
   set +e
   bun run "$SCRIPT_DIR/run-harbor.ts" run-hosted "$PLAN"
@@ -58,6 +59,19 @@ fi
 if [ "$DRY_RUN" = true ]; then
   echo "Preparation plan: $PLAN"
   exit 0
+fi
+
+run_local() {
+  set +e
+  bun run "$SCRIPT_DIR/run-harbor.ts" run-local "$PLAN"
+  LOCAL_EXIT=$?
+  set -e
+  exit "$LOCAL_EXIT"
+}
+
+# Runta builds each task image itself, so a Runta run downloads, prebuilds, and seals nothing on this host.
+if [ "$EXECUTION_MODE" = runta ]; then
+  run_local
 fi
 
 DOWNLOAD_COMMAND=()
@@ -98,8 +112,4 @@ if [ "$(has_field "$PLAN" wheelhouse_command)" = true ]; then
   bun run "$SCRIPT_DIR/run-harbor.ts" add-wheelhouse "$PLAN" "$WHEELHOUSE"
 fi
 
-set +e
-bun run "$SCRIPT_DIR/run-harbor.ts" run-local "$PLAN"
-LOCAL_EXIT=$?
-set -e
-exit "$LOCAL_EXIT"
+run_local

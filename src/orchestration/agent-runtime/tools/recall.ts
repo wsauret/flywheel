@@ -6,29 +6,23 @@ import { normalizeRecallScope } from "./recall/recall-scope.js";
 const RECALL_INPUT_SCHEMA = {
   type: "object",
   properties: {
-    query: { type: "string", description: "FTS search terms. Multiple terms are relevance-ranked with OR semantics." },
-    expand: { type: "array", maxItems: RECALL_EXPAND_MAX, items: { anyOf: [{ type: "number" }, { type: "string" }] }, description: "Up to five numeric coordinates or durable entry IDs to read within the selected conversation scope." },
+    query: { type: "string", description: "Search terms. Results match any term, best first." },
+    expand: { type: "array", maxItems: RECALL_EXPAND_MAX, items: { anyOf: [{ type: "number" }, { type: "string" }] }, description: "Entry ids, or the integers shown after # by a search in the same scope." },
     offset: { type: "number", description: "UTF-16 offset for expanded reads. Default: 0." },
-    limit: { type: "number", description: `UTF-16 units per expanded entry. Default: ${RECALL_READ_DEFAULT_LIMIT}; max: ${RECALL_READ_MAX_LIMIT}.` },
-    page: { type: "number", description: "Page number (1-based) for paginated search results. Default: 1." },
-    scope: { type: "string", enum: ["lineage", "all"], description: "Search scope. Default: lineage (active branch); 'all' includes off-lineage branches." },
+    limit: { type: "number", description: `UTF-16 units per expanded entry, for expand only. Default ${RECALL_READ_DEFAULT_LIMIT}, max ${RECALL_READ_MAX_LIMIT}.` },
+    page: { type: "number", description: "Search result page, from 1." },
+    scope: { type: "string", enum: ["lineage", "all"], description: "lineage (default): the active branch. all: every branch." },
   },
 } as const;
 
-const RECALL_BASE: Pick<RuntimeTool, "name" | "action" | "promptGuidelines" | "inputSchema" | "isConcurrencySafe"> = {
+/** The recall tool as the model sees it, whichever conversation it reads. */
+export const RECALL_TOOL_DEFINITION: AdvertisedTool = {
   name: "recall",
   action: "search",
   isConcurrencySafe: true,
-  promptGuidelines: [
-    "Use recall before redoing work: an exact error string, a file path, or a decision rationale from a now-summarized turn is still on disk and recall reads it.",
-  ],
+  description: "Search this conversation's history, including turns that compaction removed. Use it before you redo work. Results show each entry's id and #coordinate; expand reads entries by either one.",
   inputSchema: RECALL_INPUT_SCHEMA,
 };
-
-const DESCRIPTION = "Search one conversation's durable history, including content dropped by compaction. A search returns relevance-ranked FTS snippets, five per page, each with a durable entry ID and a scope-relative numeric coordinate; expand reads bounded entry ranges by either reference and reports nextOffset when more remains. Numeric coordinates are specific to the scope of the search that returned them, and durable IDs are constrained to the owning conversation and selected scope.";
-
-/** The recall tool as the model sees it, whichever conversation it reads. */
-export const RECALL_TOOL_DEFINITION: AdvertisedTool = { ...RECALL_BASE, description: DESCRIPTION };
 
 export function createRecallTool(recall: RecallPort): RuntimeTool {
   return {

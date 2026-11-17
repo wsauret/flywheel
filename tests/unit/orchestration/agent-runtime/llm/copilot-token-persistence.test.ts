@@ -3,10 +3,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
-import { setCredential } from "../../../../../src/infra/auth/auth-store-mutations.js";
+import { appendCredentialInstanceWithReceipt, replaceCredentialInstance } from "../../../../../src/infra/auth/auth-store-mutations.js";
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js";
 import type { OAuthCredential } from "../../../../../src/infra/auth/auth-store-types.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
+import { copilotTokensToCredential } from "../../../../../src/orchestration/modules/provider-github-copilot/auth-types.js";
 import { buildCopilotClients } from "../../../../../src/orchestration/modules/provider-github-copilot/clients.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
@@ -17,6 +18,8 @@ const expired: OAuthCredential = {
   refresh: "github-token",
   expires: 1,
 };
+
+const subscriptionSlot = (): "subscription" => "subscription";
 
 const runtimeExpired = { ...expired, access: Redacted.make(expired.access), refresh: Redacted.make(expired.refresh ?? "") };
 
@@ -58,10 +61,9 @@ async function forceRefresh(authDir: string, persistence: "profile" | "memory-on
     runtimeExpired,
     connection,
     { kind: "subscription", providerId: "github_copilot", instanceId: "test-copilot", spendMode: "included" },
-    persistence === "profile" ? async (_expected, next) => {
-      await setCredential("github_copilot", { type: "oauth", access: Redacted.value(next.copilotToken), refresh: Redacted.value(next.githubToken), expires: next.expiresAtMs }, authDir);
-      return true;
-    } : undefined,
+    persistence === "profile"
+      ? (expected, next) => replaceCredentialInstance("github_copilot", "test-copilot", copilotTokensToCredential(expected), copilotTokensToCredential(next), authDir, subscriptionSlot)
+      : undefined,
   );
   await openai.chat.completions.create({ model: "gpt-4o", messages: [{ role: "user", content: "test" }] });
 }
@@ -104,14 +106,14 @@ describe("Copilot token persistence", () => {
     // auth directory is one level inside the directory that the cleanup removes.
     const authDir = join(root, "profile");
     mkdirSync(authDir);
-    await setCredential("github_copilot", expired, authDir);
+    await appendCredentialInstanceWithReceipt("github_copilot", { id: "test-copilot", identity: "copilot", credential: expired }, authDir, subscriptionSlot);
     installRefreshFetch();
 
     await forceRefresh(authDir, "profile");
 
     const stored = JSON.parse(readFileSync(join(authDir, "auth.json"), "utf8"));
-    expect(stored.github_copilot.access).toBe("fresh-copilot-token");
-    expect(stored.github_copilot.refresh).toBe("github-token");
+    expect(stored.github_copilot[0].credential.access).toBe("fresh-copilot-token");
+    expect(stored.github_copilot[0].credential.refresh).toBe("github-token");
   });
 
   it("returns an external attempt failure when proactive refresh is rejected without a notice or model request", async () => {

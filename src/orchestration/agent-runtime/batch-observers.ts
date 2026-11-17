@@ -1,4 +1,3 @@
-import { runModuleObserverHooks } from "../module-hooks.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { formatRuntimeNotification } from "./runtime-notifications.js";
@@ -29,10 +28,13 @@ export function createObserverChain(observers: BatchObserver[]) {
       return notices;
     },
     reset(): void {
-      runModuleObserverHooks(observers.map((observer, index) => ({
-        id: `batch-observer-${index}:reset`,
-        observe: () => { observer.reset(); },
-      })), "reset");
+      for (const [index, observer] of observers.entries()) {
+        try {
+          observer.reset();
+        } catch (error) {
+          log.error("capability observer failed", { observerId: `batch-observer-${index}:reset`, error: errorMessage(error) });
+        }
+      }
     },
   };
 }

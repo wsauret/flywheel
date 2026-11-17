@@ -104,6 +104,7 @@ const iosSimulator = {
   personaBaseline: true,
   personaOrder: 12,
   registryOrder: 20,
+  shortForm: { trees: "always", summary: "Observe and drive one iOS Simulator: boot it, take screenshots and UI snapshots, tap, and type." },
   registrations: {
     ios_simulator: {
       capabilities: [],
@@ -154,6 +155,5 @@ export const developmentModule = {
     { domain: "cli", id: "claude-sdk", value: claudeSdkNoun },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

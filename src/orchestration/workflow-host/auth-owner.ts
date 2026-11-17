@@ -10,7 +10,15 @@ const log = Log.create({ service: "workflow-auth" })
 export interface WorkflowAuthOwner {
   snapshot(workflowId: string): Promise<AuthProfileResolution>
   select(workflowId: string, profileId: string): Promise<boolean>
+  /** Every run that can still take a turn, with its profile. A run whose
+   *  profile this account lacks stays out, so it gets no resident scope and
+   *  cannot keep the project from opening; its own snapshot still reports
+   *  the missing profile. */
   list(): Promise<readonly { readonly workflowId: string; readonly profile: AuthProfileResolution }[]>
+  /** The profile of one run while it can still take a turn. Undefined when
+   *  the run is missing, deleted, or completed, or names a profile this
+   *  account lacks. */
+  resident(workflowId: string): Promise<AuthProfileResolution | undefined>
 }
 
 /** Resolves environment selection and durable retirement without copying run policy into member metadata. */
@@ -36,9 +44,21 @@ export function createWorkflowAuthOwner(input: {
       defaults = input.profiles.inspect()
     }
   }
-  // Every session change lists every workflow, so a missing profile is
-  // reported once for each run, not once for each list.
+  // Each reconciliation of a run resolves it again, so a missing profile is
+  // reported once for each run, not once for each resolution.
   const reportedMissing = new Set<string>()
+  const resolveResident = async (workflowId: string, run: WorkflowRunRecord, defaults: AuthProfileResolution): Promise<AuthProfileResolution | undefined> => {
+    try {
+      return await settle(workflowId, run, defaults)
+    } catch (error) {
+      if (!(error instanceof MissingAuthProfileError)) throw error
+      if (!reportedMissing.has(workflowId)) {
+        reportedMissing.add(workflowId)
+        log.warn("workflow auth profile does not exist", { workflowId, profileId: error.profileId })
+      }
+      return undefined
+    }
+  }
   const snapshot = async (workflowId: string): Promise<AuthProfileResolution> =>
     settle(workflowId, await input.reader.read(workflowId), input.profiles.inspect())
   return {
@@ -56,26 +76,19 @@ export function createWorkflowAuthOwner(input: {
         return true
       }
     },
-    // Every session change lists every workflow, so the list resolves each run
-    // from the one listed fold and one inspection of the profile directory.
-    // A run whose profile this account lacks stays out of the list, so it
-    // gets no resident scope and cannot keep the project from opening; its
-    // own snapshot still reports the missing profile.
+    // The list resolves each run from the one listed fold and one inspection
+    // of the profile directory.
     async list() {
       const defaults = input.profiles.inspect()
-      const resolved = await Promise.all((await input.reader.list()).map(async ({ workflowId, run }) => {
-        try {
-          return [{ workflowId, profile: await settle(workflowId, run, defaults) }]
-        } catch (error) {
-          if (!(error instanceof MissingAuthProfileError)) throw error
-          if (!reportedMissing.has(workflowId)) {
-            reportedMissing.add(workflowId)
-            log.warn("workflow auth profile does not exist", { workflowId, profileId: error.profileId })
-          }
-          return []
-        }
+      const resolved = await Promise.all((await input.reader.listOpen()).map(async ({ workflowId, run }) => {
+        const profile = await resolveResident(workflowId, run, defaults)
+        return profile ? [{ workflowId, profile }] : []
       }))
       return resolved.flat()
+    },
+    async resident(workflowId) {
+      const run = await input.reader.readOpen(workflowId)
+      return run ? resolveResident(workflowId, run, input.profiles.inspect()) : undefined
     },
   }
 }

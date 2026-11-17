@@ -1,4 +1,5 @@
 import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
+import { isRecord } from "../../infra/record.js"
 import { contextlessRecoveryRoot } from "../../workflows/context-bundle/context-recovery.js"
 import { workflowAggregateId } from "../../workflows/vm/session-facts.js"
 import { parseConversationTreeFact } from "../session/conversation/conversation-facts.js"
@@ -23,8 +24,11 @@ export async function historicalWorkerTaskRootId(
       || initial.type !== "chat.entries.appended" || initial.version !== 1 || initial.payload.conversationId !== conversationId
       || initial.payload.entries.length !== 1) return null
     const [entry] = initial.payload.entries
+    // Decode drops a stored follow-up request key, so only the stored entry shows one.
+    const storedEntries = appended.payload.entries
+    const [stored] = Array.isArray(storedEntries) ? storedEntries : []
     if (!entry || entry.kind !== "message" || entry.parentId !== null || entry.timestamp !== tree.payload.createdAt
-      || "displayOnly" in entry || "followUpRequestSequence" in entry
+      || "displayOnly" in entry || (isRecord(stored) && "followUpRequestSequence" in stored)
       || entry.message.kind !== "user" || typeof entry.message.content !== "string"
       || "origin" in entry.message || "invocation" in entry.message) return null
   } catch {

@@ -1,6 +1,6 @@
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageReaderContext } from "../../../infra/llm/subscription-usage.js";
-import { processUsageReadings, usageMetrics, usageReplyWindows, usageStatus, type UsageReadings, type UsageWindows } from "./account-usage.js";
+import { processUsageReadings, usageMetrics, usageReplyWindows, usageStatus, type UsageWindows } from "./account-usage.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 import { cliLogin } from "./cli-login.js";
 
@@ -17,16 +17,16 @@ type WindowsRead = { readonly windows: UsageWindows | undefined; readonly observ
  * window of the account's later rate-limit reports, and stay on view when a later reply leaves them out
  * (`UsageReadings`).
  */
-async function askCli(context: SubscriptionUsageReaderContext, seams: ClaudeAgentSdkSeams, readings: UsageReadings): Promise<WindowsRead> {
+async function askCli(context: SubscriptionUsageReaderContext, seams: ClaudeAgentSdkSeams): Promise<WindowsRead> {
   const scope = context.launcher?.open({ priority: "background" });
   try {
-    return await askCliIn(scope, context, seams, readings);
+    return await askCliIn(scope, context, seams);
   } finally {
     await scope?.close();
   }
 }
 
-async function askCliIn(launcher: LauncherScope | undefined, context: SubscriptionUsageReaderContext, seams: ClaudeAgentSdkSeams, readings: UsageReadings): Promise<WindowsRead> {
+async function askCliIn(launcher: LauncherScope | undefined, context: SubscriptionUsageReaderContext, seams: ClaudeAgentSdkSeams): Promise<WindowsRead> {
   const launch = cliLaunch(context.account.credential, launcher, seams);
   if (launch.kind !== "ready") return { kind: "fetch-failure" };
   try {
@@ -40,7 +40,7 @@ async function askCliIn(launcher: LauncherScope | undefined, context: Subscripti
     if (reply.kind === "unreadable") return { kind: "fetch-failure" };
     if (reply.kind !== "windows") return { windows: undefined, observedAtMs: Date.now() };
     const observedAtMs = Date.now();
-    return { windows: { ...reply.windows, models: readings.recordModels(login, reply.windows.models, observedAtMs) }, observedAtMs };
+    return { windows: { ...reply.windows, models: processUsageReadings.recordModels(login, reply.windows.models, observedAtMs) }, observedAtMs };
   } catch {
     return { kind: "fetch-failure" };
   }
@@ -56,14 +56,13 @@ async function askCliIn(launcher: LauncherScope | undefined, context: Subscripti
  * now holds another account states nothing about this one.
  */
 export function claudeUsageReader(seams: ClaudeAgentSdkSeams): SubscriptionUsageReader {
-  const readings = seams.usageReadings ?? processUsageReadings;
   return async (context) => {
     const { providerId, account } = context;
     if (account.credential.type !== "external" || account.identity === undefined) return { kind: "identity-unavailable" };
     const configDir = account.credential.configDir;
     const login = cliLogin(configDir);
     if (login?.account.accountId !== account.instanceId) return { kind: "identity-unavailable" };
-    const read = readings.recent({ configDir, accountId: account.instanceId }, Date.now()) ?? await askCli(context, seams, readings);
+    const read = processUsageReadings.recent({ configDir, accountId: account.instanceId }, Date.now()) ?? await askCli(context, seams);
     if ("kind" in read) return read;
     const plan = login.account.plan ?? observationsOf(seams).plan({ configDir, accountId: account.instanceId });
     return { kind: "success", report: {

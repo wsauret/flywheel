@@ -30,6 +30,7 @@ import { composeControlRestatement } from "../../../../src/workflows/vm/companio
 import { workflowCardHeaderParts } from "../../../../src/protocol/client/workflow-card"
 import { Schema } from "effect"
 import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 let baseDir: string
 let store: EventStore
@@ -335,7 +336,7 @@ describe("SessionTranscriptProjection child indexes", () => {
     outputStore.revision = () => revision
     let notifyStored: ((events: readonly StoredFact[]) => void) | undefined
     outputStore.drainOutputChanges = () => ({ fullResync: true, changes: [], changedTools: new Set() })
-    const publication = createOutputProjection({
+    const publication = createOutputProjection({ ...quietOutputCollaborators(),
       sessionStore: outputStore,
       projectBlock: cache.projectBlock,
       onStored(listener) { notifyStored = listener; return () => { notifyStored = undefined } },

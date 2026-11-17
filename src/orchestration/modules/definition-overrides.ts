@@ -60,6 +60,5 @@ export const definitionOverridesModule = {
     { domain: "settings", id: "definition-overrides", value: { control: "binary", group: "Tools", label: "Definition overrides", description: "Let agents review upstream updates to overridden definitions" } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

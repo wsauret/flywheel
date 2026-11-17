@@ -3,7 +3,7 @@ import { describe, expect, it, mock } from "bun:test"
 import { Renderable, ScrollBoxRenderable } from "@opentui/core"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js"
-const [{ testRender }, { createComponent }, { createStore }, { ThemeProvider }, { UsageModal, computeUsageModalLayout }, { createModalScrollController }, fixtures] = await Promise.all([import("@opentui/solid"), import("solid-js/web"), import("solid-js/store"), import("../../../../../src/tui/context/theme.js"), import("../../../../../src/tui/modules/subscription-usage/modal.js"), import("../../../../../src/tui/components/modal-scroll-controller.js"), import("../../usage-fixtures.js")])
+const [{ testRender }, { createComponent }, { createStore }, { ThemeProvider }, { UsageModal }, { createModalScrollController }, fixtures] = await Promise.all([import("@opentui/solid"), import("solid-js/web"), import("solid-js/store"), import("../../../../../src/tui/context/theme.js"), import("../../../../../src/tui/modules/subscription-usage/modal.js"), import("../../../../../src/tui/components/modal-scroll-controller.js"), import("../../usage-fixtures.js")])
 type Props = Parameters<typeof UsageModal>[0]
 const noop = () => {}
 const defaults: Props = { view: "accounts", accounts: fixtures.usageAccounts, loading: false, spendRange: "Month", historyRange: "24h", showDetailMetrics: false, selectedSourceId: "chatgpt:work", currentScroll: createModalScrollController(), spendScroll: createModalScrollController(), onClose: noop, onRefresh: noop, onViewChange: noop, onSourceChange: noop, onSpendRangeChange: noop, onHistoryRangeChange: noop, onBeginReset: noop, onConfirmReset: noop, onCancelReset: noop }
@@ -236,9 +236,14 @@ describe("Usage account browser", () => {
       expect(metricLine).not.toContain("Reset")
     }
   })
-  it("keeps the stacked view below and split browser above the usable breakpoint", () => {
-    expect(computeUsageModalLayout(65).splitAccounts).toBe(false)
-    expect(computeUsageModalLayout(66).splitAccounts).toBe(true)
-    expect(computeUsageModalLayout(120).modalWidth).toBe(98)
+  it("keeps the stacked view below and split browser above the usable breakpoint", async () => {
+    const stacked = await frame({}, 65)
+    expect(stacked).toContain("1/4 ChatGPT Work")
+    expect(stacked).not.toContain("▌ ChatGPT Work")
+    const split = await frame({}, 66)
+    expect(split).not.toContain("1/4 ChatGPT Work")
+    expect(split).toContain("▌ ChatGPT Work")
+    const tabsLine = (await frame({}, 120)).split("\n").find((line) => line.includes("[Accounts]  Spend  History"))!
+    expect(tabsLine.lastIndexOf("│") - tabsLine.indexOf("│") + 1).toBe(98)
   })
 })

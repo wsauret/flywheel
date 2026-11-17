@@ -8,9 +8,8 @@ import type { RuntimeTool, ToolContext } from "./types.js";
  *  schema still validates and coerces the input (`inputValidationSchema`). */
 const HANDOFF_INPUT_SCHEMA = {
   type: "object",
-  description: "The handoff JSON object. Pass ALL fields from your handoff instructions directly as top-level keys. Use the fields listed in your handoff instructions.",
   properties: {
-    summary: { type: "string", description: "Summary of work done" },
+    summary: { type: "string" },
   },
   additionalProperties: true,
 } as const;
@@ -21,9 +20,9 @@ const HANDOFF_BASE: Pick<
 > = {
   name: "handoff",
   action: "handoff_write",
-  description: "Record the handoff JSON to complete your brief. Pass the handoff fields directly as the input to this tool; each key you provide becomes a top-level key. Do NOT wrap the fields in a 'content' or 'json' key. Follow the handoff instructions in your task message.",
+  description: "Submit your result to complete your brief. Pass each field of your handoff instructions as a top-level key of the input. Do NOT wrap the fields in a 'content' or 'json' key.",
   promptGuidelines: [
-    "Finish reviews and verification before handoff: use process to wait for unfinished work, read and act on its results, and stop managed commands that you no longer need. Never hand off first and verify later.",
+    "Finish reviews and verification before handoff: wait for unfinished work, act on its results, and stop managed commands that you no longer need.",
   ],
   validatesOwnInput: true,
   isConcurrencySafe: false,

@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { sourceSnapshotHome } from "../../../src/infra/cli-subprocess.js"
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js"
+import { openContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { Log } from "../../../src/infra/log.js"
 import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { encodeHolderText, processHolders } from "../../../src/infra/process-holder.js"
@@ -193,7 +193,7 @@ describe("a dev service's source snapshot", () => {
     const checkout = fixtureCheckout()
     const entry = entered(await enterSourceSnapshot(checkout))
 
-    const home = ContainedDirectory.open(sourceSnapshotHome(checkout), [])
+    const home = openContainedDirectory(sourceSnapshotHome(checkout), [])
     try {
       expect(sharedHoldersIn(home, `${entry.digest}.gate`)).toEqual({ pids: [process.pid], unreadable: 0 })
     } finally {
@@ -369,7 +369,7 @@ describe("a dev service's source snapshot", () => {
     const snapshotModule = await fixture.importFromSnapshot<typeof import("../../../src/infra/source-snapshot.js")>("src/infra/source-snapshot.ts")
     snapshotModule.holdRunningSnapshot()
 
-    const home = ContainedDirectory.open(sourceSnapshotHome(fixture.checkout), [])
+    const home = openContainedDirectory(sourceSnapshotHome(fixture.checkout), [])
     try {
       expect(sharedHoldersIn(home, "0123456789abcdef.gate")).toEqual({ pids: [process.pid], unreadable: 0 })
     } finally {

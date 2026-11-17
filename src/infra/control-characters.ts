@@ -1,12 +1,20 @@
 type SequenceState = "text" | "escape" | "escape_intermediate" | "csi" | "control_string" | "control_string_escape";
 
-interface SequenceConsumer {
-  push(text: string): void;
+interface SequenceConsumerState {
+  readonly state: SequenceState;
+  /** The open control string is an OSC string, which a BEL also ends. */
+  readonly osc: boolean;
 }
 
-function createSequenceConsumer(emit: (char: string) => void): SequenceConsumer {
-  let state: SequenceState = "text";
-  let osc = false;
+interface SequenceConsumer {
+  push(text: string): void;
+  /** Whether no escape sequence or control string is open. */
+  inText(): boolean;
+  state(): SequenceConsumerState;
+}
+
+function createSequenceConsumer(emit: (char: string) => void, from: SequenceConsumerState = { state: "text", osc: false }): SequenceConsumer {
+  let { state, osc } = from;
 
   const push = (text: string): void => {
     for (const char of text) {
@@ -47,7 +55,7 @@ function createSequenceConsumer(emit: (char: string) => void): SequenceConsumer 
       } else emit(char);
     }
   };
-  return { push };
+  return { push, inText: () => state === "text", state: () => ({ state, osc }) };
 }
 
 function isControlCharacter(char: string): boolean {
@@ -81,6 +89,12 @@ export function stripAnsiEscapes(raw: string): string {
   return clean.join("");
 }
 
+/** Every character the streaming sanitizer does not pass through unchanged:
+ *  C0 controls except tab and newline (carriage return and escape included),
+ *  DEL, and the C1 controls. */
+// oxlint-disable-next-line no-control-regex -- boundary: this pattern exists to find the control characters that external text carries
+const SANITIZED_CHARACTER = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u;
+
 export interface StreamingSanitizer {
   push(text: string): void;
   finish(): void;
@@ -109,8 +123,18 @@ export function createStreamingSanitizer(emit: (text: string) => void): Streamin
     output.length = 0;
   };
   return {
+    // Almost all external text holds no control character, so a chunk read
+    // in the text state with no carriage return pending passes through whole,
+    // and only the part from its first control character walks the state
+    // machine one character at a time.
     push: (text) => {
-      consumer.push(text);
+      const first = pendingCarriageReturn || !consumer.inText() ? 0 : text.search(SANITIZED_CHARACTER);
+      if (first === -1) {
+        if (text.length > 0) emit(text);
+        return;
+      }
+      if (first > 0) output.push(text.slice(0, first));
+      consumer.push(first > 0 ? text.slice(first) : text);
       flush();
     },
     finish: () => {
@@ -119,6 +143,67 @@ export function createStreamingSanitizer(emit: (text: string) => void): Streamin
       flush();
     },
   };
+}
+
+/** Bidi formatting controls: they reorder the rest of a row's text around them,
+ *  so a name or detail carrying one can present as text it does not contain.
+ *  Other `Cf` characters stay: a zero-width joiner is part of an emoji. */
+const BIDI_CONTROL = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/u;
+const PRESENTATION_BLANK = /[\p{Cc}\p{Zl}\p{Zp}\s]/u;
+
+/** Where a presentation sanitizer stands in its input: the escape sequence
+ *  that is open, and whether a blank run waits for the character after it. */
+export interface PresentationSanitizerState {
+  readonly sequence: SequenceConsumerState;
+  readonly started: boolean;
+  readonly blank: boolean;
+}
+
+/** The sanitizer of `sanitizePresentationText` for text that arrives in
+ *  pieces, so a streaming row reads each character once. */
+export interface PresentationTextSanitizer {
+  /** Reads one more raw piece and returns the sanitized text it adds. A
+   *  trailing blank run is held until a character follows it, which trims
+   *  the end. */
+  push(raw: string): string;
+  /** Where the sanitizer stands now, so a new sanitizer can resume from here. */
+  state(): PresentationSanitizerState;
+}
+
+export function createPresentationTextSanitizer(from?: PresentationSanitizerState): PresentationTextSanitizer {
+  let started = from?.started ?? false;
+  let blank = from?.blank ?? false;
+  const added: string[] = [];
+  const consumer = createSequenceConsumer((char) => {
+    if (BIDI_CONTROL.test(char)) return;
+    if (PRESENTATION_BLANK.test(char)) {
+      blank = true;
+      return;
+    }
+    if (blank && started) added.push(" ");
+    blank = false;
+    started = true;
+    added.push(char);
+  }, from?.sequence);
+  return {
+    push: (raw) => {
+      consumer.push(raw);
+      const text = added.join("");
+      added.length = 0;
+      return text;
+    },
+    state: () => ({ sequence: consumer.state(), started, blank }),
+  };
+}
+
+/** Reduce one presentation string to a single logical display line. ANSI, OSC,
+ *  and C1 escape sequences go first, because their bytes only read as controls
+ *  as a sequence; bidi controls go next; the remaining C0/C1 controls, line and
+ *  paragraph separators, and every other whitespace run then fold to one space,
+ *  and the ends are trimmed. Ordinary punctuation is untouched, so a
+ *  search-style detail still reads exactly as written. */
+export function sanitizePresentationText(raw: string): string {
+  return createPresentationTextSanitizer().push(raw);
 }
 
 /** Normalize text crossing an external boundary (subprocess output, file bytes

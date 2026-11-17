@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { createEnvCaptureResolver, detectShell, isGitRepo, localDate, localDateZone, observeGitDirectory, type EnvScope } from "../../../src/infra/env-detection.js";
+import { createEnvCaptureResolver, detectShell, isGitRepo, localDate, localDateZone, observeGitDirectory } from "../../../src/infra/env-detection.js";
 import type { OwnedCommandResult } from "../../../src/infra/owned-command.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 
@@ -66,7 +66,7 @@ describe("environment detection", () => {
     const executionCwd = repoDirectory();
     const runner = fakeOwnedCommandRunner(gitAnswers(["a.ts"]));
     const resolve = createEnvCaptureResolver(runner.run);
-    const scope: EnvScope = { projectRoot: executionCwd, executionCwd };
+    const scope = { projectRoot: executionCwd, executionCwd };
 
     const first = await resolve(scope);
     const second = await resolve(scope);
@@ -79,7 +79,7 @@ describe("environment detection", () => {
     const executionCwd = repoDirectory();
     const runner = fakeOwnedCommandRunner(gitAnswers(["a.ts"]));
     const resolve = createEnvCaptureResolver(runner.run);
-    const scope: EnvScope = { projectRoot: executionCwd, executionCwd };
+    const scope = { projectRoot: executionCwd, executionCwd };
     const today = new Date("2026-10-10T12:00:00Z");
     const tomorrow = new Date("2026-10-11T12:00:00Z");
     try {
@@ -103,7 +103,7 @@ describe("environment detection", () => {
     const pending = new Promise<OwnedCommandResult>((settle) => { release = settle; });
     const runner = fakeOwnedCommandRunner(() => pending);
     const resolve = createEnvCaptureResolver(runner.run);
-    const scope: EnvScope = { projectRoot: executionCwd, executionCwd };
+    const scope = { projectRoot: executionCwd, executionCwd };
 
     const both = Promise.all([resolve(scope), resolve(scope)]);
     release(ownedCommandResult("a.ts\n"));
@@ -224,7 +224,7 @@ describe("environment detection", () => {
       return gitAnswers(["a.ts"])();
     });
     const resolve = createEnvCaptureResolver(runner.run);
-    const scope: EnvScope = { projectRoot: executionCwd, executionCwd };
+    const scope = { projectRoot: executionCwd, executionCwd };
 
     await expect(resolve(scope)).rejects.toThrow("launcher scope is closed");
     refuse = false;

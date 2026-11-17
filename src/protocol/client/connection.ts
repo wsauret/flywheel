@@ -172,6 +172,7 @@ export interface RuntimeConnectionOptions {
    *  acquired when its layer is built, so a dead one cannot be retried; each
    *  attempt constructs this layer again and gets a new connection. */
   readonly socket: Layer.Layer<Socket.Socket>
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
   readonly random?: () => number
   /** Wall clock for frame and lane age; tests advance it. */

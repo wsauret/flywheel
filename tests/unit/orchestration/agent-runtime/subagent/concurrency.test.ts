@@ -17,7 +17,6 @@ function createControlledRunner(): ControlledRunner {
   return {
     runner: {
       send(): void {},
-      end(): void {},
       abort(): void {
         reject(new DOMException("The operation was aborted", "AbortError"));
       },

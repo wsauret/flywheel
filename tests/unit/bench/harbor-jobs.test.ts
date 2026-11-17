@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { load } from "js-yaml";
 import { prepareHarborRun } from "../../../bench/harbor/run-harbor.js";
-import { releaseTagFor, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "../../../bench/harbor/harbor-jobs.js";
+import { releaseTagFor, runtaEnvironment, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "../../../bench/harbor/harbor-jobs.js";
 import { readRound, roundPath } from "../../../bench/harbor/rounds.js";
 import type { AccountQuota } from "../../../bench/harbor/quota-preflight.js";
 import { HARBOR_BENCHMARKS } from "../../../bench/harbor/benchmarks.js";
@@ -13,6 +13,7 @@ import { ARM_CONFIG, harborLaunchArgs as launchArgs } from "../../fixtures/harbo
 const BRINGUP = [...launchArgs, "--task-names", "kv-store-grpc", "--attempts", "1", "--allow-low-k"];
 const DEEPSEEK_ARM = "bench/harbor/configs/tb-board-deepseek-high.toml";
 const CLAUDE_ARM = "bench/harbor/configs/tb-mini-claude.toml";
+const BASETEN_ARM = "bench/harbor/configs/fh-deepseek-1017-max-baseten.toml";
 const DEEP_SWE_TASK = "datacurve/python-statemachine-state-data-scoping";
 const COMMIT = "c".repeat(40);
 const timeouts = (agent_network_mode: ResolvedTask["agent_network_mode"]) => ({ agent_timeout_sec: 900, verifier_timeout_sec: 900, build_timeout_sec: 600, agent_network_mode });
@@ -40,6 +41,7 @@ describe("Harbor jobs", () => {
     },
     publishAgentPackage: async () => PUBLICATION,
     quotaPreflight: async () => ({ profile: "Fixture", accounts: [] }),
+    runtaEnvironment: () => ({ RUNTA_TOKEN: "runta-token" }),
   });
   const read = async (path: string) => JSON.parse(await readFile(path, "utf8"));
 
@@ -99,9 +101,47 @@ describe("Harbor jobs", () => {
     expect(plan.wheelhouse_command).toEqual(expect.arrayContaining(["--task-namespace", "terminal-bench", "--task-cache", taskCache, "--task-name", "terminal-bench/kv-store-grpc"]));
   });
 
+  test("a Runta run is a local Harbor run of the same package on Runta at 32768 MB, with the snapshot as an agent env template and no overlay, download, prebuild, or wheelhouse", async () => {
+    const builds: unknown[][] = [];
+    const root = temporaryDirectory("harbor-runta-");
+    const runta = await prepareHarborRun([...BRINGUP, "--runta"], dependencies(root, builds));
+    const local = await prepareHarborRun(BRINGUP, dependencies(temporaryDirectory("harbor-runta-local-"), builds));
+    const [generated, manifest, plan, localGenerated] = await Promise.all([read(runta.generatedConfig), read(runta.manifest), read(runta.preparationPlan), read(local.generatedConfig)]);
+    expect(generated.environment).toEqual({ override_storage_mb: 32768, type: "runta" });
+    // oxlint-disable-next-line eslint/no-template-curly-in-string -- boundary: Harbor expands this placeholder from its own environment.
+    expect(generated.agents).toEqual([{ ...localGenerated.agents[0], env: { FLYWHEEL_HARBOR_PROFILE_SHA256: manifest.profile_sha256, FLYWHEEL_AUTH_SNAPSHOT: "${FLYWHEEL_AUTH_SNAPSHOT}" } }]);
+    expect(generated.jobs_dir).toBe(join(runta.artifactDirectory, "harbor-jobs"));
+    expect(generated.n_concurrent_trials).toBe(8);
+    expect(manifest).toMatchObject({ execution_mode: "runta", grade: "debug_only", resource_overrides: { storage_mb: 32768 }, exact_command: ["harbor", "run", "-c", runta.generatedConfig] });
+    expect(plan).toMatchObject({ execution_mode: "runta", harbor_command: runta.harborCommand, trials_directory: join(runta.artifactDirectory, "harbor-jobs", "flywheel-terminal-bench-2.1-gpt-6.1-terra") });
+    for (const field of ["download_command", "wheelhouse_command", "prebuild", "task_cache", "launch_command"]) expect(plan[field]).toBeUndefined();
+  });
+
+  test("a Runta run, also a dry run, without a Runta credential is refused before any package is built", async () => {
+    const builds: unknown[][] = [];
+    const refusing = { ...dependencies(temporaryDirectory("harbor-runta-refused-"), builds), runtaEnvironment: () => runtaEnvironment({ HOME: "/scratch/home" }, () => false) };
+    await expect(prepareHarborRun([...BRINGUP, "--runta"], refusing)).rejects.toThrow("--runta needs a Runta credential: set RUNTA_CONFIG");
+    expect(builds).toEqual([]);
+    // A local run never asks for one.
+    await prepareHarborRun(BRINGUP, refusing);
+    expect(builds).toHaveLength(1);
+  });
+
+  test("a Runta run's Harbor gets RUNTA_CONFIG, RUNTA_TOKEN, and RUNTA_ENDPOINT, and RUNTA_CONFIG names the home config only when no credential is set and the file exists", () => {
+    const home = "/scratch/home";
+    const config = join(home, ".config/runta/config.toml");
+    const exists = (path: string) => path === config;
+    expect(runtaEnvironment({ HOME: home, PATH: "/usr/bin", RUNTA_TOKEN: "token", RUNTA_ENDPOINT: "https://runta.example" }, exists)).toEqual({ RUNTA_TOKEN: "token", RUNTA_ENDPOINT: "https://runta.example" });
+    expect(runtaEnvironment({ HOME: home, RUNTA_CONFIG: "/scratch/other.toml" }, exists)).toEqual({ RUNTA_CONFIG: "/scratch/other.toml" });
+    expect(runtaEnvironment({ HOME: home, RUNTA_ENDPOINT: "https://runta.example" }, exists)).toEqual({ RUNTA_CONFIG: config, RUNTA_ENDPOINT: "https://runta.example" });
+    expect(() => runtaEnvironment({ HOME: home, RUNTA_TOKEN: "" }, () => false)).toThrow("--runta needs a Runta credential");
+  });
+
   test.each([
     ["OpenRouter", DEEPSEEK_ARM, ["openrouter.ai", "models.dev"]],
     ["Claude subscription", CLAUDE_ARM, ["api.anthropic.com", "models.dev"]],
+    ["Baseten", BASETEN_ARM, ["inference.baseten.co", "models.dev"]],
+    ["ChatGPT subscription", ARM_CONFIG, ["chatgpt.com", "auth.openai.com", "models.dev"]],
   ])("an offline agent phase allows the %s arm's declared provider hosts and models.dev, and a benchmark without a wheelhouse has no wheelhouse step", async (_arm, arm, hosts) => {
     const builds: unknown[][] = [];
     const args = ["--benchmark", "deep-swe-1.1", "--arm", arm, "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--attempts", "1", "--allow-low-k"];
@@ -119,8 +159,8 @@ describe("Harbor jobs", () => {
   });
 
   test("an offline agent phase refuses an arm that enables a provider which declares no hosts, and names it", async () => {
-    const args = ["--benchmark", "deep-swe-1.1", "--arm", ARM_CONFIG, "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
-    await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: chatgpt");
+    const args = ["--benchmark", "deep-swe-1.1", "--arm", "bench/harbor/configs/fh-deepseek-1017-max.toml", "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
+    await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: deepseek, opencode_go");
   });
 
   test("an executing run in a round is recorded in the round at preparation with the round's identity and its purpose; a dry run is not", async () => {

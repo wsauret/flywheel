@@ -38,6 +38,7 @@ export const MODULE_IDS = [
   "papercuts",
   "project-notifications",
   "provider-anthropic-api",
+  "provider-baseten",
   "provider-chatgpt",
   "provider-claude-agent-sdk",
   "provider-deepseek",

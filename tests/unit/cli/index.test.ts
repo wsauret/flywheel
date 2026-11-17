@@ -3,7 +3,8 @@ import { resolve as resolvePath } from "node:path"
 import { fileURLToPath } from "node:url"
 import { runsThroughBun } from "../../../src/infra/cli-subprocess.js"
 
-import { createCliLauncher, guardianCommand } from "../../../src/cli/runtime-launch.js"
+import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
+import { guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { EXECUTABLE_ROLES, internalExecutableRole } from "../../../src/infra/executable-roles.js"
 import type { OwnedProcess } from "../../../src/infra/owned-subprocess.js"
 

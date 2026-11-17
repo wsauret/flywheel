@@ -12,7 +12,7 @@ import { Effect, Exit, Scope } from "effect";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
 import type { ModelCost, ModelPricing } from "../../../../../src/infra/llm/models.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../../../src/infra/process-supervisor.js";
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { handleStreamEvent, type AssistantTurnResult } from "../../../../../src/orchestration/agent-runtime/assistant-turn-result.js";
@@ -148,7 +148,7 @@ export async function withSdkClient<T>(
   target: SdkClientTarget,
   use: (open: (options?: ConversationOptions) => Promise<SdkConversation>, stage: (options?: ConversationOptions) => Promise<StagedSdkClient>) => Promise<T>,
 ): Promise<T> {
-  const supervisor = createProcessSupervisor();
+  const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
   const launcher = createLauncherScope(supervisor);
   const lifetimes: Scope.Closeable[] = [];
   const stage = async (options: ConversationOptions = {}): Promise<StagedSdkClient> => {

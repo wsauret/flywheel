@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender, type EventStoreReadSurface } from "../../../../src/infra/event-store-types"
+import { asAsyncEventReadSurface, asAsyncEventWriter, requireGuardedEventAppender } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createBackgroundNotificationDelivery as createSessionBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/session-background-notifications"
@@ -169,7 +169,7 @@ describe("workflow background notification delivery", () => {
     }
   })
 
-  test("drains held session notifications in persisted order through the async state reader", async () => {
+  test("drains held session notifications in persisted order through its state reader", async () => {
     const projectRoot = temporary("session-background-notification-delivery-")
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
     const writer = asAsyncEventWriter(store)
@@ -179,12 +179,6 @@ describe("workflow background notification delivery", () => {
     try {
       await writer.putInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "first", { conversationId, text: "first" })
       await writer.putInFlight?.(sessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, "second", { conversationId, text: "second" })
-      const syncInFlightForbidden: EventStoreReadSurface = {
-        ...store,
-        readInFlight() {
-          throw new Error("notification recovery used the synchronous state reader")
-        },
-      }
       let admitted = true
       const read = Promise.withResolvers<void>()
       const releaseRead = Promise.withResolvers<void>()
@@ -193,7 +187,6 @@ describe("workflow background notification delivery", () => {
       const delivery = createSessionBackgroundNotificationDelivery({
         sessionId,
         projectRoot,
-        eventStore: asAsyncEventReadSurface(syncInFlightForbidden),
         projectionReader: { ...reader, readInFlight: async (...args) => {
           if (delaysRead) { read.resolve(); await releaseRead.promise }
           return reader.readInFlight(...args)

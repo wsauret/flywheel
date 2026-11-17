@@ -1,7 +1,15 @@
 import { expect, it } from "bun:test"
-import { shellSentence } from "../../../../src/infra/tools/shell-sentence.js"
+import { ShellDetailStream } from "../../../../src/infra/tools/detail-helpers.js"
+import { bashDisplay } from "../../../../src/infra/tools/displays/bash.js"
+import { ShellSentenceFold } from "../../../../src/infra/tools/shell-sentence.js"
 
-it.each([
+const CWD = "/workspace"
+
+function shellSentence(command: string) {
+  return bashDisplay.getSentence?.({ command }, CWD, { name: "Bash", detail: command })
+}
+
+const READS: readonly (readonly [string, string, string])[] = [
   ["cat webview/README.md", "Read", "README.md"],
   ["bash -lc 'cat README.md'", "Read", "README.md"],
   ["/bin/bash -lc 'cat README.md'", "Read", "README.md"],
@@ -56,11 +64,12 @@ it.each([
   ['cd webview && python3 -c \'import os; print(os.listdir("src"))\'', "Listed", "webview/src"],
   ['pwsh -NoProfile -Command \'Get-Content -Raw "C:\\skills and plugins\\SKILL.md"\'', "Read", "SKILL.md"],
   ['Get-Content -Raw "C:\\skills and plugins\\SKILL.md"', "Read", "SKILL.md"],
-])("summarizes %s", (command, name, detail) => {
+]
+it.each(READS)("summarizes %s", (command, name, detail) => {
   expect(shellSentence(command)).toEqual({ name, detail })
 })
 
-it.each([
+const COMMON_PATTERNS: readonly (readonly [string, string, string])[] = [
   [`cd dbt && grep -rln "int_kyparse_address_cache" models | head; f=$(grep -rl "int_kyparse_address_cache" models --include=*.sql | grep -v parsed | head -1); echo $f; cat models/intermediate/property_graph/locators/parsed/int_parsed_regrid.sql`,
     "Searched", "int_kyparse_address_cache in models; Read int_parsed_regrid.sql"],
   [`direnv exec . uv run dbt test -s "mart_index,test_type:unit" --target dev 2>&1 | grep -E "PASS|FAIL" | head -20`, "Tested", "mart_index,test_type:unit"],
@@ -91,11 +100,12 @@ it.each([
   ["sleep 5", "Waited", "5s"],
   ["bun run lint", "Ran", "bun run lint"],
   ["direnv exec . uv run kcat -b broker -t topic 2>/dev/null | head", "Ran", "kcat -b broker -t topic"],
-])("summarizes the common pattern %s", (command, name, detail) => {
+]
+it.each(COMMON_PATTERNS)("summarizes the common pattern %s", (command, name, detail) => {
   expect(shellSentence(command)).toEqual({ name, detail })
 })
 
-it.each([
+const WRITES_AND_UNKNOWN: readonly (readonly [string, string, string])[] = [
   ["echo foo > bar", "Wrote", "bar"],
   ["cat README.md > copy.md", "Wrote", "copy.md; Read README.md"],
   ["rg --files | tee files.txt", "Wrote", "files.txt; Listed ."],
@@ -112,6 +122,20 @@ it.each([
   ["awk -f script.awk Cargo.toml", "Ran", "awk -f script.awk Cargo.toml"],
   ["head -n invalid README.md", "Ran", "head -n invalid README.md"],
   ["Get-Content -Unknown a.md", "Ran", "Get-Content -Unknown a.md"],
-])("never presents the writing or unknown command %s as a read", (command, name, detail) => {
+]
+it.each(WRITES_AND_UNKNOWN)("never presents the writing or unknown command %s as a read", (command, name, detail) => {
   expect(shellSentence(command)).toEqual({ name, detail })
+})
+
+it.each([
+  ...[...READS, ...COMMON_PATTERNS, ...WRITES_AND_UNKNOWN].map(([command]) => command),
+  "cat > notes.md <<'EOF'\nrun ./build.sh; rg TODO\nEOF\nwc -l notes.md",
+  "cd web\ncat out.txt | head -n 3\ncd ../api && rg TODO src",
+  "rg --files src | xargs wc -l | sort -n",
+])("folding %j one character at a time gives its whole-command sentence", (command) => {
+  const stream = new ShellDetailStream(CWD)
+  const fold = new ShellSentenceFold()
+  for (const char of command) fold.add(stream.advance(char).complete)
+  fold.add(stream.finish().complete)
+  expect(fold.sentence()).toEqual(shellSentence(command))
 })

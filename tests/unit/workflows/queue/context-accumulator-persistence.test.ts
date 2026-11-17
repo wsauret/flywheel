@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { accumulatorStateFromProjection, contextFromProjection, createWorkflowContextProjection, loadAccumulatedContextFromEvents, loadContextStateFromEvents } from "../../../../src/workflows/context-bundle/context-projection.js";
+import { accumulatorStateFromProjection, contextFromProjection, createWorkflowContextProjection, loadAccumulatedContextFromEvents } from "../../../../src/workflows/context-bundle/context-projection.js";
 import { buildContextAccumulatedFact, buildContextInputAddedFact, buildContextInputSeededFact, parseWorkflowContextFact, type WorkflowContextFact } from "../../../../src/workflows/context-bundle/context-facts.js";
 import { makeEntry } from "./_context-accumulator-fixtures.js";
 import { inMemoryEventReader } from "../../../helpers/in-memory-event-reader.js";
 import { initializedWorkflowRoot, recoveredWorkflowRoot, storedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js";
 import { InvariantViolation } from "../../../../src/infra/invariant.js";
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js";
+
+/** The context of `events` as a cold read of the held projection finds it. */
+async function storedContext(events: readonly StoredFact[]) {
+  return accumulatorStateFromProjection(await createWorkflowContextProjection(asAsyncEventReadSurface(inMemoryEventReader([...events])), "session").replay());
+}
 
 function persistedContextFacts(): WorkflowContextFact[] {
   return [
@@ -45,7 +50,7 @@ describe("context accumulator persistence", () => {
     const events = storedWorkflowFacts([buildContextInputSeededFact("wf", "original"), initialized]);
     const projection = createWorkflowContextProjection(asAsyncEventReadSurface(inMemoryEventReader(events)), "session");
     expect(contextFromProjection(await projection.replay()).request?.original).toBe("original");
-    expect(loadContextStateFromEvents(events)?.artifacts["user-request"]?.value).toBe("original");
+    expect((await storedContext(events))?.artifacts["user-request"]?.value).toBe("original");
   });
 
   test.each(["cold", "replay", "apply"] as const)("recovered context drops superseded artifacts before parsing poison on %s", async (mode) => {
@@ -64,7 +69,7 @@ describe("context accumulator persistence", () => {
     expect(contextFromProjection(state)).toMatchObject({ request: { original: "recovered request" }, artifacts: [] });
     expect(projection.getPosition()).toBe(70);
     expect(createWorkflowContextProjection(projectionReader, "session")).toBe(projection);
-    expect(loadContextStateFromEvents(events)).toEqual(accumulatorStateFromProjection(state));
+    expect(await storedContext(events)).toEqual(accumulatorStateFromProjection(state));
     if (snapshot) expect(snapshot.entries).toHaveLength(2);
     const second = storedWorkflowFacts([
       recoveredWorkflowRoot(initializedWorkflowRoot.payload.control, 9),
@@ -73,11 +78,11 @@ describe("context accumulator persistence", () => {
     events.push(...second);
     if (mode === "apply") await projection.apply(second);
     expect(contextFromProjection(await projection.replay())).toMatchObject({ request: { original: "latest request" }, artifacts: [] });
-    expect(Object.keys(loadContextStateFromEvents(events)?.artifacts ?? {})).toEqual(["user-request"]);
+    expect(Object.keys((await storedContext(events))?.artifacts ?? {})).toEqual(["user-request"]);
     expect(events[4]?.payload).toEqual({});
   });
 
-  test("reads the context facts that builds before the agent lexicon stored under attempt, agent, and item words", () => {
+  test("reads the context facts that builds before the agent lexicon stored under attempt, agent, and item words", async () => {
     const list = "wf:node:2";
     const item = `${list}:item:1`;
     const lane = `${item}:phase:1:attempt:1`;
@@ -94,7 +99,7 @@ describe("context accumulator persistence", () => {
     ].map(parseWorkflowContextFact);
     const events = storedWorkflowFacts([initializedWorkflowRoot, buildContextInputSeededFact("wf", "request"), ...stored]);
 
-    expect(loadContextStateFromEvents(events)?.entries.map(({ entryId, agentName, recipientAttemptId }) => [entryId, agentName, recipientAttemptId])).toEqual([
+    expect((await storedContext(events))?.entries.map(({ entryId, agentName, recipientAttemptId }) => [entryId, agentName, recipientAttemptId])).toEqual([
       ["plan-1", "Plan", null],
       [lane, "Lane", null],
     ]);
@@ -125,7 +130,7 @@ describe("context accumulator persistence", () => {
     const context = contextFromProjection(await projection.replay());
     expect(context.request).toEqual({ original: "verbatim request", addenda: [first.payload, second.payload] });
     expect(context.priorHandoff?.entryId).toBe("plan-1");
-    expect(loadContextStateFromEvents(events)?.addenda).toEqual([first.payload, second.payload]);
+    expect((await storedContext(events))?.addenda).toEqual([first.payload, second.payload]);
 
     events.push(...storedWorkflowFacts([first], events.length));
     await expect(projection.replay()).rejects.toMatchObject({ _tag: "InvariantViolation", kind: "duplicate-event", eventPosition: events.length * 10 });
@@ -142,6 +147,6 @@ describe("context accumulator persistence", () => {
     await expect(projection.replay()).rejects.toThrow(InvariantViolation);
     await expect(projection.apply([root, seed!])).rejects.toThrow(InvariantViolation);
     await expect(createWorkflowContextProjection(asAsyncEventReadSurface(inMemoryEventReader(events)), "session").replay()).rejects.toThrow(InvariantViolation);
-    expect(() => loadContextStateFromEvents(events)).toThrow(InvariantViolation);
+    
   });
 });

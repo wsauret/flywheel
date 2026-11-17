@@ -101,6 +101,7 @@ export interface ResidentSessionOptions {
   readonly evidenceChanged?: () => void
   /** Hears a change of a shown session's views. */
   readonly changed: () => void
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
   readonly onDiagnostic?: (message: string, detail?: unknown) => void
 }
 

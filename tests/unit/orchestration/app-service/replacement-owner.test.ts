@@ -178,7 +178,7 @@ describe("replacement owner", () => {
     const unreadable = async (): Promise<never> => { throw new Error("disk I/O error") }
     const admission = createMutationAdmission()
     const report = createReplacementReport({
-      projectRoot: "/work/gone", projectLabel: undefined, listMetadata: unreadable, runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
+      projectRoot: "/work/gone", projectLabel: undefined, listActive: unreadable, listForIds: unreadable, runningChildren: () => [], runningWorkflows: () => [], keptSessions: () => [],
       sessionStore: { allIds: () => [], get: () => undefined }, client: { query: unreadable, admission },
     })
     let retirements = 0

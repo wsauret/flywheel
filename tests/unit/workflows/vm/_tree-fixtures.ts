@@ -14,10 +14,11 @@ import type { OutputIssue } from "../../../../src/workflows/output-contract/path
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { createMemoryStore, initialFacts, testHost } from "./host-test-support.js"
 import { attemptOf, DRY_FILES, dryAnswer, dryWorkflow, FINDINGS_FILES, findingsAnswer, findingsWorkflow, inputMapWorkflow, itemList, items, mapSkills, mapWorkflow, stage, surveyAnswer, surveyWorkflow, type SurveyTarget } from "./_map-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The input-mapped workflow with room for 100 items, so a launch can fan
  *  out to about 85 branches. */
-export const wideMapWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const wideMapWorkflow = loadedWorkflow({
   ...Schema.encodeSync(WorkflowDefinitionSchema)(inputMapWorkflow),
   input: { fields: { items: itemList(100), goal: { type: "string", description: "What the run must reach." } } },
 })
@@ -30,7 +31,7 @@ const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id.charAt(0
  *  agents of one phase, so they run at the same time; otherwise each is a
  *  phase of its own, and the second waits on the first. */
 export function phaseWorkflow(concurrent: boolean) {
-  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  return loadedWorkflow({
     id: concurrent ? "side-by-side" : "in-turn",
     name: concurrent ? "Side by side" : "In turn",
     phases: [
@@ -162,7 +163,7 @@ export const dryBindings = resolveWorkflowAgents(dryWorkflow(3))
 
 const debugRecord = (id: string) => ({ brief: `Run ${id}.`, name: id.charAt(0).toUpperCase() + id.slice(1), output: { summary: "Result" }, writes: [] })
 
-const debugWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const debugWorkflow = loadedWorkflow({
   id: "debug", name: "Debug",
   phases: [
     { phase: "investigate", ...debugRecord("investigate"), output: { summary: "Result", fields: { hypothesis: { type: "string", nullable: true, description: "The root cause, when one is confirmed." } } } },
@@ -173,7 +174,7 @@ const debugWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
 export const debugBindings = resolveWorkflowAgents(debugWorkflow)
 export const debugControl = () => compileWorkflowControl(debugWorkflow, debugBindings, { skills: mapSkills })
 
-const stepLoopWorkflow = (detectStuck: boolean) => Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const stepLoopWorkflow = (detectStuck: boolean) => loadedWorkflow({
   id: "step-loop", name: "Review fixes",
   phases: [{
     repeat: { while: "investigate.findings", max: 5, stuck: detectStuck },
@@ -186,7 +187,7 @@ const stepLoopWorkflow = (detectStuck: boolean) => Schema.decodeUnknownSync(Work
 export const stepLoopBindings = resolveWorkflowAgents(stepLoopWorkflow(false))
 export const stepLoopControl = (detectStuck = false) => compileWorkflowControl(stepLoopWorkflow(detectStuck), stepLoopBindings, { skills: mapSkills })
 
-const eachWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const eachWorkflow = loadedWorkflow({
   id: "each", name: "Each",
   phases: [
     { phase: "source", ...debugRecord("source"), output: { summary: "The items.", fields: { items: { type: "list", description: "The items.", max: 3, unique: "id", of: { type: "object", fields: { id: { type: "string", description: "The id." } } } } } } },
@@ -199,7 +200,7 @@ export const eachBindings = resolveWorkflowAgents(eachWorkflow)
 export const eachControl = () => compileWorkflowControl(eachWorkflow, eachBindings, { skills: mapSkills })
 
 /** A concurrent phase of two named agents, and a phase after it. */
-const concurrentWorkflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+const concurrentWorkflow = loadedWorkflow({
   id: "concurrent", name: "Debug",
   phases: [
     { phase: "build", agents: [{ agent: "verify", ...debugRecord("verify") }, { agent: "investigate", ...debugRecord("investigate") }] },

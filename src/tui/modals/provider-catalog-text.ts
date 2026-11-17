@@ -9,20 +9,18 @@ function providerCatalogSourceLabel(provenance: Extract<ProviderCatalogDiscovery
   return "Static"
 }
 
+function unavailableCatalogStatus(reason: Extract<ProviderCatalogDiscovery, { readonly kind: "unavailable" }>["reason"]): string {
+  if (reason === "empty") return "Provider list empty"
+  if (reason === "unusable") return "Provider list unreadable"
+  if (reason === "authentication-invalid") return "Authentication invalid"
+  if (reason === "authentication-absent") return "Provider list unavailable · authentication absent"
+  if (reason === "discovery-pending") return "Discovering provider list"
+  return "Provider list unavailable"
+}
+
 export function providerCatalogStatusText(catalog: ProviderCatalogDiscovery): string | undefined {
   if (catalog.kind === "unavailable") {
-    const status = catalog.reason === "empty"
-      ? "Provider list empty"
-      : catalog.reason === "unusable"
-        ? "Provider list unreadable"
-        : catalog.reason === "authentication-invalid"
-          ? "Authentication invalid"
-          : catalog.reason === "authentication-absent"
-            ? "Provider list unavailable · authentication absent"
-            : catalog.reason === "discovery-pending"
-              ? "Discovering provider list"
-              : "Provider list unavailable"
-    return [status, discoveryFailureText(catalog.discoveryReason)].filter(Boolean).join(" · ")
+    return [unavailableCatalogStatus(catalog.reason), discoveryFailureText(catalog.discoveryReason)].filter(Boolean).join(" · ")
   }
   const source = providerCatalogSourceLabel(catalog.provenance)
   if (catalog.liveOutcome === "valid") return source || undefined

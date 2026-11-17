@@ -34,6 +34,9 @@ export function toolRunCategoryFor(tool: {
   readonly declaresMutation?: FrontendToolEntry["declaresMutation"]
 }): ToolRunCategory | null {
   if (tool.runCategoryOverride) return tool.runCategoryOverride
+  // A lookup explores whatever its tool is, so a read of the code tool's
+  // contract folds under Explored, not Executed (PI-AGENT-131).
+  if (tool.action === "file_read" || tool.action === "list" || tool.action === "search") return "explore"
   // The code tool folds as an execute carrier in every path, including the
   // window-predecessor seed, which passes the raw block without an override.
   if (tool.name === "code") return "execute"
@@ -41,7 +44,6 @@ export function toolRunCategoryFor(tool: {
   // declaration streams, and edits stand alone: it never joins a run.
   if (isShellMutationEntry(tool)) return null
   if (tool.action === "shell_exec" || tool.action === "ui_meta") return "exec"
-  if (tool.action === "file_read" || tool.action === "list" || tool.action === "search") return "explore"
   return null
 }
 

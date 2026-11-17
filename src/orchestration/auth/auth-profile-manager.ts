@@ -145,12 +145,12 @@ export class AuthProfileManager {
     requireAuthProfileName(id);
     return this.#store.withOperation((operation) => {
       if (!operation.list().some((profile) => profile.id === id)) throw new Error(`auth profile does not exist: ${id}`);
-      return setAuthProjectProfile(this.#projectRoot, id, this.#configLocation());
+      return setAuthProjectProfile(this.#projectRoot, id, this.#projectBinding(), this.#configLocation());
     });
   }
 
   async unbind(): Promise<ConfigWriteResult> {
-    return this.#store.withOperation(() => removeAuthProjectProfile(this.#projectRoot, this.#configLocation()));
+    return this.#store.withOperation(() => removeAuthProjectProfile(this.#projectRoot, this.#projectBinding(), this.#configLocation()));
   }
 
   async rename(id: string, displayName: string): Promise<void> {
@@ -240,7 +240,7 @@ export class AuthProfileManager {
     const resolutionProfiles = storedProfiles.some((profile) => profile.id === DEFAULT_PROFILE) || inspection.retirements[DEFAULT_PROFILE] !== undefined
       ? storedProfiles
       : [{ id: DEFAULT_PROFILE, displayName: "Default" }, ...storedProfiles];
-    const binding = this.#config().auth.project_profiles[this.#projectRoot];
+    const binding = this.#projectBinding();
     const projectBinding = binding === undefined ? undefined : canonical(binding);
     const sticky = inspection.stickyProfile === undefined ? undefined : canonical(inspection.stickyProfile);
     const persistedId = projectBinding ?? sticky ?? canonical(DEFAULT_PROFILE);
@@ -262,6 +262,12 @@ export class AuthProfileManager {
       projectBinding,
       retirements: inspection.retirements,
     });
+  }
+
+  /** The project's binding as the config this manager reads states it, before retirement maps it to a successor. A
+   *  binding write expects it, so a write from a stale view of the file is refused. */
+  #projectBinding(): string | undefined {
+    return this.#config().auth.project_profiles[this.#projectRoot];
   }
 
   #config(): Pick<FlywheelConfig, "auth"> {

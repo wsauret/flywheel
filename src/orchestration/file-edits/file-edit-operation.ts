@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import { resolve } from "node:path"
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
-import { ContainedPathError, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory.js"
+import { ContainedPathError, type ContainedFileMetadata, type ContainedFileSnapshot, type FileMutationAttemptResult } from "../../infra/descriptor-directory-contract.js"
 import { withMutationQueueKeys } from "../../infra/file-mutation-queue.js"
 import { runInTaskSlices } from "../../infra/task-scheduling.js"
 import { prepareFileMutationOperation, retireFileMutationNotApplied, settleFileMutation, type FileMutationFactWriter, type FileMutationPlan, type PreparedFileMutation } from "../session/file-mutation-fact-writers.js"

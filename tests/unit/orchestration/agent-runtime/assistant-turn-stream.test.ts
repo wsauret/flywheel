@@ -11,6 +11,7 @@ import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration
 import { pricedUsage } from "../../../helpers/usage-price-fixtures.js";
 import { chain, fakeAvailability } from "./llm/_provider-chain-harness.js";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { withDebugTier } from "../../../helpers/debug-tier.js";
 
 type TurnInput = Parameters<typeof streamAssistantTurn>[0];
 
@@ -66,7 +67,7 @@ function fakeAttempt(
 }
 
 
-describe("streamAssistantTurn canonical shell identity", () => { test("uses canonical bash for definitions and current calls", async () => {
+describe("streamAssistantTurn canonical shell identity", () => { test("uses canonical bash for definitions and current calls", () => withDebugTier(async () => {
     const captured: StreamOptions[] = []; const auditTools: StreamOptions["tools"][] = []; const normalizedNames: unknown[] = []; const forwardedNames: string[] = [];
     const client = withRequestAdmission({
       model: "gpt-6.1-sol", modelFamily: "openai",
@@ -91,7 +92,7 @@ describe("streamAssistantTurn canonical shell identity", () => { test("uses cano
     expect(captured[0]?.tools[0]?.name).toBe("bash"); expect(auditTools[0]?.[0]?.name).toBe("bash"); expect(captured[0]?.tools[0]).not.toHaveProperty("promptGuidelines");
     expect(result.toolCalls[0]).toMatchObject({ name: "bash", repairedFrom: "Bash" });
     expect(normalizedNames).toEqual(["bash", "bash"]); expect(forwardedNames).toEqual(["bash", "bash"]);
-  }); });
+  })); });
 
   test("leaves an unadvertised exec call noncanonical", async () => {
     const result = await runTurn({
@@ -233,7 +234,7 @@ describe("Anthropic redacted-thinking token estimates", () => {
 });
 
 describe("streamAssistantTurn provider request audit", () => {
-  test("records request/response facts and causally tags model-emitted tool events", async () => {
+  test("records request/response facts and causally tags model-emitted tool events", () => withDebugTier(async () => {
     const requests: Parameters<ProviderRequestAuditWriter["recordRequest"]>[0][] = [];
     const responses: Array<{
       handle: ProviderRequestAuditHandle;
@@ -357,7 +358,7 @@ describe("streamAssistantTurn provider request audit", () => {
     expect(seen[0]).toEqual({ kind: "tool_input_start", toolUseId: "tool-1", name: "read", modelRequestId: requests[0]!.requestId });
     expect(seen[1]).toEqual({ kind: "tool_input_delta", toolUseId: "tool-1", partialJson: "{\"path\"", modelRequestId: requests[0]!.requestId });
     expect(result.toolCalls[0]?.modelRequestId).toBe(requests[0]!.requestId);
-  });
+  }));
 
   test("stamps modelRequestId onto the tool call before canonicalization dispatches it", async () => {
     // canonicalizeToolCall hands the call to the tool dispatcher, and every
@@ -385,7 +386,7 @@ describe("streamAssistantTurn provider request audit", () => {
     expect(dispatched[0]).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  test("awaits stream telemetry before forwarding or consuming the next provider delta", async () => {
+  test("awaits stream telemetry before forwarding or consuming the next provider delta", () => withDebugTier(async () => {
     let releaseTelemetry: (() => void) | undefined; let yieldedSecond = false;
     const seen: ProviderStreamEvent["kind"][] = [];
     const requestAudit: ProviderRequestAuditWriter = {
@@ -406,7 +407,7 @@ describe("streamAssistantTurn provider request audit", () => {
     expect(releaseTelemetry).toBeDefined(); releaseTelemetry?.(); await promise;
     expect(before).toEqual({ seen: [], yieldedSecond: false });
     expect(seen).toEqual(["text_delta"]);
-  });
+  }));
 
   test("a request abandoned on a quota failure keeps its own usage; the fallback record gets none", async () => {
     const usages: Array<{
@@ -423,7 +424,6 @@ describe("streamAssistantTurn provider request audit", () => {
         return handle;
       },
       recordResponse() {},
-      recordAbandonedResponse() { return Promise.resolve(); },
       recordUsage(handle, input) {
         usages.push({ requestId: handle.requestId, input });
       },

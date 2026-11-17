@@ -49,6 +49,9 @@ function transientChatStore() {
   }
 }
 
+// The chat entry that every service of this file starts with, and the entry of a role with none.
+const SEEDED_CHAT = { kind: "value", value: { model: "gpt-5.5", effort: "medium" } } as const
+const ABSENT = { kind: "absent" } as const
 const MODULES = ["workflows", "skills", "subagents", "learning", "background-commands"] as const
 const FULL_AVAILABILITY = await availabilityOwner(MODULES)
 
@@ -185,10 +188,10 @@ describe("active profile model overlays", () => {
     })
 
     expect((await service.globalDefaultRoles()).chat).toMatchObject({ model: "gpt-5.5", effort: "medium" })
-    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low" })
+    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5-mini", effort: "low", expected: { kind: "value", value: { model: "powerful", effort: "medium" } } })
     profileId = "profile-b"
     directory = authDir(directories.userDataRoot, profileId)
-    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5.5", effort: "high" })
+    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5.5", effort: "high", expected: ABSENT })
 
     expect(Bun.TOML.parse(readFileSync(configPath, "utf8"))).toEqual({
       profiles: {
@@ -351,7 +354,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults-and-session", sessionId: "chat-new" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: "low",
+      effort: "low", expected: SEEDED_CHAT,
     })
 
     expect(result).toMatchObject({ label: "Chat", mirrored: true })
@@ -368,7 +371,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: "low",
+      effort: "low", expected: SEEDED_CHAT,
     })
 
     const saved = readFileSync(configPath, "utf-8")
@@ -385,13 +388,13 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: "low",
+      effort: "low", expected: SEEDED_CHAT,
     })
 
     const rows = await service.loadAssignments({ scope: { kind: "defaults" }, slots: [roleSlot("chat")] })
 
     expect(rows[0]).toMatchObject({ model: "gpt-5-mini", effort: "low" })
-    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("explorer"), model: "gpt-5-mini", effort: "high" })
+    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("explorer"), model: "gpt-5-mini", effort: "high", expected: ABSENT })
     const roleEfforts = await service.loadAssignments({ scope: { kind: "defaults" }, slots: [roleSlot("explorer"), roleSlot("title-generation"), roleSlot("chat")] })
     expect(roleEfforts.map(({ effort }) => effort)).toEqual(["high", "low", "low"])
     expect((await service.listModelOptions({ scope: { kind: "defaults" }, slot: roleSlot("chat") })).find((row) => row.model === "gpt-5-mini")?.effort).toBe("low")
@@ -425,7 +428,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "session", sessionId: "chat-new" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: "high",
+      effort: "high", expected: ABSENT,
     })
 
     const rows = await service.listModelOptions({ scope: { kind: "defaults" }, slot: roleSlot("chat") })
@@ -443,7 +446,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "session", sessionId: "chat-new" },
       slot: roleSlot("brief.demo.build.at.build"),
       model: "gpt-5.5",
-      effort: "high",
+      effort: "high", expected: ABSENT,
     })
     expect((await manager.read("chat-new"))?.roleAssignments?.overrides["brief.demo.build.at.build"]).toEqual({
       model: "gpt-5.5", effort: "high", providerOptions,
@@ -460,7 +463,7 @@ describe("defaults-and-session write scope", () => {
     const options = await service.listModelOptions(query)
     expect(options.map((row) => row.model)).not.toContain("lost-model")
     expect(options.every((row) => row.selectable)).toBe(true)
-    await service.saveEffort({ ...query, model: "gpt-5-mini", effort: "low" })
+    await service.saveEffort({ ...query, model: "gpt-5-mini", effort: "low", expected: assignment!.configured })
     expect(loadConfig(configPath, {}).config.profiles.default?.roles.chat).toEqual({ model: "gpt-5-mini", effort: "low" })
   })
 
@@ -470,7 +473,7 @@ describe("defaults-and-session write scope", () => {
     manager.failRoleWrites()
     const { service, configPath } = await compoundService(manager)
     const scope = kind === "defaults" ? { kind } : { kind, sessionId: "chat-new" }
-    const result = await service.saveEffort({ scope, slot: roleSlot("workflow-agent"), model: "gpt-5-mini", effort: "low" })
+    const result = await service.saveEffort({ scope, slot: roleSlot("workflow-agent"), model: "gpt-5-mini", effort: "low", expected: ABSENT })
     expect(result.warning).toBeUndefined()
     expect(result.mirrored).toBeUndefined()
     expect(loadConfig(configPath, {}).config.profiles.default?.roles["workflow-agent"]).toEqual({ model: "gpt-5-mini", effort: "low" })
@@ -484,7 +487,7 @@ describe("defaults-and-session write scope", () => {
     const before = readFileSync(configPath, "utf8")
     for (const roleId of ["brief.fly.spec-create", "brief.fly.spec-create.persona.explorer", "brief.fly.spec-create.at.worker"]) {
       const scope = kind === "defaults" ? { kind } : { kind, sessionId: "chat-new" }
-      const saved = service.saveEffort({ scope, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "low" })
+      const saved = service.saveEffort({ scope, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "low", expected: ABSENT })
       if (kind === "session") {
         await saved
         expect((await manager.read("chat-new"))?.roleAssignments?.overrides[roleId]).toEqual({ model: "gpt-5-mini", effort: "low" })
@@ -500,7 +503,7 @@ describe("defaults-and-session write scope", () => {
     writeFileSync(configPath, ["brief.fly.spec-create", "brief.fly.spec-review"].map((id) =>
       `[profiles.default.roles."${id}"]\nmodel = "gpt-5-mini"\neffort = "medium"\n`).join("\n"))
     await configOwner.refresh()
-    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5.5", effort: "medium" })
+    await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot("chat"), model: "gpt-5.5", effort: "medium", expected: ABSENT })
     await service.loadAssignments({ scope: { kind: "defaults" }, slots: [roleSlot("chat")] })
     const config = loadConfig(configPath, {}).config
     expect(config.profiles.default?.roles["brief.fly.spec-create"]).toEqual({ model: "gpt-5-mini", effort: "medium" })
@@ -519,7 +522,7 @@ describe("defaults-and-session write scope", () => {
     let composition = composeFirstPartyModules(repoModules)
     const { service, configPath } = await compoundService(managerDouble(), undefined, FULL_AVAILABILITY, pickerEligibility(), () => composition)
     const slot = roleSlot("benchmark-judge")
-    await service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5-mini", effort: "medium" })
+    await service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5-mini", effort: "medium", expected: ABSENT })
     const saved = readFileSync(configPath, "utf8")
     const query = { scope: { kind: "defaults" }, slots: [roleSlot("chat"), roleSlot("explorer"), slot] } as const
     expect((await service.loadAssignments(query)).map((row) => row.slot.roleId)).toEqual(["chat", "explorer", slot.roleId])
@@ -541,7 +544,7 @@ describe("defaults-and-session write scope", () => {
     const persona = (name: string, role: string): AgentDefinition => ({ ...EXPLORER, name, role })
     const availability = await availabilityOwner(MODULES, () => off, [EXPLORER, persona("triager", "triage"), persona("advisor", "advisor"), persona("reviewer-code-security", "reviewer-security")])
     const { service, configPath } = await compoundService(managerDouble(), undefined, availability)
-    for (const roleId of ["explorer", "triage", "advisor"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high" })
+    for (const roleId of ["explorer", "triage", "advisor"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high", expected: ABSENT })
     const saved = readFileSync(configPath, "utf8")
     const typed = ["explorer", "triage", "advisor", "reviewer", "reviewer-security", "brief.plan-flow.plan.persona.explorer"]
     // The terminal's rows, a custom role, and a brief seat of a persona role.
@@ -560,7 +563,7 @@ describe("defaults-and-session write scope", () => {
       const refusal = `agent type ${roleId} is turned off. Remove it from subagents.disabled_types in flywheel.toml to turn it on`
       expect(service.listModelOptions({ scope: { kind: "defaults" }, slot })).rejects.toThrow(refusal)
       expect(service.listEffortOptions({ scope: { kind: "defaults" }, slot, model: "gpt-5-mini" })).rejects.toThrow(refusal)
-      expect(service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5.5", effort: "low" })).rejects.toThrow(refusal)
+      expect(service.saveEffort({ scope: { kind: "defaults" }, slot, model: "gpt-5.5", effort: "low", expected: ABSENT })).rejects.toThrow(refusal)
     }
     expect(readFileSync(configPath, "utf8")).toBe(saved)
     off = []
@@ -577,11 +580,11 @@ describe("defaults-and-session write scope", () => {
     const availability = await availabilityOwner(MODULES, () => off, [EXPLORER, { ...EXPLORER, name: "advisor", role: "advisor" }, { ...EXPLORER, name: "triager", role: "triage" }])
     const manager = managerDouble()
     const { service, configPath } = await compoundService(manager, undefined, availability)
-    for (const roleId of ["chat", "advisor", "triage"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high" })
+    for (const roleId of ["chat", "advisor", "triage"]) await service.saveEffort({ scope: { kind: "defaults" }, slot: roleSlot(roleId), model: "gpt-5-mini", effort: "high", expected: roleId === "chat" ? SEEDED_CHAT : ABSENT })
     manager.seed("chat-new", { chat: { model: "gpt-5-mini", effort: "low" }, advisor: { model: "gpt-5-mini", effort: "low" } })
     off = ["advisor", "triage"]
     await availability.refresh()
-    expect(await service.resetDefaults({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slots: defaultRoleSlots() })).toMatchObject({ mirrored: true })
+    expect(await service.resetDefaults({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slots: defaultRoleSlots(), expected: { chat: { kind: "value", value: { model: "gpt-5-mini", effort: "high" } } } })).toMatchObject({ mirrored: true })
     const roles = loadConfig(configPath, {}).config.profiles.default?.roles
     expect([roles?.chat, roles?.advisor]).toEqual([undefined, { model: "gpt-5-mini", effort: "high" }])
     expect(readFileSync(configPath, "utf8")).toContain('[profiles.default.roles.triage]\nmodel = "gpt-5-mini"\neffort = "high"')
@@ -600,7 +603,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults" },
       slot: roleSlot("brief.fly.spec-create"),
       model: "gpt-5-mini",
-      effort: "medium",
+      effort: "medium", expected: ABSENT,
     })).rejects.toThrow("Per-brief defaults are retired")
     await service.loadAssignments({ scope: { kind: "defaults" }, slots: [roleSlot("chat")] })
     expect(loadConfig(configPath, {}).config.profiles.default?.roles["brief.fly.spec-create"]).toBeUndefined()
@@ -614,7 +617,7 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults-and-session", sessionId: "chat-new" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: null,
+      effort: null, expected: SEEDED_CHAT,
     })
 
     expect(result.mirrored).toBeFalsy()
@@ -629,13 +632,14 @@ describe("defaults-and-session write scope", () => {
       scope: { kind: "defaults" },
       slot: roleSlot("chat"),
       model: "gpt-5-mini",
-      effort: "low",
+      effort: "low", expected: SEEDED_CHAT,
     })
     manager.seed("chat-new", { ...DEFAULT_ROLES, chat: { model: "gpt-5-mini", effort: "low", provider: "openai_api" } })
 
     const result = await service.resetDefaults({
       scope: { kind: "defaults-and-session", sessionId: "chat-new" },
       slots: [roleSlot("chat")],
+      expected: { chat: { kind: "value", value: { model: "gpt-5-mini", effort: "low" } } },
     })
 
     expect(result.warning).toBeUndefined()
@@ -658,6 +662,7 @@ describe("defaults-and-session write scope", () => {
     const result = await service.resetDefaults({
       scope: { kind: "defaults-and-session", sessionId: "chat-new" },
       slots: [roleSlot("chat")],
+      expected: { chat: SEEDED_CHAT },
     })
 
     expect(result.rows.length).toBeGreaterThan(0)

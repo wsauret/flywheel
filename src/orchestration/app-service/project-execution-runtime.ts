@@ -375,7 +375,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The runtime's one capability publication and mutation owner: the config file
   // is the authority, the policy is its live projection, and this is the protocol
   // face of both. Nothing copies a selection out of it.
-  const moduleProjection = scope.own("module-projection", await createModuleProjection({
+  const moduleProjection = scope.own("module-projection", createModuleProjection({
     preparePublication: moduleServices.reconcile,
     location: { userDataRoot },
     capabilities,
@@ -435,7 +435,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     own: (name, resource, dispose) => scope.own(name, resource, dispose),
     subscriptionUsageThresholds: () => [],
     interactive: options.interactive === true,
-    sessionStore, workflowHosts, eventReader, eventWriter, availability, runtimeConfig,
+    sessionStore, workflowHosts, eventReader, eventWriter, onStored: eventStore.onStored, availability, runtimeConfig,
     chatDefault: options.chatDefault ?? { kind: "pending" },
     persistentProcessesForcedByCli: options.allowPersistentProcesses,
     ...(options.headlessAuth === undefined ? {} : { headlessAuth: options.headlessAuth }),
@@ -564,7 +564,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     undoChanges: async (request, signal) => (await sessionChanges()).undo(request, signal),
     transcriptCache, sessionStore, manager, workflowHosts,
     directories,
-    runtime, projectionReader, sessionViewLoader,
+    runtime, projectionReader, writer: eventWriter, sessionViewLoader,
     runnerCapabilities: () => runnerCapabilities,
     authProfileId: authRuntime.newSessionProfileId,
     onRunnerError,
@@ -653,7 +653,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The startup summary is the composition's one default-level record.
   log.debug("runtime composition done", { projectRoot })
 
-  const { "stop-runners": runnerOwners = [], "flush-durable-state": durableStateOwners = [], "close-client-streams": clientStreamOwners = [] } = client.shutdown.owners
+  const { "stop-runners": runnerOwners = [], "close-client-streams": clientStreamOwners = [] } = client.shutdown.owners
 
   const ownershipOwners = completeProjectExecutionOwnership(scope, {
     hasAttributionService: Boolean(gitAiAttributionService),
@@ -670,7 +670,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
 
   const replacement = createReplacementReport({
     projectRoot, projectLabel: options.projectLabel, client, sessionStore, runningWorkflows: workflowHosts.allIds,
-    listMetadata: () => manager.listMetadata(), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
+    listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
   })
   const workSettlement = createRuntimeWorkSettlement({
     client, ...workflowSettlementOwners(workflowHosts, eventReader),
@@ -710,10 +710,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
         ...runnerOwners.filter((owner) => owner.owner !== "session-runners"),
         ...(ownershipOwners["stop-runners"] ?? []),
       ],
-      "flush-durable-state": [
-        ...durableStateOwners.filter((owner) => owner.owner !== "history-projection"),
-        ...(ownershipOwners["flush-durable-state"] ?? []),
-      ],
+      "flush-durable-state": ownershipOwners["flush-durable-state"] ?? [],
       "dispose-availability": ownershipOwners["dispose-availability"] ?? [],
       "close-client-streams": [
         ...clientStreamOwners.filter((owner) => owner.owner !== "frontend-projection"),

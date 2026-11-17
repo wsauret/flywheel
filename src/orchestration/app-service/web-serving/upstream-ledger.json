@@ -101,7 +101,7 @@
     },
     {
       "source": "inspiration/openclaw/src/gateway/control-ui-routing.ts",
-      "target": "src/orchestration/app-service/web-serving/control-ui-routing.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-static.ts",
       "startMarker": "/** Classify an HTTP request as Control UI serving, redirect, 404, or non-Control-UI. */",
       "endMarker": "  return { kind: \"serve\", spaFallback };",
       "sourceSha256": "24de1993ce5a64d37d5779c8cb4460d3a12e936c15bdc4510910f236683ea219",

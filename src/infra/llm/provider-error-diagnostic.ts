@@ -122,7 +122,7 @@ function numberProperty(record: UnknownFields | undefined, key: string): number 
 }
 
 function summarizeHeaders(headers: unknown): DiagnosticHeaders | undefined {
-  if (!hasHeaderGetter(headers)) return undefined;
+  if (!isHeaderGetter(headers)) return undefined;
   const result: DiagnosticHeaders = {};
   for (const name of HEADER_NAMES) {
     const value = headers.get(name);
@@ -131,7 +131,7 @@ function summarizeHeaders(headers: unknown): DiagnosticHeaders | undefined {
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-function hasHeaderGetter(value: unknown): value is { get(name: string): string | null } {
+function isHeaderGetter(value: unknown): value is { get(name: string): string | null } {
   return isRecord(value) && typeof value.get === "function";
 }
 

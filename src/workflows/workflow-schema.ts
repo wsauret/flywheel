@@ -222,22 +222,23 @@ export const WorkflowDefinitionSchema = Schema.Struct({
   phases: Schema.NonEmptyArray(PhaseOrRepeatSchema),
 });
 
-// Optional provenance and loaded content: WorkflowDefinition admits bare
-// schema-decoded instances (the compiler and validators need no source file).
-// The loader attaches both to every definition it publishes, so a published
-// revision never reads the workflow file again.
-export type WorkflowDefinition = typeof WorkflowDefinitionSchema.Type & {
-  provenance?: DefinitionProvenance;
-  /** The brief of each agent record, read once from the file when the
-   *  loader published the workflow, keyed by record id. */
-  briefs?: LoadedBriefs;
-  /** The compiled `input` contract, read once with the briefs: null when
-   *  the workflow declares none. */
-  inputContract?: CompiledInput | null;
+/** One workflow as its document states it, after the schema decode. */
+export type AuthoredWorkflow = typeof WorkflowDefinitionSchema.Type & {
   /** The retired step-grammar record that a saved file stated before the loader
    *  converted it to phases. Brief loading and the identity proofs of a paused run
    *  read it. Remove after 2027-04-30. */
-  retiredStepGrammar?: RetiredStepGrammarView;
+  readonly retiredStepGrammar?: RetiredStepGrammarView;
+};
+
+/** A loaded workflow: the authored definition with its provenance and what
+ *  its files hold, read once. Only `withLoadedContent` produces one, so a
+ *  published revision never reads the workflow file again. */
+export type WorkflowDefinition = AuthoredWorkflow & {
+  readonly provenance: DefinitionProvenance;
+  /** The brief of each agent record, keyed by record id. */
+  readonly briefs: LoadedBriefs;
+  /** The compiled `input` contract: null when the workflow declares none. */
+  readonly inputContract: CompiledInput | null;
 };
 
 /** Where one phase sits in the authored list. */

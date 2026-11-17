@@ -234,15 +234,18 @@ function stateForFailure(
 }
 
 /** `providerName` is the provider's short name. An expired sign-in is the one
- *  outcome a person repairs, so its message names the provider and /auth. */
+ *  outcome a person repairs, so its message names the provider and /auth.
+ *  `stored` is true when the store holds this reading or a newer one, which
+ *  includes a reading that it already held: a reader can report one reading
+ *  again, such as the Claude reader's recent rate-limit report. */
 function stateForOutcome(
   account: SubscriptionUsageAccountView,
   providerName: string,
   outcome: SubscriptionUsageOutcome,
   snapshot: SubscriptionUsageSnapshot | undefined,
-  committed: boolean,
+  stored: boolean,
 ): SubscriptionUsageAccountState {
-  if (outcome.kind === "success" && committed && snapshot !== undefined) return { kind: "supported", account, snapshot }
+  if (outcome.kind === "success" && stored && snapshot !== undefined) return { kind: "supported", account, snapshot }
   if (outcome.kind === "unsupported") return { kind: "unsupported", account }
   if (outcome.kind === "identity-unavailable") return { kind: "identity-unavailable", account }
   if (outcome.kind === "expired-auth") return snapshot === undefined
@@ -417,7 +420,7 @@ export function createSubscriptionUsageService(deps: SubscriptionUsageServiceDep
     try {
       const completion = store.completeFetch(lease, outcome, thresholds)
       const snapshot = outcome.kind === "success" && completion.snapshot !== undefined && outcome.report.resetCredits !== undefined ? { ...completion.snapshot, resetCredits: outcome.report.resetCredits } : completion.snapshot
-      return stateForOutcome(view, captured.definition.shortName, outcome, snapshot, completion.kind === "committed")
+      return stateForOutcome(view, captured.definition.shortName, outcome, snapshot, completion.kind === "committed" || completion.kind === "unchanged")
     } catch {
       return retainedState(view, "subscription usage result could not be stored; retained provider observation is inspection-only", before.snapshot)
     }

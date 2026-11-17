@@ -19,16 +19,14 @@ Start with one behavior change or regression and an executable test seam.
 
 Do not write a test that:
 
-- exercises a copy of production logic written inside the test file;
-- greps source text, imports, or identifier spelling;
-- restates a constant, declared type, registration, or flag instead of exercising the behavior it promises;
-- uses a mock or fixture that implements the behavior it then asserts, or computes its expected value with the code under test;
+- greps imports or restates a declared type, registration, or flag;
+- computes its expected value with the code under test;
 - replays a shared helper's generic behavior in every caller's suite;
 - carries a name that promises more than its assertions check.
 
 When implementation already exists, establish RED against the unchanged baseline or safely isolate only your own change. Never discard other work or reconstruct unavailable history to manufacture evidence. If no test framework exists, use the narrowest repeatable executable behavior check.
 
-Unit tests stay fast and hermetic. By default, protect logic with unit tests and verify a changed real boundary with a dedicated testing script. Place persistent regression tests according to existing test conventions. Do not assume the repository has an integration tier or that integration tests are expensive. If repository instructions specify a different test hierarchy or required gates, follow them.
+Unit tests stay fast and hermetic. Place persistent regression tests according to existing test conventions.
 
 ## Result
 

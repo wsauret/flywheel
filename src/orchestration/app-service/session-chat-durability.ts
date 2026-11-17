@@ -36,14 +36,14 @@ export interface ChatDurabilityContext {
  *  actors share. Both open a chat's durability seam, so the mapping from that
  *  context to this one lives here. */
 export function chatDurabilityContext(
-  ctx: Omit<ChatDurabilityContext, "sessionId" | "projectRoot"> & { readonly directories: { readonly projectRoot: string } },
+  ctx: Omit<ChatDurabilityContext, "sessionId" | "projectRoot" | "eventStore"> & { readonly directories: { readonly projectRoot: string } },
   sessionId: string,
 ): ChatDurabilityContext {
   return {
     sessionId,
     projectRoot: ctx.directories.projectRoot,
     manager: ctx.manager,
-    eventStore: ctx.eventStore,
+    eventStore: ctx.projectionReader,
     projectionReader: ctx.projectionReader,
     eventWriter: ctx.eventWriter,
     ...(ctx.authProfileId ? { authProfileId: ctx.authProfileId } : {}),

@@ -34,6 +34,8 @@ import { asAsyncEventReadSurface, type AsyncEventWriter } from "../../../../src/
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { createProviderAvailability } from "../../../../src/orchestration/agent-runtime/llm/provider-availability.js"
 import { createAvailabilityAuthority } from "../../../../src/infra/llm/availability-store.js"
+import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js"
+import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js"
 
 const temporaryDirectory = temporaryDirectories()
 const availability = await createDefinitionAvailability({ definitions: repoDefinitions(), modules: repoModules, capabilities: { state: () => decodeModuleState("") } })
@@ -54,7 +56,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
   const dir = temporaryDirectory("flywheel-saved-only-")
   const directories = testDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
-  const preferences = createProviderModelPreferenceService({
+  const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id, allowTrainingRoutes: () => false,
     persist: async () => { throw new Error("unused") },
     persistAllDeselected: async () => { throw new Error("unused") },
@@ -68,7 +70,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
   const preparation = createEligibilityPreparation({
     allowTrainingRoutes: () => false,
     userDataRoot: directories.userDataRoot, resolveKey: async () => undefined,
-    moduleSelection: () => composeFirstPartyModules(),
+    moduleSelection: () => composeFirstPartyModules(), observeAuth: diskAuthObservation(() => composeFirstPartyModules()),
     prepare: preferences.prepare, publish: preferences.publish, current: preferences.state,
     inputRevision: () => ({ auth: "current", preferences: "current" }),
     resolveAuth: async () => testAuthContext({}),
@@ -129,7 +131,7 @@ test("reads saved model, assignment, and effort options for defaults and session
   const offerings = new Map(models.map((id) => [id, [{ ...offering, wireModelId: id, resolvedMetadata: modelInfo("openai", id, "gpt", 5, 30, "2026-04-01") }]]))
   const catalogs = new Map([["openai_api", { catalog: new Set(models), curatedDefault: new Set(models), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set(models) }]])
   catalogs.set("chatgpt", catalogs.get("openai_api")!)
-  const preferences = createProviderModelPreferenceService({
+  const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id,
     allowTrainingRoutes: () => false,
     persist: async () => { throw new Error("unused") },
@@ -153,7 +155,7 @@ test("reads saved model, assignment, and effort options for defaults and session
     allowTrainingRoutes: () => false,
     userDataRoot: directories.userDataRoot,
     resolveKey: async () => undefined,
-    moduleSelection: () => composeFirstPartyModules(),
+    moduleSelection: () => composeFirstPartyModules(), observeAuth: diskAuthObservation(() => composeFirstPartyModules()),
     prepare: preferences.prepare,
     publish: preferences.publish,
     current: preferences.state,
@@ -320,7 +322,7 @@ test("a save names what serves when its saved model cannot serve, once for a mir
   const models = ["gpt-6.1-sol", "gpt-5.4"]
   const offerings = new Map(models.map((id) => [id, [{ wireModelId: id, metadata: null, dataUse: "standard", transport: "openai-responses", resolvedMetadata: modelInfo("openai", id, "gpt", 5, 30, "2026-04-01") } as const]]))
   const catalog = { catalog: new Set(models), curatedDefault: new Set(models), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set(models) }
-  const preferences = createProviderModelPreferenceService({
+  const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id, allowTrainingRoutes: () => false,
     persist: async () => { throw new Error("unused") },
     persistAllDeselected: async () => { throw new Error("unused") },
@@ -367,12 +369,12 @@ test("a save names what serves when its saved model cannot serve, once for a mir
   const session = { kind: "session", sessionId: "chat-new" } as const
   const unservable = "Saved Chat, but lost-model cannot serve now. gpt-6.1-sol at medium effort serves until it can."
   try {
-    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low" })).toEqual({ label: "Chat" })
-    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "lost-model", effort: "high" })).toEqual({ label: "Chat", warning: unservable })
-    expect(await service.saveEffort({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "lost-model", effort: "high" }))
+    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low", expected: { kind: "absent" } })).toEqual({ label: "Chat" })
+    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "lost-model", effort: "high", expected: { kind: "absent" } })).toEqual({ label: "Chat", warning: unservable })
+    expect(await service.saveEffort({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "lost-model", effort: "high", expected: { kind: "absent" } }))
       .toEqual({ label: "Chat", mirrored: true, warning: unservable })
     auth = testAuthContext({})
-    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low" }))
+    expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low", expected: { kind: "absent" } }))
       .toEqual({ label: "Chat", warning: "Saved Chat, but no model can serve now." })
     expect((await manager.read("chat-new"))?.roleAssignments?.overrides.chat).toEqual({ model: "gpt-5.4", effort: "low" })
   } finally {
@@ -390,7 +392,7 @@ test("each model row names the provider that would serve now, read afresh from t
   const accounts = ["account-a", "account-b"].map((instanceId) => ({ kind: "subscription", providerId: "chatgpt", instanceId, spendMode: "included" } as const))
   const offerings = new Map([[model, [{ wireModelId: model, metadata: null, dataUse: "standard", transport: "openai-responses", resolvedMetadata: modelInfo("openai", model, "gpt", 5, 30, "2026-04-01") } as const]]])
   const catalog = { catalog: new Set([model]), curatedDefault: new Set([model]), enabled: new Set<string>(), disabled: new Set<string>(), effective: new Set([model]) }
-  const preferences = createProviderModelPreferenceService({
+  const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id, allowTrainingRoutes: () => false,
     persist: async () => { throw new Error("unused") },
     persistAllDeselected: async () => { throw new Error("unused") },
@@ -482,7 +484,7 @@ test("keeps connection conditions with the credential capture when a transient f
     conditions.observeLoad(profile.directory, load)
     return load
   }
-  const preferences = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+  const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
   const revision = authProfileEligibilityInputRevision(profile)
   preferences.publish(preferences.prepare({ profileId: profile.id, authRevision: revision.auth, preferenceRevision: revision.preferences, catalogs: new Map(), accountCatalogs: new Map(), inventoryCandidates: new Map(), releaseDates: new Map() }))
   const entered = Promise.withResolvers<void>()

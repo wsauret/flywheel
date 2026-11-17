@@ -506,7 +506,6 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         handshake = advanceHandshake(handshake, { type: "open" })
         stopHeartbeat = heartbeat(ws, () => {
           lastClose = `${HEARTBEAT_CLOSE_CODE} ${HEARTBEAT_CLOSE_REASON}`
-          ws.close(HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON)
           onClose()
         }, options.heartbeat, { handedBytes: () => handedBytes })
       }

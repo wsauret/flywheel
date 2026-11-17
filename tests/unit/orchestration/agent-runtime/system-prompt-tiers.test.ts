@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildSystemPrompt, buildSystemPromptParts, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt, buildSystemPromptParts } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt, SYSTEM_PROMPT_SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { withSessionNotes } from "./context/_loop-fixtures.js";
 import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
@@ -8,7 +8,7 @@ import type { ModelInfo } from "../../../../src/infra/llm/models.js";
 import { prepareOpenAICompletionsRequest } from "../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { resolveOpenAISystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
-import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { promptOptions, type ToolPromptFields } from "../../../helpers/prompt-capabilities.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
 
@@ -58,7 +58,7 @@ describe("system prompt cache tiers", () => {
     expect(stable).not.toContain("abc123def456");
     expect(stable).not.toContain(SESSION_DIR);
     expect(session).toContain(SESSION_DIR);
-    expect(conversation).toContain("checkpoint_replace");
+    expect(conversation).toContain("with the checkpoint tools");
     expect(conversation).not.toContain(SESSION_DIR);
   });
 
@@ -94,7 +94,7 @@ describe("system prompt cache tiers", () => {
     expect(second.conversation).not.toBe(first.conversation);
     expect(first.session).toBe(["# Durable Memory\n\nremembered", "<env>cwd</env>"].join(SYSTEM_PROMPT_SEPARATOR));
     expect(first.conversation).toContain(SESSION_DIR);
-    expect(first.conversation).toContain("checkpoint_replace");
+    expect(first.conversation).toContain("with the checkpoint tools");
     expect(first.conversation).toContain("agent-a");
     const parts = buildSystemPromptParts(promptOptions(options));
     const order = ["stable", "session", "conversation"];
@@ -124,7 +124,6 @@ describe("system prompt cache tiers", () => {
   test("checkpoint tool definitions carry no conversation-specific path", () => {
     for (const tool of noteTools) {
       expect(tool.description).not.toContain(SESSION_DIR);
-      expect(tool.description).toContain("conversation");
       for (const guideline of tool.promptGuidelines ?? []) expect(guideline).not.toContain(SESSION_DIR);
       expect(JSON.stringify(tool.inputSchema)).not.toContain(SESSION_DIR);
     }

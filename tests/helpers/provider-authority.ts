@@ -1,4 +1,4 @@
-import type { AccessProviderCandidate, AccessProviderId, AccessProviderModelEligibility } from "../../src/infra/llm/access-provider.js";
+import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderId, AccessProviderModelEligibility } from "../../src/infra/llm/access-provider.js";
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../src/orchestration/modules.js";
 import { canonicalModelId } from "../../src/infra/llm/model-id.js";
 import { fakeModelInfos } from "./model-tier-fixtures.js";
@@ -18,19 +18,32 @@ export function testProviderRegistry(): AccessProviderRegistry { return accessPr
 export function testProviderSelection(): AccessProviderRegistry["selection"] { return testProviderRegistry().selection; }
 export function testProviderBilling(provider: AccessProviderId): ReturnType<AccessProviderRegistry["selection"]["billing"]> { return testProviderSelection().billing(provider); }
 
+/** A complete eligibility from the fields a test states. An unstated field lists no model, refuses no provider or
+ *  account, offers nothing, and has no pending access check. */
+export function testEligibility(fields: Partial<AccessProviderModelEligibility>): AccessProviderModelEligibility {
+  return {
+    modelIds: new Set(),
+    modelUnavailableReason: () => undefined,
+    candidateModelUnavailableReason: () => undefined,
+    candidateOfferings: () => [],
+    accessPending: () => false,
+    ...fields,
+  };
+}
+
 /** Exact offering evidence for tests whose subject is downstream of catalog discovery. */
 export function testProviderEligibility(
   unavailable: ReadonlySet<AccessProviderId> = new Set(),
 ): AccessProviderModelEligibility {
-  return {
+  return testEligibility({
     modelIds: new Set(fakeModelInfos.keys()),
     profileId: "default",
     revision: 1,
     modelUnavailableReason: (provider) => unavailable.has(provider) ? `${provider} is unavailable.` : undefined,
-    candidateOffering: (candidate: AccessProviderCandidate, model: string) => {
-      if (unavailable.has(candidate.providerId)) return undefined;
+    candidateOfferings: (candidate: AccessProviderCandidate, model: string): AccessProviderCandidateAttribution[] => {
+      if (unavailable.has(candidate.providerId)) return [];
       const resolvedModelMetadata = fakeModelInfos.get(canonicalModelId(model));
-      return {
+      return [{
         candidate,
         wireModelId: model,
         dataUse: "standard",
@@ -39,7 +52,7 @@ export function testProviderEligibility(
         ...(candidate.providerId === "github_copilot"
           ? { transport: resolvedModelMetadata?.family === "anthropic" ? "anthropic-messages" : "openai-responses" }
           : {}),
-      };
+      }];
     },
-  };
+  });
 }

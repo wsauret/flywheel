@@ -47,18 +47,3 @@ export function loadAssetResolution(
   }
   return resolution;
 }
-/** Read the first readable copy of `filename` across `roots`. Overlay roots
- *  are optional external state: a missing or unreadable file means "no
- *  override" and falls through to the next root. Returns "" when no root
- *  holds the file, which is the caller's signal to use the compiled-in
- *  manifest (the only layer present in a binary). */
-export function loadFirstAssetFile(roots: readonly string[], filename: string): string {
-  for (const root of roots) {
-    try {
-      return readFileSync(join(root, filename), "utf-8");
-    } catch {
-      // Overlay dirs are optional user/project layers; absence is "no overrides", not corruption.
-    }
-  }
-  return "";
-}

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { moduleDomainReader } from "../../../src/protocol/client/module-domain.js"
 import { moduleRows, type ProtocolModuleDomainName, type ProtocolModuleView } from "../../../src/protocol/modules.js"
-import { defineProtocolModule, protocolModuleRows, type DomainReader, type ProtocolModule } from "../../../src/protocol/protocol-module.js"
+import { defineProtocolModule, type DomainReader, type ProtocolModule } from "../../../src/protocol/protocol-module.js"
 
 type Views = { readonly [Name in ProtocolModuleDomainName]?: ProtocolModuleView<Name> | null }
 
@@ -49,16 +49,18 @@ describe("module rows", () => {
     expect(rows.map((row) => row.id)).toEqual(["definition-overrides", "papercuts"])
   })
 
-  test("a synthetic module contributes rows through the generic fold with no registry edit", () => {
+  test("moduleRows() and moduleRows(fixture) return the rows of their lists", () => {
     const synthetic = defineProtocolModule({
       id: "development",
       domains: [],
       rows: { intro: () => [{ id: "bench", label: "bench", value: "3 runs", action: { kind: "surface", id: "bench-board" } }] },
     })
     const modules: readonly ProtocolModule[] = [synthetic]
-    expect(protocolModuleRows(modules, "intro", reader({}))).toEqual([{ id: "bench", label: "bench", value: "3 runs", action: { kind: "surface", id: "bench-board" } }])
-    expect(protocolModuleRows(modules, "status", reader({}))).toEqual([])
-    expect(protocolModuleRows(modules, "intro", reader({}), [])).toEqual([])
-    expect(protocolModuleRows(modules, "intro", reader({}), ["development"])).toHaveLength(1)
+    const views = reader({ papercuts: { undisposedCount: 10 } })
+    expect(moduleRows("intro", views, undefined, modules)).toEqual([{ id: "bench", label: "bench", value: "3 runs", action: { kind: "surface", id: "bench-board" } }])
+    expect(moduleRows("intro", views).map((row) => row.id)).toEqual(["papercuts"])
+    expect(moduleRows("status", views, undefined, modules)).toEqual([])
+    expect(moduleRows("intro", views, [], modules)).toEqual([])
+    expect(moduleRows("intro", views, ["development"], modules)).toHaveLength(1)
   })
 })

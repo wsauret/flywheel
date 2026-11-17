@@ -1,6 +1,6 @@
 import { installedWorkspaceMigrations } from "./modules.js"
 import * as fs from "node:fs"
-import { ContainedDirectory } from "../infra/descriptor-directory.js"
+import { openContainedDirectory, openExistingContainedDirectory } from "../infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME, type ProjectDirectories } from "../infra/directory-authorities.js"
 import { acquireProjectStateGeneration, type ProjectStateLease } from "./project-state-lease.js"
 import { resolveEventStoreDbFile } from "../infra/paths.js"
@@ -43,7 +43,7 @@ export function prepareWorkspaceState(directories: ProjectDirectories, onStartup
   // not: the base is the user's own directory and keeps the user's own mode,
   // while everything Flywheel owns below it is private.
   fs.mkdirSync(projectRoot, { recursive: true })
-  const flywheel = ContainedDirectory.open(projectRoot, [FLYWHEEL_DIR_NAME], PRIVATE)
+  const flywheel = openContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME], PRIVATE)
   const generation = acquireProjectStateGeneration(flywheel)
   let downgraded: ProjectStateLease | undefined
   const measurement = startReleaseMemorySampler({ role: measurementRole })
@@ -90,7 +90,7 @@ export function prepareWorkspaceState(directories: ProjectDirectories, onStartup
  *  contract was broken, so this refuses rather than repairing it. */
 export function openWorkspaceState(projectRoot: string): string {
   const dbFile = resolveEventStoreDbFile(projectRoot)
-  const flywheel = ContainedDirectory.openExisting(projectRoot, [FLYWHEEL_DIR_NAME])
+  const flywheel = openExistingContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME])
   if (!flywheel) throw new Error(`this project holds no prepared workspace state: ${projectRoot}`)
   try {
     const epoch = readGenerationEpoch(flywheel, dbFile)

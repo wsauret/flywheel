@@ -458,5 +458,3 @@ export async function runProcessGuardianMain(): Promise<never> {
   }, DEFAULT_GUARDIAN_LIMITS)
   process.exit(0)
 }
-
-if (import.meta.main) await runProcessGuardianMain()

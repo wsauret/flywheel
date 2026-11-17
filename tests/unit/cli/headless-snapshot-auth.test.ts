@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileS
 import { join } from "node:path"
 import { runHeadlessSnapshotAuth, snapshotAuthProviders } from "../../../src/cli/headless-snapshot-auth.js"
 import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js"
-import { installCustomProviders } from "../../../src/infra/llm/custom-provider-registry.js"
+import { installCustomProviders } from "../../helpers/custom-providers.js"
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { composeFirstPartyModules } from "../../../src/orchestration/modules.js"
 import { applyWindowsPrivateDirectoryAcl } from "../../../src/infra/windows-private-directory-acl.js"

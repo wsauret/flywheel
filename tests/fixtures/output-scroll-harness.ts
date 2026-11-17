@@ -3,7 +3,7 @@ import { createOutputScrollController, type OutputScrollController, type OutputS
 import type { TranscriptSnapshot } from "../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { TranscriptWindowProjection } from "../../src/tui/output-window/output-window-projection.js"
 import type { TranscriptLayoutSlot } from "../../src/tui/output-window/output-window-scroll.js"
-import { LINE_WHEEL } from "../../src/tui/output-window/output-window-wheel.js"
+import { wheelProfileFor } from "../../src/tui/output-window/output-window-wheel.js"
 import { fakeFrameHookHost, fakeScrollPart, type FakeScrollPart } from "../helpers/scroll-frame-hook.js"
 
 // Distinct keys get distinct generations, matching the model's contract: a
@@ -114,7 +114,7 @@ export function mountController(slot: TranscriptLayoutSlot, snapshot: () => Tran
     slot,
     // Pinned so a wheel report is one row on every host: the wheel tests count
     // rows, and Windows Terminal reports notches.
-    wheel: LINE_WHEEL,
+    wheel: wheelProfileFor("darwin", {}),
     ...extra,
   })
 }

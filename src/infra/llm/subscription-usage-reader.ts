@@ -6,6 +6,7 @@ import {
   normalizeSubscriptionUsageReport,
   readBoundedSubscriptionUsageJson,
   unsupportedSubscriptionUsageOutcome,
+  type SubscriptionUsageJson,
   type SubscriptionUsageMetric,
   type SubscriptionUsageOutcome,
   type SubscriptionUsageReaderContext,
@@ -22,7 +23,7 @@ export type FetchLike = typeof fetch;
 
 export interface UsageJsonResult {
   readonly kind: "parsed";
-  readonly value: unknown;
+  readonly value: SubscriptionUsageJson;
 }
 
 export interface UsageJsonFailure {

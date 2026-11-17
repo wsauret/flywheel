@@ -93,6 +93,7 @@ Cargo.lock
 .flywheel/
 .claude/
 .factory/
+.hutch/
 
 # Local research, audit, and QA material (not published)
 docs/research/

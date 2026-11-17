@@ -76,9 +76,9 @@ describe("StructuredOutputBuilder — misc", () => {
       const optimistic: AnyBlock = { kind: "userMessage", id: "optimistic", content: "hello", timestamp: 1, pending: false, injected: false };
       const durable: AnyBlock = { kind: "userMessage", id: "durable", content: "hello", timestamp: 1, pending: false, injected: false };
 
-      builder.seedBlocks([optimistic]);
+      builder.seedBlocks([optimistic], 0);
       builder.getBlocks();
-      builder.seedBlocks([durable]);
+      builder.seedBlocks([durable], 0);
 
       expect(builder.getBlocks()).toEqual([durable]);
     });

@@ -4,7 +4,6 @@ import { parseProjectionFact } from "../../infra/event-projection.js"
 import { errorMessage } from "../../infra/error-message.js"
 import {
   CorruptEventRowError,
-  requireGuardedEventAppender,
   type AsyncEventWriter,
   type AsyncEventStateReadSurface,
   type GuardedAppendResult,
@@ -22,7 +21,7 @@ import { continueWorkflowReplay } from "./replay.js"
 import { selectNewestWorkflowRoot } from "../workflow-root.js"
 import { WorkflowMalformedStateError } from "./host-types.js"
 import { parseWorkflowSessionFact, workflowAggregateId } from "./session-facts.js"
-import { continueCommittedWorkflow, transitionDecodedWorkflow } from "./transition.js"
+import { replayDecodedWorkflow, transitionDecodedWorkflow } from "./transition.js"
 
 const IdSchema = Schema.NonEmptyString
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
@@ -51,7 +50,7 @@ interface WorkflowCommitHostDeps {
   readonly workflow: WorkflowDefinition
   readonly writer: AsyncEventWriter
   readonly reader: AsyncEventStateReadSurface
-  readonly commitBatch?: (events: readonly GuardedEventStoreAppend[]) => Promise<GuardedAppendResult>
+  readonly commitBatch: (events: readonly GuardedEventStoreAppend[]) => Promise<GuardedAppendResult>
   readonly now?: () => number
 }
 
@@ -90,9 +89,7 @@ export function createWorkflowCommitHost(deps: WorkflowCommitHostDeps): Workflow
     }))
     let result: GuardedAppendResult
     try {
-      result = await (deps.commitBatch
-        ? deps.commitBatch(appends)
-        : requireGuardedEventAppender(deps.writer, "Workflow commits require guarded append authority").appendBatchGuarded(appends))
+      result = await deps.commitBatch(appends)
     } catch (error) {
       throw new WorkflowCommitStorageError({ proposalId: proposal.proposalId, message: errorMessage(error) })
     }
@@ -166,7 +163,7 @@ export function createWorkflowCommitHost(deps: WorkflowCommitHostDeps): Workflow
             aggregateSeq: matchingCommit.seq + 1,
           }) }
         }
-        return { publication: "replayed", ...continueCommittedWorkflow(replayed) }
+        return { publication: "replayed", state: replayDecodedWorkflow(replayed), command: { kind: "none" } }
       }
       return { publication: "replayed", ...await continueWorkflowReplay(replayed, input.event, deps) }
     }

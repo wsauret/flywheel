@@ -1,11 +1,7 @@
 /**
- * Agent loop state helpers. The conversation's `messages` array is the
- * authoritative state; this module just provides the shape transforms the
- * loop needs (rendering tool results and durable tool-use blocks).
- * History replacement at compaction is handled by compaction/compact.ts and
- * compaction/apply.ts returning a new array; the loop reassigns its `let
- * messages` binding.
- * No more in-place splicing of the conversation history.
+ * Shape transforms between settled tool calls and conversation messages:
+ * the tool-result messages of a settled batch and the durable tool-use block
+ * of one call. The loop's conversation history owns the messages.
  */
 
 import type { ContentBlock, ConversationMessage, ToolCall } from "./llm/types.js";

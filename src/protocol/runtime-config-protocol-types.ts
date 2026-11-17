@@ -89,7 +89,10 @@ export interface RuntimeConfigSnapshotResult {
 
 export type RuntimeConfigPatchPayload = { readonly kind: "config.changed"; readonly config: RuntimeConfigView }
 
-type RuntimeConfigExpected<T> = { readonly kind: "absent" } | { readonly kind: "value"; readonly value: T }
+/** The value a config mutation expects to find at its key: `absent` when the
+ *  file states no value there. A write whose expectation no longer matches the
+ *  file is refused as stale and publishes nothing (ARCH-RUNTIME-060). */
+export type RuntimeConfigExpected<T> = { readonly kind: "absent" } | { readonly kind: "value"; readonly value: T }
 
 type RuntimeConfigSettingMutation<Id extends string, Value> = {
   readonly id: Id

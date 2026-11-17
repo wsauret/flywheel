@@ -2,12 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import {
   consumeLocalBrowserToken,
-  loadToken,
   localSocketUrl,
-  persistToken,
   reloadOnFreshLink,
   tokenAdmitted,
-  tokenKeyForOrigin,
 } from "../../../webview/local/token.js"
 
 class MemoryStorage {
@@ -26,18 +23,35 @@ class MemoryStorage {
   }
 }
 
+const cleanHistory = { state: null, replaceState: () => {} }
+
+/** Opens `origin` from a link whose fragment carries `token`, which stores it. */
+function openLink(origin: string, token: string, storage: MemoryStorage): string {
+  return consumeLocalBrowserToken({ origin, pathname: "/", search: "", hash: `#token=${encodeURIComponent(token)}` }, cleanHistory, storage)
+}
+
+/** The token a page at `origin` opened with no link connects with: the stored one. */
+function storedToken(origin: string, storage: MemoryStorage): string {
+  return consumeLocalBrowserToken({ origin, pathname: "/", search: "", hash: "" }, cleanHistory, storage)
+}
+
 describe("local browser token", () => {
   test("scopes the stored token to the runtime origin", () => {
     const storage = new MemoryStorage()
 
-    persistToken("http://127.0.0.1:4312", " first-token ", storage)
-    persistToken("http://127.0.0.1:4313", "second-token", storage)
+    openLink("http://127.0.0.1:4312", " first-token ", storage)
+    openLink("http://127.0.0.1:4313", "second-token", storage)
 
-    expect(tokenKeyForOrigin("http://127.0.0.1:4312")).toBe(
-      "flywheel.local.token.v1:http://127.0.0.1:4312",
-    )
-    expect(loadToken("http://127.0.0.1:4312", storage)).toBe("first-token")
-    expect(loadToken("http://127.0.0.1:4313", storage)).toBe("second-token")
+    expect([...storage.values]).toEqual([
+      ["flywheel.local.token.v1:http://127.0.0.1:4312", "first-token"],
+      ["flywheel.local.token.v1:http://127.0.0.1:4313", "second-token"],
+    ])
+    expect(storedToken("http://127.0.0.1:4312", storage)).toBe("first-token")
+    expect(storedToken("http://127.0.0.1:4313", storage)).toBe("second-token")
+
+    // A stored value is read back trimmed.
+    storage.setItem("flywheel.local.token.v1:http://127.0.0.1:4312", " padded ")
+    expect(storedToken("http://127.0.0.1:4312", storage)).toBe("padded")
   })
 
   test("consumes a fragment token before mount and preserves other URL fields", () => {
@@ -58,13 +72,13 @@ describe("local browser token", () => {
     )
 
     expect(token).toBe("secret value")
-    expect(loadToken("http://127.0.0.1:4312", storage)).toBe("secret value")
+    expect(storedToken("http://127.0.0.1:4312", storage)).toBe("secret value")
     expect(replacements).toEqual(["/sessions?view=active#panel=detail"])
   })
 
   test("reloads the origin token without replacing clean history", () => {
     const storage = new MemoryStorage()
-    persistToken("https://localhost:4312", "persisted", storage)
+    openLink("https://localhost:4312", "persisted", storage)
     let replacements = 0
 
     const token = consumeLocalBrowserToken(
@@ -89,7 +103,7 @@ describe("local browser token", () => {
 
   test("removes an empty fragment token and clears the stored token", () => {
     const storage = new MemoryStorage()
-    persistToken("http://localhost:4312", "old", storage)
+    openLink("http://localhost:4312", "old", storage)
     const replacements: string[] = []
 
     const token = consumeLocalBrowserToken(
@@ -107,7 +121,8 @@ describe("local browser token", () => {
     )
 
     expect(token).toBe("")
-    expect(loadToken("http://localhost:4312", storage)).toBe("")
+    expect(storedToken("http://localhost:4312", storage)).toBe("")
+    expect(storage.values.size).toBe(0)
     expect(replacements).toEqual(["/"])
   })
 

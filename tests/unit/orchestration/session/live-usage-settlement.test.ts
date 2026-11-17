@@ -165,7 +165,7 @@ test.each([false, true])("settled child requests update parent metrics before ch
       }
       if (concurrent) await Promise.all([
         ...attempts.map(settle),
-        resources.budgetStore.recordContextUtilization(20, 100).then(() => {
+        resources.sessionEventWriter.record({ type: "model.context.measured", version: 1, actor: "provider", payload: { promptTokens: 20, contextWindow: 100 } }).then(() => {
           resources.budgetStore.getContextUtilization()
         }),
       ])
@@ -180,7 +180,7 @@ test.each([false, true])("settled child requests update parent metrics before ch
       const facts = store.read({ aggregateId: `session:${sessionId}` })
       expect(facts.filter((fact) => fact.type === "model.usage.measured")).toHaveLength(3)
       expect(facts.some((fact) => fact.type === "subagent.completed" || fact.type === "budget.stream.completed")).toBe(false)
-      expect(await resources.budgetStore.getTotalCost()).toBe(0.75)
+      expect((await resources.budgetStore.metrics()).cost).toBe(0.75)
       for (const unsubscribe of wiring.unsubscribes) unsubscribe()
     })
   }))

@@ -1,4 +1,4 @@
-import { type FixedBriefFields, briefFixedRoleId, briefPersonaRoleId, briefRoleId } from "../../protocol/brief-role-id.js"
+import { type BriefDefaultFields, briefDefaultRoleId, briefPersonaRoleId, briefRoleId } from "../../protocol/brief-role-id.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { agentRecords, type AgentRecordKeys, type WorkflowDefinition } from "../../workflows/workflow-schema.js"
@@ -6,7 +6,7 @@ import type { ProviderConnectionCapture } from "../agent-runtime/factory.js"
 import type { RoleSettings } from "../session/schemas.js"
 import type { WorkflowLaunchAgentModels } from "../../infra/workflow-types.js"
 import { resolveSessionRoles } from "./session-role-resolver.js"
-import { resolveWorkflowAgentRole } from "./role-selection.js"
+import { personaRoleChain, resolveWorkflowAgentRole } from "./role-selection.js"
 
 interface ModelPair {
   readonly model: string
@@ -29,7 +29,7 @@ interface BindWorkflowAgentModelsInput {
   readonly personas: ReadonlyMap<string, AgentDefinition>
 }
 
-function fixedFields(keys: Pick<AgentRecordKeys, "model" | "effort">): FixedBriefFields | undefined {
+function defaultFields(keys: Pick<AgentRecordKeys, "model" | "effort">): BriefDefaultFields | undefined {
   if (keys.model !== undefined) return keys.effort === undefined ? "model" : "both"
   return keys.effort === undefined ? undefined : "effort"
 }
@@ -41,21 +41,23 @@ export async function bindWorkflowAgentModels(input: BindWorkflowAgentModelsInpu
   const records = agentRecords(input.workflow)
   const roles: { [roleId: string]: RoleSettings[string] } = {}
   const roleIds = new Set<string>()
+  const agentPersonas = new Map<string, { readonly roles: readonly string[] }>()
   for (const agent of ordered) {
     roleIds.add(briefRoleId(agent.briefId))
     const persona = agent.persona === undefined ? undefined : input.personas.get(agent.persona)
     if (persona?.kind === "persona") {
+      agentPersonas.set(agent.definitionId, { roles: personaRoleChain(persona.role) })
       roleIds.add(persona.role)
       roleIds.add(briefPersonaRoleId(agent.briefId, persona.role))
     }
     const keys = input.agents?.[agent.definitionId] ?? records.get(agent.definitionId)?.keys ?? {}
-    const fixed = fixedFields(keys)
-    if (fixed !== undefined) roles[briefFixedRoleId(agent.briefId, agent.definitionId, fixed)] = {
+    const fields = defaultFields(keys)
+    if (fields !== undefined) roles[briefDefaultRoleId(agent.briefId, agent.definitionId, fields)] = {
       ...(keys.model === undefined ? {} : { model: keys.model }),
       ...(keys.effort === undefined ? {} : { effort: keys.effort }),
     }
   }
-  const resolved = await resolveSessionRoles({ defaults: roles, overrides: {} }, input.capture, input.userDataRoot, roleIds)
+  const resolved = await resolveSessionRoles({ defaults: roles, overrides: {} }, input.capture, input.userDataRoot, roleIds, undefined, agentPersonas)
   const groups = new Map<string, ModelPair & { definitionIds: string[] }>()
   const unavailable: NonNullable<WorkflowAgentModels["unavailable"]>[number][] = []
   const personas = new Map<string, string[]>()
@@ -68,7 +70,7 @@ export async function bindWorkflowAgentModels(input: BindWorkflowAgentModelsInpu
       group.definitionIds.push(agent.definitionId)
       groups.set(key, group)
     } else {
-      unavailable.push({ definitionId: agent.definitionId, reason: input.capture.eligibility?.accessPending?.(input.capture.runtimeConfig.allowTrainingRoutes) ? "access-pending" : "no-selection" })
+      unavailable.push({ definitionId: agent.definitionId, reason: input.capture.eligibility?.accessPending(input.capture.runtimeConfig.allowTrainingRoutes) ? "access-pending" : "no-selection" })
     }
     if (agent.persona !== undefined) personas.set(agent.persona, [...personas.get(agent.persona) ?? [], agent.definitionId])
   }

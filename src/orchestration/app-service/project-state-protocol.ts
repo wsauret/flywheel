@@ -243,19 +243,15 @@ export function encodeProjectStateRequest(request: ProjectStateRequest, limitByt
       const nodeBytes = Buffer.byteLength(JSON.stringify(operation.nodes))
       if (nodeBytes > SESSION_CONTENT_STAGE_BYTES) throw new PersistenceWriteRefused(nodeBytes, SESSION_CONTENT_STAGE_BYTES)
     }
-    return encodeProjectStateFrame({ ...request, operation: encodeProjectStatePayloads(request.operation) }, frameLimit)
+    const encoded = pack({ ...request, operation: encodeProjectStatePayloads(request.operation) })
+    if (encoded.byteLength > frameLimit) throw new PersistenceWriteRefused(encoded.byteLength, frameLimit)
+    return new Uint8Array(encoded)
   } catch (error) {
     if (error instanceof PersistenceWriteRefused) error.requestId = request.id
     throw error
   }
 }
 
-/** Bounds complete requests. Response frames retain the transport's own bounds. */
-function encodeProjectStateFrame(value: unknown, limitBytes = PROJECT_STATE_MAX_BYTES): Uint8Array {
-  const encoded = pack(value)
-  if (encoded.byteLength > limitBytes) throw new PersistenceWriteRefused(encoded.byteLength, limitBytes)
-  return new Uint8Array(encoded)
-}
 
 export function boundedProjectStatePage(maxRows: number, maxBytes: number): boolean {
   return Number.isSafeInteger(maxRows) && maxRows > 0 && maxRows <= PROJECT_STATE_MAX_PAGE_ROWS

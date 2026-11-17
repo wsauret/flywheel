@@ -9,7 +9,6 @@ import { Log } from "../../../infra/log.js";
 import { LlmStreamError } from "./errors.js";
 import { parseToolArguments } from "../../../infra/llm/json-parse.js";
 import { withStreamAttempt } from "./stream-attempt.js";
-import { isHeartbeatStreamEvent } from "./stream-watchdog.js";
 import { mapChatGptAdapterEvents } from "./chatgpt-adapter/sse.js";
 import { tryChatGptAdapterTransport } from "./chatgpt-adapter/transport.js";
 import { createServiceTierTracker, openAIResponsesTarget } from "./openai-adapter-helpers.js";
@@ -23,8 +22,7 @@ import { providerRequestHeaders } from "../../../infra/llm/provider-request-iden
 import { observeChatGptQuotaFrame } from "./provider-availability.js";
 import type { ProviderAvailability } from "./provider-availability-types.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
-import { resolveAdapterTransport } from "./request-timing.js";
-import { armStreamLiveness, throwIfLivenessFailure } from "./stream-liveness.js";
+import { isHeartbeatStreamEvent, throwIfLivenessFailure } from "./stream-liveness.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "./provider-attempt-boundary.js";
 import { yieldOpenAIReasoningItem } from "./openai-reasoning-events.js";
@@ -46,7 +44,7 @@ export async function createOpenAIAdapter(
     /** models.dev namespace selected by the provider contribution. */ catalogId?: string;
     /** Captured ChatGPT compatibility. Null states that admission found no listed models. */
     availableModels?: ReadonlySet<string> | null;
-    extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>; resetIdleConnections?: () => void | Promise<void>;
+    extraHeaders?: (options: StreamOptions) => StringFields | Promise<StringFields>;
     /** The availability binding every observation this adapter makes is folded
      *  into: ChatGPT usage headers, ChatGPT terminal frames, and Copilot's
      *  billed totals. The composition root injects the binding that request
@@ -60,14 +58,13 @@ export async function createOpenAIAdapter(
   } = {},
 ): Promise<ConnectedClient> {
   const isChatGPT = auth.kind === "chatgpt";
-  const transport = resolveAdapterTransport(overrides);
   const chatGPTTokenAccessor = auth.kind === "chatgpt"
     ? overrides.tokenAccessor ?? createChatGPTTokenAccessor({ seed: auth, persistence: overrides.oauthPersistence ?? "profile" })
     : undefined;
   // The runtime owns retries; SDK retries would stack multiplicatively.
   const client = overrides.client ?? (isChatGPT
-    ? createChatGPTClient({ auth, oauthPersistence: overrides.oauthPersistence ?? "profile", tokenAccessor: chatGPTTokenAccessor, transportFetch: transport.fetch, ...(overrides.availability && overrides.candidate ? { availability: overrides.availability, candidate: overrides.candidate } : {}), ...(overrides.projectRoot ? { projectRoot: overrides.projectRoot } : {}) })
-    : new OpenAI({ apiKey: Redacted.value(auth.apiKey), fetch: transport.fetch, maxRetries: 0 }));
+    ? createChatGPTClient({ auth, oauthPersistence: overrides.oauthPersistence ?? "profile", tokenAccessor: chatGPTTokenAccessor, ...(overrides.availability && overrides.candidate ? { availability: overrides.availability, candidate: overrides.candidate } : {}), ...(overrides.projectRoot ? { projectRoot: overrides.projectRoot } : {}) })
+    : new OpenAI({ apiKey: Redacted.value(auth.apiKey), maxRetries: 0 }));
   const accessProvider = overrides.accessProvider ?? (isChatGPT ? "chatgpt" : "openai_api");
   const extraHeaders = overrides.extraHeaders;
   const serviceTier = createServiceTierTracker(isChatGPT);
@@ -130,7 +127,7 @@ export async function createOpenAIAdapter(
         // oxlint-disable-next-line eslint/complexity -- boundary: one generator owns the ordered Responses stream state machine.
         yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
           const runId = crypto.randomUUID();
-          const streamLiveness = armStreamLiveness(attempt, { label: "llm-openai", provider: "OpenAI", telemetry: options.telemetry });
+          const streamLiveness = attempt.armLiveness({ label: "llm-openai", provider: "OpenAI", telemetry: options.telemetry });
 
           // Keep OpenAI Responses aligned across transports: instructions travel in
           // the top-level `instructions` field, not as a system/developer input item.
@@ -308,10 +305,10 @@ export async function createOpenAIAdapter(
               yield* yieldReasoningItem(item, outputIndex);
             };
             for await (const event of stream) {
-              observeProviderTelemetry(options.telemetry, event.type, {
+              observeProviderTelemetry(options.telemetry, event.type, () => ({
                 responseId: "response" in event ? event.response?.id : undefined,
                 itemType: "item" in event ? event.item?.type : undefined,
-              });
+              }));
               // Heartbeats re-arm the frame clock (connection is alive) but not
               // the progress clock: the model may still be stalled behind a warm
               // connection, so the PATIENT cap bounds real-event silence. They

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalCatalogModelId, canonicalModelId, canonicalWireModelMap, dashedModelId, dottedModelVersion, legacyDottedModelId } from "../../../../src/infra/llm/model-id.js";
+import { canonicalCatalogModelId, canonicalModelId, canonicalWireModelMap, dashedModelId, legacyDottedModelId, migrateModelId } from "../../../../src/infra/llm/model-id.js";
 
 describe("model identity normalization", () => {
   test("uses dotted numeric segments for every model family", () => {
@@ -29,8 +29,8 @@ describe("model identity normalization", () => {
   });
 
   test("can migrate only numeric version separators", () => {
-    expect(dottedModelVersion(" Vendor/Model-1-2 ")).toBe(" Vendor/Model-1.2 ");
-    expect(dottedModelVersion(" Claude-4-2025-05-14 ")).toBe(" Claude-4-2025-05-14 ");
+    expect(migrateModelId(" Vendor/Model-1-2 ")).toBe(" Vendor/Model-1.2 ");
+    expect(migrateModelId(" Claude-4-2025-05-14 ")).toBe(" Claude-4 ");
   });
 
   test("strips supported terminal date snapshots from canonical identity", () => {

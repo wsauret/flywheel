@@ -293,7 +293,7 @@ describe("a pre-start's request preparation", () => {
   test("a capability plan answers the agent check of the next request's tool plan, which its exposure gate narrows, and sends, writes, and builds nothing", async () => {
     // The tool exposure gate of an active experiment, which omits Bash and the subagent tool from the next request.
     const gated = {
-      id: "test-exposure-gate", dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], transformers: [],
+      id: "test-exposure-gate", dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], 
       gates: [{ seam: "toolExposure", gate: () => new Map([["bash", "sealed paths"], ["subagent", "delegation"]]) }],
     } as const satisfies FirstPartyModule
     const withoutExperiments = SHIPPED_MODULES.filter((module) => module.id !== "experiments")

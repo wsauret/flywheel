@@ -8,10 +8,10 @@ const copy = mock(async (_text: string) => {})
 const clipboard = { copy, readImage: async () => null }
 
 const { testRender } = await import("@opentui/solid")
-const { onMount } = await import("solid-js")
-const { onCleanup } = await import("solid-js")
+const { createSignal, onCleanup, onMount } = await import("solid-js")
 const { createComponent } = await import("solid-js/web")
-const { ModalProvider, useModal, useOverlay } = await import("../../../../src/tui/components/modal.js")
+const { ModalProvider, OverlayHost, useModal, useOverlay } = await import("../../../../src/tui/components/modal.js")
+const { NavigationProvider, useNavigateUri } = await import("../../../../src/tui/context/navigation.js")
 const { ModalFrame } = await import("../../../../src/tui/components/modal-frame.js")
 const { QuestionInputProvider } = await import("../../../../src/tui/components/question-input.js")
 const { ThemeProvider } = await import("../../../../src/tui/context/theme.js")
@@ -36,6 +36,32 @@ function DialogBody() {
   onCleanup(() => disposedDialogs++)
   return <text>Modal body</text>
 }
+let reactiveMounts = 0
+let reactiveDisposals = 0
+let selectReactive = (_index: number): void => {}
+// A viewer or dialog body as the shell's openers build one: the builder reads
+// the caller's signals while it builds, and the body keeps local UI state.
+function ReactiveBody(props: { built: string; label: () => string }) {
+  reactiveMounts++
+  onCleanup(() => reactiveDisposals++)
+  const [selected, setSelected] = createSignal(0)
+  selectReactive = setSelected
+  return <text>{`built:${props.built} selected:${selected()} label:${props.label()}`}</text>
+}
+let navigateFromViewer = (_uri: string): void => {}
+// A viewer body that follows a link through the navigation context, as a
+// transcript link inside a child viewer does.
+function LinkBody() {
+  const navigate = useNavigateUri()
+  navigateFromViewer = (uri) => {
+    if (!navigate) throw new Error("no navigation context")
+    navigate(uri)
+  }
+  return <text>Link body</text>
+}
+let openLinkViewer = (): void => {}
+let openReactiveViewer = (_source: () => string): void => {}
+let openReactiveDialog = (_source: () => string): void => {}
 function Harness(props: { autoOpen: boolean }) {
   const modals = useModal()
   const overlays = useOverlay()
@@ -55,6 +81,9 @@ function Harness(props: { autoOpen: boolean }) {
     ))
   }
   openHarnessModal = open
+  openLinkViewer = () => { overlays.viewer.push(() => <LinkBody />) }
+  openReactiveViewer = (source) => { overlays.viewer.push(() => { const built = source(); return <ReactiveBody built={built} label={source} /> }) }
+  openReactiveDialog = (source) => { modals.push(() => { const built = source(); return <ReactiveBody built={built} label={source} /> }) }
   pushHarnessModal = () => { modals.push(() => <ModalFrame title="Models" width={24} onClose={() => modals.pop()}><text>Model picker</text></ModalFrame>) }
   popHarnessModal = () => modals.pop()
   onMount(() => {
@@ -63,7 +92,9 @@ function Harness(props: { autoOpen: boolean }) {
   return <text>UNDERLYING_MARKER</text>
 }
 
-function renderModal(options: { autoOpen?: boolean } = {}) {
+// The shell's layout: the overlay state is above the shell, and the shell
+// mounts the overlay host inside its own providers, beside its tree.
+function renderModal(options: { autoOpen?: boolean; navigate?: (uri: string) => void } = {}) {
   return testRender(() =>
     createComponent(ToastProvider, {
       get children() {
@@ -73,9 +104,13 @@ function renderModal(options: { autoOpen?: boolean } = {}) {
             return createComponent(QuestionInputProvider, {
               get children() {
                 return createComponent(ModalProvider, {
-                  clipboard,
                   get children() {
-                    return createComponent(Harness, { autoOpen: options.autoOpen ?? true })
+                    return createComponent(NavigationProvider, {
+                      value: options.navigate ?? (() => {}),
+                      get children() {
+                        return [createComponent(Harness, { autoOpen: options.autoOpen ?? true }), createComponent(OverlayHost, { clipboard })]
+                      },
+                    })
                   },
                 })
               },
@@ -106,6 +141,68 @@ describe("ModalProvider", () => {
       await result.renderOnce()
       expect(result.captureCharFrame()).toContain("Viewer body")
       expect(mountedBodies).toBe(1)
+    } finally { result.renderer.destroy() }
+  })
+
+  it("A pushed overlay whose builder reads a signal stays the same mounted node after the signal changes three times, and its local selection state survives", async () => {
+    reactiveMounts = 0
+    reactiveDisposals = 0
+    const [source, setSource] = createSignal("a")
+    const result = await renderModal({ autoOpen: false })
+    try {
+      openReactiveViewer(source)
+      await result.renderOnce()
+      selectReactive(2)
+      for (const next of ["b", "c", "d"]) {
+        setSource(next)
+        await result.renderOnce()
+      }
+      expect(result.captureCharFrame()).toContain("built:a selected:2")
+      expect(reactiveMounts).toBe(1)
+      expect(reactiveDisposals).toBe(0)
+    } finally { result.renderer.destroy() }
+  })
+
+  it("An overlay whose prop accessor changes shows the new value in place", async () => {
+    reactiveMounts = 0
+    const [source, setSource] = createSignal("a")
+    const result = await renderModal({ autoOpen: false })
+    try {
+      openReactiveViewer(source)
+      await result.renderOnce()
+      setSource("b")
+      await result.renderOnce()
+      expect(result.captureCharFrame()).toContain("label:b")
+      expect(reactiveMounts).toBe(1)
+    } finally { result.renderer.destroy() }
+  })
+
+  it("A pushed dialog whose builder reads a signal stays the same mounted node after the signal changes", async () => {
+    reactiveMounts = 0
+    reactiveDisposals = 0
+    const [source, setSource] = createSignal("a")
+    const result = await renderModal({ autoOpen: false })
+    try {
+      openReactiveDialog(source)
+      await result.renderOnce()
+      selectReactive(1)
+      setSource("b")
+      await result.renderOnce()
+      expect(result.captureCharFrame()).toContain("built:a selected:1 label:b")
+      expect(reactiveMounts).toBe(1)
+      expect(reactiveDisposals).toBe(0)
+    } finally { result.renderer.destroy() }
+  })
+
+  it("A viewer opened through the overlay host reads the shell's navigation context without a second provider", async () => {
+    const navigate = mock((_uri: string) => {})
+    const result = await renderModal({ autoOpen: false, navigate })
+    try {
+      openLinkViewer()
+      await result.renderOnce()
+      expect(result.captureCharFrame()).toContain("Link body")
+      navigateFromViewer("flywheel://session/child")
+      expect(navigate).toHaveBeenCalledWith("flywheel://session/child")
     } finally { result.renderer.destroy() }
   })
 

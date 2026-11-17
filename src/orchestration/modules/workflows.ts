@@ -319,6 +319,5 @@ export const workflowsModule = {
     { domain: "cli", id: "workflow", value: workflowNoun },
   ],
   observers: [workflowBudgetObserver, workflowContextPressureObserver],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

@@ -103,7 +103,7 @@ function gateEnvironment(env: { readonly [name: string]: string } = {}) {
   return { ...inherited, ...RELEASE_HARNESS_ENVIRONMENT, ...env };
 }
 
-function run(command: string[], env?: { [name: string]: string }, cwd?: string): void {
+function runGateCommand(command: string[], env?: { [name: string]: string }, cwd?: string): void {
   const result = Bun.spawnSync(command, { cwd, stdout: "inherit", stderr: "inherit", env: gateEnvironment(env), windowsHide: true });
   if (result.exitCode !== 0) fail(`\`${command.join(" ")}\` failed with exit code ${result.exitCode}`);
 }
@@ -202,8 +202,8 @@ function install(stagingDir: string, parent: string, name: string) {
   const bin = join(parent, `${name}-bin`);
   mkdirSync(home, { recursive: true });
   mkdirSync(bin, { recursive: true });
-  if (isWindows) run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", join(stagingDir, "install.ps1")], { HOME: home, FLYWHEEL_INSTALL_DIR: bin, FLYWHEEL_NO_MODIFY_PATH: "1" });
-  else run(["bash", join(stagingDir, "install.sh")], { HOME: home, FLYWHEEL_INSTALL_DIR: bin });
+  if (isWindows) runGateCommand(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", join(stagingDir, "install.ps1")], { HOME: home, FLYWHEEL_INSTALL_DIR: bin, FLYWHEEL_NO_MODIFY_PATH: "1" });
+  else runGateCommand(["bash", join(stagingDir, "install.sh")], { HOME: home, FLYWHEEL_INSTALL_DIR: bin });
   return { binary: join(bin, installedName), home };
 }
 
@@ -224,7 +224,7 @@ async function installedBaseline(tag: string): Promise<{ binary: string; home: s
   const archiveDir = join(cache, "archive");
   mkdirSync(archiveDir, { recursive: true });
   await timeline.time("download-baseline", () => downloadReleaseAsset(tag, archive, join(archiveDir, archive)));
-  await timeline.time("extract-baseline", () => run([tarExecutable(), "-xzf", join(archiveDir, archive), "-C", archiveDir]));
+  await timeline.time("extract-baseline", () => runGateCommand([tarExecutable(), "-xzf", join(archiveDir, archive), "-C", archiveDir]));
   await timeline.time("install-baseline", () => install(join(archiveDir, `flywheel-${platformArch}`), cache, "baseline"));
   writeFileSync(marker, `${new Date().toISOString()}\n`);
   return { binary, home };
@@ -266,9 +266,9 @@ function materializePublishedDriver(tag: string, cache: string): void {
   });
   if (identity.exitCode !== 0) fail(`published release tag ${tag} is not present locally; run \`git fetch --tags\` before retrying`);
   const source = join(cache, "source");
-  if (!existsSync(source)) run(["git", "worktree", "add", "--detach", source, tagRef], undefined, repository);
-  run(["bun", "install", "--frozen-lockfile"], undefined, source);
-  run(["bun", "run", join(import.meta.dir, "../tests/release/lib/materialize-revision-driver.ts"),
+  if (!existsSync(source)) runGateCommand(["git", "worktree", "add", "--detach", source, tagRef], undefined, repository);
+  runGateCommand(["bun", "install", "--frozen-lockfile"], undefined, source);
+  runGateCommand(["bun", "run", join(import.meta.dir, "../tests/release/lib/materialize-revision-driver.ts"),
     "--source", source, "--archive", join(cache, "archive", archive), "--out", join(cache, "driver"), "--tag", tag], undefined, repository);
 }
 
@@ -342,12 +342,12 @@ async function runGate(): Promise<void> {
   let candidateStaging: string;
   if (givenArchive === undefined) {
     console.log("perf-gate: building the candidate archive...");
-    await timeline.time("build", () => run(["bun", "run", "build:binary"]));
+    await timeline.time("build", () => runGateCommand(["bun", "run", "build:binary"]));
     candidateStaging = join(import.meta.dir, "..", "dist", `flywheel-${platformArch}`);
   } else {
     const stagingRoot = join(root, "candidate-archive");
     mkdirSync(stagingRoot, { recursive: true });
-    await timeline.time("extract-candidate", () => run([tarExecutable(), "-xzf", givenArchive, "-C", stagingRoot]));
+    await timeline.time("extract-candidate", () => runGateCommand([tarExecutable(), "-xzf", givenArchive, "-C", stagingRoot]));
     candidateStaging = join(stagingRoot, `flywheel-${platformArch}`);
   }
   const candidate = await timeline.time("install-candidate", () => install(candidateStaging, root, "candidate"));
@@ -358,7 +358,7 @@ async function runGate(): Promise<void> {
   if (driver) {
     const pinnedStaging = join(root, "pre-d-archive");
     mkdirSync(pinnedStaging, { recursive: true });
-    run([tarExecutable(), "-xzf", driver.archivePath, "-C", pinnedStaging]);
+    runGateCommand([tarExecutable(), "-xzf", driver.archivePath, "-C", pinnedStaging]);
     pinned = install(join(pinnedStaging, `flywheel-${platformArch}`), root, "pre-d");
   } else console.log("perf-gate: skipping the pinned pre-D workflow comparison; set FLYWHEEL_RELEASE_BASELINE_DRIVER to a verified manifest to enable it");
 

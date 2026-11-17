@@ -18,7 +18,7 @@ Hooks, automatic checks, background tasks, and runtime coordination can attach e
 
 ## ARCH-CONTEXT-004: Provenance travels with selection
 
-A selected source carries provenance that identifies what supplied it and which version or content identity was used, so two different files, package revisions, definitions, tool surfaces, facts, or settings stay distinguishable. Bulk prompt content is content-addressed and deduplicated per conversation. Context transformer records hold only stable application, transformer, seam, order, and outcome identities and input and output hashes. They never copy prompt, message, memory, tool-schema, or replacement bytes. A context application records its ordered transformer sequence once for later requests to reference.
+A selected source carries provenance that identifies what supplied it and which version or content identity was used, so two different files, package revisions, definitions, tool surfaces, facts, or settings stay distinguishable. Bulk prompt content is content-addressed and deduplicated per conversation. Retained context transformer records stay readable as history.
 Not: storing every full prompt independently, which makes storage grow quadratically with repeated conversation prefixes.
 
 ## ARCH-CONTEXT-005: Durability claims match the boundary
@@ -43,7 +43,7 @@ A transport that changes a request after Flywheel prepared it records each addit
 
 A rendered pane or live output buffer is not model history unless its owning domain records it as such. Display-only entries, cache markers, and retry bookkeeping are not model-visible conversation content. No fabricated assistant tool call or unmatched tool result ever enters provider history. Runtime-originated activity, such as a workflow invocation that the runtime starts, is anchored to an ordinary conversation entry and renders from its own facts only on branches that hold that anchor. A change of its result refreshes the row without a new conversation entry.
 
-## ARCH-CONTEXT-010: Exclusion and transformation are recorded
+## ARCH-CONTEXT-010: Exclusion and transformation are recorded, and no module transforms context
 
 Content withheld from the model, truncated, summarized, compacted, superseded, masked, or lowered across incompatible model contracts carries a recorded decision and reason, not a silent filter. A recorded transformation keeps enough identity that reconstruction replays the same provider-facing history from the unchanged conversation. The agent loop repairs a provider's refusal of conversation content, and neither the walk nor the runner retries it. The loop appends one decision entry whose note replaces the withheld content for the model. Every later request applies the decisions its branch holds, and each decision withholds a new part of a finite set.
 Not: Failing over to another provider on a content refusal.
@@ -54,7 +54,7 @@ Each canonical tool call keeps the registration that produced it. Outbound histo
 
 ## ARCH-CONTEXT-011: Stale tool masking is a reversible request-time tier
 
-Stale tool-result masking changes only the outgoing provider request, never the durable conversation, and records enough audit metadata to explain the assembled request. Masking decisions persist across process restarts and are not recomputed in a way that breaks the cached request prefix. Compaction restarts masking from the fresh context. Reference material that defines project or architectural policy, the instructions of a loaded skill, and the person's answers to the agent's questions are never masked.
+Stale tool-result masking changes only the outgoing provider request, never the durable conversation, and records enough audit metadata to explain the assembled request. Masking decisions persist across process restarts and are not recomputed in a way that breaks the cached request prefix. Compaction restarts masking from the fresh context. Reference material that defines project or architectural policy, the instructions of a loaded skill, the contract of a short-form tool, and the person's answers to the agent's questions are never masked.
 
 ## ARCH-CONTEXT-012: Compaction is a recorded reset
 
@@ -71,7 +71,7 @@ The checkpoint tools bind to the owning conversation, and no tool input selects 
 
 ## ARCH-CONTEXT-016: Large optional context is disclosed progressively
 
-Large references, manuals, documentation, provider notes, and package bodies enter context only when the model or a definition selects them. A roster may advertise package triggers in their authors' words within admission limits, and a person cuts its cost by uninstalling packages. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it.
+Large references, manuals, documentation, provider notes, package bodies, and the contracts of short-form tools enter context only when the model or a definition selects them. A roster may advertise package triggers in their authors' words within admission limits, and a person cuts its cost by uninstalling packages. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it.
 Not: Eagerly injecting every available reference.
 
 ## ARCH-CONTEXT-030: Packages reach context only through declared paths
@@ -84,9 +84,19 @@ User-global and project instructions, memory, and loaded skills are point-in-tim
 
 ## ARCH-CONTEXT-018: Agents share one stable prompt prefix
 
-Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent or the dispatchable persona catalog, renders once in the session tier after the stable prefix.
+Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent, renders once in the session tier after the stable prefix.
 Because: tools come first in a cached request, so a per-agent tool set or system prompt breaks cache reuse across siblings.
 Not: narrowing an agent's tool set by persona instead of refusing ungranted calls at execution.
+
+## ARCH-CONTEXT-038: A tree offers rarely used tools in a fixed short form
+
+A tool that a tree's agents rarely call can carry a short form: its name, one line, and an open object schema. The tree's attendance fixes once which tools take their short form, so every agent and request of the tree sends the same tool bytes. The full contract, which is the tool's description, guidelines, examples, and schema, reaches the model only as the result of a call to that tool. The tool list never changes during a run.
+Because: tools come first in a cached request, so a definition added mid-run resends the whole context uncached.
+Not: mounting a full definition on first use.
+
+## ARCH-CONTEXT-039: The persona catalog follows the dispatch tool's form
+
+The catalog of dispatchable personas is part of the dispatch tool's contract when the tree offers that tool in short form, and renders once in the session tier otherwise.
 
 ## ARCH-CONTEXT-033: Prompt text names only capabilities its reader holds
 
@@ -135,7 +145,7 @@ A project-scoped instruction source cannot reach, through an alias, account-home
 
 ## ARCH-CONTEXT-026: Request context is assembled once and evidenced before provider I/O
 
-Request admission computes the request-stable prompt, the module transformer chain's result, and the provider tool definitions once, and each attempt reuses them. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, transformer identity, models, catalog and pricing provenance, tokenizer, and provider. Neither an adapter nor profile projection can change it after admission.
+Request admission computes the request-stable prompt and the provider tool definitions once, and each attempt reuses them. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, models, catalog and pricing provenance, tokenizer, and provider. Neither an adapter nor profile projection can change it after admission.
 
 ## ARCH-CONTEXT-027: A compaction reset records its boundary and reopens context in one commit
 
@@ -153,7 +163,7 @@ One context admission budget bounds what enters the next request between request
 
 ## ARCH-CONTEXT-035: A rule has one home in a request
 
-Flywheel-owned text of one request states each rule once. A rule about one tool input lives on that input, a rule about one tool lives in that tool's description, and a rule that spans tools lives in the system prompt. The system prompt holds no list or summary of the tools that the request carries.
+Flywheel-owned text of one request states each rule once. A rule about one tool input lives on that input. A rule about one tool lives in that tool's description, or in its contract when the tree offers the tool in short form, and a rule that spans tools lives in the system prompt. The system prompt holds no list or summary of the tools that the request carries.
 Because: A second copy costs tokens on every request and drifts from the first.
 Not: Repeating a rule in each place where a model might look for it.
 
@@ -168,3 +178,9 @@ Not: A retry counter or a cooldown on resets.
 Each context measurement records the context size at which the compaction plan owner would run the next automatic reset, or zero when none can run. Clients show progress against that recorded trigger. They use the configured count only when a measurement records none.
 Because: The trigger depends on the model's window, the fresh-context size, and the run's budget, which no client knows.
 Not: A client that computes the trigger from the configured count.
+
+## ARCH-CONTEXT-040: The fewest tools and the least prompting meet each design goal
+
+Flywheel meets each design goal with the fewest tools and the least prompting that achieve it. A new behavior first reuses an existing tool, and a tool's contract can differ by the kind of agent that calls it. A new tool or prompt rule exists only for a goal that no existing one can meet.
+Because: each added tool or rule competes for the model's attention, and agents confuse tools whose uses overlap.
+Not: a new single-purpose tool for each new behavior.

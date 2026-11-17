@@ -151,6 +151,19 @@ describe("immutable prepared provider requests", () => {
     expect(sharedCap.params.max_tokens).toBe(1_500);
   });
 
+  // A short-form tool's open object root (ARCH-CONTEXT-038) reaches every endpoint unchanged.
+  test("Anthropic, Completions, and Responses send a short-form tool's open object schema unchanged", () => {
+    const schema = { type: "object", properties: {}, additionalProperties: true };
+    const withShortForm: StreamOptions = { ...directOptions, tools: [{ name: "web", description: "Research the web.", input_schema: schema }] };
+    const anthropic = prepareAnthropicRequest({ accessProvider: "anthropic_api", model: "claude-test", wireModel: "claude-test", info, options: withShortForm });
+    const completions = prepareOpenAICompletionsRequest({ accessProvider: "openai_api", model: "gpt-test", wireModel: "gpt-test", info, options: withShortForm });
+    const responses = prepareOpenAIResponsesRequest({ accessProvider: "openai_api", model: "gpt-test", info, isChatGPT: false, options: withShortForm });
+
+    expect(anthropic.params.tools).toEqual([expect.objectContaining({ name: "web", input_schema: schema })]);
+    expect(completions.params.tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: "web", parameters: schema }) })]);
+    expect(responses.params.tools).toEqual([expect.objectContaining({ type: "function", name: "web", parameters: schema })]);
+  });
+
   test("Completions preserves endpoint-specific output-cap omission", () => {
     const copilot = prepareOpenAICompletionsRequest({
       accessProvider: "github_copilot",

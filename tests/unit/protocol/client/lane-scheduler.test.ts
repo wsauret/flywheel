@@ -45,6 +45,7 @@ test("a connection in a browser yields through a MessageChannel task", async () 
     constructor() {
       super()
       const post = this.port2.postMessage.bind(this.port2)
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a structured-clone message posted on a MessagePort
       this.port2.postMessage = (message: unknown) => {
         posted += 1
         post(message)

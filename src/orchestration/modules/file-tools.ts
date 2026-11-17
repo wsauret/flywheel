@@ -60,6 +60,5 @@ export const fileToolsModule = {
     { domain: "settings", id: "file-tools", value: { control: "binary", group: "Tools", label: "File tools", description: "Disabling File tools removes model file access." } },
   ],
   observers: [],
-  transformers: [],
   gates: [],
 } as const satisfies FirstPartyModule

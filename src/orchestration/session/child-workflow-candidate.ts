@@ -78,7 +78,7 @@ export async function completionCandidate(
     && tool.runtimeOrigin.parentConversationId === parent.conversationId
   if (!adoption && (launch.workflowDefinitionId !== child.workflowDefinitionId || launch.description === undefined
     || !eligibleTool(tool, child.workflowDefinitionId, launch.description))) return null
-  const reader = input.projectionReader ?? input.reader
+  const reader = input.projectionReader
   const label = workflowNotificationLabel(tool.input, child.workflowDefinitionId)
   const stoppedBy = stopOf(tool.resultOutcome)
   if (await delivered(context, parent.conversationId, childSessionId, tool)) return { kind: "delivered" }
@@ -138,7 +138,7 @@ async function delivered(context: ChildReconciliationReadContext, conversationId
   if (tool.resultOutcome !== "ok" || liveWorkflowControl(context.input.reader, childSessionId)) return false
   const result = await readRecordedResult(context, tool)
   if (!result || result.id !== tool.resultEventId) return false
-  const reader = context.input.projectionReader ?? context.input.reader
+  const reader = context.input.projectionReader
   const tree = await createConversationTreeProjection(reader, conversationId).replay()
   if (tree.degraded.unreadable) return false
   if (!tree.entriesById[`workflow-completion:${childSessionId}`] && !tree.entriesById[historicalCompletionEntryId(childSessionId)]) return false
@@ -153,7 +153,7 @@ async function readRecordedResult(context: ChildReconciliationReadContext, tool:
   const { toolUseId } = tool
   const known = context.index.resultPositions.get(toolUseId)
   if (tool.resultEventId === undefined || known?.id === tool.resultEventId) return known
-  const reader = context.input.projectionReader ?? context.input.reader
+  const reader = context.input.projectionReader
   const [latest] = (await reader.readSlice({
     aggregateId: `session:${context.input.parentSessionId}`,
     types: ["tool.result.recorded", "workflow.tool_result.corrected"],

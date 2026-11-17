@@ -8,7 +8,7 @@ import { composeAccountModuleProtocolRuntimes, composeModuleProtocolRuntimes, ty
 import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { projectNotificationsModule } from "../../../../../src/orchestration/modules/project-notifications/module.js"
 import type { ProjectNotificationsService } from "../../../../../src/orchestration/modules/project-notifications/service.js"
-import { projectNotificationsCursor, RuntimeProjectNotificationSnapshotResultSchema, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
+import { projectNotificationsCursor, projectNotificationsDomain, type ProjectNotificationEpisode } from "../../../../../src/protocol/modules/project-notifications.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { repoDefinitions } from "../../../../helpers/project-definitions.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "../../app-service/app-service-doubles.js"
@@ -18,7 +18,7 @@ const episode: ProjectNotificationEpisode = { id: "episode-1", sourceId: "auth:o
 test("the protocol decodes recorded actions unchanged and notices without an action", () => {
   const { action: _action, ...actionless } = episode
   const snapshot = { snapshotPosition: 1, notifications: [episode, actionless] }
-  expect(Schema.decodeUnknownSync(RuntimeProjectNotificationSnapshotResultSchema)(snapshot)).toEqual(snapshot)
+  expect(Schema.decodeUnknownSync(projectNotificationsDomain.snapshot.result)(snapshot)).toEqual(snapshot)
 })
 
 /** The app service over the module's protocol runtime, with the module's service present or absent. */

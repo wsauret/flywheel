@@ -106,11 +106,8 @@ export function createSessionDetailCache(
   const stopLanes = reads.onLane(() => held.refresh())
   const unsubscribe = reads.subscribe((event) => {
     if (event.type !== "patch") return
-    if (isGlobalRuntimeInvalidation(event.patch)) {
-      if (!isLaneBreak(event.patch)) held.refresh()
-      return
-    }
-    held.accept(event.patch)
+    if (isGlobalRuntimeInvalidation(event.patch) && !isLaneBreak(event.patch)) held.refresh()
+    else held.accept(event.patch)
   })
   if (getOwner()) onCleanup(() => { stopLanes(); unsubscribe(); held.dispose(); changed.clear() })
   return {

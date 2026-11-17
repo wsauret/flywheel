@@ -34,7 +34,7 @@ const NEXT_MESSAGE = "(next message)";
 
 /** Builds the stable system prompt of the request that `surface` plans, for `attempt` and `profile`. */
 export function prepareRequestPrompt(
-  inputs: Pick<AgentLoopOptions, "tools" | "systemPrompt" | "literalSystemPrompt">,
+  inputs: Pick<AgentLoopOptions, "tools" | "systemPrompt">,
   profile: ModelInteractionProfile,
   attempt: ServingAttempt,
 ): ReturnType<ReturnType<RequestToolSurfaceOwner["current"]>["prepareStablePrompt"]> {
@@ -42,7 +42,6 @@ export function prepareRequestPrompt(
   return inputs.tools.current().prepareStablePrompt(
     () => typeof systemPrompt === "function" ? systemPrompt(attempt, profile) : systemPrompt,
     profile,
-    inputs.literalSystemPrompt === true,
   );
 }
 
@@ -93,7 +92,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
   const requestContext = createActiveRequestContext({
     messages: () => preparation.messages, attempt: () => preparation.planned, onEvent: sinks.onEvent,
     initialStaleMasking: await readStaleMaskSeed({
-      reader: inputs.sessionEventReader ?? inputs.sessionEventStore, tree: inputs.persistence.committedTree,
+      reader: inputs.sessionEventReader, tree: inputs.persistence.committedTree,
       conversationId: inputs.conversationId, sessionId: inputs.sessionId, messageCount: preparation.messages.length,
     }),
   });

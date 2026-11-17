@@ -155,7 +155,7 @@ describe("subagent child completion recovery", () => {
         return reader.readInFlight(...args)
       },
     }
-    const oldReconciliation = reconcileChildSessionCompletions({ parentSessionId, reader: racingReader, writer })
+    const oldReconciliation = reconcileChildSessionCompletions({ parentSessionId, reader: racingReader, projectionReader: racingReader, writer })
     await entered.promise
     const inactiveLifecycleBeforeRetry = store.read({
       aggregateId: `session:${childSessionId}`,
@@ -233,7 +233,7 @@ describe("subagent child completion recovery", () => {
     }))
     siblingWriter.dispose()
 
-    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer })).toMatchObject({
+    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })).toMatchObject({
       reconciledCount: 1,
       durableTerminalChildSessionIds: [childSessionId],
     })
@@ -254,7 +254,7 @@ describe("subagent child completion recovery", () => {
       aggregateId: `session:${childSessionId}`,
       types: ["session.lifecycle.changed"],
     }).filter((event) => event.payload.lifecycleState === "inactive")).toHaveLength(inactiveLifecycleBeforeRetry + 1)
-    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer })).toMatchObject({ reconciledCount: 0 })
+    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })).toMatchObject({ reconciledCount: 0 })
     expect(store.read({ aggregateId: `session:${parentSessionId}`, types: ["tool.result.recorded"] })).toHaveLength(2)
     await store.close()
   })
@@ -303,7 +303,7 @@ describe("subagent completion reconciliation", () => {
     // A newer build recorded a run of this child in a shape this build cannot read.
     store.append({ aggregateId: "session:unreadable", sessionId: "unreadable", timestamp: Date.now(), type: "child_run.created", version: 99, actor: "flywheel", payload: {} })
 
-    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), writer })).toMatchObject({
+    expect(await reconcileChildSessionCompletions({ parentSessionId, reader: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer })).toMatchObject({
       reconciledCount: 1,
       durableTerminalChildSessionIds: ["sibling"],
     })

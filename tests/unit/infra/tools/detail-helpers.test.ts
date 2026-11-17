@@ -67,4 +67,18 @@ describe("shellDetail", () => {
   it("shortens cwd-prefixed paths", () => {
     expect(shellDetail({ command: "cat /cwd/a.txt" }, "/cwd")).toBe("cat a.txt");
   });
+
+  it("shows a script run through bash, and leaves a heredoc body unread as words", () => {
+    const command = "FOO=1 ./run.sh <<EOF\necho x; ./inner.sh\nEOF";
+    expect(shellDetail({ command }, "/cwd")).toBe("FOO=1 bash ./run.sh <<EOF\necho x; ./inner.sh\nEOF");
+  });
+
+  it("shows a script through bash at the start of every command the shell runs", () => {
+    expect(shellDetail({ command: "cd dir\n./build.sh" }, "/cwd")).toBe("cd dir\nbash ./build.sh");
+    expect(shellDetail({ command: "if ./check.sh; then echo $(./v.sh); fi" }, "/cwd")).toBe("if bash ./check.sh; then echo $(bash ./v.sh); fi");
+  });
+
+  it("reads a no-break space or a line separator as a blank between words", () => {
+    expect(shellDetail({ command: "./run.sh\u00a0--fast\u2028-v" }, "/cwd")).toBe("bash ./run.sh\u00a0--fast\u2028-v");
+  });
 });

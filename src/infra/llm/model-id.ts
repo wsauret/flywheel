@@ -67,7 +67,7 @@ export function parseCanonicalModelGeneration(canonicalModel: string, canonicalF
 }
 
 /** Uses dotted numeric versions without changing any other model-id bytes. */
-export function dottedModelVersion(model: string): string {
+function dottedModelVersion(model: string): string {
   const dateSuffix = model.match(DATE_SNAPSHOT_SUFFIX_RE)?.[0] ?? "";
   const stem = dateSuffix ? model.slice(0, -dateSuffix.length) : model;
   return stem.replace(NUMERIC_DASH_SEPARATOR_RE, "$1.") + dateSuffix;

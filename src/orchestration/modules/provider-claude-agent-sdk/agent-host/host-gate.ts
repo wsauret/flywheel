@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { JsonValue } from "../../../../infra/auth/bounded-json.js";
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { asRecord } from "../../../../infra/record.js";
 import { servePluginGate, type PluginGateServer } from "../step-gate.js";
@@ -58,7 +59,7 @@ export interface AgentAdmission {
 }
 
 /** A step that the gate refused, for the host's record. */
-export interface RefusedHostStep {
+interface RefusedHostStep {
   readonly turnId: string;
   readonly index: number;
   readonly agentId: string | undefined;
@@ -90,7 +91,7 @@ export interface HostGate {
   close(): void;
   /** Answers one plugin request: `path` names the hook's call, `body` is its parsed JSON. A step that the gate can
    *  admit answers once the host settled what its engine owes before a step sends (`HostGateHooks.settled`). */
-  serve(path: string, body: unknown): GateAnswer | Promise<GateAnswer> | undefined;
+  serve(path: string, body: JsonValue | undefined): GateAnswer | Promise<GateAnswer> | undefined;
 }
 
 type GateAnswer = { readonly admit?: boolean } & StepValues;

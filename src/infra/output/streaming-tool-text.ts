@@ -31,7 +31,7 @@ export class StreamingToolTextStore {
     this.proposals.delete(toolUseId);
     let entry = this.entries.get(toolUseId);
     if (!entry) {
-      entry = { content: "", acceptedBytes: 0, ...(filetype && { filetype }) };
+      entry = { content: "", acceptedBytes: 0, ...(filetype ? { filetype } : {}) };
       this.entries.set(toolUseId, entry);
     } else if (filetype && entry.filetype !== filetype) {
       entry.filetype = filetype;
@@ -152,7 +152,7 @@ export class StreamingToolTextStore {
       : Object.fromEntries([
         ...[...this.entries].map(([id, entry]): [string, ToolStreamingText] => [
           id,
-          { content: entry.content, ...(entry.filetype && { filetype: entry.filetype }) },
+          { content: entry.content, ...(entry.filetype ? { filetype: entry.filetype } : {}) },
         ]),
         ...[...this.proposals].map(([id, proposedDiff]): [string, ToolStreamingText] => [id, { proposedDiff }]),
         ...[...this.previewChecks].map(([id, previewCheck]): [string, ToolStreamingText] => [id, { previewCheck }]),

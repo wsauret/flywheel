@@ -9,7 +9,7 @@ import { harborBenchmark } from "./benchmarks.js";
 import { appendRoundRun, requireRoundIdentity, roundPath, type RoundIdentity, type UnlaunchedOutcome } from "./rounds.js";
 import { command, harborPython } from "./harbor-process.js";
 import { quotaPreflightLines, quotaRefusal, readQuotaPreflight, type QuotaPreflight } from "./quota-preflight.js";
-import { awaitHostedJob, decodeResolvedTasks, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, localJobConfig, offlineAgentHosts, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "./harbor-jobs.js";
+import { awaitHostedJob, decodeResolvedTasks, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, localJobConfig, offlineAgentHosts, releaseTagFor, repositoryConfigPath, runtaEnvironment, runtaJobConfig, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type ResolvedTask } from "./harbor-jobs.js";
 
 const WHEELHOUSE_TARGET = "/opt/flywheel-verifier-wheelhouse";
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
@@ -31,6 +31,8 @@ interface PrepareDependencies {
   validateHostedConfig: (path: string) => Promise<void>;
   /** Reads what the auth profile's stores state about the quota of each account that the run's snapshot exports. */
   quotaPreflight: (config: ResolvedHarborConfig, nowMs: number) => Promise<QuotaPreflight>;
+  /** The Runta variables that a Runta run's Harbor process gets; throws when no Runta credential is available. */
+  runtaEnvironment: () => Record<string, string>;
 }
 
 export interface PreparedHarborRun {
@@ -96,7 +98,7 @@ interface PreparationPlan {
   generated_config: string;
   manifest: string;
   metadata: string;
-  execution_mode: "local" | "hosted";
+  execution_mode: ResolvedHarborConfig["execution"]["mode"];
   source_commit: string;
   agent_package: AgentPackagePublication;
   snapshot_command: string[];
@@ -105,8 +107,9 @@ interface PreparationPlan {
   claude_token_keychain_items: readonly string[];
   worst_case_seconds: number;
   trials_directory: string;
-  // Local Docker execution.
+  // Execution by a local Harbor process, in local Docker or on Runta.
   harbor_command?: string[];
+  // Local Docker execution.
   download_command?: string[];
   /** Absent for a benchmark whose local run seals no verifier wheelhouse. */
   wheelhouse_command?: string[];
@@ -217,6 +220,7 @@ function defaultDependencies(overrides: Partial<PrepareDependencies>): PrepareDe
     publishAgentPackage: overrides.publishAgentPackage ?? defaultPublishAgentPackage,
     validateHostedConfig: overrides.validateHostedConfig ?? defaultValidateHostedConfig,
     quotaPreflight: overrides.quotaPreflight ?? ((config, nowMs) => readQuotaPreflight({ authProfile: config.authProfile, credentialProviders: config.flywheelConfig.credentialProviders, tokenKeychainItems: config.agentPackage.claudeTokenKeychainItems, projectRoot: REPOSITORY_ROOT, nowMs })),
+    runtaEnvironment: overrides.runtaEnvironment ?? (() => runtaEnvironment(process.env)),
   };
 }
 
@@ -240,6 +244,8 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
   for (const line of quotaPreflightLines(quota)) console.error(line);
   const quotaRefused = quotaRefusal(quota);
   if (quotaRefused !== undefined) throw new Error(quotaRefused);
+  // Also a dry run, before the package is built: Harbor would refuse the Runta run only after the snapshot export.
+  if (config.execution.mode === "runta") dependencies.runtaEnvironment();
   const tasks = await dependencies.resolveTasks(config.dataset, config.datasetRef, config.taskNames);
   const offlineTasks = Object.entries(tasks).filter(([, task]) => task.agent_network_mode !== "public").map(([name]) => name);
   const allowedHosts = offlineTasks.length === 0 ? [] : offlineAgentHosts(config);
@@ -268,9 +274,11 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
     const build = await dependencies.buildAgentPackage(sourceCommit, repositoryConfigPath(config.flywheelConfig.absolutePath), config.flywheelConfig.sha256, config.benchmark.answerKeyRule, releaseTag, packageDirectory);
     const publication = await dependencies.publishAgentPackage(packageDirectory, config.agentPackage.agentRepository);
     const worstCaseSeconds = worstCaseJobSeconds(config, tasks);
-    const execution = config.hosted === undefined
-      ? localExecution(config, dependencies, publication, allowedHosts, finalGeneratedPath, join(artifactDirectory, "harbor-jobs"))
-      : hostedExecution(config, publication, allowedHosts, finalGeneratedPath, join(artifactDirectory, "hub"));
+    const execution = config.execution.mode === "hosted"
+      ? hostedExecution(config, publication, allowedHosts, finalGeneratedPath, join(artifactDirectory, "hub"))
+      : config.execution.mode === "runta"
+        ? runtaExecution(config, publication, allowedHosts, finalGeneratedPath, join(artifactDirectory, "harbor-jobs"))
+        : localExecution(config, dependencies, publication, allowedHosts, finalGeneratedPath, join(artifactDirectory, "harbor-jobs"));
     const manifest: JsonMap = {
       expected_rows: config.taskNames.flatMap((task) => Array.from({ length: config.attempts }, (_, index) => ({ task, attempt: index + 1 }))),
       command_expectation: { version: 1, executable_tool_names: [config.expectedInteraction.executableToolName], minimum_cardinality: 1 },
@@ -341,7 +349,7 @@ export async function prepareHarborRun(args: string[], overrides: Partial<Prepar
       writeFile(planPath, jsonBytes(plan), { mode: 0o600 }),
     ]);
     try {
-      await (config.hosted === undefined ? dependencies.validateConfig : dependencies.validateHostedConfig)(generatedPath);
+      await (config.execution.mode === "hosted" ? dependencies.validateHostedConfig : dependencies.validateConfig)(generatedPath);
     } catch (error) {
       manifest.state = "refused";
       manifest.outcome = "configuration_refused";
@@ -389,6 +397,19 @@ function localExecution(config: ResolvedHarborConfig, dependencies: PrepareDepen
       task_cache: taskCache,
       trials_directory: join(harborJobsDirectory, config.jobName),
     },
+  };
+}
+
+/** Writes the Runta job, which a local Harbor process runs as it runs a local Docker job, with the same jobs
+ *  directory inside the run's artifact directory. Runta builds each task image itself, so the run has no download,
+ *  prebuild, or wheelhouse step. */
+function runtaExecution(config: ResolvedHarborConfig, publication: AgentPackagePublication, allowedHosts: readonly string[], finalGeneratedPath: string, harborJobsDirectory: string): PreparedExecution {
+  const harborCommand = ["harbor", "run", "-c", finalGeneratedPath];
+  return {
+    generated: runtaJobConfig(config, publication, allowedHosts, harborJobsDirectory),
+    command: harborCommand,
+    manifest: { execution_mode: "runta" },
+    plan: { execution_mode: "runta", harbor_command: harborCommand, trials_directory: join(harborJobsDirectory, config.jobName) },
   };
 }
 
@@ -499,9 +520,10 @@ async function exportSnapshot(plan: JsonMap): Promise<string> {
   }
 }
 
-/** The host variables that a local Harbor run keeps. Every other variable,
- *  such as an ambient provider key, stays out of Harbor and so out of the
- *  trial: the snapshot is the trial's one credential. */
+/** The host variables that a local Harbor process keeps, beside the snapshot
+ *  and a Runta run's Runta variables. Every other variable, such as an ambient
+ *  provider key, stays out of Harbor and so out of the trial: the snapshot is
+ *  the trial's one credential. */
 const LOCAL_HARBOR_VARIABLES = ["PATH", "HOME", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG", "DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY", "XDG_CACHE_HOME", "PIP_CACHE_DIR", "UV_CACHE_DIR", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "TMPDIR", "TMP", "TEMP"];
 
 /** Records that the run ended before Harbor ran any trial, so that its
@@ -536,14 +558,15 @@ async function runSnapshot(plan: JsonMap & { manifest: string }, limit?: number)
   return snapshot;
 }
 
-/** Runs a prepared local campaign whose Docker images, verifier wheelhouse,
- *  and generated config are ready. Harbor gets the snapshot only in its own
- *  environment, from which the snapshot overlay of the generated config
- *  hands it to each agent container. Then it finalizes the trials. */
+/** Runs a prepared campaign of a local Harbor process: a local Docker run whose images, verifier wheelhouse, and
+ *  generated config are ready, or a Runta run. Harbor gets the snapshot only in its own environment, from which
+ *  the snapshot overlay of a Docker job or the agent `env` template of a Runta job hands it to each agent. A Runta
+ *  run's Harbor also gets the Runta variables. Then it finalizes the trials. */
 async function runLocalHarbor(planPath: string): Promise<number> {
   const plan = await readRunPlan(planPath);
+  const runta = plan.execution_mode === "runta" ? runtaEnvironment(process.env) : {};
   const snapshot = await runSnapshot(plan);
-  const environment: Record<string, string> = { [SNAPSHOT_SECRET]: snapshot };
+  const environment: Record<string, string> = { ...runta, [SNAPSHOT_SECRET]: snapshot };
   for (const name of LOCAL_HARBOR_VARIABLES) {
     const value = process.env[name];
     if (value !== undefined && value.length > 0) environment[name] = value;
@@ -661,7 +684,7 @@ async function main(): Promise<number> {
   }
   if (action === "run-local") {
     const [plan] = args;
-    if (plan === undefined || args.length !== 1) throw new Error("run-local requires a local preparation plan");
+    if (plan === undefined || args.length !== 1) throw new Error("run-local requires a local or Runta preparation plan");
     return runLocalHarbor(plan);
   }
   if (action === "run-hosted") {

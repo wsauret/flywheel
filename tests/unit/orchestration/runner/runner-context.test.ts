@@ -7,7 +7,6 @@ describe("runner host identity", () => {
     const runner: Agent = {
       send(): void {},
       abort(): void {},
-      end(): void {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
     }
     let published: Agent | undefined

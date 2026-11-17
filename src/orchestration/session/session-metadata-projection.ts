@@ -48,18 +48,14 @@ const ACTIVE_SESSION_CANDIDATE_FACT_TYPES = [
 
 const log = Log.create({ service: "session-metadata-projection" })
 
-/** The one workspace catalog: every session's metadata, for listing. */
-export function createSessionMetadataProjection(reader: AsyncEventReadSurface): EventProjection<SessionMetadataProjectionState> {
+/** The one workspace catalog: every session's metadata, for listing. A
+ *  catch-up copies only the sessions its facts change, and a reader of a few
+ *  sessions reads them through `sessionMetadataStateOf`. */
+export function createSessionMetadataProjection(reader: AsyncEventReadSurface): EventProjection<PerSessionMetadataState> {
   return heldProjection(reader, "session-metadata", () => createEventProjection(reader, {
     name: "session-metadata",
     factTypes: SESSION_METADATA_FACT_TYPES,
-    initialState,
-    draft: draftState,
-    reduce: reduceSessionMetadataEvent,
-    // Invalid-JSON payloads are the same corruption class as schema-invalid
-    // ones, one layer lower; both land in the per-session `errors` state so
-    // one damaged row cannot empty the workspace catalog.
-    reduceCorruptRow: (state, corrupt) => withError(state, corrupt.sessionId, corrupt.message),
+    ...PER_SESSION_METADATA_FOLD,
   }))
 }
 
@@ -97,9 +93,9 @@ const SESSION_PLACEMENT_FACT_TYPES = [
 
 /** Every session's metadata, each session folded apart from the others. A
  *  fact reads and changes only its own session's entries, so a fold of one
- *  session's facts states that session as the workspace fold does, and a
- *  change copies one session's entries instead of the workspace's. */
-type PerSessionMetadataState = { readonly bySession: HashMap.HashMap<string, SessionMetadataProjectionState> }
+ *  session's facts states that session as a fold of every session does, and
+ *  a change copies one session's entries instead of the workspace's. */
+export type PerSessionMetadataState = { readonly bySession: HashMap.HashMap<string, SessionMetadataProjectionState> }
 
 /** The metadata state of session `id` within `state`, empty for a session it does not hold. */
 export function sessionMetadataStateOf(state: PerSessionMetadataState, id: string): SessionMetadataProjectionState {
@@ -114,6 +110,16 @@ function initialPerSessionState(): PerSessionMetadataState {
   return { bySession: HashMap.empty() }
 }
 
+/** The fold of every metadata reducer whose state is per session. Invalid-JSON
+ *  payloads are the same corruption class as schema-invalid ones, one layer
+ *  lower; both land in the session's `errors` entry, so one damaged row cannot
+ *  empty the workspace catalog. */
+const PER_SESSION_METADATA_FOLD = {
+  initialState: initialPerSessionState,
+  reduce: (state: PerSessionMetadataState, event: StoredFact) => foldSessionEntries(state, event.sessionId, (draft) => reduceSessionMetadataEvent(draft, event)),
+  reduceCorruptRow: (state: PerSessionMetadataState, corrupt: CorruptEventRowError) => foldSessionEntries(state, corrupt.sessionId, (draft) => withError(draft, corrupt.sessionId, corrupt.message)),
+}
+
 /** Every session's place in the tree, folded by the metadata reducer from the
  *  placement facts alone. Owners that walk ancestors on every commit read it
  *  instead of a session's whole metadata. The fields that other facts change,
@@ -122,9 +128,7 @@ export function createSessionPlacementProjection(reader: AsyncEventReadSurface):
   return heldProjection(reader, "session-placement", () => createEventProjection(reader, {
     name: "session-placement",
     factTypes: SESSION_PLACEMENT_FACT_TYPES,
-    initialState: initialPerSessionState,
-    reduce: (state, event) => foldSessionEntries(state, event.sessionId, (draft) => reduceSessionMetadataEvent(draft, event)),
-    reduceCorruptRow: (state, corrupt) => foldSessionEntries(state, corrupt.sessionId, (draft) => withError(draft, corrupt.sessionId, corrupt.message)),
+    ...PER_SESSION_METADATA_FOLD,
   }))
 }
 
@@ -148,11 +152,30 @@ export async function listActiveSessionCandidateIds(reader: AsyncEventReadSurfac
   return Object.keys((await projection.replay()).candidates)
 }
 
-export function sessionsFromProjection(state: Pick<SessionMetadataProjectionState, "sessions">): Array<{ id: string; data: ReplayedSession }> {
-  return Object.entries(state.sessions)
+/** Every readable session of `state`, the most recently updated first. */
+export function sessionsFromProjection(state: PerSessionMetadataState): Array<{ id: string; data: ReplayedSession }> {
+  return [...readableSessions(state)]
     .map(([id, data]) => ({ id, data, updatedAt: Date.parse(data.lastUpdated) }))
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .map(({ id, data }) => ({ id, data }))
+}
+
+/** Every readable session of `state`, in no stated order.
+ *  @yields {[string, ReplayedSession]} The id of the session and its metadata. */
+export function* readableSessions(state: PerSessionMetadataState): Generator<[string, ReplayedSession]> {
+  for (const [id, entries] of state.bySession) {
+    const session = entries.sessions[id]
+    if (session !== undefined) yield [id, session]
+  }
+}
+
+/** Each session of `state` that its corruption removed.
+ *  @yields {[string, string]} The id of the session and the reason. */
+export function* sessionMetadataErrors(state: PerSessionMetadataState): Generator<[string, string]> {
+  for (const [id, entries] of state.bySession) {
+    const reason = entries.errors[id]
+    if (reason !== undefined) yield [id, reason]
+  }
 }
 
 /** Recovers only fields that survive the strict metadata boundary. Async live

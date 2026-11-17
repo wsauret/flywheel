@@ -4,7 +4,7 @@ import * as path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { isRuntimeListening, readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { ContainedDirectory } from "../../../src/infra/descriptor-directory.js"
+import { openExistingContainedDirectory } from "../../../src/infra/descriptor-directory.js"
 import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"
 import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { accountServeRecordPath, accountServeSocketPath, resolveOwnerPidPath } from "../../../src/infra/paths.js"
@@ -208,7 +208,7 @@ async function killAccountServiceUncleanly(): Promise<readonly number[]> {
  *  lease authorities read them: a holder whose process is gone is swept, not
  *  counted. */
 function liveHolders(projectRoot: string, gate: string): readonly number[] {
-  const flywheel = ContainedDirectory.openExisting(projectRoot, [FLYWHEEL_DIR_NAME])
+  const flywheel = openExistingContainedDirectory(projectRoot, [FLYWHEEL_DIR_NAME])
   if (!flywheel) return []
   try {
     return sharedHoldersIn(flywheel, gate).pids

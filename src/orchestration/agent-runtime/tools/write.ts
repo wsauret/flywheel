@@ -38,11 +38,11 @@ const WRITE_INPUT_SCHEMA = {
   properties: {
     path: {
       type: "string",
-      description: "Absolute or relative path of the file to create or replace",
+      description: "Absolute or cwd-relative path",
     },
     content: {
       type: "string",
-      description: "The complete file content to write",
+      description: "Complete file content",
     },
   },
   required: ["path", "content"],
@@ -53,7 +53,7 @@ function createWriteDefinition(updateTool?: string): RuntimeTool {
   return {
     name: "write",
     action: "file_write",
-    description: "Create a file or replace a whole existing file, including any parent directories. Replacement requires the current version of the file, read with the read tool or written with a file-editing tool during this run. Shell reads and search results do not count. Write refuses a replacement when the current bytes differ from that version. Use the file-editing tool to change part of a file. A new file receives the content exactly as supplied; display prefixes are not stripped and line endings are not transformed. A replaced file keeps its byte-order mark and line-ending style. NEVER proactively create documentation files (*.md) or README files unless explicitly requested.",
+    description: "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
     inputSchema: WRITE_INPUT_SCHEMA,
     // Mutates the filesystem: not gate-safe, but the target is declarable,
     // so disjoint writes in one batch overlap in time (path-scoped gate

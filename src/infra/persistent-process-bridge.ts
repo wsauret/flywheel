@@ -149,6 +149,7 @@ export function connectPersistentProcessBridge(transport: MessagePort | Internal
   let closed = false
   let unsubscribeMessage = (): void => {}
   let unsubscribeClose = (): void => {}
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the reply value from the peer process, which the call's `ReplyParser` reads
   const pending = new Map<number, { readonly operation: BridgeRequest["operation"]; readonly startedAtMs: number; accept(value: unknown): void; reject(error: Error): void }>()
   const rejectPending = (message: string): void => {
     for (const waiter of pending.values()) waiter.reject(new Error(message))

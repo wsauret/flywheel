@@ -15,8 +15,6 @@ import {
   protocolBackgroundDomains,
   protocolDomainNames,
   protocolDomains,
-  protocolModuleRows,
-  protocolModuleComposerStatus,
   type ModuleComposerStatus,
   protocolMutations,
   protocolMutationSchema,
@@ -128,10 +126,11 @@ export function protocolBackgroundSchema<Domain extends ProtocolBackgroundDomain
   return erased as Schema.Codec<ProtocolBackgroundSnapshot<Domain>>
 }
 
-/** The rows every registered module contributes to one client slot, in
- *  registry order, read through the client's own views. */
-export function moduleRows(slot: ModuleRowSlot, read: DomainReader, enabled?: readonly ModuleId[]): readonly ModuleRow[] {
-  return protocolModuleRows(PROTOCOL_MODULES, slot, read, enabled)
+/** The rows every enabled module contributes to one client slot, in registry
+ *  order, read through the client's own views. An `enabled` of undefined is
+ *  an unknown selection and hides no module. */
+export function moduleRows(slot: ModuleRowSlot, read: DomainReader, enabled?: readonly ModuleId[], modules: readonly ProtocolModule[] = PROTOCOL_MODULES): readonly ModuleRow[] {
+  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.rows?.[slot]?.(read) ?? [] : [])
 }
 
 /** The snapshot query of one domain. A session-scoped domain needs the session id. */
@@ -141,9 +140,10 @@ export function protocolModuleQuery(domain: ProtocolModuleDomain, ownerId: strin
   return domain.scope === "workflow" ? { type: domain.snapshot.query, workflowId: ownerId } : { type: domain.snapshot.query, sessionId: ownerId }
 }
 
-/** Declarative composer labels after the kernel's connection reading. */
-export function moduleComposerStatus(read: DomainReader, enabled?: readonly ModuleId[], surface: "terminal" | "webview" = "terminal"): readonly ModuleComposerStatus[] {
-  return protocolModuleComposerStatus(PROTOCOL_MODULES, read, enabled, surface)
+/** Declarative composer labels of the enabled modules, in registry order,
+ *  after the kernel's connection reading. */
+export function moduleComposerStatus(read: DomainReader, enabled?: readonly ModuleId[], surface: "terminal" | "webview" = "terminal", modules: readonly ProtocolModule[] = PROTOCOL_MODULES): readonly ModuleComposerStatus[] {
+  return modules.flatMap((module) => enabled === undefined || enabled.includes(module.id) ? module.composer?.status(read, surface) ?? [] : [])
 }
 
 /** Resolves one host integration to its declared module command. A missing or

@@ -164,7 +164,6 @@ export function makeMockRunnerFactory(opts?: MockRunnerFactoryOptions) {
       send(_text: string): void {
         setTimeout(() => runMockRunnerScript(opts, options, parentToolUseId, resolve, reject), 0);
       },
-      end() {},
       abort() {},
       done: promise,
     };

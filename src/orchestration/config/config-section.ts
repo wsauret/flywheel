@@ -30,7 +30,9 @@ export interface ModuleConfigSection<S extends Schema.Top = Schema.Top> {
   /** Defaults to author on first seed, with exact retired values the owner replaces. */
   readonly seeds?: readonly { readonly key: string; readonly value: readonly number[]; readonly replaces?: readonly (readonly number[])[] }[];
   /** Explicit nonsensitive request evidence. Sections without this projection never enter a request snapshot. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the decoded section crosses the module registry, which erases its type
   readonly requestCapture?: (value: unknown) => Schema.Json;
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the module's table as the config file authors it, which the owner decodes
   readonly ownerIssues?: (raw: unknown) => readonly ConfigOwnerIssue[];
 }
 

@@ -22,7 +22,7 @@ import type { AssistantTurnResult } from "../../../src/orchestration/agent-runti
 import { estimateMessageTokens } from "../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import type { ConversationMessage, ServingAttempt, StreamOptions } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import { createLauncherScope, createProcessSupervisor } from "../../../src/infra/process-supervisor.js";
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js";
 import { composePortableModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { installedModules } from "../../../src/orchestration/module-catalog.js";
@@ -236,7 +236,7 @@ describe(`the bundled Claude engine on the ${LIVE_AUTH_PROFILE} profile`, () => 
     // The connectors run on the logins of the live profile, which the provider service resolves as a runtime does.
     const previousProfile = process.env["FLYWHEEL_AUTH_PROFILE"];
     process.env["FLYWHEEL_AUTH_PROFILE"] = LIVE_AUTH_PROFILE;
-    const supervisor = createProcessSupervisor();
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const launcher = createLauncherScope(supervisor);
     const config = await createRuntimeConfigOwner({ userDataRoot: liveDirectories.userDataRoot, watch: false });
     // The test preload's Claude module runs on a test account home; the connectors need the person's keychain.

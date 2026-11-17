@@ -1,7 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { Schema } from "effect";
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution.js";
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
 import { flattenWorkflowView, restateWorkflowView, workflowViewForProposal } from "../../../../src/workflows/vm/view-flatten.js";
 import { workflowTree as projectTree } from "../../../../src/workflows/vm/view-tree.js";
@@ -18,6 +16,7 @@ import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import { asThenChain } from "../../../helpers/control-before-phases.js";
 import { testResolvedAgent, testResolvedAgents, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import arms from "./golden/committed-v10-history-arms.json";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 
 const skills = testSkillRevision([]);
 const list = { type: "list", optional: true, max: 2, unique: "id", description: "Items.", of: { type: "object", fields: { id: { type: "string", description: "Id." } } } };
@@ -27,7 +26,7 @@ const phase = (id: string, extra: { readonly [key: string]: unknown } = {}) => (
 
 /** Decode a workflow of `phases`, and resolve its agents. */
 function plan(phases: readonly unknown[]) {
-  const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({ id: "plan", name: "Plan", phases });
+  const workflow = loadedWorkflow({ id: "plan", name: "Plan", phases });
   return { workflow, agents: resolveWorkflowAgents(workflow) };
 }
 

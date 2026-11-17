@@ -43,7 +43,8 @@ import { createHash, randomBytes, type Hash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import * as path from "node:path";
 import { Schema } from "effect";
-import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../infra/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../infra/descriptor-directory.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { Log } from "../../infra/log.js";
 import { coalesceRepeats } from "../../infra/repeat-coalescer.js";
@@ -169,7 +170,7 @@ export function createUpdateInstaller(deps: UpdateInstallerDeps): UpdateInstalle
 }
 
 function openVersionsRoot(userDataRoot: string): ContainedDirectory {
-  const accountRoot = ContainedDirectory.open(path.dirname(userDataRoot), [path.basename(userDataRoot)], { privateDirectories: true });
+  const accountRoot = openContainedDirectory(path.dirname(userDataRoot), [path.basename(userDataRoot)], { privateDirectories: true });
   try {
     return accountRoot.openChild(path.basename(versionsDir(userDataRoot)), { privateDirectories: true });
   } finally {

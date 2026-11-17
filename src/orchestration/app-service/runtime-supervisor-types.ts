@@ -78,16 +78,17 @@ export interface DiscardTransientOutcome {
 export interface RuntimeSupervisorDeps {
   readonly workflowHosts: import("../workflow-host/host-collection.js").WorkflowHosts
   readonly undoChanges: (request: SessionChangesUndo, signal: AbortSignal) => Promise<SessionChangesUndoResult>
-  readonly transcriptCache?: TranscriptProjectionCache
+  readonly transcriptCache: TranscriptProjectionCache
   readonly sessionStore: SessionStore
   readonly manager: SessionManager
   /** Directory authorities every chat runner this supervisor starts resolves
    *  paths from. */
   readonly directories: ProjectDirectories
   readonly runtime: EventStoreRuntime
-  readonly store?: AsyncEventStateReadSurface
+  /** The executor's one event reader, which every actor reads facts and
+   *  projections through. */
   readonly projectionReader: AsyncEventStateReadSurface
-  readonly writer?: AsyncEventWriter
+  readonly writer: AsyncEventWriter
   readonly runnerCapabilities: () => Promise<RuntimeRunnerCapabilities>
   /** The auth profile a new chat records at creation: the one that serves it. */
   readonly authProfileId: () => string
@@ -98,25 +99,23 @@ export interface RuntimeSupervisorDeps {
     settleSessionStore(causeOf: (sessionId: string) => WorkflowInterruption): Promise<void>
     settleAuthAdmission(): Promise<void>
   }
-  readonly onRunnerDone?: (id: string) => void
-  readonly onRunnerError?: (id: string, message: string) => void
-  readonly startWorkflow?: (request: ModelWorkflowLaunchRequest) => Promise<PublishedWorkflowLaunch | WorkflowLaunchRefusal>
+  readonly onRunnerError: (id: string, message: string) => void
   /** Resumes a workflow after the person settles a question that an agent of
    *  a workflow of an earlier build left open (PI-AGENT-024). Remove after 2027-04-03. */
-  readonly resumeWorkflow?: WorkflowController["resumeWorkflow"]
-  readonly retainedOperations?: readonly ModuleRetainedOperationAuthority[]
+  readonly resumeWorkflow: WorkflowController["resumeWorkflow"]
+  readonly retainedOperations: readonly ModuleRetainedOperationAuthority[]
   /** Installed kind owners' Stop of a bound child (`bindSessionStops`). */
-  readonly sessionStops?: SessionStops
-  readonly reconcileChildSessionCompletions?: (
+  readonly sessionStops: SessionStops
+  readonly reconcileChildSessionCompletions: (
     parentSessionId: string,
     options?: ChildSessionReconciliationOptions,
   ) => Promise<ChildSessionReconciliation>
-  readonly sessionViewLoader?: SessionViewLoader
+  readonly sessionViewLoader: SessionViewLoader
   /** The handoff of the account's planned replacement, once its cut has
    *  begun: the account's one replacement state, as this executor last
    *  heard it. The stop reads it and runs the cut's steps for what the cut
-   *  has not reached. Absent in a composition no account serves. */
-  readonly replacementHandoff?: () => string | undefined
+   *  has not reached. Undefined before the account begins a cut. */
+  readonly replacementHandoff: () => string | undefined
   /** The executor's one set of continuation lanes, shared with every other
    *  owner of a step that decides a session's planned continuation, so the
    *  cut's steps and a person's interrupt of a session take turns. */
@@ -131,13 +130,12 @@ export interface RuntimeSupervisorDeps {
   /** Told once, when the stop begins after the executor heard a handoff and
    *  before the stop's first step: every host that closes from then on
    *  closes for the replacement, and hands its running commands over. */
-  readonly onReplacementStop?: () => void
+  readonly onReplacementStop: () => void
   /** The executor's keeper of handed-over commands no session host holds.
    *  Stop reaches a kept command through it, and the stop closes it once
    *  every host has closed with its runner, so at a planned replacement its
-   *  commands are handed over and counted with the rest. Absent where no
-   *  account serves. */
-  readonly keeper?: Pick<CommandKeeper, "terminate" | "close">
+   *  commands are handed over and counted with the rest. */
+  readonly keeper: Pick<CommandKeeper, "terminate" | "close">
   /** Override the grace a lifecycle command waits for an in-flight startup to
    *  settle before tearing down. Defaults to the production constant; tests set it
    *  small so a deliberately-wedged cold-start can be asserted without a real wait. */

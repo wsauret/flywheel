@@ -4,20 +4,17 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import {
-  SUBSCRIPTION_USAGE_HISTORY_HOUR_MS,
-  SUBSCRIPTION_USAGE_HISTORY_RETENTION_MS,
-  SubscriptionUsageProtocolError,
-  createSubscriptionUsageStore,
-  quotaSubjectDigest,
-} from "../../../src/infra/llm/subscription-usage-store.js";
+import { createSubscriptionUsageStore } from "../../../src/infra/llm/subscription-usage-store.js";
 import { subscriptionUsageAuthorityDbFile } from "../../../src/infra/paths.js";
-import { SubscriptionUsageSpendSourceSchema, type SubscriptionUsageReport, CHATGPT_RATE_LIMIT_RESET_TYPE } from "../../../src/infra/llm/subscription-usage.js";
+import { SubscriptionUsageSpendSourceSchema, type SubscriptionUsageReport } from "../../../src/infra/llm/subscription-usage.js";
 import { CREATE_USAGE_LEDGER } from "../../../src/infra/llm/usage-authority-codec.js";
 import { createUsageAuthority } from "../../../src/infra/llm/usage-authority.js";
 
 const roots: string[] = [];
 const ALL_HISTORY = { startMs: 0, endMs: Number.MAX_SAFE_INTEGER } as const;
+const HOUR_MS = 60 * 60_000;
+const ACCOUNT = { providerId: "github_copilot", instanceId: "account-a", identity: "example-user" } as const;
+const PROTOCOL_MISMATCH = "Subscription usage authority protocol";
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -52,7 +49,7 @@ describe("subscription usage authority", () => {
     try {
       const revision = store.revision();
       for (const [index, remaining] of [40, 10].entries()) {
-        const observation = { ...report(now() + index * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS, remaining), resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: null }] } } as const;
+        const observation = { ...report(now() + index * HOUR_MS, remaining), resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available", expiresAtMs: null }] } } as const;
         const claim = method === "completeFetch" ? store.claimFetch(observation) : undefined;
         if (claim !== undefined && claim.kind !== "won") throw new Error("fetch claim did not win");
         const committed = claim === undefined ? store.record(observation, [75]) : store.completeFetch(claim.lease, { kind: "success", report: observation }, [75]);
@@ -78,7 +75,7 @@ describe("subscription usage authority", () => {
     const committed = store.record(report(1_700_000_000_123, 42, "2024-01-01", "Example Account"));
     const key = store.accountKey({ providerId: "github_copilot", instanceId: "account-a", identity: "example-user" });
 
-    expect(key.subjectDigest).toBe(quotaSubjectDigest("example-user"));
+    expect(key.subjectDigest).toMatch(/^v1:[a-f0-9]{64}$/);
     expect(committed.snapshot.readerGeneration).toBe(1);
     expect(committed.snapshot.label).toBe("Example Account");
     expect(store.current(key)).toEqual(committed.snapshot);
@@ -93,7 +90,7 @@ describe("subscription usage authority", () => {
   test("persists reset evidence and resumes one exact checkpoint after reopen", () => {
     const root = mkdtempSync(join(tmpdir(), "subscription-usage-reset-")); roots.push(root);
     const authority = createUsageAuthority({ profileDir: root, profileId: "profile" });
-    const resetReport = { ...report(1_700_000_000_123, 0), providerId: "chatgpt", instanceId: "chat", identity: "chat-user", resetCredits: { availableCount: 2, credits: [{ id: "later", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: null }, { id: "first", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: 10 }] } } as const;
+    const resetReport = { ...report(1_700_000_000_123, 0), providerId: "chatgpt", instanceId: "chat", identity: "chat-user", resetCredits: { availableCount: 2, credits: [{ id: "later", resetType: "codex_rate_limits", status: "available", expiresAtMs: null }, { id: "first", resetType: "codex_rate_limits", status: "available", expiresAtMs: 10 }] } } as const;
     authority.record(resetReport);
     const revision = authority.revision(); const incarnation = authority.incarnation();
     const prepared = authority.prepareReset({ account: resetReport, expectedIncarnation: incarnation, expectedRevision: revision, actionId: "client-a", providerKey: "provider-a" });
@@ -118,7 +115,7 @@ describe("subscription usage authority", () => {
 
     const migrated = createUsageAuthority({ profileDir: root, profileId: root });
     expect(migrated.current(committed.snapshot)?.metrics).toEqual(committed.snapshot.metrics);
-    const resetReport = { ...report(1_700_000_000_124, 0), providerId: "chatgpt", instanceId: "chat", identity: "chat-user", resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: CHATGPT_RATE_LIMIT_RESET_TYPE, status: "available", expiresAtMs: 1_800_000_000_000 }] } } as const;
+    const resetReport = { ...report(1_700_000_000_124, 0), providerId: "chatgpt", instanceId: "chat", identity: "chat-user", resetCredits: { availableCount: 1, credits: [{ id: "credit", resetType: "codex_rate_limits", status: "available", expiresAtMs: 1_800_000_000_000 }] } } as const;
     migrated.record(resetReport);
     migrated.dispose();
 
@@ -179,22 +176,22 @@ describe("subscription usage authority", () => {
     store.record(report(first, 80));
     const failed = store.recordOutcome({ kind: "fetch-failure" });
     store.record(report(first + 10_000, 70));
-    store.record(report(first + SUBSCRIPTION_USAGE_HISTORY_HOUR_MS, 60));
+    store.record(report(first + HOUR_MS, 60));
 
     expect(failed).toEqual({ kind: "ignored" });
-    expect(store.current({ providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") })?.metrics[0]?.remaining?.value).toBe(60);
-    expect(store.history({ providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") }, ALL_HISTORY)).toHaveLength(2);
+    expect(store.current(ACCOUNT)?.metrics[0]?.remaining?.value).toBe(60);
+    expect(store.history(ACCOUNT, ALL_HISTORY)).toHaveLength(2);
     store.dispose();
   });
 
   test("filters retained history by exact half-open bounds before decoding", () => {
     const { store } = makeStore();
-    const startMs = Math.floor(1_700_000_000_000 / SUBSCRIPTION_USAGE_HISTORY_HOUR_MS) * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS;
-    const endMs = startMs + 24 * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS;
-    const account = { providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") } as const;
-    store.record(report(startMs - SUBSCRIPTION_USAGE_HISTORY_HOUR_MS, 90));
+    const startMs = Math.floor(1_700_000_000_000 / HOUR_MS) * HOUR_MS;
+    const endMs = startMs + 24 * HOUR_MS;
+    const account = ACCOUNT;
+    store.record(report(startMs - HOUR_MS, 90));
     store.record(report(startMs, 80));
-    store.record(report(endMs - SUBSCRIPTION_USAGE_HISTORY_HOUR_MS, 20));
+    store.record(report(endMs - HOUR_MS, 20));
     store.record(report(endMs, 10));
 
     const db = new Database(store.dbFile);
@@ -202,8 +199,8 @@ describe("subscription usage authority", () => {
     db.close();
 
     expect(store.history(account, { startMs, endMs }).map((entry) => entry.hourStartMs)).toEqual([
-      Math.floor((endMs - SUBSCRIPTION_USAGE_HISTORY_HOUR_MS) / SUBSCRIPTION_USAGE_HISTORY_HOUR_MS) * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS,
-      Math.floor(startMs / SUBSCRIPTION_USAGE_HISTORY_HOUR_MS) * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS,
+      Math.floor((endMs - HOUR_MS) / HOUR_MS) * HOUR_MS,
+      Math.floor(startMs / HOUR_MS) * HOUR_MS,
     ]);
     store.dispose();
   });
@@ -218,15 +215,15 @@ describe("subscription usage authority", () => {
   test("preserves hourly history after reopening the profile authority", () => {
     const now = 1_700_000_000_000;
     const { root, store } = makeStore(now);
-    const yesterday = now - 24 * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS;
+    const yesterday = now - 24 * HOUR_MS;
     store.record(report(yesterday, 80));
     store.dispose();
 
     const reopened = createSubscriptionUsageStore({ profileDir: root, now: () => now });
     try {
-      expect(reopened.history({ providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") }, ALL_HISTORY)).toEqual([
+      expect(reopened.history(ACCOUNT, ALL_HISTORY)).toEqual([
         expect.objectContaining({
-          hourStartMs: Math.floor(yesterday / SUBSCRIPTION_USAGE_HISTORY_HOUR_MS) * SUBSCRIPTION_USAGE_HISTORY_HOUR_MS,
+          hourStartMs: Math.floor(yesterday / HOUR_MS) * HOUR_MS,
           observedAtMs: yesterday,
           readerGeneration: 1,
           providerStatus: "ok",
@@ -516,7 +513,7 @@ describe("subscription usage authority", () => {
     db.exec("create table foreign_writer (value text)");
     db.close();
     const store = createSubscriptionUsageStore({ profileDir: root });
-    expect(() => store.current({ providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") })).toThrow(SubscriptionUsageProtocolError);
+    expect(() => store.current(ACCOUNT)).toThrow(PROTOCOL_MISMATCH);
     store.dispose();
   });
 
@@ -539,7 +536,7 @@ describe("subscription usage authority", () => {
     const database = new Database(subscriptionUsageAuthorityDbFile(root));
     database.exec("update subscription_usage_authority set protocol_version = 4");
     const store = createSubscriptionUsageStore({ dbFile: join(root, "unused.sqlite"), profileId: "default", database });
-    expect(() => store.revision()).toThrow(SubscriptionUsageProtocolError);
+    expect(() => store.revision()).toThrow(PROTOCOL_MISMATCH);
     expect(database.query<{ protocol_version: number }, []>("select protocol_version from subscription_usage_authority").get()?.protocol_version).toBe(4);
     store.dispose();
     database.close();
@@ -552,10 +549,10 @@ describe("subscription usage authority", () => {
     ledger.exec(CREATE_USAGE_LEDGER);
     ledger.query("insert into usage_ledger (attempt_id, occurred_at_ms, profile_id, attribution_kind, provider_id, instance_id, spend_mode, credential_lineage, model, classification, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, price_available, estimated_usd, entry_json) values ('old-attempt', 0, 'profile', 'unattributed', null, null, 'direct_api', 'credential', 'model', 'real_spend', 0, 0, 0, 0, 0, 0, null, '{}')").run();
     ledger.close();
-    const old = now - SUBSCRIPTION_USAGE_HISTORY_RETENTION_MS - SUBSCRIPTION_USAGE_HISTORY_HOUR_MS;
+    const old = now - 90 * 24 * HOUR_MS - HOUR_MS;
     store.record(report(old, 90));
     store.record(report(now, 10));
-    expect(store.history({ providerId: "github_copilot", instanceId: "account-a", subjectDigest: quotaSubjectDigest("example-user") }, ALL_HISTORY)).toHaveLength(1);
+    expect(store.history(ACCOUNT, ALL_HISTORY)).toHaveLength(1);
     const reopened = new Database(store.dbFile);
     expect(reopened.query<{ count: number }, []>("select count(*) as count from usage_ledger").get()?.count).toBe(1);
     reopened.close();

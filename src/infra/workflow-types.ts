@@ -15,9 +15,9 @@ export const EffortSchema = Schema.Union([
 
 export type Effort = typeof EffortSchema.Type
 
-/** Fixed model choices of one workflow launch, keyed by agent record id.
- *  Each entry sets a model, an effort, or both; an omitted field keeps the
- *  agent's default. The protocol launch, the retained launch operation, and the
+/** Default model choices of one workflow launch, keyed by agent record id.
+ *  Each entry sets a model, an effort, or both as the agent's default for the
+ *  run; an omitted field follows the run's auth profile. The protocol launch, the retained launch operation, and the
  *  recorded launch invocation all carry this one shape. */
 export const WorkflowLaunchAgentModelsSchema = Schema.Record(Schema.NonEmptyString,
   Schema.Union([

@@ -5,7 +5,10 @@ import * as os from "node:os"
 import * as path from "node:path"
 
 import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
-import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision, releaseHarnessRuntimeOptions, runServe, serveExitCode } from "../../../src/cli/serve.js"
+import { releaseHarnessRuntimeOptions, runServe } from "../../../src/cli/serve.js"
+import { serveExitCode } from "../../../src/cli/serve-next-service.js"
+import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision } from "../../../src/cli/serve-retirement.js"
+import { installationOf } from "../orchestration/app-service/_account-service-fixtures.js"
 import { SERVICE_NAMES } from "../../../src/orchestration/app-service/account-service-registration.js"
 import type { ReplacementTrigger } from "../../../src/orchestration/app-service/replacement-owner.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
@@ -19,7 +22,7 @@ import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import { accountServeDir, accountServeRecordPath, accountServeSocketPath, accountServeStartLockPath, accountServeTokenPath } from "../../../src/infra/paths.js"
 import { decodeServeStatusLine, ServeStartupFailure } from "../../../src/protocol/serve-handshake.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../src/protocol/runtime-liveness.js"
-import { sourceBuildId } from "../../../src/orchestration/app-service/runtime-executable.js"
+import { runningBuildId } from "../../../src/orchestration/app-service/runtime-executable.js"
 import { countStart, IDLE_SERVE, INSTALLED, startRecordText, statusRecords, unprobedLoginShellPath, unusedLauncher, waitFor } from "./_serve-fixtures.js"
 import { decodeServeStatusLine as decodeV009StatusLine } from "../../fixtures/serve-handshake-v0-0-9.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
@@ -242,7 +245,7 @@ describe("flywheel serve", () => {
       // ready does.
       await waitFor(() => !("unlistened" in JSON.parse(startRecordText(userDataRoot))))
       expect(JSON.parse(startRecordText(userDataRoot))).toEqual({ version: 2 })
-      expect(readRuntimeIdentity(accountServeRecordPath(userDataRoot, lane))?.buildId).toBe(sourceBuildId(RUNTIME_PROTOCOL_VERSION))
+      expect(readRuntimeIdentity(accountServeRecordPath(userDataRoot, lane))?.buildId).toBe(runningBuildId({ kind: "source" }, { userDataRoot }))
 
       // A client that cannot run the attach rules itself, such as the editor
       // extension, asks this build to find or start the service. It finds
@@ -317,7 +320,7 @@ describe("flywheel serve", () => {
           atBuildTick: async () => false,
           startedByManager: () => false,
         }),
-        serviceInstallation: () => ({
+        serviceInstallation: () => installationOf({
           registered: async () => { registrationCalls.push("registered"); return true },
           start: async () => { registrationCalls.push("start"); return true },
         }),
@@ -355,7 +358,7 @@ describe("flywheel serve", () => {
         buildCheckMs: 20,
         installedBuild: () => undefined,
         registrationRefresh: () => ({ atStart: async () => "serve", afterListening: async () => {}, atBuildTick: async () => false, startedByManager: () => false }),
-        serviceInstallation: () => ({
+        serviceInstallation: () => installationOf({
           registered: async () => true,
           start: async () => {
             events.push(`registered job started with the address ${addressHeld() ? "held" : "free"}`)

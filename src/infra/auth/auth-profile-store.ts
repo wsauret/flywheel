@@ -3,7 +3,8 @@
 import { lstatSync, readdirSync, watch as watchDirectory } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { acquireLockIn, releaseLockIn } from "../ownership-file-lock.js";
-import { ContainedDirectory } from "../descriptor-directory.js";
+import type { ContainedDirectory } from "../descriptor-directory-contract.js";
+import { openContainedDirectory, openExistingContainedDirectory } from "../descriptor-directory.js";
 import { lockedJsonRevision } from "./locked-json-store.js";
 import { AUTH_STORE_FILE } from "./auth-store.js";
 import { AUTH_PROFILE_RETIREMENTS_FILE, readAuthProfileRetirements, retireAuthProfile, type AuthProfileRetirements } from "./auth-profile-retirements.js";
@@ -127,9 +128,9 @@ export function openExistingAuthProfileDirectory(directory: string): AuthProfile
   const resolved = resolve(directory);
   const id = requireAuthProfileName(basename(resolved));
   const parentPath = dirname(resolved);
-  const profile = ContainedDirectory.openExisting(parentPath, [id], { noFollowBase: true, privateDirectories: true });
+  const profile = openExistingContainedDirectory(parentPath, [id], { noFollowBase: true, privateDirectories: true });
   if (profile === undefined) throw new AuthProfileDirectoryNotFoundError(resolved);
-  const parent = ContainedDirectory.openExisting(dirname(parentPath), [basename(parentPath)], { noFollowBase: true });
+  const parent = openExistingContainedDirectory(dirname(parentPath), [basename(parentPath)], { noFollowBase: true });
   if (parent === undefined) {
     profile.close();
     throw new AuthProfileDirectoryNotFoundError(resolved);
@@ -299,7 +300,7 @@ export class AuthProfileStore {
   }
 
   #inspectNow(): AuthProfileInspection {
-    const auth = ContainedDirectory.openExisting(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true });
+    const auth = openExistingContainedDirectory(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true });
     if (auth === undefined) return { profiles: [], stickyProfile: undefined, retirements: Object.freeze(Object.create(null)) };
     try {
       const bytes = auth.readFile(STICKY_FILE, MAX_MARKER_BYTES);
@@ -564,9 +565,7 @@ export class AuthProfileStore {
 
   #openAuth(create: boolean): ContainedDirectory | undefined {
     if (create) ensurePrivateRootDirectory(this.#userDataRoot);
-    return create
-      ? ContainedDirectory.open(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true, privateDirectories: true })
-      : ContainedDirectory.openExisting(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true, privateDirectories: true });
+    return (create ? openContainedDirectory : openExistingContainedDirectory)(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true, privateDirectories: true });
   }
 
   async #withLock<T>(auth: ContainedDirectory, use: () => T | Promise<T>): Promise<T> {

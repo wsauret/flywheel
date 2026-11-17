@@ -2,7 +2,8 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { ContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
+import type { ContainedDirectory } from "../../../../src/infra/descriptor-directory-contract.js";
+import { openContainedDirectory } from "../../../../src/infra/descriptor-directory.js";
 import {
   acquireLock,
   acquireLockIn,
@@ -297,7 +298,7 @@ describe("ownership file lock", () => {
   test("publishes every record through a link of a complete owner file", async () => {
     const dir = temporaryDirectory("auth-lock-spy-");
     writeFileSync(join(dir, "auth.json.lock"), JSON.stringify({ pid: DEAD_PID, owner: "dead-owner" }));
-    const contained = ContainedDirectory.open(dir, []);
+    const contained = openContainedDirectory(dir, []);
     const created: string[] = [];
     const linked: Array<{ readonly name: string; readonly record: unknown }> = [];
     const spy: LockDirectory = {
@@ -423,7 +424,7 @@ describe("ownership file lock", () => {
 describe("shared holders", () => {
   function withGateDirectory<T>(use: (directory: ContainedDirectory, path: string) => T): T {
     const path = temporaryDirectory("shared-holder-test-");
-    const directory = ContainedDirectory.open(path, []);
+    const directory = openContainedDirectory(path, []);
     try {
       return use(directory, path);
     } finally {

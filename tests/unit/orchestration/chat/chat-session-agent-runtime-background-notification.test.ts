@@ -11,6 +11,8 @@ import { chain, fakeAvailability } from "../agent-runtime/llm/_provider-chain-ha
 import { chatInputText, type ChatInputLike } from "../../../../src/infra/chat-input"
 import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
+import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work-notifications"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
 
 describe("chat session with agent runtime — background-work notification (f06c00e9c8cd regression)", () => {
   let session: ChatRunner | null = null
@@ -37,6 +39,11 @@ describe("chat session with agent runtime — background-work notification (f06c
     let turnIndex = 0
     let waitingOnBackgroundWork = false
     let capturedBackground: NonNullable<AgentOptions["runtimeSurfaces"]>["background"]
+    // A child's completion reaches its parent through reconciliation, which
+    // delivers the durable notification after the child's run settles.
+    const deliverWhenSettled = (childRunId: string, description: string, done: Promise<BackgroundWorkResult>) => {
+      void done.then((result) => capturedBackground?.tasks.deliverDurableSubagentNotification(durableSubagentCompletionNotification([{ type: "subagent", childRunId, description, result }], 0)))
+    }
     const streamEntries = Array.from({ length: 4 }, () => Promise.withResolvers<void>())
     let nextPark = Promise.withResolvers<void>()
     const waitingProjected = Promise.withResolvers<void>()
@@ -124,10 +131,12 @@ describe("chat session with agent runtime — background-work notification (f06c
 
     // f06c00e9c8cd: a background task completes long after end_turn.
     const backgroundPark = nextPark.promise
+    const lateTask = Promise.resolve({ status: "failed", content: "generic subagent failed" } as const)
     capturedBackground?.tasks.track({
-      done: Promise.resolve({ status: "failed", content: "generic subagent failed" }),
+      done: lateTask,
       meta: { id: "task-late", type: "subagent", description: "Late background work" },
     })
+    deliverWhenSettled("task-late", "Late background work", lateTask)
 
     await backgroundPark
 
@@ -159,6 +168,7 @@ describe("chat session with agent runtime — background-work notification (f06c
       done: interruptedTask.promise,
       meta: { id: "task-after-interrupt", type: "subagent", description: "Interrupted wait" },
     })
+    deliverWhenSettled("task-after-interrupt", "Interrupted wait", interruptedTask.promise)
     expect(await session.send("continue after failed consultation")).toBe("accepted")
     await streamEntries[2]!.promise
     expect(runnerCreations).toBe(1)
@@ -246,7 +256,7 @@ describe("chat session with agent runtime — background-work notification (f06c
     await initialPark
     capturedBackground?.tasks.track({
       done: Promise.resolve({ status: "stopped", content: "Stopped by the person." }),
-      meta: { id: "child-run", type: "subagent", description: "review", toolUseId: "subagent-tool", settlementOwner: "child_session" },
+      meta: { id: "child-run", type: "subagent", description: "review", toolUseId: "subagent-tool" },
     })
     expect(await session.send("wait for the review")).toBe("accepted")
     await waitingProjected.promise

@@ -10,15 +10,17 @@ import type { FrontendQuestionBlock } from "../client/question-answer.js"
 import type { SessionMemory } from "../client/session-residents.js"
 import { createSessionChangesController, type ChangesSummaryState } from "../../../src/protocol/client/session-changes.js"
 import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
+import type { RoleAssignmentView } from "../../../src/protocol/role-protocol-types.js"
 import { ClientContext } from "./client-context.js"
 import { fakeClient, fakeClientHost, fakePanelSettings, fakeRuntimeSession, fakeSessionSummary, fakeViewState } from "./client-context-fixture.js"
 import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
 import type { ComposerHandle } from "./composer.js"
+import type { ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
 import { ConversationBody } from "./conversation-body.js"
 import { PersistentPane } from "./persistent-pane.js"
 import type { WorkflowAgentAddress } from "../../../src/protocol/client/workflow-addresses.js"
 import type { WorkflowAgentModel } from "../../../src/protocol/client/workflow-agent.js"
-import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
+import { createElement, insert, nodes, textContent, type FixtureEvent } from "./render-ownership-host-fixture.js"
 
 const settle = async () => {
   for (let turn = 0; turn < 12; turn += 1) await Promise.resolve()
@@ -28,8 +30,9 @@ const settle = async () => {
  *  acknowledgement. With `catalogLater`, the command catalog has not arrived
  *  when the composer mounts, until `arriveCatalog` publishes it. With
  *  `caret: "end"`, the textarea's caret sits at the end of its value, as a
- *  browser puts it after a programmatic value write; by default it sits at the start. */
-export function mountComposerSubmission(options: { readonly catalogLater?: boolean; readonly catalog?: RuntimeCommandCatalog; readonly question?: FrontendQuestionBlock; readonly attentionAtMount?: boolean; readonly caret?: "end" } = {}) {
+ *  browser puts it after a programmatic value write; by default it sits at the start.
+ *  With `activeModel`, the open session reports that model as the one it resolved. */
+export function mountComposerSubmission(options: { readonly catalogLater?: boolean; readonly catalog?: RuntimeCommandCatalog; readonly question?: FrontendQuestionBlock; readonly attentionAtMount?: boolean; readonly caret?: "end"; readonly activeModel?: { readonly model: string; readonly effort: string } } = {}) {
   const sent: { text: string; attachments: readonly ProtocolChatAttachment[] | undefined }[] = []
   const reports: string[] = []
   const commands: { name: string; args: string | undefined }[] = []
@@ -79,12 +82,16 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
     offCommands: roster.offCommands,
     commandUsage: [{ name: "inspect", count: 3 }], providers: [], busy: false, interruptible: false,
     roleAssignments: (sessionId) => {
-      const selection = sessionId === "child" ? { model: "child-model", effort: "medium" } : sessionId.startsWith("member-") ? { model: "gpt-6-luna", effort: "high" } : undefined
-      return selection === undefined ? undefined : { assignments: {}, serving: { slot: { kind: "role", roleId: "chat" }, selection } }
+      // The runtime has no role reading for item "unread".
+      const selection = sessionId === "child" ? { model: "child-model", effort: "medium" } : sessionId.startsWith("member-") && sessionId !== "member-unread" ? { model: "gpt-6-luna", effort: "high" } : undefined
+      // The child's Chat role names another model, which its composer must not show.
+      const assignments: RoleAssignmentView["assignments"] = sessionId === "child" ? { chat: { model: "wrong-chat", effort: "low" } } : {}
+      return selection === undefined ? undefined : { assignments, serving: { slot: { kind: "role", roleId: "chat" }, selection } }
     },
     subscribeRoleAssignments: (sessionId) => { roleSubscriptions.push(sessionId); return () => {} },
     subscribeStatus: () => () => {},
     settings: fakePanelSettings({ compactionThreshold: 270_000, workflowMode: "ask" }),
+    ...(options.activeModel === undefined ? {} : { activeModel: options.activeModel }),
   }))
   /** A selected workflow child, which no catalog lists (ARCH-PROTOCOL-048), with a
    *  agent running or with none, as the runtime reports it. */
@@ -110,8 +117,9 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
         admittedActions: memberState === "done" ? [] : ["session.send", "chat.interrupt", "chat.resume", "session.delete"],
       })],
       interruptible: selected.running && (memberState === undefined || memberState === "running"),
-      // The session's reading of the seat in use: the running agent's.
-      activeModel: { model: "gpt-6-luna", effort: "high" },
+      // The session's reading of the seat in use: the running agent's,
+      // unless the test names another resolved model.
+      activeModel: options.activeModel ?? { model: "gpt-6-luna", effort: "high" },
     }
   }
   let accept = () => {}
@@ -238,7 +246,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
       if (!node) throw new Error("Composer has no send button")
       return node
     }
-    const dispatch = (node: ReturnType<typeof createElement>, name: string, event: unknown) => {
+    const dispatch = (node: ReturnType<typeof createElement>, name: string, event: FixtureEvent) => {
       const handler = node.properties[name]
       if (typeof handler !== "function") throw new Error(`No ${name} handler`)
       handler(event)
@@ -288,7 +296,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
         if (!handle || !("capture" in handle) || typeof handle.capture !== "function") throw new Error("Composer cannot capture owned input")
         return handle.capture()
       },
-      adopt: (checkpoint: unknown) => {
+      adopt: (checkpoint: ComposerCheckpoint) => {
         if (!handle || !("adopt" in handle) || typeof handle.adopt !== "function") throw new Error("Composer cannot adopt owned input")
         handle.adopt(checkpoint)
       },

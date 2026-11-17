@@ -49,7 +49,10 @@ describe("resetRoleAssignmentsToDetectedDefaults", () => {
         configPath: join(dir, "flywheel.toml"),
         availableModels: openaiModels,
         ...tierOptions(dir),
-      }, () => true);
+      }, [roleSlot("workflow-agent"), roleSlot("learning-review")], {
+        "workflow-agent": { kind: "value", value: { model: "gpt-5-mini", effort: "low" } },
+        "learning-review": { kind: "value", value: { model: "gpt-5-mini", effort: "low" } },
+      });
 
       const text = await readFile(join(dir, "flywheel.toml"), "utf8");
       expect(text).not.toContain("provider =");

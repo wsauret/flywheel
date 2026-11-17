@@ -186,7 +186,7 @@ export function enrichProviderModelInfo(
  *  Routes arrive in automatic-selection order. Each field comes from the first
  *  route whose provider stated it, else from the first route the shared catalog
  *  filled, else from the first route's default. */
-export function mergeRouteModelInfos(routes: readonly [ModelInfo, ...ModelInfo[]]): ModelInfo {
+function mergeRouteModelInfos(routes: readonly [ModelInfo, ...ModelInfo[]]): ModelInfo {
   const [first] = routes;
   const result: MutableModelInfo = { ...first };
   const providerFields: ProviderModelInfoField[] = [];

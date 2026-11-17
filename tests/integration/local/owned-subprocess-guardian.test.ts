@@ -4,13 +4,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { EXECUTABLE_ROLES } from "../../../src/infra/executable-roles.js"
 import { Log } from "../../../src/infra/log.js"
 import { privateTemporaryRootName } from "../../../src/infra/private-temporary-root.js"
 import { connectOwnedProcessBridge, serveOwnedProcessBridge } from "../../../src/infra/owned-process-bridge.js"
 import { ownedProcessBackend, type OwnedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
 import { watchContainerTerminations } from "../../../src/infra/process-container.js"
 import { createProcessDiagnosticReader } from "../../../src/infra/process-diagnostic-reader.js"
-import { createLauncherScope, createProcessSupervisor, type ProcessSupervisorOptions } from "../../../src/infra/process-supervisor.js"
+import { createLauncherScope, createProcessSupervisor, guardianCommand, type ProcessSupervisorOptions } from "../../../src/infra/process-supervisor.js"
 import { containerHolds, createRealProcessFixture, FORCED_END, processAlive, type RealProcessFixture, type TaggedProcess } from "../../helpers/real-process-fixture.js"
 type AcquisitionPhase = Parameters<NonNullable<ProcessSupervisorOptions["barrier"]>>[0]
 import { payloadThatExits, payloadThatRunsForever } from "../../helpers/payload.js"
@@ -18,7 +19,6 @@ import { MUTE_GUARDIAN, stubGuardian } from "../../helpers/stub-guardian.js"
 
 const TARGET = fileURLToPath(new URL("../../fixtures/owned-process-target.ts", import.meta.url))
 const SUPERVISOR_MODULE = new URL("../../../src/infra/process-supervisor.ts", import.meta.url).href
-const GUARDIAN_MODULE = fileURLToPath(new URL("../../../src/infra/process-guardian.ts", import.meta.url))
 
 /** A guardian that reaches readiness and then refuses every adoption. It
  *  proves the barrier without depending on how a real guardian decides. */
@@ -65,10 +65,10 @@ const BARRIER_TIMEOUT_MS = 20_000
  *  every process of this acquisition in the process table. */
 function barrierHostSource(phase: AcquisitionPhase, scratch: RealProcessFixture, marker: string): string {
   return [
-    `import { createProcessSupervisor } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
+    `import { createProcessSupervisor, guardianCommand } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
     `const dir = ${JSON.stringify(scratch.dir)}`,
     `const supervisor = createProcessSupervisor({`,
-    `  guardianCommand: [${JSON.stringify(process.execPath)}, ${JSON.stringify(GUARDIAN_MODULE)}, dir],`,
+    `  guardianCommand: [...guardianCommand(), dir],`,
     `  barrier: async (at) => {`,
     `    if (at !== ${JSON.stringify(phase)}) return`,
     `    await Bun.write(dir + "/reached", at)`,
@@ -130,7 +130,7 @@ describe("owned subprocess ownership barrier", () => {
   test.skipIf(process.platform === "win32")("establishes background priority before the payload starts", async () => {
     const scratch = fixture("owned-background-priority")
     const marker = scratch.file("priority")
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
     const scope = createLauncherScope(supervisor).open({ priority: "background" })
     const source = `const result = await Bun.$\`ps -o ni= -p \${process.pid}\`.quiet(); await Bun.write(${JSON.stringify(marker)}, result.text().trim())`
 
@@ -167,7 +167,7 @@ describe("owned subprocess ownership barrier", () => {
   test("a payload runs inside the container ownership was acknowledged for", async () => {
     const scratch = fixture("owned-admitted")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker])
@@ -186,7 +186,7 @@ describe("owned subprocess ownership barrier", () => {
 
 describe("eager guardian start", () => {
   test("a guardian started ahead of the first launch is the one that launch leases into", async () => {
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
 
     try {
       await supervisor.start()
@@ -201,7 +201,7 @@ describe("eager guardian start", () => {
   }, 15_000)
 
   test("a guardian started for a launch that never came is ended by disposal", async () => {
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
     await supervisor.start()
     const pid = await supervisor.guardian.pid()
     expect(processAlive(pid)).toBe(true)
@@ -261,8 +261,8 @@ describe("owned subprocess crash containment", () => {
     const scratch = fixture("owned-crash")
     const marker = scratch.file("payload-ran")
     const hostSource = [
-      `import { createProcessSupervisor } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
-      `const supervisor = createProcessSupervisor()`,
+      `import { createProcessSupervisor, guardianCommand } from ${JSON.stringify(SUPERVISOR_MODULE)}`,
+      `const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })`,
       `await supervisor.spawnOwned([${JSON.stringify(process.execPath)}, ${JSON.stringify(TARGET)}, ${JSON.stringify(marker)}, "--stubborn", "--grandchild"])`,
       `await new Promise(() => {})`,
     ].join("\n")
@@ -282,7 +282,7 @@ describe("owned subprocess crash containment", () => {
 
   test("disposal sweeps what is still running and leaves settled containers alone", async () => {
     const scratch = fixture("owned-dispose")
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
 
     const settled = await supervisor.spawnOwned(payloadThatExits())
     const running = await supervisor.spawnOwned(payloadThatRunsForever())
@@ -353,7 +353,7 @@ describe("owned subprocess crash containment", () => {
     const scratch = fixture("owned-guardian-replaced")
     const first = scratch.file("first-payload")
     const second = scratch.file("second-payload")
-    const supervisor = createProcessSupervisor({ killGraceMs: 200 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 200, guardianCommand: guardianCommand() })
     const log = Log.create({ service: "process-supervisor" })
     const warn = spyOn(log, "warn")
     const info = spyOn(log, "info")
@@ -413,7 +413,7 @@ describe("owned subprocess crash containment", () => {
     const scratch = fixture("owned-guardian-bridged")
     const first = scratch.file("first-payload")
     const second = scratch.file("second-payload")
-    const supervisor = createProcessSupervisor({ killGraceMs: 200 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 200, guardianCommand: guardianCommand() })
     // Both ends of one bridge that lives as long as the host, as the account's
     // maintenance Worker's does. The port stands in for that thread.
     const ports = new MessageChannel()
@@ -581,7 +581,7 @@ describe("owned subprocess acquisition barriers", () => {
     // The channel is authenticated and this host's generation is open, and
     // nothing else exists yet: one guardian, no container, and a payload that
     // has not been launched at all.
-    expect(identities.map((entry) => entry.command.includes("process-guardian.ts"))).toEqual([true])
+    expect(identities.map((entry) => entry.command.includes(EXECUTABLE_ROLES.guardian))).toEqual([true])
     expect(await Bun.file(marker).exists()).toBe(false)
 
     expect(await remainsAfterHostKill(host, scratch, identities)).toEqual([])
@@ -609,7 +609,7 @@ describe("owned subprocess acquisition barriers", () => {
     const { host, identities } = await stallAt("container-launched", scratch, marker)
 
     expect(identities.length).toBe(2)
-    expect(identities.some((entry) => entry.command.includes("process-guardian.ts"))).toBe(true)
+    expect(identities.some((entry) => entry.command.includes(EXECUTABLE_ROLES.guardian))).toBe(true)
     expect(identities.some((entry) => entry.command.includes("owned-command-supervisor.ts"))).toBe(true)
     // The container exists, but its payload is still held before exec.
     expect(await Bun.file(marker).exists()).toBe(false)

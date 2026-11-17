@@ -5,8 +5,8 @@ import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
 
 /** One whole view the runtime publishes on one cursor, held live.
  *
- *  A whole-view domain carries the complete view in every patch, so a patch
- *  replaces what is held and a gap or an invalidation reads the view again.
+ *  A patch carries the complete view or folds into the held one, so a patch
+ *  advances what is held and a gap or an invalidation reads the view again.
  *  The view is read once for each lane, when the lane opens: a lane break
  *  voids the cursor and reads nothing, because the next lane's read answers
  *  for it. A read that fails with its lane is silent; the next lane reads
@@ -29,9 +29,11 @@ export interface HeldViewOptions<View> {
   readonly cursor: RuntimeCursorIdentity
   /** Reads the whole view and the cursor position it answers at. */
   readonly read: () => Promise<{ readonly view: View; readonly position: RuntimePosition }>
-  /** The whole view a payload carries, or undefined for any other payload.
-   *  `position` is the patch's own position, for a view that records it. */
-  readonly adopt: (payload: RuntimeUiPatchPayload, position: RuntimePosition) => View | undefined
+  /** The view after a payload, or undefined for any other payload.
+   *  `position` is the patch's own position, for a view that records it, and
+   *  `current` is the view held before the patch, for a payload that folds
+   *  into it instead of carrying the whole view. */
+  readonly adopt: (payload: RuntimeUiPatchPayload, position: RuntimePosition, current: View | undefined) => View | undefined
   readonly changed: (view: View, source: HeldViewSource) => void
   /** Names the view in a read failure's diagnostic. */
   readonly label: string
@@ -51,7 +53,7 @@ export function createHeldView<View>(options: HeldViewOptions<View>): HeldView<V
   const intake = createCursorIntake({
     cursor: options.cursor,
     onApply(patch) {
-      const next = options.adopt(patch.payload, patch.position)
+      const next = options.adopt(patch.payload, patch.position, view)
       if (next === undefined) return
       view = next
       retry.succeeded()
@@ -90,8 +92,8 @@ export function createHeldView<View>(options: HeldViewOptions<View>): HeldView<V
       return
     }
     if (!isGlobalRuntimeInvalidation(event.patch) && cursorKey(event.patch.cursor) !== key) return
-    // Every patch carries the whole view, so a gap gains nothing by waiting
-    // to close: the read answers with the same whole view at once.
+    // A read answers with the whole view, so a gap gains nothing by waiting
+    // to close: the read repairs it at once.
     if (intake.accept(event.patch) === "gap" && intake.heldPosition !== null) void refresh()
   })
   const stopLanes = options.client.onLane(() => {

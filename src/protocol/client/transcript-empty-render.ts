@@ -14,6 +14,7 @@ export interface EmptyRenderEvidence {
  *  later ones only count, and the count is written when blocks return or the
  *  store closes. The episode lasts while the pane stays empty, however quiet:
  *  a time window would end it on silence and record the same blank pane again. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- diagnostic sink: callers pass any caught value or context record for logging
 export function createEmptyRenderEpisodes(sessionId: string, onDiagnostic: ((message: string, detail?: unknown) => void) | undefined, evidence: () => EmptyRenderEvidence) {
   let repeats: number | undefined
   const end = (): void => {

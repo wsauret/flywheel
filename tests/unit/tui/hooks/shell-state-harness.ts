@@ -13,7 +13,6 @@ import { createOutputProjection } from "../../../../src/orchestration/app-servic
 import { createShippedOutput } from "../../../../src/orchestration/app-service/shipped-output"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types"
 import { createBudgetProtocolProjection } from "../../../../src/orchestration/app-service/budget-protocol-projection"
-import { createSessionDetailProjection } from "../../../../src/orchestration/app-service/session-detail-projection"
 import { createQuestionProtocolProjection } from "../../../../src/orchestration/app-service/question-protocol-projection"
 import { createRoleProtocolProjection } from "../../../../src/orchestration/app-service/role-protocol-projection"
 import { projectRoleAssignments } from "../../../../src/orchestration/app-service/role-assignment-projection"
@@ -38,6 +37,8 @@ import { EventStoreLive, EventStoreService, EventReaderService } from "../../../
 import { fakeProjections, runtimeSupervisor } from "../../orchestration/app-service/app-service-doubles.js"
 import { makeWorkflowDeps } from "../../orchestration/workflow-host/_workflow-controller-fixtures.js"
 import { testAccountHome, testAccountResources } from "../../../helpers/directories.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
+import { testSessionDetailProjection } from "../../../helpers/session-detail-projection.js"
 
 /** The project root of the harness workspace, which is also where its sessions
  *  execute: ARCH-DIRECTORIES-007 makes the project root the default execution placement. */
@@ -204,7 +205,7 @@ export function buildAppService(sessionStore: ReturnType<typeof createSessionSto
   const summaries = liveSummaries(sessionStore)
   const projection = createFrontendProjection({ sessionStore, manager, summaries, projectRoot: HARNESS_PROJECT_ROOT, maxSnapshotHz: 1000 })
   const bus = createRuntimeUiBus()
-  const outputProjection = createOutputProjection({ sessionStore, shipped: createShippedOutput({ publish: bus.publish }) })
+  const outputProjection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore, shipped: createShippedOutput({ publish: bus.publish }) })
   const statusProjection = createStatusProjection({ sessionStore, publish: bus.publish, flushOutput: outputProjection.flush, outputPosition: (sessionId) => bus.snapshotPosition({ kind: "cursor", cursor: outputCursor(sessionId) }), awaitsContinuation: async () => false, recordedActiveMs: async () => 0, onStored: () => () => {}, handedOver: { commands: async () => [], onChange: () => () => {} }, replyWaits: { addressees: async () => [], onChange: () => () => {} }, processorHolds: { heldToolCallIds: () => [], onHoldsChanged: () => () => {} } })
   const budgetProjection = createBudgetProtocolProjection({
     sessionStore,
@@ -247,7 +248,7 @@ export function buildAppService(sessionStore: ReturnType<typeof createSessionSto
     }),
     commandCatalog: { snapshot: () => ({ revision: 1, builtInCommands: [], offCommands: [] }), dispose: async () => {} },
     commandInvoke: { invoke: async () => ({ kind: "unavailable" as const, message: "Commands are not used in this harness" }) },
-    historyProjection: createSessionDetailProjection({ sessionStore, manager, reader: eventStore, projectionReader: reader, projectRoot: HARNESS_PROJECT_ROOT }),
+    historyProjection: testSessionDetailProjection({ sessionStore, manager, reader: eventStore, projectionReader: reader, projectRoot: HARNESS_PROJECT_ROOT }),
     runtimeSupervisor: runtimeSupervisor(),
     bus,
     chatDefault: () => ({ kind: "pending" }),

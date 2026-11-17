@@ -27,7 +27,7 @@ import { lostWithLane } from "./connection-failures.js"
  *  instead of waiting behind it. The terminal and the web client both run
  *  their domains on it, so what a gap costs is one decision. */
 
-export interface FamilyIntakeAcceptance<Scope, Patch extends RuntimeUiPatch = RuntimeUiPatch> {
+interface FamilyIntakeAcceptance<Scope, Patch extends RuntimeUiPatch = RuntimeUiPatch> {
   readonly cursor: RuntimeCursorIdentity
   readonly scope: Scope
   readonly patch?: Patch

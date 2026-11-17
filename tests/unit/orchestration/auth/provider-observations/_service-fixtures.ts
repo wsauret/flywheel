@@ -36,7 +36,6 @@ export function definition(id: string): AccessProviderDefinition {
     billing: "subscription",
     paidModes: ["prepaid", "automatic"],
     rank: 1,
-    supportedFamilies: ["openai"],
     configHints: [],
     catalogId: undefined,
     auth: { kind: "oauth", credentialId: id, flow: "device-code", statusRank: 1, start: async () => { throw new Error("test provider has no login") } },
@@ -62,7 +61,6 @@ export function registry(definitions: readonly AccessProviderDefinition[], reade
       },
     }],
     observers: [],
-    transformers: [],
     gates: [],
   } satisfies FirstPartyModule))
   const composition = composeModules(modules)

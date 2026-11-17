@@ -115,16 +115,26 @@ export interface ProviderAvailability {
    *  Best effort - the response the headers rode in on already carries the
    *  request's outcome. */
   observeChatGptRateHeaders(candidate: AccessProviderCandidate, headers: Headers): void;
-  /** Folds a published ChatGPT Usage report into the same per-window rows the
-   *  rate headers feed: the meter and the response state one fact through one
-   *  row. A window under its limit is live, a window at its limit suppresses
-   *  the account until its reset. Evidence no fresher than what a row already
-   *  states says nothing, so a stale poll never reopens an account a newer
-   *  response closed. This is how a banked reset reopens the account: the
-   *  Usage refresh that follows it reports the windows live, and no
-   *  reset-specific path exists. Best effort - the publication already
-   *  happened. */
-  observeChatGptUsage(candidate: AccessProviderCandidate, metrics: readonly SubscriptionUsageMetric[], observedAtMs: number): void;
+  /** Folds a published Usage report of an account into its quota rows, so a
+   *  suppression never outlives the provider's own reading: the stated reset
+   *  only spares requests while nothing newer is known. Evidence no fresher
+   *  than what a row already states says nothing, so a stale poll never
+   *  reopens an account a newer response closed. This is how a reset that
+   *  the provider grants or a person applies reopens the account: the Usage
+   *  refresh that follows it reports the windows below their limits, and no
+   *  reset-specific path exists (PI-MODEL-088).
+   *
+   *  ChatGPT meters two windows, each with its own row, which the rate headers
+   *  also feed: a window under its limit is live, and a window at its limit
+   *  suppresses the account until its reset. Every other provider has one
+   *  row, which only a refused request closes, because its report can meter
+   *  an allowance that does not gate requests. A report in which every
+   *  window states a share below full lifts that row's spent-limit mark; a
+   *  full or unreadable window leaves the mark, and so does a mark that the
+   *  rate-limit headers wrote, which only a probe reopens. A lifted account
+   *  that is still spent refuses its next request, which closes it again.
+   *  Best effort - the publication already happened. */
+  observeUsage(candidate: AccessProviderCandidate, metrics: readonly SubscriptionUsageMetric[], observedAtMs: number): void;
   observeChatGptQuotaExhausted(candidate: AccessProviderCandidate, resetsAtSeconds: number | undefined): QuotaExhaustionObservation;
   /** Folds the headers of an Anthropic API rate-limit 429 into the account's
    *  one row: it suppresses the account until the latest moment its

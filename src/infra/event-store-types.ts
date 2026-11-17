@@ -16,8 +16,6 @@ export interface EventStoreAppend {
   sessionId: string
   payload: EventPayload
   runId?: string
-  parentEventId?: string
-  causedByEventId?: string
   /** Pre-serialized `payload`, exactly `JSON.stringify(payload)`. The writer
    *  lane serializes once at enqueue for true byte accounting and the store
    *  inserts this string verbatim instead of serializing again; other writers
@@ -69,6 +67,11 @@ export type InFlightWrite =
   | { readonly op: "swap"; readonly kind: string; readonly key: string; readonly expectedRaw: string | null; readonly payload: unknown | null; readonly payloadJson?: string | null; readonly sessionId?: string }
 
 export type InFlightSwap = Extract<InFlightWrite, { readonly op: "swap" }>
+/** The JSON object that an in-flight cell holds. A read gives it back as `InFlightRecord["payload"]`. */
+export type InFlightPayload = { readonly [key: string]: unknown }
+
+/** A `put` as its producer builds it. */
+export type InFlightPut = Extract<InFlightWrite, { readonly op: "put" }> & { readonly payload: InFlightPayload }
 
 /** One live in-flight value, in insertion order. `raw` is the exact stored
  *  payload text, the expectation token a `swapInFlight` caller passes back so
@@ -179,6 +182,11 @@ export interface StoredFact extends Omit<EventStoreAppend, "payloadJson" | "cont
   position: number
   id: EventId
   seq: number
+  /** Causal links that only rows from releases before 2026-11-15 hold. No
+   *  append writes them, and the row read shows them so that a historical
+   *  row reads as it was stored. */
+  parentEventId?: string
+  causedByEventId?: string
 }
 
 /** What the store assigns to an appended fact. Every other field of the
@@ -571,7 +579,7 @@ interface AsyncEventMaintenance {
    *  caller whose contract is record-before-act must await it and treat a
    *  rejection as the operation being refused. Retirement rides the append
    *  that records the outcome. */
-  putInFlight?(sessionId: string, kind: string, key: string, payload: unknown): Promise<void>
+  putInFlight?(sessionId: string, kind: string, key: string, payload: InFlightPayload): Promise<void>
   /** Retires one in-flight value outside an append, for the rare settlement
    *  with no fact beside it (a queued input recalled back into the editor).
    *  Ordinary retirement rides the outcome append's `inFlight` writes. */
@@ -585,7 +593,7 @@ export interface AsyncEventWriter extends AsyncEventAppender, AsyncEventMaintena
   appendGuarded?(event: GuardedEventStoreAppend): Promise<GuardedAppendResult>
   appendBatchGuarded?(events: readonly GuardedEventStoreAppend[]): Promise<GuardedAppendResult>
   /** Serializes a compare-and-swap through the process's writer lane. */
-  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): Promise<boolean>
+  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): Promise<boolean>
   /** Atomically applies an exact-raw guarded cell set through the writer lane. */
   swapInFlightBatch?(sessionId: string, swaps: readonly InFlightSwap[]): Promise<boolean>
 }
@@ -629,7 +637,7 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
    *  outcome, so the two can never disagree. Synchronous on this local
    *  connection: when it returns, the state is durable; when it throws, the
    *  caller knows nothing was recorded. */
-  putInFlight(sessionId: string, kind: string, key: string, payload: unknown): void
+  putInFlight(sessionId: string, kind: string, key: string, payload: InFlightPayload): void
   /** Retires one in-flight value outside an append (a settlement with no
    *  fact beside it, such as a queued input recalled into the editor). */
   dropInFlight(sessionId: string, kind: string, key: string): void
@@ -639,7 +647,7 @@ export interface LocalSqliteEventStore extends EventStoreReadSurface, EventWrite
    *  so two processes racing for one cell settle in a single atomic
    *  statement. A `null` payload retires the cell under the same guard.
    *  Returns whether this caller's write won. */
-  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): boolean
+  swapInFlight(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): boolean
   swapInFlightBatch(sessionId: string, swaps: readonly InFlightSwap[]): boolean
   close(): void
 }
@@ -657,9 +665,9 @@ type LocalEventWrites = {
   appendBatchGuarded(events: readonly GuardedEventStoreAppend[]): GuardedAppendResult | Promise<GuardedAppendResult>
   pruneSupersededEvents(aggregateId: string, eventType: string): number | Promise<number>
   pruneSupersededKeyedEvents?(aggregateId: string, eventType: string, payloadKey: string): number | Promise<number>
-  putInFlight?(sessionId: string, kind: string, key: string, payload: unknown): void | Promise<void>
+  putInFlight?(sessionId: string, kind: string, key: string, payload: InFlightPayload): void | Promise<void>
   dropInFlight?(sessionId: string, kind: string, key: string): void | Promise<void>
-  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null): boolean | Promise<boolean>
+  swapInFlight?(sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null): boolean | Promise<boolean>
   swapInFlightBatch?(sessionId: string, swaps: readonly InFlightSwap[]): boolean | Promise<boolean>
 }
 type LocalEventAppends = Pick<LocalEventWrites, "append" | "appendBatch" | "appendGuarded" | "appendBatchGuarded">
@@ -692,13 +700,13 @@ export function asAsyncEventWriter(store: LocalEventWrites): AsyncGuardedEventWr
     // Optional on the boundary: a store that cannot hold in-flight state does
     // not offer the methods, and a caller that needs them fails loudly.
     ...(store.putInFlight
-      ? { putInFlight: async (sessionId: string, kind: string, key: string, payload: unknown) => { await store.putInFlight?.(sessionId, kind, key, payload) } }
+      ? { putInFlight: async (sessionId: string, kind: string, key: string, payload: InFlightPayload) => { await store.putInFlight?.(sessionId, kind, key, payload) } }
       : {}),
     ...(store.dropInFlight
       ? { dropInFlight: async (sessionId: string, kind: string, key: string) => { await store.dropInFlight?.(sessionId, kind, key) } }
       : {}),
     ...(store.swapInFlight
-      ? { swapInFlight: async (sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: unknown | null) => store.swapInFlight?.(sessionId, kind, key, expectedRaw, payload) ?? false }
+      ? { swapInFlight: async (sessionId: string, kind: string, key: string, expectedRaw: string | null, payload: InFlightPayload | null) => store.swapInFlight?.(sessionId, kind, key, expectedRaw, payload) ?? false }
       : {}),
     ...(store.swapInFlightBatch
       ? { swapInFlightBatch: async (sessionId: string, swaps: readonly InFlightSwap[]) => store.swapInFlightBatch?.(sessionId, swaps) ?? false }

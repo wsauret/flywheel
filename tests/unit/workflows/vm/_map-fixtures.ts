@@ -3,6 +3,7 @@ import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../s
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import type { SqliteVmDriver } from "./_sqlite-vm-driver.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 const text = (description: string) => ({ type: "string", description }) as const
 
@@ -28,7 +29,7 @@ const reviewsJoin = { reducer: "collect", write: { id: "reviews", lifetime: "dur
 /** A workflow whose plan phase lists items, a stream implements and then
  *  reviews each item, a `collect` join folds the items, and a tail phase
  *  reads the join. */
-export const mapWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const mapWorkflow: WorkflowDefinition = loadedWorkflow({
   id: "mapped",
   name: "Mapped",
   phases: [
@@ -42,7 +43,7 @@ export const mapWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(Workflow
 /** A workflow that takes its items as launch input: a stream over
  *  `input.items` implements and reviews each item, a `collect` join folds
  *  them, and a tail phase reads the join. The launch expands the list. */
-export const inputMapWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const inputMapWorkflow: WorkflowDefinition = loadedWorkflow({
   id: "input-mapped",
   name: "Input mapped",
   input: { fields: { items: itemList(3), goal: text("What the run must reach.") } },
@@ -114,7 +115,7 @@ export const surveyInventoryFields = {
  *  targets its scope excluded, a stream surveys and then verifies each
  *  target, the verify phase reports the outcome, and a `coverage` join feeds
  *  a synthesize phase. */
-export const surveyWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const surveyWorkflow: WorkflowDefinition = loadedWorkflow({
   id: "survey",
   name: "Survey",
   phases: [
@@ -190,7 +191,7 @@ const reportRecord = { brief: "Report the verified findings.", name: "Report", o
  *  reviews each file, a `dedupe` join keeps one finding per id, a second
  *  phase over the join's `kept` list verifies each surviving finding, and a
  *  `quorum` join gives each area a verdict before a report phase. */
-export const findingsWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+export const findingsWorkflow: WorkflowDefinition = loadedWorkflow({
   id: "findings",
   name: "Findings",
   input: {
@@ -264,7 +265,7 @@ export function dryDefinition({ maxIterations = 3, verify = false, loop = {}, ma
 
 /** The decoded loop fixture of {@link dryDefinition}. */
 export function dryWorkflow(maxIterations = 3, verify = false, filesMax?: number): WorkflowDefinition {
-  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)(dryDefinition({ maxIterations, verify, ...(filesMax === undefined ? {} : { filesMax }) }))
+  return loadedWorkflow(dryDefinition({ maxIterations, verify, ...(filesMax === undefined ? {} : { filesMax }) }))
 }
 
 export const DRY_LOOP = "dry:node:1"
@@ -316,7 +317,7 @@ export function votesDefinition(checks: { readonly [key: string]: unknown } = {}
   }
 }
 
-export const votesWorkflow: WorkflowDefinition = Schema.decodeUnknownSync(WorkflowDefinitionSchema)(votesDefinition())
+export const votesWorkflow: WorkflowDefinition = loadedWorkflow(votesDefinition())
 
 export const VOTES_REVIEWS = "votes:node:1"
 export const VOTES_CHECKS = "votes:node:2"

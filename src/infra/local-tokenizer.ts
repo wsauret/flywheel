@@ -150,8 +150,3 @@ function tokenizerForEncoding(encoding: EncodingId): LocalTokenizer {
     },
   }
 }
-
-/** Counts local tokens for an approved canonical model ID, or returns undefined when the model has no approved mapping. */
-export function countLocalTokens(canonicalModel: string, text: string, claudeIdentity?: ClaudeTokenizerIdentity): number | undefined {
-  return localTokenizerForModel(canonicalModel, claudeIdentity)?.count(text)
-}

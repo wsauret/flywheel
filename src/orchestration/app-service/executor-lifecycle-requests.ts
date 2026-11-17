@@ -1,6 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import type { CapacityContinuation } from "./capacity-wait-continuation.js"
-import type { ProjectExecutorEvent } from "./project-executor-protocol.js"
+import type { ProjectExecutorCommand, ProjectExecutorEvent } from "./project-executor-protocol.js"
 
 /** The executor's answer to one request of the account. */
 type ExecutorReply = Extract<ProjectExecutorEvent, { readonly kind: "handoff" | "capacity_continued" }>
@@ -8,7 +8,7 @@ type ExecutorReply = Extract<ProjectExecutorEvent, { readonly kind: "handoff" | 
 /** The commands whose answer comes later, under the command's id. */
 const ANSWERED_LATER = new Set(["interrupt_for_replacement", "continue_after_replacement", "continue_capacity_waits"])
 
-type Send = (message: unknown) => Promise<void>
+type Send = (message: ProjectExecutorCommand) => Promise<void>
 
 /** The requests between the account and one executor generation whose
  *  answers arrive later on the lifecycle channel, each under the id it was
@@ -37,12 +37,12 @@ export interface ExecutorLifecycleRequests {
 export function createExecutorLifecycleRequests(recordWake: ((at: number | null) => Promise<void>) | undefined): ExecutorLifecycleRequests {
   let lastId = 0
   const waiting = new Map<number, { readonly reply: PromiseWithResolvers<ExecutorReply>; readonly failsOnDetach: boolean }>()
-  const ask = async (send: Send, message: (id: number) => object, failure: Promise<never>, failsOnDetach = false): Promise<ExecutorReply> => {
+  const ask = async (send: Send, message: (id: number) => ProjectExecutorCommand, failure: Promise<never>, failsOnDetach = false): Promise<ExecutorReply> => {
     const id = ++lastId
     const reply = Promise.withResolvers<ExecutorReply>()
     waiting.set(id, { reply, failsOnDetach })
     try {
-      await send({ ...message(id), id })
+      await send(message(id))
       return await Promise.race([reply.promise, failure])
     } finally {
       waiting.delete(id)
@@ -50,13 +50,13 @@ export function createExecutorLifecycleRequests(recordWake: ((at: number | null)
   }
   return {
     async handoff(send, kind, handoffId, failure) {
-      const reply = await ask(send, () => ({ kind, handoffId }), failure)
+      const reply = await ask(send, (id) => ({ kind, handoffId, id }), failure)
       if (reply.kind !== "handoff") throw new Error("project executor answered a handoff with another reply")
       if ("error" in reply) throw new Error(reply.error)
       return reply.sessionIds
     },
     async continueCapacityWaits(send, failure) {
-      const reply = await ask(send, () => ({ kind: "continue_capacity_waits" }), failure, true)
+      const reply = await ask(send, (id) => ({ kind: "continue_capacity_waits", id }), failure, true)
       if (reply.kind !== "capacity_continued") throw new Error("project executor answered a capacity continuation with another reply")
       return { pending: reply.pending, at: reply.at, next: reply.next }
     },

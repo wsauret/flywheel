@@ -11,6 +11,7 @@ import type { FrontendEvent } from "../../../../src/protocol/app-service-types.j
 import { batch, outputProjectionRuntime, textBlock, upsertChange } from "./_output-projection-fixtures.js"
 import { endpointPair, markerPosition } from "./project-execution-channel-fixtures.js"
 import { never } from "./_project-control-client-fixture.js"
+import { quietOutputCollaborators } from "../../../helpers/output-projection-deps.js"
 
 const runtime = outputProjectionRuntime()
 
@@ -20,7 +21,7 @@ const runtime = outputProjectionRuntime()
 async function project() {
   const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
   const bus = createRuntimeUiBus()
-  const projection = createOutputProjection({ sessionStore: store, shipped: createShippedOutput({ publish: bus.publish }) })
+  const projection = createOutputProjection({ ...quietOutputCollaborators(), sessionStore: store, shipped: createShippedOutput({ publish: bus.publish }) })
   const [serverEndpoint, clientEndpoint] = endpointPair()
   let applied = Promise.withResolvers<void>()
   const stop = serveProjectExecutionChannel({

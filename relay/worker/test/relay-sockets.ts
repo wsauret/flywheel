@@ -11,7 +11,9 @@ import {
   RELAY_PONG,
   RELAY_PROTOCOL_VERSION,
   runtimeAttachSigningBytes,
+  statedSilenceDeadlineMs,
   toBase64Url,
+  withStatedHeartbeat,
 } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import type { Invocation } from "./counting-relay.js"
 import type { LocalRelay } from "./local-relay.js"
@@ -58,6 +60,7 @@ function stringsOf(value: unknown, action: string): string[] {
 }
 
 /** One reader per action, each checking the answer it returns. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the decoded answer of a relay socket route, which each reader checks
 type TestRouteReaders = { readonly [A in keyof TestRouteAnswers]: (value: unknown) => TestRouteAnswers[A] }
 
 const TEST_ROUTE_ANSWERS: TestRouteReaders = {
@@ -87,6 +90,16 @@ export async function testRoute<A extends keyof TestRouteAnswers>(relay: LocalRe
   const response = await fetch(`${relay.origin}/__relay-test/${runtime.id}/${action}`, body === undefined ? {} : { method: "POST", body: JSON.stringify(body) })
   const answer: unknown = await response.json()
   return TEST_ROUTE_ANSWERS[action](answer)
+}
+
+/** The heartbeat that the relay tests state: one second, short so a sweep
+ *  runs in seconds. `query` is what a socket appends to its URL to state it,
+ *  and `deadlineMs` is how long the relay then lets the socket stay silent. */
+export function statedHeartbeat(heartbeatMs = 1_000) {
+  const query = withStatedHeartbeat("", heartbeatMs)
+  const deadlineMs = statedSilenceDeadlineMs(new URL(`ws://relay${query}`))
+  if (deadlineMs === undefined) throw new Error(`the relay honors no heartbeat of ${heartbeatMs} ms`)
+  return { heartbeatMs, query, deadlineMs }
 }
 
 /** Pings `ws` now and every `intervalMs`, with the exact string the platform

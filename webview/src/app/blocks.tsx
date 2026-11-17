@@ -47,7 +47,7 @@ interface ToolFileBodyMode {
   readonly advisory?: string
 }
 
-export function toolFileBodyMode(
+function toolFileBodyMode(
   entry: FrontendToolEntry,
   body: FileChangeBody,
 ): ToolFileBodyMode {
@@ -436,7 +436,9 @@ export function createToolPresentation(props: ToolProps) {
       if (open()) props.disclosure.setOpen(props.sessionId, disclosureKey(), false)
       else expand()
     },
-    get marker() { return <span class="chevron">{activity().active ? <span class="marker-dot live" /> : linkedSession() !== undefined ? "\u2197" : open() ? "▾" : hasBody() ? "▸" : <span class="marker-dot" />}</span> },
+    get marker() {
+      return <span class="chevron">{activity().active ? <span class="marker-dot live" /> : linkedSession() !== undefined ? "\u2197" : open() ? "▾" : <Show when={hasBody()} fallback={<span class="marker-dot" />}>▸</Show>}</span>
+    },
     get label() { return <>
       <span class="tool-title">{title()}</span>
       <Show when={detail()}><span class="tool-detail">{detail()}</span></Show>

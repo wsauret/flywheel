@@ -1,7 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { Schema } from "effect"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { prepareWorkflowLaunch, WorkflowRequiredSkillsMissingError } from "../../../../src/orchestration/workflow-host/publish.js"
@@ -11,6 +9,7 @@ import { renderSkillContext } from "../../../../src/workflows/skill-render.js"
 import { publishSkillRevision } from "../../../../src/workflows/skill-schema.js"
 import { makeWorkflowDeps } from "./_workflow-controller-fixtures.js"
 import { testDependencyWorkflow, withTestExternalSkills } from "../../../helpers/skill-fixtures.js"
+import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 
 /** The fixture workflow's briefs compose these packages into the launch. */
 const REQUIRED = ["root-cause-analysis", "test-driven-development"] as const
@@ -38,7 +37,7 @@ const externalRevision = (skills: ReturnType<typeof publishSkillRevision>) => ({
 
 /** A workflow whose one agent must cite one command, run as `persona` when given. */
 function citingWorkflow(persona?: string) {
-  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+  return loadedWorkflow({
     id: "verify", name: "Verify",
     phases: [{ phase: "check", name: "Check", brief: "Run the tests.", output: { commands: { min: 1 } }, writes: [], ...(persona === undefined ? {} : { persona }) }],
   })

@@ -120,6 +120,6 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
   return <BlockFrame active={active}><box flexDirection="column" backgroundColor={landingBackground()} {...action.handlers} onMouseUp={press}>
     <box ref={measured.ref} selectable={false} width="100%"><text ref={(el) => { headerText = el; bindStyledTextContent(header)(el) }} overflow="hidden" wrapMode="none" /></box>
     <Show when={!initializing()}><text ref={bindStyledTextContent(lineContent)} overflow="hidden" wrapMode="none" /></Show>
-    <Show when={line().failureDetail}>{(detail) => <text paddingLeft={4} fg={theme.textMuted} overflow="hidden" wrapMode="none">{detail()}</text>}</Show>
+    <Show when={line().failureDetail}>{(detail) => <box paddingLeft={4}><text fg={theme.textMuted} overflow="hidden" wrapMode="none">{detail()}</text></box>}</Show>
   </box></BlockFrame>
 }

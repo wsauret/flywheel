@@ -135,6 +135,19 @@ const ProposalEventArmsAfterRecover = [
     reason: Schema.NonEmptyString,
   }),
   Schema.Struct({
+    type: Schema.Literal("REASSESSMENT_PROPOSED"),
+    proposal: ReassessmentProposalSchema,
+  }),
+] as const;
+
+// Replay-only history with no removal date. A build before 2026-10-03 ran a
+// person's follow-up request in the workflow conversation, and only
+// encodings 13 and earlier hold one: encoding 14 came after the last producer.
+// Completed workflows stay viewable (PI-INTERACTION-022), and the adoption
+// migration leaves an unprovable follow-up with its bytes, so a recorded
+// follow-up run replays for the life of the store (ARCH-WORKFLOWS-032).
+const FollowUpRunEventArms = [
+  Schema.Struct({
     type: Schema.Literal("FOLLOW_UP_REQUESTED"),
     input: DurableFollowUpInputSchema,
     identity: IdentifiedFollowUpIdentitySchema,
@@ -152,11 +165,8 @@ const ProposalEventArmsAfterRecover = [
     conversationId: IdSchema,
     requestSequence: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   }),
-  Schema.Struct({
-    type: Schema.Literal("REASSESSMENT_PROPOSED"),
-    proposal: ReassessmentProposalSchema,
-  }),
 ] as const;
+const FollowUpRunEventSchema = Schema.Union(FollowUpRunEventArms);
 
 const FollowUpTransferEventSchema = Schema.Struct({
   type: Schema.Literal("FOLLOW_UP_TRANSFERRED"),
@@ -189,16 +199,20 @@ export const WorkflowProposalEventSchema = Schema.Union([
 ]);
 
 // Dated history, removed after 2027-10-17, the latest date of the versions
-// it serves. Proposals of encodings 10 to 13
-// hold the current event, except a RESUME that carries no reader map and a
-// RECOVER that names no progressed attempt. They decode as `readers: {}`
-// and `progressed: []`, their exact meaning, because no version before 14
-// reruns a reader (`normalizeHistoricalWorkflowEvent`).
+// it serves. Proposals of encodings 10 to 13 hold the current event with two
+// exceptions. First, a RESUME that carries no reader map and a RECOVER that
+// names no progressed attempt decode as `readers: {}` and `progressed: []`,
+// their exact meaning, because no version before 14 reruns a reader
+// (`normalizeHistoricalWorkflowEvent`). Second, they also hold the follow-up
+// run arms, which the current event does not. Those arms have no removal
+// date, so the removal of this union keeps a reader that decodes them.
 export const WorkflowProposalEventV13Schema = Schema.Union([
   ...proposalEventArmsBeforeRecover(AttemptOutcomeV13Schema),
   SharedEventArmsV3[7],
   SharedEventArmsV3[8],
-  ...ProposalEventArmsAfterRecover,
+  ProposalEventArmsAfterRecover[0],
+  ...FollowUpRunEventArms,
+  ProposalEventArmsAfterRecover[1],
   FollowUpTransferEventSchema,
 ]);
 
@@ -221,7 +235,9 @@ export type AttemptFailure = typeof AttemptFailureSchema.Type;
 export type ReassessmentProposal = typeof ReassessmentProposalSchema.Type;
 export type WorkflowProposalEvent = typeof WorkflowProposalEventSchema.Type;
 /** An event a current writer may propose. An agent that cannot finish messages
- *  its parent instead of stopping, so `ATTEMPT_BLOCKED` is replay history only. */
+ *  its parent instead of stopping, so `ATTEMPT_BLOCKED` is replay history only.
+ *  The current encoding holds no follow-up run, so a terminal fact that
+ *  proposes one at that encoding fails its strict decode. */
 export type NewWorkflowProposalEvent = Exclude<WorkflowProposalEvent, { type: "ATTEMPT_BLOCKED" }>;
 export type WorkflowEvent = typeof WorkflowEventSchema.Type;
 
@@ -243,9 +259,14 @@ export function holdsCurrentEvent(encoding: WorkflowProposalEncoding): encoding 
 
 export type FollowUpTransferEvent = typeof FollowUpTransferEventSchema.Type;
 export type FollowUpTransferInput = Omit<FollowUpTransferEvent, "type">;
-type ReplayedFollowUpRequest = Omit<Extract<WorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" }>, "identity"> & { readonly identity: FollowUpIdentity };
-export type DecodedWorkflowProposalEvent = Exclude<WorkflowProposalEvent, { type: "FOLLOW_UP_REQUESTED" }> | ReplayedFollowUpRequest;
-export type DecodedWorkflowEvent = Exclude<WorkflowEvent, { type: "FOLLOW_UP_REQUESTED" }> | ReplayedFollowUpRequest;
+type FollowUpRunEvent = typeof FollowUpRunEventSchema.Type;
+/** A follow-up run event as replay reads it: a request of committed
+ *  version 2 keeps its historical identity. */
+type ReplayedFollowUpRunEvent =
+  | Exclude<FollowUpRunEvent, { type: "FOLLOW_UP_REQUESTED" }>
+  | (Omit<Extract<FollowUpRunEvent, { type: "FOLLOW_UP_REQUESTED" }>, "identity"> & { readonly identity: FollowUpIdentity });
+export type DecodedWorkflowProposalEvent = WorkflowProposalEvent | ReplayedFollowUpRunEvent;
+export type DecodedWorkflowEvent = WorkflowEvent | ReplayedFollowUpRunEvent;
 
 export function parseWorkflowEvent(value: unknown): WorkflowEvent {
   return Schema.decodeUnknownSync(WorkflowEventSchema, { onExcessProperty: "error" })(value);

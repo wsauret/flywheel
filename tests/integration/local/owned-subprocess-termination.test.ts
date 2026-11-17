@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 import { ownedProcessBackend } from "../../../src/infra/owned-subprocess-backend.js"
-import { createLauncherScope, createProcessSupervisor } from "../../../src/infra/process-supervisor.js"
+import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../../../src/infra/process-supervisor.js"
 import { containerHolds, createRealProcessFixture, FORCED_END, processAlive, suspendProcess, type RealProcessFixture } from "../../helpers/real-process-fixture.js"
 import { payloadThatExits, payloadThatRunsForever } from "../../helpers/payload.js"
 
@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe("owned subprocess termination", () => {
   test.skipIf(process.platform === "win32")("returns the guarded control descriptor to the baseline after settlement", async () => {
-    const supervisor = createProcessSupervisor()
+    const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
 
     try {
       const warmup = await supervisor.spawnOwned(payloadThatExits())
@@ -44,7 +44,7 @@ describe("owned subprocess termination", () => {
 
   test("terminating twice signals once and yields one settlement", async () => {
     const scratch = fixture("owned-idempotent")
-    const supervisor = createProcessSupervisor({ killGraceMs: 200 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 200, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, scratch.file("payload-ran"), "--stubborn"])
@@ -66,7 +66,7 @@ describe("owned subprocess termination", () => {
     // reads its own copy of that TERM as part of the escalation it runs.
     const scratch = fixture("owned-term")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 10_000 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 10_000, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker])
@@ -90,7 +90,7 @@ describe("owned subprocess termination", () => {
     // exit 0; one that died of it would settle as a signal.
     const scratch = fixture("owned-graceful-term")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 10_000 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 10_000, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker, "--graceful"])
@@ -111,7 +111,7 @@ describe("owned subprocess termination", () => {
   test("a payload that exits first keeps ownership until the descendant holding its container is gone", async () => {
     const scratch = fixture("owned-root-exits")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 300 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 300, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker, "--grandchild", "--exit"])
@@ -135,7 +135,7 @@ describe("owned subprocess termination", () => {
   test("a supervisor that dies abnormally surrenders its container only once the payload tree is gone", async () => {
     const scratch = fixture("owned-supervisor-crash")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 300 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 300, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker, "--stubborn", "--grandchild"])
@@ -167,7 +167,7 @@ describe("owned subprocess termination", () => {
   test("a scope that ends what it holds at once ends a container whose supervisor cannot run", async () => {
     const scratch = fixture("owned-end-at-once")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 300 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 300, guardianCommand: guardianCommand() })
     const scope = createLauncherScope(supervisor)
 
     try {
@@ -195,7 +195,7 @@ describe("owned subprocess termination", () => {
   test.skipIf(process.platform !== "win32")("a payload whose container lets its children leave ends with its supervisor before any owner acts", async () => {
     const scratch = fixture("owned-breakaway-supervisor-crash")
     const marker = scratch.file("payload-ran")
-    const supervisor = createProcessSupervisor({ killGraceMs: 300 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 300, guardianCommand: guardianCommand() })
 
     try {
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker, "--stubborn"], { childrenBreakAway: true })
@@ -217,7 +217,7 @@ describe("owned subprocess termination", () => {
 
   test("repeated spawn and terminate cycles leave no stray containers", async () => {
     const scratch = fixture("owned-soak")
-    const supervisor = createProcessSupervisor({ killGraceMs: 200 })
+    const supervisor = createProcessSupervisor({ killGraceMs: 200, guardianCommand: guardianCommand() })
 
     try {
       // Each cycle proves its own process lived and is gone before the next

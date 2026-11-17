@@ -4,7 +4,7 @@ import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../
 import type { WorkflowView } from "../../workflows/view/types.js"
 import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "./conversation/conversation-facts.js"
-import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSettledRecord, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "./conversation/turn-end-record.js"
+import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSkippedByWalk, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "./conversation/turn-end-record.js"
 import { isWorkflowResumeCandidate } from "./resumable.js"
 import { startedAgents, type StartedAgent } from "../../workflows/vm/host-commit-controller.js"
 import { holdsInterruptedGuess, readToolExecution } from "./tool-execution-projection.js"
@@ -68,7 +68,7 @@ function tailDecision(restore = false): (tail: readonly TurnEndEntry[]) => boole
   return (tail) => {
     for (let index = tail.length - 1; index >= 0; index -= 1) {
       const entry = tail[index]
-      if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)) continue
+      if (!entry || isSkippedByWalk(entry)) continue
       const message = entry.message
       if (entry.kind !== "message" || !message) return true
       const end = turnEndOfEntry(entry)

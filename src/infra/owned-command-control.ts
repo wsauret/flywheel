@@ -19,7 +19,7 @@ const log = Log.create({ service: "owned-command-control" })
  *  record and holds the command alone. `exited`: it ended first, and settles
  *  as it always did. `unacknowledged`: neither happened within the bound, so
  *  the container is still this side's. */
-export type HandoverAcknowledgement = "acknowledged" | "exited" | "unacknowledged"
+type HandoverAcknowledgement = "acknowledged" | "exited" | "unacknowledged"
 
 /** A container this side controls through its supervisor's channel. */
 export interface ControlledContainer {
