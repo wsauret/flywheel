@@ -1,0 +1,312 @@
+src/infra/event-store-effect.ts
+  h_4b47e9e4a8b456 4,15,35
+src/infra/event-store-types.ts
+  h_4b47e9e4a8b456 549-558,561-562,564-568,572,574,576,630-637,639-640,646,648-652
+src/infra/sqlite-event-store.ts
+  h_4b47e9e4a8b456 10,41
+src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+  h_4b47e9e4a8b456 329,545
+src/orchestration/agent-runtime/tools/file-edit-tool-adapter.ts
+  h_4b47e9e4a8b456 97,155
+src/orchestration/agent-runtime/usage-settlement.ts
+  h_4b47e9e4a8b456 142-143
+src/orchestration/app-service/account-project-registry.ts
+  h_4b47e9e4a8b456 184,220,240,243,257-258
+src/orchestration/app-service/project-state-client.ts
+  h_4b47e9e4a8b456 4,7,88,165,196-211,220-223
+src/orchestration/app-service/project-state-recovery.ts
+  h_4b47e9e4a8b456 198,247
+src/orchestration/app-service/project-state-worker.ts
+  h_4b47e9e4a8b456 520
+src/orchestration/app-service/runtime-maintenance-worker.ts
+  h_4b47e9e4a8b456 12,130
+src/orchestration/app-service/session-changes-service.ts
+  h_4b47e9e4a8b456 115
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 302
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 130-131,360,363,367
+src/orchestration/module-seams.ts
+  h_4b47e9e4a8b456 3,221
+src/orchestration/modules/learning/learning-review.ts
+  h_4b47e9e4a8b456 261
+src/orchestration/modules/learning/skill-corpus-cleanup-host.ts
+  h_4b47e9e4a8b456 4,76,92
+src/orchestration/modules/learning/tools/memory.ts
+  h_4b47e9e4a8b456 341-343
+src/orchestration/modules/learning/tools/skill-manage.ts
+  h_4b47e9e4a8b456 314-316
+src/orchestration/modules/papercuts.ts
+  h_4b47e9e4a8b456 35
+src/orchestration/modules/papercuts/disposition-writer.ts
+  h_4b47e9e4a8b456 1,24
+src/orchestration/modules/project-notifications/journal.ts
+  h_4b47e9e4a8b456 1,28
+src/orchestration/modules/project-notifications/service.ts
+  h_4b47e9e4a8b456 25
+src/orchestration/modules/subagents/execution/direct-child-control.ts
+  h_4b47e9e4a8b456 1,131
+src/orchestration/modules/subagents/execution/session-authority.ts
+  h_4b47e9e4a8b456 1,82
+src/orchestration/session/child-session-deletion.ts
+  h_4b47e9e4a8b456 303
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 1,425,610
+src/orchestration/session/child-workflow-result.ts
+  h_4b47e9e4a8b456 1,63
+src/orchestration/session/command-handover.ts
+  h_4b47e9e4a8b456 171
+src/orchestration/session/composer-returns.ts
+  h_4b47e9e4a8b456 2,53
+src/orchestration/session/conversation/addressed-workflow-messages.ts
+  h_4b47e9e4a8b456 61-62,141
+src/orchestration/session/conversation/conversation-tree-storage.ts
+  h_4b47e9e4a8b456 1,557,586-588,590-593
+src/orchestration/session/conversation/person-message-ledger.ts
+  h_4b47e9e4a8b456 64,69,73
+src/orchestration/session/conversation/queued-background-notifications.ts
+  h_4b47e9e4a8b456 78
+src/orchestration/session/conversation/queued-user-inputs.ts
+  h_4b47e9e4a8b456 101,108,119
+src/orchestration/session/conversation/reply-wait-cells.ts
+  h_4b47e9e4a8b456 58,67
+src/orchestration/session/file-mutation-fact-writers.ts
+  h_4b47e9e4a8b456 21,24,76,95-96
+src/orchestration/session/file-mutation-recovery.ts
+  h_4b47e9e4a8b456 62,257,303
+src/orchestration/session/finalized-tool-result-checkpoint.ts
+  h_4b47e9e4a8b456 89,152
+src/orchestration/session/manager.ts
+  h_4b47e9e4a8b456 3,54-56,164
+src/orchestration/session/mutation-evidence-recovery.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/session/session-change-review.ts
+  h_4b47e9e4a8b456 199
+src/orchestration/session/session-fact-writer.ts
+  h_4b47e9e4a8b456 24,41,43,45,77,206,258-260,267-273
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 100,106-107,198,200-203,525
+src/orchestration/session/session-metadata-store.ts
+  h_4b47e9e4a8b456 184,251,280,326,345,404
+src/orchestration/workflow-host/recovery-commit.ts
+  h_4b47e9e4a8b456 2,133
+src/workflows/view/view-store.ts
+  h_4b47e9e4a8b456 210-211
+src/workflows/vm/replay.ts
+  h_4b47e9e4a8b456 1,217
+tests/helpers/event-writer-doubles.ts
+  h_4b47e9e4a8b456 1-43
+tests/helpers/module-kernel.ts
+  h_4b47e9e4a8b456 1,10,108
+tests/integration/local/project-lane-failure-recovery.test.ts
+  h_4b47e9e4a8b456 69
+tests/release/fixtures/generate-store.ts
+  h_4b47e9e4a8b456 26,112,244
+tests/unit/infra/event-store-in-flight.test.ts
+  h_4b47e9e4a8b456 24,29,46
+tests/unit/infra/event-store.test.ts
+  h_4b47e9e4a8b456 456,459,461,488-489
+tests/unit/orchestration/agent-runtime/agent-loop-tool-finalization.test.ts
+  h_4b47e9e4a8b456 25,112,116,130,140,230,237,285,289
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 18,194,201
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  h_4b47e9e4a8b456 35,500,504
+tests/unit/orchestration/agent-runtime/context/loop-savepoint.test.ts
+  h_4b47e9e4a8b456 13,174,183
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 38,437,458,464
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 16,145,151,459,465
+tests/unit/orchestration/agent-runtime/subagent/execute-lifecycle.test.ts
+  h_4b47e9e4a8b456 18,154,160,261,270
+tests/unit/orchestration/agent-runtime/tools/_fixtures.ts
+  h_4b47e9e4a8b456 17,144,166
+tests/unit/orchestration/agent-runtime/tools/_nested-tool-dispatch-fixtures.ts
+  h_4b47e9e4a8b456 3,17,31
+tests/unit/orchestration/agent-runtime/tools/ask-user.test.ts
+  h_4b47e9e4a8b456 16,20,29
+tests/unit/orchestration/agent-runtime/tools/file-edit-operation.test.ts
+  h_4b47e9e4a8b456 164,210,252
+tests/unit/orchestration/agent-runtime/tools/nested-tool-dispatch.test.ts
+  h_4b47e9e4a8b456 16,398,404,453,463,570,580
+tests/unit/orchestration/agent-runtime/tools/tools-write.test.ts
+  h_4b47e9e4a8b456 100
+tests/unit/orchestration/agent-runtime/turn-settlement.test.ts
+  h_4b47e9e4a8b456 11,68,75
+tests/unit/orchestration/agent-runtime/usage-settlement.test.ts
+  h_4b47e9e4a8b456 73,77,102,166
+tests/unit/orchestration/app-service/_served-project-state-fixture.ts
+  h_4b47e9e4a8b456 45
+tests/unit/orchestration/app-service/account-project-registry.test.ts
+  h_4b47e9e4a8b456 7,91
+tests/unit/orchestration/app-service/executor-command-handover.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 33,39,43
+tests/unit/orchestration/app-service/model-assignment-service.test.ts
+  h_4b47e9e4a8b456 7,28,39
+tests/unit/orchestration/app-service/papercut-drain-command.test.ts
+  h_4b47e9e4a8b456 3,60
+tests/unit/orchestration/app-service/papercut-projection.test.ts
+  h_4b47e9e4a8b456 19,90
+tests/unit/orchestration/app-service/project-execution-state.test.ts
+  h_4b47e9e4a8b456 40,138,156-158,163-164,166,179
+tests/unit/orchestration/app-service/project-state-channel.test.ts
+  h_4b47e9e4a8b456 9,22,134,141,232,243,254
+tests/unit/orchestration/app-service/project-state-client.test.ts
+  h_4b47e9e4a8b456 51,376
+tests/unit/orchestration/app-service/project-state-recovery.test.ts
+  h_4b47e9e4a8b456 49,77
+tests/unit/orchestration/app-service/project-state-worker.test.ts
+  h_4b47e9e4a8b456 247,407
+tests/unit/orchestration/app-service/replacement-continuation.test.ts
+  h_4b47e9e4a8b456 122,247,307,399
+tests/unit/orchestration/app-service/runtime-supervisor-mailbox.test.ts
+  h_4b47e9e4a8b456 5,66,68
+tests/unit/orchestration/app-service/runtime-supervisor-replacement.test.ts
+  h_4b47e9e4a8b456 89,378,444,474
+tests/unit/orchestration/app-service/transcript-protocol-content-deferral.test.ts
+  h_4b47e9e4a8b456 270
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 31,169,177-188,361
+tests/unit/orchestration/chat/chat-invocation-completion.test.ts
+  h_4b47e9e4a8b456 100,135
+tests/unit/orchestration/chat/chat-session-agent-runtime-queue.test.ts
+  h_4b47e9e4a8b456 469
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 7,9,26,29-34,318,332,420,427
+tests/unit/orchestration/module-complete-off.test.ts
+  h_4b47e9e4a8b456 29,155,161
+tests/unit/orchestration/module-lifecycles.test.ts
+  h_4b47e9e4a8b456 2,8,15
+tests/unit/orchestration/modules/learning/learning-review-semantic-audit.test.ts
+  h_4b47e9e4a8b456 20,81,95,231,238
+tests/unit/orchestration/modules/learning/learning-review.test.ts
+  h_4b47e9e4a8b456 19,67,74
+tests/unit/orchestration/modules/learning/tools/memory-tool.test.ts
+  h_4b47e9e4a8b456 21,78,88
+tests/unit/orchestration/modules/learning/tools/skill-manage-tool.test.ts
+  h_4b47e9e4a8b456 20,73,83
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 28,45,61,104-105,328
+tests/unit/orchestration/modules/papercuts/tools.test.ts
+  h_4b47e9e4a8b456 6,64
+tests/unit/orchestration/modules/project-notifications/journal.test.ts
+  h_4b47e9e4a8b456 3,8
+tests/unit/orchestration/modules/project-notifications/protocol.test.ts
+  h_4b47e9e4a8b456 15,35
+tests/unit/orchestration/modules/project-notifications/publisher.test.ts
+  h_4b47e9e4a8b456 3,21,40
+tests/unit/orchestration/modules/subagents/_subagent-child-fixtures.ts
+  h_4b47e9e4a8b456 9,204-205
+tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
+  h_4b47e9e4a8b456 10,64,144,632
+tests/unit/orchestration/modules/subagents/subagent-child-inputs.test.ts
+  h_4b47e9e4a8b456 66,116
+tests/unit/orchestration/modules/subagents/subagent-child-recovery.test.ts
+  h_4b47e9e4a8b456 39
+tests/unit/orchestration/modules/workflows/launch-operation.test.ts
+  h_4b47e9e4a8b456 83,97,111-112,129
+tests/unit/orchestration/runner/agent-turn.test.ts
+  h_4b47e9e4a8b456 13,64,67
+tests/unit/orchestration/runner/background-notification-delivery.test.ts
+  h_4b47e9e4a8b456 3,137,180-181,214
+tests/unit/orchestration/session/_child-session-reconciliation-fixtures.ts
+  h_4b47e9e4a8b456 1,41,293,312,417
+tests/unit/orchestration/session/_session-change-fixtures.ts
+  h_4b47e9e4a8b456 6,59
+tests/unit/orchestration/session/_session-manager-fixtures.ts
+  h_4b47e9e4a8b456 7,227,239-240
+tests/unit/orchestration/session/_transcript-projection-fixtures.ts
+  h_4b47e9e4a8b456 1,46-47
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 7,198
+tests/unit/orchestration/session/child-completion-membership.test.ts
+  h_4b47e9e4a8b456 5,18,84,114
+tests/unit/orchestration/session/child-reconciliation-work-count.test.ts
+  h_4b47e9e4a8b456 21,57,187,223,274
+tests/unit/orchestration/session/child-session-reconciliation.test.ts
+  h_4b47e9e4a8b456 5,625,642,657
+tests/unit/orchestration/session/child-workflow-stop.test.ts
+  h_4b47e9e4a8b456 6,44
+tests/unit/orchestration/session/conversation-tree-handle.test.ts
+  h_4b47e9e4a8b456 7,304-305,525
+tests/unit/orchestration/session/conversation-tree-storage.test.ts
+  h_4b47e9e4a8b456 6,334-335,356
+tests/unit/orchestration/session/effect-session-resources.test.ts
+  h_4b47e9e4a8b456 16,34,84,90,144,328,366,395,418
+tests/unit/orchestration/session/file-mutation-recovery-queues.test.ts
+  h_4b47e9e4a8b456 84
+tests/unit/orchestration/session/interrupted-turn-recovery.test.ts
+  h_4b47e9e4a8b456 205
+tests/unit/orchestration/session/live-usage-settlement.test.ts
+  h_4b47e9e4a8b456 208,211,215,222,225,255
+tests/unit/orchestration/session/mutation-evidence-recovery.test.ts
+  h_4b47e9e4a8b456 41-42,109,113,293,353,357
+tests/unit/orchestration/session/reply-wait-restore.test.ts
+  h_4b47e9e4a8b456 153
+tests/unit/orchestration/session/session-auth-profile.test.ts
+  h_4b47e9e4a8b456 3,191-192
+tests/unit/orchestration/session/session-fact-writer.test.ts
+  h_4b47e9e4a8b456 1,3,14-15,17,74,286-324
+tests/unit/orchestration/session/session-manager-fork.test.ts
+  h_4b47e9e4a8b456 4,64-65
+tests/unit/orchestration/session/session-manager-relationships.test.ts
+  h_4b47e9e4a8b456 5,209,481
+tests/unit/orchestration/session/session-persistence-crud.test.ts
+  h_4b47e9e4a8b456 7,104
+tests/unit/orchestration/session/session-save-point-reservations.test.ts
+  h_4b47e9e4a8b456 35
+tests/unit/orchestration/session/session-save-point-writer.test.ts
+  h_4b47e9e4a8b456 199,356
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 29,118
+tests/unit/orchestration/session/subagent-run-recovery.test.ts
+  h_4b47e9e4a8b456 6,49,99,130,151
+tests/unit/orchestration/workflow-host/command-evidence.test.ts
+  h_4b47e9e4a8b456 6,14-15
+tests/unit/orchestration/workflow-host/follow-up-runner-promotion.test.ts
+  h_4b47e9e4a8b456 63
+tests/unit/orchestration/workflow-host/historical-worker-task.test.ts
+  h_4b47e9e4a8b456 10,39,235,339
+tests/unit/orchestration/workflow-host/recovery-input.test.ts
+  h_4b47e9e4a8b456 8,52,207,300,365,391,427,480,602
+tests/unit/orchestration/workflow-host/worker-conversation-tree.test.ts
+  h_4b47e9e4a8b456 193
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 341,369
+tests/unit/orchestration/workflow-host/workflow-controller.test.ts
+  h_4b47e9e4a8b456 117
+tests/unit/orchestration/workflow-host/workflow-progress-atomic-publish.test.ts
+  h_4b47e9e4a8b456 8,26
+tests/unit/workflows/vm/_sqlite-vm-driver.ts
+  h_4b47e9e4a8b456 7,520,539
+tests/unit/workflows/vm/commit-host.test.ts
+  h_4b47e9e4a8b456 3,23,71,73,88
+tests/unit/workflows/vm/golden/_golden-harness.ts
+  h_4b47e9e4a8b456 1,17,19,207
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 19,26,289,302
+tests/unit/workflows/vm/host-conflict.test.ts
+  h_4b47e9e4a8b456 3,93,104,184,237
+tests/unit/workflows/vm/host-interruption.test.ts
+  h_4b47e9e4a8b456 6,87,162,200
+tests/unit/workflows/vm/host-test-support.ts
+  h_4b47e9e4a8b456 1,24,55,66,120
+tests/unit/workflows/vm/launch-atomicity.test.ts
+  h_4b47e9e4a8b456 5,40,124,206
+tests/unit/workflows/vm/replay.test.ts
+  h_4b47e9e4a8b456 5,43,76-77,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ca16dd9a797c630f5275d24ca81bfce9d4084d3c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
