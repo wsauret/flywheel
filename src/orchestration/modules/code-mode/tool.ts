@@ -1,7 +1,6 @@
 // Adapted from opencode `packages/core/src/codemode/tool.ts` (MIT); credited in THIRD-PARTY-NOTICES.md.
 import { Schema } from "effect"
 import type { RuntimeTool, ToolResult } from "../../agent-runtime/tools/types.js"
-import type { CatalogRender } from "./catalog.js"
 import type { CodeModeToolSet } from "./descriptors.js"
 import type { CodeModeService } from "./service.js"
 
@@ -35,8 +34,8 @@ const SCRIPT_ONLY_DESCRIPTION = [
 const CodeInput = Schema.Struct({ source: Schema.String })
 
 export interface CodeToolOptions {
-  /** The catalog of the request's code-only tools; absent while the capture contributes none. */
-  readonly catalog: CatalogRender | undefined
+  /** The catalog text of the request's code-only tools; absent while the capture contributes none. */
+  readonly catalog: string | undefined
   readonly tools: CodeModeToolSet
   readonly service: CodeModeService
   readonly bash: boolean
@@ -45,7 +44,7 @@ export interface CodeToolOptions {
 /** The `code` tool of one request: a script transport over that request's
  *  exact callable map, executed by the process's Code Mode service. */
 export function createCodeTool(options: CodeToolOptions): RuntimeTool {
-  const description = options.catalog ? NESTED_TOOLS_DESCRIPTION : SCRIPT_ONLY_DESCRIPTION
+  const description = options.catalog === undefined ? SCRIPT_ONLY_DESCRIPTION : NESTED_TOOLS_DESCRIPTION
   return {
     name: "code",
     action: "shell_exec",
@@ -54,7 +53,7 @@ export function createCodeTool(options: CodeToolOptions): RuntimeTool {
       options.bash
         ? "Heavy computation and gigabyte-scale data belong in Bash; exceeding the heap growth budget terminates the program. Program intermediates never enter model context."
         : "Exceeding the heap growth budget terminates the program. Program intermediates never enter model context.",
-      ...(options.catalog ? [options.catalog.text] : []),
+      ...(options.catalog === undefined ? [] : [options.catalog]),
     ],
     inputSchema: {
       type: "object",

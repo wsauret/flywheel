@@ -25,6 +25,13 @@ export interface InvocationOwner {
   readonly workers: InvocationWorkerPool
 }
 
+/** The revision whose prepared runtime each live Worker's guest holds: the
+ *  revision of the last start that carried its descriptors. A start at that
+ *  revision sends no descriptors, so the executor clones none and the guest
+ *  rebuilds neither its `tools` trie nor its search index. A Worker that the
+ *  pool retires leaves this map with its last reference. */
+const heldRevisions = new WeakMap<InvocationWorker, string>()
+
 type ImagePart = Extract<LlmToolOutputPart, { type: "image" }>
 type Ended =
   | { readonly kind: "result"; readonly outcome: "ok" | "error"; readonly text: string; readonly ending: Extract<GuestMessage, { type: "result" }>["ending"] }
@@ -234,11 +241,22 @@ export function runInvocation(invocation: CodeModeInvocation, context: ToolConte
       (attached) => Effect.sync(() => attached.detach()),
     )
     const { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } = limits
-    const start: HostMessage = { type: "start", source: invocation.source, descriptors: invocation.tools.descriptors, limits: { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs }, bash: context.capabilities?.("bash") === true }
+    const { revision, descriptors } = invocation.tools
+    const held = revision !== undefined && heldRevisions.get(worker) === revision
+    const start: HostMessage = {
+      type: "start",
+      source: invocation.source,
+      ...(revision === undefined ? {} : { revision }),
+      ...(held ? {} : { descriptors }),
+      limits: { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs },
+      bash: context.capabilities?.("bash") === true,
+    }
     // A descriptor schema that cannot be cloned fails this invocation only.
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: Bun Worker.postMessage has no target origin
     const posted = yield* Effect.exit(Effect.try({ try: () => worker.postMessage(start), catch: (cause) => cause }))
     if (Exit.isFailure(posted)) end({ kind: "failed", message: `Code runtime could not start: ${errorMessage(Cause.squash(posted.cause))}` })
+    // A guest that fails to prepare the runtime crashes, and the pool retires its Worker.
+    else if (revision !== undefined && !held) heldRevisions.set(worker, revision)
     // The one deadline starts once the program is handed over, so queued time
     // never counts and a Worker that never starts is still bounded.
     const { ended, running } = yield* Effect.promise(() => finished.promise).pipe(Effect.timeoutOrElse({

@@ -35,8 +35,18 @@ export type CallReply = typeof CallReplySchema.Type
 
 export const HostMessageSchema = Schema.Union([
   /** `bash` is whether the calling agent may run shell commands, which the
-   *  heap-limit result names as the place for heavy computation. */
-  Schema.Struct({ type: Schema.Literal("start"), source: Schema.String, descriptors: Schema.Array(Descriptor), limits: GuestLimits, bash: Schema.Boolean }),
+   *  heap-limit result names as the place for heavy computation. The guest
+   *  prepares the program's runtime from `descriptors` and holds it when the
+   *  start names a `revision`. A start without `descriptors` names the
+   *  revision whose runtime the guest already holds. */
+  Schema.Struct({
+    type: Schema.Literal("start"),
+    source: Schema.String,
+    revision: Schema.optionalKey(Schema.String),
+    descriptors: Schema.optionalKey(Schema.Array(Descriptor)),
+    limits: GuestLimits,
+    bash: Schema.Boolean,
+  }),
   Schema.Struct({ type: Schema.Literal("call-result"), id: Schema.Number, reply: CallReplySchema }),
   /** Drops the ended invocation's state, collects the Worker's heap, and
    *  takes the heap baseline the next invocation measures against. */

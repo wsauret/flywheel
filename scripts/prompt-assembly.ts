@@ -205,7 +205,7 @@ function hostRuntimes(purpose: AgentPurpose): (readonly [string, unknown])[] {
     list: notDispatched, subscribe: () => noop, diff: notDispatched, prepare: notDispatched, apply: notDispatched,
     refresh: notDispatched, proposal: () => undefined, finalizeSkillPublication: notDispatched,
   };
-  const mcp = { ports: { servers: () => ["docs"], tools: () => [{ server: "docs", name: "lookup", inputSchema: { type: "object" } }], call: notDispatched } };
+  const mcp = { ports: { servers: () => ["docs"], tools: () => [{ server: "docs", name: "lookup", inputSchema: { type: "object" } }], call: notDispatched, toolsGeneration: () => 0 } };
   const services = composeModuleServices([["code-mode", createCodeModeService({ openWorker: notDispatched })], ["mcp", mcp]]);
   return [
     ["web", () => ({ available: () => true, run: notDispatched })],

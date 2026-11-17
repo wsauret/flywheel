@@ -88,6 +88,31 @@ describe("code namespaced MCP", () => {
     expect(planned.eligibleTools.get("work.lookup")?.isConcurrencySafe).toBe(true);
   });
 
+  it("Plans at one MCP tools generation prepare the catalog once, and a new generation names its new namespace", async () => {
+    // Catalog preparation renders each tool's input properties, so the reads
+    // of one tool's properties count the plans that prepared it.
+    let reads = 0;
+    const counted: McpToolHit = { ...hit, inputSchema: { type: "object", get properties() { reads++; return {}; } } };
+    let hits = [counted];
+    let generation = 0;
+    const mcp = mcpRuntimeOver({ ...ports(), servers: () => [...new Set(hits.map((entry) => entry.server))], tools: () => hits, toolsGeneration: () => generation });
+    const code = codeModeRuntimeOver(codeModeService());
+    const contract = async () => {
+      const before = reads;
+      const planned = await planToolExposure({ kernel: testKernelToolDeps({ userDataRoot: process.cwd() }), modules: composeModuleRuntimes([["mcp", mcp], ["code-mode", code]]) });
+      return { text: planned.tools.get("code")?.contract?.(), reads: reads - before };
+    };
+    const first = await contract();
+    const held = await contract();
+    expect(held.text).toBe(first.text);
+    expect(held.reads).toBeLessThan(first.reads);
+    hits = [counted, { ...hit, server: "other" }];
+    generation = 1;
+    const next = await contract();
+    expect(next.reads).toBe(first.reads);
+    expect(next.text).toContain("## Namespaces\n\n- other\n- work");
+  });
+
   it("returns stable authentication and failed-server values without credentials", async () => {
     const auth = await execute(ports("needs_auth"));
     expect(String(auth.result.content)).toContain("needs authentication");

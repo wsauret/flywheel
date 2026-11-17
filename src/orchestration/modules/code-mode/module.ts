@@ -19,8 +19,16 @@ const code = {
       create: ({ kernel, modules }) => {
         const runtime = modules.get(codeModeRuntime)
         if (!runtime) return { reason: "code mode is not wired" }
-        const nestedTools = kernel.moduleSnapshot.contributions.some((contribution) => contribution.domain === "codeTools")
-        return { deferred: runtime.createTool({ nestedTools, bash: kernel.treeCapabilities("bash") }) }
+        const codeTools = kernel.moduleSnapshot.contributions.flatMap((contribution) => contribution.domain === "codeTools" ? [contribution] : [])
+        // Each contribution's generation names its tool and namespace lists in
+        // the composition, so the module ids with their generations name the
+        // whole surface. One contribution with no generation leaves it unnamed.
+        const parts = codeTools.map((contribution) => {
+          const generation = contribution.value.generation?.({ kernel, modules })
+          return generation === undefined ? undefined : `${contribution.module}:${generation}`
+        })
+        const revision = parts.every((part) => part !== undefined) ? parts.join(" ") : undefined
+        return { deferred: runtime.createTool({ nestedTools: codeTools.length > 0, bash: kernel.treeCapabilities("bash"), revision }) }
       },
     },
   },

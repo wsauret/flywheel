@@ -38,7 +38,7 @@ function invocation(batches: { opened: number }): CodeModeInvocation {
   const batch: NestedToolDispatchBatch = { execute: () => Effect.die(new Error("no nested calls")), unsettled: () => [], close: () => Effect.void };
   return {
     source: "return 1",
-    tools: { descriptors: [], callable: new Map(), omissions: [] },
+    tools: { revision: undefined, descriptors: [], callable: new Map(), omissions: [] },
     parentToolUseId: "outer",
     createBatch: () => { batches.opened++; return batch; },
   };

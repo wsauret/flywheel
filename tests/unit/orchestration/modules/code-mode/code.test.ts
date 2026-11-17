@@ -4,8 +4,9 @@ import { createNestedToolDispatchBatch } from "../../../../../src/orchestration/
 import { createToolConcurrencyGate } from "../../../../../src/orchestration/agent-runtime/tools/tool-concurrency-gate.js";
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
+import { describeCodeModeTools } from "../../../../../src/orchestration/modules/code-mode/descriptors.js";
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
-import { codeModeRuntimeOver, codeModeServices, codeToolOver, scriptedWorker } from "../../../../helpers/code-mode-worker.js";
+import { codeModeRuntimeOver, codeModeServices, codeToolOver, InProcessInvocationWorker, scriptedWorker, workerLog } from "../../../../helpers/code-mode-worker.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
@@ -13,12 +14,12 @@ import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js"
 import { dispatchedToolContext } from "../../../../helpers/dispatched-tool-context.js";
 import { turnDispatchHarnesses } from "../../agent-runtime/_turn-dispatch.js";
 
-function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool {
+function runtimeTool(name: string, execute: RuntimeTool["execute"], inputSchema: RuntimeTool["inputSchema"] = { type: "object", properties: {}, additionalProperties: false }): RuntimeTool {
   return {
     name,
     action: "file_read",
     description: `${name} fixture`,
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    inputSchema,
     codeMode: "exclusive",
     codeModeOutput: boundedStringCodeModeOutput,
     isConcurrencySafe: true,
@@ -26,6 +27,7 @@ function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool
   };
 }
 
+const TEXT_INPUT: RuntimeTool["inputSchema"] = { type: "object", properties: { text: { type: "string" } }, required: ["text"] };
 const codeModeService = codeModeServices();
 const { harness: turnHarness } = turnDispatchHarnesses();
 
@@ -124,7 +126,7 @@ describe("code tool", () => {
     // The description is the one home of the script rules (ARCH-CONTEXT-035); the guidelines add only what it lacks.
     expect(tool.promptGuidelines).toEqual([
       "Heavy computation and gigabyte-scale data belong in Bash; exceeding the heap growth budget terminates the program. Program intermediates never enter model context.",
-      createCatalogRenderer()({}).text,
+      createCatalogRenderer()(describeCodeModeTools(new Map(), undefined), []),
     ]);
   });
   it("describes a script runtime with no tool calls, catalog, or Bash advice when the capture holds neither code-only tools nor bash", async () => {
@@ -203,8 +205,7 @@ describe("code tool", () => {
     const begin = `-----BEGIN ${"RSA PRIVATE KEY"}-----`;
     const end = `-----END ${"RSA PRIVATE KEY"}-----`;
     const body = "console-private-body";
-    const nested = runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }));
-    nested.inputSchema = { type: "object", properties: { text: { type: "string" } }, required: ["text"] };
+    const nested = runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }), TEXT_INPUT);
     const run = fixture([nested], { maxLogBytes: Buffer.byteLength(`${begin}\n${body}\n`) });
     const timers = captureLogTimers();
     try {
@@ -228,8 +229,7 @@ describe("code tool", () => {
 
   it("keeps incomplete untruncated console text when only nested previews overflow", async () => {
     const incomplete = `-----BEGIN ${"PRIVATE KEY"}-----\nordinary-incomplete-body`;
-    const nested = runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }));
-    nested.inputSchema = { type: "object", properties: { text: { type: "string" } }, required: ["text"] };
+    const nested = runtimeTool("read", async () => ({ content: "ok", outcome: "ok" }), TEXT_INPUT);
     const run = fixture([nested]);
     const result = await run.tool.execute({
       source: `console.log(${JSON.stringify(incomplete)}); await tools.read({text: "x".repeat(50 * 1024)}); console.log("tail"); return "done"`,
@@ -299,8 +299,7 @@ describe("code tool", () => {
   });
 
   it("streams deeply redacted nested-start breadcrumbs only through cumulative parent output", async () => {
-    const nested = runtimeTool("context7.resolve-library-id", async () => ({ content: "done", outcome: "ok" }));
-    nested.inputSchema = { type: "object", properties: { nested: { type: "object" } }, required: ["nested"] };
+    const nested = runtimeTool("context7.resolve-library-id", async () => ({ content: "done", outcome: "ok" }), { type: "object", properties: { nested: { type: "object" } }, required: ["nested"] });
     const run = fixture([nested]);
     const secret = ["Bearer", "fixturevalue123"].join(" ");
     await run.tool.execute({ source: `return await Promise.all([tools.context7["resolve-library-id"]({ nested: { token: "${secret}" } }), tools.context7["resolve-library-id"]({ nested: { token: "safe" } })])` }, run.context);
@@ -332,8 +331,7 @@ describe("code tool", () => {
       started++;
       atStart.push(run.outputs.at(-1)!);
       return { content: "ok", outcome: "ok" };
-    });
-    nested.inputSchema = { type: "object", properties: { text: { type: "string" } }, required: ["text"] };
+    }, TEXT_INPUT);
     const run = fixture([nested]);
     const result = await run.tool.execute({
       source: `await tools.read({text: "a".repeat(30_000)}); await tools.read({text: "b".repeat(30_000)}); await tools.read({text: "later-small"}); await tools.read({text: "last"}); return "done"`,
@@ -464,8 +462,7 @@ describe("code tool", () => {
 
   it("lets a nested name repair and JSON-text input reach the shared dispatcher", async () => {
     const inputs: unknown[] = [];
-    const read = runtimeTool("demo.lookup", async input => { inputs.push(input); return { content: "ran", outcome: "ok" }; });
-    read.inputSchema = { type: "object", properties: { count: { type: "number" } }, required: ["count"] };
+    const read = runtimeTool("demo.lookup", async input => { inputs.push(input); return { content: "ran", outcome: "ok" }; }, { type: "object", properties: { count: { type: "number" } }, required: ["count"] });
     const bash = runtimeTool("bash", async () => ({ content: "shell ran", outcome: "ok" }));
     const run = fixture([read, bash]);
     const shell = JSON.parse(String((await run.tool.execute({ source: "return await tools.Bash({})" }, run.context)).content));
@@ -495,8 +492,7 @@ describe("code tool", () => {
 
   it("enforces call, aggregate, and timeout limits as diagnostics", async () => {
     let calls = 0;
-    const nested = runtimeTool("read", async () => ({ content: "payload", outcome: "ok" }));
-    nested.execute = async () => { calls += 1; return { content: "payload", outcome: "ok" }; };
+    const nested = runtimeTool("read", async () => { calls += 1; return { content: "payload", outcome: "ok" }; });
     const capped = fixture([nested], { maxToolCalls: 2, maxAggregateResultBytes: 100, timeoutMs: 1000 });
     const result = await capped.tool.execute({ source: "await tools.read({}); await tools.read({}); return await tools.read({})" }, capped.context);
     expect(result.outcome).toBe("error");
@@ -595,6 +591,29 @@ describe("code tool", () => {
     const second = await run.tool.execute({ source: "return typeof globalCounter" }, run.context);
     expect(first.outcome).toBe("error");
     expect(second.content).toBe("undefined");
+  });
+
+  it("A Worker that holds a revision's prepared tools runs the next call at that revision without its descriptors, and a new revision sends them again", async () => {
+    const guests = workerLog(() => new InProcessInvocationWorker());
+    const service = codeModeService({ openWorker: guests.openWorker });
+    const { context } = fixture([], {}, service);
+    const runtime = codeModeRuntimeOver(service);
+    const codeAt = (revision: string, tool: RuntimeTool) => runtime.createTool({ nestedTools: true, bash: true, revision })(new Map([[tool.name, tool]]), new Set()).tool;
+    const read = runtimeTool("read", async () => ({ content: "read result", outcome: "ok" }));
+    const write = runtimeTool("write", async () => ({ content: "write result", outcome: "ok" }));
+
+    expect(await codeAt("mcp:1", read).execute({ source: "return (await tools.read({})).content" }, context)).toEqual({ outcome: "ok", content: "read result" });
+    const held = await codeAt("mcp:1", read).execute({ source: 'const found = await searchCatalog({ query: "read" }); return found.items[0].path + " " + (await tools.read({})).content' }, context);
+    expect(held).toEqual({ outcome: "ok", content: "tools.read read result" });
+    expect(await codeAt("mcp:2", write).execute({ source: "return (await tools.write({})).content" }, context)).toEqual({ outcome: "ok", content: "write result" });
+
+    expect(guests.opened).toHaveLength(1);
+    const starts = guests.opened[0]?.hostMessages.flatMap((message) => message.type === "start" ? [{ revision: message.revision, descriptors: message.descriptors?.map(({ name }) => name) }] : []);
+    expect(starts).toEqual([
+      { revision: "mcp:1", descriptors: ["read"] },
+      { revision: "mcp:1", descriptors: undefined },
+      { revision: "mcp:2", descriptors: ["write"] },
+    ]);
   });
 
   it("records bounded burst memory evidence", async () => {

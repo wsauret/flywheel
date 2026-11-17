@@ -14,7 +14,7 @@ const tool = (name: string, schema: RuntimeToolInput = { type: "object" }): Runt
   execute: async () => ({ outcome: "ok", content: "unused" }),
 });
 
-const describeTools = (...tools: RuntimeTool[]) => describeCodeModeTools(new Map(tools.map((entry) => [entry.name, entry])));
+const describeTools = (...tools: RuntimeTool[]) => describeCodeModeTools(new Map(tools.map((entry) => [entry.name, entry])), undefined);
 
 describe("describeCodeModeTools", () => {
   it("nests canonical MCP paths and keeps the exact callable tool", () => {
@@ -55,8 +55,8 @@ describe("describeCodeModeTools", () => {
   });
 
   it("renders the documented content signature for described tools", () => {
-    const rendered = createCatalogRenderer()(toolTrie(describeTools(tool("read")).descriptors, catalogOnlyCall));
-    expect(rendered.text).toContain("/** Parsed data when the tool's text output is a JSON object or array; otherwise the raw string. */");
-    expect(rendered.text).toContain("content: unknown,");
+    const rendered = createCatalogRenderer()(describeTools(tool("read")), []);
+    expect(rendered).toContain("/** Parsed data when the tool's text output is a JSON object or array; otherwise the raw string. */");
+    expect(rendered).toContain("content: unknown,");
   });
 });

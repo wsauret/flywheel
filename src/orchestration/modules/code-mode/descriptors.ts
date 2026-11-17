@@ -38,6 +38,11 @@ type CallableCodeModeTool = RuntimeTool & { readonly codeModeOutput: BoundedStri
  *  `tools` from, the exact map the host dispatches against, and why each
  *  other script-eligible tool is absent. */
 export interface CodeModeToolSet {
+  /** Names the descriptors: two surfaces of one composition with the same
+   *  revision have equal descriptors, so the catalog and the guest's prepared
+   *  runtime of that revision serve both. Absent while a code-only tool source
+   *  states no generation, so nothing is held across requests. */
+  readonly revision: string | undefined
   readonly descriptors: readonly CodeModeToolDescriptor[]
   readonly callable: ReadonlyMap<string, CallableCodeModeTool>
   readonly omissions: readonly CodeModeOmission[]
@@ -79,7 +84,7 @@ function candidate(name: string, tool: RuntimeTool): Candidate | undefined {
  *  making a second exposure decision. A tool whose path continues past
  *  another tool's path is omitted, whatever order the map holds them in, so
  *  the shorter tool stays callable and the omission is always reported. */
-export function describeCodeModeTools(eligible: ReadonlyMap<string, RuntimeTool>): CodeModeToolSet {
+export function describeCodeModeTools(eligible: ReadonlyMap<string, RuntimeTool>, revision: string | undefined): CodeModeToolSet {
   const candidates = [...eligible].flatMap(([name, tool]) => candidate(name, tool) ?? [])
   const toolPaths = new Set(candidates.flatMap((entry) => entry.kind === "described" ? [entry.descriptor.name] : []))
   const descriptors: CodeModeToolDescriptor[] = []
@@ -99,7 +104,7 @@ export function describeCodeModeTools(eligible: ReadonlyMap<string, RuntimeTool>
     descriptors.push(entry.descriptor)
     callable.set(name, entry.tool)
   }
-  return { descriptors, callable, omissions }
+  return { revision, descriptors, callable, omissions }
 }
 
 type ToolGroup = { [segment: string]: CodeModeTool | ToolGroup }

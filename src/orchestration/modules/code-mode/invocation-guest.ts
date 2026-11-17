@@ -93,15 +93,19 @@ type Resume = (reply: CallReply) => void
 interface Invocation {
   /** The bridge calls that wait for a host reply, by call id. */
   readonly pending: Map<number, Resume>
+  readonly logs: ReturnType<typeof createLogStream>
   /** Whether the program ended and its result was posted. */
   ended: boolean
 }
 
 /** Serves the invocations its host starts on `port`, one at a time, and
- *  posts one result for each. Every program runs in a new interpreter
- *  (`CodeMode.execute`), which owns the program's globals, promises, and
- *  console, so none of them outlives that execution. Before the host reuses
- *  the Worker, it sends `reset`: the guest drops the ended invocation's
+ *  posts one result for each. Every program runs in a new interpreter (the
+ *  `execute` of a prepared `CodeMode` runtime), which owns the program's
+ *  globals, promises, and console, so none of them outlives that execution.
+ *  The guest holds the runtime of the last revision it prepared across
+ *  invocations: it holds only the `tools` trie and the search index, whose
+ *  calls and console lines reach the invocation that runs. Before the host
+ *  reuses the Worker, it sends `reset`: the guest drops the ended invocation's
  *  registries, collects its heap, and takes the heap baseline that the next
  *  invocation's watchdog measures against. The guest never closes its own
  *  Worker: the host terminates it, because terminating a Worker that already
@@ -115,29 +119,50 @@ export function runGuest(port: GuestPort): () => void {
   let nextCallId = 0
   let baselineHeapBytes = process.memoryUsage().heapUsed
   let invocation: Invocation | undefined
+  let held: { readonly revision: string; readonly runtime: CodeMode.Runtime } | undefined
+
+  // Only a running program calls a tool or logs, and its invocation exists
+  // from its start until the reset after its result.
+  const running = (): Invocation => {
+    if (invocation === undefined) throw new Error("Code runtime received a tool call or console line outside a program.")
+    return invocation
+  }
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
+  const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError | ToolRuntimeError>((resume) => {
+    const current = running()
+    const id = nextCallId++
+    current.pending.set(id, (reply) => resume(replyEffect(name, reply)))
+    current.logs.flush()
+    port.postMessage({ type: "call", id, name, input })
+    // An interrupted call is dropped here; the host's nested batch owns
+    // the dispatched work and closes it.
+    return Effect.sync(() => { current.pending.delete(id) })
+  })
+  const onLog = (line: string, view: CodeMode.ConsoleLogView) => running().logs.onLog(line, view)
+
+  // A Worker serves one pool, whose limits do not change, so a held runtime
+  // keeps the limits of the start that prepared it.
+  const prepare = (start: Extract<HostMessage, { type: "start" }>): CodeMode.Runtime => {
+    if (start.descriptors === undefined) {
+      if (held === undefined || held.revision !== start.revision) throw new Error(`Code runtime does not hold the prepared tools of revision '${start.revision}'.`)
+      return held.runtime
+    }
+    const { maxToolCalls, maxLogBytes } = start.limits
+    const runtime = CodeMode.make({
+      tools: toolTrie(start.descriptors, (descriptor, input) => call(descriptor.name, input)),
+      limits: { maxToolCalls, maxLogBytes }, onLog, onUnknownTool: call,
+    })
+    if (start.revision !== undefined) held = { revision: start.revision, runtime }
+    return runtime
+  }
 
   const run = async (start: Extract<HostMessage, { type: "start" }>, current: Invocation): Promise<void> => {
-    const logs = createLogStream(port)
-    // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: the argument that model-written Code Mode code passes to a tool, which the nested tool dispatch decodes
-    const call = (name: string, input: unknown) => Effect.callback<CodeToolResult, ToolError | ToolRuntimeError>((resume) => {
-      const id = nextCallId++
-      current.pending.set(id, (reply) => resume(replyEffect(name, reply)))
-      logs.flush()
-      port.postMessage({ type: "call", id, name, input })
-      // An interrupted call is dropped here; the host's nested batch owns
-      // the dispatched work and closes it.
-      return Effect.sync(() => { current.pending.delete(id) })
-    })
-    const tools = toolTrie(start.descriptors, (descriptor, input) => call(descriptor.name, input))
-    const { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } = start.limits
+    const { maxHeapDeltaBytes, heapSampleMs } = start.limits
     // The Worker runs one invocation at a time. The baseline comes from the
     // Worker's start or from the last reset, which collected every earlier
     // invocation's garbage first, so growth past it is this program's alone.
     const baseline = baselineHeapBytes
-    const execution = CodeMode.execute({
-      code: start.source, tools, limits: { maxToolCalls, maxLogBytes }, onLog: logs.onLog,
-      onUnknownTool: call,
-    })
+    const execution = prepare(start).execute(start.source)
       .pipe(Effect.map((result) => ({ result, ending: "returned" as const })))
     const heapWatchdog = Effect.gen(function* () {
       while (true) {
@@ -146,7 +171,7 @@ export function runGuest(port: GuestPort): () => void {
       }
     })
     const { result, ending } = await Effect.runPromise(Effect.raceFirst(execution, heapWatchdog), { signal: stopped.signal })
-    logs.flush()
+    current.logs.flush()
     current.ended = true
     port.postMessage({ type: "result", outcome: result.ok ? "ok" : "error", text: formatCodeModeResult(result), ending })
   }
@@ -170,7 +195,7 @@ export function runGuest(port: GuestPort): () => void {
     }
     if (message.type === "reset") return reset()
     if (invocation !== undefined) throw new Error("Code runtime received a program before the previous one was reset.")
-    const current: Invocation = { pending: new Map(), ended: false }
+    const current: Invocation = { pending: new Map(), logs: createLogStream(port), ended: false }
     invocation = current
     run(message, current).catch((error: unknown) => {
       if (stopped.signal.aborted) return
