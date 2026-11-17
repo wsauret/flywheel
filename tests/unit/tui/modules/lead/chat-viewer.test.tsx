@@ -100,20 +100,20 @@ describe("the lead's full-chat viewer", () => {
     expect(strip.sent).toEqual(["lead.chat.mark_seen broke failed broke-end", "navigate broke"])
   })
 
-  it("has a muted Close chat button beside Back and Open as tab that closes the shown chat with no question and goes back to the lead", async () => {
+  it("has a muted Close session button beside Back and Open as tab that closes the shown chat with no question and goes back to the lead", async () => {
     const strip = await openViewer()
     // The harness draws the viewer under the list; with the list gone, the viewer's navigation row is on screen.
     strip.setSessionId("elsewhere")
     await strip.viewerKey("pagedown")
     const frame = strip.rendered.captureCharFrame().split("\n")
-    const y = frame.findIndex((line) => line.includes("Close chat"))
+    const y = frame.findIndex((line) => line.includes("Close session"))
     expect(y).toBeGreaterThanOrEqual(0)
-    expect(frame[y]).toMatch(/Back\s+esc\s+Open as tab\s+ctrl\+t\s+Close chat/)
-    const label = strip.rendered.captureSpans().lines[y]!.spans.find((span) => span.text.includes("Close chat"))
+    expect(frame[y]).toMatch(/Back\s+esc\s+Open as tab\s+ctrl\+t\s+Close session/)
+    const label = strip.rendered.captureSpans().lines[y]!.spans.find((span) => span.text.includes("Close session"))
     expect(label?.fg.equals(theme.textMuted)).toBe(true)
     expect(label?.bg.equals(theme.backgroundElement)).toBe(true)
 
-    await strip.rendered.mockMouse.click(frame[y]!.indexOf("Close chat") + 1, y)
+    await strip.rendered.mockMouse.click(frame[y]!.indexOf("Close session") + 1, y)
     await strip.rendered.renderOnce()
     expect(chatSends(strip)).toEqual(["session.close asks"])
     expect(strip.overlay.viewer.stack).toHaveLength(0)
@@ -163,8 +163,8 @@ describe("the lead's full-chat viewer", () => {
     // The harness draws the viewer under the list; with the list gone, the viewer's navigation row is on screen.
     strip.setSessionId("elsewhere")
     await strip.viewerKey("pagedown")
-    expect(strip.rendered.captureCharFrame()).toContain("Previous chat")
-    expect(strip.rendered.captureCharFrame()).not.toContain("Next chat")
+    expect(strip.rendered.captureCharFrame()).toMatch(/Previous +shift\+tab/)
+    expect(strip.rendered.captureCharFrame()).not.toMatch(/Next +tab/)
     for (let step = 0; step < 3; step += 1) await strip.viewerKey("tab", { shift: true })
     expect(title(strip.rendered.captureCharFrame())).toBe("asks")
   })

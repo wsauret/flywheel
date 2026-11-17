@@ -9,7 +9,7 @@ export type LeadFoundChat = FoundChat & { readonly listed: boolean }
 function chatText(chat: LeadFoundChat, rank: number): string {
   const active = chat.lastActivityAt === undefined ? "" : `, last active ${new Date(chat.lastActivityAt).toISOString().slice(0, 10)}`
   const lines = [
-    `${rank}. Chat ${chat.sessionId} "${chat.title}"${active}, ${chat.listed ? "in your list" : "not in your list"}.`,
+    `${rank}. Session ${chat.sessionId} "${chat.title}"${active}, ${chat.listed ? "in your list" : "not in your list"}.`,
     `   Match: ${chat.snippet.replace(/\s+/g, " ").trim()}`,
   ]
   if (chat.excerpt) lines.push(`   ${chat.excerpt.source === "checkpoint" ? "Current state" : "Last message"}: ${chat.excerpt.text}`)
@@ -21,7 +21,7 @@ export function createFindChatTool(find: (query: string) => Promise<readonly Lea
   return {
     name: FIND_CHAT_TOOL_NAME,
     action: "ui_meta",
-    description: "Search every past chat of this project for earlier work, by 2 to 5 distinctive keywords, such as an artifact, PR, ticket, branch, model, or file name. It answers up to 8 chats, best first, each with its id, the matching words, and where it stands. When none fits, try once with other keywords.",
+    description: "Search every past session of this project for earlier work, by 2 to 5 distinctive keywords, such as an artifact, PR, ticket, branch, model, or file name. It answers up to 8 sessions, best first, each with its id, the matching words, and where it stands. When none fits, try once with other keywords.",
     inputSchema: {
       type: "object",
       properties: {
@@ -35,8 +35,8 @@ export function createFindChatTool(find: (query: string) => Promise<readonly Lea
       const query = typeof input.query === "string" ? input.query.trim() : ""
       if (!query) return { content: "find_chat requires `query`, 2 to 5 keywords.", outcome: "error" }
       const chats = await find(query)
-      if (chats.length === 0) return { content: `No past chat matches "${query}".`, outcome: "ok" }
-      return { content: ["Chats that match, best first:", ...chats.map((chat, index) => chatText(chat, index + 1))].join("\n"), outcome: "ok" }
+      if (chats.length === 0) return { content: `No past session matches "${query}".`, outcome: "ok" }
+      return { content: ["Sessions that match, best first:", ...chats.map((chat, index) => chatText(chat, index + 1))].join("\n"), outcome: "ok" }
     },
   }
 }

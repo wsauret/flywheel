@@ -515,7 +515,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   const routeTarget = async (input: RouteInput, forward: LeadForward & { readonly sourceEntryIds: NonEmptyIds }): Promise<{ readonly sessionId: string; readonly started?: "now" | "earlier" } | { readonly refused: string }> => {
     const state = journal.state()
     if (input.kind === "existing") {
-      if (input.chat === undefined || !await routable(input.chat)) return { refused: `${input.chat ?? "(none named)"} is not a chat of this project that you can route to` }
+      if (input.chat === undefined || !await routable(input.chat)) return { refused: `${input.chat ?? "(none named)"} is not a session of this project that you can route to` }
       return { sessionId: input.chat }
     }
     const earlier = state.startedBy(forward)
@@ -531,7 +531,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   async function appendMark(sessionId: string, fact: Parameters<LeadJournal["append"]>[0]): Promise<MarkOutcome> {
     if (!services.enabled()) return { ok: true }
     await reconcileJournal()
-    if (!journal.state().members.has(sessionId)) return { ok: false, error: `chat ${sessionId} is not in the lead's list` }
+    if (!journal.state().members.has(sessionId)) return { ok: false, error: `session ${sessionId} is not in the lead's list` }
     // The journal folds its own append, so the store's broadcast of it applies nothing: refresh the row here.
     if (await journal.append(fact)) rows?.refresh(sessionId)
     return { ok: true }
@@ -632,7 +632,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         agentCards: (sessionId: string) => services.executionEnvironment().liveAgentCards(sessionId),
       }
       if (chat === undefined) return readChatRoster(deps, current.rows().map((row) => row.sessionId))
-      if (!await routable(chat)) return { kind: "refused", reason: `${chat} is not a chat of this project other than you` }
+      if (!await routable(chat)) return { kind: "refused", reason: `${chat} is not a session of this project other than you` }
       return readChatDetail(deps, chat, before)
     },
     async findChats(query) {

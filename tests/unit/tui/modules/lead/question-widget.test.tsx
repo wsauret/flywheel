@@ -308,7 +308,7 @@ describe("a chat's question in the lead's transcript (PI-LEAD-005)", () => {
     try {
       const frame = await tab.frame()
       expect(frame).toContain("Skipped")
-      expect(frame).toContain("Withdrawn by the chat")
+      expect(frame).toContain("Withdrawn by the session")
     } finally { tab.dispose() }
   })
 

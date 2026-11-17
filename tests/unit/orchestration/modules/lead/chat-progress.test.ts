@@ -56,17 +56,17 @@ test("chat_progress answers a started chat's pending question, its context, and 
   expect(result.outcome).toBe("ok")
   const text = String(result.content)
   // The chat has no runner, as after a close at rest, while its question waits.
-  expect(text).toContain(`Chat ${chat} "New Chat": waiting for the person's answer; its last turn stopped on a question for the person.`)
+  expect(text).toContain(`Session ${chat} "New Chat": waiting for the person's answer; its last turn stopped on a question for the person.`)
   expect(text).toContain(`Context:\n${CONTEXT}\n`)
   expect(text).toContain(`Question (Form): ${QUESTION.question}`)
   expect(text).toContain("- Sign-in form: Only the sign-in form gets the new check. (recommended)\n- Both forms\n- Other (free text)")
   // The conversation reads newest first, and the call's input is not part of it.
-  expect(text).toContain("Its conversation, newest first:\nThe person: Fix the login page\nThe chat: Added the sign-in form.\nThe person: Add a sign-in form\nThat is the start of the conversation.")
+  expect(text).toContain("Its conversation, newest first:\nThe person: Fix the login page\nThe session: Added the sign-in form.\nThe person: Add a sign-in form\nThat is the start of the conversation.")
   expect(text).toContain("It has no checkpoint.")
   expect(text).toContain("It runs no other agent now.")
 
   const roster = await tool.execute({}, makeContext())
-  expect(String(roster.content)).toContain(`Chat ${chat} `)
+  expect(String(roster.content)).toContain(`Session ${chat} `)
   expect(String(roster.content)).toContain("A question waits for the person.")
 })
 
@@ -96,16 +96,16 @@ test("chat_progress reads a listed chat that the lead did not start, also after 
   const other = await lead.supervisor.openSessionRuntime()
   await conversation.appendConversation(other, [{ kind: "user", content: "Fix the header", origin: "human" }])
   let listed = ""
-  for (let attempt = 0; attempt < 200 && !listed.includes(`Chat ${other} `); attempt += 1) {
+  for (let attempt = 0; attempt < 200 && !listed.includes(`Session ${other} `); attempt += 1) {
     await Bun.sleep(5)
     listed = String((await tool.execute({}, makeContext())).content)
   }
-  expect(listed).toContain(`Chat ${other} `)
+  expect(listed).toContain(`Session ${other} `)
   await lead.supervisor.closeChat(other)
   for (let attempt = 0; attempt < 200 && lead.service.journal.state().members.has(other); attempt += 1) await Bun.sleep(5)
   expect(lead.service.journal.state().members.has(other)).toBe(false)
   // The chat left the list, so the overview names it no more, and the lead still reads where it stands.
-  expect(String((await tool.execute({}, makeContext())).content)).not.toContain(`Chat ${other} `)
+  expect(String((await tool.execute({}, makeContext())).content)).not.toContain(`Session ${other} `)
   const closed = await tool.execute({ chat: other }, makeContext())
   expect(closed.outcome).toBe("ok")
   expect(String(closed.content)).toContain("The person: Fix the header")
@@ -114,7 +114,7 @@ test("chat_progress reads a listed chat that the lead did not start, also after 
   if (leadSessionId === null) throw new Error("expected the lead to open")
   const refused = await tool.execute({ chat: leadSessionId }, makeContext())
   expect(refused.outcome).toBe("error")
-  expect(String(refused.content)).toContain(`${leadSessionId} is not a chat of this project other than you`)
+  expect(String(refused.content)).toContain(`${leadSessionId} is not a session of this project other than you`)
 })
 
 /** A workflow card of a chat's live transcript. A workflow's card states its progress only once its run's summary
@@ -177,7 +177,7 @@ test("chat_progress reads where a chat stands: its checkpoint, its running subag
   expect(text).not.toContain("Finished check")
   expect(text).toMatch(/Its newest calls, newest first: bash x2, read \([^)\n]*login\.ts\)\n/)
   // A progress update is text that the chat said to the person; other thinking is private.
-  expect(text).toContain("Its conversation, newest first:\nThe chat: Checking who calls it.\nI will read the handler.\nThe person: Fix the login page")
+  expect(text).toContain("Its conversation, newest first:\nThe session: Checking who calls it.\nI will read the handler.\nThe person: Fix the login page")
   for (const hidden of ["Private reasoning", "handler output", "12 pass", "grep -rn", "export function"]) expect(text).not.toContain(hidden)
 })
 
@@ -198,7 +198,7 @@ test("chat_progress pages a long conversation back through the cursor that each 
   let text = String((await tool.execute({ chat }, makeContext())).content)
   expect(text.length).toBeLessThan(4_500)
   for (let page = 0; page < 10; page += 1) {
-    seen.push(...[...text.matchAll(/^The (?:chat|person): (Step \d+|Go on \d+|Add a sign-in form|Added the sign-in form)/gm)].map((match) => match[1]!))
+    seen.push(...[...text.matchAll(/^The (?:session|person): (Step \d+|Go on \d+|Add a sign-in form|Added the sign-in form)/gm)].map((match) => match[1]!))
     const cursor = /call again with before "(\d+:\d+)"/.exec(text)?.[1]
     if (cursor === undefined) break
     const answer = await tool.execute({ chat, before: cursor }, makeContext())
@@ -271,5 +271,5 @@ test("a busy chat's answer stays within its budget and names every agent that it
   for (let index = 0; index < 10; index += 1) expect(text).toContain(`- workflow "Review PR ${index} `)
   // The calls come from the entries that the page walks.
   expect(text).toContain("Its newest calls, newest first: read (Read number-11.ts)\n")
-  expect(text).toMatch(/Its conversation, newest first:\nThe chat: Reply11 /)
+  expect(text).toMatch(/Its conversation, newest first:\nThe session: Reply11 /)
 })

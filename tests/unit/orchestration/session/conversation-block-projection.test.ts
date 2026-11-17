@@ -423,7 +423,7 @@ describe("tree -> output blocks re-projection", () => {
     const assistant = entry({ kind: "assistant", content: [{ type: "tool_use", id: "toolu_route", name: "route_request", input: { kind: "new" } }] })
     const result = entry({ kind: "toolResult", toolUseId: "toolu_route", content: [{ type: "text", text: "Started chat 99b414b85fde \"New Chat\" with the person's messages.\nThe messages, by their first line:" }] })
     const meta = new Map([["toolu_route", { targetName: "New Chat", targetSessionId: "99b414b85fde" }]])
-    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: meta })[0]).toMatchObject({ kind: "tool", presentation: { name: "Route to new chat", detail: "New Chat" }, targetSessionId: "99b414b85fde" })
+    expect(projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: meta })[0]).toMatchObject({ kind: "tool", presentation: { name: "Route to new session", detail: "New Chat" }, targetSessionId: "99b414b85fde" })
     // A result recorded before its details stated the chat keeps its recorded title and names no session.
     const old = projectBlocksFromEntries([assistant, result], { executionCwd: CWD, toolResultMeta: new Map([["toolu_route", { targetName: "New Chat" }]]) })[0]
     expect(old).toMatchObject({ kind: "tool", presentation: { detail: "New Chat" } })

@@ -44,7 +44,7 @@ The Sessions list does not show the lead, because the lead is always the first t
 
 ## PI-LEAD-011: The lead speaks as the person's assistant
 
-The lead speaks as the person's assistant, and its own words lead its transcript. It writes nothing before or between its calls. After its calls, it says in one short sentence what it did, such as "I resumed the chat that did that work and passed your message to it." A message that clearly responds to the content of one chat's report or question goes to that chat with no line at all. The lead never tells the person to reply in a chat. In the terminal, its calls gather under headings (PI-LEAD-017).
+The lead speaks as the person's assistant, and its own words lead its transcript. It writes nothing before or between its calls. After its calls, it says in one short sentence what it did, such as "I resumed the session that did that work and passed your message to it." The lead and its screen call every other conversation a session. A reply that clearly concerns one session's report or question goes to that session with no line. The lead never tells the person to reply in a session. In the terminal, its calls gather under headings (PI-LEAD-017).
 
 ## PI-LEAD-012: Every chat reports in one shape
 

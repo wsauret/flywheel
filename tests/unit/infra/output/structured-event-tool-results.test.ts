@@ -35,7 +35,7 @@ describe("resolveTrackedToolResult", () => {
 
   it("names the chat that a route started from its result, and states when the call returned, once", () => {
     const builder = new StructuredOutputBuilder();
-    builder.pushStandaloneToolEntry({ kind: "tool", id: "route-1", name: "route_request", presentation: { name: "Route to new chat", detail: "" }, timestamp: 1_000, status: "pending" });
+    builder.pushStandaloneToolEntry({ kind: "tool", id: "route-1", name: "route_request", presentation: { name: "Route to new session", detail: "" }, timestamp: 1_000, status: "pending" });
     const result = textContent("Started chat 99b414b85fde \"New Chat\" with the person's messages.");
     resolveTrackedToolResultAtCwd(builder, { kind: "standalone", toolName: "route_request", streamsInput: false }, "route-1", "ok", "/workspace", result, { targetName: "New Chat", targetSessionId: "99b414b85fde" }, undefined, undefined, 1_400);
     expect(toolBlock(builder)).toMatchObject({ status: "completed", targetSessionId: "99b414b85fde", settledAt: 1_400, presentation: { detail: "New Chat" } });

@@ -348,7 +348,7 @@ describe("output projection child cards", () => {
     const toRecipient: AnyBlock = { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Draft plan" }, action: "ui_meta", status: "completed", timestamp: 1, targetSessionId: "recipient" }
     const toDeleted: AnyBlock = { kind: "tool", id: "to-deleted", name: "message_session", presentation: { name: "Message to", detail: "Old helper" }, action: "ui_meta", status: "completed", timestamp: 2, targetSessionId: "deleted" }
     // A route row's own name says that it addresses a chat, so its detail is the chat's title alone.
-    const route: AnyBlock = { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new chat", detail: "New Chat" }, action: "ui_meta", status: "completed", timestamp: 3, targetSessionId: "recipient" }
+    const route: AnyBlock = { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new session", detail: "New Chat" }, action: "ui_meta", status: "completed", timestamp: 3, targetSessionId: "recipient" }
     try {
       store.openSessionRuntime({ sessionId: "parent", conversationId: "conv-parent" })
       store.updateChatEntry("parent", { outputBlocks: [toRecipient, toDeleted, route], visibleMessageCountSuffix: 0, outputChanges: batch([upsertChange(0, toRecipient), upsertChange(1, toDeleted), upsertChange(2, route)]) })
@@ -356,7 +356,7 @@ describe("output projection child cards", () => {
       expect(deltas(s.patches, "parent").flatMap((delta) => delta.blocks).map((change) => change.kind === "upsert" ? change.block : undefined)).toEqual([
         { kind: "tool", id: "to-recipient", name: "message_session", presentation: { name: "Message to", detail: "Chat · Plan the release" }, action: "ui_meta", status: "completed", timestamp: 1 },
         { kind: "tool", id: "to-deleted", name: "message_session", presentation: { name: "Message to", detail: "Old helper" }, action: "ui_meta", status: "completed", timestamp: 2 },
-        { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new chat", detail: "Plan the release" }, action: "ui_meta", status: "completed", timestamp: 3 },
+        { kind: "tool", id: "route", name: "route_request", presentation: { name: "Route to new session", detail: "Plan the release" }, action: "ui_meta", status: "completed", timestamp: 3 },
       ])
       s.patches.length = 0
 

@@ -1,10 +1,10 @@
 import { singleLine, strField, type ToolInput } from "../detail-helpers.js";
 import type { ToolDisplay } from "../types.js";
 
-/** The name of a route row that started a new chat. */
-export const ROUTE_TO_NEW_CHAT = "Route to new chat";
-/** The name of a route row that sent the request to a chat that exists. */
-export const ROUTE_TO_CHAT = "Route to";
+/** The name of a route row that started a new session. */
+export const ROUTE_TO_NEW_SESSION = "Route to new session";
+/** The name of a route row that sent the request to a session that exists. */
+export const ROUTE_TO_SESSION = "Route to";
 
 /** The first line of each passage of a split request, as the route's input names them. */
 function partLines(input: ToolInput): string[] {
@@ -36,7 +36,7 @@ export const routeRequestDisplay: ToolDisplay = {
     const kind = strField(input, "kind");
     if (kind !== "new" && kind !== "existing") return "input_not_ready";
     const target = context?.targetDescription ?? strField(input, "chat");
-    return { name: kind === "new" ? ROUTE_TO_NEW_CHAT : ROUTE_TO_CHAT, detail: singleLine(target ?? "") ?? "" };
+    return { name: kind === "new" ? ROUTE_TO_NEW_SESSION : ROUTE_TO_SESSION, detail: singleLine(target ?? "") ?? "" };
   },
 };
 
@@ -44,12 +44,12 @@ export const routeRequestDisplay: ToolDisplay = {
 export const chatProgressDisplay: ToolDisplay = {
   name: "chat_progress",
   action: "ui_meta",
-  displayName: "Chat Progress",
-  verbs: { progressive: "Reading chat progress", past: "Read chat progress" },
+  displayName: "Session Progress",
+  verbs: { progressive: "Reading session progress", past: "Read session progress" },
   isOptimistic: false,
   targetSession: (input) => strField(input, "chat") || undefined,
   getPresentation: (input, _executionCwd, context) => {
     const chat = strField(input, "chat");
-    return { name: "Chat progress", detail: chat ? singleLine(context?.targetDescription ?? chat) ?? chat : "all chats" };
+    return { name: "Session progress", detail: chat ? singleLine(context?.targetDescription ?? chat) ?? chat : "all sessions" };
   },
 };

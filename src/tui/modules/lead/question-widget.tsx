@@ -243,7 +243,7 @@ function settledQuestionLines(outcome: Exclude<LeadQuestionOutcome, { state: "pe
       return answers.length === 1 ? answers.map(([, answer]) => `Answered: ${answer}`) : answers.map(([question, answer]) => `${question}: ${answer}`)
     }
     case "skipped": return ["Skipped"]
-    case "withdrawn": return ["Withdrawn by the chat"]
+    case "withdrawn": return ["Withdrawn by the session"]
     case "unknown": return ["No longer waits"]
   }
 }

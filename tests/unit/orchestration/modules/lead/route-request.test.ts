@@ -128,7 +128,7 @@ test("a new route starts a chat whose first entry is the person's message with i
   const factsBefore = leadFacts().length
   const repeated = await lead.again({ kind: "new" })
   expect(repeated.outcome).toBe("ok")
-  expect(textOf(repeated)).toContain(`These messages already started chat ${started}`)
+  expect(textOf(repeated)).toContain(`These messages already started session ${started}`)
   expect(repeated.details).toMatchObject({ targetSessionId: started })
   expect((await chatIds()).filter((id) => !before.includes(id))).toEqual([started])
   expect(leadFacts()).toHaveLength(factsBefore)
@@ -142,7 +142,7 @@ test("a note arrives after the person's message as a message from the lead, and 
   const target = startedChat()
   const [source] = await userEntries(lead.leadSessionId)
   // The target's runner has not started, so the kernel holds the note until the chat reads it.
-  expect(textOf(result)).toContain("Your note waits until the chat runs again.")
+  expect(textOf(result)).toContain("Your note waits until the session runs again.")
   await lead.again({ kind: "new", note: "Chat abc changes the same header." })
   await settled()
   expect(await commitHeldInput(target)).toBe(1)
@@ -198,7 +198,7 @@ test("an existing route reaches any chat of the project, also one that the perso
   for (const chat of [subagent, deleted, lead.leadSessionId]) {
     const refused = await lead.route([{ kind: "user", content: "Do it there", origin: "human" }], { kind: "existing", chat })
     expect(refused.outcome).toBe("error")
-    expect(textOf(refused)).toContain(`${chat} is not a chat of this project that you can route to`)
+    expect(textOf(refused)).toContain(`${chat} is not a session of this project that you can route to`)
   }
   expect(leadFacts().map((fact) => fact.type)).toEqual(["lead.chat.designated", "lead.chat.closed", "lead.chat.closed", "lead.request.forwarded", "lead.request.forwarded"])
 })
@@ -265,10 +265,10 @@ test("find_chat answers the past chats that match, best first, marks the chats i
   expect(result.outcome).toBe("ok")
   const text = textOf(result)
   for (const absent of [lead.leadSessionId, deleted, subagent]) expect(text).not.toContain(absent)
-  expect(text.startsWith("Chats that match, best first:\n1. Chat ")).toBe(true)
-  expect(text).toMatch(new RegExp(`\\d\\. Chat ${past} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, not in your list\\.\\n   Match: Build the \\[dim_land\\] model\\n   Last message: The dim_land model is built and PR 5132 is open\\.`))
-  expect(text).toMatch(new RegExp(`\\d\\. Chat ${listed} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, in your list\\.`))
-  expect(textOf(await createFindChatTool((query) => lead.service.findChats(query)).execute({ query: "kafka" }, makeContext({ sessionId: lead.leadSessionId })))).toBe('No past chat matches "kafka".')
+  expect(text.startsWith("Sessions that match, best first:\n1. Session ")).toBe(true)
+  expect(text).toMatch(new RegExp(`\\d\\. Session ${past} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, not in your list\\.\\n   Match: Build the \\[dim_land\\] model\\n   Last message: The dim_land model is built and PR 5132 is open\\.`))
+  expect(text).toMatch(new RegExp(`\\d\\. Session ${listed} "[^"]*", last active \\d{4}-\\d{2}-\\d{2}, in your list\\.`))
+  expect(textOf(await createFindChatTool((query) => lead.service.findChats(query)).execute({ query: "kafka" }, makeContext({ sessionId: lead.leadSessionId })))).toBe('No past session matches "kafka".')
 })
 
 test("in a turn that a notice started, a route is refused, also with earlier turns", async () => {
@@ -337,7 +337,7 @@ test("a message split into parts starts one chat per part with only its passages
 
   const factsBefore = leadFacts().length
   const repeated = await lead.again(loginInput)
-  expect(textOf(repeated)).toContain(`These parts already started chat ${loginChat}`)
+  expect(textOf(repeated)).toContain(`These parts already started session ${loginChat}`)
   expect(leadFacts()).toHaveLength(factsBefore)
   expect((await chatIds()).filter((id) => !before.includes(id))).toHaveLength(2)
   // The route row shows the first line of each part.

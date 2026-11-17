@@ -23,7 +23,7 @@ for (const width of [80, 140]) {
       const frame = rendered.captureCharFrame()
       expect(frame).toContain("Close the lead chat?")
       const text = frame.split("\n").map((line) => line.replace(/^[│ ]+|[│ ]+$/gu, "")).filter(Boolean).join(" ")
-      expect(text).toContain("The chats that it started keep working. /lead opens the lead again.")
+      expect(text).toContain("The sessions that it started keep working. /lead opens the lead again.")
       expect(frame).toContain("> Cancel")
       expect(frame).toContain(" Close lead ")
       expect(frame).toContain("enter choose")

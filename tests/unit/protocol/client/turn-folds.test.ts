@@ -3,10 +3,10 @@ import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/pro
 import { createTurnFolds, foldTurns, gatherCallStretches, rowIdentity, type CallStretch, type TurnFold } from "../../../../src/protocol/client/turn-folds.js"
 
 const person: FrontendOutputBlock = { kind: "userMessage", id: "person", content: "Look into the flaky test", timestamp: 1000, pending: false, injected: false }
-const route: FrontendToolEntry = { kind: "tool", id: "route", name: "route_request", action: "ui_meta", presentation: { name: "Route to new chat", detail: "" }, status: "completed", timestamp: 2000 }
+const route: FrontendToolEntry = { kind: "tool", id: "route", name: "route_request", action: "ui_meta", presentation: { name: "Route to new session", detail: "" }, status: "completed", timestamp: 2000 }
 const answer: FrontendOutputBlock = { kind: "text", id: "a1", content: "A new chat investigates it.", timestamp: 3000 }
 // A hidden notice woke the lead after its answer: the first row of the new turn carries the runtime's mark.
-const progress: FrontendToolEntry = { kind: "tool", id: "progress", name: "chat_progress", action: "ui_meta", presentation: { name: "Chat progress", detail: "" }, status: "completed", timestamp: 10_000, turnStart: true }
+const progress: FrontendToolEntry = { kind: "tool", id: "progress", name: "chat_progress", action: "ui_meta", presentation: { name: "Session progress", detail: "" }, status: "completed", timestamp: 10_000, turnStart: true }
 const comment: FrontendOutputBlock = { kind: "text", id: "a2", content: "That chat asks you a question.", timestamp: 12_000 }
 
 const presented = (rows: readonly FrontendOutputBlock[]) => ({ rows, boundaryBefore: rows.map(() => false) })

@@ -173,9 +173,9 @@ function LeadChatViewer(props: {
             {/* While a turn runs, Escape interrupts it instead of going back. */}
             <Button label="Back" {...(surface.interruptible() ? {} : { hotkey: "esc" })} muted onPress={props.close} />
             <Button label="Open as tab" hotkey="ctrl+t" muted onPress={props.openAsTab} />
-            <Button label="Close chat" muted onPress={props.closeChat} />
-            <Show when={props.canMove(-1)}><Button label="Previous chat" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>
-            <Show when={props.canMove(1)}><Button label="Next chat" hotkey="tab" muted onPress={() => props.move(1)} /></Show>
+            <Button label="Close session" muted onPress={props.closeChat} />
+            <Show when={props.canMove(-1)}><Button label="Previous" hotkey="shift+tab" muted onPress={() => props.move(-1)} /></Show>
+            <Show when={props.canMove(1)}><Button label="Next" hotkey="tab" muted onPress={() => props.move(1)} /></Show>
           </box>
         </box>
       </ModalFrame>

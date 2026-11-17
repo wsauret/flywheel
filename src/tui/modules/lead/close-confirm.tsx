@@ -18,7 +18,7 @@ export function LeadCloseConfirm(props: { focus: Accessor<LeadCloseFocus>; onCan
   return <ModalFrame title="Close lead" width={modalWidth()} onClose={props.onCancel}>
     <box flexDirection="column" paddingTop={1}>
       <text fg={theme.text} wrapMode="word">Close the lead chat?</text>
-      <text fg={theme.textMuted} wrapMode="word">{`The chats that it started keep working. /${LEAD_COMMAND} opens the lead again.`}</text>
+      <text fg={theme.textMuted} wrapMode="word">{`The sessions that it started keep working. /${LEAD_COMMAND} opens the lead again.`}</text>
     </box>
     <box flexDirection="row" gap={1} paddingTop={1}>
       <Button label="Cancel" focused={props.focus() === "cancel"} onPress={props.onCancel} />

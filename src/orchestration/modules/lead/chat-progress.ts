@@ -39,7 +39,7 @@ const CALLS_CHARS = 300
 const GOAL_CHARS = 100
 /** The longest line that ends a page: its cursor, or the start of the conversation. */
 const PAGE_END_CHARS = 64
-const SPEAKER = { person: "The person", chat: "The chat" } as const
+const SPEAKER = { person: "The person", chat: "The session" } as const
 const CALLS_LABEL = "Its newest calls, newest first: "
 const CONVERSATION_HEADING = "Its conversation, newest first:"
 
@@ -306,7 +306,7 @@ export async function readChatDetail(deps: ChatProgressDeps, sessionId: string, 
   const from = before === undefined ? undefined : parseCursor(before)
   if (before !== undefined && from === undefined) return { kind: "refused", reason: `"${before}" is not a cursor that an earlier answer named` }
   const state = await chatState(deps, sessionId)
-  if (!state) return { kind: "refused", reason: `chat ${sessionId} no longer exists` }
+  if (!state) return { kind: "refused", reason: `session ${sessionId} no longer exists` }
   if (before !== undefined) {
     const room = pageRoom(pageHeadLines(state.chat, before))
     return { kind: "page", chat: state.chat, cursor: before, conversation: await readConversationPage(deps.reader, state.conversationId, from, room, () => {}) }
@@ -340,7 +340,7 @@ export function questionText({ context, questions }: PendingQuestion): string {
   return lines.join("\n")
 }
 
-const headline = (chat: ChatState): string => `Chat ${chat.sessionId} "${chat.title}": ${chat.activity}; its last turn ${chat.lastTurn}.`
+const headline = (chat: ChatState): string => `Session ${chat.sessionId} "${chat.title}": ${chat.activity}; its last turn ${chat.lastTurn}.`
 
 function conversationLines({ said, before }: ConversationPage): string[] {
   const lines = said.length === 0 ? ["(no messages)"] : said.map(({ from, text }) => `${SPEAKER[from]}: ${text}`)
@@ -362,7 +362,7 @@ function detailHeadLines({ chat, standing, question, running }: DetailHead): str
     "",
     ...(standing ? ["Where its checkpoint says it stands:", standing.currentState || "(not stated)", `Next step: ${standing.nextStep || "(not stated)"}`] : ["It has no checkpoint."]),
     "",
-    question ? `The chat's pending question for the person, word for word:\n${questionText(question)}` : "No question waits for the person.",
+    question ? `The session's pending question for the person, word for word:\n${questionText(question)}` : "No question waits for the person.",
     "",
     ...runningLines(running),
   ]
@@ -375,8 +375,8 @@ const pageHeadLines = (chat: ChatState, cursor: string): string[] => [headline(c
 function progressText(progress: Exclude<ChatProgress, { kind: "refused" }>): string {
   switch (progress.kind) {
     case "roster":
-      if (progress.chats.length === 0) return "Your list holds no chats."
-      return ["The chats in your list:", ...progress.chats.map((chat) => `- ${headline(chat)}${chat.question ? " A question waits for the person." : ""}`)].join("\n")
+      if (progress.chats.length === 0) return "Your list holds no sessions."
+      return ["The sessions in your list:", ...progress.chats.map((chat) => `- ${headline(chat)}${chat.question ? " A question waits for the person." : ""}`)].join("\n")
     case "page":
       return [...pageHeadLines(progress.chat, progress.cursor), ...conversationLines(progress.conversation)].join("\n")
     case "detail":
@@ -396,12 +396,12 @@ export function createChatProgressTool(progress: (chat: string | undefined, befo
   return {
     name: CHAT_PROGRESS_TOOL_NAME,
     action: "ui_meta",
-    description: "Read the progress of this project's chats. Without `chat`, it lists each chat in your list, which holds every chat that works or needs the person, whoever started it, with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers where that chat stands, also for a chat that left your list: its checkpoint's current state and next step, its pending question with its context and options word for word, the agents that it runs now, its newest calls, and its conversation newest first without tool output. Pass `before` with the cursor that an answer names to read earlier messages.",
+    description: "Read the progress of this project's sessions. Without `chat`, it lists each session in your list, which holds every session that works or needs the person, whoever started it, with its id, its title, its live activity, whether a question waits for the person, and how its last turn ended. With `chat`, it answers where that session stands, also for a session that left your list: its checkpoint's current state and next step, its pending question with its context and options word for word, the agents that it runs now, its newest calls, and its conversation newest first without tool output. Pass `before` with the cursor that an answer names to read earlier messages.",
     inputSchema: {
       type: "object",
       properties: {
-        chat: { type: "string", description: "The id of one chat of this project, in your list or not. Omit it to list every chat in your list." },
-        before: { type: "string", description: "The cursor that an earlier answer about this chat named. Needs `chat`." },
+        chat: { type: "string", description: "The id of one session of this project, in your list or not. Omit it to list every session in your list." },
+        before: { type: "string", description: "The cursor that an earlier answer about this session named. Needs `chat`." },
       },
       additionalProperties: false,
     },

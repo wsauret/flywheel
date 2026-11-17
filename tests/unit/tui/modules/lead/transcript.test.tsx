@@ -28,8 +28,8 @@ function call(id: string, name: string, presentation: string, action: FrontendTo
   return { kind: "tool", id, name, action, presentation: { name: presentation, detail: "" }, status, timestamp: 2000 }
 }
 
-const progress = call("progress", "chat_progress", "Chat progress")
-const route = call("route", "route_request", "Route to new chat")
+const progress = call("progress", "chat_progress", "Session progress")
+const route = call("route", "route_request", "Route to new session")
 const checkpoint = call("checkpoint", "checkpoint_replace", "Update Checkpoint")
 const turn = [person, narration, progress, route, checkpoint, answer]
 
@@ -93,25 +93,25 @@ const LIVE_LEAD_ENTRIES: readonly ConversationTreeTranscriptEntry[] = [
 
 describe("the lead's tab gathers its calls under one heading per stretch (PI-LEAD-017)", () => {
   it("says what the lead did with its chats in place of a tool count", () => {
-    expect(labelOf([progress, route])).toBe("Worked 3s · checked chats, started 1 chat")
+    expect(labelOf([progress, route])).toBe("Worked 3s · checked sessions, started 1 session")
     expect(labelOf([
       progress, { ...progress, id: "again" },
       call("one", "route_request", "Route to"), call("two", "route_request", "Route to"), route, { ...route, id: "new-2" },
       call("ls", "bash", "Bash", "shell_exec"), call("read", "read", "Read", "file_read"),
-    ])).toBe("Worked 3s · checked chats, started 2 chats, sent to 2 chats, ran 1 command, used 1 tool")
+    ])).toBe("Worked 3s · checked sessions, started 2 sessions, sent to 2 sessions, ran 1 command, used 1 tool")
   })
 
   it("keeps the narration and the answer in view around one closed muted heading, and a click opens the calls indented beneath it, without the bookkeeping", async () => {
     const tab = await mountTab(LEAD_ID, turn)
     try {
       const closed = await tab.frame()
-      const line = "Worked 3s · checked chats, started 1 chat"
+      const line = "Worked 3s · checked sessions, started 1 session"
       // The heading opens with the time the first call of the stretch started.
       expect(closed).toContain(`▸ ${formatStartTime(progress.timestamp)} · ${line}`)
       expect(closed.indexOf("No chat works on this yet")).toBeLessThan(closed.indexOf(line))
       expect(closed.indexOf(line)).toBeLessThan(closed.indexOf("A new chat investigates it"))
       expect(closed).toContain("Look into the flaky test")
-      for (const hidden of ["Chat progress", "Route to new chat", "Checkpoint"]) expect(closed).not.toContain(hidden)
+      for (const hidden of ["Session progress", "Route to new session", "Checkpoint"]) expect(closed).not.toContain(hidden)
       // The heading parts the lead's words from its calls, so no divider repeats that.
       expect(closed).not.toContain("───")
       const theme = resolveTheme(flywheelTheme, "dark")
@@ -123,7 +123,7 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       await tab.result.mockMouse.click(rows[y]!.indexOf("Worked") + 2, y)
       const opened = await tab.frame()
       expect(opened).toContain(`▾ ${formatStartTime(progress.timestamp)} · ${line}`)
-      for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat", "A new chat investigates it"]) expect(opened).toContain(shown)
+      for (const shown of ["No chat works on this yet", "Session progress", "Route to new session", "A new chat investigates it"]) expect(opened).toContain(shown)
       expect(opened).not.toContain("Checkpoint")
       expect(opened).not.toContain("───")
       // The calls' run sits two columns in from the heading.
@@ -137,9 +137,9 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     const running = await mountTab(LEAD_ID, [person, narration, progress, checkpoint, { ...route, status: "pending" }], true)
     try {
       const frame = await running.frame()
-      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked chats, started 1 chat`)
+      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked sessions, started 1 session`)
       expect(frame).toContain("No chat works on this yet")
-      expect(frame).toContain("Chat progress")
+      expect(frame).toContain("Session progress")
       expect(frame).not.toContain("Checkpoint")
     } finally { running.dispose() }
     // A route whose input has not yet said whether it starts a chat adds no phrase.
@@ -152,10 +152,10 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     const answered = await mountTab(LEAD_ID, [...turn, { ...person, id: "next", content: "And the lexer?", timestamp: 9000 }, { ...progress, id: "checking", status: "pending", timestamp: 9500 }], true)
     try {
       const frame = await answered.frame()
-      expect(frame).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked chats, started 1 chat`)
-      expect(frame).toContain(`▾ ${formatStartTime(9500)} · Working · checked chats`)
+      expect(frame).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked sessions, started 1 session`)
+      expect(frame).toContain(`▾ ${formatStartTime(9500)} · Working · checked sessions`)
       expect(frame).toContain("A new chat investigates it")
-      expect(frame.split("Chat progress").length - 1).toBe(1)
+      expect(frame.split("Session progress").length - 1).toBe(1)
     } finally { answered.dispose() }
   })
 
@@ -163,16 +163,16 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     const working = await mountTab(LEAD_ID, [person, progress, { ...route, status: "pending" }], true)
     try {
       const frame = await working.frame()
-      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked chats, started 1 chat`)
-      expect(frame).toContain("Chat progress")
+      expect(frame).toContain(`▾ ${formatStartTime(progress.timestamp)} · Working · checked sessions, started 1 session`)
+      expect(frame).toContain("Session progress")
       expect(frame.indexOf("Look into the flaky test")).toBeLessThan(frame.indexOf("Working"))
     } finally { working.dispose() }
     const summarized = await mountTab(LEAD_ID, [person, progress, route, checkpoint, answer])
     try {
       const frame = await summarized.frame()
-      const heading = `▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked chats, started 1 chat`
+      const heading = `▸ ${formatStartTime(progress.timestamp)} · Worked 3s · checked sessions, started 1 session`
       expect(frame).toContain(heading)
-      expect(frame).not.toContain("Chat progress")
+      expect(frame).not.toContain("Session progress")
       expect(frame.indexOf(heading)).toBeLessThan(frame.indexOf("A new chat investigates it"))
     } finally { summarized.dispose() }
   })
@@ -186,17 +186,17 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     const tab = await mountTab(LEAD_ID, [...turn, report, { ...progress, id: "after", timestamp: 7000 }, reply])
     try {
       const frame = await tab.frame()
-      expect(frame).toContain("Worked 3s · checked chats, started 1 chat")
-      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked chats`)
+      expect(frame).toContain("Worked 3s · checked sessions, started 1 session")
+      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked sessions`)
       expect(frame).toContain("DAG Failures")
-      expect(frame).not.toContain("Chat progress")
+      expect(frame).not.toContain("Session progress")
       expect(frame.indexOf("Report · ")).toBeLessThan(frame.indexOf("Worked 2s"))
       expect(frame).toContain("DAG Failures finished: the build passes.")
     } finally { tab.dispose() }
     // Calls that end their turn with no words after them last until the last one returned, never until the report.
     const quiet = await mountTab(LEAD_ID, [person, narration, { ...progress, settledAt: 8900 }, report])
     try {
-      expect(await quiet.frame()).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 6s · checked chats`)
+      expect(await quiet.frame()).toContain(`▸ ${formatStartTime(progress.timestamp)} · Worked 6s · checked sessions`)
     } finally { quiet.dispose() }
   })
 
@@ -209,8 +209,8 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     const tab = await mountTab(LEAD_ID, [...turn, update, { ...progress, id: "after", timestamp: 7000 }, reply])
     try {
       const frame = await tab.frame()
-      expect(frame).toContain("Worked 3s · checked chats, started 1 chat")
-      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked chats`)
+      expect(frame).toContain("Worked 3s · checked sessions, started 1 session")
+      expect(frame).toContain(`▸ ${formatStartTime(7000)} · Worked 2s · checked sessions`)
       expect(frame).toContain("Update · Chat done · open")
       expect(frame).not.toContain("PR 42 is open")
       expect(frame.indexOf("Update · ")).toBeLessThan(frame.indexOf("Worked 2s"))
@@ -247,13 +247,13 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       expect(frame).not.toContain("Message from")
       // The turn that the question started ended on its call: its words stay in view, and its call sits under a closed
       // heading. The call returned 5 ms after it started, so the heading truly reads 0s.
-      const quietHeading = `▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked chats`
+      const quietHeading = `▸ ${formatStartTime(Date.parse("2026-11-15T08:18:06.334Z"))} · Worked 0s · checked sessions`
       expect(frame).toContain("I’ll check the color chat’s question")
       expect(frame).toContain(quietHeading)
       expect(frame.indexOf("I’ll check the color chat’s question")).toBeLessThan(frame.indexOf(quietHeading))
       expect(frame).toContain("I’ll start a chat to list the root files")
-      expect(frame).toContain("Worked 1s · started 1 chat")
-      expect(frame).not.toContain("Chat progress")
+      expect(frame).toContain("Worked 1s · started 1 session")
+      expect(frame).not.toContain("Session progress")
       const rows = frame.split("\n")
       const y = rows.findIndex((row) => row.includes("Report · Pick a Color · open"))
       await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
@@ -277,7 +277,7 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     try {
       const frame = await tab.frame()
       expect(frame).not.toContain("Worked")
-      for (const shown of ["No chat works on this yet", "Chat progress", "Route to new chat", "Checkpoint"]) expect(frame).toContain(shown)
+      for (const shown of ["No chat works on this yet", "Session progress", "Route to new session", "Checkpoint"]) expect(frame).toContain(shown)
       // An ordinary chat keeps the divider before narration that resumes after tool work (PI-INTERACTION-158).
       expect(frame).toContain("───")
     } finally { tab.dispose() }

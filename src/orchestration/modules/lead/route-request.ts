@@ -37,20 +37,20 @@ function parseInput(input: RuntimeToolInput): Omit<RouteInput, "leadSessionId"> 
     : Array.isArray(parts) && parts.length > 0 && parts.every((part): part is string => typeof part === "string") ? parts : null
   if (passages === null) return "route_request `parts` must be a list of one or more passages of the person's messages."
   const target = typeof chat === "string" ? chat.trim() : ""
-  if (kind === "existing" && !target) return 'route_request with kind "existing" requires `chat`, the id of a chat.'
+  if (kind === "existing" && !target) return 'route_request with kind "existing" requires `chat`, the id of a session.'
   if (kind === "new" && target) return 'route_request with kind "new" takes no `chat`.'
   const text = typeof note === "string" ? note.trim() : ""
   return { kind, ...(target ? { chat: target } : {}), ...(text ? { note: text } : {}), earlierTurns, ...(passages ? { parts: passages } : {}) }
 }
 
 function outcomeText(outcome: Extract<RouteOutcome, { ok: true }>, parts: readonly string[] | undefined, note: string | undefined): string {
-  const target = `chat ${outcome.sessionId} "${outcome.title}"`
+  const target = `session ${outcome.sessionId} "${outcome.title}"`
   const words = parts ? "these parts of the person's messages" : "the person's messages"
   const lines = [
     outcome.started === "now" ? `Started ${target} with ${words}.`
       : outcome.started === "earlier" ? `These ${parts ? "parts" : "messages"} already started ${target}.`
         : `Forwarded ${words} to ${target}.`,
-    ...(outcome.recorded ? [] : ["The chat already had them, so nothing was sent again."]),
+    ...(outcome.recorded ? [] : ["The session already had them, so nothing was sent again."]),
     parts ? "The parts, by their first line:" : "The messages, by their first line:",
     ...(parts ?? outcome.entries.map((entry) => entry.text)).map((text) => `- ${firstLineOf(text) || "(no text)"}`),
   ]
@@ -62,7 +62,7 @@ function outcomeText(outcome: Extract<RouteOutcome, { ok: true }>, parts: readon
 function noteLine(status: "delivered" | "held" | "refused" | "skipped"): string {
   switch (status) {
     case "delivered": return "Your note was delivered as a message from you."
-    case "held": return "Your note waits until the chat runs again."
+    case "held": return "Your note waits until the session runs again."
     case "refused": return "Your note was not delivered."
     case "skipped": return "Your note was not sent again."
   }
@@ -79,13 +79,13 @@ export function createRouteRequestTool(route: (input: RouteInput) => Promise<Rou
     action: "ui_meta",
     // The lead's transcript shows the route's heading and row, so a silent route answers the person.
     answersPerson: true,
-    description: "Give the person's request to a chat. The runtime sends the person's own messages of your newest turn to that chat unchanged, with their attachments, as messages from the person; you never write the request yourself. With kind \"new\", a new chat starts with them. With kind \"existing\", they go to the chat named by `chat`, any chat of this project whose work the request continues, also one that find_chat found. `earlier_turns` adds the person's messages of that many earlier turns, for a request that the person stated over several turns. `parts` splits one message that asks for several separate pieces of work, such as two chats: call route_request once for each piece, and set `parts` to the passages of the person's messages that this piece needs, each copied exactly from the person's words. The chat then receives only those passages, in that order, as one message from the person with its attachments. Never write a part yourself: a part that the person's messages do not hold word for word refuses the route. Leave `parts` out when the whole message is one piece of work. `note` is your own optional message to the chat, which it shows as a message from you after the person's messages: use it only for what the person's words do not hold, never to restate them. Call it only when the person asked for work, never in reaction to a chat's event. The result names the chat.",
+    description: "Give the person's request to a session. The runtime sends the person's own messages of your newest turn to that session unchanged, with their attachments, as messages from the person; you never write the request yourself. With kind \"new\", a new session starts with them. With kind \"existing\", they go to the session named by `chat`, any session of this project whose work the request continues, also one that find_chat found. `earlier_turns` adds the person's messages of that many earlier turns, for a request that the person stated over several turns. `parts` splits one message that asks for several separate pieces of work, such as two sessions: call route_request once for each piece, and set `parts` to the passages of the person's messages that this piece needs, each copied exactly from the person's words. The session then receives only those passages, in that order, as one message from the person with its attachments. Never write a part yourself: a part that the person's messages do not hold word for word refuses the route. Leave `parts` out when the whole message is one piece of work. `note` is your own optional message to the session, which it shows as a message from you after the person's messages: use it only for what the person's words do not hold, never to restate them. Call it only when the person asked for work, never in reaction to a session's event. The result names the session.",
     inputSchema: {
       type: "object",
       properties: {
-        kind: { type: "string", enum: ["new", "existing"], description: "\"new\" starts a new chat; \"existing\" gives the request to an earlier chat." },
-        chat: { type: "string", description: "Only with kind \"existing\": the id of the chat." },
-        note: { type: "string", description: "Optional: your own short message to the chat, sent after the person's messages. Never a restatement of the request." },
+        kind: { type: "string", enum: ["new", "existing"], description: "\"new\" starts a new session; \"existing\" gives the request to an earlier session." },
+        chat: { type: "string", description: "Only with kind \"existing\": the id of the session." },
+        note: { type: "string", description: "Optional: your own short message to the session, sent after the person's messages. Never a restatement of the request." },
         earlier_turns: { type: "integer", minimum: 0, description: "How many earlier turns of the person to send too, oldest first. Default 0: the person's messages of your newest turn only." },
         parts: { type: "array", items: { type: "string" }, minItems: 1, description: "Only when one message asks for several separate pieces of work: the passages of the person's messages that this piece needs, each copied exactly from the person's words, in the order to send. Never a part that you wrote." },
       },
