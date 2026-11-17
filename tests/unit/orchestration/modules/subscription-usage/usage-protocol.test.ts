@@ -3,9 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Schema } from "effect"
-import { UsageAccountsResultSchema } from "../../../../../src/protocol/modules/subscription-usage.js"
 import { createUsageAppService as createFlywheelAppService, type UsageAppServiceDeps as FlywheelAppServiceDeps } from "../../../../helpers/usage-app-service.js"
-import { RuntimeProtocolRpc } from "../../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../../src/protocol/runtime-protocol-schemas.js"
 import { createFrontendProjection } from "../../../../../src/orchestration/app-service/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import type { SubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js"
@@ -89,7 +88,7 @@ describe("unified Usage protocol", () => {
         state: "available", startMs: new Date(new Date(asOf).getFullYear(), new Date(asOf).getMonth(), 1).getTime(), endMs: asOf,
         trackingStartMs: trackingStart, partial: true, attempts: 0, estimatedBilledUsd: 0, includedValueUsd: 0,
       })
-      expect(Schema.decodeUnknownSync(UsageAccountsResultSchema)(result)).toEqual(result)
+      expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("usage.accounts"))(result)).toEqual(result)
     }
     authority.dispose()
   })
@@ -167,7 +166,7 @@ describe("unified Usage protocol", () => {
   })
 
   test("rejects unsafe usage protocol integers and invalid quota windows", () => {
-    const decode = Schema.decodeUnknownSync(UsageAccountsResultSchema, { onExcessProperty: "error" })
+    const decode = Schema.decodeUnknownSync(runtimeQueryResultSchema("usage.accounts"), { onExcessProperty: "error" })
     const result = {
       kind: "usage.accounts", profileId: "default", authorityIncarnation: "authority", revision: 1, generation: 1, asOf: 1,
       sources: [{ kind: "subscription", sourceId: "chatgpt:a", providerId: "chatgpt", label: "Personal", active: true, activity: { state: "ledger-unavailable" }, observation: { state: "pending" }, quotaAccounting: { state: "available", windows: [{ state: "available", metricKey: "window", startMs: 1, endMs: 2, trackingStartMs: 1, partial: false, attempts: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 0 }, includedValueUsd: 0, priceUnavailable: false }] } }],
@@ -202,8 +201,8 @@ describe("unified Usage protocol", () => {
     const projected = value.sources[0]
     if (projected?.kind !== "subscription") throw new Error("Expected subscription")
     expect(projected.bankedResets).toEqual({ availableCount: 2, credits: [{ expiresAtMs: 2, title: "Reset" }, { expiresAtMs: null, title: "Reset" }] })
-    expect(Schema.decodeUnknownSync(UsageAccountsResultSchema, { onExcessProperty: "error" })(value)).toEqual(value)
-    expect(() => Schema.decodeUnknownSync(UsageAccountsResultSchema, { onExcessProperty: "error" })({ ...value, sources: [{ ...projected, bankedResets: { ...projected.bankedResets, credits: [{ expiresAtMs: 2, id: "raw" }] } }] })).toThrow()
+    expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("usage.accounts"), { onExcessProperty: "error" })(value)).toEqual(value)
+    expect(() => Schema.decodeUnknownSync(runtimeQueryResultSchema("usage.accounts"), { onExcessProperty: "error" })({ ...value, sources: [{ ...projected, bankedResets: { ...projected.bankedResets, credits: [{ expiresAtMs: 2, id: "raw" }] } }] })).toThrow()
   })
 
   test("a metered key's balance reading joins its metered row and never appears as a subscription", () => {
@@ -224,7 +223,7 @@ describe("unified Usage protocol", () => {
     expect(value.sources.map((source) => [source.kind, source.providerId])).toEqual([["metered", "deepseek"], ["metered", "openai_api"]])
     expect(value.sources[0]).toMatchObject({ observation: { state: "supported", providerStatus: "ok", spendSources: [balance] } })
     expect(value.sources[1]).not.toHaveProperty("observation")
-    const decode = Schema.decodeUnknownSync(UsageAccountsResultSchema, { onExcessProperty: "error" })
+    const decode = Schema.decodeUnknownSync(runtimeQueryResultSchema("usage.accounts"), { onExcessProperty: "error" })
     expect(decode(value)).toEqual(value)
   })
 })

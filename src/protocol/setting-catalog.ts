@@ -170,7 +170,7 @@ export function renderSettingEntries<H extends SettingHost, R>(host: H, entries:
 
 /** Every row in catalog order, subsection rows in place and module group
  *  heads at their slot. */
-export const SETTING_ROWS: readonly SettingCatalogRow[] = SETTING_SECTIONS.flatMap((section) => section.entries.flatMap(function rowsOf(entry: SettingCatalogEntry): readonly SettingCatalogRow[] {
+const SETTING_ROWS: readonly SettingCatalogRow[] = SETTING_SECTIONS.flatMap((section) => section.entries.flatMap(function rowsOf(entry: SettingCatalogEntry): readonly SettingCatalogRow[] {
   if (entry.kind === "row") return [entry]
   if (entry.kind === "subsection") return entry.entries.flatMap(rowsOf)
   return entry.id === "capability-groups" ? Object.values(SETTING_GROUP_HEADS).flat() : []
@@ -178,10 +178,6 @@ export const SETTING_ROWS: readonly SettingCatalogRow[] = SETTING_SECTIONS.flatM
 
 /** The id of every row that changes one value in place. */
 export type InPlaceSettingRowId = { readonly [K in SettingRowId]: Rows[K]["control"] extends "switch" | "choice" | "number" ? K : never }[SettingRowId]
-
-/** The rows that change one value in place, in catalog order. A command
- *  surface lists these as its settings rows. */
-export const IN_PLACE_SETTING_ROWS: readonly SettingCatalogRow<InPlaceSettingRowId>[] = SETTING_ROWS.filter((entry): entry is SettingCatalogRow<InPlaceSettingRowId> => entry.control === "switch" || entry.control === "choice" || entry.control === "number")
 
 /** The catalog row of `id`. */
 export function settingCatalogRow<Id extends SettingRowId>(id: Id): SettingCatalogRow<Id> {

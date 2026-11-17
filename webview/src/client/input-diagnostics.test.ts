@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { InputResponsivenessDiagnosticSchema, type InputResponsivenessDiagnostic } from "../../../src/protocol/runtime-client-diagnostics.js"
+import { RuntimeClientDiagnosticSchema, type InputResponsivenessDiagnostic } from "../../../src/protocol/runtime-client-diagnostics.js"
 import { observeInputDiagnostics } from "./input-diagnostics.js"
 
 class Node {
@@ -151,7 +151,7 @@ test("late dispatch and next-frame wait report bounded metadata without key or D
   f.advance(60_000)
   expect(f.reports[1]).toMatchObject({ phase: "summary", dispatchDelayed: 0, frameDelayed: 1, unmatchedTap: 0 })
   expect(f.reports[1]?.recent[0]?.frameWaitMs).toBe(100)
-  for (const report of f.reports) expect(() => Schema.decodeUnknownSync(InputResponsivenessDiagnosticSchema)(report)).not.toThrow()
+  for (const report of f.reports) expect(() => Schema.decodeUnknownSync(RuntimeClientDiagnosticSchema)(report)).not.toThrow()
 })
 
 test("a stationary actionable release without click is unmatched_tap, not a diagnosed cause", async () => {
@@ -217,7 +217,7 @@ test("gesture evidence records touch prevention, movement, multitouch and compat
     touchStartPrevented: true, touchMovePrevented: true, touchEndPrevented: true,
     mouseStages: ["mouseover", "mousemove", "mousedown", "mouseup"], controlConnected: true, releaseOnOriginalControl: true,
   })
-  expect(() => Schema.decodeUnknownSync(InputResponsivenessDiagnosticSchema)(f.reports[0])).not.toThrow()
+  expect(() => Schema.decodeUnknownSync(RuntimeClientDiagnosticSchema)(f.reports[0])).not.toThrow()
   const moved = fixture()
   await moved.send("pointerdown")
   await moved.send("pointermove", moved.button, 0, 20)
@@ -362,7 +362,7 @@ test("hidden, cached disconnected and disposed roots cannot emit or retain callb
 })
 
 test("the wire boundary rejects unbounded samples, content-shaped ids and nonfinite timings", () => {
-  const decode = Schema.decodeUnknownSync(InputResponsivenessDiagnosticSchema)
+  const decode = Schema.decodeUnknownSync(RuntimeClientDiagnosticSchema)
   const report = { kind: "input_responsiveness", clientInstanceId: "client-a", connection: "connected", screen: "chat", paneInert: false, dragging: false, phase: "first", anomaly: "dispatch_delay", dispatchDelayed: 1, frameDelayed: 0, unmatchedTap: 0, recent: [] }
   expect(() => decode(report)).not.toThrow()
   expect(() => decode({ ...report, sessionId: "user answer with spaces" })).toThrow()

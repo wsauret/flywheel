@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
-import { RuntimeProtocolRpc, RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { handleChatMutation } from "../../../../src/orchestration/app-service/chat-mutations.js"
 import { runtimeSupervisor } from "./app-service-doubles.js"
 import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
@@ -189,21 +190,21 @@ describe("runtime session protocol contract", () => {
     // The catalog lists sessions only (ARCH-PROTOCOL-048): a child row on the session
     // domain is rejected by construction, not filtered by a client.
     const patch = { cursor: { scope: "session", domain: "session", sessionId: row.id }, position: 2, prevPosition: 1, payload: { kind: "session.added", row } } as const
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toThrow()
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { kind: "session.updated", row } })).toThrow()
+    expect(() => decodeRuntimeUiPatch(patch)).toThrow()
+    expect(() => decodeRuntimeUiPatch({ ...patch, payload: { kind: "session.updated", row } })).toThrow()
     const workflowRow = { ...row, kind: "workflow", inputMode: { kind: "message" }, admittedActions: ["session.send", "workflow.interrupt", "background.terminate", "session.delete"] }
     for (const kind of ["session.added", "session.updated"]) {
-      expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { kind, row: workflowRow } })).toThrow()
+      expect(() => decodeRuntimeUiPatch({ ...patch, payload: { kind, row: workflowRow } })).toThrow()
     }
     expect(() => Schema.decodeUnknownSync(runtimeQueryResultSchema("snapshot"))({ rows: [workflowRow], activeRuntimeCount: 0, errors: [], snapshotPosition: 0, projectRoot: "/workspace/app", runtimeVersion: "test", runtimeBuildId: null, chatDefault: { kind: "none" } })).toThrow()
     expect(() => Schema.decodeUnknownSync(runtimeQueryResultSchema("snapshot"))({ rows: [row], activeRuntimeCount: 0, errors: [], snapshotPosition: 0, projectRoot: "/workspace/app", runtimeVersion: "test", runtimeBuildId: null, chatDefault: { kind: "none" } })).toThrow()
     // A listed chat admits only chat actions and carries no workflow state.
     const chatRow = { ...row, kind: "chat", inputMode: { kind: "chat" }, admittedActions: ["chat.interrupt", "session.delete"] }
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { kind: "session.added", row: chatRow } })).toMatchObject({ payload: { row: chatRow } })
+    expect(decodeRuntimeUiPatch({ ...patch, payload: { kind: "session.added", row: chatRow } })).toMatchObject({ payload: { row: chatRow } })
     for (const actions of [["session.send", "session.delete"], ["background.terminate"]]) {
-      expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { kind: "session.added", row: { ...chatRow, admittedActions: actions } } })).toThrow()
+      expect(() => decodeRuntimeUiPatch({ ...patch, payload: { kind: "session.added", row: { ...chatRow, admittedActions: actions } } })).toThrow()
     }
-    const listed = Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { kind: "session.added", row: { ...chatRow, workflowState: "running" } } })
+    const listed = decodeRuntimeUiPatch({ ...patch, payload: { kind: "session.added", row: { ...chatRow, workflowState: "running" } } })
     expect(listed.payload).not.toHaveProperty("row.workflowState")
 
     const detail = {
@@ -218,9 +219,9 @@ describe("runtime session protocol contract", () => {
     }
     expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("sessionDetail"))(detail)).toEqual(detail)
     const replacement = { ...patch, cursor: { ...patch.cursor, domain: "session_detail" }, payload: { kind: "session_detail.changed", row } } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(replacement)).toEqual(replacement)
+    expect(decodeRuntimeUiPatch(replacement)).toEqual(replacement)
     const removed = { ...replacement, payload: { kind: "session_detail.changed", row: null } } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(removed)).toEqual(removed)
+    expect(decodeRuntimeUiPatch(removed)).toEqual(removed)
     const snapshot = { snapshotPosition: 2, views: [{ sessionId: row.id, view: detail.view }] }
     expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("sessionDetailSnapshot"))(snapshot)).toEqual(snapshot)
     expect(() => Schema.decodeUnknownSync(runtimeQueryResultSchema("sessionDetail"))({ view: { ...detail.view, row: { ...row, inputMode: { kind: "chat" } } } })).toThrow()

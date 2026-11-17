@@ -3,7 +3,8 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { importBuiltModule } from "../test-support/import-built-module.js"
 import { loadSolidFixture } from "../test-support/solid-transform.js"
-import { IN_PLACE_SETTING_ROWS, settingGroupHead, shownOn } from "../../../src/protocol/setting-catalog.js"
+import { settingGroupHead, shownOn } from "../../../src/protocol/setting-catalog.js"
+import { inPlaceSettingCatalogRows } from "../../../tests/helpers/setting-catalog-rows.js"
 import { MODULE_SETTING_GROUPS } from "../../../src/protocol/module-protocol-types.js"
 import { WRITE_SYNTAX_THEME_OPTIONS } from "../../../src/protocol/write-syntax-theme.js"
 
@@ -108,7 +109,7 @@ test("a bare slash lists the top commands, every in-place setting in catalog ord
     // A capability group's own rows show with that group's modules, and this runtime has none.
     const groupRows = new Set(MODULE_SETTING_GROUPS.flatMap((group) => settingGroupHead(group).map((row) => row.id)))
     // Each module's switch sits at its module's place: an ungrouped one under Agent capabilities, after every catalog row outside a group.
-    const catalogRows = IN_PLACE_SETTING_ROWS.filter((row) => shownOn(row, "browser") && !groupRows.has(row.id)).map((row) => row.label)
+    const catalogRows = inPlaceSettingCatalogRows().filter((row) => shownOn(row, "browser") && !groupRows.has(row.id)).map((row) => row.label)
     assert.deepEqual(outline[1]?.rows, [...catalogRows, "Subagents"])
     assert.deepEqual(outline[2]?.rows.slice(0, 2), ["New chat", "Compact conversation"])
     assert.deepEqual(outline[3]?.rows, ["Commands"])

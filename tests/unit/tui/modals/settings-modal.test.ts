@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
-import { IN_PLACE_SETTING_ROWS, SETTING_ROWS, shownOn } from "../../../../src/protocol/setting-catalog.js"
+import { shownOn } from "../../../../src/protocol/setting-catalog.js"
 import type { SettingsRow } from "../../../../src/tui/hooks/settings-modal-types.js"
+import { inPlaceSettingCatalogRows, settingCatalogRows } from "../../../helpers/setting-catalog-rows.js"
 import { activate, clearMocks, configValues, createModal, indexOf, rowIds, rowOf } from "./_settings-modal-fixtures.js"
 
 describe("useSettingsModal", () => {
@@ -65,12 +66,12 @@ describe("useSettingsModal", () => {
       const labels = (rows: readonly SettingsRow[]): readonly string[] => rows.flatMap((row) =>
         row.kind === "disclosure" || row.kind === "group" ? [row.label, ...labels(row.rows())] : row.kind === "separator" ? [] : [row.label])
       const shown = labels(modal.settingsItems())
-      const catalog: readonly string[] = SETTING_ROWS.filter((row) => shownOn(row, "terminal")).map((row) => row.label)
+      const catalog: readonly string[] = settingCatalogRows().filter((row) => shownOn(row, "terminal")).map((row) => row.label)
 
       expect(shown.filter((label) => catalog.includes(label))).toEqual([...catalog])
-      for (const browserOnly of SETTING_ROWS.filter((row) => !shownOn(row, "terminal"))) expect(shown).not.toContain(browserOnly.label)
+      for (const browserOnly of settingCatalogRows().filter((row) => !shownOn(row, "terminal"))) expect(shown).not.toContain(browserOnly.label)
       // A row the catalog changes in place edits its value in the list; it opens no other surface.
-      for (const row of IN_PLACE_SETTING_ROWS.filter((entry) => shownOn(entry, "terminal"))) expect(["cycle", "single-select", "edit"].includes(rowOf(modal, row.id).kind)).toBe(true)
+      for (const row of inPlaceSettingCatalogRows().filter((entry) => shownOn(entry, "terminal"))) expect(["cycle", "single-select", "edit"].includes(rowOf(modal, row.id).kind)).toBe(true)
       dispose()
     })
   })

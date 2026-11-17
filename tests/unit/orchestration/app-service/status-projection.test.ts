@@ -7,7 +7,7 @@ import { ManagedRuntime, Schema } from "effect"
 import { createStatusProjection } from "../../../../src/orchestration/app-service/status-projection.js"
 import { createOutputProjection } from "../../../../src/orchestration/app-service/output-projection.js"
 import { createShippedOutput } from "../../../../src/orchestration/app-service/shipped-output.js"
-import { RuntimeStatusSnapshotResultSchema, StatusPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import type { StatusPatchPayload, StatusView } from "../../../../src/protocol/status-protocol-types.js"
 import { replyWaitLabel, WAITING_ON_PARENT } from "../../../../src/protocol/client/session-controls.js"
 import { createSessionStore } from "../../../../src/orchestration/session-store/store.js"
@@ -65,7 +65,7 @@ describe("status projection", () => {
       kind: "status.updated",
       status: { activeSubagentCount: 0, activeBackgroundCommands: [{ toolUseId: "toolu_bg" }] },
     })
-    expect(payload).toEqual(Schema.decodeUnknownSync(StatusPatchPayloadSchema, { onExcessProperty: "error" })(payload))
+    expect(payload).toEqual(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema, { onExcessProperty: "error" })(payload))
     projection.dispose()
   })
 
@@ -216,14 +216,14 @@ describe("status projection", () => {
     const snapshot = { snapshotPosition: 1, views: [{ sessionId: "s1", view: status }] }
     const patch: StatusPatchPayload = { kind: "status.updated", status }
 
-    expect(Schema.decodeUnknownSync(RuntimeStatusSnapshotResultSchema)(snapshot)).toEqual(snapshot)
-    expect(Schema.decodeUnknownSync(StatusPatchPayloadSchema)(patch)).toEqual(patch)
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, settledOutputPosition: undefined } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeForegroundBashToolCallIds: undefined } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid" }] } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid", model: "claude-opus-4-6" }] } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid", startedAtMs: 1, effort: "high" }] } }, { onExcessProperty: "error" })).toThrow()
-    expect(() => Schema.decodeUnknownSync(StatusPatchPayloadSchema)({ kind: "status.updated", status: { ...status, cost: 1, contextPercent: 1 } }, { onExcessProperty: "error" })).toThrow()
+    expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("statusSnapshot"))(snapshot)).toEqual(snapshot)
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)(patch)).toEqual(patch)
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, settledOutputPosition: undefined } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeForegroundBashToolCallIds: undefined } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid" }] } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid", model: "claude-opus-4-6" }] } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, activeBackgroundCommands: [{ id: "invalid", description: "invalid", toolUseId: "toolu_invalid", startedAtMs: 1, effort: "high" }] } }, { onExcessProperty: "error" })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "status.updated", status: { ...status, cost: 1, contextPercent: 1 } }, { onExcessProperty: "error" })).toThrow()
   })
 
   test.each(["snapshot", "store", "refresh"] as const)("idle status anchors after deferred output publication through %s", async (source) => {

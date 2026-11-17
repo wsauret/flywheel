@@ -7,7 +7,7 @@ import { runtimeHandlers, type RuntimeHandlerOptions } from "../../../../src/orc
 import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
 import { runtimeEventDelivery } from "../../../../src/orchestration/app-service/runtime-event-delivery.js"
 import { RuntimeEventFrameSchema, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
-import { RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS, RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
+import { RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { createFamilyIntake } from "../../../../src/protocol/client/family-intake.js"
 import { createCursorIntake } from "../../../../src/protocol/client/cursor-intake.js"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
@@ -441,7 +441,7 @@ describe("RuntimeEvents bounded per-connection queue", () => {
       yield* Effect.yieldNow
       const heartbeats = () => events.filter((event) => event.type === "runtime.heartbeat").length
       const beforeInterval = heartbeats()
-      yield* TestClock.adjust(RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS)
+      yield* TestClock.adjust(RUNTIME_LIVENESS_POLICY.heartbeatIntervalMs)
       while (heartbeats() === beforeInterval) yield* Effect.yieldNow
       yield* Fiber.interrupt(fiber)
       return events

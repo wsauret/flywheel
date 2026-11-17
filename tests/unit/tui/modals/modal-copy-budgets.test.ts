@@ -1,7 +1,8 @@
 import { usageFooterRows } from "../../../../src/tui/modules/subscription-usage/footer.js"
 import { describe, expect, it } from "bun:test"
 import { displayWidth } from "../../../../src/tui/utils/text.js"
-import { SETTING_ROWS, SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
+import { SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
+import { settingCatalogRows } from "../../../helpers/setting-catalog-rows.js"
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js"
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js"
 import { MODULE_SETTING_GROUPS } from "../../../../src/protocol/module-protocol-types.js"
@@ -53,7 +54,7 @@ const standardControls: AuthoredCopy[] = [
 ]
 
 const settingDescriptions: AuthoredCopy[] = [
-  ...SETTING_ROWS.map((row) => ["settings", row.description] as const),
+  ...settingCatalogRows().map((row) => ["settings", row.description] as const),
   ...SETTING_SECTIONS.flatMap((section) => section.entries.flatMap((entry) => entry.kind === "subsection" ? [["settings", entry.description] as const] : [])),
   ...MODULE_SETTING_GROUPS.map((group) => ["settings", settingsGroupDescription(group)] as const),
 ]

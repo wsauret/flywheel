@@ -4,7 +4,8 @@ import { chatInputContent } from "../../../src/infra/chat-input.js"
 import { Schema } from "effect"
 import { ChatInputObjectSchema } from "../../../src/infra/chat-input-schema.js"
 import { messageInput } from "../../../src/infra/agent-loop-events.js"
-import { FrontendMutationSchema, RuntimeUiPatchSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { FrontendMutationSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
 import type { FrontendMutation } from "../../../src/protocol/app-service-types.js"
 import type { RuntimeUiPatch } from "../../../src/protocol/runtime-ui-protocol-types.js"
 
@@ -27,7 +28,7 @@ describe("chatInputContent", () => {
         block: { kind: "userMessage", id: "user-1", content: "hello", timestamp: 1, pending: false, injected: false, submissionIds: ["submission-1"] },
       }] } },
     } satisfies RuntimeUiPatch
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
   })
   it("converts image attachments to runtime image blocks", () => {
     expect(chatInputContent({

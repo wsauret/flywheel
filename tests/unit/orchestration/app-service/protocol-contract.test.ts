@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test"
 import { Redacted, Schema } from "effect"
 import { cursorKey, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { FrontendMutationSchema, RuntimeProtocolRpc, RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { FrontendMutationSchema, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
-import { ProviderModelTargetSchema, ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/provider-model-preference-protocol-schemas.js"
+import { ProviderModelViewSchema, RuntimeProviderModelsQuerySchema, RuntimeSetProviderModelMutationSchema } from "../../../../src/protocol/provider-model-preference-protocol-schemas.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
@@ -117,13 +118,12 @@ describe("runtime protocol contract", () => {
     }
     expect(() => Schema.decodeUnknownSync(dispatch.payloadSchema)({ type: "auth.catalog.refresh", scope: { kind: "profile" } })).toThrow()
     const subscription = { kind: "subscription", providerId: "chatgpt", accountCorrelationId: "opaque-a" } as const
-    expect(Schema.decodeUnknownSync(ProviderModelTargetSchema, { onExcessProperty: "error" })(subscription)).toEqual(subscription)
-    expect(() => Schema.decodeUnknownSync(ProviderModelTargetSchema, { onExcessProperty: "error" })({ ...subscription, instanceId: "secret" })).toThrow()
-    expect(() => Schema.decodeUnknownSync(ProviderModelTargetSchema, { onExcessProperty: "error" })({ kind: "subscription", providerId: "chatgpt" })).toThrow()
-    expect(() => Schema.decodeUnknownSync(ProviderModelTargetSchema, { onExcessProperty: "error" })({ kind: "singleton", providerId: "openai_api", accountCorrelationId: "mixed" })).toThrow()
-
+    const decodeQuery = Schema.decodeUnknownSync(RuntimeProviderModelsQuerySchema, { onExcessProperty: "error" })
     const query = { profileId: "work", target: subscription }
-    expect(Schema.decodeUnknownSync(RuntimeProviderModelsQuerySchema, { onExcessProperty: "error" })(query)).toEqual(query)
+    expect(decodeQuery(query)).toEqual(query)
+    expect(() => decodeQuery({ ...query, target: { ...subscription, instanceId: "secret" } })).toThrow()
+    expect(() => decodeQuery({ ...query, target: { kind: "subscription", providerId: "chatgpt" } })).toThrow()
+    expect(() => decodeQuery({ ...query, target: { kind: "singleton", providerId: "openai_api", accountCorrelationId: "mixed" } })).toThrow()
     const mutation = { queriedProfileId: "work", queriedEligibilityRevision: 4, target: subscription, modelId: "gpt-5", checked: true }
     expect(Schema.decodeUnknownSync(RuntimeSetProviderModelMutationSchema, { onExcessProperty: "error" })(mutation)).toEqual(mutation)
     const view = { profileId: "work", eligibilityRevision: 4, target: subscription, providerDisplayName: "ChatGPT", catalog: { kind: "available" as const, provenance: "first-party" as const, liveOutcome: "valid" as const }, rows: [] }
@@ -162,11 +162,11 @@ describe("runtime protocol contract", () => {
       { kind: "project_notifications.dismissed", sourceId: episode.sourceId, episodeId: episode.id, dismissedAt: 16 },
     ] as const) {
       const patch = { cursor: { scope: "workspace", domain: "project_notifications" }, position: 2, prevPosition: 1, payload } satisfies RuntimeUiPatch
-      expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+      expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
     }
 
     expect(() => Schema.decodeUnknownSync(dispatch.payloadSchema)({ type: "project_notifications.dismiss", sourceId: "provider:anthropic" })).toThrow()
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ cursor: { scope: "workspace", domain: "project_notifications" }, position: 2, prevPosition: 1, payload: { kind: "project_notifications.raised", episode: { ...episode, action: "run-command" } } })).toThrow()
+    expect(() => decodeRuntimeUiPatch({ cursor: { scope: "workspace", domain: "project_notifications" }, position: 2, prevPosition: 1, payload: { kind: "project_notifications.raised", episode: { ...episode, action: "run-command" } } })).toThrow()
   })
 
   test("rejects every retired subscription usage operation", () => {
@@ -194,7 +194,7 @@ describe("runtime protocol contract", () => {
         diagnostics: [], reviewCount: 1,
       } },
     }
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toThrow()
+    expect(() => decodeRuntimeUiPatch(patch)).toThrow()
   })
 
   test("output patches preserve semantic tool result actions", () => {
@@ -225,11 +225,11 @@ describe("runtime protocol contract", () => {
       },
     } satisfies RuntimeUiPatch
 
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
   })
 
   test("only streaming-only output patches can omit the visible message count", () => {
-    const decode = Schema.decodeUnknownSync(RuntimeUiPatchSchema)
+    const decode = decodeRuntimeUiPatch
     const patch = { cursor: { scope: "session", domain: "output", sessionId: "s1" }, position: 2, prevPosition: 1,
       payload: { kind: "output.delta", delta: { blocks: [], streamingToolTextOps: [{ kind: "set", toolUseId: "t1", entry: { content: "hello" } }] } },
     } satisfies RuntimeUiPatch
@@ -241,7 +241,7 @@ describe("runtime protocol contract", () => {
   })
 
   test("output patches carry block edits and never the whole streaming map", () => {
-    const decode = Schema.decodeUnknownSync(RuntimeUiPatchSchema)
+    const decode = decodeRuntimeUiPatch
     const patch = { cursor: { scope: "session", domain: "output", sessionId: "s1" }, position: 2, prevPosition: 1,
       payload: { kind: "output.delta", delta: { visibleMessageCount: 0, blocks: [{ kind: "edit", index: 3, blockId: "tool:call-1", edits: [{ kind: "append", path: ["presentation", "detail"], offset: 3, text: " <<EOF" }] }] } },
     } satisfies RuntimeUiPatch
@@ -298,7 +298,7 @@ describe("runtime protocol contract", () => {
       },
     } satisfies RuntimeUiPatch
 
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
   })
 
   test("session summaries and output patches do not carry migrated telemetry, usage, workflow state, or TUI drafts", async () => {
@@ -366,7 +366,7 @@ describe("runtime protocol contract", () => {
         },
       },
     } satisfies RuntimeUiPatch
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
 
     const schema = RuntimeProtocolRpc.requests.get("RuntimeDispatch")?.payloadSchema
     if (schema === undefined) throw new Error("RuntimeDispatch request schema is missing")
@@ -531,12 +531,12 @@ describe("runtime protocol contract", () => {
       payload: { kind: "modules.changed", capabilities: invalidView },
     } satisfies RuntimeUiPatch
 
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
     const { error: _error, ...validView } = invalidView
     const cleared = { ...patch, payload: { kind: "modules.changed", capabilities: { ...validView, moduleIds: ["skills"], requireWorkflowConfirmation: false } } } satisfies RuntimeUiPatch
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(cleared)).toEqual(cleared)
+    expect(decodeRuntimeUiPatch(cleared)).toEqual(cleared)
     const incomplete = { ...patch, payload: { kind: "modules.changed", capabilities: { moduleIds: ["skills"] } } }
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(incomplete)).toThrow()
+    expect(() => decodeRuntimeUiPatch(incomplete)).toThrow()
   })
 
   test("the capability snapshot answers with the published view and its position", () => {
@@ -563,8 +563,8 @@ describe("runtime protocol contract", () => {
       payload: { kind: "update.changed", update: { revision: 2, autoInstall: { persisted: false, forcedOff: false, effective: false }, status: { kind: "installing", version: "0.2.0" }, releaseNotice: { version: "0.1.1", message: "Updated to v0.1.1.", url: "https://github.com/wsauret/flywheel/releases/tag/v0.1.1" } } },
     } satisfies RuntimeUiPatch
 
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { ...patch.payload, update: { ...patch.payload.update, releaseNotice: { version: "0.1.1" } } } })).toThrow()
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
+    expect(() => decodeRuntimeUiPatch({ ...patch, payload: { ...patch.payload, update: { ...patch.payload.update, releaseNotice: { version: "0.1.1" } } } })).toThrow()
   })
 
   test("an update state that means a version is rejected on the wire without one", () => {
@@ -575,14 +575,14 @@ describe("runtime protocol contract", () => {
       payload: { kind: "update.changed", update: { revision: 2, autoInstall: AUTO_INSTALL_ON, status: { kind: "available", blocking: "nothing" } } },
     }
 
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(withoutVersion)).toThrow()
+    expect(() => decodeRuntimeUiPatch(withoutVersion)).toThrow()
     // The refusal reason is as required as the version: a notice that had to
     // guess at it is what the reason exists to replace.
     const withoutBlocking = { ...withoutVersion, payload: { kind: "update.changed", update: { revision: 2, autoInstall: AUTO_INSTALL_ON, status: { kind: "available", version: "0.2.0" } } } }
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(withoutBlocking)).toThrow()
+    expect(() => decodeRuntimeUiPatch(withoutBlocking)).toThrow()
     // And idle carries no version, so a stale one cannot ride along.
     const idleWithVersion = { ...withoutVersion, payload: { kind: "update.changed", update: { revision: 2, autoInstall: AUTO_INSTALL_ON, status: { kind: "idle", version: "0.2.0" } } } }
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(idleWithVersion)).toEqual({ ...withoutVersion, payload: { kind: "update.changed", update: { revision: 2, autoInstall: AUTO_INSTALL_ON, status: { kind: "idle" } } } })
+    expect(decodeRuntimeUiPatch(idleWithVersion)).toEqual({ ...withoutVersion, payload: { kind: "update.changed", update: { revision: 2, autoInstall: AUTO_INSTALL_ON, status: { kind: "idle" } } } })
   })
 
   test("the update snapshot answers with the published view and the position it was taken at", () => {
@@ -605,9 +605,9 @@ describe("runtime protocol contract", () => {
     } as const
     const patch = { cursor: { scope: "session", domain: "session", sessionId: "chat-1" } as const, position: 2, prevPosition: 1, payload: { kind: "session.added", row } }
 
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toThrow()
+    expect(() => decodeRuntimeUiPatch(patch)).toThrow()
     const withExecutionCwd = { ...patch, payload: { kind: "session.added" as const, row: { ...row, executionCwd: "/workspace/app" } } }
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(withExecutionCwd)).toEqual(withExecutionCwd)
+    expect(decodeRuntimeUiPatch(withExecutionCwd)).toEqual(withExecutionCwd)
   })
 
 })

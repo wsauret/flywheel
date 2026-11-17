@@ -12,11 +12,11 @@ import {
   classifyRuntimeProtocolErrorKind,
   ExecutorGenerationChangedError,
   ExecutorNotRunningError,
-  QuestionPatchPayloadSchema,
-  RuntimeQuestionSnapshotResultSchema,
   RuntimeProtocolRpc,
-  RuntimeUiPatchSchema,
+  runtimeQueryResultSchema,
+  RuntimeUiPatchPayloadSchema,
 } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
 import { RuntimeCursorIdentitySchema } from "../../../../src/protocol/runtime-cursor-schemas.js"
 import { RuntimeAuthStatusSnapshotResultSchema } from "../../../../src/protocol/auth-status-protocol-schemas.js"
@@ -109,15 +109,15 @@ describe("Runtime protocol RPC mapping", () => {
     const cursor = experimentViewCursor("s1")
     const updated = { cursor, position: 3, prevPosition: 2, payload: { kind: "experiment_view.updated", experimentView } } as const
     const removed = { cursor, position: 4, prevPosition: 3, payload: { kind: "experiment_view.removed" } } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(updated)).toEqual(updated)
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(removed)).toEqual(removed)
+    expect(decodeRuntimeUiPatch(updated)).toEqual(updated)
+    expect(decodeRuntimeUiPatch(removed)).toEqual(removed)
     expect(cursorKey(cursor)).toBe("experiment_view:s1")
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...updated, position: "3" })).toThrow()
+    expect(() => decodeRuntimeUiPatch({ ...updated, position: "3" })).toThrow()
     expect(() => Schema.decodeUnknownSync(RuntimeCursorIdentitySchema)({ scope: "workspace", domain: "experiment_view" })).toThrow()
     // Strict wire rows: charter guard paths and command state never cross this
     // wire, so an encoder carrying them is a defect rather than tolerated slack.
     const leaked = { ...updated, payload: { ...updated.payload, experimentView: { ...experimentView, protectedPaths: [".experiment/charter.md"] } } }
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(leaked)).toThrow()
+    expect(() => decodeRuntimeUiPatch(leaked, { onExcessProperty: "error" })).toThrow()
     const query = { type: "experimentViewSnapshot", sessionId: "s1" } as const
     const rpc = RuntimeProtocolRpc.requests.get("RuntimeQuery")
     if (rpc === undefined) throw new Error("RuntimeQuery RPC is missing")
@@ -155,7 +155,7 @@ describe("Runtime protocol RPC mapping", () => {
       prevPosition: 8,
       payload: { kind: "papercuts.changed", papercuts: { undisposedCount: 4 } },
     }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect<unknown>(decodeRuntimeUiPatch(patch)).toEqual(patch)
     // A papercut count patch decodes and applies to the count view.
     expect(papercutsDomain.view.patch(Schema.decodeUnknownSync(papercutsDomain.patch)(patch.payload), { undisposedCount: 3 })).toEqual({ undisposedCount: 4 })
   })
@@ -169,11 +169,11 @@ describe("Runtime protocol RPC mapping", () => {
 
   test("stream patch and command result payloads are schema-backed", () => {
     const patch = { cursor: { scope: "session", domain: "output", sessionId: "s1" }, position: 2, prevPosition: 1, payload: { kind: "output.delta", delta: { visibleMessageCount: 0, blocks: [] } } }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect<unknown>(decodeRuntimeUiPatch(patch)).toEqual(patch)
 
     const row = { id: "s1", kind: "chat", title: "Changed", lifecycleState: "active", notices: [], inputMode: { kind: "chat" }, lastUpdated: "2026-01-01T00:00:00.000Z", executionCwd: "/workspace", totalsLoading: true }
     const sessionPatch = { cursor: { scope: "session", domain: "session", sessionId: "s1" }, position: 3, prevPosition: 2, payload: { kind: "session.updated", row } }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(sessionPatch)).toEqual(sessionPatch)
+    expect<unknown>(decodeRuntimeUiPatch(sessionPatch)).toEqual(sessionPatch)
     expect(Schema.decodeUnknownSync(runtimeDispatchResultSchema("session.rename"))({ ok: true, sessionCatalogRow: row })).toEqual({ ok: true, sessionCatalogRow: row })
     expect(Schema.decodeUnknownSync(runtimeDispatchResultSchema("session.rename"))({ ok: false, error: "no such session" })).toEqual({ ok: false, error: "no such session" })
   })
@@ -262,9 +262,9 @@ describe("Runtime protocol RPC mapping", () => {
       timestamp: 2,
     }
     const snapshot = { snapshotPosition: 5, views: [{ sessionId: "s1", view: question }] }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeQuestionSnapshotResultSchema)(snapshot)).toEqual(snapshot)
-    expect<unknown>(Schema.decodeUnknownSync(QuestionPatchPayloadSchema)({ kind: "question.updated", question })).toEqual({ kind: "question.updated", question })
-    expect(Schema.decodeUnknownSync(QuestionPatchPayloadSchema)({ kind: "question.removed" })).toEqual({ kind: "question.removed" })
+    expect<unknown>(Schema.decodeUnknownSync(runtimeQueryResultSchema("questionSnapshot"))(snapshot)).toEqual(snapshot)
+    expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "question.updated", question })).toEqual({ kind: "question.updated", question })
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "question.removed" })).toEqual({ kind: "question.removed" })
   })
 
   test("a cancelled question block round-trips through the output patch schema", () => {
@@ -281,7 +281,7 @@ describe("Runtime protocol RPC mapping", () => {
       prevPosition: 1,
       payload: { kind: "output.delta", delta: { visibleMessageCount: 0, blocks: [{ kind: "upsert", index: 0, blockId: "tool-1", block }] } },
     }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect<unknown>(decodeRuntimeUiPatch(patch)).toEqual(patch)
   })
 
   test("a historical question block with the removed errorMessage field still decodes, dropping the field", () => {
@@ -294,7 +294,7 @@ describe("Runtime protocol RPC mapping", () => {
     }
     const question = { ...block, errorMessage: "This question was not shown" }
     const snapshot = { snapshotPosition: 5, views: [{ sessionId: "s1", view: question }] }
-    expect<unknown>(Schema.decodeUnknownSync(RuntimeQuestionSnapshotResultSchema)(snapshot)).toEqual({ snapshotPosition: 5, views: [{ sessionId: "s1", view: block }] })
+    expect<unknown>(Schema.decodeUnknownSync(runtimeQueryResultSchema("questionSnapshot"))(snapshot)).toEqual({ snapshotPosition: 5, views: [{ sessionId: "s1", view: block }] })
   })
 
   test("auth status snapshots round-trip through schemas without credential fields", () => {

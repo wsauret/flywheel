@@ -6,7 +6,8 @@ import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestrat
 import { CONFIG_VALUE_ABSENT, createRuntimeConfigOwner, type ConfigMutationResult, type RuntimeConfigOwner, type RuntimeConfigSnapshot } from "../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../src/orchestration/config/writer.js"
 import { createRuntimeConfigProjection } from "../../../../src/orchestration/app-service/runtime-config-projection.js"
-import { RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
 import { runtimeConfigView } from "../../../helpers/runtime-config-view.js"
 
@@ -103,34 +104,34 @@ describe("runtime config projection", () => {
     const patch = { cursor: { scope: "workspace", domain: "config" }, position: 2, prevPosition: 1, payload: { kind: "config.changed", config } }
     // The query result decodes with the codec its discriminant selects.
     const queryResult = Schema.decodeUnknownSync(runtimeQueryResultSchema("configSnapshot"), { onExcessProperty: "error" })({ snapshotPosition: 2, config })
-    const decodedPatch = Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(patch)
+    const decodedPatch = decodeRuntimeUiPatch(patch, { onExcessProperty: "error" })
     if (decodedPatch.payload.kind !== "config.changed") throw new Error("config protocol patch did not narrow")
     expect(queryResult).toEqual({ snapshotPosition: 2, config: decodedPatch.payload.config })
     expect(decodedPatch.payload.config.values).not.toHaveProperty("modelEfforts")
 
     const retiredEfforts = structuredClone(patch)
     Object.assign(retiredEfforts.payload.config.values, { modelEfforts: {} })
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(retiredEfforts)).toThrow()
+    expect(() => decodeRuntimeUiPatch(retiredEfforts, { onExcessProperty: "error" })).toThrow()
 
     const nestedSentinel = structuredClone(patch)
     Object.assign(nestedSentinel.payload.config.values, { mcp: { env: { TOKEN: "sentinel" } } })
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(nestedSentinel)).toThrow()
+    expect(() => decodeRuntimeUiPatch(nestedSentinel, { onExcessProperty: "error" })).toThrow()
 
     const nestedRoleSentinel = structuredClone(patch)
     Object.assign(nestedRoleSentinel.payload.config.values, { roles: {} })
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(nestedRoleSentinel)).toThrow()
+    expect(() => decodeRuntimeUiPatch(nestedRoleSentinel, { onExcessProperty: "error" })).toThrow()
 
     const nestedProfileSentinel = structuredClone(patch)
     Object.assign(nestedProfileSentinel.payload.config.values.profiles, { work: { roles: { chat: { provider_options: { TOKEN: "sentinel" } } } } })
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(nestedProfileSentinel)).toThrow()
+    expect(() => decodeRuntimeUiPatch(nestedProfileSentinel, { onExcessProperty: "error" })).toThrow()
 
     const excess = structuredClone(patch)
     Object.assign(excess.payload.config, { sourceIdentity: "sentinel" })
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })(excess)).toThrow()
+    expect(() => decodeRuntimeUiPatch(excess, { onExcessProperty: "error" })).toThrow()
   })
 
   test("wire schema rejects unknown ids, paths, prose, and document diagnostics", () => {
-    const decode = Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })
+    const decode = (patch: unknown) => decodeRuntimeUiPatch(patch, { onExcessProperty: "error" })
     const config = projectRuntimeConfig(snapshot({ diagnostics: [{ kind: "setting", settingId: "showThinking", path: ["show_thinking"], reason: "invalid-value" }] }))
     const patch = { cursor: { scope: "workspace", domain: "config" }, position: 2, prevPosition: 1, payload: { kind: "config.changed", config } }
     const diagnostic = patch.payload.config.diagnostics[0]

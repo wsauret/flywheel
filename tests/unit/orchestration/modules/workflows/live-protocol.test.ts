@@ -12,7 +12,7 @@ import { workflowMembershipReader } from "../../../../../src/orchestration/sessi
 import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { WorkflowLiveView } from "../../../../../src/protocol/workflow-view-protocol-types.js"
-import { foldWorkflowLiveChange } from "../../../../../src/protocol/modules/workflows.js"
+import { MODULE_DOMAIN_BINDINGS } from "../../../../../src/protocol/client/module-domain.js"
 import { recoverWorkflowControl } from "../../../../../src/workflows/vm/recovery.js"
 import { WORKFLOW_ROOT_FACT_TYPES } from "../../../../../src/workflows/workflow-root.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
@@ -46,7 +46,7 @@ function clientView(published: readonly RuntimeUiPatchInput[], start: WorkflowLi
     for (; applied < published.length; applied++) {
       const payload = published[applied]!.payload
       if (payload.kind === "workflow_live.removed") view = null
-      else if (payload.kind === "workflow_live.changed") view = foldWorkflowLiveChange(view, payload)
+      else if (payload.kind === "workflow_live.changed") view = MODULE_DOMAIN_BINDINGS.workflow_live.payloadView(payload, view ?? undefined)
       else throw new Error(`Expected a workflow live patch, got ${payload.kind}`)
     }
     return view

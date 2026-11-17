@@ -158,7 +158,7 @@ const StatusViewSchema = Schema.Struct({
   accumulatedActiveMs: Schema.Number,
   compactionStartedAt: Schema.NullOr(Schema.Number),
 })
-export const StatusPatchPayloadSchema: Schema.Codec<StatusPatchPayload> = Schema.Union([
+const StatusPatchPayloadSchema: Schema.Codec<StatusPatchPayload> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("status.updated"), status: StatusViewSchema }),
   Schema.Struct({ kind: Schema.Literal("status.removed") }),
 ])
@@ -166,7 +166,7 @@ export const StatusPatchPayloadSchema: Schema.Codec<StatusPatchPayload> = Schema
 function sessionViewsResultSchema<View>(view: Schema.Codec<View>): Schema.Codec<RuntimeSessionViewsResult<View>> {
   return Schema.Struct({ snapshotPosition: RuntimePositionSchema, views: Schema.Array(Schema.Struct({ sessionId: Schema.String, view: Schema.NullOr(view) })) })
 }
-export const RuntimeStatusSnapshotResultSchema: Schema.Codec<RuntimeStatusSnapshotResult> = sessionViewsResultSchema(StatusViewSchema)
+const RuntimeStatusSnapshotResultSchema: Schema.Codec<RuntimeStatusSnapshotResult> = sessionViewsResultSchema(StatusViewSchema)
 
 const BudgetViewSchema = Schema.Union([
   Schema.Struct({ totalsLoading: Schema.Literal(true) }),
@@ -182,11 +182,11 @@ const BudgetViewSchema = Schema.Union([
     averageGenerationTokensPerSecond: Schema.optionalKey(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
   }),
 ])
-export const BudgetPatchPayloadSchema: Schema.Codec<BudgetPatchPayload> = Schema.Union([
+const BudgetPatchPayloadSchema: Schema.Codec<BudgetPatchPayload> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("budget.updated"), budget: BudgetViewSchema }),
   Schema.Struct({ kind: Schema.Literal("budget.removed") }),
 ])
-export const RuntimeBudgetSnapshotResultSchema: Schema.Codec<RuntimeBudgetSnapshotResult> = sessionViewsResultSchema(BudgetViewSchema)
+const RuntimeBudgetSnapshotResultSchema: Schema.Codec<RuntimeBudgetSnapshotResult> = sessionViewsResultSchema(BudgetViewSchema)
 /** Strict per variant: a version exists exactly where one is meant, so no
  *  reader has to decide whether a state without a version is idle, and the
  *  reason a release was not taken travels with the release rather than being
@@ -240,11 +240,11 @@ const RuntimeModulesViewSchema: Schema.Codec<RuntimeModulesView> = Schema.Struct
 })
 const RuntimeModuleSnapshotResultSchema: Schema.Codec<RuntimeModuleSnapshotResult> = Schema.Struct({ snapshotPosition: RuntimePositionSchema, capabilities: RuntimeModulesViewSchema })
 const ModulePatchPayloadSchema: Schema.Codec<ModulePatchPayload> = Schema.Struct({ kind: Schema.Literal("modules.changed"), capabilities: RuntimeModulesViewSchema })
-export const QuestionPatchPayloadSchema: Schema.Codec<QuestionPatchPayload> = Schema.Union([
+const QuestionPatchPayloadSchema: Schema.Codec<QuestionPatchPayload> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("question.updated"), question: QuestionBlockSchema }),
   Schema.Struct({ kind: Schema.Literal("question.removed") }),
 ])
-export const RuntimeQuestionSnapshotResultSchema: Schema.Codec<RuntimeQuestionSnapshotResult> = sessionViewsResultSchema(QuestionBlockSchema)
+const RuntimeQuestionSnapshotResultSchema: Schema.Codec<RuntimeQuestionSnapshotResult> = sessionViewsResultSchema(QuestionBlockSchema)
 const RoleAssignmentViewSchema: Schema.Codec<RoleAssignmentView> = Schema.Struct({
   assignments: Schema.Record(Schema.String, RuntimeRoleAssignmentEntrySchema),
   serving: Schema.optionalKey(Schema.Struct({
@@ -284,7 +284,7 @@ export const RuntimeUiPatchPayloadSchema = Schema.Union([
   CommandUsagePatchPayloadSchema,
   ...PROTOCOL_MODULE_DOMAINS.flatMap((domain) => recursiveUnionMembers(domain.patch)),
 ])
-export const RuntimeUiPatchSchema: Schema.Codec<RuntimeUiPatch> = Schema.Struct({ cursor: RuntimeCursorIdentitySchema, position: RuntimePositionSchema, prevPosition: RuntimePositionSchema, payload: RuntimeUiPatchPayloadSchema })
+const RuntimeUiPatchSchema: Schema.Codec<RuntimeUiPatch> = Schema.Struct({ cursor: RuntimeCursorIdentitySchema, position: RuntimePositionSchema, prevPosition: RuntimePositionSchema, payload: RuntimeUiPatchPayloadSchema })
 const OutputWindowRequestSchema: Schema.Codec<OutputWindowRequest> = Schema.Struct({ range: OutputRangeRequestSchema })
 const OutputWindowSnapshotSchema: Schema.Codec<OutputWindowSnapshot> = Schema.Struct({ snapshotPosition: RuntimePositionSchema, totalBlocks: NonNegativeInt, visibleMessageCount: NonNegativeInt, range: HydratedOutputRangeSchema })
 export const RuntimeEventFrameSchema: Schema.Codec<RuntimeEventFrame> = Schema.Union([

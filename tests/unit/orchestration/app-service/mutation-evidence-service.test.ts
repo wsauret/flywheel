@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
 import { Rpc, RpcGroup, RpcServer } from "effect/rpc"
-import { layerMsgPack, msgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { runtimeMsgPack } from "../../../helpers/runtime-msgpack.js"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 import { dirname, join, sep } from "node:path"
@@ -244,8 +245,8 @@ test("the public socket codec fits the complete actual response including arbitr
   const reference = await buildSessionContent("€".repeat(30_000), f.stage)
   const entries = Array.from({ length: 50 }, (_, index) => descriptor(index, reference))
   const manifest = await buildSessionContentManifest(entries.map(entry => JSON.stringify(entry)), f.stage)
-  const decoder = msgPack.makeUnsafe()
-  const encoder = msgPack.makeUnsafe()
+  const decoder = runtimeMsgPack.makeUnsafe()
+  const encoder = runtimeMsgPack.makeUnsafe()
   const pending = new Map<string, { resolve: (response: { bytes: number; frame: ExitFrame }) => void }>()
   const outgoing = pipe(bytes => {
     for (const raw of decoder.decode(bytes)) {

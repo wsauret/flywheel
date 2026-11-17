@@ -11,7 +11,7 @@ import { projectSessionCatalogRow } from "../../../../src/orchestration/session/
 import { durableRow } from "./_frontend-projection-fixtures.js"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { Schema } from "effect"
-import { ExecutorGenerationChangedError, RuntimeStatusSnapshotResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { ExecutorGenerationChangedError, runtimeQueryResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { servingAccountService } from "../../../helpers/account-service-state.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
@@ -158,7 +158,7 @@ test.each([[99, 0], [0, 99]])("settlement uses actual public output positions wi
 
 async function barrier(f: Awaited<ReturnType<typeof fixture>>) {
   const result = await f.client.query({ type: "statusSnapshot", sessionIds: ["live"] })
-  expect(Schema.decodeUnknownSync(RuntimeStatusSnapshotResultSchema)(Schema.encodeUnknownSync(RuntimeStatusSnapshotResultSchema)(result))).toEqual(result)
+  expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("statusSnapshot"))(Schema.encodeUnknownSync(runtimeQueryResultSchema("statusSnapshot"))(result))).toEqual(result)
   return result.views[0]?.view?.settledOutputPosition
 }
 

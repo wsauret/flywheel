@@ -53,7 +53,7 @@ const InputSampleSchema = Schema.Struct({
 
 /** Content-free, bounded evidence from one mounted client's passive observer.
  * Frame wait measures the next animation callback, not a rendered paint. */
-export const InputResponsivenessDiagnosticSchema = Schema.Struct({
+const InputResponsivenessDiagnosticSchema = Schema.Struct({
   kind: Schema.Literal("input_responsiveness"),
   clientInstanceId: InputId,
   sessionId: Schema.optionalKey(InputId),

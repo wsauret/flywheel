@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { Schema } from "effect"
 import { createBudgetProtocolProjection } from "../../../../src/orchestration/app-service/budget-protocol-projection.js"
 import { createRuntimeSummaryProjection, type RuntimeSummaryView } from "../../../../src/orchestration/app-service/runtime-summary-projection.js"
-import { BudgetPatchPayloadSchema, RuntimeBudgetSnapshotResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { chatEntry, fakeSessionStore } from "./_frontend-projection-fixtures.js"
 
@@ -54,7 +54,7 @@ describe("budget protocol projection", () => {
     await flush()
     const stated = { kind: "budget.updated" as const, budget: { ...ready, compactionTriggerTokens: 850 } }
     expect(patches.slice(1)).toEqual([expect.objectContaining({ payload: stated })])
-    expect(Schema.decodeUnknownSync(BudgetPatchPayloadSchema)(stated)).toEqual(stated)
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)(stated)).toEqual(stated)
     projection.dispose()
   })
 
@@ -113,13 +113,14 @@ describe("budget protocol projection", () => {
   test("strict schemas accept only explicit loading or complete ready budgets", () => {
     const loading = { totalsLoading: true } as const
     const ready = { totalsLoading: false, tokens: 12, cost: 0.25, billedCost: 0.1, priceUnavailable: true, contextPercent: 33, contextPromptTokens: 1000 } as const
-    expect(Schema.decodeUnknownSync(RuntimeBudgetSnapshotResultSchema)({ snapshotPosition: 1, views: [{ sessionId: "s1", view: loading }] }).views[0]?.view).toEqual(loading)
-    expect(Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: ready })).toEqual({ kind: "budget.updated", budget: ready })
+    const snapshot = { snapshotPosition: 1, views: [{ sessionId: "s1", view: loading }] }
+    expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("budgetSnapshot"))(snapshot)).toEqual(snapshot)
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: ready })).toEqual({ kind: "budget.updated", budget: ready })
     const measured = { ...ready, averageGenerationTokensPerSecond: 18.24 }
-    expect(Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: measured })).toEqual({ kind: "budget.updated", budget: measured })
-    expect(() => Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, averageGenerationTokensPerSecond: "18" } })).toThrow()
-    expect(Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, extra: 1 } })).toEqual({ kind: "budget.updated", budget: ready })
-    expect(() => Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: { totalsLoading: false, tokens: 1 } })).toThrow()
-    expect(() => Schema.decodeUnknownSync(BudgetPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, totalsLoading: true } }, { onExcessProperty: "error" })).toThrow()
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: measured })).toEqual({ kind: "budget.updated", budget: measured })
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, averageGenerationTokensPerSecond: "18" } })).toThrow()
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, extra: 1 } })).toEqual({ kind: "budget.updated", budget: ready })
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: { totalsLoading: false, tokens: 1 } })).toThrow()
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "budget.updated", budget: { ...ready, totalsLoading: true } }, { onExcessProperty: "error" })).toThrow()
   })
 })

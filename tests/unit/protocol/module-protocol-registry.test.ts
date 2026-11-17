@@ -42,7 +42,8 @@ import { NO_MODULE_SERVICES } from "../../../src/infra/module-service.js"
 import type { FirstPartyModule } from "../../../src/orchestration/modules.js"
 import { runtimeCallPolicies } from "../../../src/protocol/runtime-client-deadlines.js"
 import { RuntimeCursorIdentitySchema } from "../../../src/protocol/runtime-cursor-schemas.js"
-import { RuntimeProtocolRpc, RuntimeUiPatchSchema, runtimeQueryResultSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeProtocolRpc, runtimeQueryResultSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
 import { KERNEL_SESSION_DOMAINS, KERNEL_WORKSPACE_DOMAINS, runtimeDeliveryPolicy, type RuntimeDomainIntakeBindings, type RuntimeUiPatch } from "../../../src/protocol/runtime-ui-protocol-types.js"
 import { recursiveUnionMembers, stringDiscriminatorLiterals } from "../../../src/protocol/schema-union.js"
 
@@ -218,10 +219,15 @@ describe("protocol module registry composition", () => {
       contributions: [],
     } as const satisfies FirstPartyModule
     const reader = asAsyncEventReadSurface(inMemoryEventReader([]))
+    const refuseWrite = async (): Promise<never> => { throw new Error("No synthetic fact write") }
     const routes = composeModuleProtocolRuntimes([syntheticModule], {
       eventStore: reader,
       projectionReader: reader,
-      eventWriter: { append: async () => { throw new Error("No synthetic fact write") }, appendBatch: async () => { throw new Error("No synthetic fact write") }, pruneSupersededEvents: async () => 0 },
+      eventWriter: {
+        append: refuseWrite, appendBatch: refuseWrite, appendGuarded: refuseWrite, appendBatchGuarded: refuseWrite, stageSessionContentNodes: refuseWrite,
+        pruneSupersededEvents: async () => 0, pruneSupersededKeyedEvents: async () => 0,
+        putInFlight: refuseWrite, dropInFlight: refuseWrite, swapInFlight: refuseWrite, swapInFlightBatch: refuseWrite,
+      },
       manager: fakeManager(),
       sessionStore: fakeSessionStore(new Map()),
       definitions: repoDefinitions(),
@@ -260,7 +266,7 @@ describe("protocol module registry composition", () => {
     expect(PROTOCOL_BACKGROUND_DOMAINS).toEqual(["experiment_view", "workflow_detail", "workflow_view", "workflow_live"])
     expect(Schema.decodeUnknownSync(protocolBackgroundSchema("experiment_view"))({ experimentView: null })).toEqual({ experimentView: null })
     const patch: RuntimeUiPatch = { cursor: { scope: "workspace", domain: "papercuts" }, position: 2, prevPosition: 1, payload: { kind: "papercuts.changed", papercuts: { undisposedCount: 1 } } }
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
     expect(MODULE_DOMAIN_BINDINGS.papercuts.cursor()).toEqual({ scope: "workspace", domain: "papercuts" })
     expect(MODULE_DOMAIN_BINDINGS.experiment_view.cursor("s1")).toEqual({ scope: "session", domain: "experiment_view", sessionId: "s1" })
   })
@@ -279,7 +285,7 @@ describe("protocol module registry composition", () => {
 
   test("definition staleness snapshots and patches accept active families and refuse the retired workflow family", () => {
     const decodeSnapshot = Schema.decodeUnknownSync(runtimeQueryResultSchema("definitionStalenessSnapshot"))
-    const decodePatch = Schema.decodeUnknownSync(RuntimeUiPatchSchema)
+    const decodePatch = decodeRuntimeUiPatch
     for (const family of ["skill", "persona", "system-prompt", "workflow"]) {
       const view = {
         overrides: [{ family, id: "override", layer: "project", path: "/project/.flywheel/override", status: "upstream-changed", snapshotAvailable: true }],

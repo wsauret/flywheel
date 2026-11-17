@@ -4,7 +4,8 @@ import { Schema } from "effect";
 import { createUsageAppService as createFlywheelAppService } from "../../../helpers/usage-app-service.js";
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js";
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js";
-import { FrontendMutationSchema, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js";
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js";
 import { createInertSubscriptionUsageService } from "../../../helpers/subscription-usage-service-fixture.js";
 import { subscriptionSpendConsentEnvelopeIds, subscriptionSpendConsentNeedsReview } from "../../../../src/protocol/subscription-spend-consent-protocol-types.js";
@@ -24,7 +25,7 @@ const consent = {
 describe("subscription spend consent protocol", () => {
   test("auth snapshots carry one secret-free consent view", () => {
     const patch = { cursor: { scope: "workspace", domain: "auth" }, position: 8, prevPosition: 7, payload: { kind: "auth.changed", auth: { providers: [], warnings: [], profile: { id: "work", displayName: "Work", source: "default", availableProfiles: [] }, subscriptionSpendConsent: consent } } } as const;
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch);
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch);
     expect(JSON.stringify(patch)).not.toContain("subjectDigest");
     expect(JSON.stringify(patch)).not.toContain("credential");
   });
@@ -36,7 +37,7 @@ describe("subscription spend consent protocol", () => {
   });
 
   test("rejects impossible available and unavailable consent variants", () => {
-    const decode = Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" });
+    const decode = (patch: unknown) => decodeRuntimeUiPatch(patch, { onExcessProperty: "error" });
     const auth = { providers: [], warnings: [], profile: { id: "work", displayName: "Work", source: "default", availableProfiles: [] } } as const;
     // oxlint-disable-next-line anti-slop/no-unknown-parameters -- boundary: a wire patch that the schema decodes, invalid on purpose
     const patch = (subscriptionSpendConsent: unknown) => ({ cursor: { scope: "workspace", domain: "auth" }, position: 8, prevPosition: 7, payload: { kind: "auth.changed", auth: { ...auth, subscriptionSpendConsent } } });
@@ -57,7 +58,7 @@ describe("subscription spend consent protocol", () => {
 
   test("oauth settlement is correlated to its exact operation and account", () => {
     const patch = { cursor: { scope: "workspace", domain: "auth" }, position: 9, prevPosition: 8, payload: { kind: "auth.changed", auth: { providers: [], warnings: [], profile: { id: "work", displayName: "Work", source: "default", availableProfiles: [] }, subscriptionSpendConsent: consent, settlement: { kind: "completed", operationId: "oauth-operation", providerId: "anthropic" } } } } as const;
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch);
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch);
   });
 
   test("usage open publishes consent before it returns", async () => {

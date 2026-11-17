@@ -187,7 +187,7 @@ export const OutputGroupChildrenRequestSchema: Schema.Codec<OutputGroupChildrenR
   cursor: Schema.optionalKey(OutputGroupChildrenCursorSchema),
 })
 
-export const HydratedOutputGroupChildrenSchema: Schema.Codec<HydratedOutputGroupChildren> = Schema.Struct({
+const HydratedOutputGroupChildrenSchema: Schema.Codec<HydratedOutputGroupChildren> = Schema.Struct({
   groupBlockId: Schema.String,
   totalChildren: NonNegativeInt,
   contentBytes: NonNegativeInt,

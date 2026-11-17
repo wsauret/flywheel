@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { Schema } from "effect"
-import { RuntimeUiPatchPayloadSchema, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { stringDiscriminatorLiterals } from "../../../../src/protocol/schema-union.js"
 import { isGlobalRuntimeInvalidation, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { isLaneBreak } from "../../../../src/protocol/client/cursor-intake.js"
@@ -18,7 +18,7 @@ describe("runtime UI patch contract", () => {
         },
       }] } },
     } as const
-    const decoded: unknown = Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)
+    const decoded: unknown = decodeRuntimeUiPatch(patch)
     expect(decoded).toEqual(patch)
   })
 
@@ -41,12 +41,12 @@ describe("runtime UI patch contract", () => {
         attemptsStatus: "loaded", state: "running", tree,
       } },
     } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
-    expect(Schema.encodeSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
+    expect(encodeRuntimeUiPatch(patch)).toEqual(patch)
     const { tree: _tree, ...older } = patch.payload.workflowView
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, payload: { ...patch.payload, workflowView: older } })).toThrow()
+    expect(() => decodeRuntimeUiPatch({ ...patch, payload: { ...patch.payload, workflowView: older } })).toThrow()
     const launched = { ...patch.payload.workflowView, launch: { verification: "proved" } }
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema, { onExcessProperty: "error" })({ ...patch, payload: { ...patch.payload, workflowView: launched } })).toThrow()
+    expect(() => decodeRuntimeUiPatch({ ...patch, payload: { ...patch.payload, workflowView: launched } }, { onExcessProperty: "error" })).toThrow()
   })
 
   // A service of protocol 51 still sends `warnings` on a workflow card. The
@@ -63,7 +63,7 @@ describe("runtime UI patch contract", () => {
         },
       }] } },
     } as const
-    const decoded: unknown = Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)
+    const decoded: unknown = decodeRuntimeUiPatch(patch)
     const { warnings: _warnings, ...card } = patch.payload.delta.blocks[0].block
     expect(decoded).toEqual({ ...patch, payload: { ...patch.payload, delta: { ...patch.payload.delta, blocks: [{ ...patch.payload.delta.blocks[0], block: card }] } } })
   })
@@ -74,7 +74,7 @@ describe("runtime UI patch contract", () => {
         cursor: { scope: "workspace", domain: "runtime" }, position: 0, prevPosition: 0,
         payload: { kind: "runtime.invalidate", reason },
       }
-      const decoded = Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)
+      const decoded = decodeRuntimeUiPatch(patch)
       expect(decoded).toEqual(patch)
       expect(isGlobalRuntimeInvalidation(decoded)).toBe(true)
       expect(isLaneBreak(decoded)).toBe(reason === "reconnect_required")
@@ -87,7 +87,7 @@ describe("runtime UI patch contract", () => {
     expect(fixtureKinds.toSorted()).toEqual(canonicalKinds.toSorted())
     expect(new Set(canonicalKinds).size).toBe(canonicalKinds.length)
     for (const patch of runtimeUiPatchFixtures) {
-      const decoded: unknown = Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)
+      const decoded: unknown = decodeRuntimeUiPatch(patch)
       expect(decoded).toEqual(patch)
     }
   })

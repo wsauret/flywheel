@@ -12,7 +12,7 @@ export interface BriefPersonaSlot {
 
 type FrontendWorkflowState = "idle" | "running" | "completed" | "failed" | "paused"
 /** Attempt status. Work without an attempt belongs only to the tree. */
-export type FrontendAttemptStatus = "pending" | "running" | "completed" | "blocked" | "failed" | "skipped"
+type FrontendAttemptStatus = "pending" | "running" | "completed" | "blocked" | "failed" | "skipped"
 
 /** The persona that an agent record names: its id, such as
  *  `reviewer-code-security`, and the roles whose seats it reads, narrowest

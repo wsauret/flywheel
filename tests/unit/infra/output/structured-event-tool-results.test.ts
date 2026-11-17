@@ -1,5 +1,4 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { Schema } from "effect";
 
 import * as controlCharacters from "../../../../src/infra/control-characters.js";
 import { DELIVERY_CONFIRMATION } from "../../../../src/infra/delivery-confirmation.js";
@@ -9,7 +8,7 @@ import { extractDisplayMeta, resolveTrackedToolResult as resolveTrackedToolResul
 import type { PlacedTool } from "../../../../src/infra/output/output-tool-projection-types.js";
 import { StructuredOutputBuilder } from "../../../../src/infra/output/structured-output-builder.js";
 import { formatToolInputProblems } from "../../../../src/orchestration/agent-runtime/tools/validate-input.js";
-import { RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
+import { decodeRuntimeUiPatch, encodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js";
 import type { ToolOutcome } from "../../../../src/infra/tool-outcome.js";
 
 function textContent(text: string): LlmToolOutputPart[] {
@@ -480,8 +479,8 @@ describe("canonical mutation artifacts", () => {
       expect(Object.hasOwn(tool, "mutation")).toBe(false);
       expect(tool.diff).toBeUndefined();
       expect(tool.proposedDiff).toBeUndefined();
-      expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(
-        Schema.encodeUnknownSync(RuntimeUiPatchSchema)(outputPatch(tool)))).toEqual(outputPatch(tool));
+      expect(decodeRuntimeUiPatch(
+        encodeRuntimeUiPatch(outputPatch(tool)))).toEqual(outputPatch(tool));
     }
   });
 
@@ -573,7 +572,7 @@ describe("canonical mutation artifacts", () => {
     expect(Object.hasOwn(tool, "filetype")).toBe(false);
 
     const patch = outputPatch(tool);
-    expect(Schema.encodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch);
+    expect(encodeRuntimeUiPatch(patch)).toEqual(patch);
   });
 
   it("keeps the legacy per-file diff of an edit alongside an artifact-free result", () => {

@@ -381,7 +381,7 @@ const UsageAccountSourceSchema = Schema.Union([
   UsageAccountSourceBaseSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("subscription"), quotaAccounting: UsageQuotaAccountingSchema, observation: UsageSubscriptionObservationSchema, bankedResets: Schema.optionalKey(UsageBankedResetsSchema), allowanceCap: Schema.optionalKey(UsageAllowanceCapSchema) })),
   UsageAccountSourceBaseSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("metered"), spendMode: Schema.Literals(["direct_api", "aggregator"]), observation: Schema.optionalKey(UsageSubscriptionObservationSchema) })),
 ])
-export const UsageAccountsResultSchema: Schema.Codec<UsageAccountsResult> = UsageProtocolMetadataSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("usage.accounts"), sources: Schema.Array(UsageAccountSourceSchema) }))
+const UsageAccountsResultSchema: Schema.Codec<UsageAccountsResult> = UsageProtocolMetadataSchema.pipe(Schema.fieldsAssign({ kind: Schema.Literal("usage.accounts"), sources: Schema.Array(UsageAccountSourceSchema) }))
 
 const UsageSpendSourceBaseSchema = Schema.Struct({ sourceId: Schema.NonEmptyString, label: Schema.NonEmptyString, active: Schema.Boolean, spendModes: Schema.Array(SpendModeSchema), ...UsageCoverageCountsFields, tokens: UsageTokensSchema, estimatedBilledUsd: NonNegativeFinite, includedValueUsd: NonNegativeFinite, priceUnavailable: Schema.Boolean, models: Schema.Array(UsageModelSummarySchema) })
 const UsageSpendSourceSchema = Schema.Union([

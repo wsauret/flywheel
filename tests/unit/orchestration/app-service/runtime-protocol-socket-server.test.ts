@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { type Cause, Effect, Layer, ManagedRuntime, Queue, Schema, Stream } from "effect"
 import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcServer } from "effect/rpc"
-import { layerMsgPack, msgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { runtimeMsgPack } from "../../../helpers/runtime-msgpack.js"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
@@ -107,7 +108,7 @@ function isServerMessage(raw: unknown): raw is ServerMessage {
 async function serve() {
   const finalized = { count: 0 }
   const fromServer: Array<ServerMessage> = []
-  const observer = msgPack.makeUnsafe()
+  const observer = runtimeMsgPack.makeUnsafe()
   const toServer = pipe()
   const toClient = pipe((bytes) => {
     for (const raw of observer.decode(bytes)) {
@@ -127,7 +128,7 @@ async function serve() {
     Layer.provide(socketServer),
   ))
   await server.runPromise(Effect.void)
-  const encoder = msgPack.makeUnsafe()
+  const encoder = runtimeMsgPack.makeUnsafe()
   let writer: WritableStreamDefaultWriter<Uint8Array> | undefined
   return {
     finalized,

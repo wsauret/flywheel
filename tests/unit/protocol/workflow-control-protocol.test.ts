@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
-import { FrontendMutationSchema, RuntimeQuerySchema, RuntimeUiPatchSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { FrontendMutationSchema, RuntimeQuerySchema } from "../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../helpers/runtime-ui-patch.js"
 import { workflowsProtocol, workflowLiveCursor } from "../../../src/protocol/modules/workflows.js"
 import { cursorKey } from "../../../src/protocol/runtime-ui-protocol-types.js"
 
@@ -29,8 +30,8 @@ describe("workflow control wire contract", () => {
       expect(() => decode({ type, sessionIds: ["shared"] })).toThrow()
     }
     const patch = { cursor: workflowLiveCursor("shared"), position: 1, prevPosition: 0, payload: { kind: "workflow_live.changed", agents: [], order: [] } } as const
-    expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+    expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
     expect(cursorKey(patch.cursor)).not.toBe(cursorKey({ scope: "session", domain: "output", sessionId: "shared" }))
-    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchSchema)({ ...patch, cursor: { scope: "session", domain: "workflow_live", sessionId: "shared" } })).toThrow()
+    expect(() => decodeRuntimeUiPatch({ ...patch, cursor: { scope: "session", domain: "workflow_live", sessionId: "shared" } })).toThrow()
   })
 })

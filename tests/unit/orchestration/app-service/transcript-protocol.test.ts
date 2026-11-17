@@ -9,7 +9,7 @@ import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
-import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputGroupChildrenSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
+import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import type { ChatSessionEntry } from "../../../../src/orchestration/session-store/types.js"
 import type { WorkflowView, AttemptRow } from "../../../../src/workflows/view/types.js"
@@ -148,7 +148,8 @@ describe("bounded output history protocol", () => {
       }],
     }
 
-    expect(Schema.decodeUnknownSync(HydratedOutputGroupChildrenSchema)(payload)).toEqual(payload)
+    const batch = { groups: [payload], contentBytes: payload.contentBytes }
+    expect(Schema.decodeUnknownSync(HydratedOutputGroupChildrenBatchSchema)(batch)).toEqual(batch)
   })
 
   it("round-trips batched mixed-container children and bounds visible parent ids", () => {

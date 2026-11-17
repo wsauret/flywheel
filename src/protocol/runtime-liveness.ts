@@ -283,7 +283,7 @@
  */
 export const RUNTIME_PROTOCOL_VERSION = 88
 
-export const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
+const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 
 /** How long a client waits without a frame before it treats the lane as dead.
  *  The heartbeat rides the same ordered lane as the data, so on a slow link a

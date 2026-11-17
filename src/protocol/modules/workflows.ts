@@ -81,14 +81,14 @@ const WorkflowLiveViewSchema: Schema.Codec<WorkflowLiveView> = Schema.Struct({ a
  *  changed, names the session of every agent that the view holds now, in
  *  order. A change carries only the agents that moved, so a change of one
  *  agent costs the same whatever the number of agents. */
-export interface WorkflowLiveChange {
+interface WorkflowLiveChange {
   readonly agents: WorkflowLiveView["agents"]
   readonly order?: readonly string[]
 }
 
 /** The live view after `change`, from the view a client holds, or from no
  *  agents before the run had a view. */
-export function foldWorkflowLiveChange(current: WorkflowLiveView | null | undefined, change: WorkflowLiveChange): WorkflowLiveView {
+function foldWorkflowLiveChange(current: WorkflowLiveView | null | undefined, change: WorkflowLiveChange): WorkflowLiveView {
   const agents = new Map((current?.agents ?? []).map((agent) => [agent.sessionId, agent]))
   for (const agent of change.agents) agents.set(agent.sessionId, agent)
   const order = change.order ?? (current?.agents ?? []).map(({ sessionId }) => sessionId)

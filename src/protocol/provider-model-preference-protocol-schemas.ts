@@ -11,7 +11,7 @@ import type {
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const ProviderIdSchema = Schema.NonEmptyString
 const ModelIdSchema = Schema.NonEmptyString
-export const ProviderModelTargetSchema: Schema.Codec<ProviderModelTarget> = Schema.Union([
+const ProviderModelTargetSchema: Schema.Codec<ProviderModelTarget> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("singleton"), providerId: ProviderIdSchema }),
   Schema.Struct({ kind: Schema.Literal("subscription"), providerId: ProviderIdSchema, accountCorrelationId: Schema.NonEmptyString }),
 ])

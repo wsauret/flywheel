@@ -18,8 +18,8 @@
  * - A `SAFETY:` comment and two lint suppressions with their reasons mark
  *   the parameter reassignment and the `any` cast, as Flywheel's lint
  *   requires.
- * - `makeMsgPack` is not exported: Flywheel uses the one `useRecords: true`
- *   instance.
+ * - `makeMsgPack` and `msgPack` are not exported: Flywheel uses the one
+ *   `useRecords: true` instance, through `layerMsgPack`.
  */
 import * as Msgpackr from "msgpackr"
 import { Layer } from "effect"
@@ -79,7 +79,7 @@ const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerialization.R
  * @category serialization
  * @since 4.0.0
  */
-export const msgPack: RpcSerialization.RpcSerialization["Service"] = makeMsgPack({ useRecords: true })
+const msgPack: RpcSerialization.RpcSerialization["Service"] = makeMsgPack({ useRecords: true })
 
 /**
  * RPC serialization layer that uses MessagePack for serialization.

@@ -5,7 +5,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Schema } from "effect"
 import { RpcTest } from "effect/rpc"
-import { RuntimeBackgroundRpc, RuntimeProtocolRpc, RuntimeUiPatchSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { RuntimeBackgroundRpc, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js"
 import { changesCursor, type SessionFileChangeCounts } from "../../../../src/protocol/session-changes-protocol-types.js"
 import { runtimeDeliveryPolicy } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { runtimeCallPolicies } from "../../../../src/protocol/runtime-client-deadlines.js"
@@ -34,7 +35,7 @@ test("the runtime query RPC accepts a session-only change summary", () => {
   expect(Schema.decodeUnknownSync(background.payloadSchema)({ projectRoot: "/workspace", sessionId: "s" })).toEqual({ projectRoot: "/workspace", sessionId: "s" })
   expect(Schema.decodeUnknownSync(background.successSchema)(result)).toEqual({ fileCount: 4, unknownFileMutationGaps: 1 })
   const patch = { cursor: changesCursor("s"), payload: { kind: "changes.changed" as const }, position: 9, prevPosition: 0 }
-  expect(Schema.decodeUnknownSync(RuntimeUiPatchSchema)(patch)).toEqual(patch)
+  expect(decodeRuntimeUiPatch(patch)).toEqual(patch)
   expect(runtimeDeliveryPolicy("changes")).toBe("durable-resnapshot")
   expect(runtimeCallPolicies.sessionChangeSummary).toBe(runtimeCallPolicies.outputRange)
   expect(runtimeCallPolicies.dispatch._tag).toBe("Lossless")

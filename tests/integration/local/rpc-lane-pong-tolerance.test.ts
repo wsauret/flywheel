@@ -1,7 +1,8 @@
 import { test, expect } from "bun:test"
 import { Effect, Layer, ManagedRuntime } from "effect"
 import { RpcServer } from "effect/rpc"
-import { layerMsgPack, msgPack } from "../../../src/protocol/rpc-msgpack.js"
+import { layerMsgPack } from "../../../src/protocol/rpc-msgpack.js"
+import { runtimeMsgPack } from "../../helpers/runtime-msgpack.js"
 import { Socket } from "effect/socket"
 import { mkdtempSync, rmSync } from "node:fs"
 import net from "node:net"
@@ -10,7 +11,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import type { FrontendEvent } from "../../../src/protocol/app-service-types.js"
-import { RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS } from "../../../src/protocol/runtime-liveness.js"
+import { RUNTIME_LIVENESS_POLICY } from "../../../src/protocol/runtime-liveness.js"
 import { RuntimeProtocolRpc } from "../../../src/protocol/runtime-protocol-schemas.js"
 import { socketRpcServerLayer } from "../../helpers/socket-rpc-server.js"
 import { runtimeHandlers } from "../../../src/orchestration/app-service/runtime-protocol-handlers.js"
@@ -46,7 +47,7 @@ function idleService(): Parameters<typeof runtimeHandlers>[0]["client"] {
 }
 
 function isPingOnly(chunk: Uint8Array): boolean {
-  const parser = msgPack.makeUnsafe()
+  const parser = runtimeMsgPack.makeUnsafe()
   const messages = parser.decode(chunk)
   return messages.length > 0 && messages.every((message) => typeof message === "object" && message !== null && "_tag" in message && message._tag === "Ping")
 }
@@ -122,7 +123,7 @@ test("the event lane stays attached when request-level pings are never answered"
   try {
     const outcome = await Promise.race([
       connected.promise.then(() => "connected" as const),
-      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS + 2_000)),
+      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), RUNTIME_LIVENESS_POLICY.heartbeatIntervalMs + 2_000)),
     ])
     expect(outcome).toBe("connected")
     await new Promise<void>((resolve) => { setTimeout(resolve, STARVED_WINDOW_MS) })

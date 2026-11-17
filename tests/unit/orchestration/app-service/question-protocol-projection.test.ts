@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { Schema } from "effect"
 import type { QuestionBlock } from "../../../../src/infra/output-blocks.js"
 import { createQuestionProtocolProjection } from "../../../../src/orchestration/app-service/question-protocol-projection.js"
-import { QuestionPatchPayloadSchema, RuntimeQuestionSnapshotResultSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
+import { runtimeQueryResultSchema, RuntimeUiPatchPayloadSchema } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import type { RuntimeUiPatch, RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { SessionEntry } from "../../../../src/orchestration/session-store/types.js"
@@ -194,8 +194,8 @@ describe("question protocol projection", () => {
     const snapshot = { snapshotPosition: 1, views: [{ sessionId: "s1", view: pending }] }
     const patch = { kind: "question.updated", question: pending } as const
 
-    expect(Schema.decodeUnknownSync(RuntimeQuestionSnapshotResultSchema)(snapshot)).toEqual(snapshot)
-    expect(Schema.decodeUnknownSync(QuestionPatchPayloadSchema)(patch)).toEqual(patch)
-    expect(() => Schema.decodeUnknownSync(QuestionPatchPayloadSchema)({ kind: "question.updated", question: { ...pending, content: "not output text" } }, { onExcessProperty: "error" })).toThrow()
+    expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("questionSnapshot"))(snapshot)).toEqual(snapshot)
+    expect(Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)(patch)).toEqual(patch)
+    expect(() => Schema.decodeUnknownSync(RuntimeUiPatchPayloadSchema)({ kind: "question.updated", question: { ...pending, content: "not output text" } }, { onExcessProperty: "error" })).toThrow()
   })
 })
