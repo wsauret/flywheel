@@ -1,0 +1,58 @@
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 47
+src/infra/tools/displays/find-chat.ts
+  h_4b47e9e4a8b456 4,8-9,11
+src/infra/tools/displays/lead.ts
+  h_4b47e9e4a8b456 4-7,39,47-48,53
+src/orchestration/app-service/session-event-notices.ts
+  h_4b47e9e4a8b456 43,47,49
+src/orchestration/modules/lead/chat-progress.ts
+  h_4b47e9e4a8b456 42,309,343,365,378-379,399,403-404
+src/orchestration/modules/lead/find-chat.ts
+  h_4b47e9e4a8b456 12,24,38-39
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 4,9-10,14-16,20-26,29,32-36,38-44,47
+src/orchestration/modules/lead/route-request.ts
+  h_4b47e9e4a8b456 40,47,53,65,82,86-88
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 518,534,635
+src/tui/modules/lead/chat-viewer.tsx
+  h_4b47e9e4a8b456 176-178
+src/tui/modules/lead/close-confirm.tsx
+  h_4b47e9e4a8b456 21
+src/tui/modules/lead/question-widget.tsx
+  h_4b47e9e4a8b456 246
+src/tui/modules/lead/transcript.ts
+  h_4b47e9e4a8b456 4,6,9-10,18-19,22-24
+tests/unit/infra/output/structured-event-tool-results.test.ts
+  h_4b47e9e4a8b456 38
+tests/unit/orchestration/app-service/output-projection-child-cards.test.ts
+  h_4b47e9e4a8b456 351,359
+tests/unit/orchestration/modules/lead/chat-progress.test.ts
+  h_4b47e9e4a8b456 59,64,69,99,103,108,117,180,201,274
+tests/unit/orchestration/modules/lead/route-request.test.ts
+  h_4b47e9e4a8b456 131,145,201,268-271,340
+tests/unit/orchestration/session/conversation-block-projection.test.ts
+  h_4b47e9e4a8b456 426
+tests/unit/protocol/client/turn-folds.test.ts
+  h_4b47e9e4a8b456 6,9
+tests/unit/tui/modules/lead/chat-viewer.test.tsx
+  h_4b47e9e4a8b456 103,109,111-112,116,166-167
+tests/unit/tui/modules/lead/close-confirm.test.tsx
+  h_4b47e9e4a8b456 26
+tests/unit/tui/modules/lead/question-widget.test.tsx
+  h_4b47e9e4a8b456 311
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 31-32,96,101,108,114,126,140,142,155-156,158,166-167,173,175,189-190,192,199,212-213,250,255-256,280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "78fd25311c98455ef7baab209c72ca0316656b08",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
