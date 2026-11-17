@@ -36,6 +36,7 @@ import lzma
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -417,7 +418,18 @@ def publish_package(directory: Path, repository: str, source_committer_date: str
         return {"repository": repository, "ref": existing_ref, "commit": commit, **target}
 
 
+def exit_on_terminate() -> None:
+    """Turn SIGTERM into a normal exit.
+
+    Python's default SIGTERM action ends the process without unwinding, so a
+    stopped launcher left each build's temporary tree (about 3.7 GB) behind.
+    An exit unwinds the `TemporaryDirectory` blocks, which remove their trees.
+    """
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
+
+
 def main() -> None:
+    exit_on_terminate()
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("build")

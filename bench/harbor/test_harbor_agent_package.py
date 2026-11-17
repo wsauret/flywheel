@@ -3,7 +3,9 @@ import io
 import json
 import lzma
 import os
+import signal
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -232,6 +234,36 @@ class ExecutableArchiveTest(unittest.TestCase):
         (payload / "native" / "linux-x64" / "link.so").symlink_to(payload / "native" / "linux-x64" / "libopentui.so")
         with self.assertRaisesRegex(RuntimeError, "not a regular file: native/linux-x64/link.so"):
             package.write_executable_archive(payload, self.root / "archive.tar.xz")
+
+
+# A build process that stops inside build_runtime: its commit tree step prints the
+# temporary tree and waits there for the test's SIGTERM.
+STOPPED_BUILD = """
+import sys, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import harbor_agent_package as package
+package.exit_on_terminate()
+def wait_in_tree(repository, commit, tree):
+    (tree / "payload").write_bytes(b"build output")
+    print(tree, flush=True)
+    time.sleep(60)
+package._commit_tree = wait_in_tree
+package.build_runtime(Path("."), "commit", Path("archive"), Path("analyzer"))
+"""
+
+
+@unittest.skipUnless(os.name == "posix", "SIGTERM ends a Windows process without running a handler")
+class StoppedBuildTest(unittest.TestCase):
+    def test_a_stopped_build_removes_its_temporary_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            build = subprocess.Popen([sys.executable, "-I", "-c", STOPPED_BUILD, str(Path(package.__file__).parent)], stdout=subprocess.PIPE, text=True, env={**os.environ, "TMPDIR": temporary})
+            tree = Path(build.stdout.readline().strip())
+            self.assertTrue(tree.is_dir())
+            build.send_signal(signal.SIGTERM)
+            self.assertEqual(build.wait(timeout=30), 128 + signal.SIGTERM)
+            build.stdout.close()
+            self.assertFalse(tree.exists())
 
 
 class PublicationTargetTest(unittest.TestCase):
