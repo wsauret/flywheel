@@ -12,8 +12,6 @@ import type {
   OutputGroupChildrenRequest,
   OutputRangeRequest,
   TranscriptSearchRequest,
-  TranscriptFindRequest,
-  TranscriptFindResult,
   ChatSearchRequest,
   ChatSearchResult,
   TranscriptSearchResult,
@@ -237,21 +235,6 @@ export const TranscriptSearchResultSchema: Schema.Codec<TranscriptSearchResult> 
   total: Schema.Number,
   page: Schema.Number,
   pageSize: Schema.Number,
-})
-
-export const TranscriptFindRequestSchema: Schema.Codec<TranscriptFindRequest> = Schema.Struct({
-  pattern: Schema.NonEmptyString,
-  regex: Schema.Boolean,
-  matchCase: Schema.Boolean,
-  includeThinking: Schema.Boolean,
-  scope: Schema.Literals(["all", "tail"]),
-})
-
-export const TranscriptFindResultSchema: Schema.Codec<TranscriptFindResult> = Schema.Struct({
-  matches: Schema.Array(Schema.Struct({ blockId: Schema.String, blockIndex: NonNegativeInt, occurrence: NonNegativeInt })),
-  more: Schema.Boolean,
-  fromBlockIndex: NonNegativeInt,
-  blockCount: NonNegativeInt,
 })
 
 export const ChatSearchRequestSchema: Schema.Codec<ChatSearchRequest> = Schema.Struct({

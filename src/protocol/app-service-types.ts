@@ -16,8 +16,6 @@ import type { RuntimeSessionDetailQuery, RuntimeSessionDetailResult, RuntimeSess
 import type { RuntimeRoleSnapshotResult } from "./role-protocol-types.js"
 import type { HydratedOutputGroupChildrenBatch, HydratedOutputRange, HydratedOutputBlockBody, OutputGroupChildrenRequest, OutputRangeRequest, OutputBlockBodyRequest, OutputWindowRequest, OutputWindowSnapshot,
   TranscriptSearchRequest,
-  TranscriptFindRequest,
-  TranscriptFindResult,
   ChatSearchRequest,
   ChatSearchResult,
   TranscriptSearchResult,
@@ -90,7 +88,6 @@ type RuntimeKernelQuery =
   | { readonly type: "outputGroupChildren"; readonly sessionId: string; readonly request: OutputGroupChildrenRequest }
   | { readonly type: "outputBlockBody"; readonly sessionId: string; readonly request: OutputBlockBodyRequest }
   | { readonly type: "transcriptSearch"; readonly request: TranscriptSearchRequest }
-  | { readonly type: "transcriptFind"; readonly sessionId: string; readonly request: TranscriptFindRequest }
   | { readonly type: "chatSearch"; readonly request: ChatSearchRequest }
   | { readonly type: "projectFiles"; readonly request: ProjectFilesRequest }
   | { readonly type: "statusSnapshot"; readonly sessionIds: readonly string[] }
@@ -134,7 +131,6 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
         : Q extends { readonly type: "outputGroupChildren" } ? HydratedOutputGroupChildrenBatch
           : Q extends { readonly type: "outputBlockBody" } ? HydratedOutputBlockBody
           : Q extends { readonly type: "transcriptSearch" } ? TranscriptSearchResult
-          : Q extends { readonly type: "transcriptFind" } ? TranscriptFindResult
           : Q extends { readonly type: "chatSearch" } ? ChatSearchResult
           : Q extends { readonly type: "projectFiles" } ? ProjectFilesResult
             : Q extends { readonly type: "statusSnapshot" } ? RuntimeStatusSnapshotResult

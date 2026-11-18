@@ -41,7 +41,7 @@ import {
   RuntimeRoleAssignmentEntrySchema,
   RuntimeSaveModelEffortMutationSchema,
 } from "./model-assignment-protocol-schemas.js"
-import { FrontendOutputBlockSchema, QuestionBlockSchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, HydratedOutputBlockBodySchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema, OutputBlockBodyRequestSchema, TranscriptSearchRequestSchema, TranscriptSearchResultSchema, TranscriptFindRequestSchema, TranscriptFindResultSchema, ChatSearchRequestSchema, ChatSearchResultSchema, ProjectFilesRequestSchema, ProjectFilesResultSchema } from "./transcript-protocol-schemas.js"
+import { FrontendOutputBlockSchema, QuestionBlockSchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, HydratedOutputBlockBodySchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema, OutputBlockBodyRequestSchema, TranscriptSearchRequestSchema, TranscriptSearchResultSchema, ChatSearchRequestSchema, ChatSearchResultSchema, ProjectFilesRequestSchema, ProjectFilesResultSchema } from "./transcript-protocol-schemas.js"
 import { ProviderModelViewSchema, RuntimeDeselectAllProviderModelsMutationSchema, RuntimeProviderModelsQuerySchema, RuntimeRecheckProviderModelsMutationSchema, RuntimeSetProviderAutoEnableNewModelsMutationSchema, RuntimeSetProviderFreeRoutesMutationSchema, RuntimeSetProviderModelMutationSchema } from "./provider-model-preference-protocol-schemas.js"
 import { RuntimeConfigMutationSchema, RuntimeConfigPatchPayloadSchema, RuntimeConfigSnapshotResultSchema } from "./runtime-config-protocol-schemas.js"
 import { GitAiAttributionPatchPayloadSchema, RuntimeGitAiAttributionSnapshotResultSchema } from "./git-ai-attribution-protocol-schemas.js"
@@ -389,7 +389,6 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   Schema.Struct({ type: Schema.Literal("outputGroupChildren"), sessionId: Schema.String, request: OutputGroupChildrenRequestSchema }),
   Schema.Struct({ type: Schema.Literal("outputBlockBody"), sessionId: Schema.String, request: OutputBlockBodyRequestSchema }),
   Schema.Struct({ type: Schema.Literal("transcriptSearch"), request: TranscriptSearchRequestSchema }),
-  Schema.Struct({ type: Schema.Literal("transcriptFind"), sessionId: Schema.String, request: TranscriptFindRequestSchema }),
   Schema.Struct({ type: Schema.Literal("chatSearch"), request: ChatSearchRequestSchema }),
   Schema.Struct({ type: Schema.Literal("projectFiles"), request: ProjectFilesRequestSchema }),
   Schema.Struct({ type: Schema.Literal("statusSnapshot"), sessionIds: Schema.Array(Schema.String) }),
@@ -520,7 +519,7 @@ const RUNTIME_QUERY_RESULT_SCHEMAS = {
   mutationFiles: MutationFilesResultSchema, mutationPatchWindow: MutationPatchWindowResultSchema,
   snapshot: RuntimeUiSnapshotSchema, outputWindow: OutputWindowSnapshotSchema, outputRange: HydratedOutputRangeSchema,
   outputGroupChildren: HydratedOutputGroupChildrenBatchSchema, outputBlockBody: HydratedOutputBlockBodySchema,
-  transcriptSearch: TranscriptSearchResultSchema, transcriptFind: TranscriptFindResultSchema, chatSearch: ChatSearchResultSchema, projectFiles: ProjectFilesResultSchema,
+  transcriptSearch: TranscriptSearchResultSchema, chatSearch: ChatSearchResultSchema, projectFiles: ProjectFilesResultSchema,
   statusSnapshot: RuntimeStatusSnapshotResultSchema, budgetSnapshot: RuntimeBudgetSnapshotResultSchema,
   questionSnapshot: RuntimeQuestionSnapshotResultSchema, roleSnapshot: RuntimeRoleSnapshotResultSchema,
   authStatusSnapshot: RuntimeAuthStatusSnapshotResultSchema,
@@ -551,7 +550,7 @@ export const RUNTIME_READ_DOMAINS = {
   sessionDetailSnapshot: ["session_detail"], authStatusSnapshot: ["auth"], updateSnapshot: ["updates"], moduleSnapshot: ["modules"], configSnapshot: ["config"],
   gitAiAttributionSnapshot: ["gitAiAttribution"], gitSnapshot: ["git"], commandUsageSnapshot: ["commandUsage"], commandCatalog: ["commands"],
   outputWindow: ["output"], sessionChangeSummary: ["changes"], sessionBackgroundWork: ["background"],
-  sessionChanges: [], sessionChangeDiff: [], outputRange: [], outputGroupChildren: [], outputBlockBody: [], transcriptSearch: [], transcriptFind: [], chatSearch: [], projectFiles: [],
+  sessionChanges: [], sessionChangeDiff: [], outputRange: [], outputGroupChildren: [], outputBlockBody: [], transcriptSearch: [], chatSearch: [], projectFiles: [],
   mutationFiles: [], mutationPatchWindow: [],
   authProfileDeletionPreview: [], sessionDetail: [], recallQueuedMessage: [], modelAssignments: [], modelOptions: [], effortOptions: [], modelRoles: [], "provider_models.query": [],
   sessionModelPlan: [],

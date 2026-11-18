@@ -151,39 +151,6 @@ export interface TranscriptSearchResult {
   readonly pageSize: number
 }
 
-/** A find of every occurrence of a text or a pattern in one session's whole
- *  transcript, in document order. `tail` scans only the blocks of the latest
- *  turn, from the last sent user message, so a client that follows live
- *  output keeps its earlier matches and asks again only for the part that can
- *  still change. */
-export interface TranscriptFindRequest {
-  readonly pattern: string
-  readonly regex: boolean
-  readonly matchCase: boolean
-  /** Thinking blocks are searched only while the client shows them. */
-  readonly includeThinking: boolean
-  readonly scope: "all" | "tail"
-}
-
-/** One occurrence: the block that holds it and its ordinal among the
- *  occurrences of that block. */
-export interface TranscriptFindMatch {
-  readonly blockId: string
-  readonly blockIndex: number
-  readonly occurrence: number
-}
-
-export interface TranscriptFindResult {
-  /** The matches of the blocks from `fromBlockIndex` on, at most
-   *  `TRANSCRIPT_FIND_LIMIT`. */
-  readonly matches: readonly TranscriptFindMatch[]
-  /** More matches exist past the last one returned. */
-  readonly more: boolean
-  /** The first block the scan read: 0 for `all`. */
-  readonly fromBlockIndex: number
-  readonly blockCount: number
-}
-
 /** A search for the root chats of the project whose messages best match some keywords. */
 export interface ChatSearchRequest {
   readonly query: string
