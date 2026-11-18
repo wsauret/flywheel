@@ -1,0 +1,88 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 305-309
+src/infra/conversation-recall-search.ts
+  h_4b47e9e4a8b456 4-6,8-17,113-116,122-128,134-141,143,149,156-158,160-161,165-210
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 5,232-233,259
+src/orchestration/app-service/project-control-client.ts
+  h_4b47e9e4a8b456 5,117,124-128,528-530,547,550-551,624
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 44,388,390,408
+src/orchestration/app-service/project-execution-channel.ts
+  h_4b47e9e4a8b456 16,86-94,110,182,301-304,313-315,317-320,355,359,363,571,573,575-591,607-608,616
+src/orchestration/app-service/runtime-background-lane.ts
+  h_4b47e9e4a8b456 170
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 58,115,160,182-183
+src/orchestration/app-service/runtime-protocol-handlers.ts
+  h_4b47e9e4a8b456 97,227-229,231,234
+src/orchestration/app-service/worker-background-client.ts
+  h_4b47e9e4a8b456 39-40,103-105,107-109,125,128,144
+src/orchestration/session/conversation-recall.ts
+  h_4b47e9e4a8b456 230-241,250-259,261-262
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 9-10,28-29,31-35,100,102-108,112,114-120,122,136,145,148
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 164-170,172
+src/protocol/client/chat-content-search.ts
+  h_4b47e9e4a8b456 5-15,24-26,38-41,43-45,51,54-62,64-65,69-70,73-74,76-77,80-82,84-85,90-91,94,96-100,103,107-110,112,114,120-121,124
+src/protocol/client/connection.ts
+  h_4b47e9e4a8b456 13,116,559,562,568-570,581,591,828-829,831
+src/protocol/client/session-title-match.ts
+  h_4b47e9e4a8b456 1-17
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 7,10,25,29,121,291-293,302-303,305,311-312,317,321,326-333,336,378,397,399,466,501-508,511-513
+src/tui/modals/session-modal.tsx
+  h_4b47e9e4a8b456 132
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 75,122
+tests/unit/orchestration/app-service/project-control-session-holds.test.ts
+  h_4b47e9e4a8b456 94-95,114-116,529
+tests/unit/orchestration/app-service/project-execution-channel-calls.test.ts
+  h_4b47e9e4a8b456 3-4,30-59
+tests/unit/orchestration/app-service/worker-background-client.test.ts
+  h_4b47e9e4a8b456 22,48-49,119,134-151
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 169,171-173,175,178-180,182-206,209-210,212,225-232
+tests/unit/protocol/client/_connection-fixtures.ts
+  h_4b47e9e4a8b456 114-118
+tests/unit/protocol/client/connection-lane.test.ts
+  h_4b47e9e4a8b456 144-164
+tests/unit/tui/hooks/_session-modal-fixtures.ts
+  h_4b47e9e4a8b456 3,62-68,73,75,93,114-120
+tests/unit/tui/hooks/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 1,3,80-102,105,122,133,148
+tests/unit/tui/hooks/use-session-modal-content-search.test.ts
+  h_4b47e9e4a8b456 3,16-18,22,25-26,33,41,44,46,48-51,53,98-105,112-126,149-165
+tests/unit/tui/hooks/use-session-modal.test.ts
+  h_4b47e9e4a8b456 8,101,103,121,168,175-176,178,186,192,194,207-208,218,224,234,236,246,259,264,270,273-274,316,318,321-326,328-332,337-376,421,431,437,453,487,489-493,496-506,542-543,549,557,560,632-633
+tests/unit/tui/modals/session-modal-delete.test.ts
+  h_4b47e9e4a8b456 102-104,149-150
+tests/unit/tui/session-picker/session-picker-row.test.ts
+  h_4b47e9e4a8b456 242
+tests/unit/tui/session-picker/session-picker-text-entry.test.tsx
+  h_4b47e9e4a8b456 7,20,33,36,48,80-92
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 328-331,335,343-347,353
+webview/src/app/session-actions.ts
+  h_4b47e9e4a8b456 51
+webview/src/app/session-list-budget.test.tsx
+  h_4b47e9e4a8b456 51-52,55,60-61,69-70,112-131
+webview/src/app/session-list.tsx
+  h_4b47e9e4a8b456 7,37-39,76-78,87,93-97
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 89,300
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 248-249,814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3eb6ad288e4ad7d58312f13710eee7d38238f5f3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
