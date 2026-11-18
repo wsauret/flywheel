@@ -53,7 +53,7 @@ Size the reviewer set by tier before dispatching. A code change takes `reviewer-
 
 Dispatch every selected reviewer in parallel.
 {{if:workflow}}
-When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`.
+Dispatch them as subagents and never launch a workflow for the review.
 {{end}}
 {{if:type:general}}
 Use self-contained prompts and never `fork: true`. Inline the target, project context paths, design rationale, constraints, assigned claims, and location format. Include this instruction; for a plan target, name the plan and plan-scope locations instead:

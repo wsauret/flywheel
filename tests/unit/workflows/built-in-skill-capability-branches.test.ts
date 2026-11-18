@@ -20,7 +20,7 @@ describe("capability branches of bundled skill packages", () => {
 
   it("keeps each capability-specific method branch for the agents that hold it", () => {
     const branches = [
-      { id: "code-review", term: "workflow", text: "When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`.", kept: "Dispatch every selected reviewer in parallel.\nUse self-contained prompts" },
+      { id: "code-review", term: "workflow", text: "Dispatch them as subagents and never launch a workflow for the review", kept: "Dispatch every selected reviewer in parallel.\nUse self-contained prompts" },
       { id: "research", term: "workflow", text: "When you can launch a workflow file, run two or more facets as one workflow", kept: "This skill owns the research explorer dispatch" },
       { id: "research", term: "subagent", text: "This skill owns the research explorer dispatch", kept: "Prefer empirical evidence over static reasoning" },
       { id: "research", term: "subagent", text: "Dispatch one `explorer` per facet in its enumerative mode, all in one turn.", kept: "Research each facet this way: enumerate first" },
