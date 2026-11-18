@@ -1,0 +1,22 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 37,44-45
+bench/harbor/configs/fh-deepseek-1017-max-baseten.toml
+  h_4b47e9e4a8b456 16-19,61-62,64,92-103
+bench/harbor/configs/fh-deepseek-1017-max-openrouter.toml
+  h_4b47e9e4a8b456 17-20,62-63,65,99-113
+bench/harbor/configs/fh-deepseek-1017-max.toml
+  h_4b47e9e4a8b456 23-26,66-67,69,103-117
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 112-114,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e2f0a06440cd2de4f198f9835ce43dc277420137",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
