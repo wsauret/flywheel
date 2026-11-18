@@ -1,0 +1,46 @@
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 26-28
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 145
+  h_4b47e9e4a8b456 96
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 2,31-36,40,89-90,95-96,167-179
+tests/unit/orchestration/workflow-host/golden/pre-phase-lineage.json
+  h_4b47e9e4a8b456 732
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 153,157-160
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/build-review-loop.workflow.yaml
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 243,262
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1218
+src/cli/root-help.ts
+  h_4b47e9e4a8b456 56
+src/orchestration/modules/workflows/definitions/skills/workflow-authoring/references/implement-briefs.md
+  h_4b47e9e4a8b456 55
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 375,463
+tests/unit/workflows/workflow-prompt-hygiene.test.ts
+  h_4b47e9e4a8b456 102-106,108
+  h_4b47e9e4a8b456 107
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 3,29,43-45,136
+src/workflows/docs/cli.md
+  h_4b47e9e4a8b456 37
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 67
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "05efc644634290c5b9c37d725c867c166c17242e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
