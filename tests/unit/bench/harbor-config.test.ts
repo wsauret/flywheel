@@ -109,13 +109,21 @@ describe("Harbor config resolution", () => {
   });
 
   const ARMS = resolve(import.meta.dir, "../../../bench/harbor/configs");
-  test.each(readdirSync(ARMS).filter((file) => file.endsWith(".toml")))("the %s arm offers only the agent types that do the task's work, each on the arm's chat model", (file) => {
+  // The shipped arm measures the agent types as Flywheel ships them, without only the advisor, whose second opinion
+  // from another model a run of one model cannot give. Every other arm offers only the types that do the task's work.
+  const SHIPPED_ARM = "tb-luna-high-shipped.toml";
+  test.each(readdirSync(ARMS).filter((file) => file.endsWith(".toml")))("the %s arm offers its agent types, each on the arm's chat model", (file) => {
     const { config } = decodeCanonicalConfigText(readFileSync(join(ARMS, file), "utf8"), {}, undefined, join(ARMS, file));
     const enabled = new Set<string>(config.modules);
     const modules = composeFirstPartyModules(undefined, composeFirstPartyModules().enabledModuleIds.filter((id): id is ModuleId => !enabled.has(id)));
     const availability = definitionAvailabilityOf(repoDefinitions().captureRevision(), modules.enabledModuleIds, disabledTypesOf(config));
-    expect([...availableAgentTypes(availability)].toSorted()).toEqual(["explorer", "general", "implementer"]);
+    const types = [...availableAgentTypes(availability)].toSorted();
     const roles = config.profiles.benchmark?.roles ?? {};
+    if (file === SHIPPED_ARM) {
+      expect(types).not.toContain("advisor");
+      expect(types).toEqual(expect.arrayContaining(["explorer", "general", "implementer", "reviewer-quality", "ship"]));
+      for (const role of ["workflow-agent", "reviewer", "ship"]) expect(roles[role]).toEqual(roles.chat);
+    } else expect(types).toEqual(["explorer", "general", "implementer"]);
     for (const role of ["explorer", "implementer", "subagent-summary"]) expect(roles[role]).toEqual(roles.chat);
   });
 
