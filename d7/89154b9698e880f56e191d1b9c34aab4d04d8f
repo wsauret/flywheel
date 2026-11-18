@@ -1,0 +1,14 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d789154b9698e880f56e191d1b9c34aab4d04d8f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
