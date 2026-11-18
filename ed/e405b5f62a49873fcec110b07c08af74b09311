@@ -1,0 +1,16 @@
+bench/harbor/configs/tb-luna-high-shipped.toml
+  h_4b47e9e4a8b456 1-89
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 112-115,120,122-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ede405b5f62a49873fcec110b07c08af74b09311",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
