@@ -1,0 +1,16 @@
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 56
+tests/unit/workflows/built-in-skill-capability-branches.test.ts
+  h_4b47e9e4a8b456 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f9555519d7d451cddc37fc150f0d90604572faad",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
