@@ -1,0 +1,132 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 297-305
+src/infra/conversation-recall-search.ts
+  h_4b47e9e4a8b456 4-7,97-139
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 258-259
+src/orchestration/app-service/runtime-background-lane.ts
+  h_4b47e9e4a8b456 19,170
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 25-26,58,96,115,160
+src/orchestration/app-service/worker-background-client.ts
+  h_4b47e9e4a8b456 17,39,142
+src/orchestration/session/conversation-recall.ts
+  h_4b47e9e4a8b456 238-244
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 3-4,6-8,10-11,19-23,27-31,38,43,49-55,96-189
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 19-22,93-94,137-138
+src/protocol/client/chat-content-search.ts
+  h_4b47e9e4a8b456 1-82
+src/protocol/client/search-snippet.ts
+  h_4b47e9e4a8b456 1-11
+src/protocol/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 33-34
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 44,392-393,523,554,582
+src/protocol/transcript-protocol-schemas.ts
+  h_4b47e9e4a8b456 15-18,242-271
+src/protocol/transcript-protocol-types.ts
+  h_4b47e9e4a8b456 154-211
+src/tui/context/landing-highlight.ts
+  h_4b47e9e4a8b456 5-8,13-16,20,23-30
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 33,157,417
+src/tui/hooks/use-session-modal-types.ts
+  h_4b47e9e4a8b456 14,22-23,35-36
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 1,8,12-13,26,28-35,79,85-98,100,102-104,126,137,165,171,179-180,184,192,349,359-362,364-365,379,383,386,389,391,395,460-461,478,564-569,623
+src/tui/modals/session-modal.tsx
+  h_4b47e9e4a8b456 50
+src/tui/output-blocks/block-frame.tsx
+  h_4b47e9e4a8b456 6,24-25,54
+src/tui/output-blocks/text-block.tsx
+  h_4b47e9e4a8b456 4-5,23-24,26,30
+src/tui/output-blocks/user-message-block.tsx
+  h_4b47e9e4a8b456 12-13,101-102,150,194
+src/tui/output-window/output-window-projection.ts
+  h_4b47e9e4a8b456 2,32-33,39,41-43
+src/tui/session-picker/picker-helpers.ts
+  h_4b47e9e4a8b456 3,112-123
+src/tui/session-picker/picker-types.ts
+  h_4b47e9e4a8b456 2,4,8,32-41
+src/tui/session-picker/session-picker-list.tsx
+  h_4b47e9e4a8b456 13,26,65,73-78,82-83,88-91,99-100,146,209,244,248
+src/tui/session-picker/session-picker-row.tsx
+  h_4b47e9e4a8b456 6-9,32-34,37-40,44,55,61-62,64-67,72,74,89,91-93,108-119
+tests/unit/orchestration/app-service/_project-control-client-fixture.ts
+  h_4b47e9e4a8b456 42
+tests/unit/orchestration/app-service/app-service-background-lane.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 59,134
+tests/unit/orchestration/app-service/project-control-settlement.test.ts
+  h_4b47e9e4a8b456 102
+tests/unit/orchestration/app-service/project-control-updates.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/app-service/runtime-background-lane.test.ts
+  h_4b47e9e4a8b456 13,36,204,211,219-222,228-239
+tests/unit/orchestration/app-service/runtime-worker-imports.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/app-service/worker-background-client.test.ts
+  h_4b47e9e4a8b456 47
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 16-17,20,22,27,33-44,47,55,74,137-214
+tests/unit/tui/hooks/_session-modal-fixtures.ts
+  h_4b47e9e4a8b456 10,59,66,82-83,86-87,103,107-108,115
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 227
+tests/unit/tui/hooks/use-session-modal.test.ts
+  h_4b47e9e4a8b456 352-492
+tests/unit/tui/modals/session-modal-delete.test.ts
+  h_4b47e9e4a8b456 15,63,96,145
+tests/unit/tui/modals/session-modal-open-warning.test.ts
+  h_4b47e9e4a8b456 72,79
+tests/unit/tui/output-window-projection.test.ts
+  h_4b47e9e4a8b456 69-81
+tests/unit/tui/output-window.test.tsx
+  h_4b47e9e4a8b456 318-355
+tests/unit/tui/session-picker/picker-helpers.test.ts
+  h_4b47e9e4a8b456 55-56
+tests/unit/tui/session-picker/session-picker-row.test.ts
+  h_4b47e9e4a8b456 9,199-226
+tests/unit/tui/session-picker/session-picker-scroll.test.tsx
+  h_4b47e9e4a8b456 39,164-183
+tests/unit/tui/session-picker/session-picker-text-entry.test.tsx
+  h_4b47e9e4a8b456 17
+tests/unit/tui/session-picker/session-preview-pane.test.tsx
+  h_4b47e9e4a8b456 61
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 327-360
+webview/src/app/find-bar.tsx
+  h_4b47e9e4a8b456 11,91
+webview/src/app/session-actions.ts
+  h_4b47e9e4a8b456 1,51-57
+webview/src/app/session-list-budget.test.tsx
+  h_4b47e9e4a8b456 48-105
+webview/src/app/session-list.tsx
+  h_4b47e9e4a8b456 2,5-7,36-41,74-75,83-108,144-145,168-180,292-324
+webview/src/app/sheets/sessions-sheet.tsx
+  h_4b47e9e4a8b456 26
+webview/src/app/sheets/sheet.tsx
+  h_4b47e9e4a8b456 28-31,50
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 5,89,300
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 1,248-249,814
+webview/src/styles/session-list.css
+  h_4b47e9e4a8b456 118-122,214,261-280
+webview/src/styles/sheets.css
+  h_4b47e9e4a8b456 16,21,39,48-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2aca72c90eb97e47540ccf3a853d89f5b7f10ae3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
