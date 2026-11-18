@@ -3,7 +3,7 @@ import { faultReach, type TerminalAttach } from "./terminal-attach.js"
 import { cardProfileName } from "../protocol/client/new-chat-card.js"
 import { runtimeFaultCopy, type ReleaseInstall } from "../protocol/client/runtime-fault-copy.js"
 import { providerSetup } from "../protocol/client/provider-setup.js"
-import { useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { usePaste, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { OverlayHost, useOverlay } from "@tui/components/modal"
 import { ToastDisplay } from "@tui/components/toast-display"
 import { NavigationProvider } from "@tui/context/navigation.js"
@@ -27,6 +27,8 @@ import { OutputWindow, type OutputWindowCommand, type OutputWindowCommandType } 
 import { createTranscriptLayoutCache } from "./output-window/output-window-scroll.js"
 import { createTerminalBackground, type TerminalBackgroundWriter } from "./hooks/create-terminal-background.js"
 import { createTranscriptSelectionDrag } from "./hooks/create-transcript-selection-drag.js"
+import { createFindBar } from "./hooks/create-find-bar.js"
+import { FindBar } from "./components/find-bar.js"
 import { createSessionProcessControls } from "./hooks/create-session-process-controls.js"
 import { startSessionChangesWhenReady } from "./hooks/create-session-changes.js"
 import type { SettingsOperations } from "./hooks/create-settings-store.js"
@@ -91,6 +93,24 @@ function ShellLayout(props: FlywheelShellProps) {
   const directories = { userDataRoot, accountHome }
   const copySelection = useCopySelection(clipboard)
   const transcriptSelectionDrag = createTranscriptSelectionDrag(renderer)
+  const findBar = createFindBar({
+    client: appService,
+    sessionId: signals.foregroundId,
+    includeThinking: () => signals.display.showThinking,
+    transcript: signals.outputTranscript,
+    report: (message) => services.showToast({ message, variant: "error" }),
+  })
+  // The prompt is blurred while the find bar holds the keys, so a paste then
+  // goes into the find field, unless a modal above both takes it.
+  usePaste((event) => {
+    if (!overlay.isOpen() && findBar.paste(new TextDecoder().decode(event.bytes))) event.preventDefault()
+  })
+  // A press anywhere but the find bar hands the keys back to the prompt; the
+  // bar stays open.
+  const onShellMouseDown: typeof transcriptSelectionDrag.onMouseDown = (event) => {
+    findBar.blur()
+    transcriptSelectionDrag.onMouseDown(event)
+  }
   const onShellMouseUp = (): boolean => {
     transcriptSelectionDrag.onMouseUp()
     return copySelection()
@@ -120,7 +140,7 @@ function ShellLayout(props: FlywheelShellProps) {
   const composer = createShellComposer({ appService, stateRoot, launchState })
   const places = createShellPlaces({ appService, composer, firstFrame, ready })
   const overlays = createShellOverlays({
-    appService, attach, runtimeConfig, directories, appVersion, launcher, clipboard, settingsOperations, composer, places, navigateToProcess,
+    appService, attach, runtimeConfig, directories, appVersion, launcher, clipboard, settingsOperations, composer, places, navigateToProcess, openFind: findBar.open,
     openSession: openSession.call, openTarget: openTarget.call, dispatchCommand: dispatchCommand.call,
   })
   const sessionIntro = {
@@ -138,7 +158,7 @@ function ShellLayout(props: FlywheelShellProps) {
   const navigation = createShellNavigation({ appService, stateRoot, launchState, composer, places, overlays, processControls, transcriptLayout, sessionIntro, dispatchCommand: dispatchCommand.call })
   openSession.bind(navigation.activateSessionById)
   openTarget.bind(navigation.openTarget)
-  const commands = createShellCommands({ appService, attach, runtimeConfig, directories, launcher, composer, places, overlays, providerSetup: setup, dispatchOutputCommand })
+  const commands = createShellCommands({ appService, attach, runtimeConfig, directories, launcher, composer, places, overlays, providerSetup: setup, dispatchOutputCommand, findBar })
   dispatchCommand.bind(commands.dispatch.dispatch)
 
   onMount(() => {
@@ -164,7 +184,7 @@ function ShellLayout(props: FlywheelShellProps) {
     <SubagentControlsProvider value={subagentControls}><NavigationProvider value={navigation.navigateUri}>
     <ClientExtensionsProvider value={navigation.moduleClients}>{navigation.modules.provide(() => <>
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={themeContext.baseBackground}
-      onMouseDown={transcriptSelectionDrag.onMouseDown} onMouseDrag={transcriptSelectionDrag.onMouseDrag} onMouseUp={onShellMouseUp}>
+      onMouseDown={onShellMouseDown} onMouseDrag={transcriptSelectionDrag.onMouseDrag} onMouseUp={onShellMouseUp}>
       <ShellHeader places={places} chat={composer.chat} />
 
       {/* The transcript takes the rows the prompt area leaves. A tall pending
@@ -194,6 +214,8 @@ function ShellLayout(props: FlywheelShellProps) {
               roleView={signals.roleView}
               childStatus={(childSessionId) => signals.childStatus(childSessionId, id)}
               ensureChildViews={signals.ensureChildViews}
+              find={findBar}
+              findBar={<Show when={findBar.isOpen()}><FindBar bar={findBar} /></Show>}
               sessionIntro={{
                 ...sessionIntro,
                 branchName: () => signals.branch(id),
@@ -208,7 +230,7 @@ function ShellLayout(props: FlywheelShellProps) {
         </Show>
 
       </box>
-      <ShellComposer composer={composer} commands={commands} places={places} overlays={overlays} runtimeFault={runtimeFault} captureFocus={showPrompt} clipboard={clipboard} />
+      <ShellComposer composer={composer} commands={commands} places={places} overlays={overlays} runtimeFault={runtimeFault} captureFocus={() => showPrompt() && !findBar.focused()} clipboard={clipboard} />
       <ToastDisplay headerHeight={showPrompt() ? 3 : 0} />
     </box>
     <OverlayHost clipboard={clipboard} />

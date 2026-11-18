@@ -30,6 +30,7 @@ export const runtimeCallPolicies = {
   outputGroupChildren: outputRead,
   outputBlockBody: outputRead,
   transcriptSearch: outputRead,
+  transcriptFind: outputRead,
   chatSearch: outputRead,
   projectFiles: outputRead,
   statusSnapshot: controlRead,

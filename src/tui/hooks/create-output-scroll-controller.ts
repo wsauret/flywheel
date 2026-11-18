@@ -111,7 +111,10 @@ export interface OutputScrollController {
   readonly page: (action: "page-up" | "page-down" | "half-page-up" | "half-page-down") => void
   readonly toTop: () => void
   readonly toBottom: () => void
-  readonly toBlock: (blockIndex: number) => void
+  /** Lands on a block: centres it, or, with `focus`, centres the row that
+   *  `focus` names within the block's laid-out rows. `focus` runs once on the
+   *  block's layout; undefined centres the block. */
+  readonly toBlock: (blockIndex: number, focus?: () => number | undefined) => void
   readonly wheel: (event: MouseEvent) => void
   readonly preserveScroll: (mutate: () => void) => void
   readonly selectionAutoScroll: TranscriptSelectionAutoScroll
@@ -151,11 +154,13 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   // landing that centres a block.
   let pendingBlockTarget:
     | { readonly kind: "restore"; readonly blockIndex: number; readonly rowOffsetWithinBlock: number }
-    | { readonly kind: "land"; readonly blockIndex: number }
+    | { readonly kind: "land"; readonly blockIndex: number; readonly focus: (() => number | undefined) | undefined }
     | undefined
   // The block a taken landing centres. It stays set until the block's
   // laid-out row places the offset, before the frame that mounts it paints.
   let landing: number | undefined
+  // The row within the landing block that the landing centres instead of the block.
+  let landingFocus: (() => number | undefined) | undefined
   // The extent the frame decision stood on. Reactive spacers can trigger
   // another native layout round after onFrame; its size callbacks then
   // reconcile the offset against that round's extent and reading anchor.
@@ -498,6 +503,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       suppressTailFrames = 1
       pendingWheelRows = 0
       landing = target.kind === "land" ? target.blockIndex : undefined
+      landingFocus = target.kind === "land" ? target.focus : undefined
       captureAnchor(snap)
       landOnLayout(e)
     }
@@ -760,11 +766,11 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     void deps.jumpToLatest()
   }
 
-  function toBlock(blockIndex: number): void {
+  function toBlock(blockIndex: number, focus?: () => number | undefined): void {
     const e = el
     if (!e) return
     Reflect.deleteProperty(deps.slot, "restoreAnchor")
-    pendingBlockTarget = { kind: "land", blockIndex }
+    pendingBlockTarget = { kind: "land", blockIndex, focus }
     e.requestRender()
   }
 
@@ -794,7 +800,10 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       index.flushMeasurements()
       index.takeCorrections()
       frameExtent = e.scrollHeight
-      state.offset = Math.max(0, Math.min(centredTop(rows.top, rows.height, e.viewport.height), maxScrollTop(e)))
+      const focusRow = landingFocus?.()
+      landingFocus = undefined
+      const top = focusRow === undefined ? centredTop(rows.top, rows.height, e.viewport.height) : rows.top + focusRow - Math.floor(e.viewport.height / 2)
+      state.offset = Math.max(0, Math.min(top, maxScrollTop(e)))
       writeScroll(e, state.offset, "command.block")
       state.anchor = { kind: "block", blockIndex, rowOffsetWithinBlock: state.offset - rows.top }
       state.anchorIdentity = identityAt(untrack(snapshot), blockIndex)

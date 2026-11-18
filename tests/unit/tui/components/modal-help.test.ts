@@ -49,7 +49,7 @@ describe("ModalHelp shortcuts", () => {
       ]],
       ["Text editing", [
         "left arrow / ctrl+b - Move one character left",
-        "right arrow / ctrl+f - Move one character right",
+        "right arrow - Move one character right",
         "up arrow - Move one visual line up",
         "down arrow - Move one visual line down",
         "home / super+up arrow - Jump to entry start",
@@ -89,6 +89,7 @@ describe("ModalHelp shortcuts", () => {
         "ctrl+p - Commands",
         "ctrl+n - New chat",
         "ctrl+s - Sessions",
+        "ctrl+f - Find in transcripts",
         "ctrl+w - Close tab",
         "ctrl+r - Resume an interrupted session",
         "tab / shift+tab - Cycle sessions",

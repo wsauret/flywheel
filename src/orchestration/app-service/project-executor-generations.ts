@@ -128,7 +128,7 @@ export function executionAskerOf(command: FrontendMutation): ExecutionAsker | un
 /** Transcript and mutation-evidence reads ask as the surface that opens them.
  * Only the executor serves these reads (ARCH-RUNTIME-016). Other reads leave the project paused. */
 export function readAskerOf(request: RuntimeQuery): ExecutionAsker | undefined {
-  return request.type === "outputWindow" || request.type === "outputRange" || request.type === "outputGroupChildren" || request.type === "outputBlockBody"
+  return request.type === "outputWindow" || request.type === "outputRange" || request.type === "outputGroupChildren" || request.type === "outputBlockBody" || request.type === "transcriptFind"
     || request.type === "mutationFiles" || request.type === "mutationPatchWindow"
     ? "surface"
     : undefined

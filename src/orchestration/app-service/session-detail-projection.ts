@@ -10,6 +10,7 @@ import type { StatusView } from "../../protocol/status-protocol-types.js"
 import type { ProcessorClaims } from "../agent-runtime/tools/processor-claims.js"
 import { hydrateDerivedOutputGroupChildren, hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody, paginateOutputGroupChildren, unavailableHydratedOutputRange } from "./transcript-queries.js"
 import { readOutputSequence, type OutputSequence } from "./output-sequence.js"
+import { findInTranscript } from "./transcript-find.js"
 import type { ShippedOutput } from "./shipped-output.js"
 import { indexOutputBlocks } from "../session/conversation/branch-history-builder.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
@@ -23,6 +24,8 @@ import type {
   TranscriptUnavailable,
   OutputRangeRequest,
   OutputBlockBodyRequest,
+  TranscriptFindRequest,
+  TranscriptFindResult,
 } from "../../protocol/transcript-protocol-types.js"
 import type { SessionSummaryIndex } from "../session/session-summary-index.js"
 import { durableCatalogRowFromSession, parentIdentity, projectSessionCatalogRow, replaceCatalogTotals, type SessionActionEvidence } from "../session/session-catalog-row.js"
@@ -45,6 +48,7 @@ export interface SessionDetailProjection {
   outputRange(sessionId: string, request: OutputRangeRequest): Promise<HydratedOutputRange>
   outputGroupChildren(sessionId: string, request: OutputGroupChildrenRequest): Promise<HydratedOutputGroupChildrenBatch>
   outputBlockBody(sessionId: string, request: OutputBlockBodyRequest): Promise<HydratedOutputBlockBody>
+  transcriptFind(sessionId: string, request: TranscriptFindRequest): Promise<TranscriptFindResult>
 }
 
 /** The executor's detail source: the sessions it holds, the runtime
@@ -185,6 +189,11 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
     return hydrateDerivedOutputBlockBody(sequence, request)
   }
 
+  async function transcriptFind(sessionId: string, request: TranscriptFindRequest): Promise<TranscriptFindResult> {
+    const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), deps)
+    return sequence ? findInTranscript(sequence, request) : { matches: [], more: false, openFromBlockIndex: 0, blockCount: 0 }
+  }
+
   function sessionHistoryUnavailable(sessionId: string): TranscriptUnavailable {
     return {
       title: "Session history unavailable",
@@ -193,7 +202,7 @@ export function createSessionDetailProjection(deps: SessionDetailProjectionDeps)
     }
   }
 
-  return { sessionDetail, outputWindow, outputRange, outputGroupChildren, outputBlockBody }
+  return { sessionDetail, outputWindow, outputRange, outputGroupChildren, outputBlockBody, transcriptFind }
 }
 
 /** A live session's running shell calls: those its turn holds, and those

@@ -12,9 +12,9 @@ describe("modal source coherence", () => {
 
     expect(composition).toContain("lazy-modal-registry.js")
     expect(composition).not.toMatch(/import\(["']/)
-    expect(registry.match(/createLazyTuiView\(/g)).toHaveLength(12)
-    expect(registry.match(/import\(["'](?:\.\/|\.\.\/components\/)/g)).toHaveLength(12)
-    expect(registry.match(/import\(["']\.\.\/hooks\/use-/g)).toHaveLength(12)
+    expect(registry.match(/createLazyTuiView\(/g)).toHaveLength(11)
+    expect(registry.match(/import\(["'](?:\.\/|\.\.\/components\/)/g)).toHaveLength(11)
+    expect(registry.match(/import\(["']\.\.\/hooks\/use-/g)).toHaveLength(11)
     expect(registry).not.toContain("orchestration")
     expect(registry).not.toContain("remote")
     expect(remoteModule).toContain('loadController: async () => (await import("./surface.js")).createRemoteSurface')

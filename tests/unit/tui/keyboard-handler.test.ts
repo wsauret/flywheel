@@ -51,6 +51,7 @@ function createDeps(overrides: KeyboardDepsOverrides = {}): KeyboardDeps {
     questionInput: overrides.questionInput ?? createQuestionInputRegistry(),
     promptPopup: overrides.promptPopup ?? { input: () => false },
     openCommandPalette: overrides.openCommandPalette ?? mock(() => {}),
+    findBar: overrides.findBar ?? { open: mock(() => {}), input: () => false },
     switchForeground: overrides.switchForeground ?? mock(() => {}),
     dispatchOutputCommand: overrides.dispatchOutputCommand ?? mock(() => {}),
     closeTab: overrides.closeTab ?? mock(() => {}),
@@ -180,6 +181,25 @@ describe("createKeyboardHandler", () => {
 
     expect(openSessionsModal).toHaveBeenCalledTimes(1)
     expect(preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it("opens the find bar with Ctrl+F, preventing the textarea's move-right default", () => {
+    const open = mock(() => {})
+    const preventDefault = mock(() => {})
+
+    createKeyboardHandler(createDeps({ findBar: { open, input: () => false } })).handleKey({ name: "f", ctrl: true, preventDefault })
+
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it("gives the focused find bar its keys before escape interrupts the chat", () => {
+    const interruptChat = mock(() => {})
+    const deps = createDeps({ findBar: { open: mock(() => {}), input: (event) => event.name === "escape" }, signals: { interruptible: () => true }, chat: { interruptChat } })
+
+    createKeyboardHandler(deps).handleKey({ name: "escape" })
+
+    expect(interruptChat).not.toHaveBeenCalled()
   })
 
   it("starts a fresh chat with Ctrl+N", () => {

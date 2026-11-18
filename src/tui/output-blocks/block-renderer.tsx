@@ -15,7 +15,9 @@ import { ToolEntry } from "./tool-entry.js"
 import { AgentGroupBlock } from "./agent-group-block.js"
 import { ToolRunBlock } from "./tool-run-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
-import type { PresentedTerminalRow } from "./visible-output-blocks.js"
+import { visibleBlockIdentity, type PresentedTerminalRow } from "./visible-output-blocks.js"
+import { FindBlockScope } from "@tui/context/find-highlight.js"
+import { useLandingBackground } from "@tui/context/landing-highlight.js"
 import type { RowProcessControls } from "./stop-affordance.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 
@@ -39,9 +41,17 @@ export interface BlockRendererProps {
 }
 
 export function BlockRenderer(props: BlockRendererProps) {
+  const identity = () => visibleBlockIdentity(props.block)
+  // Tool rows, cards, and user messages mark a landing themselves; any other
+  // block is marked here, as when a find lands on it but cannot point at the words.
+  const landingBackground = useLandingBackground(() => {
+    const kind = props.block.kind
+    return kind === "tool" || kind === "toolRun" || kind === "agentGroup" || kind === "userMessage" ? [] : [identity().slice(identity().indexOf(":") + 1)]
+  })
   return (
     <Show when={props.block.kind !== "thinking" || props.showThinking}>
-      <box flexDirection="column">
+      <FindBlockScope value={identity}>
+      <box flexDirection="column" backgroundColor={landingBackground()}>
         <box height={1} width="100%" ref={(el: BoxRenderable) => { allowSelectionStart(el) }} />
         {/* Discriminated-union dispatch (Open/Closed in docs/elegance.md): new block kinds extend AnyBlock and add a Match here. */}
         <Switch>
@@ -89,6 +99,7 @@ export function BlockRenderer(props: BlockRendererProps) {
           </Match>
         </Switch>
       </box>
+      </FindBlockScope>
     </Show>
   )
 }

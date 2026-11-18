@@ -5,6 +5,7 @@ export const WORKER_GENERATION_BUDGETS = {
   "streaming-edit-validation": 1,
   "bash-private-copy": 3,
   "models-document": 1,
+  "transcript-find": 1,
   "code-mode-invocation": 1,
   "runtime-maintenance": 1,
   "project-state": 3,

@@ -85,7 +85,7 @@ const KERNEL_COMMANDS: readonly KernelCommand[] = [
   },
   { id: "resume", title: KERNEL_COMMAND_NAMES.resume, description: "Continue an interrupted session from where it stopped", aliases: [], menu: chat(50), opens: "resume" },
   { id: "attach", title: KERNEL_COMMAND_NAMES.attach, description: "Pick files or photos on this computer to send with your message", aliases: [], menu: chat(60), opens: "attach-files" },
-  { id: "find", title: KERNEL_COMMAND_NAMES.find, description: "Search the words of this chat or every chat, starting with any words that follow the command", aliases: ["search"], menu: chat(70), opens: "find" },
+  { id: "find", title: KERNEL_COMMAND_NAMES.find, description: "Find words in chat transcripts, starting with any words that follow the command", aliases: ["search"], menu: chat(70), opens: "find" },
   {
     id: "fork",
     title: KERNEL_COMMAND_NAMES.fork,

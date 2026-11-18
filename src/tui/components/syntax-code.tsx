@@ -1,12 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
-import { StyledText, fg as stFg, type TextChunk } from "@opentui/core"
+import { type CodeRenderable, StyledText, fg as stFg, type TextChunk } from "@opentui/core"
 import { resolveSyntaxLanguage } from "@tui/adapters/syntax-language.js"
 import { chatSyntaxColors, createHighlighter, type SyntaxColors } from "@tui/adapters/syntax-highlight.js"
 import { useTheme } from "@tui/context/theme"
+import { useFindPaint } from "@tui/context/find-highlight.js"
 import type { TuiTheme } from "@tui/context/theme/resolve.js"
 import { bindSelectableStyledTextContent } from "@tui/utils/reactive-text.js"
-import { createMemo, For, type JSX, Show } from "solid-js"
+import { createMemo, createSignal, For, type JSX, Show } from "solid-js"
 
 interface SyntaxCodeProps {
   content: string
@@ -20,6 +21,22 @@ interface SyntaxCodeProps {
 
 export function SyntaxCode(props: SyntaxCodeProps): JSX.Element {
   const themeCtx = useTheme()
+  // Highlighted code styles its own text, so a transcript find paints its
+  // matches through the renderable's chunk transform.
+  const find = useFindPaint()
+  const [codeEl, setCodeEl] = createSignal<CodeRenderable>()
+  // Each new transform restyles and highlights the code again, so it changes
+  // only when this code's paint does.
+  const strong = createMemo(() => {
+    const el = codeEl()
+    return el === undefined ? -1 : find?.strongIndex(el) ?? -1
+  })
+  const findPainter = createMemo(() => {
+    const el = codeEl()
+    void strong()
+    const paint = el === undefined ? undefined : find?.painter(el, strong)
+    return paint && ((chunks: TextChunk[]) => [...paint(chunks)])
+  })
   const language = createMemo(() => resolveSyntaxLanguage(props.filetype))
   const openTuiFiletype = createMemo(() => {
     const resolved = language()
@@ -35,6 +52,8 @@ export function SyntaxCode(props: SyntaxCodeProps): JSX.Element {
     >
       {(filetype) => (
         <code
+          ref={(el: CodeRenderable) => { find?.bind(el); setCodeEl(el) }}
+          onChunks={findPainter()}
           filetype={filetype()}
           content={props.content}
           syntaxStyle={props.dimColor ? themeCtx.subtleSyntax : themeCtx.syntax}

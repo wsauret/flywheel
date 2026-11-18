@@ -23,7 +23,7 @@ These are the default keys of the terminal interface. The `/shortcuts` command s
 | Keys | Action |
 | --- | --- |
 | `left arrow / ctrl+b` | Move one character left |
-| `right arrow / ctrl+f` | Move one character right |
+| `right arrow` | Move one character right |
 | `up arrow` | Move one visual line up |
 | `down arrow` | Move one visual line down |
 | `home / super+up arrow` | Jump to entry start |
@@ -69,6 +69,7 @@ These are the default keys of the terminal interface. The `/shortcuts` command s
 | `ctrl+p` | Commands |
 | `ctrl+n` | New chat |
 | `ctrl+s` | Sessions |
+| `ctrl+f` | Find in transcripts |
 | `ctrl+w` | Close tab |
 | `ctrl+r` | Resume an interrupted session |
 | `tab / shift+tab` | Cycle sessions |
@@ -86,6 +87,7 @@ Set a new chord for an app navigation key in the `[keybindings]` table of `~/.fl
 | `help` | `ctrl+p` | Commands |
 | `new` | `ctrl+n` | New chat |
 | `sessions` | `ctrl+s` | Sessions |
+| `find` | `ctrl+f` | Find in transcripts |
 | `tab.close` | `ctrl+w` | Close tab |
 | `resume` | `ctrl+r` | Resume an interrupted session |
 | `tab.next` | `tab` | Cycle sessions |

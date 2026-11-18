@@ -364,6 +364,9 @@ export interface MountedRowRegistry {
   /** The block's laid-out scroll-content rows, or undefined while it is not
    *  mounted or not laid out yet. */
   layoutRows(blockIndex: number): { readonly top: number; readonly height: number } | undefined
+  /** The laid-out row of `el` within the block's row, or undefined while `el`
+   *  is not inside that mounted row. */
+  rowWithin(blockIndex: number, el: Renderable): number | undefined
   /** The first and last mounted block and how many rows mount, for a
    *  diagnostic record. Walks every mounted row; no frame path calls it. */
   mountedRange(): { readonly first: number; readonly last: number; readonly count: number } | undefined
@@ -472,6 +475,15 @@ export function createMountedRowRegistry(): MountedRowRegistry {
         resolved.set(el, cached)
       }
       return cached.visual === undefined ? undefined : top + cached.visual - el.scrollY
+    },
+    rowWithin(blockIndex, el) {
+      const row = rowsByBlock.get(blockIndex)
+      let offset = 0
+      for (let node: Renderable | null = el; node; node = node.parent) {
+        if (node === row) return offset
+        offset += node.getLayout().top
+      }
+      return undefined
     },
     layoutRows(blockIndex) {
       const layout = rowsByBlock.get(blockIndex)?.getLayout()

@@ -16,7 +16,7 @@ Type a command at the start of the prompt, or choose it in the command palette (
 | `/doctor` |  |  | Check what Flywheel needs from this machine and report what to repair |
 | `/exit` | `/quit` |  | Exit Flywheel |
 | `/experiment` |  |  | Run an experiment loop: design `<goal>`, start, off, clear, finalize, or dashboard |
-| `/find` | `/search` |  | Search the words of this chat or every chat, starting with any words that follow the command |
+| `/find` | `/search` | `ctrl+f` | Find words in chat transcripts, starting with any words that follow the command |
 | `/font` |  |  | Check or install the recommended terminal font: status, install, dismiss, or reset |
 | `/fork` |  |  | Fork the active conversation into a new chat |
 | `/help` |  | `ctrl+p` | List every command |

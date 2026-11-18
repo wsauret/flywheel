@@ -42,6 +42,8 @@ interface ShellOverlaysDeps {
   readonly composer: Pick<ShellComposerCore, "sessionControls" | "attachSlot" | "commandCatalog">
   readonly places: ShellPlaces
   readonly navigateToProcess: (toolUseId: string) => void
+  /** Opens the find bar over the transcript, with the command's argument as the pattern. */
+  readonly openFind: (pattern?: string) => void
   /** The calls below reach owners that the shell builds after the overlays. */
   readonly openSession: (sessionId: string) => Promise<void>
   readonly openTarget: (target: BackgroundWorkTarget) => Promise<void>
@@ -101,6 +103,7 @@ export function createShellOverlays(deps: ShellOverlaysDeps) {
   // by this table, and every module surface by its terminal home.
   const kernelSurfaces: KernelSurfaceTable = {
     ...modals.surfaces,
+    "find": ({ argument }) => deps.openFind(argument),
     "models": ({ target, isCurrent }) => target?.kind === "transcript-in-view" ? transcriptInView.openModel() : modals.openSettingsDestination({ kind: "models" }, isCurrent),
     "new-chat": () => places.startNewChat(),
     "resume": () => composer.sessionControls.resume(),

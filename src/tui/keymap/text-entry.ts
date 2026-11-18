@@ -41,6 +41,7 @@ const NATIVE_ACTIONS: ReadonlySet<TextEntryAction> = new Set([
 function isSharedBinding(binding: InputKeyBinding): binding is InputKeyBinding & { action: TextEntryAction } {
   return (!(binding.name === "return" || binding.name === "linefeed" || binding.name === "kpenter") || binding.meta === true)
     && !(binding.name === "w" && binding.ctrl === true)
+    && !(binding.name === "f" && binding.ctrl === true)
     && !(binding.name === "a" && binding.ctrl === true && binding.shift === true)
     && !(binding.name === "a" && binding.super === true)
     && NATIVE_ACTIONS.has(binding.action)

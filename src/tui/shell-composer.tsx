@@ -39,6 +39,7 @@ import { useSessionControls } from "./hooks/use-session-controls.js"
 import { snapshotSeeded } from "./transcript-store/output-transcript-cache-types.js"
 import type { ShellPlaces } from "./shell-navigation.js"
 import type { ShellOverlays } from "./shell-overlays.js"
+import type { FindBar } from "./hooks/create-find-bar.js"
 
 /** What the composer holds before the places that hand it drafts exist: the
  *  draft cache, the chat submissions and the drafts they return, the prompt
@@ -109,6 +110,7 @@ interface ShellCommandsDeps {
   readonly overlays: ShellOverlays
   readonly providerSetup: Accessor<ProviderSetup>
   readonly dispatchOutputCommand: (type: OutputWindowCommandType) => void
+  readonly findBar: FindBar
 }
 
 /** The composer's command line and the shell's keys: slash command dispatch,
@@ -166,6 +168,7 @@ export function createShellCommands(deps: ShellCommandsDeps) {
     questionInput,
     promptPopup: composer.popupKeySlot,
     openCommandPalette: modals.openCommandPalette,
+    findBar: deps.findBar,
     switchForeground: places.switchForeground,
     dispatchOutputCommand: deps.dispatchOutputCommand,
     closeTab: places.closeTab,

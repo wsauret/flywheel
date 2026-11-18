@@ -131,6 +131,7 @@ export function fakeProjections() {
         contentBytes: 0,
       }),
       outputBlockBody: async (_sessionId: string, request: OutputBlockBodyRequest) => ({ blockId: request.blockId }),
+      transcriptFind: async () => ({ matches: [], more: false, openFromBlockIndex: 0, blockCount: 0 }),
       // The shutdown barrier joins this projection's durable flush and blocks the
       // later phases when it ends unsafely, so the double owns a real settlement.
       dispose: async () => {},

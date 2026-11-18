@@ -10,6 +10,7 @@ import { createAsyncReporter } from "./report-async.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
 import type { ChatModeHook } from "./use-chat-mode.js"
 import type { SessionControlsHook } from "./use-session-controls.js"
+import type { FindBar } from "./create-find-bar.js"
 
 type KeyboardEventLike = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; sequence?: string; raw?: string; preventDefault?: () => void }
 
@@ -17,6 +18,7 @@ interface BindingActions {
   help: (evt: KeyboardEventLike) => void
   new: (evt: KeyboardEventLike) => void
   sessions: (evt: KeyboardEventLike) => void
+  find: (evt: KeyboardEventLike) => void
   "tab.close": (evt: KeyboardEventLike) => void
   resume: (evt: KeyboardEventLike) => void
   "tab.next": (evt: KeyboardEventLike) => void
@@ -52,6 +54,7 @@ interface KeyboardHandlerDeps {
   questionInput: QuestionInputContext
   promptPopup: Pick<ComposerPopupKeySlot, "input">
   openCommandPalette: () => void
+  findBar: Pick<FindBar, "open" | "input">
   switchForeground: (tabKey: string) => void
   dispatchOutputCommand: (command: OutputWindowCommandType) => void
   closeTab: (tabKey: string) => void
@@ -153,6 +156,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     help: (evt) => { evt.preventDefault?.(); deps.openCommandPalette() },
     new: (evt) => { evt.preventDefault?.(); promptBarActions.newChat() },
     sessions: (evt) => { evt.preventDefault?.(); promptBarActions.sessions() },
+    find: (evt) => { evt.preventDefault?.(); deps.findBar.open() },
     // Browser muscle memory: Ctrl+w closes the tab, deliberately consuming
     // the textarea's "delete word backward" default (see comment above).
     "tab.close": (evt) => { evt.preventDefault?.(); promptBarActions.closeTab() },
@@ -189,6 +193,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
   const handleKey = function handleKey(evt: KeyboardEventLike): void {
     if (overlay.input(evt)) return
     if (evt.ctrl && evt.name === "c") { evt.preventDefault?.(); deps.exit(); return }
+    if (deps.findBar.input(evt)) return
     if (deps.questionInput.input(evt)) return
     // The prompt's popups (slash suggestions, history) claim escape (dismiss,
     // not interrupt), plain tab (complete, not session-cycle), and their

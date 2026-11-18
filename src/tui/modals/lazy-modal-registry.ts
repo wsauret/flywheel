@@ -5,7 +5,6 @@ import { createLazyTuiView } from "../components/lazy-tui-view.js"
 export const LazyAuthModal = createLazyTuiView(KERNEL_COMMAND_NAMES.auth, async () => (await import("./auth-modal.js")).AuthModal)
 export const LazyBackgroundModal = createLazyTuiView(KERNEL_COMMAND_NAMES.bg, async () => (await import("./background-modal.js")).BackgroundModal)
 export const LazyCommandPalette = createLazyTuiView(KERNEL_COMMAND_NAMES.help, async () => (await import("./command-palette.js")).CommandPalette)
-export const LazyFindModal = createLazyTuiView(KERNEL_COMMAND_NAMES.find, async () => (await import("./find-modal.js")).FindModal)
 export const LazyModalHelp = createLazyTuiView(KERNEL_COMMAND_NAMES.shortcuts, async () => (await import("../components/modal-help.js")).ModalHelp)
 export const LazyModelModal = createLazyTuiView(KERNEL_COMMAND_NAMES.model, async () => (await import("./model-modal.js")).ModelModal)
 export const LazyProfileModal = createLazyTuiView(KERNEL_COMMAND_NAMES.profile, async () => (await import("./profile-modal.js")).ProfileModal)
@@ -22,7 +21,6 @@ export const kernelModalControllers = {
   background: () => import("../hooks/use-background-modal.js"),
   changes: () => import("../hooks/use-session-changes-modal.js"),
   commands: () => import("../hooks/use-command-palette.js"),
-  find: () => import("../hooks/use-find-modal.js"),
   help: () => import("../hooks/use-help-modal.js"),
   model: () => import("../hooks/use-model-modal.js"),
   profile: () => import("../hooks/use-profile-modal.js"),

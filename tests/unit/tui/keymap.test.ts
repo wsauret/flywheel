@@ -48,6 +48,7 @@ describe("createKeymap defaults", () => {
     expect(keymap.resolve({ name: "p", ctrl: true })).toBe("help")
     expect(keymap.resolve({ name: "n", ctrl: true })).toBe("new")
     expect(keymap.resolve({ name: "s", ctrl: true })).toBe("sessions")
+    expect(keymap.resolve({ name: "f", ctrl: true })).toBe("find")
     expect(keymap.resolve({ name: "w", ctrl: true })).toBe("tab.close")
     expect(keymap.resolve({ name: "r", ctrl: true })).toBe("resume")
     expect(keymap.resolve({ name: "o", ctrl: true })).toBeNull()

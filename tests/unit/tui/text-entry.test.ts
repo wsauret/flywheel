@@ -94,12 +94,13 @@ describe("controlled text editor", () => {
     lines = [{ start: 0, end: 10 }]
   })
 
-  it("returns submit, cancel, and unhandled outcomes without consuming Ctrl+W or Ctrl+C", () => {
+  it("returns submit, cancel, and unhandled outcomes without consuming Ctrl+W, Ctrl+F, or Ctrl+C", () => {
     const single = createEditor("send")
     expect(single.editor.handleKey({ name: "return" })).toBe("submit")
     expect(single.editor.handleKey({ name: "enter" })).toBe("submit")
     expect(single.editor.handleKey({ name: "escape" })).toBe("cancel")
     expect(single.editor.handleKey({ name: "w", ctrl: true })).toBe("unhandled")
+    expect(single.editor.handleKey({ name: "f", ctrl: true })).toBe("unhandled")
     expect(single.editor.handleKey({ name: "c", ctrl: true })).toBe("unhandled")
 
     const multiline = createEditor("")

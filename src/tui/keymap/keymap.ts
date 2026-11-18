@@ -17,6 +17,7 @@ export const DEFAULT_BINDINGS = [
   { commandId: "help", chord: "ctrl+p", label: KERNEL_COMMAND_NAMES.help },
   { commandId: "new", chord: "ctrl+n", label: KERNEL_COMMAND_NAMES.new },
   { commandId: "sessions", chord: "ctrl+s", label: KERNEL_COMMAND_NAMES.sessions },
+  { commandId: "find", chord: "ctrl+f", label: KERNEL_COMMAND_NAMES.find },
   { commandId: "tab.close", chord: "ctrl+w", label: "Close tab" },
   { commandId: "resume", chord: "ctrl+r", label: "Resume an interrupted session" },
   { commandId: "tab.next", chord: "tab", label: "Cycle sessions" },

@@ -18,6 +18,8 @@ import { ToolRow } from "./tool-row.js"
 import { ToolEntry } from "./tool-entry.js"
 import type { RowProcessControls } from "./stop-affordance.js"
 import type { ToolRun } from "./visible-output-blocks.js"
+import { FindBlockScope } from "@tui/context/find-highlight.js"
+import { blockIdentity } from "../../protocol/block-identity.js"
 
 // A tool run is a display-only fold of consecutive standalone explore
 // (read/list/search) or exec (shell) tool calls, synthesized per frame by
@@ -83,7 +85,7 @@ export function ToolRunBlock(props: ToolRunBlockProps) {
           {(child, i) => {
             const isLast = () => i === visibleTools().length - 1
             return (
-              <>
+              <FindBlockScope value={() => blockIdentity(child())}>
                 {/* Exec entries are often multi-line (command + output), so
                   * stacked rows get a rail-only spacer line for breathing room.
                   * Explore rows stay compact one-liners and need none. */}
@@ -116,7 +118,7 @@ export function ToolRunBlock(props: ToolRunBlockProps) {
                         continuationConnector={isLast() ? undefined : "│"}
                       />
                     )}
-              </>
+              </FindBlockScope>
             )
           }}
         </Index>

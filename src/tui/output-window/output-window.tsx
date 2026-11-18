@@ -13,9 +13,12 @@ import { TranscriptViewportHeightProvider } from "@tui/context/transcript-viewpo
 import { ImageClipBottomProvider } from "@tui/context/attachment-images.js"
 import { BlockDisclosureProvider } from "@tui/context/block-disclosure.js"
 import { LandingTargetProvider } from "@tui/context/landing-highlight.js"
+import { createFindHighlight, findColors, FindHighlightProvider, type FindSpot } from "@tui/context/find-highlight.js"
+import type { FindMatcher } from "../../protocol/transcript-find.js"
+import type { FindLanding } from "../hooks/create-find-bar.js"
 import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { useTheme } from "@tui/context/theme"
-import { type Accessor, createEffect, createMemo, createSignal, Index, onCleanup, Show, untrack } from "solid-js"
+import { type Accessor, createEffect, createMemo, createSignal, Index, type JSX, on, onCleanup, Show, untrack } from "solid-js"
 import { probe } from "../../infra/render-probe.js"
 import { noticeText } from "../../infra/session-notice.js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
@@ -71,7 +74,20 @@ interface OutputWindowProps {
   localSubmissions?: readonly LocalChatSubmission[]
   /** How the terminal reports the wheel; the host terminal's when absent. */
   wheel?: WheelProfile
+  /** The find bar's matcher, whose matches the transcript paints, and the
+   *  match it moved to last, which the transcript lands on. */
+  find?: { readonly matcher: Accessor<FindMatcher | undefined>; readonly landing: Accessor<FindLanding | undefined> }
+  /** The find bar floats over the top right of the transcript. */
+  findBar?: JSX.Element
 }
+
+/** The collapsible regions of a block that a find landing opens, by block kind. */
+const FIND_DISCLOSURE_FACETS = new Map<string, readonly string[]>([
+  ["tool", ["body", "content", "output"]],
+  ["thinking", ["thinking"]],
+  ["userMessage", ["initial"]],
+])
+
 export function OutputWindow(props: OutputWindowProps) {
   const themeCtx = useTheme()
   const renderer = useRenderer()
@@ -196,6 +212,55 @@ export function OutputWindow(props: OutputWindowProps) {
     landingTimer = setTimeout(() => setLandingTarget(undefined), LANDING_HIGHLIGHT_MS)
   }
   onCleanup(() => clearTimeout(landingTimer))
+  // A find landing lands on its block and then on the match within it. The
+  // block's index stays known so that a match that shows only after the
+  // landing, such as in a body that loads, can still scroll into view. While
+  // no rendered text of the block shows the match, the block holds the mark.
+  let findBlockIndex: number | undefined
+  const [findMark, setFindMark] = createSignal<string>()
+  const markedTarget = () => findMark() ?? landingTarget()
+  const matchColors = createMemo(() => findColors(themeCtx.theme))
+  const findHighlight = createFindHighlight({
+    matcher: () => props.find?.matcher(),
+    colors: matchColors,
+    reveal: (spot) => {
+      if (findBlockIndex === undefined) return
+      setFindMark(undefined)
+      const blockIndex = findBlockIndex
+      scroll.toBlock(blockIndex, () => findRow(blockIndex, spot))
+    },
+  })
+  function findRow(blockIndex: number, spot: FindSpot): number | undefined {
+    const within = mountedRows.rowWithin(blockIndex, spot.el)
+    return within === undefined ? undefined : within + spot.line
+  }
+  function landOnMatch(landing: FindLanding): void {
+    const kind = landing.blockId.slice(0, landing.blockId.indexOf(":"))
+    for (const facet of FIND_DISCLOSURE_FACETS.get(kind) ?? []) transcript.setDisclosure(`${landing.blockId}#${facet}`, true)
+    const entryId = landing.blockId.slice(landing.blockId.indexOf(":") + 1)
+    void transcript.loadAround(entryId).then(() => {
+      // A landing that a close, a new pattern, or a later move replaced
+      // while its page loaded no longer moves the transcript.
+      if (untrack(() => props.find?.landing()?.id) !== landing.id) return
+      const blockIndex = untrack(() => targetTimelineBlockIndex(projection(), entryId))
+      if (blockIndex === undefined) return
+      findBlockIndex = blockIndex
+      scroll.toBlock(blockIndex, () => {
+        const spot = findHighlight.locate(landing)
+        setFindMark(spot === undefined ? entryId : undefined)
+        return spot === undefined ? undefined : findRow(blockIndex, spot)
+      })
+    }).catch(() => {})
+  }
+  createEffect(on(() => props.find?.landing(), (landing) => {
+    findBlockIndex = undefined
+    setFindMark(undefined)
+    if (landing === undefined) {
+      findHighlight.clear()
+      return
+    }
+    untrack(() => landOnMatch(landing))
+  }))
   let lastCommandId = untrack(() => props.command?.id ?? 0)
   function runCommand(command: OutputWindowCommand): void {
     switch (command.type) {
@@ -229,7 +294,8 @@ export function OutputWindow(props: OutputWindowProps) {
     <RowWidthProvider value={{ width: rowWidth, report: setRowWidth }}>
     <ScrollPreserveProvider value={scroll.preserveScroll}>
     <TranscriptViewportHeightProvider value={transcriptRows}>
-    <LandingTargetProvider value={landingTarget}>
+    <LandingTargetProvider value={markedTarget}>
+    <FindHighlightProvider value={findHighlight}>
       <box flexDirection="column" flexGrow={1}>
         <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1} position="relative">
           <scrollbox
@@ -309,6 +375,8 @@ export function OutputWindow(props: OutputWindowProps) {
           </scrollbox>
 
           <Show when={hasPending()}>
+            {/* Queued messages are not sent yet, so a find neither counts nor paints them. */}
+            <FindHighlightProvider value={undefined}>
             <OpaqueBox
               position="absolute"
               bottom={0}
@@ -351,6 +419,7 @@ export function OutputWindow(props: OutputWindowProps) {
               </Index>
               </scrollbox>
             </OpaqueBox>
+            </FindHighlightProvider>
           </Show>
           {/* Wheel input is applied during native layout, after text composition.
               Keep the label mounted so its first visible frame has composed text. */}
@@ -365,8 +434,10 @@ export function OutputWindow(props: OutputWindowProps) {
           >
             <Button label={latestLabel()} onPress={scroll.returnToLatest} />
           </box>
+          {props.findBar}
         </box>
       </box>
+    </FindHighlightProvider>
     </LandingTargetProvider>
     </TranscriptViewportHeightProvider>
     </ScrollPreserveProvider>

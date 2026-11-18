@@ -30,7 +30,7 @@ import { createLazyController } from "./lazy-controller.js"
 import type { SessionActivationResult } from "./session-activation.js"
 import type { SessionCreationSettlement } from "./create-session-creator.js"
 import { settingsPlace, type SettingsDestination } from "../settings-destination.js"
-import { kernelModalControllers, LazyAuthModal, LazyBackgroundModal, LazyCommandPalette, LazyModalHelp, LazyModelModal, LazyProfileModal, LazySessionChangesModal, LazySessionModal, LazySettingsModal, LazyStatusModal, LazyThemeModal, LazyFindModal } from "../modals/lazy-modal-registry.js"
+import { kernelModalControllers, LazyAuthModal, LazyBackgroundModal, LazyCommandPalette, LazyModalHelp, LazyModelModal, LazyProfileModal, LazySessionChangesModal, LazySessionModal, LazySettingsModal, LazyStatusModal, LazyThemeModal } from "../modals/lazy-modal-registry.js"
 import { effectiveSessionShortTitle } from "../../protocol/app-service-types.js"
 
 const log = Log.create({ service: "modals" })
@@ -154,7 +154,7 @@ export function createActiveSessionDelete(deps: {
 
 /** The kernel surfaces that open a modal, which a command reaches through the
  *  surface router. */
-type KernelModalSurfaces = Pick<KernelSurfaceTable, "background" | "settings" | "auth-profiles" | "status" | "keyboard-shortcuts" | "commands" | "sessions" | "changes" | "find">
+type KernelModalSurfaces = Pick<KernelSurfaceTable, "background" | "settings" | "auth-profiles" | "status" | "keyboard-shortcuts" | "commands" | "sessions" | "changes">
 
 /** Builds the kernel modals. Each controller loads and is created on its
  *  modal's first open, through the shared lazy controller loader, so startup
@@ -521,31 +521,6 @@ export function createModalModals(deps: ModalsDeps) {
     settingsTree.bindRoot({ open: settingsModal.openSettingsModal, isOpen: settingsModal.settingsModalOpen })
     return settingsModal
   })
-  const find = kernelModal("find", () => kernelModalControllers.find(), ({ useFindModal }) => {
-    const findModal = useFindModal({
-      modal,
-      appService: deps.appService,
-      sessions: signals.sessionCatalogRows,
-      foregroundSessionId: signals.foregroundId,
-      activateSession: deps.activateSession,
-      showToast: services.showToast,
-      renderModal: () => (
-        <LazyFindModal
-          query={findModal.query()}
-          scope={findModal.scope()}
-          hits={findModal.hits()}
-          total={findModal.total()}
-          busy={findModal.busy()}
-          cursor={findModal.cursor()}
-          hitSession={findModal.hitSession}
-          onClose={() => modal.clear()}
-          onRowClick={findModal.selectRow}
-          onOpen={findModal.openRow}
-        />
-      ),
-    })
-    return findModal
-  })
   const surfaces: KernelModalSurfaces = {
     "background": ({ isCurrent }) => background.open((controller) => controller.openBackgroundModal(), isCurrent),
     "settings": ({ target, isCurrent }) => openSettingsDestination(target?.kind === "place" ? settingsPlace(target.place) : { kind: "root" }, isCurrent),
@@ -555,7 +530,6 @@ export function createModalModals(deps: ModalsDeps) {
     "commands": ({ isCurrent }) => commands.open((controller) => controller.openCommandPalette(), isCurrent),
     "sessions": ({ isCurrent }) => sessions.open((controller) => controller.openSessionsModal(), isCurrent),
     "changes": ({ isCurrent }) => changes.open((controller) => controller.openSessionChangesModal(), isCurrent),
-    "find": ({ argument, isCurrent }) => find.open((controller) => controller.openFindModal(argument), isCurrent),
   }
   return {
     surfaces,
