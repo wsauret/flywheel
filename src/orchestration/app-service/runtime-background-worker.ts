@@ -55,7 +55,7 @@ interface RuntimeBackgroundProject {
   readonly moduleSnapshot: (domain: ProtocolBackgroundDomain, sessionId: string) => Promise<ProtocolBackgroundSnapshot<ProtocolBackgroundDomain>>
   readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
   readonly transcriptSearch: (request: TranscriptSearchRequest) => Promise<TranscriptSearchResult>
-  readonly findChats: (request: ChatSearchRequest) => Promise<ChatSearchResult>
+  readonly findChats: (request: ChatSearchRequest, signal: AbortSignal) => Promise<ChatSearchResult>
   readonly close: () => Promise<void>
 }
 
@@ -112,7 +112,7 @@ function openRuntimeBackgroundProject(projectRoot: string): RuntimeBackgroundPro
     recall: (conversationId, contract) => operations.run(() =>
       createConversationRecall({ store: projectionReader, index: index(), conversationId })(contract)),
     transcriptSearch: (request) => operations.run(() => transcriptSearch.search(request)),
-    findChats: (request) => operations.run(() => transcriptSearch.findChats(request)),
+    findChats: (request, signal) => operations.run(() => transcriptSearch.findChats(request, signal)),
     close: () => operations.close(
       () => summaryIndex?.cancel(),
       async () => {
@@ -157,7 +157,7 @@ export async function runRuntimeBackgroundWorker(worker: WorkerSelf, init: Runti
         RuntimeBackgroundModuleSnapshot: ({ projectRoot, domain, sessionId }) => fromPromise(async () => projects.get(projectRoot).moduleSnapshot(domain, sessionId)),
         RuntimeBackgroundRecall: ({ projectRoot, conversationId, contract }) => fromPromise(() => projects.get(projectRoot).recall(conversationId, contract)),
         RuntimeBackgroundTranscriptSearch: ({ projectRoot, request }) => fromPromise(() => projects.get(projectRoot).transcriptSearch(request)),
-        RuntimeBackgroundChatSearch: ({ projectRoot, request }) => fromPromise(() => projects.get(projectRoot).findChats(request)),
+        RuntimeBackgroundChatSearch: ({ projectRoot, request }) => fromPromise((signal) => projects.get(projectRoot).findChats(request, signal)),
         RuntimeBackgroundReleaseProject: ({ projectRoot }) => fromPromise(() => projects.release(projectRoot)),
         RuntimeBackgroundShutdown: () => fromPromise(close),
       })))),
@@ -179,7 +179,8 @@ async function readSessionChangeSummary(reader: AsyncEventStateReadSurface, sess
   return sessionChangeCounts(await getSessionFileChanges(reader, sessionId), projectRoot)
 }
 
-function fromPromise<A>(run: () => Promise<A>): Effect.Effect<A, RuntimeProtocolError> {
+/** `signal` aborts when the caller interrupts the call. */
+function fromPromise<A>(run: (signal: AbortSignal) => Promise<A>): Effect.Effect<A, RuntimeProtocolError> {
   return Effect.tryPromise({
     try: run,
     catch: (err) => new RuntimeProtocolError({ message: errorMessage(err), kind: classifyRuntimeProtocolErrorKind(err) }),

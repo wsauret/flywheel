@@ -5,7 +5,7 @@ import type { SessionCatalogRow } from "../../../../src/protocol/app-service-typ
 import type { LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import type { SessionActivationResult } from "../../../../src/tui/hooks/session-activation.js"
 import type { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
-import { createModal, mockClipboardCopy, rowLabels, session } from "./_session-modal-fixtures.js"
+import { createModal, mockClipboardCopy, pressCtrl, rowLabels, session } from "./_session-modal-fixtures.js"
 
 type LoadingCatalogRow = Extract<SessionCatalogRow, { readonly totalsLoading: true }>
 
@@ -98,12 +98,9 @@ describe("useSessionModal", () => {
       })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().some((action) => action.key === "r")).toBe(false)
+      expect(hook.sessionModalActions().some((action) => action.label === "resume")).toBe(false)
 
-      // A single action key schedules its shortcut (it may still become filter
-      // text); the immediate repeat confirms it without waiting out the delay.
-      modals.input({ name: "c", raw: "c" })
-      modals.input({ name: "c", raw: "c" })
+      pressCtrl(modals, "y")
       await Promise.resolve()
       expect(mockClipboardCopy).toHaveBeenCalledWith("wf-1")
 
@@ -121,7 +118,7 @@ describe("useSessionModal", () => {
 
       hook.openSessionsModal()
 
-      expect(hook.sessionModalActions().some((action) => action.key === "r")).toBe(false)
+      expect(hook.sessionModalActions().some((action) => action.label === "resume")).toBe(false)
       dispose()
     })
   })
@@ -168,18 +165,17 @@ describe("useSessionModal", () => {
     })
   })
 
-  it("exposes r resume for a session whose row admits it, and resumes it as it opens", async () => {
+  it("exposes ctrl+r resume for a session whose row admits it, and resumes it as it opens", async () => {
     await createRoot(async (dispose) => {
       const { hook, modals, appService } = createModal({
         sessions: [session({ id: "chat-paused", admittedActions: ["chat.resume", "session.delete"] })],
       })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().find((action) => action.key === "r")?.label).toBe("resume")
-      expect(hook.sessionModalActions().some((action) => action.key === "i")).toBe(false)
+      expect(hook.sessionModalActions().find((action) => action.key === "ctrl+r")?.label).toBe("resume")
+      expect(hook.sessionModalActions().some((action) => action.label === "interrupt")).toBe(false)
 
-      modals.input({ name: "r", raw: "r" })
-      modals.input({ name: "r", raw: "r" })
+      pressCtrl(modals, "r")
       await Promise.resolve()
 
       expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.resume", sessionId: "chat-paused" })
@@ -187,16 +183,15 @@ describe("useSessionModal", () => {
     })
   })
 
-  it("exposes i interrupt for a running chat whose row admits it, and dispatches the chat interrupt", async () => {
+  it("exposes ctrl+g interrupt for a running chat whose row admits it, and dispatches the chat interrupt", async () => {
     await createRoot(async (dispose) => {
       const { hook, modals, appService } = createModal({ sessions: [session({ id: "chat-running", lifecycleState: "active", activity: "generating", admittedActions: ["chat.interrupt", "session.delete"] })] })
 
       hook.openSessionsModal()
       // The footer's one line truncates from the end, so Close chat comes after the primary control.
-      expect(hook.sessionModalActions().map((action) => action.key)).toEqual(["d", "n", "c", "i", "x"])
+      expect(hook.sessionModalActions().map((action) => action.key)).toEqual(["ctrl+d", "ctrl+e", "ctrl+y", "ctrl+g", "ctrl+x"])
 
-      modals.input({ name: "i", raw: "i" })
-      modals.input({ name: "i", raw: "i" })
+      pressCtrl(modals, "g")
       await Promise.resolve()
 
       expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.interrupt", sessionId: "chat-running" })
@@ -209,8 +204,8 @@ describe("useSessionModal", () => {
       const { hook } = createModal({ sessions: [session({ id: "chat-interrupted", lifecycleState: "active", activity: "idle", admittedActions: ["chat.interrupt", "chat.resume", "session.delete"] })] })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().find((action) => action.key === "r")?.label).toBe("resume")
-      expect(hook.sessionModalActions().some((action) => action.key === "i")).toBe(false)
+      expect(hook.sessionModalActions().find((action) => action.key === "ctrl+r")?.label).toBe("resume")
+      expect(hook.sessionModalActions().some((action) => action.label === "interrupt")).toBe(false)
       dispose()
     })
   })
@@ -220,13 +215,13 @@ describe("useSessionModal", () => {
       const { hook } = createModal({ sessions: [session({ id: "chat-idle-listed", lifecycleState: "active", activity: "idle", admittedActions: ["chat.interrupt", "session.delete"] })] })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().some((action) => action.key === "i")).toBe(false)
+      expect(hook.sessionModalActions().some((action) => action.label === "interrupt")).toBe(false)
       expect(hook.sessionModalActions().some((action) => action.label === "resume")).toBe(false)
       dispose()
     })
   })
 
-  it("offers x close chat for an active chat only, closes it now, and names a refusal", async () => {
+  it("offers ctrl+x close chat for an active chat only, closes it now, and names a refusal", async () => {
     await createRoot(async (dispose) => {
       const showToast = mock(() => {})
       const { hook, modals, closeChat } = createModal({
@@ -236,10 +231,9 @@ describe("useSessionModal", () => {
       })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().find((action) => action.key === "x")?.label).toBe("close chat")
+      expect(hook.sessionModalActions().find((action) => action.key === "ctrl+x")?.label).toBe("close chat")
 
-      modals.input({ name: "x", raw: "x" })
-      modals.input({ name: "x", raw: "x" })
+      pressCtrl(modals, "x")
       await Bun.sleep(1)
 
       expect(closeChat).toHaveBeenCalledWith("chat-active")
@@ -249,7 +243,7 @@ describe("useSessionModal", () => {
     createRoot((dispose) => {
       const { hook } = createModal({ sessions: [chatSummary("chat-inactive")] })
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().some((action) => action.key === "x")).toBe(false)
+      expect(hook.sessionModalActions().some((action) => action.label === "close chat")).toBe(false)
       dispose()
     })
   })
@@ -262,22 +256,22 @@ describe("useSessionModal", () => {
       ] })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().some((action) => action.key === "i")).toBe(false)
+      expect(hook.sessionModalActions().some((action) => action.label === "interrupt")).toBe(false)
       dispose()
     })
   })
 
-  it("requires the delayed d confirmation before deleting a session", async () => {
+  it("deletes a session on a second ctrl+d of the same row", async () => {
     await createRoot(async (dispose) => {
       const selected = session({ id: "delete-me", title: "Delete me" })
       const { hook, modals, appService } = createModal({ sessions: [selected] })
 
       hook.openSessionsModal()
-      modals.input({ name: "d", raw: "d" })
-      await Bun.sleep(1)
+      pressCtrl(modals, "d")
 
       expect(hook.modalConfirmDelete()).toBe("delete-me")
-      modals.input({ name: "d", raw: "d" })
+      expect(appService.dispatch).not.toHaveBeenCalled()
+      pressCtrl(modals, "d")
       await Promise.resolve()
 
       expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.delete", sessionId: "delete-me" })
@@ -319,18 +313,65 @@ describe("useSessionModal", () => {
     })
   })
 
-  it("turns printable action-key prefixes into typed filtering when followed by text", () => {
+  it("types every letter into the search box while a row is selected, and acts on none", () => {
     createRoot((dispose) => {
-      const { hook, modals } = createModal({ sessions: [session({ id: "delete", title: "Delete Target" })] })
+      const { hook, modals, appService } = createModal({ sessions: [session({ id: "chat-1", title: "Dim land", lifecycleState: "active", admittedActions: ["chat.resume", "session.delete"] })] })
 
       hook.openSessionsModal()
-      modals.input({ name: "d", raw: "d" })
-      modals.input({ name: "e", raw: "e" })
+      expect(hook.sessionModalActions()).not.toEqual([])
+      for (const text of "dim_land") {
+        const event = parseKeypress(text)
+        if (!event) throw new Error("key sequence was not parsed")
+        modals.input(event)
+      }
 
-      expect(hook.filterQuery()).toBe("de")
-      expect(rowLabels(hook)).toEqual(["delete"])
+      expect(hook.filterQuery()).toBe("dim_land")
+      expect(rowLabels(hook)).toEqual(["chat-1"])
+      expect(hook.modalConfirmDelete()).toBeUndefined()
+      expect(hook.renameState()).toBeUndefined()
+      expect(appService.dispatch).not.toHaveBeenCalled()
       dispose()
     })
+  })
+
+  it("triggers each ctrl action on the selected row with an empty and a non-empty search box", async () => {
+    for (const query of ["", "chat"]) {
+      await createRoot(async (dispose) => {
+        mockClipboardCopy.mockClear()
+        const { hook, modals, appService, closeChat } = createModal({ sessions: [
+          session({ id: "chat-running", title: "Running chat", lifecycleState: "active", activity: "generating", admittedActions: ["chat.interrupt", "session.delete"], lastUpdated: "2026-05-22T00:02:00.000Z" }),
+          session({ id: "chat-paused", title: "Paused chat", admittedActions: ["chat.resume", "session.delete"], lastUpdated: "2026-05-22T00:01:00.000Z" }),
+        ] })
+        const select = (id: string) => hook.selectModalItem(hook.sessionModalResult().rows.findIndex((row) => row.kind === "session" && row.session.id === id))
+        hook.openSessionsModal()
+        hook.handleSessionFilter(query)
+
+        select("chat-paused")
+        expect(hook.sessionModalActions().map((action) => `${action.key} ${action.label}`)).toEqual(["ctrl+d delete", "ctrl+e rename", "ctrl+y copy session ID", "ctrl+r resume"])
+        pressCtrl(modals, "y")
+        expect(mockClipboardCopy).toHaveBeenCalledWith("chat-paused")
+        pressCtrl(modals, "r")
+        expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.resume", sessionId: "chat-paused" })
+
+        hook.openSessionsModal()
+        hook.handleSessionFilter(query)
+        select("chat-running")
+        pressCtrl(modals, "x")
+        expect(closeChat).toHaveBeenCalledWith("chat-running")
+        pressCtrl(modals, "e")
+        expect(hook.renameState()?.sessionId).toBe("chat-running")
+        modals.input({ name: "escape" })
+        expect(hook.filterQuery()).toBe(query)
+        pressCtrl(modals, "d")
+        expect(hook.modalConfirmDelete()).toBe("chat-running")
+        pressCtrl(modals, "d")
+        expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.delete", sessionId: "chat-running" })
+        pressCtrl(modals, "g")
+        expect(appService.dispatch).toHaveBeenCalledWith({ type: "chat.interrupt", sessionId: "chat-running" })
+        await Promise.resolve()
+        dispose()
+      })
+    }
   })
 
   it("keeps the filter editable after a query produces no rows", () => {
@@ -377,8 +418,7 @@ describe("useSessionModal", () => {
       const { hook, modals, appService } = createModal({ sessions: [session({ id: "alpha", title: "Alpha description", shortTitle: "Alpha" })] })
 
       hook.openSessionsModal()
-      modals.input({ name: "n", raw: "n" })
-      modals.input({ name: "n", raw: "n" })
+      pressCtrl(modals, "e")
       modals.input({ name: "left" })
       expect(modals.paste("X")).toBe(true)
 
@@ -388,15 +428,13 @@ describe("useSessionModal", () => {
 
       modals.input({ name: "enter" })
       expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.rename", sessionId: "alpha", shortTitle: "AlphXa" })
-      modals.input({ name: "n", raw: "n" })
-      modals.input({ name: "n", raw: "n" })
+      pressCtrl(modals, "e")
       modals.input({ name: "tab" })
       modals.input({ name: "a", super: true })
       modals.paste("A description longer than the generated title limit of forty-six characters")
       modals.input({ name: "enter" })
       expect(appService.dispatch).toHaveBeenLastCalledWith({ type: "session.rename", sessionId: "alpha", title: "A description longer than the generated title limit of forty-six characters" })
-      modals.input({ name: "n", raw: "n" })
-      modals.input({ name: "n", raw: "n" })
+      pressCtrl(modals, "e")
       modals.input({ name: "a", super: true })
       modals.paste("12345678901234567890")
       expect(hook.renameState()?.shortTitle).toBe("12345678901234")
@@ -412,8 +450,7 @@ describe("useSessionModal", () => {
     for (const shortTitle of [undefined, ""]) createRoot((dispose) => {
       const { hook, modals } = createModal({ sessions: [session({ id: "alpha", title: "Original description", shortTitle })] })
       hook.openSessionsModal()
-      modals.input({ name: "n", raw: "n" })
-      modals.input({ name: "n", raw: "n" })
+      pressCtrl(modals, "e")
       expect(hook.renameState()?.shortTitle).toBe("Original descr")
       expect(hook.renameState()?.title).toBe("Original description")
       dispose()
@@ -447,17 +484,27 @@ describe("useSessionModal", () => {
     })
   })
 
-  it("ordinary text fuzzy-filters sessions and hides date headers", () => {
+  it("matches sessions whose title, short title, or id has a word that each typed word starts, and hides date headers", () => {
     createRoot((dispose) => {
-      const { hook } = createModal({ sessions: [session({ id: "alpha-id", title: "Alpha task" }), session({ id: "beta-id", title: "Beta task" })] })
+      const { hook } = createModal({ sessions: [
+        session({ id: "0a1b2c3d4e5f", title: "Delay subagent spawn", lastUpdated: "2026-05-22T00:03:00.000Z" }),
+        session({ id: "9f8e7d6c5b4a", title: "Lead agent trial", lastUpdated: "2026-05-22T00:02:00.000Z" }),
+        session({ id: "1234abcd5678", title: "Untitled work", shortTitle: "Kafka lag", lastUpdated: "2026-05-22T00:01:00.000Z" }),
+      ] })
 
       hook.openSessionsModal()
-      hook.handleSessionFilter("alpha")
-
+      hook.handleSessionFilter("lead agent")
+      expect(rowLabels(hook)).toEqual(["9f8e7d6c5b4a"])
+      expect(hook.sessionModalResult().effectiveHighlightQuery).toBe("lead agent")
+      hook.handleSessionFilter("a")
+      expect(rowLabels(hook)).toEqual(["9f8e7d6c5b4a"])
+      hook.handleSessionFilter("kaf")
+      expect(rowLabels(hook)).toEqual(["1234abcd5678"])
+      hook.handleSessionFilter("0a1b")
+      expect(rowLabels(hook)).toEqual(["0a1b2c3d4e5f"])
+      hook.handleSessionFilter("s")
+      expect(rowLabels(hook)).toEqual(["0a1b2c3d4e5f"])
       expect(hook.sessionModalResult().rows.every((row) => row.kind === "session")).toBe(true)
-      expect(rowLabels(hook)).toEqual(["alpha-id"])
-      expect(hook.sessionModalResult().effectiveHighlightQuery).toBe("alpha")
-      expect(hook.sessionModalActions()).toEqual([])
       dispose()
     })
   })
@@ -492,14 +539,14 @@ describe("useSessionModal", () => {
       hook.openSessionsModal()
 
       expect(hook.sessionModalActions().map((action) => [action.key, action.label])).toEqual([
-        ["d", "delete"],
-        ["c", "copy session ID"],
+        ["ctrl+d", "delete"],
+        ["ctrl+y", "copy session ID"],
       ])
       dispose()
     })
   })
 
-  it("deletes a corrupt session with the delayed d confirmation", async () => {
+  it("deletes a corrupt session on a second ctrl+d", async () => {
     await createRoot(async (dispose) => {
       const { hook, modals, appService } = createModal({
         sessions: [],
@@ -507,11 +554,10 @@ describe("useSessionModal", () => {
       })
 
       hook.openSessionsModal()
-      modals.input({ name: "d", raw: "d" })
-      await Bun.sleep(1)
+      pressCtrl(modals, "d")
 
       expect(hook.modalConfirmDelete()).toBe("broken")
-      modals.input({ name: "d", raw: "d" })
+      pressCtrl(modals, "d")
       await Promise.resolve()
 
       expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.delete", sessionId: "broken" })
@@ -583,9 +629,8 @@ describe("useSessionModal", () => {
       })
 
       hook.openSessionsModal()
-      modals.input({ name: "d", raw: "d" })
-      modals.input({ name: "d", raw: "d" })
-      modals.input({ name: "d", raw: "d" })
+      pressCtrl(modals, "d")
+      pressCtrl(modals, "d")
 
       hook.openSessionsModal()
       modals.input({ name: "down" })

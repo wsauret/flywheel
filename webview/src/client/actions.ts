@@ -86,7 +86,7 @@ export interface ClientActions {
   loadOlder(): Promise<boolean>
   jumpToLatest(): void
   searchTranscripts(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
-  searchChats(request: ChatSearchRequest): Promise<ChatSearchResult>
+  searchChats(request: ChatSearchRequest, signal?: AbortSignal): Promise<ChatSearchResult>
   /** Project files and folders matching `query`, best first, for a mention. */
   projectFiles(query: string, limit: number): Promise<readonly ProjectFileEntry[]>
   /** Answers the identity of the block the transcript landed on, if any. */
@@ -297,7 +297,7 @@ export function createClientActions(deps: ClientActionDeps): ClientActions {
       return false
     })),
     searchTranscripts: (request) => session.searchTranscripts(request),
-    searchChats: (request) => session.searchChats(request),
+    searchChats: (request, signal) => session.searchChats(request, signal),
     projectFiles: async (query, limit) => {
       try {
         return (await session.projectFiles({ query, limit })).entries

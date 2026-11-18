@@ -1,7 +1,6 @@
-import { describe, expect, it, mock, spyOn } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import { createRenderEffect, createRoot, createSignal } from "solid-js"
-import fuzzysort from "fuzzysort"
-import { createModal, rowLabels, session } from "./_session-modal-fixtures.js"
+import { createModal, pressCtrl, rowLabels, session } from "./_session-modal-fixtures.js"
 
 describe("useSessionModal catalog lifecycle", () => {
   it("keeps the selected session through prepend, minute regrouping, and the presentation cap", () => {
@@ -78,38 +77,32 @@ describe("useSessionModal catalog lifecycle", () => {
   })
 
   it("uses one result for each edit and selects the foreground row on opening", () => {
-    const search = spyOn(fuzzysort, "go")
-    try {
-      createRoot((dispose) => {
-        try {
-          const { hook, modals } = createModal({
-            sessions: [session({ id: "recent", title: "Alpha", lastUpdated: "2026-05-22T00:01:00.000Z" }), session({ id: "foreground", title: "Beta" })],
-            foregroundId: "foreground",
-          })
-          createRenderEffect(() => hook.sessionModalResult())
-          hook.openSessionsModal()
-          expect(hook.modalCursor()).toBe(2)
-          modals.paste("Al")
-          expect(search).toHaveBeenCalledTimes(1)
-          expect(rowLabels(hook)).toEqual(["recent"])
-          expect(hook.modalCursor()).toBe(0)
-          modals.input({ name: "p", raw: "p" })
-          expect(search).toHaveBeenCalledTimes(2)
-          expect(hook.filterQuery()).toBe("Alp")
-          expect(rowLabels(hook)).toEqual(["recent"])
-          hook.openSessionsModal()
-          expect(hook.filterQuery()).toBe("")
-          expect(hook.modalCursor()).toBe(2)
-        } finally {
-          dispose()
-        }
-      })
-    } finally {
-      search.mockRestore()
-    }
+    createRoot((dispose) => {
+      try {
+        const readCatalog = mock(() => [session({ id: "recent", title: "Alpha", lastUpdated: "2026-05-22T00:01:00.000Z" }), session({ id: "foreground", title: "Beta" })])
+        const { hook, modals } = createModal({ get sessions() { return readCatalog() }, foregroundId: "foreground" })
+        createRenderEffect(() => hook.sessionModalResult())
+        hook.openSessionsModal()
+        expect(hook.modalCursor()).toBe(2)
+        readCatalog.mockClear()
+        modals.paste("Al")
+        expect(readCatalog).toHaveBeenCalledTimes(1)
+        expect(rowLabels(hook)).toEqual(["recent"])
+        expect(hook.modalCursor()).toBe(0)
+        modals.input({ name: "p", raw: "p" })
+        expect(readCatalog).toHaveBeenCalledTimes(2)
+        expect(hook.filterQuery()).toBe("Alp")
+        expect(rowLabels(hook)).toEqual(["recent"])
+        hook.openSessionsModal()
+        expect(hook.filterQuery()).toBe("")
+        expect(hook.modalCursor()).toBe(2)
+      } finally {
+        dispose()
+      }
+    })
   })
 
-  it("matches the full catalog, weak matches included, before applying the 200-row cap", () => {
+  it("matches the full catalog before applying the 200-row cap", () => {
     createRoot((dispose) => {
       try {
         const sessions = Array.from({ length: 250 }, (_, index) => session({
@@ -126,7 +119,7 @@ describe("useSessionModal catalog lifecycle", () => {
         hook.handleSessionFilter("Needle")
         expect(rowLabels(hook)).toEqual(["session-249"])
         expect(hook.modalCursor()).toBe(0)
-        hook.handleSessionFilter("ndt")
+        hook.handleSessionFilter("ta nee")
         expect(rowLabels(hook)).toEqual(["session-249"])
         hook.handleSessionFilter("task")
         expect(hook.sessionModalResult().totalMatches).toBe(250)
@@ -137,7 +130,7 @@ describe("useSessionModal catalog lifecycle", () => {
     })
   })
 
-  it("preserves visible chat rows, cursor, rename draft, and pending shortcuts across equivalent catalogs", () => {
+  it("preserves visible chat rows, cursor, and rename draft across equivalent catalogs", () => {
     createRoot((dispose) => {
       try {
         const [catalog, setCatalog] = createSignal([
@@ -151,9 +144,8 @@ describe("useSessionModal catalog lifecycle", () => {
         createRenderEffect(() => hook.sessionModalResult())
         hook.openSessionsModal()
         hook.selectModalItem(1)
-        modals.input({ name: "n", raw: "n" })
         setCatalog((rows) => rows.map((row) => ({ ...row })))
-        modals.input({ name: "n", raw: "n" })
+        pressCtrl(modals, "e")
         modals.input({ name: "left" })
         modals.paste("X")
         const presentation = hook.inputPresentation()

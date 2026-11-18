@@ -141,6 +141,27 @@ describe("runtime connection lanes", () => {
     }
   })
 
+  test("a query that the caller withdraws rejects with its abort and aborts the runtime's read", async () => {
+    const served = Promise.withResolvers<AbortSignal>()
+    const runtime = await servedRuntime({}, undefined, (_query, options) => {
+      served.resolve(options?.signal ?? new AbortController().signal)
+      return new Promise(() => {})
+    })
+    const connection = createRuntimeConnection({ socket: runtime.client })
+    try {
+      const withdrawal = new AbortController()
+      const read = connection.query({ type: "commandUsageSnapshot" }, { signal: withdrawal.signal }).then(() => undefined, (error: unknown) => error)
+      const runtimeSignal = await served.promise
+      withdrawal.abort()
+      const failure = await read
+      assert.ok(failure instanceof Error && failure.name === "AbortError")
+      await waitFor(() => runtimeSignal.aborted)
+    } finally {
+      await connection.close()
+      await runtime.close()
+    }
+  })
+
   test("the runtime sends each connection the output deltas of the sessions it watches, and every connection each output invalidation", async () => {
     const runtime = await servedRuntime()
     const terminal = createRuntimeConnection({ socket: runtime.client })

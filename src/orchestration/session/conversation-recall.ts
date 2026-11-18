@@ -227,6 +227,18 @@ function expandedRecallRecord(entry: RecallEntry, index: number, offset: number,
   }
 }
 
+/** The fewest letters or digits of the word being typed for it to match as a prefix while the person types. FTS5
+ *  merges the index terms that a prefix names, and a 3-letter prefix names so many that a search takes about a
+ *  second ("pro"* 1.2 s, "the"* 0.8 s, against 0.1 s for the word "the" alone), so a shorter word matches as itself. */
+const TYPING_PREFIX_MIN = 4
+
+/** True when the word being typed in `query`, its last run of letters and digits, matches as a prefix in a search
+ *  that runs while the person types (`buildFtsMatch` with `typing`). */
+export function typedWordIsPrefix(query: string): boolean {
+  const last = query.split(/[^\p{L}\p{N}]+/u).findLast((run) => run.length > 0)
+  return last !== undefined && last.length >= TYPING_PREFIX_MIN
+}
+
 /** FTS5 MATCH contract: split the query on whitespace and OR-join each word as
  *  an FTS5 string literal, with every `"` doubled. FTS5 runs a string literal
  *  through the table tokenizer (`porter unicode61`) as a phrase, so a word that
@@ -235,13 +247,18 @@ function expandedRecallRecord(entry: RecallEntry, index: number, offset: number,
  *  OR is a plain term. Punctuation and operator words thus cannot make the
  *  result an FTS5 syntax error. A blank
  *  query yields an empty string, which FTS5 rejects, so a caller must not
- *  search with it. With `prefixLastWord`, the last word is an FTS5 prefix
- *  query (`"zanzi"*`), so a search that runs while the person still types
- *  matches the word they are typing; a complete word still matches itself. */
-export function buildFtsMatch(query: string, options: { readonly prefixLastWord?: boolean } = {}): string {
-  const words = query.split(/\s+/).filter((word) => word.length > 0)
+ *  search with it. With `typing`, for a search that runs while the person
+ *  types, the words are AND-joined, so a hit holds every word, and a word
+ *  without a letter or digit is dropped, because its empty phrase would match
+ *  nothing. The last word is an FTS5 prefix query (`"zanzi"*`) when
+ *  `typedWordIsPrefix`, so it matches the word being typed; a complete word
+ *  still matches itself. */
+export function buildFtsMatch(query: string, options: { readonly typing?: boolean } = {}): string {
+  const typing = options.typing === true
+  const words = query.split(/\s+/).filter((word) => typing ? /[\p{L}\p{N}]/u.test(word) : word.length > 0)
+  const prefix = typing && typedWordIsPrefix(query)
   return words
-    .map((word, index) => `"${word.replace(/"/g, '""')}"${options.prefixLastWord === true && index === words.length - 1 ? "*" : ""}`)
-    .join(" OR ")
+    .map((word, index) => `"${word.replace(/"/g, '""')}"${prefix && index === words.length - 1 ? "*" : ""}`)
+    .join(typing ? " AND " : " OR ")
 }
 interface StringMap<T> { [key: string]: T }

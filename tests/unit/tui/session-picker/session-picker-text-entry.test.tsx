@@ -4,7 +4,7 @@ import { testRender } from "@opentui/solid"
 import { describe, expect, it } from "bun:test"
 import { createRoot } from "solid-js"
 import type { TextEditorPresentation } from "../../../../src/tui/keymap/text-entry.js"
-import type { SessionPickerResult } from "../../../../src/tui/hooks/use-session-modal-types.js"
+import type { SessionModalAction, SessionPickerResult } from "../../../../src/tui/hooks/use-session-modal-types.js"
 import { createModal, session } from "../hooks/_session-modal-fixtures.js"
 
 const presentation: TextEditorPresentation = {
@@ -17,7 +17,7 @@ const presentation: TextEditorPresentation = {
 const EMPTY_RESULT: SessionPickerResult = { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false }
 
 /** Renders the picker list and returns its character frame. */
-async function renderPickerFrame(field: { result: SessionPickerResult; filterQuery: string; inputPresentation: TextEditorPresentation; renaming?: boolean }): Promise<string> {
+async function renderPickerFrame(field: { result: SessionPickerResult; filterQuery: string; inputPresentation: TextEditorPresentation; renaming?: boolean; actions?: readonly SessionModalAction[] }): Promise<string> {
   const [{ SessionPickerList }, { ThemeProvider, useTheme }, { TickPoolProvider }] = await Promise.all([
     import("../../../../src/tui/session-picker/session-picker-list.js"),
     import("../../../../src/tui/context/theme.js"),
@@ -30,10 +30,10 @@ async function renderPickerFrame(field: { result: SessionPickerResult; filterQue
       {...field}
       cursor={0}
       navigationRevision={0}
-      actions={[]}
+      actions={field.actions ?? []}
       theme={theme}
       height={10}
-      rowWidth={40}
+      rowWidth={90}
       statusView={() => undefined}
       now={0}
       inputPlaceholder="Search"
@@ -45,7 +45,7 @@ async function renderPickerFrame(field: { result: SessionPickerResult; filterQue
 
   const rendered = await testRender(
     () => <ThemeProvider mode="dark"><TickPoolProvider><Picker /></TickPoolProvider></ThemeProvider>,
-    { width: 50, height: 10 },
+    { width: 100, height: 10 },
   )
 
   try {
@@ -76,5 +76,18 @@ describe("session picker text entry", () => {
     })
     const frame = await renderPickerFrame(field)
     expect(frame).toContain("jkhl")
+  })
+
+  it("names the ctrl key of each row action in the footer while the search box has text", async () => {
+    const field = createRoot((dispose) => {
+      const { hook } = createModal({ sessions: [session({ id: "alpha", title: "Alpha", admittedActions: ["chat.resume", "session.delete"] })] })
+      hook.openSessionsModal()
+      hook.handleSessionFilter("alp")
+      const typed = { result: hook.sessionModalResult(), filterQuery: hook.filterQuery(), inputPresentation: hook.inputPresentation(), actions: hook.sessionModalActions() }
+      dispose()
+      return typed
+    })
+    const frame = await renderPickerFrame(field)
+    expect(frame).toContain("ctrl+d delete · ctrl+e rename · ctrl+y copy session ID · ctrl+r resume")
   })
 })

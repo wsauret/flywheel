@@ -111,8 +111,11 @@ async function memoryServed(serve: (sockets: Layer.Layer<SocketServer.SocketServ
  *  called, which is when the runtime decides whether a call waits for a
  *  subscription. `emit` publishes an event to every lane, and `unions` is
  *  each union of watched sessions the connections' statements made. */
-export async function servedRuntime(options: Omit<RuntimeHandlerOptions, "version"> = {}, dispatch: Parameters<typeof runtimeHandlers>[0]["client"]["dispatch"] = () => Promise.reject(new Error("not served"))) {
-  const answer = runtimeQuery({ commandUsageSnapshot: async () => ({ usage: { uses: [] }, snapshotPosition: 0 }) })
+export async function servedRuntime(
+  options: Omit<RuntimeHandlerOptions, "version"> = {},
+  dispatch: Parameters<typeof runtimeHandlers>[0]["client"]["dispatch"] = () => Promise.reject(new Error("not served")),
+  answer: Parameters<typeof runtimeHandlers>[0]["client"]["query"] = runtimeQuery({ commandUsageSnapshot: async () => ({ usage: { uses: [] }, snapshotPosition: 0 }) }),
+) {
   const listeners = new Set<(event: FrontendEvent) => void>()
   const service: Parameters<typeof runtimeHandlers>[0]["client"] = {
     query: answer,

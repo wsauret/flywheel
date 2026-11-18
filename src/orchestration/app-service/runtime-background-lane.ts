@@ -167,7 +167,7 @@ export function createRuntimeBackgroundLane(
     moduleSnapshot: (domain, sessionId) => call("runtime background module snapshot", { domain, sessionId }, (active) => active.moduleSnapshot(domain, sessionId)),
     ...conversationSearch,
     transcriptSearch: (request) => call("runtime background transcript search", { sessionId: request.sessionId }, (active) => active.transcriptSearch(request)),
-    findChats: (request) => call("runtime background chat search", {}, (active) => active.findChats(request), { summarize: (result) => ({ chats: result.chats.length }) }),
+    findChats: (request, signal) => call("runtime background chat search", {}, (active) => active.findChats(request, signal), { summarize: (result) => ({ chats: result.chats.length }) }),
     dispose() {
       disposal ??= (async () => {
         disposed = true

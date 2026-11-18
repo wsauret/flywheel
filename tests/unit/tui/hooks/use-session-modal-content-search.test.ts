@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot } from "solid-js"
-import { createModal, rowLabels, session } from "./_session-modal-fixtures.js"
+import { createModal, mockClipboardCopy, pressCtrl, rowLabels, session } from "./_session-modal-fixtures.js"
 
 describe("useSessionModal search by what was said", () => {
   const sessions = [session({ id: "alpha", title: "Kafka pipeline" }), session({ id: "beta", title: "Other work" }), session({ id: "gamma", title: "Third" })]
@@ -13,21 +13,24 @@ describe("useSessionModal search by what was said", () => {
       const chatSearch = mock(async () => ({ chats: [found("beta"), found("alpha"), found("gamma")] }))
       const { hook, modals } = createModal({ sessions, chatSearch })
       hook.openSessionsModal()
+      // Opening catches up the message index with a blank search, which finds nothing.
+      expect(chatSearch).toHaveBeenCalledTimes(1)
+      expect(chatSearch).toHaveBeenCalledWith({ type: "chatSearch", request: { query: "", exclude: [] } })
 
       type(modals, "kafka")
       expect(rowLabels(hook)).toEqual(["alpha"])
-      expect(chatSearch).not.toHaveBeenCalled()
+      expect(chatSearch).toHaveBeenCalledTimes(1)
       await pause()
 
-      expect(chatSearch).toHaveBeenCalledTimes(1)
-      expect(chatSearch).toHaveBeenCalledWith({ type: "chatSearch", request: { query: "kafka", exclude: ["alpha"] } })
+      expect(chatSearch).toHaveBeenCalledTimes(2)
+      expect(chatSearch).toHaveBeenLastCalledWith({ type: "chatSearch", request: { query: "kafka", exclude: ["alpha"] } })
       expect(rowLabels(hook)).toEqual(["alpha", "In messages", "found:beta", "found:gamma"])
       expect(hook.modalCursor()).toBe(0)
       dispose()
     })
   })
 
-  it("drops an answer to a query that a later one replaced", async () => {
+  it("cancels a search that a later query replaced, and drops its answer", async () => {
     await createRoot(async (dispose) => {
       const answers = new Map<string, PromiseWithResolvers<{ chats: ReturnType<typeof found>[] }>>()
       const chatSearch = mock(({ request }: { request: { query: string } }) => {
@@ -35,16 +38,19 @@ describe("useSessionModal search by what was said", () => {
         answers.set(request.query, answer)
         return answer.promise
       })
-      const { hook, modals } = createModal({ sessions, chatSearch })
+      const { hook, modals, querySignals } = createModal({ sessions, chatSearch })
       hook.openSessionsModal()
 
-      type(modals, "ka")
+      type(modals, "kaf")
       await pause()
-      type(modals, "f")
+      type(modals, "k")
       await pause()
-      answers.get("kaf")?.resolve({ chats: [found("gamma")] })
+      const [replaced, current] = querySignals.slice(-2)
+      expect(replaced?.aborted).toBe(true)
+      expect(current?.aborted).toBe(false)
+      answers.get("kafk")?.resolve({ chats: [found("gamma")] })
       await pause()
-      answers.get("ka")?.resolve({ chats: [found("beta")] })
+      answers.get("kaf")?.resolve({ chats: [found("beta")] })
       await pause()
 
       expect(rowLabels(hook)).toEqual(["alpha", "In messages", "found:gamma"])
@@ -89,9 +95,31 @@ describe("useSessionModal search by what was said", () => {
       expect(rowLabels(hook)).toEqual([])
       expect(hook.sessionModalResult().searchingMessages).toBe(false)
 
-      for (let left = 4; left > 0; left--) modals.input({ name: "backspace" })
+      // The same words, asked again after a failure, search again.
+      type(modals, " ")
+      await pause()
+      answers.get("lagx")?.resolve({ chats: [found("beta")] })
+      await pause()
+      expect(rowLabels(hook)).toEqual(["In messages", "found:beta"])
+
+      for (let left = 5; left > 0; left--) modals.input({ name: "backspace" })
       expect(rowLabels(hook)).not.toContain("In messages")
       expect(hook.sessionModalResult().searchingMessages).toBe(false)
+      dispose()
+    })
+  })
+
+  it("keeps found rows while the query goes on with a word too short to search, and drops them for a new short query", async () => {
+    await createRoot(async (dispose) => {
+      const { hook, modals } = createModal({ sessions, chatSearch: async ({ request }: { request: { query: string } }) => ({ chats: request.query === "lags" ? [found("beta")] : [] }) })
+      hook.openSessionsModal()
+      type(modals, "lags")
+      await pause()
+      expect(rowLabels(hook)).toEqual(["In messages", "found:beta"])
+      hook.handleSessionFilter("lags x")
+      expect(rowLabels(hook)).toEqual(["In messages", "found:beta"])
+      hook.handleSessionFilter("zz")
+      expect(rowLabels(hook)).toEqual([])
       dispose()
     })
   })
@@ -115,6 +143,23 @@ describe("useSessionModal search by what was said", () => {
 
       expect(activateSession).toHaveBeenCalledWith(sessions[1])
       expect(landOnEntry).toHaveBeenCalledWith("entry-beta")
+      dispose()
+    })
+  })
+
+  it("offers a found chat the actions of its session", async () => {
+    await createRoot(async (dispose) => {
+      mockClipboardCopy.mockClear()
+      const { hook, modals } = createModal({ sessions, chatSearch: async () => ({ chats: [found("beta")] }) })
+      hook.openSessionsModal()
+      type(modals, "kafka")
+      await pause()
+      modals.input({ name: "down" })
+      expect(hook.sessionModalResult().rows[hook.modalCursor()]?.kind).toBe("found")
+      expect(hook.sessionModalActions().map((action) => action.label)).toEqual(["delete", "rename", "copy session ID"])
+
+      pressCtrl(modals, "y")
+      expect(mockClipboardCopy).toHaveBeenCalledWith("beta")
       dispose()
     })
   })

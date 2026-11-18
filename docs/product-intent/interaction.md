@@ -302,7 +302,11 @@ In the terminal, Ctrl+F or a command opens a find bar over the transcript of the
 
 ## PI-INTERACTION-178: The session list search finds a chat by what was said in it
 
-On every client, the session list search finds a chat by its title or by words that the person or an agent wrote in it. Title matches show first, as the person types. Below them, matching chats show best first, one row each, with the matching words, when the chat was last active, and where it stands. Opening such a row lands its transcript on the best match and briefly marks it.
+On every client, the session list search finds a chat whose title, short title, or id has a word that starts with each typed word. Those matches show first, as the person types. Below them, chats with a person or agent message that holds every typed word show best first, each with the matching words, when the chat was last active, and where it stands. Opening such a row lands its transcript on the best match and briefly marks it.
+
+## PI-INTERACTION-180: Typing in the Sessions modal always searches
+
+In the terminal Sessions modal, letters always go to the search box. Each row action uses ctrl with a letter, works while the box has text, and the footer names it.
 
 ## PI-INTERACTION-030: Files are mentioned from a picker on every client
 

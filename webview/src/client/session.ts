@@ -245,8 +245,8 @@ export interface RuntimeSession {
   /** Ranked hits over the words of one session's transcript or every
    *  session's, from the runtime's index. */
   searchTranscripts(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
-  /** The root chats whose messages best match, one per chat, from the same index. */
-  searchChats(request: ChatSearchRequest): Promise<ChatSearchResult>
+  /** The root chats whose messages best match, one per chat, from the same index. `signal` withdraws the search. */
+  searchChats(request: ChatSearchRequest, signal?: AbortSignal): Promise<ChatSearchResult>
   projectFiles(request: ProjectFilesRequest): Promise<ProjectFilesResult>
   refreshAuth(): Promise<void>
   /** Updates the supplied session titles and preserves omitted fields. */
@@ -811,7 +811,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       return await visible()?.transcript.openAround(entryId)
     },
     searchTranscripts: (request) => connection.query({ type: "transcriptSearch", request }),
-    searchChats: (request) => connection.query({ type: "chatSearch", request }),
+    searchChats: (request, signal) => connection.query({ type: "chatSearch", request }, signal ? { signal } : undefined),
     projectFiles: (request) => connection.query({ type: "projectFiles", request }),
     async loadOlder() {
       return await visible()?.transcript.loadOlder() ?? false

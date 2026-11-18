@@ -48,7 +48,7 @@ export function useSessionActions(): SessionListActions {
     ...(writeClipboardText === undefined ? {} : {
       onCopy: (sessionId: string) => { void copySessionId(writeClipboardText, client.report, sessionId) },
     }),
-    searchChats: (request) => client.actions.searchChats(request),
+    searchChats: (request, signal) => client.actions.searchChats(request, signal),
     onSearchFailed: (cause) => client.report("warning", `Flywheel could not search the chats' messages: ${describeFailure(cause)}`),
     onOpenAt: async (sessionId, entryId) => {
       if (client.stack) client.stack.openChat(sessionId)

@@ -1,9 +1,20 @@
 import type { Database } from "bun:sqlite"
 import { CONVERSATION_FTS_TABLE } from "./conversation-fts.js"
 
-/** The tokens of a ranked conversation's snippet. A session list shows it on one line, so the window stays short and
- *  FTS5 places the match a few tokens from its start; a 32-token window put a late match past the line's end. */
+/** The words of a ranked conversation's snippet. A session list shows it on one line, so the window stays short and
+ *  `conversationSnippet` starts it `CONVERSATION_SNIPPET_LEAD` words before the first match; a 32-token window put a
+ *  late match past the line's end. */
 const CONVERSATION_SNIPPET_TOKENS = 10
+/** The recency window of a conversation ranking: the most index matches, newest first, that it orders by BM25. FTS5
+ *  computes bm25() for every row that it sorts, so a word as common as "the" or "test" (500,000 to 900,000 rows in a
+ *  large project) took 1.2 to 2.5 s to rank. The window counts every match, tool results included, because the role
+ *  of a row is not indexed and a filter on it read every match (1 to 19 s). At this size the queries a person uses to
+ *  find a session, such as "provider auth" (154,000 matches in this project's own index), rank over all or nearly all
+ *  history in under 700 ms; only common words reach the window and rank over their newest matches. The index assigns
+ *  rowids in the order that it indexes entries, so the newest matches have the highest rowids. */
+const CONVERSATION_RANK_MATCH_CAP = 150_000
+/** The words of a ranked conversation's snippet before its first match. */
+const CONVERSATION_SNIPPET_LEAD = 4
 
 export interface RecallSearchHit {
   entryId: string
@@ -99,9 +110,20 @@ export interface ConversationRankQuery {
   upperPosition: number
   /** FTS5 MATCH expression, built by the caller as for recall. */
   match: string
+  /** The words of the query that the snippet marks, as the index splits them, in query order. */
+  terms: readonly string[]
+  /** True when the last of `terms` matched as a prefix, as the word being typed does. */
+  lastTermIsPrefix: boolean
   /** The conversations that may rank; a hit in any other is dropped. */
   conversationIds: ReadonlySet<string>
   limit: number
+}
+
+/** A conversation that ranked, with the entry of its best message and a snippet of it. */
+export interface RankedConversation {
+  conversationId: string
+  entryId: string
+  snippet: string
 }
 
 /** The conversations whose messages best match, best first, each with its best hit: only the person's and the
@@ -109,32 +131,81 @@ export interface ConversationRankQuery {
  *  alone, so a long conversation gains nothing from many weak hits. FTS5 refuses bm25() under an aggregate, so the
  *  grouping happens here: the hits stream in rank order and stop at the `limit`-th conversation. The ranked query
  *  selects the rowid alone, because a column that a filter or the sort reads is read for every hit, and a common word
- *  in a large project matches about 500,000 rows (22 s to filter in SQL, about 1 s to rank). Only the hits that the
- *  stream reaches read their columns, and only the answered hits read a snippet. */
-export function rankConversationsByBestMessage(db: Database, query: ConversationRankQuery): TranscriptIndexHit[] {
+ *  in a large project matches about 500,000 rows (22 s to filter in SQL, about 1 s to rank). Only the newest
+ *  `CONVERSATION_RANK_MATCH_CAP` matches rank, and only the hits that the stream reaches read their columns. An
+ *  answered hit's snippet comes from its content (`conversationSnippet`): FTS5 builds a snippet only under a MATCH,
+ *  and that MATCH ran again per answered hit, which took 50 ms to 3 s each. */
+export function rankConversationsByBestMessage(db: Database, query: ConversationRankQuery): RankedConversation[] {
+  const floor = db.query<{ rowid: number }, [SqlParameters]>(
+    `select rowid from ${CONVERSATION_FTS_TABLE} where ${CONVERSATION_FTS_TABLE} match $match order by rowid desc limit 1 offset $offset`,
+  ).get({ $match: query.match, $offset: CONVERSATION_RANK_MATCH_CAP - 1 })?.rowid ?? 0
   const ranked = db.query<{ rowid: number }, [SqlParameters]>(
-    `select rowid from ${CONVERSATION_FTS_TABLE} where ${CONVERSATION_FTS_TABLE} match $match order by rank`,
+    `select rowid from ${CONVERSATION_FTS_TABLE} where ${CONVERSATION_FTS_TABLE} match $match and rowid >= $floor order by rank`,
   )
   const columns = db.query<{ conversation_id: string; role: string; source_position: number }, [SqlParameters]>(
     `select conversation_id, role, source_position from ${CONVERSATION_FTS_TABLE} where rowid = $rowid`,
   )
   const best = new Map<string, number>()
-  for (const { rowid } of ranked.iterate({ $match: query.match })) {
+  for (const { rowid } of ranked.iterate({ $match: query.match, $floor: floor })) {
     const row = columns.get({ $rowid: rowid })
     if (row === null || (row.role !== "user" && row.role !== "assistant") || row.source_position > query.upperPosition) continue
     if (!query.conversationIds.has(row.conversation_id) || best.has(row.conversation_id)) continue
     best.set(row.conversation_id, rowid)
     if (best.size === query.limit) break
   }
-  const snippet = db.query<RecallSearchSqlRow, [SqlParameters]>(`
-    select entry_id, entry_kind, role, snippet(${CONVERSATION_FTS_TABLE}, 0, '[', ']', '...', ${CONVERSATION_SNIPPET_TOKENS}) as snippet, bm25(${CONVERSATION_FTS_TABLE}) as rank
-    from ${CONVERSATION_FTS_TABLE}
-    where ${CONVERSATION_FTS_TABLE} match $match and rowid = $rowid
-  `)
+  const answered = db.query<{ entry_id: string; content: string }, [SqlParameters]>(
+    `select entry_id, content from ${CONVERSATION_FTS_TABLE} where rowid = $rowid`,
+  )
   return [...best].flatMap(([conversationId, rowid]) => {
-    const row = snippet.get({ $match: query.match, $rowid: rowid })
-    return row ? [{ conversationId, entryId: row.entry_id, entryKind: row.entry_kind, role: row.role, snippet: row.snippet, rank: row.rank }] : []
+    const row = answered.get({ $rowid: rowid })
+    return row ? [{ conversationId, entryId: row.entry_id, snippet: conversationSnippet(row.content, query.terms, query.lastTermIsPrefix) }] : []
   })
+}
+
+/** About `CONVERSATION_SNIPPET_TOKENS` words of `content` from a little before its first match of `terms`, with each
+ *  match in brackets, as FTS5 marks its own snippets, and "..." where the text goes on. A word is a run of letters and
+ *  digits, as the index's tokenizer splits them. A word matches a term as the index does: by its stem, and, for a last
+ *  term that matched as a prefix, also when it starts with the term or its stem starts with the term's stem. */
+function conversationSnippet(content: string, terms: readonly string[], lastTermIsPrefix: boolean): string {
+  const words = [...content.matchAll(/[\p{L}\p{N}]+/gu)]
+  const wanted = terms.map((term, index) => ({ lower: term.toLowerCase(), stem: snippetStem(term), prefix: lastTermIsPrefix && index === terms.length - 1 }))
+  const matches = (word: string): boolean => {
+    const lower = word.toLowerCase()
+    const stem = snippetStem(word)
+    return wanted.some((term) => stem === term.stem || term.prefix && (lower.startsWith(term.lower) || stem.startsWith(term.stem)))
+  }
+  const first = Math.max(0, words.findIndex((word) => matches(word[0])))
+  const start = Math.max(0, first - CONVERSATION_SNIPPET_LEAD)
+  const end = Math.min(words.length, start + CONVERSATION_SNIPPET_TOKENS)
+  if (end === 0) return ""
+  let text = ""
+  let at = words[start]?.index ?? 0
+  let open = false
+  for (const word of words.slice(start, end)) {
+    const between = content.slice(at, word.index)
+    const match = matches(word[0])
+    // Matched words that only punctuation separates, such as "dim_land", share one bracket, as a phrase does in FTS5.
+    if (open && (!match || /\s/.test(between))) { text += "]"; open = false }
+    text += between + (match && !open ? "[" : "") + word[0]
+    open = match
+    at = word.index + word[0].length
+  }
+  const flat = `${text}${open ? "]" : ""}`.replace(/\s+/g, " ")
+  return `${start > 0 ? "..." : ""}${flat}${end < words.length ? "..." : ""}`
+}
+
+/** A rough stem of a word for snippet marks: the index's porter stemmer is in SQLite, so this trims the usual English
+ *  suffixes, such that "searches" and "search", "running" and "run", and "provides" and "provide" share one stem. A
+ *  stem keeps at least three letters. */
+function snippetStem(word: string): string {
+  let stem = word.toLowerCase()
+  const suffix = ["ies", "ing", "es", "ed", "s"].find((ending) => stem.endsWith(ending) && !stem.endsWith("ss") && stem.length - ending.length >= 3)
+  if (suffix !== undefined) {
+    stem = suffix === "ies" ? `${stem.slice(0, -3)}y` : stem.slice(0, -suffix.length)
+    // "running" -> "runn" -> "run"
+    if ((suffix === "ing" || suffix === "ed") && /([^aeiouslz])\1$/.test(stem)) stem = stem.slice(0, -1)
+  }
+  return stem.length > 3 && stem.endsWith("e") ? stem.slice(0, -1) : stem
 }
 
 export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery): number {

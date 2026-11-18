@@ -1,6 +1,6 @@
 import { mock, spyOn } from "bun:test"
 import { createSignal } from "solid-js"
-import type { SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
+import type { RuntimeClient, SessionCatalogError, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import type { FrontendWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { createShellState, type ShellSignals } from "../../../../src/tui/hooks/shell-state.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
@@ -59,13 +59,20 @@ export function createSignals(
 function createAppService(dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>, chatSearch?: QueryAnswer<"chatSearch">) {
   const accept = async () => ({ ok: true as const })
   const answer = dispatch ?? accept
+  const answerQuery = runtimeQuery({ chatSearch: chatSearch ?? (async () => ({ chats: [] })) })
+  // The abort signal of each query, in order, so a test can see which searches were cancelled.
+  const querySignals: (AbortSignal | undefined)[] = []
+  const query: RuntimeClient["query"] = (request, options) => {
+    querySignals.push(options?.signal)
+    return answerQuery(request)
+  }
   const appService = { dispatch: runtimeDispatch({
     "workflow.interrupt": async () => ({ kind: "interrupt", interrupted: true }),
     "workflow.resume": accept, "chat.resume": accept, "chat.interrupt": accept,
     "session.delete": answer, "session.rename": answer, "session.close": answer,
-  }), query: runtimeQuery({ chatSearch: chatSearch ?? (async () => ({ chats: [] })) }) }
+  }), query }
   spyOn(appService, "dispatch")
-  return appService
+  return { appService, querySignals }
 }
 
 export function createModal(options: {
@@ -83,7 +90,7 @@ export function createModal(options: {
   chatSearch?: QueryAnswer<"chatSearch">
 }) {
   const modals = createModalStack()
-  const appService = createAppService(options.dispatch, options.chatSearch)
+  const { appService, querySignals } = createAppService(options.dispatch, options.chatSearch)
   const landOnEntry = mock((_entryId: string) => {})
   const activateSession = options.activateSession ?? mock(async () => ({ ok: true as const }))
   const activateSessionById = mock(async (_id: string) => {})
@@ -104,8 +111,13 @@ export function createModal(options: {
     closeChat,
     deleteActiveSession: options.deleteActiveSession ?? mock(async () => {}),
     clipboard: { copy: mockClipboardCopy, readImage: async () => null },
-  }, 0, 0)
-  return { hook, modals, appService, activateSession, activateSessionById, landOnEntry, closeChat }
+  }, 0)
+  return { hook, modals, appService, querySignals, activateSession, activateSessionById, landOnEntry, closeChat }
+}
+
+/** Press ctrl with a letter, as a terminal reports it. */
+export function pressCtrl(modals: { input(evt: { name: string; ctrl?: boolean; sequence?: string }): boolean }, letter: string): void {
+  modals.input({ name: letter, ctrl: true, sequence: String.fromCharCode(letter.charCodeAt(0) - 96) })
 }
 
 export function rowLabels(hook: ReturnType<typeof useSessionModal>): string[] {

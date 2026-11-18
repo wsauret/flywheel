@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { pack } from "msgpackr"
-import { connectProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
-import { deferred, endpointPair, manualClock, markerEvent, markerPosition, requestFrame } from "./project-execution-channel-fixtures.js"
+import { connectProjectExecutionChannel, serveProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
+import { deferred, endpointPair, manualClock, markerEvent, markerPosition, requestFrame, runtimeHarness } from "./project-execution-channel-fixtures.js"
 
 /** How many calls a client sends before it queues the rest, read from a
  *  burst far larger than that bound. A watch statement bypasses the call
@@ -27,6 +27,36 @@ async function clientCapacity(): Promise<number> {
 }
 
 describe("project execution call deadlines and capacity", () => {
+  test("a query that the account withdraws aborts on the executor, and the executor's late answer is dropped", async () => {
+    const [serverEndpoint, clientEndpoint] = endpointPair()
+    const harness = runtimeHarness()
+    const started = deferred<AbortSignal>()
+    const finish = deferred<void>()
+    const stop = serveProjectExecutionChannel({
+      ...harness.runtime,
+      query: async (request, options) => {
+        started.resolve(options?.signal ?? new AbortController().signal)
+        await finish.promise
+        return harness.runtime.query(request)
+      },
+    }, serverEndpoint)
+    const client = connectProjectExecutionChannel(clientEndpoint)
+    const withdrawal = new AbortController()
+    const withdrawn = client.query({ type: "commandUsageSnapshot" }, { signal: withdrawal.signal }).then(() => undefined, (error: unknown) => error)
+    const executorSignal = await started.promise
+    withdrawal.abort()
+    expect(await withdrawn).toMatchObject({ name: "AbortError" })
+    const aborted = deferred<void>()
+    if (executorSignal.aborted) aborted.resolve()
+    else executorSignal.addEventListener("abort", () => aborted.resolve(), { once: true })
+    await aborted.promise
+    finish.resolve()
+    // The withdrawn call keeps its slot until the late answer, and the channel goes on serving.
+    expect(await client.query({ type: "commandUsageSnapshot" })).toMatchObject({ snapshotPosition: 7 })
+    await client.close()
+    await stop()
+  })
+
   test("keeps an expired read correlated until its late reply arrives", async () => {
     const [peer, clientEndpoint] = endpointPair()
     const requests: Array<{ id: string }> = []

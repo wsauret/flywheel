@@ -6,7 +6,8 @@ import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact 
 import { countTranscriptIndex, indexedToolUseId, rankConversationsByBestMessage, searchTranscriptIndex, type TranscriptIndexHit } from "../../infra/conversation-recall-search.js"
 import type { ChatSearchRequest, ChatSearchResult, FoundChat, TranscriptSearchHit, TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
 import type { ReplayedSession } from "./schemas.js"
-import { buildFtsMatch } from "./conversation-recall.js"
+import { contentSearchable } from "../../protocol/client/chat-content-search.js"
+import { buildFtsMatch, typedWordIsPrefix } from "./conversation-recall.js"
 import { parseConversationCheckpointFact } from "./conversation-checkpoint-facts.js"
 import { parseConversationTreeFact } from "./conversation/conversation-facts.js"
 
@@ -24,11 +25,14 @@ const EXCERPT_CHARS = 300
 
 export interface TranscriptSearchService {
   search(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
-  /** The root chats whose messages best match the request's keywords (`rankConversationsByBestMessage`), each with
-   *  the time of its newest entry, and an excerpt of where it stands. Work is bounded by the answer: one
+  /** The root chats with a message that holds every keyword of the request (`rankConversationsByBestMessage`), each
+   *  with the time of its newest entry, and an excerpt of where it stands. Work is bounded by the answer: one
    *  index catch-up, one ranked query, and two reads of the newest facts of the answered chats; an answered chat with
-   *  no checkpoint and no final message in its newest batches pages back through its own history to its newest one. */
-  findChats(request: ChatSearchRequest): Promise<ChatSearchResult>
+   *  no checkpoint and no final message in its newest batches pages back through its own history to its newest one.
+   *  A query that is not `contentSearchable` only brings the index current and answers no chats, so a client sends
+   *  one as its session list opens. Once `signal` aborts, the search stops at its next stage and rejects with the
+   *  abort; a stage that runs finishes first, because SQLite here cannot stop a statement that runs. */
+  findChats(request: ChatSearchRequest, signal?: AbortSignal): Promise<ChatSearchResult>
 }
 
 interface TranscriptSearchSession {
@@ -93,17 +97,29 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
     return { hits, total: countTranscriptIndex(connection, query), page, pageSize: TRANSCRIPT_SEARCH_PAGE_SIZE }
   }
 
-  async function findChats(request: ChatSearchRequest): Promise<ChatSearchResult> {
-    // The session list searches as the person types, so the word being typed matches as a prefix.
-    const match = buildFtsMatch(request.query, { prefixLastWord: true })
-    if (match.length === 0) return { chats: [] }
+  async function findChats(request: ChatSearchRequest, signal?: AbortSignal): Promise<ChatSearchResult> {
     const upperPosition = await deps.source.capturePosition()
+    if (!contentSearchable(request.query)) {
+      await deps.index.through(upperPosition)
+      return { chats: [] }
+    }
+    // The session list searches as the person types: every word must match, and the word being typed is a prefix
+    // from its fourth letter.
+    const match = buildFtsMatch(request.query, { typing: true })
     const excluded = new Set(request.exclude)
     // The catalog holds no deleted session, and every root chat, and only a root chat, has kind chat.
     const chats = new Map((await deps.sessions()).flatMap((row) => row.kind === "chat" && !excluded.has(row.id) ? [[row.conversationId, row] as const] : []))
+    signal?.throwIfAborted()
     const connection = await deps.index.through(upperPosition)
-    const found = rankConversationsByBestMessage(connection, { upperPosition, match, conversationIds: new Set(chats.keys()), limit: CHAT_SEARCH_LIMIT })
+    // The ranking holds the thread for up to a second. Searches that a person typed past queue behind it, and each
+    // one's withdrawal is a message that arrives only once the thread yields to its event loop, so the search yields
+    // to it once before it ranks.
+    if (signal !== undefined) await new Promise((resolve) => { setImmediate(resolve) })
+    signal?.throwIfAborted()
+    const terms = request.query.split(/[^\p{L}\p{N}]+/u).filter((term) => term.length > 0)
+    const found = rankConversationsByBestMessage(connection, { upperPosition, match, terms, lastTermIsPrefix: typedWordIsPrefix(request.query), conversationIds: new Set(chats.keys()), limit: CHAT_SEARCH_LIMIT })
       .flatMap((hit) => { const chat = chats.get(hit.conversationId); return chat ? [{ chat, entryId: hit.entryId, snippet: hit.snippet }] : [] })
+    signal?.throwIfAborted()
     if (found.length === 0) return { chats: [] }
     const [checkpoints, tails] = await Promise.all([
       deps.source.readSlice({ aggregateIds: found.map(({ chat }) => `session:${chat.id}`), types: ["conversation.checkpoint.updated"], order: "desc", limitPerAggregate: 1, limit: found.length }, true),
@@ -117,7 +133,7 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
         const newest = batches.get(aggregateId) ?? []
         const lastActivityAt = newest.find((fact): fact is StoredFact => !(fact instanceof CorruptEventRowError))?.timestamp
         const state = states.get(chat.conversationId)
-        const final = state === undefined ? newestFinalText(newest) ?? await olderFinalText(aggregateId, newest) : undefined
+        const final = state === undefined ? newestFinalText(newest) ?? await olderFinalText(aggregateId, newest, signal) : undefined
         const excerpt = state !== undefined ? { source: "checkpoint" as const, text: excerptOf(state) } : final !== undefined ? { source: "final" as const, text: excerptOf(final) } : undefined
         return { sessionId: chat.id, ...(lastActivityAt === undefined ? {} : { lastActivityAt }), entryId, snippet, ...(excerpt ? { excerpt } : {}) }
       })),
@@ -126,9 +142,10 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
 
   /** The newest final message before `newest`, the chat's newest batches, read one bounded page at a time until one
    *  is found or the history ends. */
-  async function olderFinalText(aggregateId: string, newest: readonly (StoredFact | CorruptEventRowError)[]): Promise<string | undefined> {
+  async function olderFinalText(aggregateId: string, newest: readonly (StoredFact | CorruptEventRowError)[], signal: AbortSignal | undefined): Promise<string | undefined> {
     let page = newest
     while (page.length === CHAT_SEARCH_TAIL_BATCHES) {
+      signal?.throwIfAborted()
       // SAFETY: the loop guard holds the page length at CHAT_SEARCH_TAIL_BATCHES, which is positive, so the last fact exists.
       const beforePosition = page[page.length - 1]!.position
       page = (await deps.source.readSlice({ aggregateId, types: ["chat.entries.appended"], order: "desc", beforePosition, limit: CHAT_SEARCH_TAIL_BATCHES }, true)).facts

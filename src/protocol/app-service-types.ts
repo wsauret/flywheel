@@ -161,8 +161,15 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
                                               : Q extends { readonly type: "provider_models.query" } ? ProviderModelView
                                                           : never
 
+/** How a caller withdraws one query. */
+export interface RuntimeQueryOptions {
+  /** Aborting it withdraws the query: the call rejects with an AbortError, and each owner that the query passes
+   *  through drops the work that remains for it. */
+  readonly signal?: AbortSignal
+}
+
 export interface RuntimeClient {
-  query<Q extends RuntimeQuery>(query: Q): Promise<RuntimeQueryResult<Q>>
+  query<Q extends RuntimeQuery>(query: Q, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
   dispatch<C extends FrontendMutation>(command: C): Promise<MutationResult<C>>
   subscribe(listener: (event: FrontendEvent) => void): Unsubscribe
   /** Release client resources; the transport owns whether the runtime follows. */

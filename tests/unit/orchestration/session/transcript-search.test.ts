@@ -166,20 +166,50 @@ describe("chat search", () => {
     expect((await search.findChats({ query: "dim_land", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha", "s-beta"])
   })
 
-  test("a word of the query matches alone, and a blank query or no match finds nothing", async () => {
+  test("a message matches only when it holds every word of the query, and a blank query or no match finds nothing", async () => {
     append("conv-alpha", [user("a1", null, "open PR 5132 for the graph")])
-    expect((await search.findChats({ query: "5132 kafka", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha"])
+    append("conv-beta", [user("b1", null, "kafka lag")])
+    expect((await search.findChats({ query: "5132 graph", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha"])
+    expect(await search.findChats({ query: "5132 kafka", exclude: [] })).toEqual({ chats: [] })
     expect(await search.findChats({ query: "  ", exclude: [] })).toEqual({ chats: [] })
-    expect(await search.findChats({ query: "kafka", exclude: [] })).toEqual({ chats: [] })
+    expect(await search.findChats({ query: "zanzibar", exclude: [] })).toEqual({ chats: [] })
   })
 
-  test("the last word matches as a prefix while the person types it, and the transcript search stays exact", async () => {
+  test("a word being typed searches only from its third letter, and a shorter query still brings the index current", async () => {
+    let catchUps = 0
+    const counted = createTranscriptSearch({ index: { through: (position) => { catchUps++; return index.through(position) } }, source: asAsyncEventReadSurface(store), sessions: async () => sessions })
     append("conv-alpha", [user("a1", null, "plan the zanzibar release")])
-    for (const query of ["zanzi", "release zanzi", "zanzibar"]) {
+    for (const query of ["", "z", "za", "release za", "dim_l"]) expect(await counted.findChats({ query, exclude: [] })).toEqual({ chats: [] })
+    expect(catchUps).toBe(5)
+    expect((await counted.findChats({ query: "the", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha"])
+  })
+
+  test("a withdrawn search stops before its next stage", async () => {
+    append("conv-alpha", [user("a1", null, "plan the zanzibar release")])
+    const withdrawal = new AbortController()
+    const source = asAsyncEventReadSurface(store)
+    let catchUps = 0
+    let reads = 0
+    const withdrawn = createTranscriptSearch({
+      index: { through: (position) => { catchUps++; return index.through(position) } },
+      source: { ...source, readSlice: (...args: Parameters<typeof source.readSlice>) => { reads++; return source.readSlice(...args) } },
+      // A later query replaces this one while the catalog is read.
+      sessions: async () => { withdrawal.abort(); return sessions },
+    })
+    await expect(withdrawn.findChats({ query: "zanzibar", exclude: [] }, withdrawal.signal)).rejects.toMatchObject({ name: "AbortError" })
+    expect([catchUps, reads]).toEqual([0, 0])
+    expect((await withdrawn.findChats({ query: "zanzibar", exclude: [] })).chats.map((chat) => chat.sessionId)).toEqual(["s-alpha"])
+  })
+
+  test("the last word matches as a prefix from its fourth letter while the person types it, and the transcript search stays exact", async () => {
+    append("conv-alpha", [user("a1", null, "plan the zanzibar release")])
+    for (const query of ["zanz", "zanzi", "release zanzi", "zanzibar", "release - zanzi", "zanzibar -"]) {
       expect((await search.findChats({ query, exclude: [] })).chats.map((chat) => [chat.sessionId, chat.entryId])).toEqual([["s-alpha", "a1"]])
     }
+    // A 3-letter word matches only as itself: as a prefix, it named so many index terms that a search took a second.
+    expect(await search.findChats({ query: "zan", exclude: [] })).toEqual({ chats: [] })
     // Only the word being typed is a prefix: an earlier unfinished word matches nothing.
-    expect(await search.findChats({ query: "zanzi kafka", exclude: [] })).toEqual({ chats: [] })
+    expect(await search.findChats({ query: "zanzi release", exclude: [] })).toEqual({ chats: [] })
     expect((await search.search({ query: "zanzi", page: 1 })).total).toBe(0)
   })
 
@@ -190,6 +220,14 @@ describe("chat search", () => {
     const [chat] = (await search.findChats({ query: "zanzibar", exclude: [] })).chats
     expect(chat?.snippet).toBe("...early57 early58 early59 the [zanzibar] release ships late0 late1 late2...")
     expect((await search.search({ query: "zanzibar", page: 1 })).hits[0]?.snippet.split(" ").length).toBeGreaterThan(20)
+  })
+
+  test("the snippet marks the words that the index matched: stemmed forms, and a prefix only for the word being typed", async () => {
+    append("conv-alpha", [user("a1", null, "open PR 5132 for the provider graph")])
+    append("conv-beta", [user("b1", null, "both searches were running slowly")])
+    const snippet = async (query: string) => (await search.findChats({ query, exclude: [] })).chats[0]?.snippet
+    expect(await snippet("pr 5132")).toBe("open [PR] [5132] for the provider graph")
+    expect(await snippet("search run")).toBe("both [searches] were [running] slowly")
   })
 
   test("answers each chat's newest activity, and the current state of its newest checkpoint, or else its newest final message", async () => {

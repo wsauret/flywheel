@@ -4,6 +4,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack }
 import type { SessionCatalogError } from "../../../src/protocol/app-service-types.js"
 import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../../src/protocol/client/chat-content-search.js"
 import { snippetParts } from "../../../src/protocol/client/search-snippet.js"
+import { sessionTitleMatcher } from "../../../src/protocol/client/session-title-match.js"
 import type { ChatSearchRequest, ChatSearchResult, FoundChat } from "../../../src/protocol/transcript-protocol-types.js"
 import { formatTimeAgo } from "../client/format-time.js"
 import type { SessionSummary } from "../client/view-state.js"
@@ -33,8 +34,9 @@ export interface SessionListActions {
   readonly onRename?: (sessionId: string) => void
   /** True while an action on the session runs, such as Close or Delete. */
   readonly working: (sessionId: string) => boolean
-  /** The chats whose messages match a search; without it the list searches titles only. */
-  readonly searchChats?: (request: ChatSearchRequest) => Promise<ChatSearchResult>
+  /** The chats whose messages match a search; without it the list searches titles only. `signal` aborts once a
+   *  later query replaces the search. */
+  readonly searchChats?: (request: ChatSearchRequest, signal: AbortSignal) => Promise<ChatSearchResult>
   /** Opens a chat that the search found by its messages, landed on the best matching entry. */
   readonly onOpenAt?: (sessionId: string, entryId: string) => void
   /** Reports a failed search of the messages. */
@@ -47,10 +49,6 @@ interface Tray {
   readonly id: string
   readonly reveal: number
   readonly dragging: boolean
-}
-
-function matches(session: SessionSummary, query: string): boolean {
-  return session.title.toLowerCase().includes(query) || (session.subtitle?.toLowerCase().includes(query) ?? false) || session.id.startsWith(query)
 }
 
 const NEED_TITLES = {
@@ -75,8 +73,9 @@ export function SessionList(props: {
   readonly contentSearchDelayMs?: number
 }) {
   const rows = createMemo((previous: readonly Row[]) => {
-    const query = props.filter?.trim().toLowerCase() ?? ""
-    const visible = query.length === 0 ? props.sessions : props.sessions.filter((session) => matches(session, query))
+    const query = props.filter?.trim() ?? ""
+    const matches = sessionTitleMatcher(query)
+    const visible = query.length === 0 ? props.sessions : props.sessions.filter((session) => matches([session.title, session.subtitle, session.id]))
     return layoutSessionRows(visible, props.grouped === true, previous)
   }, [])
 
@@ -85,12 +84,17 @@ export function SessionList(props: {
   // never moves a row above the reader (PI-INTERACTION-178).
   const [contentAnswer, setContentAnswer] = createSignal<ContentAnswer | undefined>()
   const contentSearch = createContentSearch({
-    search: (request) => props.actions.searchChats?.(request) ?? Promise.resolve({ chats: [] }),
+    search: (request, signal) => props.actions.searchChats?.(request, signal) ?? Promise.resolve({ chats: [] }),
     publish: setContentAnswer,
     fail: (cause) => props.actions.onSearchFailed?.(cause),
     ...(props.contentSearchDelayMs === undefined ? {} : { delayMs: props.contentSearchDelayMs }),
   })
   onCleanup(contentSearch.dispose)
+  // A list that comes into view brings the message index current, so the first search does not wait for it.
+  createEffect(() => {
+    if (props.shown === false || props.actions.searchChats === undefined) return
+    untrack(contentSearch.prepare)
+  })
   createEffect(() => {
     const query = props.filter ?? ""
     if (props.actions.searchChats === undefined) return

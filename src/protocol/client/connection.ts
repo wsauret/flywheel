@@ -10,6 +10,7 @@ import type {
   RuntimeProtocolRefusal,
   RuntimeTransportHealth,
   RuntimeQuery,
+  RuntimeQueryOptions,
   RuntimeQueryResult,
 } from "../app-service-types.js"
 import type { RuntimeInvalidationReason } from "../runtime-ui-protocol-types.js"
@@ -112,7 +113,7 @@ export interface RuntimeConnection extends AttachedRuntimeClient {
   /** A call made while the connection attaches waits for the lane and goes
    *  out after its subscription; it fails with the attach's own cause when
    *  that attach fails, or at its own deadline. */
-  query<Q extends RuntimeQuery>(query: Q): Promise<RuntimeQueryResult<Q>>
+  query<Q extends RuntimeQuery>(query: Q, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
   dispatch<C extends FrontendMutation>(mutation: C): Promise<MutationResult<C>>
   /** Live runtime events. Subscribing starts the event lane; the last
    *  subscriber leaving releases it. */
@@ -555,16 +556,18 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
 
   /** One call. A deadline that passes with no frame heard since the call was
    *  made is the runtime's silence, not the call's failure (`RuntimeSilent`). */
-  async function call<A>(run: (client: ProtocolClient) => Effect.Effect<A, unknown>, policy: RuntimeCallPolicy, kind: LaneCall): Promise<A> {
+  async function call<A>(run: (client: ProtocolClient) => Effect.Effect<A, unknown>, policy: RuntimeCallPolicy, kind: LaneCall, signal?: AbortSignal): Promise<A> {
     const heard = framesHeard
     try {
-      return await callOnLane(run, policy, kind)
+      return await callOnLane(run, policy, kind, signal)
     } catch (cause) {
       throw cause instanceof RuntimeCallTimeout && framesHeard === heard ? new RuntimeSilent(cause) : cause
     }
   }
 
-  async function callOnLane<A>(run: (client: ProtocolClient) => Effect.Effect<A, unknown>, policy: RuntimeCallPolicy, kind: LaneCall): Promise<A> {
+  /** An aborted `signal` withdraws the call: it interrupts the call, the RPC
+   *  client tells the runtime, and the call rejects with the signal's reason. */
+  async function callOnLane<A>(run: (client: ProtocolClient) => Effect.Effect<A, unknown>, policy: RuntimeCallPolicy, kind: LaneCall, signal?: AbortSignal): Promise<A> {
     if (closing) throw new Error("runtime connection is closed")
     // A watch changed before this call is stated before it, so a read the
     // runtime serves after the statement is followed by the output it covers.
@@ -575,7 +578,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
     // The time spent waiting for the lane counts against the call's deadline.
     const remaining: RuntimeCallPolicy = policy._tag === "BestEffort" ? { _tag: "BestEffort", deadlineMs: Math.max(0, policy.deadlineMs - (now() - askedAt)) } : policy
     const operation = Effect.scoped(Effect.flatMap(RpcClient.make(RuntimeProtocolRpc, { generateRequestId: stringRequestId }), run))
-    const running = runtime.runPromiseExit(applyRuntimeCallPolicy(operation, remaining))
+    const running = runtime.runPromiseExit(applyRuntimeCallPolicy(operation, remaining), signal ? { signal } : undefined)
     inFlight.add(running)
     let exit: Exit.Exit<A, unknown>
     try {
@@ -585,6 +588,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
       if (recycleWanted) void recycleIdleRuntime()
     }
     if (Exit.isSuccess(exit)) return exit.value
+    if (signal?.aborted === true && Cause.hasInterruptsOnly(exit.cause)) throw signal.reason
     // Only the end of a lane disposes a runtime under a call: a close and an
     // idle recycle wait for every call in flight. So a call interrupted and
     // nothing else is a call the lane took down with it.
@@ -821,10 +825,10 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
   // the transport erases; the RPC schemas validate it at runtime. A query
   // result arrives opaque and is decoded here with the codec its own
   // discriminant selects, so no other result shape can claim it.
-  function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
-  function query(request: RuntimeQuery) {
+  function query<Q extends RuntimeQuery>(request: Q, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
+  function query(request: RuntimeQuery, queryOptions?: RuntimeQueryOptions) {
     const decode = Schema.decodeUnknownEffect(runtimeQueryResultSchema(request.type))
-    return call((client) => client.RuntimeQuery(request).pipe(Effect.flatMap(decode)), runtimeCallPolicies[request.type], laneCallOf(request))
+    return call((client) => client.RuntimeQuery(request).pipe(Effect.flatMap(decode)), runtimeCallPolicies[request.type], laneCallOf(request), queryOptions?.signal)
   }
 
   function dispatch<C extends FrontendMutation>(mutation: C): Promise<MutationResult<C>>

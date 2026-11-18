@@ -129,7 +129,7 @@ function CorruptSessionPane(props: { row: PickerCorruptRow; width: number; heigh
         <text fg={theme.textMuted} wrapMode="word">{`This session's saved data can't be read: ${props.row.reason}`}</text>
       </box>
       <box paddingTop={1}>
-        <text fg={theme.text} wrapMode="word">Press d twice to delete this unreadable session.</text>
+        <text fg={theme.text} wrapMode="word">Press ctrl+d twice to delete this unreadable session.</text>
       </box>
     </box>
   )

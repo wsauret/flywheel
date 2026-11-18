@@ -239,7 +239,7 @@ describe("SessionPickerRow", () => {
 
     for (const row of [corrupt, pickerRow(session({ id: "broken" }))]) {
       const confirming = await rowChunks({ ...base, row, confirmDeleteSessionId: "broken" })
-      expect(confirming.map(chunk => chunk.text).join("")).toContain("Press d again to confirm")
+      expect(confirming.map(chunk => chunk.text).join("")).toContain("Press ctrl+d again to confirm")
       expect(confirming.every(chunk => chunk.fg?.equals(theme.background))).toBe(true)
     }
   })

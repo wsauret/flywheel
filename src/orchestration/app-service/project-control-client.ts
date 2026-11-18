@@ -2,7 +2,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import { createSessionPlacements } from "../session/session-metadata-store.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
-import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeChatDefault, type RuntimeClient, type RuntimeExecutorState, type RuntimeQuery, type RuntimeQueryResult, type RuntimeServiceState, type SessionCatalogError, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
+import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeChatDefault, type RuntimeClient, type RuntimeExecutorState, type RuntimeQuery, type RuntimeQueryOptions, type RuntimeQueryResult, type RuntimeServiceState, type SessionCatalogError, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
 import { withDetailEvidence } from "../../protocol/client/session-controls.js"
 import { sessionCursor, workspaceDomainCursor, type RuntimeSessionViewEntry, type RuntimeSessionViewsResult } from "../../protocol/runtime-ui-protocol-types.js"
@@ -114,11 +114,16 @@ export interface ProjectControlClient extends RuntimeClient {
   /** A detail snapshot holds its sessions for `connection` until a
    *  `session_detail.release` from it or its end, and a background index
    *  read follows its session until a `background.release` or the end. */
-  query<Q extends RuntimeQuery>(query: Q, connection?: SessionHolder): Promise<RuntimeQueryResult<Q>>
+  query<Q extends RuntimeQuery>(query: Q, options?: ProjectQueryOptions): Promise<RuntimeQueryResult<Q>>
   dispatch<C extends FrontendMutation>(command: C, connection?: SessionHolder): Promise<MutationResult<C>>
   /** The connection ended. Its session holds wait out their grace, and its
    *  detail holds end at once. */
   disconnect(connection: SessionHolder): void
+}
+
+/** A query's options, and the connection that sent it. */
+interface ProjectQueryOptions extends RuntimeQueryOptions {
+  readonly connection?: SessionHolder
 }
 
 /** Errors the targeted metadata read states: a summary read owns the rest. */
@@ -520,8 +525,9 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     return metadata && publishMetadata(metadata)
   }
 
-  function query<Q extends RuntimeQuery>(request: Q, connection?: SessionHolder): Promise<RuntimeQueryResult<Q>>
-  async function query(request: RuntimeQuery, connection?: SessionHolder): Promise<RuntimeQueryResult<RuntimeQuery>> {
+  function query<Q extends RuntimeQuery>(request: Q, options?: ProjectQueryOptions): Promise<RuntimeQueryResult<Q>>
+  async function query(request: RuntimeQuery, queryOptions: ProjectQueryOptions = {}): Promise<RuntimeQueryResult<RuntimeQuery>> {
+    const { connection } = queryOptions
     if (closing) throw new Error("Project control client is closed")
     if (request.type === "sessionDetailSnapshot") {
       return details.snapshot(connection, request.sessionIds, syncCatalog)
@@ -538,11 +544,11 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       bus.snapshotPosition({ kind: "cursor", cursor: sessionCursor(request.sessionId) })
       return result
     }
-    return queryRaw(request)
+    return queryRaw(request, queryOptions)
   }
 
-  function queryRaw<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
-  async function queryRaw(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
+  function queryRaw<Q extends RuntimeQuery>(request: Q, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
+  async function queryRaw(request: RuntimeQuery, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<RuntimeQuery>> {
     if (closing) throw new Error("Project control client is closed")
     if (request.type === "gitSnapshot") {
       return { git: git.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: gitCursor() }) }
@@ -615,7 +621,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     }
     const result = options.accountModules?.owns(request)
       ? await options.accountModules.serve(request)
-      : await (await executor).query(request)
+      : await (await executor).query(request, queryOptions)
     return result && typeof result === "object" && "snapshotPosition" in result ? { ...result, snapshotPosition } : result
   }
 

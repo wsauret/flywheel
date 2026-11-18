@@ -13,6 +13,7 @@ import type {
   MutationResult,
   RuntimeClient,
   RuntimeQuery,
+  RuntimeQueryOptions,
   RuntimeQueryResult,
 } from "../../protocol/app-service-types.js"
 import { RuntimeCallTimeout, runtimeCallPolicies } from "../../protocol/runtime-client-deadlines.js"
@@ -82,7 +83,15 @@ const HideEnvelopeSchema = Schema.Struct({
   sessionId: Schema.String,
 })
 
-const RequestEnvelopeSchema = Schema.Union([QueryEnvelopeSchema, DispatchEnvelopeSchema, WatchEnvelopeSchema, HideEnvelopeSchema])
+// The account withdrew the query `id`: its caller aborted it. The executor
+// aborts the query's signal, and still answers the call, so the account
+// releases its slot when the answer arrives.
+const CancelEnvelopeSchema = Schema.Struct({
+  kind: Schema.Literal("cancel"),
+  id: CorrelationIdSchema,
+})
+
+const RequestEnvelopeSchema = Schema.Union([QueryEnvelopeSchema, DispatchEnvelopeSchema, WatchEnvelopeSchema, HideEnvelopeSchema, CancelEnvelopeSchema])
 const ResponseEnvelopeSchema = Schema.Union([ResultEnvelopeSchema, ErrorEnvelopeSchema, RefusedEnvelopeSchema, EventsEnvelopeSchema, GapEnvelopeSchema])
 type RequestEnvelope = typeof RequestEnvelopeSchema.Type
 type EncodedRequest = typeof RequestEnvelopeSchema.Encoded
@@ -98,6 +107,7 @@ const encodeError = Schema.encodeUnknownSync(ErrorEnvelopeSchema, Strict)
 const encodeRefused = Schema.encodeUnknownSync(RefusedEnvelopeSchema, Strict)
 const encodeWatch = Schema.encodeUnknownSync(WatchEnvelopeSchema, Strict)
 const encodeHide = Schema.encodeUnknownSync(HideEnvelopeSchema, Strict)
+const encodeCancel = Schema.encodeUnknownSync(CancelEnvelopeSchema, Strict)
 
 type ExecutionRuntime = Pick<RuntimeClient, "query" | "dispatch" | "subscribe"> & {
   /** Applies the account's union of watched sessions to the output gate. */
@@ -169,6 +179,7 @@ export function serveProjectExecutionChannel(
   options: { readonly admits?: () => boolean } = {},
 ): (() => Promise<void>) & { drain(): Promise<void> } {
   const calls = new Set<Promise<void>>()
+  const withdrawals = new Map<string, AbortController>()
   const replies: Array<{ message: EncodedResponse; resolve: () => void }> = []
   const events: Uint8Array[] = []
   let eventBytes = 0
@@ -287,6 +298,10 @@ export function serveProjectExecutionChannel(
       runtime.watchOutput(request.sessionIds)
       return
     }
+    if (request.kind === "cancel") {
+      withdrawals.get(request.id)?.abort()
+      return
+    }
     if (!accepting || options.admits?.() === false) {
       void send(encodeRefused({ kind: "refused", id: request.id }))
       return
@@ -295,9 +310,14 @@ export function serveProjectExecutionChannel(
       void send(encodeError({ kind: "error", id: request.id, message: CAPACITY_ERROR }))
       return
     }
-    const call = serveCall(runtime, request, send)
+    const withdrawal = new AbortController()
+    withdrawals.set(request.id, withdrawal)
+    const call = serveCall(runtime, request, send, withdrawal.signal)
     calls.add(call)
-    void call.finally(() => calls.delete(call))
+    void call.finally(() => {
+      calls.delete(call)
+      withdrawals.delete(request.id)
+    })
   })
   const stopClose = endpoint.onClose(() => {
     stopAdmission()
@@ -332,15 +352,15 @@ export function serveProjectExecutionChannel(
   return Object.assign(close, { drain })
 }
 
-type CallEnvelope = Exclude<RequestEnvelope, { readonly kind: "watch" }>
+type CallEnvelope = Exclude<RequestEnvelope, { readonly kind: "watch" | "cancel" }>
 
 // Each call reaches the runtime in the turn that read it, so the runtime takes
 // a hide before a call that the account sent after it.
-async function serveCall(runtime: ExecutionRuntime, request: CallEnvelope, send: (message: EncodedResponse) => Promise<void>): Promise<void> {
+async function serveCall(runtime: ExecutionRuntime, request: CallEnvelope, send: (message: EncodedResponse) => Promise<void>, signal: AbortSignal): Promise<void> {
   const end = trackLoopSpan(`executor-${request.kind}`, request.kind === "query" ? request.query.type : request.kind === "dispatch" ? request.mutation.type : "session")
   try {
     const result = request.kind === "query"
-      ? Schema.encodeUnknownSync(runtimeQueryResultSchema(request.query.type))(await runtime.query(request.query))
+      ? Schema.encodeUnknownSync(runtimeQueryResultSchema(request.query.type))(await runtime.query(request.query, { signal }))
       : request.kind === "dispatch"
         ? Schema.encodeUnknownSync(runtimeDispatchResultSchema(request.mutation.type))(await runtime.dispatch(request.mutation))
         : await runtime.hideSession(request.sessionId).then(() => null)
@@ -548,9 +568,27 @@ export function connectProjectExecutionChannel(
     }
   }
 
-  function request<Result>(id: string, message: EncodedRequest, decode: (value: unknown) => Result, deadlineMs?: number): Promise<Result> {
+  function request<Result>(id: string, message: EncodedRequest, decode: (value: unknown) => Result, deadlineMs?: number, signal?: AbortSignal): Promise<Result> {
     if (closed) return Promise.reject(new Error("project execution channel closed"))
+    if (signal?.aborted) return Promise.reject(signal.reason)
     return new Promise((resolve, reject) => {
+      // A withdrawn call that is not sent yet is never sent. One that is sent
+      // keeps its slot until the executor answers it, which the executor
+      // does at once when the call stops at its withdrawal.
+      signal?.addEventListener("abort", () => {
+        const call = pending.get(id) ?? queued.get(id)?.call
+        if (call === undefined || call.settled) return
+        call.settled = true
+        if (call.timer !== undefined) clock.clearTimeout(call.timer)
+        if (queued.delete(id)) {
+          call.reject(signal.reason)
+          return
+        }
+        call.reject(signal.reason)
+        void endpoint.send(encodeCancel({ kind: "cancel", id })).catch((cause: unknown) => {
+          log.debug("project execution cancel was not sent", { error: errorMessage(cause) })
+        })
+      }, { once: true })
       const timer = deadlineMs === undefined
         ? undefined
         : clock.setTimeout(() => {
@@ -566,8 +604,8 @@ export function connectProjectExecutionChannel(
   }
 
   // The query discriminant selects its result codec, as the public connection does.
-  function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
-  function query(runtimeQuery: RuntimeQuery) {
+  function query<Q extends RuntimeQuery>(request: Q, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
+  function query(runtimeQuery: RuntimeQuery, queryOptions?: RuntimeQueryOptions) {
     const policy = runtimeCallPolicies[runtimeQuery.type]
     const id = randomUUID()
     return request(
@@ -575,6 +613,7 @@ export function connectProjectExecutionChannel(
       encodeQuery({ kind: "query", id, query: runtimeQuery }),
       Schema.decodeUnknownSync(runtimeQueryResultSchema(runtimeQuery.type)),
       policy._tag === "BestEffort" ? policy.deadlineMs : undefined,
+      queryOptions?.signal,
     )
   }
   function dispatch<C extends FrontendMutation>(mutation: C): Promise<MutationResult<C>>

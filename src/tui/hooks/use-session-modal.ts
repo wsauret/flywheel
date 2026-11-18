@@ -1,13 +1,13 @@
 import { batch, createMemo, createSignal, onCleanup, untrack } from "solid-js"
-import fuzzysort from "fuzzysort"
 import { errorDetail, errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { isSessionId } from "../../infra/session-id.js"
 import { effectiveSessionShortTitle, isActiveActivity, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../protocol/client/session-controls.js"
+import { sessionTitleMatcher } from "../../protocol/client/session-title-match.js"
 import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../protocol/client/chat-content-search.js"
 import { createListModalKeys, type ListModalKeyEvent } from "../components/modal-list-keys.js"
-import { createControlledTextEditor, normalizedPrintableText, SINGLE_LINE_TEXT_ENTRY_POLICY, type ControlledTextEditor, type TextEditorPresentation } from "../keymap/text-entry.js"
+import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY, type TextEditorPresentation } from "../keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../components/modal-select-helpers.js"
 import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
 import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow } from "../session-picker/picker-types.js"
@@ -16,18 +16,17 @@ import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionPic
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
 
 const log = Log.create({ service: "session-modal" })
-const defaultShortcutDelayMs = 120
 
 /** Name a session in durable feedback: its title, or its id when untitled. */
 function sessionSubject(session: SessionCatalogRow): string {
   return session.title || session.shortTitle || session.id
 }
 
-export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaultShortcutDelayMs, contentSearchDelayMs?: number): SessionModalHook {
+export function useSessionModal(deps: SessionModalDeps, contentSearchDelayMs?: number): SessionModalHook {
   const { signals, showToast } = deps
   const [contentAnswer, setContentAnswer] = createSignal<ContentAnswer | undefined>()
   const contentSearch = createContentSearch({
-    search: (request) => deps.appService.query({ type: "chatSearch", request }),
+    search: (request, signal) => deps.appService.query({ type: "chatSearch", request }, { signal }),
     publish: setContentAnswer,
     fail: (cause) => showToast({ message: `Message search failed: ${extractErrorMessage(cause)}`, variant: "warning" }),
     ...(contentSearchDelayMs === undefined ? {} : { delayMs: contentSearchDelayMs }),
@@ -41,35 +40,9 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   const titleEditor = createControlledTextEditor({ value: () => renameState()?.title ?? "", setValue: (title) => setRenameState((state) => state ? { ...state, title } : state), policy: SINGLE_LINE_TEXT_ENTRY_POLICY })
   const shortTitleEditor = createControlledTextEditor({ value: () => renameState()?.shortTitle ?? "", setValue: (shortTitle) => setRenameState((state) => state ? { ...state, shortTitle: shortTitle.slice(0, SHORT_TITLE_MAX_CHARS) } : state), policy: SINGLE_LINE_TEXT_ENTRY_POLICY })
   const renameEditor = () => renameState()?.field === "title" ? titleEditor : shortTitleEditor
-  let pendingShortcut: { key: string; action: SessionModalAction; timer: ReturnType<typeof setTimeout> } | undefined
   // The modal entry of the currently open Sessions modal. Every asynchronous
   // action captures it, so a late completion can only touch its own modal.
   let entry: ModalHandle | undefined
-
-  function clearPendingShortcut(): void {
-    if (!pendingShortcut) return
-    clearTimeout(pendingShortcut.timer)
-    pendingShortcut = undefined
-  }
-
-  function runEditor(editor: ControlledTextEditor, evt: ListModalKeyEvent): ReturnType<ControlledTextEditor["handleKey"]> {
-    return editor.handleKey(evt)
-  }
-
-  function triggerAction(action: SessionModalAction): void {
-    action.onTrigger()
-  }
-
-  function scheduleShortcut(key: string, action: SessionModalAction): void {
-    clearPendingShortcut()
-    const timer = setTimeout(() => {
-      const pending = pendingShortcut
-      if (!pending || pending.timer !== timer) return
-      pendingShortcut = undefined
-      triggerAction(pending.action)
-    }, shortcutDelayMs)
-    pendingShortcut = { key, action, timer }
-  }
 
   // Minute-quantized clock: rows need `now` only for date-group headers and
   // the time-ago column width, which move at minute granularity. Tracking the
@@ -122,7 +95,6 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   function clearModalState(): void {
-    clearPendingShortcut()
     contentSearch.update("", [])
     setModalConfirmDelete(undefined)
     setRenameState(undefined)
@@ -146,6 +118,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     filterEditor.resetEphemeralState({ cursor: 0 })
     titleEditor.resetEphemeralState({ cursor: 0 })
     shortTitleEditor.resetEphemeralState({ cursor: 0 })
+    contentSearch.prepare()
   }
 
   /** Close the Sessions modal this hook opened; `onClose` clears modal state. */
@@ -154,7 +127,6 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   function selectModalItem(rowIndex: number): void {
-    clearPendingShortcut()
     batch(() => {
       setModalCursor(rowIndex)
       setModalConfirmDelete(undefined)
@@ -178,7 +150,6 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
 
   /** Open the session, and land its transcript on `landOn` when a row found it by that entry. */
   function openSession(session: SessionCatalogRow, landOn?: string): void {
-    clearPendingShortcut()
     const opened = entry
     const subject = sessionSubject(session)
     void handleSessionView(session, opened, landOn).catch((err) => {
@@ -187,7 +158,6 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   function openSessionRow(row: SelectablePickerRow): void {
-    clearPendingShortcut()
     if (row.kind === "corrupt") return
     openSession(row.session, row.kind === "found" ? row.found.entryId : undefined)
   }
@@ -318,9 +288,9 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
 
   function actionsForSession(session: SessionCatalogRow): SessionModalAction[] {
     const actions: SessionModalAction[] = [
-      { key: "d", label: "delete", onTrigger: () => triggerDelete(session) },
-      { key: "n", label: "rename", onTrigger: () => beginRename(session) },
-      { key: "c", label: "copy session ID", onTrigger: () => copySessionId(session.id) },
+      { key: "ctrl+d", label: "delete", onTrigger: () => triggerDelete(session) },
+      { key: "ctrl+e", label: "rename", onTrigger: () => beginRename(session) },
+      { key: "ctrl+y", label: "copy session ID", onTrigger: () => copySessionId(session.id) },
     ]
     // The row's admitted actions and its live activity decide the controls
     // by the same rule as the prompt hint and the phase line; Resume also opens
@@ -329,69 +299,41 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     // activity alone does not.
     const status = signals.statusView(session.id)
     const offered = offeredSessionControls(session, status ? isInterruptible(status) : isActiveActivity(session.activity))
-    if (offered.primary === "resume") actions.push({ key: "r", label: "resume", onTrigger: () => resumeSession(session) })
-    if (offered.primary === "interrupt") actions.push({ key: "i", label: "interrupt", onTrigger: () => interruptSession(session) })
+    if (offered.primary === "resume") actions.push({ key: "ctrl+r", label: "resume", onTrigger: () => resumeSession(session) })
+    if (offered.primary === "interrupt") actions.push({ key: "ctrl+g", label: "interrupt", onTrigger: () => interruptSession(session) })
     // Last, so the footer's one line truncates it before the primary control.
-    if (session.lifecycleState === "active") actions.push({ key: "x", label: "close chat", onTrigger: () => closeChat(session) })
+    if (session.lifecycleState === "active") actions.push({ key: "ctrl+x", label: "close chat", onTrigger: () => closeChat(session) })
     return actions
   }
 
   function actionsForCorrupt(row: PickerCorruptRow): SessionModalAction[] {
     return [
-      { key: "d", label: "delete", onTrigger: () => triggerCorruptDelete(row) },
-      { key: "c", label: "copy session ID", onTrigger: () => copySessionId(row.sessionId) },
+      { key: "ctrl+d", label: "delete", onTrigger: () => triggerCorruptDelete(row) },
+      { key: "ctrl+y", label: "copy session ID", onTrigger: () => copySessionId(row.sessionId) },
     ]
   }
 
   function actionsForRow(row: SelectablePickerRow): SessionModalAction[] {
-    if (row.kind === "session") return actionsForSession(row.session)
-    if (row.kind === "corrupt") return actionsForCorrupt(row)
-    // A found row shows only while the filter has text, which offers no actions.
-    return []
+    return row.kind === "corrupt" ? actionsForCorrupt(row) : actionsForSession(row.session)
   }
 
   const sessionModalActions = (): readonly SessionModalAction[] => {
-    if (filterQuery() !== "" || renameState() !== undefined) return []
+    if (renameState() !== undefined) return []
     const row = selectedPickerRow()
     return row ? actionsForRow(row) : []
   }
 
-  /** A row action that the key triggers or schedules. A key that this does not
-   *  consume belongs to the filter, so editing keys such as Backspace reach the
-   *  query whatever row is selected. */
-  function handleShortcutKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
-    const text = normalizedPrintableText(evt)
-    if (!text) return handleActionKey(evt, row)
-    const rawAction = text.length === 1 ? matchAction(text, actionsForRow(row)) : undefined
-
-    if (pendingShortcut) {
-      evt.preventDefault?.()
-      const pending = pendingShortcut
-      clearPendingShortcut()
-      if (text === pending.key) triggerAction(pending.action)
-      else filterEditor.handlePaste(pending.key + text)
-      return true
-    }
-
-    if (rawAction && filterQuery() === "") {
-      evt.preventDefault?.()
-      const confirmTarget = rowSessionId(row)
-      if (text === "d" && modalConfirmDelete() === confirmTarget) triggerAction(rawAction)
-      else scheduleShortcut(text, rawAction)
-      return true
-    }
-    return false
-  }
-
-  function handleActionKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
-    // The footer advertises no actions while filtering; keep non-printable
-    // shortcuts (e.g. ctrl+d) consistent with that.
-    if (filterQuery() !== "") return false
-    const action = matchAction(evt.name.toLowerCase(), actionsForRow(row))
+  /** Every row action is a ctrl chord, so it never competes with the
+   *  search text and acts on the selected row whatever the box holds
+   *  (PI-INTERACTION-180). It goes before the filter editor, whose own ctrl
+   *  bindings (such as ctrl+e for line end) yield to the footer's actions. */
+  function handleActionKey(evt: ListModalKeyEvent): boolean {
+    if (!evt.ctrl || evt.meta) return false
+    const row = selectedPickerRow()
+    const action = row ? matchAction(`ctrl+${evt.name.toLowerCase()}`, actionsForRow(row)) : undefined
     if (!action) return false
-    clearPendingShortcut()
     evt.preventDefault?.()
-    triggerAction(action)
+    action.onTrigger()
     return true
   }
 
@@ -405,7 +347,6 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     rows: () => currentResult().rows,
     cursor: modalCursor,
     setCursor: (index) => {
-      clearPendingShortcut()
       setModalCursor(index)
       setModalConfirmDelete(undefined)
     },
@@ -434,7 +375,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
           setRenameState((state) => state ? { ...state, field: state.field === "title" ? "shortTitle" : "title" } : state)
           return true
         }
-        const result = runEditor(renameEditor(), evt)
+        const result = renameEditor().handleKey(evt)
         if (result === "cancel") setRenameState(undefined)
         else if (result === "submit") commitRename()
         return true
@@ -453,23 +394,17 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
         close()
         return true
       }
-      return false
+      return handleActionKey(evt)
     },
-    textInput: (evt) => {
-      const row = currentSelectableRow()
-      if (row && handleShortcutKey(evt, row)) return
-      runEditor(filterEditor, evt)
-    },
+    textInput: (evt) => { filterEditor.handleKey(evt) },
   })
 
   function handlePaste(text: string): void {
-    clearPendingShortcut()
     const editor = renameState() ? renameEditor() : filterEditor
     editor.handlePaste(text)
   }
 
   function handleSessionFilter(query: string): void {
-    clearPendingShortcut()
     batch(() => {
       setFilterQuery(query)
       setModalCursor(firstSelectableRow(currentResult().rows, isSelectablePickerRow))
@@ -510,12 +445,6 @@ interface PickerRowsResult {
   readonly effectiveHighlightQuery: string
 }
 
-interface SessionSearchCandidate {
-  readonly row: PickerSessionRow | PickerCorruptRow
-  readonly title: string
-  readonly id: string
-}
-
 function pickerRowsFor(
   sessionList: readonly SessionCatalogRow[],
   errors: readonly SessionCatalogError[],
@@ -534,7 +463,7 @@ function pickerRowsFor(
   }
 
   const activeQuery = query.trim()
-  if (activeQuery) return fuzzyRowsFor(sessionRows, corrupt, activeQuery)
+  if (activeQuery) return matchingRows(sessionRows, corrupt, activeQuery)
 
   const rows = withCorruptRows(flattenSessionRows(sessionList, now), corrupt)
   const totalMatches = rows.filter(isSelectablePickerRow).length
@@ -569,28 +498,19 @@ function rowSessionId(row: SelectablePickerRow): string {
   return row.kind === "corrupt" ? row.sessionId : row.session.id
 }
 
-function fuzzyRowsFor(sessionRows: readonly PickerSessionRow[], corrupt: readonly PickerCorruptRow[], query: string): PickerRowsResult {
-  const candidates: SessionSearchCandidate[] = [
-    ...sessionRows.map((row) => ({
-      row,
-      title: row.session.title || row.session.shortTitle || row.session.id,
-      id: row.session.id,
-    })),
-    ...corrupt.map((row) => ({ row, title: row.sessionId, id: row.sessionId })),
+/** The rows whose title, short title, or id has a word that each query word
+ *  starts (PI-INTERACTION-178), in list order. Every match counts toward the
+ *  total; the 200-row cap applies later. */
+function matchingRows(sessionRows: readonly PickerSessionRow[], corrupt: readonly PickerCorruptRow[], query: string): PickerRowsResult {
+  const matches = sessionTitleMatcher(query)
+  const rows = [
+    ...sessionRows.filter((row) => matches([row.session.title, row.session.shortTitle, row.session.id])),
+    ...corrupt.filter((row) => matches([row.sessionId])),
   ]
-  const matches = fuzzysort.go(query.toLowerCase(), candidates, {
-    keys: ["title", "id"],
-    scoreFn: (result) => Math.max(result[0]?.score ?? -Infinity, result[1]?.score ?? -Infinity),
-    // Every match counts toward the total and the 200-row cap applies later,
-    // so the search keeps all matches, however weak.
-    limit: 0,
-    threshold: 0,
-  })
-  const capped = matches.length > MAX_RENDERED_ROWS
   return {
-    rows: matches.map((match) => match.obj.row),
-    totalMatches: matches.length,
-    capped,
+    rows,
+    totalMatches: rows.length,
+    capped: rows.length > MAX_RENDERED_ROWS,
     effectiveHighlightQuery: query,
   }
 }

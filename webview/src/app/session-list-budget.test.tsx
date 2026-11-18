@@ -48,13 +48,17 @@ test("the list reveals its selected row on first show, not on updates or later s
 
 test("a search shows title matches at once and chats found by their messages below them, without moving or replacing a row", async () => {
   const answers: Array<PromiseWithResolvers<{ chats: { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint"; text: string } }[] }>> = []
-  const mounted = (await loadBudgetRenderFixture()).mountSessionListSearch(() => {
+  const signals: AbortSignal[] = []
+  const mounted = (await loadBudgetRenderFixture()).mountSessionListSearch((_query, signal) => {
     const answer = Promise.withResolvers<{ chats: { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint"; text: string } }[] }>()
     answers.push(answer)
+    signals.push(signal)
     return answer.promise
   })
   const pause = () => new Promise<void>((resolve) => { setTimeout(resolve, 1) })
   try {
+    // The list brings the message index current as it opens.
+    assert.equal(mounted.prepared(), 1)
     mounted.setFilter("kafk")
     assert.deepEqual(mounted.rowOrder(), ["kafka"])
     const titleRow = mounted.row("kafka")
@@ -62,6 +66,8 @@ test("a search shows title matches at once and chats found by their messages bel
     mounted.setFilter("kafka")
     await pause()
     assert.equal(answers.length, 2)
+    assert.equal(signals[0]!.aborted, true, "a replaced search is withdrawn")
+    assert.equal(signals[1]!.aborted, false)
     answers[1]!.resolve({ chats: [{ sessionId: "other", entryId: "e7", snippet: "the [kafka] lag", excerpt: { source: "checkpoint", text: "PR open" } }, { sessionId: "kafka", entryId: "e1", snippet: "[kafka]" }] })
     await pause()
     // A replaced query's late answer never shows.
@@ -101,5 +107,25 @@ test("a search shows title matches at once and chats found by their messages bel
 
     mounted.setFilter("")
     assert.deepEqual(mounted.rowOrder(), ["kafka", "other", "third"])
+  } finally { mounted.dispose() }
+})
+
+test("a title matches when each typed word starts one of its words, and a word too short to search the messages asks nothing", async () => {
+  const queries: string[] = []
+  const mounted = (await loadBudgetRenderFixture()).mountSessionListSearch((query) => {
+    queries.push(query)
+    return Promise.resolve({ chats: [] })
+  })
+  const pause = () => new Promise<void>((resolve) => { setTimeout(resolve, 1) })
+  try {
+    mounted.setFilter("pipe kaf")
+    assert.deepEqual(mounted.rowOrder(), ["kafka"])
+    mounted.setFilter("afka")
+    assert.deepEqual(mounted.rowOrder(), [], "a word inside a title word is not a match")
+    mounted.setFilter("ot")
+    assert.deepEqual(mounted.rowOrder(), ["other"])
+    await pause()
+    assert.ok(!queries.includes("ot"), "a two-letter word does not search the messages")
+    assert.doesNotMatch(mounted.text(), /Searching messages/)
   } finally { mounted.dispose() }
 })

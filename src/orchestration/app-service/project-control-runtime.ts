@@ -41,7 +41,7 @@ import type { MaintenanceQueue } from "./runtime-maintenance-owner.js"
 import { serveProjectStateChannel } from "./project-state-channel.js"
 import { createMessagePortProcessEndpoint } from "../../infra/internal-process-channel.js"
 import type { RuntimeBackgroundClient } from "./worker-background-client.js"
-import type { FrontendEvent, FrontendMutation, MutationResult, RuntimeChatDefault, RuntimeQuery, RuntimeQueryResult } from "../../protocol/app-service-types.js"
+import type { FrontendEvent, FrontendMutation, MutationResult, RuntimeChatDefault, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult } from "../../protocol/app-service-types.js"
 import type { StartupReached } from "../../protocol/startup-steps.js"
 import type { ReplacementBlocker, ReplacementBlockerReason } from "./replacement-blockers.js"
 import type { SessionHoldGrace } from "./session-holds.js"
@@ -385,9 +385,9 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       }
     }
     const dispatch = <C extends FrontendMutation>(command: C): Promise<MutationResult<C>> => onServing(executionAskerOf(command), (runtime) => runtime.dispatch(command))
-    function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
+    function query<Q extends RuntimeQuery>(request: Q, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
     // oxlint-disable-next-line eslint/no-inner-declarations -- overload keeps query/result discrimination at the runtime boundary
-    async function query(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
+    async function query(request: RuntimeQuery, queryOptions?: RuntimeQueryOptions): Promise<RuntimeQueryResult<RuntimeQuery>> {
       // Only the executor serves transcripts and mutation evidence, so these reads ask for a
       // generation as an open tab does, and fails with that ask (ARCH-RUNTIME-016).
       const asker = readAskerOf(request)
@@ -405,7 +405,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
         // A read is idempotent, so one its generation's end cut off is taken
         // again like a refused one: a detached call's outcome is unknown, and
         // the next pass finds the history or the generation that follows.
-        const taken = await onGeneration(serving, (runtime) => runtime.query(request)).catch((error: unknown) => {
+        const taken = await onGeneration(serving, (runtime) => runtime.query(request, queryOptions)).catch((error: unknown) => {
           if (error instanceof ProjectExecutionChannelDetached || serving.recovery) return undefined
           throw error
         })

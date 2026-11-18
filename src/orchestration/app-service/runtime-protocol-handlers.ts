@@ -94,7 +94,7 @@ export function runtimeHandlers(
     // carries exactly the declared result shape.
     // A query names its connection too: a detail snapshot holds the
     // sessions it reads for that connection alone.
-    RuntimeQuery: (query, { client: connection }) => afterSubscriptions(connection, fromPromise(`query:${query.type}`, async () => Schema.encodeUnknownSync(runtimeQueryResultSchema(query.type))(await client.query(query, connection)))),
+    RuntimeQuery: (query, { client: connection }) => afterSubscriptions(connection, fromPromise(`query:${query.type}`, async (signal) => Schema.encodeUnknownSync(runtimeQueryResultSchema(query.type))(await client.query(query, { connection, signal })))),
     // Each mutation names the connection that sent it, so the sessions a
     // connection shows are held by that connection alone (ARCH-RUNTIME-023).
     // A watch statement applies, and reaches the executor, before the call
@@ -224,13 +224,14 @@ function afterSubscriptions<A>(connection: Rpc.ServerClient, effect: Effect.Effe
 }
 
 /** The RPC name registers as an in-flight loop span so an event-loop stall
- *  WARN can name what the stall delayed (session-fairness plan, phase 0). */
-function fromPromise<A>(name: string, run: () => Promise<A>): Effect.Effect<A, RuntimeProtocolError> {
+ *  WARN can name what the stall delayed (session-fairness plan, phase 0).
+ *  `signal` aborts when the client withdraws the call, which interrupts it. */
+function fromPromise<A>(name: string, run: (signal: AbortSignal) => Promise<A>): Effect.Effect<A, RuntimeProtocolError> {
   return Effect.tryPromise({
-    try: async () => {
+    try: async (signal) => {
       const end = trackLoopSpan("rpc", name)
       try {
-        return await run()
+        return await run(signal)
       } finally {
         end()
       }

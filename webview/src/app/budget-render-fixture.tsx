@@ -325,11 +325,14 @@ export function mountSessionListBudget() {
 }
 
 /** The rail's list with a search: title matches from the catalog, and the
- *  chats `found` answers for the messages, after a pause of 0 ms. */
-export function mountSessionListSearch(found: (query: string) => Promise<{ chats: readonly { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint" | "final"; text: string } }[] }>) {
+ *  chats `found` answers for the messages, after a pause of 0 ms. A blank
+ *  search, the index catch-up that the list sends as it opens, counts in
+ *  `prepared` and answers no chats. */
+export function mountSessionListSearch(found: (query: string, signal: AbortSignal) => Promise<{ chats: readonly { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint" | "final"; text: string } }[] }>) {
   return createRoot((dispose) => {
     const [filter, setFilter] = createSignal("")
     const opened: string[] = []
+    let prepared = 0
     const root = createElement("root")
     insert(root, createComponent(SessionList, {
       sessions: [summary({ id: "kafka", title: "Kafka pipeline" }), summary({ id: "other", title: "Other work" }), summary({ id: "third", title: "Third" })],
@@ -337,12 +340,17 @@ export function mountSessionListSearch(found: (query: string) => Promise<{ chats
       selected: undefined,
       get filter() { return filter() },
       contentSearchDelayMs: 0,
-      actions: { onSelect() {}, working: () => false, searchChats: ({ query }) => found(query), onOpenAt(sessionId, entryId) { opened.push(`${sessionId}@${entryId}`) } },
+      actions: { onSelect() {}, working: () => false, searchChats: ({ query }, signal) => {
+        if (query !== "") return found(query, signal)
+        prepared++
+        return Promise.resolve({ chats: [] })
+      }, onOpenAt(sessionId, entryId) { opened.push(`${sessionId}@${entryId}`) } },
     }))
     return {
       dispose,
       setFilter,
       opened,
+      prepared: () => prepared,
       text: () => textContent(root),
       click(id: string) {
         const row = nodes(root).find((node) => node.properties["data-found"] === id)

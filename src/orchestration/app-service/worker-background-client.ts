@@ -36,7 +36,8 @@ export interface RuntimeBackgroundClient {
   moduleSnapshot<Domain extends ProtocolBackgroundDomain>(domain: Domain, sessionId: string): Promise<ProtocolBackgroundSnapshot<Domain>>
   recall(conversationId: string, contract: RecallInput): Promise<RecallResult>
   transcriptSearch(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
-  findChats(request: ChatSearchRequest): Promise<ChatSearchResult>
+  /** `signal` withdraws the search: the Worker stops it at its next stage. */
+  findChats(request: ChatSearchRequest, signal?: AbortSignal): Promise<ChatSearchResult>
   close(): Promise<void>
 }
 
@@ -99,12 +100,13 @@ export function createProcessBackgroundClient(options: ProcessBackgroundClientOp
   let disposed = false
   let disposal: Promise<void> | undefined
 
-  /** Disposing the runtime interrupts every call it still carries. An
-   *  interruption is the owner's shutdown withdrawing the read, not a failed
-   *  read, so it rejects as an abort that each caller classifies through
+  /** Disposing the runtime interrupts every call it still carries, and an
+   *  aborted `signal` interrupts its own call. An interruption is a withdrawn
+   *  read, not a failed read, so it rejects as an abort that each caller classifies through
    *  `isAbortError`. Every other failure rejects as `runPromise` would. */
-  async function call<A, E>(run: (client: RuntimeBackgroundProtocolClient) => Effect.Effect<A, E>): Promise<A> {
-    const exit = await runtime.runPromiseExit(Effect.flatMap(RuntimeBackgroundProtocolClientService, run))
+  async function call<A, E>(run: (client: RuntimeBackgroundProtocolClient) => Effect.Effect<A, E>, signal?: AbortSignal): Promise<A> {
+    // An aborted signal interrupts the call, and the RPC client sends the Worker the interrupt.
+    const exit = await runtime.runPromiseExit(Effect.flatMap(RuntimeBackgroundProtocolClientService, run), signal ? { signal } : undefined)
     if (Exit.isSuccess(exit)) return exit.value
     if (Cause.hasInterruptsOnly(exit.cause)) throw new DOMException("Runtime background call interrupted", "AbortError")
     throw Cause.squash(exit.cause)
@@ -120,10 +122,10 @@ export function createProcessBackgroundClient(options: ProcessBackgroundClientOp
       // Whatever a call meets once its client closed is that close, not a
       // failed read, so it rejects as an abort, as a call the client refuses
       // itself does. A client that is still open reports every failure as it is.
-      const projectCall = async <A, E>(run: (client: RuntimeBackgroundProtocolClient) => Effect.Effect<A, E>): Promise<A> => {
+      const projectCall = async <A, E>(run: (client: RuntimeBackgroundProtocolClient) => Effect.Effect<A, E>, signal?: AbortSignal): Promise<A> => {
         if (closed) throw new DOMException("Runtime background client is closed", "AbortError")
         try {
-          return await call(run)
+          return await call(run, signal)
         } catch (error) {
           if (closed && !isAbortError(error)) throw new DOMException(`Runtime background client closed during the call: ${errorMessage(error)}`, "AbortError")
           throw error
@@ -139,7 +141,7 @@ export function createProcessBackgroundClient(options: ProcessBackgroundClientOp
         moduleSnapshot: (domain, sessionId) => projectCall((client) => client.RuntimeBackgroundModuleSnapshot({ projectRoot, domain, sessionId }).pipe(Effect.flatMap(Schema.decodeUnknownEffect(protocolBackgroundSchema(domain))))),
         recall: (conversationId, contract) => projectCall((client) => client.RuntimeBackgroundRecall({ projectRoot, conversationId, contract })),
         transcriptSearch: (request) => projectCall((client) => client.RuntimeBackgroundTranscriptSearch({ projectRoot, request })),
-        findChats: (request) => projectCall((client) => client.RuntimeBackgroundChatSearch({ projectRoot, request })),
+        findChats: (request, signal) => projectCall((client) => client.RuntimeBackgroundChatSearch({ projectRoot, request }), signal),
         close() {
           if (closed) return releases.settled()
           closed = true

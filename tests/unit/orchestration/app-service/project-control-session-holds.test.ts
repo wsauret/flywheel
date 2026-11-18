@@ -91,8 +91,8 @@ describe("account project control client session holds", () => {
     const terminal = new Rpc.ServerClient(1)
     const browser = new Rpc.ServerClient(2)
     try {
-      await client.query({ type: "sessionDetailSnapshot", sessionIds: ["child"] }, terminal)
-      await client.query({ type: "sessionDetailSnapshot", sessionIds: ["child"] }, browser)
+      await client.query({ type: "sessionDetailSnapshot", sessionIds: ["child"] }, { connection: terminal })
+      await client.query({ type: "sessionDetailSnapshot", sessionIds: ["child"] }, { connection: browser })
       expect((await client.query({ type: "gitSnapshot" })).git.directories[executionCwd]).toEqual({ branch: "child" })
       await client.dispatch({ type: "session_detail.release", sessionId: "child" }, terminal)
       expect((await client.query({ type: "gitSnapshot" })).git.directories[executionCwd]).toEqual({ branch: "child" })
@@ -111,9 +111,9 @@ describe("account project control client session holds", () => {
     const terminal = new Rpc.ServerClient(1)
     const browser = new Rpc.ServerClient(2)
     try {
-      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, terminal)
-      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, browser)
-      await client.query({ type: "sessionBackgroundWork", sessionId: "child" }, terminal)
+      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, { connection: terminal })
+      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, { connection: browser })
+      await client.query({ type: "sessionBackgroundWork", sessionId: "child" }, { connection: terminal })
       expect(await client.dispatch({ type: "background.release", sessionId: "chat" }, browser)).toEqual({ ok: true })
       await settled()
       // The terminal still follows the chat's index.
@@ -526,7 +526,7 @@ describe("account project control client session holds", () => {
     await client.dispatch({ type: "session.activate", sessionId: "chat" }, terminal)
     // A fork the terminal showed before the catalog listed it: its surface
     // read the detail, then let go of it once the row arrived.
-    await client.query({ type: "sessionDetailSnapshot", sessionIds: ["chat"] }, terminal)
+    await client.query({ type: "sessionDetailSnapshot", sessionIds: ["chat"] }, { connection: terminal })
     expect(await client.dispatch({ type: "session_detail.release", sessionId: "chat" }, terminal)).toEqual({ ok: true })
     await settled()
     expect(runnerChanges(executor, "chat")).toEqual(["session.activate"])

@@ -72,7 +72,7 @@ export function SessionPickerRow(props: SessionPickerRowProps): JSX.Element {
 function sessionRowChunks(input: BuildSessionRowChunksInput, row: PickerSessionRow | PickerFoundRow): TextChunk[] {
   const { theme } = input
   const { session } = row
-  const title = isConfirming(input) ? "Press d again to confirm" : session.title || session.shortTitle || session.id
+  const title = isConfirming(input) ? "Press ctrl+d again to confirm" : session.title || session.shortTitle || session.id
   const leftChunks: TextChunk[] = [rowPrefix(input)]
 
   if (session.id === input.foregroundId) leftChunks.push(stFg(theme.success)("(current) "))
@@ -119,7 +119,7 @@ function foundDetailLines(input: BuildSessionRowChunksInput, row: PickerFoundRow
 
 function corruptRowChunks(input: BuildSessionRowChunksInput, row: PickerCorruptRow): TextChunk[] {
   const { theme } = input
-  const title = isConfirming(input) ? "Press d again to confirm" : row.sessionId
+  const title = isConfirming(input) ? "Press ctrl+d again to confirm" : row.sessionId
   const leftChunks: TextChunk[] = [rowPrefix(input), stFg(theme.error)("! ")]
   const rightChunks: TextChunk[] = [stFg(theme.textMuted)("  "), stFg(theme.error)("unreadable")]
   const titleWidth = Math.max(0, input.rowWidth - chunksLength(leftChunks) - chunksLength(rightChunks))

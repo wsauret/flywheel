@@ -2,7 +2,7 @@ import { dispatchAuthMutation, isAuthMutation } from "./auth-mutations.js"
 import { ACCOUNT_UPDATES_ONLY, dispatchSettingsMutation, isSettingsMutation } from "./settings-mutations.js"
 import { readAppVersion } from "../../infra/app-version.js"
 import { runningDisplayBuildId } from "./runtime-executable.js"
-import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/app-service-types.js"
+import type { MutationResult, FrontendMutation, FrontendEvent, RuntimeClient, RuntimeQuery, RuntimeQueryOptions, RuntimeQueryResult, SessionCatalogRow, Unsubscribe } from "../../protocol/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
 import { commandCatalogCursor } from "../../protocol/command-catalog-protocol-types.js"
 import type { CommandCatalogProjection } from "./command-catalog-projection.js"
@@ -229,8 +229,8 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     return { snapshotPosition, views }
   }
 
-  function query<Q extends RuntimeQuery>(request: Q): Promise<RuntimeQueryResult<Q>>
-  async function query(request: RuntimeQuery): Promise<RuntimeQueryResult<RuntimeQuery>> {
+  function query<Q extends RuntimeQuery>(request: Q, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
+  async function query(request: RuntimeQuery, options: RuntimeQueryOptions = {}): Promise<RuntimeQueryResult<RuntimeQuery>> {
     if (isProtocolModuleQuery(request)) return deps.moduleProtocol.serve(request)
     switch (request.type) {
       case "sessionChanges": return (await deps.sessionChanges()).list(request)
@@ -256,7 +256,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       case "outputRange": return historyProjection.outputRange(request.sessionId, request.request)
       case "transcriptSearch": return deps.backgroundLane.transcriptSearch(request.request)
       case "transcriptFind": return historyProjection.transcriptFind(request.sessionId, request.request)
-      case "chatSearch": return deps.backgroundLane.findChats(request.request)
+      case "chatSearch": return deps.backgroundLane.findChats(request.request, options.signal)
       case "projectFiles": return deps.projectFiles.search(request.request)
       case "outputGroupChildren": return historyProjection.outputGroupChildren(request.sessionId, request.request)
       case "outputBlockBody": return historyProjection.outputBlockBody(request.sessionId, request.request)

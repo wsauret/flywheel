@@ -99,11 +99,9 @@ describe("useSessionModal delete", () => {
         })
 
         hook.openSessionsModal()
-        // First press schedules the shortcut, the repeat confirms it (arming
-        // the delete confirmation), and the third press deletes.
-        modal.input({ name: "d", raw: "d" })
-        modal.input({ name: "d", raw: "d" })
-        modal.input({ name: "d", raw: "d" })
+        // The first ctrl+d arms the confirmation and the second deletes.
+        modal.input({ name: "d", ctrl: true })
+        modal.input({ name: "d", ctrl: true })
         await waitFor(() => !fs.existsSync(sessionDir(baseDir, sessionId)))
 
         expect(service.dispatch).toHaveBeenCalledWith({ type: "session.delete", sessionId })
@@ -148,10 +146,8 @@ describe("useSessionModal delete", () => {
         })
 
         hook.openSessionsModal()
-        // Schedule, confirm-arm, then delete: see the inactive-row test above.
-        modals2.input({ name: "d", raw: "d" })
-        modals2.input({ name: "d", raw: "d" })
-        modals2.input({ name: "d", raw: "d" })
+        modals2.input({ name: "d", ctrl: true })
+        modals2.input({ name: "d", ctrl: true })
         await waitFor(() => !fs.existsSync(sessionDir(baseDir, sessionId)))
 
         expect(deleteActiveSession).toHaveBeenCalledWith(sessionId)

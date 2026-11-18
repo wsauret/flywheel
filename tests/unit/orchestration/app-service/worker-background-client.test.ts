@@ -19,6 +19,7 @@ class InThreadServerWorker extends EventTarget {
   static summaryRead: (released: Promise<void>) => Effect.Effect<RuntimeBackgroundSummaryResult, RuntimeProtocolError> = () => Effect.never
   static released = Promise.withResolvers<void>()
   static detailSessions: string[] = []
+  static chatSearchInterrupted = Promise.withResolvers<void>()
   readonly #self = new EventTarget()
   readonly server
 
@@ -44,7 +45,8 @@ class InThreadServerWorker extends EventTarget {
       Layer.provide(RuntimeBackgroundRpc.toLayer(Effect.succeed(RuntimeBackgroundRpc.of({
         RuntimeBackgroundRecall: unused,
         RuntimeBackgroundTranscriptSearch: unused,
-        RuntimeBackgroundChatSearch: unused,
+        // A search that never answers, so the test can withdraw it.
+        RuntimeBackgroundChatSearch: () => Effect.never.pipe(Effect.onInterrupt(() => Effect.sync(() => { InThreadServerWorker.chatSearchInterrupted.resolve() }))),
         RuntimeBackgroundOutputWindow: unused,
         RuntimeBackgroundOutputRange: unused,
         RuntimeBackgroundOutputGroupChildren: unused,
@@ -114,6 +116,7 @@ afterEach(async () => {
   InThreadServerWorker.summaryRead = () => Effect.never
   InThreadServerWorker.released = Promise.withResolvers<void>()
   InThreadServerWorker.detailSessions = []
+  InThreadServerWorker.chatSearchInterrupted = Promise.withResolvers<void>()
 })
 
 describe("Worker background client", () => {
@@ -125,6 +128,24 @@ describe("Worker background client", () => {
       await client.sessionDetail({ sessionId: "s1" })
       await client.sessionDetail({ sessionId: "s2" })
       expect(InThreadServerWorker.detailSessions).toEqual(["s1", "s2"])
+    } finally {
+      await client.close()
+      await owner.dispose()
+    }
+  })
+
+  test("a withdrawn search rejects as an abort and interrupts the Worker's search", async () => {
+    Object.defineProperty(globalThis, "Worker", { configurable: true, value: InThreadServerWorker })
+    const owner = createProcessBackgroundClient({ workerUrl: "worker.ts", logBase: "/scratch/flywheel-background-client" })
+    const client = owner.acquire("/scratch/flywheel-background-client")
+    try {
+      await client.warm()
+      const withdrawal = new AbortController()
+      const search = client.findChats({ query: "lead agent", exclude: [] }, withdrawal.signal).then(() => undefined, (error: unknown) => error)
+      await Bun.sleep(5)
+      withdrawal.abort()
+      expect(isAbortError(await search)).toBe(true)
+      await InThreadServerWorker.chatSearchInterrupted.promise
     } finally {
       await client.close()
       await owner.dispose()
