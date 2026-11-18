@@ -1,7 +1,7 @@
 # Flywheel config of a gpt-6-luna arm that keeps the workflows module and the
 # reviewer and ship agent types on, as Flywheel ships them. Only the advisor
 # agent type is off: it gives a second opinion from another model, which a run
-# of one model cannot give. Otherwise it equals tb-luna-high-workflows.toml.
+# of one model cannot give. Otherwise it equals tb-luna-high-agent-types.toml.
 # It runs the ChatGPT subscription route of the person's auth profile. Every
 # role runs gpt-6-luna at effort high, so one model serves the whole trial: the
 # workflow agent, reviewer, and ship roles are set here because their defaults
