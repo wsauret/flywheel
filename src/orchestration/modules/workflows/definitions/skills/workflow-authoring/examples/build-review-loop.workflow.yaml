@@ -7,9 +7,7 @@
 # phase runs the reviewer set that the review method selects for the unit,
 # one named agent with its reviewer persona for each lens: as written it is
 # the method's standard tier, quality and elegance. Before you launch it,
-# set the agents to the set that the method selects for the unit: for its
-# single tier, one review agent with `persona: reviewer-code-quality`, no
-# join, checks `over: review.findings`, and triage `reads: [review]`; for a
+# set the agents to the set that the method selects for the unit: for a
 # specialist whose trigger the change crosses, such as data-integrity,
 # performance, security, or design, add a named agent with its reviewer
 # persona and name it in the `reads` of triage. A dedupe join merges

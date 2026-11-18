@@ -150,12 +150,14 @@ describe("buildSystemPrompt -- chat", () => {
     const tools = [...TOOLS, spec("skill", { description: "Load a skill package." }), spec("subagent"), spec("workflow")];
     const result = build({ tools, skills: ["code-review"] });
 
-    expect(result).toContain("load the `code-review` skill and run its review");
+    expect(result).toContain("load the `code-review` skill when its description says that the change needs review, and run its review");
     expect(result).toContain("After your own edits or a delegated result");
     expect(result).toContain("an objection to the structure starts a reshape.");
     expect(build({ tools, skills: ["code-review", "design"] })).toContain("starts a reshape, as the `design` skill states.");
-    // The skill is the one owner of reviewer sizing (ARCH-AGENCY-031): the prompt states no size rule of its own.
-    expect(result).toContain("the skill alone sizes the review to the change");
+    // The skill is the one owner of reviewer sizing (ARCH-AGENCY-031): the prompt defers to its description and states
+    // no size of its own.
+    expect(result).toContain("otherwise review it yourself against the intent");
+    expect(result).not.toMatch(/\d+ changed lines/);
     expect(result).not.toContain("trivial edits");
     expect(result).toContain("fix valid findings, and verify each fix with the narrowest check that proves it");
     // The first-draft revision rule has one home: the first-draft commitment.

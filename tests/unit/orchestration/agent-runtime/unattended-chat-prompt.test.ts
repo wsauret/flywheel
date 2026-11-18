@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plannedCapabilities, planPromptRequest, promptParts, type PromptAssembly } from "../../../../scripts/prompt-assembly.js";
@@ -28,11 +28,16 @@ const root = mkdtempSync(join(tmpdir(), "flywheel-unattended-chat-prompt-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 const definitions = createProjectDefinitionRegistry({ projectRoot: root, userDataRoot: root, accountHome: root, skillRoots: [], bundles: installedDefinitionBundles(), personaToolEntries: installedPersonaToolEntries() }).captureRevision();
-const loaded = loadConfig(undefined, {}, root);
+function runtimeConfig(configPath?: string) {
+  const loaded = loadConfig(configPath, {}, root);
+  return captureRuntimeConfigRequest({ revision: 0, config: loaded.config, warnings: loaded.warnings, diagnostics: loaded.diagnostics, sourceIdentity: "unattended-chat-prompt", status: { kind: "missing" } }, "default");
+}
+const withoutReviewersPath = join(root, "without-reviewers.toml");
+writeFileSync(withoutReviewersPath, '[subagents]\ndisabled_types = ["reviewer"]\n');
 const modules = composeFirstPartyModules();
 const assembly: PromptAssembly = {
   projectRoot: root, userDataRoot: root, accountHome: root, scratchDir: join(root, "session", "scratch"), definitions,
-  runtimeConfig: captureRuntimeConfigRequest({ revision: 0, config: loaded.config, warnings: loaded.warnings, diagnostics: loaded.diagnostics, sourceIdentity: "unattended-chat-prompt", status: { kind: "missing" } }, "default"),
+  runtimeConfig: runtimeConfig(),
   capture: modules, live: modules, workflowsMode: "off", servingModel: { model: "prompt-model", modelFamily: "anthropic" }, hosts: false,
 };
 const sources = {
@@ -81,12 +86,14 @@ interface RequestOptions {
   readonly treeRoot?: AgentPurpose;
   /** The tree's module capture; every installed module by default. */
   readonly capture?: FirstPartyModuleComposition;
+  /** The configuration file of the request; none by default. */
+  readonly configPath?: string;
 }
 
 /** One request under the capability boundary of its tree's root chat, with the session messaging that a chat runner
  *  holds. */
-async function request(purpose: AgentPurpose, { withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine, revision = definitions, treeRoot = purpose, capture = modules }: RequestOptions = {}) {
-  const planAssembly = { ...assembly, definitions: revision, capture, live: capture };
+async function request(purpose: AgentPurpose, { withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine, revision = definitions, treeRoot = purpose, capture = modules, configPath }: RequestOptions = {}) {
+  const planAssembly = { ...assembly, definitions: revision, capture, live: capture, ...(configPath ? { runtimeConfig: runtimeConfig(configPath) } : {}) };
   const planned = await planPromptRequest(planAssembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess: rootAccess(treeRoot, withoutChildren), sessions: unusedSessionMessaging() });
   planned.tools.delete("handoff");
   return { planned, tools: [...planned.tools.keys()], messageSession: planned.tools.get("message_session"), parts: await promptParts(planAssembly, purpose, planned, { ...sources, engineeringDoctrine, sessionIdentity }) };
@@ -155,6 +162,19 @@ describe("system prompt of an unattended chat", () => {
     expect(unattended).toContain("Honor explicit repository gates. Assume past observations are stale");
     expect(unattended).toContain("Run fresh checks for the current decision and fresh post-implementation verification.");
     expect(unattended).not.toContain("{{");
+  });
+
+  // PI-AGENT-126: an unattended run reviews under the chat's rule, whose size the code-review skill alone states
+  // (ARCH-AGENCY-031); a tree that cannot load that skill or dispatch a reviewer gets no review step.
+  test("reviews a change that the code-review skill sizes for review only while a reviewer can run, where other prompts state no such step", async () => {
+    const REVIEW = "- After a change that the `code-review` skill's description says needs review, load it and run one review against the request, then fix each valid finding and verify each fix. Do not review the change again.";
+    const prompt = async (purpose: AgentPurpose, options: RequestOptions = {}) => (await request(purpose, options)).parts.map((part) => part.text).join("\n");
+
+    expect(await prompt(UNATTENDED)).toContain(REVIEW);
+    expect(await prompt(UNATTENDED, { withoutChildren: true })).not.toContain(REVIEW);
+    expect(await prompt(UNATTENDED, { configPath: withoutReviewersPath })).not.toContain(REVIEW);
+    expect(await prompt(UNATTENDED, { revision: revisionWith({ ...installedSkill("code-review"), modelInvocable: false }) })).not.toContain(REVIEW);
+    for (const purpose of [INTERACTIVE, SUBAGENT]) expect(await prompt(purpose)).not.toContain(REVIEW);
   });
 
   test("keeps a doctrine that a person wrote byte for byte", async () => {

@@ -372,7 +372,7 @@ Headless chat behaves like interactive chat, with standard input and output repl
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
-An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies. It also leaves out guidance for inspecting its own session records.
+An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as publication, communication rules, and questions. It reviews a change under the same review rule as a chat (PI-AGENT-126). It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies. It also leaves out guidance for inspecting its own session records.
 
 ## PI-AGENT-128: An unattended Agent Client Protocol run does not wait for model capacity
 
@@ -460,7 +460,7 @@ Flywheel reviews a chat in the background for learning worth saving. It does not
 
 ## PI-AGENT-126: Review effort follows recorded yield
 
-Review effort follows recorded yield. Flywheel sizes the reviewer set of a change from its extent and its named risk triggers. A change that is small enough for its fresh verification to prove it gets no separate reviewer. The review of a large change is never skipped.
+Review effort follows recorded yield. An agent's own code change of at most 600 changed lines gets no reviewer, also when a risk trigger matches: its author checks it against the intent with fresh verification. A larger change gets one review, never skipped, in a chat and an unattended run alike, and risk triggers add specialists only to it. A review that a person asks for always runs. The author fixes and verifies each valid finding, with no second review. A correction that replaces the reviewed design is a new change; a fix for a finding never is.
 
 ## PI-AGENT-040: Learned skills never duplicate or change built-in skills
 

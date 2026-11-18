@@ -1,6 +1,6 @@
 ---
 name: Code Review
-description: Review completed code or a plan with right-sized specialist agents.
+description: Review completed code over 600 changed lines, or a plan, with right-sized specialist agents.
 dependencies:
   - elegance-review-principles
 agents:
@@ -26,7 +26,7 @@ Review a completed code change, or an implementation plan before code exists, ag
 
 Each reviewer's read-only evidence and findings contract comes from the individual method it composes: `code-review-method` for `reviewer-code-*`, `plan-review` for `reviewer-plan-*`. This parent skill owns dispatch and synthesis. During review, do not edit target implementation files or dispatch agents to change them. Complete and synthesize the review first.
 
-Reviewer dispatch is mandatory for every target above the no-reviewer tier, and a diff above 600 changed lines is never skipped.
+Reviewer dispatch is mandatory for every target above the no-reviewer tier, and the one review of a diff above 600 changed lines is never skipped.
 
 ## Determine the review target
 
@@ -38,18 +38,16 @@ Reviewer dispatch is mandatory for every target above the no-reviewer tier, and 
 
 ## Select the reviewer set
 
-Size the reviewer set from the target and named domain triggers before dispatching. A code change takes `reviewer-code-*` personas and a plan takes `reviewer-plan-*` personas; never mix the families.
+Size the reviewer set by tier before dispatching. A code change takes `reviewer-code-*` personas and a plan takes `reviewer-plan-*` personas; never mix the families.
 
-- **No-reviewer tier:** a code diff of 50 changed lines or fewer with no new file or abstraction, when no optional trigger below matches. Dispatch no reviewer: check the diff yourself against the intent and prove it with fresh verification.
-- **Single tier:** a code diff of 51 to 200 changed lines with no new file or abstraction, or a plan with one milestone, a handful of files, no new abstraction, and no runtime-behavior claim. Dispatch `reviewer-code-quality` or `reviewer-plan-quality` alone, plus each optional reviewer whose trigger below matches. With one reviewer, synthesis is integrate-or-defer per finding.
-- **Standard tier:** every other target. Dispatch `reviewer-code-quality` and `reviewer-code-elegance`, or `reviewer-plan-quality` and `reviewer-plan-elegance`. Add an optional reviewer only when its named trigger matches:
+- **No-reviewer tier:** your own code diff of 600 changed lines or fewer, even when a trigger matches. Dispatch no reviewer: check the diff yourself against the intent and prove it with fresh verification.
+- **Single tier:** a plan with one milestone, a handful of files, no new abstraction, and no runtime-behavior claim. Dispatch `reviewer-plan-quality` alone, plus each optional reviewer whose trigger below matches. With one reviewer, synthesis is integrate-or-defer per finding.
+- **Standard tier:** a code diff of more than 600 changed lines or one that a person asks you to review, and every other plan. Dispatch `reviewer-code-quality` and `reviewer-code-elegance`, or `reviewer-plan-quality` and `reviewer-plan-elegance`. Add each optional reviewer whose named trigger matches, and no other:
 - `reviewer-code-performance` or `reviewer-plan-performance`: hot paths, loops over unbounded data, queries, large data volumes, latency-sensitive code, or heavy I/O; also a plan of three or more milestones.
 - `reviewer-code-data-integrity` or `reviewer-plan-data-integrity`: migrations, schemas, data models, persistence, durable state, or transactional logic; also a plan of three or more milestones.
 - `reviewer-code-security` or `reviewer-plan-security`: secrets or credentials, authentication or authorization, untrusted input, command, subprocess, or shell execution, or path and file handling.
 - `reviewer-code-design` or `reviewer-plan-design`: a rendered interface, including webview or TUI components, style sheets, layout, theming, interaction states, or user-facing copy. The plan variant judges design coverage in the plan and needs no pre-implementation render.
 - `reviewer-uat`, code only: an explicit acceptance requirement needs direct observation, or verification leaves a specific user-facing behavior unproven. A changed CLI, UI, HTTP route, or output format alone is not a trigger. A live acceptance check requires fresh observation; past captures guide the scenario but do not prove the current behavior.
-
-Never add an untriggered reviewer, or omit a triggered one.
 
 ## Dispatch reviewers
 
@@ -133,7 +131,7 @@ Conclude with one of:
 
 After the result, list under `Set aside:` each P1 or P2 finding that you rejected or deferred, with a one-line reason; omit dropped P3 findings.
 
-P1 findings block acceptance. For a review-only request, report and stop without editing. When the original request authorizes implementation, resume that task after the review result is complete: fix valid findings, verify each correction with the smallest complete check, and do not rerun the review unless the correction materially changes the design or creates a new triggered review surface. A re-review runs only the first review's personas plus each newly triggered one.
+P1 findings block acceptance. For a review-only request, report and stop without editing. When the original request authorizes implementation, resume that task after the review result is complete: fix valid findings and verify each correction with the smallest complete check. A change gets one review. Verify the fixes instead of reviewing the change again: fixing findings, however many and however structural, never starts another review. A correction that replaces the reviewed design, such as a reshape in the `design` skill, is a new change with its own review under the same size rule. A fix for a review finding is never such a correction.
 
 Group actionable findings by shared structural cause, not by file. Fix the structure once, then re-evaluate the remaining findings, which often dissolve. Do not apply reviewer fixes as isolated patches.
 
