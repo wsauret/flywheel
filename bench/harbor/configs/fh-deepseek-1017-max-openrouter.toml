@@ -14,6 +14,10 @@
 #   with the board by repricing each trial's tokens at Baseten's list price.
 # - Effort. Max on every role, including the short title-generation role.
 #
+# Workflows and the reviewer and ship agent types stay on, as Flywheel ships
+# them. Only the advisor is off. The workflow agent, reviewer, and ship roles
+# are set to the chat route because their defaults name other models.
+#
 # The launcher validates this file with Flywheel's config schema before any
 # trial, records its sha256 in run_manifest.json, and installs it in the trial
 # as $HOME/.flywheel/flywheel.toml. The trial exports its credentials under the
@@ -53,14 +57,12 @@ disabled_modules = [
   "web",
   "web-chatgpt",
   "web-exa",
-  "workflows",
 ]
 
-# Subagents stay on with the agent types that do the task's work. The advisor and
-# the reviewers give a second opinion from another model, which a run of one
-# model cannot give, and nothing in a trial publishes.
+# The advisor gives a second opinion from another model, which a run of one
+# model cannot give. Every other agent type stays on.
 [subagents]
-disabled_types = ["advisor", "reviewer", "ship"]
+disabled_types = ["advisor"]
 
 [updates]
 auto_install = false
@@ -91,6 +93,21 @@ effort = "max"
 provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
 
 [profiles.benchmark.roles.title-generation]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.workflow-agent]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.reviewer]
+model = "deepseek-v4.1-flash-1017"
+effort = "max"
+provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.ship]
 model = "deepseek-v4.1-flash-1017"
 effort = "max"
 provider_options = { openrouter = { only = ["baseten"], ignore = ["baseten/fast"], allow_fallbacks = false } }
