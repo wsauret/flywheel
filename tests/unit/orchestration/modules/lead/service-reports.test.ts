@@ -4,11 +4,13 @@ import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-ser
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/conversation/queued-user-inputs.js"
 import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
-import { leadQuestionCall, leadReportCall } from "../../../../../src/protocol/modules/lead.js"
+import { leadQuestionCall, leadReportCall, leadUpdateCall } from "../../../../../src/protocol/modules/lead.js"
+import { LEAD_UPDATE_CHARS, LEAD_UPDATE_INTERVAL_MS } from "../../../../../src/orchestration/modules/lead/service.js"
+import { LEAD_UPDATE_MARKER } from "../../../../../src/orchestration/modules/lead/prompt.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
-import { accountOpenChat, committedEntries, finalMessage, leadHarness, settle } from "./_lead-harness.js"
+import { accountOpenChat, committedEntries, finalMessage, interimMessage, leadHarness, manualSchedule, settle } from "./_lead-harness.js"
 
-// The reports of the lead's listed chats (PI-LEAD-006): what reaches the lead, and when a report counts as read.
+// The reports and updates of the lead's listed chats (PI-LEAD-006, PI-LEAD-021): what reaches the lead, and when.
 
 let ctx: SupervisorTestContext
 let supervisor: RuntimeSupervisor
@@ -236,3 +238,124 @@ test("two finals of one chat that fold before their reports post each report wit
   expect(lead.reports.map((report) => [report.call, report.text])).toEqual([[leadReportCall("final-1"), "First answer."], [leadReportCall("final-2"), "Second answer."]])
 })
 
+
+/** A lead with the test's clock for its batches of updates. */
+function updatesHarness() {
+  const clock = manualSchedule()
+  const lead = leadHarness(ctx, { schedule: clock.schedule })
+  supervisor = lead.supervisor
+  disposeAll.push(lead.dispose)
+  return { lead, clock }
+}
+
+/** A listed chat that works on the person's message while no client shows it. */
+async function workingChat(lead: ReturnType<typeof harness>): Promise<string> {
+  const chat = await supervisor.openSessionRuntime()
+  await supervisorConversationFixture(() => ctx).appendConversation(chat, [{ kind: "user", content: "Fix the login page", origin: "human" }])
+  await settle(() => lead.service.journal.state().members.has(chat))
+  ctx.sessionStore.updateEntry(chat, { runnerState: "streaming", streamPhase: "thinking" })
+  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === chat && row.state === "working"))
+  return chat
+}
+
+const updatesOf = (lead: ReturnType<typeof harness>) => lead.reports.filter((report) => report.call.startsWith(leadUpdateCall("")))
+
+test("the interim texts of a working chat that no client shows reach the lead once, word for word, in one update at the batch after them, and a final message is no update", async () => {
+  const { lead, clock } = updatesHarness()
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  await supervisor.ensureChatRunner(leadId)
+  const chat = await workingChat(lead)
+  await interimMessage(ctx, chat, "step-1", "Found the cause in the form handler.")
+  await interimMessage(ctx, chat, "step-2", "Fixing the second handler now.\nThen I run the tests.")
+  // One timer for both texts, a whole interval long, and nothing sent before it fires.
+  await settle(() => clock.due().length > 0)
+  await Bun.sleep(20)
+  expect(clock.due()).toEqual([LEAD_UPDATE_INTERVAL_MS])
+  expect(updatesOf(lead)).toEqual([])
+
+  clock.fire()
+  await settle(() => updatesOf(lead).length > 0)
+  expect(updatesOf(lead)).toEqual([{
+    fromSessionId: chat, toSessionId: leadId, call: leadUpdateCall("step-2"), status: "delivered",
+    text: `${LEAD_UPDATE_MARKER}\n\nFound the cause in the form handler.\n\nFixing the second handler now.\nThen I run the tests.`,
+  }])
+  expect(await committedEntries(ctx, leadId, `msg:${chat}:${leadUpdateCall("step-2")}`)).toHaveLength(1)
+
+  // Nothing changed, so no batch is due; a final message is the report's, never an update.
+  await (await finalMessage(ctx, chat, "final-1", "Fixed."))()
+  await Bun.sleep(20)
+  expect(clock.due()).toEqual([])
+  expect(updatesOf(lead)).toHaveLength(1)
+})
+
+test("the interim texts of two chats in one interval share one batch, and the next batch waits a whole interval", async () => {
+  const { lead, clock } = updatesHarness()
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  await supervisor.ensureChatRunner(leadId)
+  const [first, second] = [await workingChat(lead), await workingChat(lead)]
+  await interimMessage(ctx, first!, "first-1", "Reading the login form.")
+  await interimMessage(ctx, second!, "second-1", "Reading the sign-up form.")
+  await settle(() => clock.due().length > 0)
+  await Bun.sleep(20)
+  expect(clock.due()).toEqual([LEAD_UPDATE_INTERVAL_MS])
+  clock.fire()
+  await settle(() => updatesOf(lead).length === 2)
+  expect(updatesOf(lead).map((update) => [update.fromSessionId, update.text]).toSorted()).toEqual([[first, `${LEAD_UPDATE_MARKER}\n\nReading the login form.`], [second, `${LEAD_UPDATE_MARKER}\n\nReading the sign-up form.`]].toSorted())
+
+  // A text right after the batch waits a whole interval for the next one.
+  await interimMessage(ctx, first!, "first-2", "Fixing the login form.")
+  await settle(() => clock.due().length > 0)
+  expect(clock.due()).toEqual([LEAD_UPDATE_INTERVAL_MS])
+  expect(updatesOf(lead)).toHaveLength(2)
+})
+
+test("a chat that a client shows sends no update, and neither does a chat whose turn ended before the batch, also when it works again", async () => {
+  const { lead, clock } = updatesHarness()
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  await supervisor.ensureChatRunner(leadId)
+  const shown = await workingChat(lead)
+  const ended = await workingChat(lead)
+  expect(await supervisor.activateSession(shown, { shown: true })).toBe(true)
+  await interimMessage(ctx, shown, "shown-1", "Reading the login form.")
+  await Bun.sleep(20)
+  expect(clock.due()).toEqual([])
+
+  // The chat that no client shows keeps its text for the batch, and its turn ends before the batch.
+  await interimMessage(ctx, ended, "ended-1", "Reading the sign-up form.")
+  await settle(() => clock.due().length > 0)
+  expect(clock.due()).toEqual([LEAD_UPDATE_INTERVAL_MS])
+  ctx.sessionStore.updateEntry(ended, { runnerState: "idle" })
+  await settle(async () => !(await lead.service.view()).rows.some((row) => row.sessionId === ended && row.state === "working"))
+  // A new turn before the batch: the text of the turn that ended is no news of this one.
+  ctx.sessionStore.updateEntry(ended, { runnerState: "streaming", streamPhase: "thinking" })
+  await settle(async () => (await lead.service.view()).rows.some((row) => row.sessionId === ended && row.state === "working"))
+  clock.fire()
+  await Bun.sleep(20)
+  expect(updatesOf(lead)).toEqual([])
+})
+
+test("a lead with no runner gets no update, and after its runner attaches the next batch sends one update per chat with its newest texts", async () => {
+  const { lead, clock } = updatesHarness()
+  const leadId = await lead.openLead()
+  if (leadId === null) throw new Error("expected the lead to open")
+  const chat = await workingChat(lead)
+  const long = "x".repeat(LEAD_UPDATE_CHARS - 30)
+  await interimMessage(ctx, chat, "step-1", "Reading the login form.")
+  await interimMessage(ctx, chat, "step-2", long)
+  await interimMessage(ctx, chat, "step-3", "Running the tests.")
+  await Bun.sleep(20)
+  expect(clock.due()).toEqual([])
+  expect(updatesOf(lead)).toEqual([])
+
+  await supervisor.ensureChatRunner(leadId)
+  await settle(() => clock.due().length > 0)
+  expect(clock.due()).toEqual([LEAD_UPDATE_INTERVAL_MS])
+  clock.fire()
+  await settle(() => updatesOf(lead).length > 0)
+  await Bun.sleep(20)
+  // The oldest text does not fit beside the newer ones, so it dropped.
+  expect(updatesOf(lead).map((update) => [update.call, update.text, update.status])).toEqual([[leadUpdateCall("step-3"), `${LEAD_UPDATE_MARKER}\n\n${long}\n\nRunning the tests.`, "delivered"]])
+})

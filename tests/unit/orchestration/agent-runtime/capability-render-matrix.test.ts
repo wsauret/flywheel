@@ -96,7 +96,7 @@ const GENERAL_SUBAGENT: AgentPurpose = { kind: "subagent", renderAs: "chat", par
 const WORKFLOW_AGENT: AgentPurpose = { kind: "workflow-agent", briefScope: { briefId: "matrix" }, workflowAttemptId: "matrix" };
 /** The services of a chat that the lead service names its lead chat, so the chat takes the lead's chat profile while
  *  the lead module is on, with the session messaging that its routing tool needs. */
-const leadRole: Pick<LeadService, "role" | "settledRole" | "settledListingLead"> = { role: () => "lead", settledRole: async () => "lead", settledListingLead: async () => null };
+const leadRole: Pick<LeadService, "role" | "settledRole"> = { role: () => "lead", settledRole: async () => "lead" };
 const LEAD_CHAT = { moduleServices: composeModuleServices([["lead", leadRole]]), sessions: unusedSessionMessaging() };
 /** One serving model per interaction profile: the default body with the edit tool, a Claude 5 chat body, and the
  *  apply_patch edit contract. */

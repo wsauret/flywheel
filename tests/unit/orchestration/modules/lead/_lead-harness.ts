@@ -42,8 +42,9 @@ export function accountOpenChat(ctx: SupervisorTestContext): ControlSessionPorts
  *  that a chat's runner receives is recorded by the chat's id, and `trace` records each watch and each forward in
  *  order. A runner starts once `runnerStartup` resolves, so every message that lands before then commits as the chat's
  *  entry. `eventWriter`, by default the store, is the service's own writer. `answered`, when set, holds the answer of each
- *  message that the service posts between sessions until it resolves. `dispose` ends the service, the control part, the notices, and the supervisor. */
-export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly onStored?: ControlConnection["onStored"]; readonly runnerStartup?: Promise<void>; readonly eventWriter?: AsyncEventWriter; readonly answered?: () => Promise<void>; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
+ *  message that the service posts between sessions until it resolves. `schedule`, when set, is the service's clock for its
+ *  batches of updates. `dispose` ends the service, the control part, the notices, and the supervisor. */
+export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projectionReader?: AsyncEventStateReadSurface; readonly onStored?: ControlConnection["onStored"]; readonly runnerStartup?: Promise<void>; readonly eventWriter?: AsyncEventWriter; readonly answered?: () => Promise<void>; readonly schedule?: (run: () => void, ms: number) => () => void; readonly control?: ControlConnection & { readonly openChat?: ControlSessionPorts["openChat"] } } = {}) {
   const projectionReader = setup.projectionReader ?? asAsyncEventReadSurface(ctx.store)
   const onStored = setup.onStored ?? ctx.store.onStored
   const notices: string[] = []
@@ -143,6 +144,7 @@ export function leadHarness(ctx: SupervisorTestContext, setup: { readonly projec
     }),
     onSelectionChanged,
     enabled: () => enabled,
+    ...(setup.schedule ? { schedule: setup.schedule } : {}),
   })
   const control = createLeadControl({
     ...(setup.control ?? { projectionReader: asAsyncEventReadSurface(ctx.store), eventWriter: ctx.store, onStored }),
@@ -192,6 +194,32 @@ export async function finalMessage(ctx: SupervisorTestContext, sessionId: string
     aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId,
     payload: { conversationId, entries: [{ kind: "message", id, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }] } }] },
   })
+}
+
+/** The append of one assistant message of `sessionId` that writes `text` and calls a tool, as a turn does between its
+ *  calls, which the store broadcasts at once. */
+export async function interimMessage(ctx: SupervisorTestContext, sessionId: string, id: string, text: string) {
+  const conversationId = await supervisorConversationFixture(() => ctx).chatConversationId(sessionId)
+  return await ctx.store.append({
+    aggregateId: `conversation:${conversationId}`, type: "chat.entries.appended", version: 7, timestamp: Date.now(), actor: "flywheel", sessionId,
+    payload: { conversationId, entries: [{ kind: "message", id, parentId: null, timestamp: new Date().toISOString(), message: { kind: "assistant", content: [{ type: "text", text }, { type: "tool_use", id: `call-${id}`, name: "read", input: { path: "a.ts" } }] } }] },
+  })
+}
+
+/** A clock for the service's batches that runs each scheduled task only when the test fires it. */
+export function manualSchedule() {
+  const tasks: { readonly run: () => void; readonly ms: number; cancelled: boolean }[] = []
+  return {
+    schedule: (run: () => void, ms: number) => {
+      const task = { run, ms, cancelled: false }
+      tasks.push(task)
+      return () => { task.cancelled = true }
+    },
+    /** The delay of each task that waits now. */
+    due: () => tasks.filter((task) => !task.cancelled).map((task) => task.ms),
+    /** Runs every task that waits now. */
+    fire: () => { for (const task of tasks.splice(0)) if (!task.cancelled) task.run() },
+  }
 }
 
 /** Waits until `until` holds, for one second at most. */

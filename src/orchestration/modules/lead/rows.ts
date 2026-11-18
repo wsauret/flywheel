@@ -15,7 +15,7 @@ import type { ModuleProcessServices } from "../../app-service/module-service-hos
 import type { SessionManager } from "../../session/manager.js"
 import { entryActivity } from "../../session-store/activity.js"
 import type { SessionStore } from "../../session-store/types.js"
-import { firstLine, leadRowFold, type RowFold } from "./row.js"
+import { firstLine, interimTexts, leadRowFold, type InterimText, type RowFold } from "./row.js"
 
 const log = Log.create({ service: "lead-rows" })
 
@@ -66,6 +66,9 @@ interface LeadRowsDeps {
   /** A followed chat came to rest with nothing for the person, once its fold is built or after it showed a row. It
    *  shows no row until it works or needs the person again. */
   readonly onRest: (sessionId: string) => void
+  /** A followed chat wrote interim texts in a batch that the store broadcast after this owner started, oldest first
+   *  (PI-LEAD-021). History that a fold replays tells nothing. */
+  readonly onInterim: (sessionId: string, texts: readonly InterimText[]) => void
   readonly now?: () => number
 }
 
@@ -86,6 +89,8 @@ export interface LeadRows {
    *  as the fold holds them now. A caller that acts on the result later keeps this pair, because a later batch can
    *  bring a newer final message. */
   result(sessionId: string): { readonly entryId: string; readonly text: string } | undefined
+  /** Whether a followed chat's row shows it working now. */
+  working(sessionId: string): boolean
   /** Every pending question of a chat whose fold is built, oldest first, as the fold holds them now. A chat can wait
    *  on several calls at once. */
   questions(sessionId: string): readonly LeadPendingQuestion[]
@@ -353,19 +358,23 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
         }
       }
       await Promise.all([...new Set([...batches.keys(), ...questions])].map(async (member) => {
+        let texts: readonly InterimText[] = []
         try {
           const batch = batches.get(member)
           if (batch) {
             const before = plannedCutOf(member.fold.getState())
             const fold = await member.fold.apply(batch)
             if (plannedCutOf(fold) !== before) member.owed = await readOwed(member.sessionId, fold)
+            texts = batch.flatMap(interimTexts)
           }
           if (questions.has(member)) member.questions = await pendingQuestions(deps.reader, member.sessionId)
         } catch (error) {
           recordBackgroundFailure(log, "lead row update", { sessionId: member.sessionId }, error)
           return
         }
-        if (!disposed && members.get(member.sessionId) === member) compute(member)
+        if (disposed || members.get(member.sessionId) !== member) return
+        compute(member)
+        if (texts.length > 0) deps.onInterim(member.sessionId, texts)
       }))
     },
     refresh(sessionId) {
@@ -378,6 +387,7 @@ export function createLeadRows(deps: LeadRowsDeps): LeadRows {
       const final = member?.row?.state === "result" ? member.fold.getState().final : null
       return final && final.entryId === member?.row?.result?.entryId ? { entryId: final.entryId, text: final.text } : undefined
     },
+    working: (sessionId) => members.get(sessionId)?.row?.state === "working",
     questions(sessionId) {
       const member = members.get(sessionId)
       return member ? member.questions.map((question) => pendingOf(member.fold.getState(), question)) : []

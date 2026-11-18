@@ -7,7 +7,7 @@ import { gatherCallStretches, turnFoldSummary } from "../../../../../src/protoco
 import { projectFrontendOutputBlocks } from "../../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js"
 import type { ConversationTreeTranscriptEntry } from "../../../../../src/orchestration/session/conversation/conversation-projection.js"
-import { leadEntryLink } from "../../../../../src/protocol/modules/lead.js"
+import { leadEntryLink, leadUpdateCall } from "../../../../../src/protocol/modules/lead.js"
 import { ClientExtensionProviders, ClientExtensionsProvider } from "../../../../../src/tui/context/client-extensions.js"
 import { NavigationProvider } from "../../../../../src/tui/context/navigation.js"
 import { createBlockDisclosureChannel } from "../../../../../src/tui/context/block-disclosure.js"
@@ -200,9 +200,9 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
     } finally { quiet.dispose() }
   })
 
-  it("shows a chat's own message as one Update line that ends the stretch before it and opens the chat at its call", async () => {
+  it("shows a chat's update as one Update line that ends the stretch before it and opens the chat at its newest interim text", async () => {
     const update: FrontendOutputBlock = {
-      kind: "userMessage", id: "msg:done:call-7", content: "Done: PR 42 is open, and I wait on its CI.", timestamp: 6000, pending: false, injected: false,
+      kind: "userMessage", id: `msg:done:${leadUpdateCall("step-2")}`, content: "PR 42 is open, and I wait on its CI.", timestamp: 6000, pending: false, injected: false,
       from: { sessionId: "done", name: "DAG Failures", relation: "other" },
     }
     const reply: FrontendOutputBlock = { kind: "text", id: "reply", content: "DAG Failures opened PR 42 and waits on CI.", timestamp: 9000 }
@@ -218,7 +218,7 @@ describe("the lead's tab gathers its calls under one heading per stretch (PI-LEA
       const rows = frame.split("\n")
       const y = rows.findIndex((row) => row.includes("Update · Chat done · open"))
       await tab.result.mockMouse.click(rows[y]!.lastIndexOf("open") + 1, y)
-      expect(tab.navigated).toEqual([leadEntryLink("done", "call-7")])
+      expect(tab.navigated).toEqual([leadEntryLink("done", "step-2")])
     } finally { tab.dispose() }
   })
 

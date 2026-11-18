@@ -1,21 +1,14 @@
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { AsyncLocalStorage } from "node:async_hooks"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, type StoredFact } from "../../../../../src/infra/event-store-types.js"
 import type { RuntimeSupervisor } from "../../../../../src/orchestration/app-service/runtime-supervisor-types.js"
-import { EventReaderService } from "../../../../../src/infra/event-store-effect.js"
 import { LEAD_AGGREGATE_ID } from "../../../../../src/orchestration/modules/lead/facts.js"
 import { createLeadJournal } from "../../../../../src/orchestration/modules/lead/journal.js"
 import { leadChatsCursor, leadQuestionCall } from "../../../../../src/protocol/modules/lead.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, supervisorConversationFixture, type SupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"
 import { countStateRequests, factsRead } from "../../../../helpers/state-requests.js"
 import { createUnstartedChild } from "../subagents/_subagent-child-fixtures.js"
-import { accountOpenChat, committedEntries, finalMessage, leadHarness, settle } from "./_lead-harness.js"
-import { composeModuleServices } from "../../../../../src/infra/module-service.js"
-import { createMessageSessionTool } from "../../../../../src/orchestration/agent-runtime/tools/message-session.js"
-import { milestoneMessageUse } from "../../../../../src/orchestration/modules/lead/prompt.js"
-import { createLeadRuntime } from "../../../../../src/orchestration/modules/lead/runtime.js"
-import { createSessionMessaging } from "../../../../../src/orchestration/session/session-messaging.js"
-import { unusedChildSessionControl } from "../../../../helpers/child-session-control.js"
+import { accountOpenChat, finalMessage, leadHarness, settle } from "./_lead-harness.js"
 
 let ctx: SupervisorTestContext
 let supervisor: RuntimeSupervisor
@@ -455,28 +448,6 @@ test("a finished turn of a chat that a client shows posts no report and removes 
   expect(ctx.store.read({ aggregateId: LEAD_AGGREGATE_ID }).slice(facts)).toEqual([expect.objectContaining({ type: "lead.chat.retired", payload: { sessionId: chat } })])
 })
 
-// PI-LEAD-006, PI-LEAD-012: the chat reaches the lead by the id that its message_session contract names, and the
-// production delivery takes the message with no rule of the lead's own. The wake of an idle recipient is the delivery's
-// own rule (session-messaging.test.ts); this harness's lead runner commits the message as its entry.
-test("a listed chat's milestone message reaches the shown lead that its contract names, as a message from the chat", async () => {
-  const lead = harness()
-  const { leadId, chat } = await listedChat(lead)
-  const use = await createLeadRuntime({ sessionId: chat, modules: composeModuleServices([["lead", lead.service]]) })?.milestoneUse()
-  expect(use).toBe(milestoneMessageUse(leadId))
-  // The reader with which the runtime registers each attached runner's live control.
-  const reader = ctx.runtime.runSync(EventReaderService)
-  const messaging = createSessionMessaging({ manager: ctx.manager, projectionReader: reader, eventWriter: asAsyncEventWriter(ctx.store) }, unusedChildSessionControl())
-  const text = "Done: PR 42 is open, and I wait on its CI."
-  const sent = await createMessageSessionTool(messaging, undefined, false, true, [use!]).execute({ target: "session", to: leadId, text }, {
-    executionCwd: ctx.baseDir, projectRoot: ctx.baseDir, userDataRoot: ctx.baseDir, artifactScopeId: chat, retrievalSessionId: chat,
-    sessionId: chat, conversationId: await conversation.chatConversationId(chat), toolUseId: "milestone-1", turnHop: () => 0, conversationHistory: () => [],
-  })
-  expect(sent.outcome).toBe("ok")
-  expect(await committedEntries(ctx, leadId, `msg:${chat}:milestone-1`)).toEqual([expect.objectContaining({
-    message: expect.objectContaining({ content: text, producer: expect.objectContaining({ kind: "session", sessionId: chat, toolUseId: "milestone-1" }) }),
-  })])
-})
-
 test("a chat that starts while the lead shows holds the lead's rules for its life, and one that starts while the lead is dismissed holds none", async () => {
   const lead = harness()
   // A chat that starts before any lead chat exists, as on a phone, and one that starts while execution is paused,
@@ -555,7 +526,7 @@ test("a result that finishes in a chat that a client shows while the lead is dis
 
 test("a chat that became active while the module was off joins when it turns on, and a deleted member leaves then", async () => {
   const lead = harness()
-  const leadId = await lead.openLead()
+  await lead.openLead()
   const deleted = await personChat(lead)
   await lead.setEnabled(false)
   const missed = await ctx.manager.createChat({ initialState: "active" })
@@ -566,12 +537,8 @@ test("a chat that became active while the module was off joins when it turns on,
   await Bun.sleep(20)
   expect(members(lead)).toEqual([missed])
   expect(lead.service.journal.state().members.has(deleted)).toBe(false)
-  // PI-LEAD-012: the adopted chat holds none of the lead's prompt rules, yet as a chat in the list it may message the
-  // lead at a milestone.
+  // PI-LEAD-012: the adopted chat holds none of the lead's prompt rules.
   expect(lead.service.role(missed)).toBeUndefined()
-  const milestones = (sessionId: string) => createLeadRuntime({ sessionId, modules: composeModuleServices([["lead", lead.service]]) })?.milestoneUse()
-  expect(await milestones(missed)).toBe(milestoneMessageUse(leadId!))
-  expect(await milestones(deleted)).toBeUndefined()
 })
 
 test("a first run that stopped after its first join finishes at the next start", async () => {

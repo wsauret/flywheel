@@ -244,7 +244,7 @@ A child never stops as blocked. A child run ends only as completed, as partial a
 
 ## PI-AGENT-083: Agents message other sessions only with a purpose
 
-An agent messages another session only to ask a blocking question its tools cannot answer, answer a question, direct its child or workflow, or send what its person asked. A root chat also reports a failing check in another root chat's file, and a chat in the lead's list tells the lead each milestone. Agents send no acknowledgements, thanks, confirmations, other status reports, promises of updates, requests to be told later, "are you done?" checks, or copies the recipient has. A recipient answers only a question or a waiting sender, one answer ends the exchange, and silence is not agreement.
+An agent messages another session only to ask a blocking question its tools cannot answer, answer a question, direct its own child or workflow, or send what its person asked. A root chat can also report a check that fails in a file another root chat owns. Agents send no acknowledgements, thanks, confirmations, status reports, promises of later updates, requests to be told later, "are you done?" checks, or copies of messages the recipient already has. A recipient replies only to a question or a waiting sender, one answer ends the exchange, and silence is not agreement.
 
 ## PI-AGENT-084: A session message is complete and sent once
 
@@ -256,7 +256,7 @@ Each session message names the sender's relation as parent, child, sibling with 
 
 ## PI-AGENT-086: Root chats exchange messages only when needed
 
-A root chat contacts another root chat only when its person asks, it needs a fact only that chat has, or a check fails in that chat's file. A chat in the lead's list also tells the lead of a milestone. It reports such a failure once with the file, check, and exact error, asks nothing, and neither owns those failures nor waits for a fix. It answers another root chat's question about commits, publication, integration, or progress once, and its person's progress questions, from its state and tools. Its person's message stops each exchange the person did not request.
+A root chat contacts another root chat only when its person asks, it needs a fact only that chat has, or a check fails in that chat's file. It reports such a failure once with the file, check, and exact error, asks nothing, and neither owns those failures nor waits for a fix. It answers another root chat's question about commits, publication, integration, or progress once, and its person's progress questions, from its state and tools. Its person's message stops each exchange the person did not request. The runtime, not the chat, sends the lead its interim updates (PI-LEAD-021).
 
 ## PI-AGENT-087: Workflow direction adds to the original request
 

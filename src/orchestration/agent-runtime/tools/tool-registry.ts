@@ -154,9 +154,8 @@ function startsChildSession(planned: ReadonlyMap<string, RuntimeTool>, registry:
 function messageSession({ kernel }: ToolDeps): ToolFactoryResult {
   const unattendedTree = kernel.unattendedTree === true;
   const workflows = workflowTargets(kernel);
-  const uses = kernel.messageUses ?? [];
-  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedTree, workflows, uses), reason: "no session messaging available" } };
-  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedTree, workflows, uses);
+  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedTree, workflows), reason: "no session messaging available" } };
+  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedTree, workflows);
   // Only the root reaches no session that it did not start; a child keeps the channel to its parent.
   if (kernel.purpose.kind !== "unattended-chat") return { tool };
   const registry = toolRegistryFromComposition(kernel.moduleSnapshot);

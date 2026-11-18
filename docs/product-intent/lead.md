@@ -24,7 +24,7 @@ A listed chat's question enters the lead's transcript as a widget in the chat's 
 
 ## PI-LEAD-006: The lead summarizes reports and never speaks for a chat
 
-The lead learns each question and milestone message of a listed chat, and when one that no client shows finishes a turn, fails, or is cut. A report or milestone shows in its transcript as a line that names the chat and opens it there. A shown report and a turn that ends while a client shows the chat count as read. The lead summarizes a report. After a question it adds at most a short recommendation and never restates it. It never answers a chat's question, never replies to a chat, and routes work only at the person's request.
+The lead learns each question of a listed chat, and when one that no client shows finishes a turn, fails, or is cut. A report or an update (PI-LEAD-021) shows in its transcript as a line that names the chat and opens it there. A shown report and a turn that ends while a client shows the chat count as read. The lead summarizes a report. After a question it adds at most a short recommendation and never restates it. It never answers a chat's question, never replies to a chat, and routes work only at the person's request.
 
 ## PI-LEAD-007: Every chat is one step from the lead
 
@@ -48,7 +48,7 @@ The lead speaks as the person's assistant, and its own words lead its transcript
 
 ## PI-LEAD-012: Every chat reports in one shape
 
-While the lead is on, every new chat, and an older chat once the lead gives it a request, writes each question for a reader new to the chat. It ends each turn with a report of its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, open questions with a recommendation, and what it noticed. Every listed chat messages the lead mid-turn at each milestone, such as a PR opened. The lead's summary presents the chat's findings as the chat's claims.
+While the lead is on, every new chat, and an older chat once the lead gives it a request, writes each question for a reader new to the chat. It ends each turn with a report of its status: done, waiting on the person's yes, or stopped on a question. It then states what changed, what it verified and how, what waits on the person, open questions with a recommendation, and what it noticed. The lead's summary presents the chat's findings as the chat's claims.
 
 ## PI-LEAD-013: The lead's tab shows only beside other tabs
 
@@ -81,3 +81,7 @@ When the person asks how the chats go, the lead reads each chat in its list and 
 ## PI-LEAD-020: The lead runs on its own model setting
 
 The lead's requests use their own model role, Lead, which the model settings list in their last section, with Learning Review, Title Generation, and Subagent Summary, only while the lead is on. Every other session, also each session that the lead started, uses Chat. A model set for Lead stays saved while the lead is off and applies again when it is back on. The model picker in the lead's tab edits Lead for that session only, under the name Lead.
+
+## PI-LEAD-021: The lead keeps the person updated while chats work
+
+While a listed chat that no client shows works, the runtime forwards to the lead, word for word, the text that the chat writes between its calls. The forwards of all chats share one lead turn, at most once every 3 minutes, and only a chat with new text sends. A chat that a client shows sends nothing, because the person reads it there. Each update shows as a line that opens the chat at that text. The lead writes one short line for each chat, or nothing when an update adds nothing new.

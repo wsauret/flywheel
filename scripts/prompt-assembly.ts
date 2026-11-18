@@ -24,7 +24,7 @@ import { agentCapabilityCheck } from "../src/orchestration/agent-runtime/capabil
 import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/child-slot-registry.js";
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
 import type { RuntimeConfigRequestCapture } from "../src/orchestration/agent-runtime/request-config.js";
-import { moduleMessageUses, requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request-kernel.js";
+import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request-kernel.js";
 import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
 import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
@@ -200,11 +200,8 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
   const chat = input.purpose.kind === "interactive-chat" || input.purpose.kind === "unattended-chat";
   const chatProfile = chat ? resolveChatProfile(assembly.capture, { sessionId: ASSEMBLY_SESSION_ID, modules: moduleServices }) : undefined;
   // An agent that plans from its tree's capture keeps a tool its own selection turned off advertised and unusable.
-  // The subagent stand-in above reads the kernel before the runtimes exist, so the modules' message uses join after.
-  const messageUses = await moduleMessageUses({ treeHosted: sharesTreeHost(input.purpose) }, assembly.capture, modules);
-  const planned = messageUses.length > 0 ? { ...kernel, messageUses } : kernel;
-  const plan = await planToolExposure({ kernel: planned, modules, ...(assembly.live === assembly.capture ? {} : { live: assembly.live }), ...(chatProfile ? { profile: { only: new Set(chatProfile.tools) } } : {}) });
-  return { kernel: planned, modules, tools: new Map(plan.tools), registrationIdentities: plan.registrationIdentities, usable: plan.usable, eligibleTools: plan.eligibleTools, turnedOff: plan.turnedOff, ...(chatProfile ? { chatPrompt: chatProfile.prompt } : {}) };
+  const plan = await planToolExposure({ kernel, modules, ...(assembly.live === assembly.capture ? {} : { live: assembly.live }), ...(chatProfile ? { profile: { only: new Set(chatProfile.tools) } } : {}) });
+  return { kernel, modules, tools: new Map(plan.tools), registrationIdentities: plan.registrationIdentities, usable: plan.usable, eligibleTools: plan.eligibleTools, turnedOff: plan.turnedOff, ...(chatProfile ? { chatPrompt: chatProfile.prompt } : {}) };
 }
 
 /** The interaction profile of the assembly's serving model. */

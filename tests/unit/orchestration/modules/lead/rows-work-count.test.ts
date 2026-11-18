@@ -35,7 +35,8 @@ async function appendTurn(chat: string, index: number): Promise<void> {
 async function costs(chats: readonly string[], members: number) {
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {} })
+  const interim: string[] = []
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {}, onInterim: (sessionId) => { interim.push(sessionId) } })
   let observing: Promise<void> = Promise.resolve()
   const unsubscribe = ctx.store.onStored((events: readonly StoredFact[]) => { observing = observing.then(() => rows.observe(events)) })
   try {
@@ -45,6 +46,7 @@ async function costs(chats: readonly string[], members: number) {
       const chat = chats[index % members]!
       counter.take()
       published.length = 0
+      interim.length = 0
       turns += 1
       await appendTurn(chat, 1_000 + turns)
       await observing
@@ -55,6 +57,7 @@ async function costs(chats: readonly string[], members: number) {
         factsRead: factsRead(requests),
         otherChats: requests.filter((request) => request.aggregateId !== changed).length,
         published: published.map((change) => change.kind === "updated" ? change.row.sessionId === chat : change.sessionId === chat),
+        interim: interim.map((sessionId) => sessionId === chat),
       })
     }
     return perChange
@@ -74,7 +77,7 @@ test("a reorder and a removal in the session store read nothing durable and publ
   const other = await supervisor.openSessionRuntime()
   const counter = countStateRequests(asAsyncEventReadSurface(ctx.store))
   const published: LeadRowChange[] = []
-  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {} })
+  const rows = createLeadRows({ reader: counter.reader, sessionManager: ctx.manager, sessionStore: ctx.sessionStore, sessionRuntime: () => null, readMark: () => undefined, seenMark: () => undefined, publish: (change) => { published.push(change) }, onRest: () => {}, onInterim: () => {} })
   try {
     await rows.add(chats)
     // Each chat holds an open turn with no live work and no record, so each has a row that the sweep reads again.
@@ -103,11 +106,13 @@ test("each change of a started chat costs the same durable requests for 3, 30, a
   const long = [await costs(chats, 3), await costs(chats, 30), await costs(chats, 70)]
   const [first] = short
   for (const run of [...short, ...long]) expect(run).toEqual(first!)
-  // One read of the changed chat's new batch at most, and one row patch, for that chat only.
+  // One read of the changed chat's new batch at most, and one row patch, for that chat only. A final message is no
+  // interim text.
   for (const change of first!) {
     expect(change.requests).toBeLessThanOrEqual(1)
     expect(change.factsRead).toBeLessThanOrEqual(1)
     expect(change.otherChats).toBe(0)
     expect(change.published).toEqual([true])
+    expect(change.interim).toEqual([])
   }
 })

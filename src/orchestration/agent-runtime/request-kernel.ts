@@ -9,7 +9,6 @@ import { contributedToolIdentities, treeCapabilityCheck } from "./capability-che
 import type { CapabilityAccess } from "./tools/types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { FirstPartyModuleComposition, ModuleId } from "../modules.js";
-import type { ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { BackgroundWorkRegistry } from "./background-work.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
@@ -104,16 +103,6 @@ export interface KernelRequestFacts {
   readonly servingModel?: KernelToolDeps["servingModel"];
   /** Absent for a capability plan, like `servingModel`; the tools then plan the default contract's registration. */
   readonly fileEditContract?: ModelInteractionProfile["fileEditContract"];
-  /** The uses of `message_session` that modules add for this agent (`moduleMessageUses`). */
-  readonly messageUses?: readonly string[];
-}
-
-/** The uses of `message_session` that the modules of `snapshot` add for one runner's chat (`KernelToolDeps.messageUses`),
- *  in composition order. None for an agent that its tree's shared host serves, whose tool bytes are its tree's. */
-export async function moduleMessageUses(run: Pick<KernelRunFacts, "treeHosted">, snapshot: FirstPartyModuleComposition, modules: ModuleRuntimes): Promise<readonly string[]> {
-  if (run.treeHosted) return [];
-  const uses = await Promise.all(snapshot.contributions.flatMap((contribution) => contribution.domain === "messageUses" ? [contribution.value.use(modules)] : []));
-  return uses.filter((use) => use !== undefined);
 }
 
 const unattendedRevisions = new WeakMap<ProjectDefinitionRegistryRevision, ProjectDefinitionRegistryRevision>();
@@ -160,7 +149,6 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(surfaces.askUser ? { askUser: surfaces.askUser } : {}),
     ...(surfaces.recall ? { recall: surfaces.recall } : {}),
     ...(surfaces.sessions ? { sessions: surfaces.sessions } : {}),
-    ...(request.messageUses?.length ? { messageUses: request.messageUses } : {}),
     ...(run.backgroundTasks ? { backgroundTasks: run.backgroundTasks } : {}),
     ...(surfaces.foregroundBashHold ? { foregroundBashHold: surfaces.foregroundBashHold } : {}),
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),

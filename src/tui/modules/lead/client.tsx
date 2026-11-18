@@ -2,7 +2,7 @@
 import { basename } from "node:path"
 import { createContext, createMemo, createSignal, useContext, type Accessor } from "solid-js"
 import { errorMessage } from "../../../infra/error-message.js"
-import { leadEntryLink, leadQuestionEntry, leadReportEntry, leadRowOrder, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
+import { leadEntryLink, leadQuestionEntry, leadReportEntry, leadRowOrder, leadUpdateEntry, parseLeadEntryLink, sessionMessageCall, type LeadRow } from "../../../protocol/modules/lead.js"
 import { truncateToWidth } from "../../utils/text.js"
 import type { ModalHandle } from "../../components/modal-stack.js"
 import type { ModuleDomainIntakes } from "../../hooks/create-module-domain-intakes.js"
@@ -131,7 +131,8 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
       transcript: LEAD_TRANSCRIPT,
       // A message from a chat is one line that opens the chat where it sent it (PI-LEAD-006): a report, which the
       // runtime posted, at the final message, a question, which the runtime posted, at its call with the question's
-      // widget below the line (PI-LEAD-005), and a message that the chat sent itself, such as a milestone, at its call.
+      // widget below the line (PI-LEAD-005), an update, which the runtime posted, at the chat's newest interim text
+      // (PI-LEAD-021), and a message that the chat sent itself at its call.
       messageRow: (message) => {
         const call = sessionMessageCall(message)
         if (call === undefined) return undefined
@@ -141,7 +142,7 @@ export function createLeadClient(host: LeadClientHost): TuiModuleClient {
         return {
           name: question !== undefined ? "Question" : reportEntry === undefined ? "Update" : "Report",
           detail: `· ${truncateToWidth(title(chat) || message.from.name, REPORT_TITLE_COLUMNS, "…")} · open`,
-          linkUri: leadEntryLink(chat, reportEntry ?? question ?? call),
+          linkUri: leadEntryLink(chat, reportEntry ?? question ?? leadUpdateEntry(message) ?? call),
           ...(question === undefined ? {} : { below: (ready: () => void) => <LeadQuestionWidget sessionId={chat} toolUseId={question} host={host} focus={screen.questions} ready={ready} /> }),
         }
       },

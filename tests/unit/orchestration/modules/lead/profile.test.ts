@@ -10,7 +10,7 @@ import { resolveRuntimeConversation } from "../../../../../src/orchestration/age
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js"
 import type { WebSearchPort } from "../../../../../src/orchestration/agent-runtime/web-search/types.js"
 import { resolveChatProfile, resolveChatRole } from "../../../../../src/orchestration/chat-profile.js"
-import { LEAD_PROMPT, LISTED_CHAT_PROMPT, milestoneMessageUse, STARTED_CHAT_PROMPT } from "../../../../../src/orchestration/modules/lead/prompt.js"
+import { LEAD_PROMPT, LISTED_CHAT_PROMPT, STARTED_CHAT_PROMPT } from "../../../../../src/orchestration/modules/lead/prompt.js"
 import { leadService, type LeadRole, type LeadService } from "../../../../../src/orchestration/modules/lead/service.js"
 import { LEAD_TOOLS } from "../../../../../src/orchestration/modules/lead/tools.js"
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js"
@@ -35,17 +35,12 @@ const webSearch = (): WebSearchPort => webPort
 
 const checkpointTestPersistence = checkpointTestPersistences()
 
-const LEAD_ID = "lead-1"
-
 /** The tools and the system prompt of each request of one durable chat in the shipped composition, with a lead service
- *  that answers `role` for the chat and, when `listed`, lists it under the shown lead `LEAD_ID`. `selections` gives the
- *  module snapshot of each request in turn, and `purpose` the kind of agent that the session runs. */
-async function chatRequests(role: LeadRole | undefined, selections: readonly ReturnType<typeof composeFirstPartyModules>[], purpose: RunnableAgentOptions["purpose"] = { kind: "interactive-chat" }, listed = role === "started" || role === "briefed") {
+ *  that answers `role` for the chat. `selections` gives the module snapshot of each request in turn. */
+async function chatRequests(role: LeadRole | undefined, selections: readonly ReturnType<typeof composeFirstPartyModules>[]) {
   const sessionId = "chat-1"
   const roleOf = (id: string) => id === sessionId ? role : undefined
-  const service: Pick<LeadService, "role" | "settledRole" | "settledListingLead"> = {
-    role: roleOf, settledRole: async (id) => roleOf(id), settledListingLead: async (id) => listed && id === sessionId ? LEAD_ID : null,
-  }
+  const service: Pick<LeadService, "role" | "settledRole"> = { role: roleOf, settledRole: async (id) => roleOf(id) }
   const moduleServices = composeModuleServices([["lead", service]])
   let request = 0
   const options: RunnableAgentOptions = {
@@ -53,7 +48,7 @@ async function chatRequests(role: LeadRole | undefined, selections: readonly Ret
       kind: "durable-tree", sessionId, conversationId: "conversation-1", priorMessages: [], reserveMessageId: async () => crypto.randomUUID(),
       append: () => {}, captureCommittedForkMessages: async () => [], resolveLeafId: async () => null, committedTree: async () => ({ leafId: null, entriesById: {} }),
     } }),
-    purpose, captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {},
+    captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {},
     runtimeSurfaces: { askUser: askUserController(), sessions: unusedSessionMessaging(), moduleServices, webSearch },
     moduleSelection: () => selections[Math.min(request, selections.length - 1)]!,
     chatProfile: (modules) => resolveChatProfile(modules, { sessionId, modules: moduleServices }),
@@ -79,7 +74,6 @@ async function chatRequests(role: LeadRole | undefined, selections: readonly Ret
         offered: new Set(prompt.definitions.map(({ name }) => surface.registrationIdentities.get(name) ?? name)),
         planned: new Set(surface.registrationIdentities.values()),
         prompt: [prompt.systemPrompt.stable, prompt.systemPrompt.session, prompt.systemPrompt.conversation].join("\n"),
-        messageSession: prompt.definitions.find(({ name }) => name === "message_session")?.description ?? "",
       })
     }
     return results
@@ -129,27 +123,6 @@ describe("the lead's chat profile", () => {
     expect(briefed!.prompt).not.toContain(firstLine(STARTED_CHAT_PROMPT))
     expect(ordinary!.prompt).not.toContain(firstLine(STARTED_CHAT_PROMPT))
     expect(ordinary!.prompt).not.toContain(firstLine(LISTED_CHAT_PROMPT))
-  })
-
-  // PI-LEAD-012, ARCH-CONTEXT-040: a listed chat tells the lead of a milestone through message_session, while every
-  // other agent keeps the contract that forbids status messages.
-  test("only a listed chat's message_session allows a milestone message to the shown lead", async () => {
-    const use = milestoneMessageUse(LEAD_ID)
-    const [started] = await chatRequests("started", [on])
-    const [briefed, briefedOff] = await chatRequests("briefed", [on, off])
-    // A chat that joined the list with none of the lead's prompt rules, such as one adopted when the lead turned on.
-    const [adopted] = await chatRequests(undefined, [on], undefined, true)
-    for (const chat of [started!, briefed!, adopted!]) {
-      expect(chat.messageSession).toContain(`; or ${use}.`)
-      expect(chat.messageSession).toContain("Beyond these uses, do not send acknowledgements")
-    }
-    const [ordinary] = await chatRequests(undefined, [on])
-    const [subagent] = await chatRequests("briefed", [on], { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" })
-    const [workflowAgent] = await chatRequests("briefed", [on], { kind: "workflow-agent", briefScope: { briefId: "brief-1" }, workflowAttemptId: "attempt-1" })
-    for (const agent of [ordinary!, briefedOff!, subagent!, workflowAgent!]) {
-      expect(agent.messageSession).not.toContain(use)
-      expect(agent.messageSession).toContain("Do not send acknowledgements, thanks, confirmations, status or progress reports")
-    }
   })
 
   // PI-LEAD-020: only the lead's requests use the Lead setting.

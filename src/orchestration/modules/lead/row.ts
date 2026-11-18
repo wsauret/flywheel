@@ -98,6 +98,32 @@ function reducedEntry(entry: StoredTailEntry, at: number): RowTailEntry {
   return { ...entry, message: { ...entry.message, content: keptContent(entry.message) }, at }
 }
 
+/** A text that a chat wrote between its calls in a turn, with its entry. */
+export interface InterimText {
+  readonly entryId: string
+  readonly text: string
+}
+
+/** The interim texts of one stored batch, oldest first (PI-LEAD-021): the text of each assistant message that also
+ *  calls a tool. A message with no call is the turn's final message, which the report carries instead. */
+export function interimTexts(fact: StoredFact): readonly InterimText[] {
+  if (fact.type !== "chat.entries.appended") return []
+  let parsed: ReturnType<typeof parseConversationTreeFact>
+  try {
+    parsed = parseProjectionFact(fact, parseConversationTreeFact)
+  } catch {
+    // A batch that this release cannot parse tells nothing, as it leaves the fold as it was.
+    return []
+  }
+  if (parsed.type !== "chat.entries.appended") return []
+  return parsed.payload.entries.flatMap((entry) => {
+    if (entry.kind !== "message" || entry.message.kind !== "assistant" || entry.displayOnly === true) return []
+    if (!blocksOf(entry.message.content).some((block) => block.type === "tool_use")) return []
+    const text = textOf(entry.message).trim()
+    return text ? [{ entryId: entry.id, text }] : []
+  })
+}
+
 /** The first line of a text that holds more than spaces, trimmed. */
 export const firstLine = (text: string): string => text.split("\n").find((line) => line.trim().length > 0)?.trim() ?? ""
 

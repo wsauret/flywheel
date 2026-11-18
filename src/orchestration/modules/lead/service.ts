@@ -3,7 +3,7 @@ import { parseProjectionFact } from "../../../infra/event-projection.js"
 import { requireGuardedEventAppender, type StoredFact } from "../../../infra/event-store-types.js"
 import { Log } from "../../../infra/log.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
-import { EMPTY_LEAD_CHATS, leadChatsCursor, leadQuestionCall, leadReportCall, type LeadChatsView, type LeadQuestionOutcome, type LeadSeenState } from "../../../protocol/modules/lead.js"
+import { EMPTY_LEAD_CHATS, leadChatsCursor, leadQuestionCall, leadReportCall, leadUpdateCall, type LeadChatsView, type LeadRow, type LeadQuestionOutcome, type LeadSeenState } from "../../../protocol/modules/lead.js"
 import { formatAgentInputAnswers } from "../../../protocol/question-protocol-types.js"
 import type { SessionEventKind } from "../../chat/runner-types.js"
 import type { DeliveryOutcome } from "../../session/live-session-control.js"
@@ -19,6 +19,8 @@ import type { LeadFact } from "./facts.js"
 import type { LeadFoundChat } from "./find-chat.js"
 import { createLeadJournal, type LeadForward, type LeadJournal } from "./journal.js"
 import type { RouteInput, RouteOutcome } from "./route-request.js"
+import { LEAD_UPDATE_MARKER } from "./prompt.js"
+import type { InterimText } from "./row.js"
 import { createLeadRows, type LeadRowChange, type LeadRows } from "./rows.js"
 
 const log = Log.create({ service: "lead" })
@@ -43,9 +45,6 @@ export interface LeadService extends ModuleServiceInstance {
   /** The role once the service folded every stored batch that it heard before this call, so a chat's first request
    *  reads the join that its creation recorded. */
   settledRole(sessionId: string): Promise<LeadRole | undefined>
-  /** The shown lead chat when `sessionId` is a chat in its list, once the service folded every stored batch that it
-   *  heard before this call; null otherwise. */
-  settledListingLead(sessionId: string): Promise<string | null>
   /** Forwards the person's entries of the lead chat's newest turns to a new chat or to an earlier chat (section
    *  "The routing tool" of the lead design): the runtime selects and copies the entries, and the caller names only
    *  the target. A repeated call starts no second chat and records nothing twice. */
@@ -75,6 +74,8 @@ type LeadServiceInputs = Pick<ModuleProcessServices, "projectionReader" | "event
   readonly sessionManager: Pick<ModuleProcessServices["sessionManager"], "read" | "listActive" | "listForIds">
   readonly sessionStore: Pick<ModuleProcessServices["sessionStore"], "get" | "onChange">
   readonly executionEnvironment: () => Pick<ReturnType<ModuleProcessServices["executionEnvironment"]>, "openChat" | "findChats" | "sessionEvents" | "personEntries" | "forwardPersonEntries" | "sessionRuntime" | "sendSessionMessage" | "createOpenHold" | "onChatClosed" | "onSessionReleased" | "sessionShown" | "liveAgentCards">
+  /** Runs `run` once after `ms`, and answers its cancel; tests give their own clock. */
+  readonly schedule?: (run: () => void, ms: number) => () => void
 }
 
 type NonEmptyIds = readonly [string, ...string[]]
@@ -84,9 +85,34 @@ type MarkOutcome = { readonly ok: true } | { readonly ok: false; readonly error:
  *  report, and a question as the chat's question message, instead (PI-LEAD-005, PI-LEAD-006). */
 const NOTICE_KINDS: readonly SessionEventKind[] = ["failed", "cut"]
 
-/** One report or question of a listed chat that goes to the lead as a message from the chat. */
+/** The least time between two batches of interim updates to the lead (PI-LEAD-021). */
+export const LEAD_UPDATE_INTERVAL_MS = 3 * 60_000
+/** The most characters of one chat's interim texts that one update holds: the newest texts stay whole, and older texts
+ *  drop first. A newest text that is longer by itself keeps its start. */
+export const LEAD_UPDATE_CHARS = 2_000
+/** The row states of a chat whose turn still runs: it works, or it waits on the person's answer. */
+const TURN_STATES: ReadonlySet<LeadRow["state"]> = new Set(["working", "question"])
+
+/** The interim texts of one chat since its last update that fit `LEAD_UPDATE_CHARS`, oldest first. */
+function keptUpdate(texts: readonly InterimText[]): readonly InterimText[] {
+  const kept: InterimText[] = []
+  let size = 0
+  for (const text of texts.toReversed()) {
+    if (kept.length > 0 && size + text.text.length > LEAD_UPDATE_CHARS) break
+    kept.unshift(kept.length === 0 ? { ...text, text: text.text.slice(0, LEAD_UPDATE_CHARS) } : text)
+    size += text.text.length
+  }
+  return kept
+}
+
+const defaultSchedule = (run: () => void, ms: number): (() => void) => {
+  const timer = setTimeout(run, ms)
+  return () => { clearTimeout(timer) }
+}
+
+/** One report, question, or update of a listed chat that goes to the lead as a message from the chat. */
 interface LeadPost {
-  readonly kind: "report" | "question"
+  readonly kind: "report" | "question" | "update"
   readonly from: string
   readonly call: string
   readonly text: string
@@ -97,6 +123,7 @@ interface LeadPost {
 const POST_RECORDS = {
   report: { posted: "lead posted a report", waits: "lead report waits for the lead's runner", failed: "lead could not post a report" },
   question: { posted: "lead posted a question", waits: "lead question waits for the lead's runner", failed: "lead could not post a question" },
+  update: { posted: "lead posted an update", waits: "lead update waits for the lead's runner", failed: "lead could not post an update" },
 } as const
 
 const joinedChats = (facts: readonly LeadFact[]): readonly string[] => facts.flatMap((fact) => fact.type === "lead.chat.joined" ? [fact.payload.sessionId] : [])
@@ -167,6 +194,12 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
   const waiting = new Set<string>()
   // Whether the watched lead had a runner at the last change of its store entry.
   let leadRunner = false
+  // The interim texts of each listed chat since its last update, which the next batch posts (PI-LEAD-021). Memory
+  // only: a restart forwards nothing that a chat wrote before it.
+  const updates = new Map<string, readonly InterimText[]>()
+  const schedule = services.schedule ?? defaultSchedule
+  // The cancel of the timer of the next batch while one is due.
+  let updateDue: (() => void) | undefined
 
   const shownLead = (): string | null => {
     const state = journal.state()
@@ -210,6 +243,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
 
   const publishRow = (change: LeadRowChange): void => {
     services.publish({ cursor: leadChatsCursor(), payload: change.kind === "updated" ? { kind: "lead.row.updated", row: change.row } : { kind: "lead.row.removed", sessionId: change.sessionId } })
+    // A turn that ended takes its interim texts with it: its report tells its outcome, and a later turn's update holds
+    // only that turn's texts (PI-LEAD-021).
+    if (change.kind === "removed" || !TURN_STATES.has(change.row.state)) updates.delete(change.kind === "removed" ? change.sessionId : change.row.sessionId)
     if (change.kind === "updated") {
       // A chat that shows a row is held again, also after it came to rest once.
       if (watched?.chats.has(change.row.sessionId)) opened?.hold(change.row.sessionId)
@@ -218,13 +254,15 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     }
   }
 
-  /** Sends one post to the shown lead in order with the others, and runs `delivered` once the lead holds it. A post
-   *  that the lead's absent runner holds waits for its attach and records its wait once; a refused or failed post can
-   *  post again at the next publish of its row. */
+  /** Sends one post to the shown lead in order with the others, and runs `delivered` once the lead holds it. A report
+   *  or question that the lead's absent runner holds waits for its attach and records its wait once; a refused or
+   *  failed one can post again at the next publish of its row. An update posts once whatever its outcome: its batch
+   *  is the only one that holds it, and its records are DEBUG, because a batch records once (`postUpdates`). */
   function post(lead: string, item: LeadPost, delivered?: () => Promise<void>): void {
     const key = `${lead}:${item.call}`
     if (posted.has(key)) return
-    posted.add(key)
+    const update = item.kind === "update"
+    if (!update) posted.add(key)
     const records = POST_RECORDS[item.kind]
     const fields = { leadSessionId: lead, sessionId: item.from, ...item.ids }
     posting = posting.then(async () => {
@@ -235,16 +273,64 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         return
       }
       if (waitsForLeadRunner(outcome)) {
-        waiting.add(key)
-        log.info(records.waits, fields)
+        if (!update) waiting.add(key)
+        log[update ? "debug" : "info"](records.waits, fields)
         return
       }
-      log.info(records.posted, { ...fields, status: outcome.status, bytes: Buffer.byteLength(item.text) })
+      log[update ? "debug" : "info"](records.posted, { ...fields, status: outcome.status, bytes: Buffer.byteLength(item.text) })
       await delivered?.()
     }).catch((error: unknown) => {
       posted.delete(key)
       log.warn(records.failed, { ...fields, error: errorMessage(error) })
     })
+  }
+
+  /** Keeps a listed chat's new interim texts for the next batch, and sets the batch's timer when none is due. A chat
+   *  that a client shows keeps nothing, because the person reads it there (PI-LEAD-021). */
+  function noteInterim(sessionId: string, texts: readonly InterimText[]): void {
+    // The batch that holds the texts can also end the turn; the row then states the end already.
+    if (services.executionEnvironment().sessionShown(sessionId) || !rows?.working(sessionId)) return
+    updates.set(sessionId, keptUpdate([...updates.get(sessionId) ?? [], ...texts]))
+    dueUpdates()
+  }
+
+  /** Sets the timer of the next batch, `LEAD_UPDATE_INTERVAL_MS` after the first interim text that waits, so the
+   *  texts of every chat in that time share one batch and one lead turn. A lead with no runner sets none, and the
+   *  attach of its runner sets it. */
+  function dueUpdates(): void {
+    const lead = watched?.lead
+    if (updateDue || updates.size === 0 || disposed || lead === undefined || !hasRunner(lead)) return
+    updateDue = schedule(() => {
+      updateDue = undefined
+      postUpdates()
+    }, LEAD_UPDATE_INTERVAL_MS)
+  }
+
+  /** Posts one update for each listed chat that wrote interim texts since its last update, still works, and that no
+   *  client shows: its texts in order, word for word, as a message from the chat (PI-LEAD-021). The lead's runner takes
+   *  the first post as a turn and each later post of the batch into that turn (`deliverHeldMessage`). A lead with no
+   *  runner gets nothing, and each chat keeps only its newest texts until the runner attaches. */
+  function postUpdates(): void {
+    const lead = watched?.lead
+    if (disposed || lead === undefined || !hasRunner(lead)) return
+    const environment = services.executionEnvironment()
+    let sessions = 0
+    let bytes = 0
+    let dropped = 0
+    for (const [sessionId, texts] of updates) {
+      updates.delete(sessionId)
+      const newest = texts.at(-1)
+      if (newest === undefined || environment.sessionShown(sessionId) || !rows?.working(sessionId)) {
+        dropped += 1
+        continue
+      }
+      // The marker is the runtime's; the session's texts follow it word for word.
+      const text = [LEAD_UPDATE_MARKER, ...texts.map((said) => said.text)].join("\n\n")
+      post(lead, { kind: "update", from: sessionId, call: leadUpdateCall(newest.entryId), text, ids: { entryId: newest.entryId } })
+      sessions += 1
+      bytes += Buffer.byteLength(text)
+    }
+    log.debug("lead posted a batch of updates", { leadSessionId: lead, sessions, dropped, bytes })
   }
 
   /** Posts each pending question of a chat to the shown lead, oldest first, as a message from the chat, which the
@@ -303,8 +389,9 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       watched = { lead, chats: new Set() }
       leadRunner = hasRunner(lead)
       watch(listed())
-      // The results and questions that waited while no lead showed go to the lead that shows now.
+      // The results, questions, and interim texts that waited while no lead showed go to the lead that shows now.
       postWaiting()
+      dueUpdates()
       return
     }
     if (!watched) return
@@ -338,6 +425,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       const shown = ended.rows()
       // The owner stops at once, so no patch of its in-flight work follows these removals.
       const ending = ended.dispose()
+      updates.clear()
       for (const row of shown) publishRow({ kind: "removed", sessionId: row.sessionId })
       endings = Promise.all([endings, ending.catch((error: unknown) => { log.warn("the lead rows could not end", { error: errorMessage(error) }) })])
       return
@@ -354,11 +442,15 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
         // Only the current owner publishes: an owner that a turn-off ended may still settle work it started.
         publish: (change) => { if (rows === owner) publishRow(change) },
         onRest: (sessionId) => { if (rows === owner) letGoLater(sessionId) },
+        onInterim: (sessionId, texts) => { if (rows === owner) noteInterim(sessionId, texts) },
       })
       rows = owner
       chats = listed()
     }
-    for (const sessionId of left) rows.remove(sessionId)
+    for (const sessionId of left) {
+      rows.remove(sessionId)
+      updates.delete(sessionId)
+    }
     const designated = journal.state().designated
     // The builds run beside the journal's lane: a fold's first replay reads through a position captured after it starts.
     void rows.add(chats.filter((sessionId) => sessionId !== designated))
@@ -498,6 +590,7 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     log.info("lead runner attached; posting what waited", { leadSessionId: lead, waiting: waiting.size })
     // After the posts in flight settle: one that read the lead at rest before the attach answers that it waits.
     posting = posting.then(postWaiting)
+    dueUpdates()
   }, "lead-service")
   const unsubscribeSelection = services.onSelectionChanged(() => {
     follow()
@@ -573,11 +666,6 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
       return services.enabled() ? { rows: rows?.rows() ?? [] } : EMPTY_LEAD_CHATS
     },
     role,
-    async settledListingLead(sessionId) {
-      await background
-      const lead = shownLead()
-      return lead !== null && sessionId !== lead && journal.state().members.has(sessionId) ? lead : null
-    },
     async settledRole(sessionId) {
       await background
       return role(sessionId)
@@ -667,6 +755,8 @@ export function createLeadService(services: LeadServiceInputs): LeadService {
     },
     async dispose() {
       disposed = true
+      updateDue?.()
+      updateDue = undefined
       unsubscribeStored()
       unsubscribeStore()
       unsubscribeClosed?.()
