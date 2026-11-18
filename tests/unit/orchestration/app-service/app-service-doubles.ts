@@ -56,6 +56,7 @@ export function fakeProjections() {
       outputGroupChildren: async () => { throw new Error("Output children are not used in this fixture") },
       outputBlockBody: async () => { throw new Error("Output body is not used in this fixture") },
       transcriptSearch: async () => { throw new Error("Transcript search is not used in this fixture") },
+      findChats: async () => { throw new Error("Chat search is not used in this fixture") },
       recall: async () => { throw new Error("Conversation recall is not used in this fixture") },
       sessionChangeSummary: async () => { throw new Error("Session change summary is not used in this fixture") },
       workflowViewSnapshotBatch: async () => ({ workflowViews: [] }),
@@ -130,6 +131,7 @@ export function fakeProjections() {
         contentBytes: 0,
       }),
       outputBlockBody: async (_sessionId: string, request: OutputBlockBodyRequest) => ({ blockId: request.blockId }),
+      transcriptFind: async () => ({ matches: [], more: false, fromBlockIndex: 0, blockCount: 0 }),
       // The shutdown barrier joins this projection's durable flush and blocks the
       // later phases when it ends unsafely, so the double owns a real settlement.
       dispose: async () => {},

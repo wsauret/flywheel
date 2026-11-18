@@ -25,6 +25,10 @@ export function Sheet(props: {
   /** Takes the wider frame where the container allows one, for a body made of
    *  code lines rather than rows. */
   readonly wide?: boolean
+  /** Holds the frame's full height whatever the body shows, for a body whose
+   *  rows come and go under a search field, so the field and the rows above a
+   *  change keep their place on the screen. */
+  readonly fill?: boolean
   /** Names the page a sheet with several pages shows. The body keeps each
    *  page's scroll position, so a return from a sub-page lands where the
    *  person left. */
@@ -43,7 +47,7 @@ export function Sheet(props: {
     <div class="scrim sheet-scrim" onClick={(event) => { if (event.target === event.currentTarget) props.onClose() }}>
       <section
         class="sheet"
-        classList={{ "sheet-wide": props.wide === true }}
+        classList={{ "sheet-wide": props.wide === true, "sheet-fill": props.fill === true }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"

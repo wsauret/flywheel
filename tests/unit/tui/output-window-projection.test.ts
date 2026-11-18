@@ -66,6 +66,19 @@ describe("createTranscriptWindowProjector (transcript prefix cache)", () => {
 
     expect(targetTimelineBlockIndex(projection, "command-b")).toBe(20)
   })
+  // A message search hit names the chat entry, and an assistant entry can
+  // produce several text blocks (`E:1`, `E:2`): the entry lands on its first.
+  it("maps a message entry to the row of the user message or assistant text it produced", () => {
+    const blocks: FrontendOutputBlock[] = [
+      { kind: "userMessage", id: "user-entry", content: "zanzibar", timestamp: 1, pending: false, injected: false },
+      text("reply-entry:1", "first part"),
+      text("reply-entry:2", "second part"),
+    ]
+    const projection = createTranscriptWindowProjector()(snapshotOf(blocks, 1, 10), false)
+
+    expect(targetTimelineBlockIndex(projection, "user-entry")).toBe(10)
+    expect(targetTimelineBlockIndex(projection, "reply-entry")).toBe(11)
+  })
   it("equals the whole-window projection for a mixed window", () => {
     const project = createTranscriptWindowProjector()
     const snap = snapshotOf(mixedBlocks())

@@ -7,7 +7,7 @@ import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import type { SessionActivationResult } from "../../../../src/tui/hooks/session-activation.js"
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
-import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { runtimeDispatch, runtimeQuery, type QueryAnswer } from "../../../helpers/runtime-dispatch.js"
 
 export const mockClipboardCopy = mock(async (_text: string) => {})
 
@@ -56,14 +56,14 @@ export function createSignals(
   }
 }
 
-function createAppService(dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>) {
+function createAppService(dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>, chatSearch?: QueryAnswer<"chatSearch">) {
   const accept = async () => ({ ok: true as const })
   const answer = dispatch ?? accept
   const appService = { dispatch: runtimeDispatch({
     "workflow.interrupt": async () => ({ kind: "interrupt", interrupted: true }),
     "workflow.resume": accept, "chat.resume": accept, "chat.interrupt": accept,
     "session.delete": answer, "session.rename": answer, "session.close": answer,
-  }) }
+  }), query: runtimeQuery({ chatSearch: chatSearch ?? (async () => ({ chats: [] })) }) }
   spyOn(appService, "dispatch")
   return appService
 }
@@ -79,9 +79,12 @@ export function createModal(options: {
   closeChat?: (sessionId: string) => Promise<void>
   dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>
   showToast?: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
+  /** The runtime's answer to a search of chat messages; none found when absent. */
+  chatSearch?: QueryAnswer<"chatSearch">
 }) {
   const modals = createModalStack()
-  const appService = createAppService(options.dispatch)
+  const appService = createAppService(options.dispatch, options.chatSearch)
+  const landOnEntry = mock((_entryId: string) => {})
   const activateSession = options.activateSession ?? mock(async () => ({ ok: true as const }))
   const activateSessionById = mock(async (_id: string) => {})
   const closeChat = mock(options.closeChat ?? (async (_id: string) => {}))
@@ -97,17 +100,19 @@ export function createModal(options: {
     sessionCatalogErrors: () => options.errors ?? [],
     activateSession,
     activateSessionById,
+    landOnEntry,
     closeChat,
     deleteActiveSession: options.deleteActiveSession ?? mock(async () => {}),
     clipboard: { copy: mockClipboardCopy, readImage: async () => null },
-  }, 0)
-  return { hook, modals, appService, activateSession, activateSessionById, closeChat }
+  }, 0, 0)
+  return { hook, modals, appService, activateSession, activateSessionById, landOnEntry, closeChat }
 }
 
 export function rowLabels(hook: ReturnType<typeof useSessionModal>): string[] {
   return hook.sessionModalResult().rows.map((row) => {
     if (row.kind === "header") return row.label
     if (row.kind === "corrupt") return `corrupt:${row.sessionId}`
+    if (row.kind === "found") return `found:${row.session.id}`
     return row.session.id
   })
 }

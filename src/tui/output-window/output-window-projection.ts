@@ -1,4 +1,5 @@
 import type { FrontendOutputBlock } from "../../protocol/app-service-types.js"
+import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
 import { closesToolStretch, type TranscriptRow } from "../../protocol/client/transcript-model.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { terminalTranscript, type PresentedTerminalRow, type TerminalTranscript } from "../output-blocks/visible-output-blocks.js"
@@ -28,18 +29,18 @@ export interface TranscriptWindowProjection {
   readonly pendingBlocks: TerminalTranscript["pendingBlocks"]
 }
 
-/** Resolve an entry to the mounted row that represents it. Tool-run children
+/** Resolve an entry (a chat entry or a tool use) to the first mounted row that
+ * it produced, by the shared entry rule of `blockEntryKeys`. Tool-run children
  * share their grouped row's absolute source index. */
 export function targetTimelineBlockIndex(
   projection: TranscriptWindowProjection,
   entryId: string,
 ): number | undefined {
+  const holds = (block: FrontendOutputBlock) => blockEntryKeys(blockIdentity(block)).includes(entryId)
   const rowIndex = projection.timelineBlocks.findIndex((block) => {
-    if (block.kind === "toolRun") return block.children.some((child) => child.id === entryId)
-    if (block.kind === "tool") return block.id === entryId
-    if (block.kind === "agentGroup") return block.id === entryId || block.toolUseId === entryId
-    if (block.kind === "question") return block.toolUseId === entryId
-    return false
+    if (block.kind === "toolRun") return block.children.some(holds)
+    if (block.kind === "agentGroup" && block.toolUseId === entryId) return true
+    return holds(block)
   })
   return rowIndex < 0 ? undefined : projection.timelineBlockIndices[rowIndex]
 }

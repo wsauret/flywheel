@@ -14,7 +14,7 @@ const presentation: TextEditorPresentation = {
   preferredVisualColumn: null,
 }
 
-const EMPTY_RESULT: SessionPickerResult = { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0 }
+const EMPTY_RESULT: SessionPickerResult = { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false }
 
 /** Renders the picker list and returns its character frame. */
 async function renderPickerFrame(field: { result: SessionPickerResult; filterQuery: string; inputPresentation: TextEditorPresentation; renaming?: boolean }): Promise<string> {

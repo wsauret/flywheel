@@ -1,15 +1,16 @@
-import { batch, createMemo, createSignal } from "solid-js"
+import { batch, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import fuzzysort from "fuzzysort"
 import { errorDetail, errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { isSessionId } from "../../infra/session-id.js"
 import { effectiveSessionShortTitle, isActiveActivity, SHORT_TITLE_MAX_CHARS, type SessionCatalogError, type SessionCatalogRow } from "../../protocol/app-service-types.js"
 import { dispatchInterrupt, isInterruptible, offeredSessionControls, resumeMutationType } from "../../protocol/client/session-controls.js"
+import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../protocol/client/chat-content-search.js"
 import { createListModalKeys, type ListModalKeyEvent } from "../components/modal-list-keys.js"
 import { createControlledTextEditor, normalizedPrintableText, SINGLE_LINE_TEXT_ENTRY_POLICY, type ControlledTextEditor, type TextEditorPresentation } from "../keymap/text-entry.js"
 import { firstSelectableRow, matchAction, MAX_RENDERED_ROWS } from "../components/modal-select-helpers.js"
-import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
-import type { PickerCorruptRow, PickerRow, PickerSessionRow, SelectablePickerRow } from "../session-picker/picker-types.js"
+import { flattenSessionRows, formatCompactTimeAgo, parseSessionIdQuery, pickerRowLastActive, timeAgoColumnWidth } from "../session-picker/picker-helpers.js"
+import type { PickerCorruptRow, PickerFoundRow, PickerRow, PickerSessionRow, SelectablePickerRow } from "../session-picker/picker-types.js"
 import type { ModalHandle } from "../components/modal-stack.js"
 import type { SessionModalAction, SessionModalDeps, SessionModalHook, SessionPickerResult, SessionRenameState } from "./use-session-modal-types.js"
 import { createKeyedListSelection } from "./create-keyed-list-selection.js"
@@ -22,8 +23,16 @@ function sessionSubject(session: SessionCatalogRow): string {
   return session.title || session.shortTitle || session.id
 }
 
-export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaultShortcutDelayMs): SessionModalHook {
+export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaultShortcutDelayMs, contentSearchDelayMs?: number): SessionModalHook {
   const { signals, showToast } = deps
+  const [contentAnswer, setContentAnswer] = createSignal<ContentAnswer | undefined>()
+  const contentSearch = createContentSearch({
+    search: (request) => deps.appService.query({ type: "chatSearch", request }),
+    publish: setContentAnswer,
+    fail: (cause) => showToast({ message: `Message search failed: ${extractErrorMessage(cause)}`, variant: "warning" }),
+    ...(contentSearchDelayMs === undefined ? {} : { delayMs: contentSearchDelayMs }),
+  })
+  onCleanup(contentSearch.dispose)
 
   const [modalConfirmDelete, setModalConfirmDelete] = createSignal<string | undefined>()
   const [filterQuery, setFilterQuery] = createSignal("")
@@ -67,20 +76,32 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   // 1-second ticker here rebuilt every picker row object every second for the
   // modal's whole lifetime.
   const nowMinute = createMemo(() => Math.floor(signals.now() / 60_000) * 60_000)
-  const fullResult = createMemo<PickerRowsResult>(() => {
+  const titleResult = createMemo<PickerRowsResult>(() => {
     if (!deps.modal.stack.some((modal) => modal.element === deps.renderModal)) {
       return { rows: [], totalMatches: 0, capped: false, effectiveHighlightQuery: "" }
     }
     return pickerRowsFor(deps.sessions(), deps.sessionCatalogErrors(), filterQuery(), nowMinute())
   })
-  const selection = createKeyedListSelection(() => fullResult().rows.map((row) => isSelectablePickerRow(row) ? rowSessionId(row) : undefined))
+  const titleMatchIds = createMemo(() => titleResult().rows.flatMap((row) => row.kind === "session" ? [row.session.id] : []), [], { equals: sameIds })
+  // Chats found by their messages go below every title match, so an answer
+  // never moves a row above it (PI-INTERACTION-178).
+  const foundRows = createMemo((): PickerRow[] => {
+    const chats = contentRows(contentAnswer(), new Set(titleMatchIds()))
+    if (chats.length === 0) return []
+    const byId = new Map(deps.sessions().map((session) => [session.id, session]))
+    const found = chats.flatMap((chat): PickerFoundRow[] => {
+      const session = byId.get(chat.sessionId)
+      return session ? [{ kind: "found", id: `found:${chat.sessionId}`, session, found: chat }] : []
+    })
+    return found.length === 0 ? [] : [{ kind: "header", id: "header:messages", label: "In messages" }, ...found]
+  })
+  const selection = createKeyedListSelection(() => [...titleResult().rows, ...foundRows()].map((row) => isSelectablePickerRow(row) ? rowSessionId(row) : undefined))
   const currentResult = createMemo<SessionPickerResult>(() => {
-    const result = fullResult()
+    const result = titleResult()
     const selected = selection.key()
-    const rows = capSelectableRows(result.rows, MAX_RENDERED_ROWS, selected)
-    const labels = rows.filter((row): row is PickerSessionRow => row.kind === "session")
-      .map((row) => formatCompactTimeAgo(nowMinute(), new Date(row.session.lastUpdated).getTime()))
-    return { ...result, rows, timeAgoWidth: timeAgoColumnWidth(labels) }
+    const rows = [...capSelectableRows(result.rows, MAX_RENDERED_ROWS, selected), ...foundRows()]
+    const labels = rows.flatMap((row) => row.kind === "session" || row.kind === "found" ? [formatCompactTimeAgo(nowMinute(), pickerRowLastActive(row))] : [])
+    return { ...result, rows, timeAgoWidth: timeAgoColumnWidth(labels), searchingMessages: !contentSettled(contentAnswer(), filterQuery()) }
   })
   const modalCursor = createMemo((): number => {
     const selected = selection.key()
@@ -102,6 +123,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
 
   function clearModalState(): void {
     clearPendingShortcut()
+    contentSearch.update("", [])
     setModalConfirmDelete(undefined)
     setRenameState(undefined)
     filterEditor.resetEphemeralState({ cursor: 0 })
@@ -112,6 +134,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   function openSessionsModal(): void {
     batch(() => {
       setFilterQuery("")
+      contentSearch.update("", [])
       selection.choose(undefined)
       setModalConfirmDelete(undefined)
       entry = deps.modal.replace(deps.renderModal, { onKey: handleKey, onPaste: handlePaste, onClose: clearModalState, route: { kind: "sessions" } })
@@ -139,12 +162,13 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     })
   }
 
-  async function handleSessionView(session: SessionCatalogRow, opened: ModalHandle | undefined): Promise<void> {
+  async function handleSessionView(session: SessionCatalogRow, opened: ModalHandle | undefined, landOn: string | undefined): Promise<void> {
     const result = await deps.activateSession(session)
     if (!result.ok) {
       if (result.error && opened?.isOpen()) showToast({ message: `Open failed for ${sessionSubject(session)}: ${result.error}`, variant: "error" })
       return
     }
+    if (landOn !== undefined) deps.landOnEntry(landOn)
     // A modal that is no longer this one owns the screen: close nothing and
     // report nothing, since the warning belongs to this view alone.
     if (!opened?.close()) return
@@ -152,11 +176,12 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     if (detailWarning) showToast({ message: detailWarning, variant: "warning" })
   }
 
-  function openSession(session: SessionCatalogRow): void {
+  /** Open the session, and land its transcript on `landOn` when a row found it by that entry. */
+  function openSession(session: SessionCatalogRow, landOn?: string): void {
     clearPendingShortcut()
     const opened = entry
     const subject = sessionSubject(session)
-    void handleSessionView(session, opened).catch((err) => {
+    void handleSessionView(session, opened, landOn).catch((err) => {
       if (opened?.isOpen()) showToast({ message: `Open failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
     })
   }
@@ -164,7 +189,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   function openSessionRow(row: SelectablePickerRow): void {
     clearPendingShortcut()
     if (row.kind === "corrupt") return
-    openSession(row.session)
+    openSession(row.session, row.kind === "found" ? row.found.entryId : undefined)
   }
 
   function resumeSession(session: SessionCatalogRow): void {
@@ -321,6 +346,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   function actionsForRow(row: SelectablePickerRow): SessionModalAction[] {
     if (row.kind === "session") return actionsForSession(row.session)
     if (row.kind === "corrupt") return actionsForCorrupt(row)
+    // A found row shows only while the filter has text, which offers no actions.
     return []
   }
 
@@ -330,10 +356,13 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     return row ? actionsForRow(row) : []
   }
 
-  function handleTypedTextKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
+  /** A row action that the key triggers or schedules. A key that this does not
+   *  consume belongs to the filter, so editing keys such as Backspace reach the
+   *  query whatever row is selected. */
+  function handleShortcutKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
     const text = normalizedPrintableText(evt)
-    const rawAction = text && text.length === 1 ? matchAction(text, actionsForRow(row)) : undefined
-    if (!text) return false
+    if (!text) return handleActionKey(evt, row)
+    const rawAction = text.length === 1 ? matchAction(text, actionsForRow(row)) : undefined
 
     if (pendingShortcut) {
       evt.preventDefault?.()
@@ -347,23 +376,23 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     if (rawAction && filterQuery() === "") {
       evt.preventDefault?.()
       const confirmTarget = rowSessionId(row)
-      if (text === "d" && confirmTarget !== undefined && modalConfirmDelete() === confirmTarget) triggerAction(rawAction)
+      if (text === "d" && modalConfirmDelete() === confirmTarget) triggerAction(rawAction)
       else scheduleShortcut(text, rawAction)
       return true
     }
-
-    return runEditor(filterEditor, evt) !== "unhandled"
+    return false
   }
 
-  function handleActionKey(evt: ListModalKeyEvent, row: SelectablePickerRow): void {
+  function handleActionKey(evt: ListModalKeyEvent, row: SelectablePickerRow): boolean {
     // The footer advertises no actions while filtering; keep non-printable
     // shortcuts (e.g. ctrl+d) consistent with that.
-    if (filterQuery() !== "") return
+    if (filterQuery() !== "") return false
     const action = matchAction(evt.name.toLowerCase(), actionsForRow(row))
-    if (!action) return
+    if (!action) return false
     clearPendingShortcut()
     evt.preventDefault?.()
     triggerAction(action)
+    return true
   }
 
   function currentSelectableRow(): SelectablePickerRow | undefined {
@@ -428,12 +457,8 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     },
     textInput: (evt) => {
       const row = currentSelectableRow()
-      if (!row) {
-        runEditor(filterEditor, evt)
-        return
-      }
-      if (handleTypedTextKey(evt, row)) return
-      handleActionKey(evt, row)
+      if (row && handleShortcutKey(evt, row)) return
+      runEditor(filterEditor, evt)
     },
   })
 
@@ -450,6 +475,7 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
       setModalCursor(firstSelectableRow(currentResult().rows, isSelectablePickerRow))
       setModalConfirmDelete(undefined)
     })
+    contentSearch.update(query, untrack(titleMatchIds))
   }
 
   function inputPresentation(): TextEditorPresentation {
@@ -535,10 +561,12 @@ function withCorruptRows(rows: PickerRow[], corrupt: readonly PickerCorruptRow[]
   return combined
 }
 
-function rowSessionId(row: SelectablePickerRow): string | undefined {
-  if (row.kind === "session") return row.session.id
-  if (row.kind === "corrupt") return row.sessionId
-  return undefined
+function sameIds(previous: readonly string[], next: readonly string[]): boolean {
+  return previous.length === next.length && previous.every((id, index) => id === next[index])
+}
+
+function rowSessionId(row: SelectablePickerRow): string {
+  return row.kind === "corrupt" ? row.sessionId : row.session.id
 }
 
 function fuzzyRowsFor(sessionRows: readonly PickerSessionRow[], corrupt: readonly PickerCorruptRow[], query: string): PickerRowsResult {
@@ -592,7 +620,7 @@ function capSelectableRows(rows: readonly PickerRow[], maxRows: number, selected
 }
 
 function isSelectablePickerRow(row: PickerRow | undefined): row is SelectablePickerRow {
-  return row?.kind === "session" || row?.kind === "corrupt"
+  return row !== undefined && row.kind !== "header"
 }
 
 function rowIndexOf(rows: readonly PickerRow[], target: PickerRow): number {

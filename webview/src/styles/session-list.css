@@ -115,7 +115,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.session-subtitle {
+/* A found chat's matching words and standing are subtitle lines too, so they
+   share every rule, the pointer ones included, rather than restate them. */
+.session-subtitle,
+.session-found-snippet,
+.session-found-excerpt {
   grid-area: subtitle;
   min-width: 0;
   overflow: hidden;
@@ -207,7 +211,7 @@
   }
   .session-dot { width: 8px; height: 8px; }
   .session-title { font-size: var(--fw-text-lg); }
-  .session-subtitle, .session-when { font-size: var(--fw-text-sm); }
+  .session-subtitle, .session-found-snippet, .session-found-excerpt, .session-when { font-size: var(--fw-text-sm); }
   .session-diff, .session-badge { font-size: var(--fw-text-xs); }
 }
 
@@ -254,3 +258,23 @@
 @media (prefers-reduced-motion: reduce) {
   .session-row-body, .session-row-actions { transition: none; }
 }
+
+/* A chat found by what was said in it: the title line, then the matching
+   words in at most two lines, then where the chat stands in one. */
+.session-row-found .session-row-body {
+  grid-template-areas:
+    "lead title when"
+    ". snippet snippet"
+    ". excerpt excerpt";
+}
+.session-row-found .session-found-snippet {
+  grid-area: snippet;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.session-row-found .session-found-excerpt { grid-area: excerpt; }
+.session-found-snippet mark { background: transparent; color: var(--fw-fg); font-weight: 600; }

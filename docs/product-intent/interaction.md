@@ -294,7 +294,15 @@ On the web client, every message, tool call, and group of calls shows the clock 
 
 ## PI-INTERACTION-029: Words in any transcript can be found and opened
 
-On every client, the user searches the current session or every session in the project. The search covers people's and the agent's words and tool results, as recorded, also while a session works. Each hit, ranked by relevance, shows the speaker, the matching words in context, and in project scope the session's title. Opening a hit lands its session's transcript on the block that holds it and briefly marks that block. The search stays open with the next hit one key away. Mod+F or the command menu opens it on the web client. A command opens it in the terminal.
+On the web client, Mod+F or the command menu opens a search of the current session or every session in the project. The search covers people's and the agent's words and tool results, as recorded, also while a session works. Each hit, ranked by relevance, shows the speaker, the matching words in context, and in project scope the session's title. Opening a hit lands its session's transcript on the block that holds it and briefly marks that block. The search stays open with the next hit one key away.
+
+## PI-INTERACTION-179: The terminal finds text anywhere in the transcript in front of the user
+
+In the terminal, Ctrl+F or a command opens a find bar over the transcript of the session in front of the user. It finds every occurrence of the text or pattern in that whole transcript, also text that is off screen, not yet loaded, or collapsed. Enter goes to the next match, scrolls it into view, and highlights it. The bar shows the match count and can match case or a regular expression.
+
+## PI-INTERACTION-178: The session list search finds a chat by what was said in it
+
+On every client, the session list search finds a chat by its title or by words that the person or an agent wrote in it. Title matches show first, as the person types. Below them, matching chats show best first, one row each, with the matching words, when the chat was last active, and where it stands. Opening such a row lands its transcript on the best match and briefly marks it.
 
 ## PI-INTERACTION-030: Files are mentioned from a picker on every client
 

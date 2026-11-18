@@ -36,7 +36,7 @@ function sessionRow(index: number): PickerSessionRow {
 }
 
 function resultOf(rows: readonly PickerRow[]) {
-  return { rows, totalMatches: rows.length, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 3 }
+  return { rows, totalMatches: rows.length, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 3, searchingMessages: false }
 }
 
 const HEIGHT = 14
@@ -157,6 +157,26 @@ describe("session picker scroll ownership", () => {
       await rendered.flush()
       expect(rendered.captureCharFrame()).toContain("Today")
       expect(rendered.captureCharFrame()).toContain("session-00")
+    } finally {
+      rendered.renderer.destroy()
+    }
+  })
+
+  it("counts only title matches in the capped footer, and says it searches until the messages answer", async () => {
+    const { rendered, rows, setResult } = await renderPicker()
+    try {
+      const foundRow: PickerRow = { kind: "found", id: "found:s39", session: rows[39]!.session, found: { sessionId: "s39", entryId: "e1", snippet: "[kafka]" } }
+      setResult({ ...resultOf([rows[0]!, rows[1]!, { kind: "header", id: "header:messages", label: "In messages" }, foundRow]), totalMatches: 5, capped: true })
+      await rendered.flush()
+      expect(rendered.captureCharFrame()).toContain("5 results (showing first 2)")
+
+      setResult({ ...resultOf([]), searchingMessages: true })
+      await rendered.flush()
+      expect(rendered.captureCharFrame()).toContain("Searching messages...")
+      expect(rendered.captureCharFrame()).not.toContain("No results found")
+      setResult(resultOf([]))
+      await rendered.flush()
+      expect(rendered.captureCharFrame()).toContain("No results found")
     } finally {
       rendered.renderer.destroy()
     }

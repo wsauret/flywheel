@@ -39,6 +39,7 @@ export function fixture(executor: ProjectControlClientOptions["executor"] = neve
     start() {},
     recall: never,
     transcriptSearch: never,
+    findChats: never,
     snapshot: async () => ({
       rows: [...metadata.values()].map((row) => projectSessionCatalogRow(row)).filter((row) => row.kind === "chat"),
       errors: [],

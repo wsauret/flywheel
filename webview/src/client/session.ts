@@ -1,4 +1,4 @@
-import type { ProjectFilesRequest, ProjectFilesResult, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript-protocol-types.js"
+import type { ChatSearchRequest, ChatSearchResult, ProjectFilesRequest, ProjectFilesResult, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript-protocol-types.js"
 import type { CommandUse } from "../../../src/protocol/command-usage-protocol-types.js"
 import type { CommandOutcome } from "../../../src/protocol/command-catalog-protocol-types.js"
 import { isActiveActivity, type ChildSessionRow, type FrontendActivity, type FrontendEvent, type FrontendMutation, type ProtocolChatAttachment, type RuntimeHealth, type RuntimeTransportHealth, type SessionCatalogError, type SessionCatalogRow, type SessionRow, type SessionTitlePatch } from "../../../src/protocol/app-service-types.js"
@@ -245,6 +245,8 @@ export interface RuntimeSession {
   /** Ranked hits over the words of one session's transcript or every
    *  session's, from the runtime's index. */
   searchTranscripts(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
+  /** The root chats whose messages best match, one per chat, from the same index. */
+  searchChats(request: ChatSearchRequest): Promise<ChatSearchResult>
   projectFiles(request: ProjectFilesRequest): Promise<ProjectFilesResult>
   refreshAuth(): Promise<void>
   /** Updates the supplied session titles and preserves omitted fields. */
@@ -809,6 +811,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       return await visible()?.transcript.openAround(entryId)
     },
     searchTranscripts: (request) => connection.query({ type: "transcriptSearch", request }),
+    searchChats: (request) => connection.query({ type: "chatSearch", request }),
     projectFiles: (request) => connection.query({ type: "projectFiles", request }),
     async loadOlder() {
       return await visible()?.transcript.loadOlder() ?? false

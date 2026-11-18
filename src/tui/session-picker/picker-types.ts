@@ -1,10 +1,11 @@
 import type { SessionCatalogRow } from "../../protocol/app-service-types.js"
+import type { FoundChat } from "../../protocol/transcript-protocol-types.js"
 
-export type PickerRow = PickerHeaderRow | PickerSessionRow | PickerCorruptRow
+export type PickerRow = PickerHeaderRow | PickerSessionRow | PickerCorruptRow | PickerFoundRow
 
 /** Every non-header row: the rows the picker renders interactively and the
  *  cursor can land on. */
-export type SelectablePickerRow = PickerSessionRow | PickerCorruptRow
+export type SelectablePickerRow = PickerSessionRow | PickerCorruptRow | PickerFoundRow
 
 interface PickerHeaderRow {
   readonly kind: "header"
@@ -27,4 +28,14 @@ export interface PickerCorruptRow {
   readonly id: string
   readonly sessionId: string
   readonly reason: string
+}
+
+/** A chat that the search found by words in its messages rather than by its
+ *  title. It shows under the title matches with the matching words and where
+ *  the chat stands, and opening it lands the transcript on the best match. */
+export interface PickerFoundRow {
+  readonly kind: "found"
+  readonly id: string
+  readonly session: SessionCatalogRow
+  readonly found: FoundChat
 }

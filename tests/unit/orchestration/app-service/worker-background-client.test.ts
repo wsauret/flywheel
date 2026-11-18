@@ -44,6 +44,7 @@ class InThreadServerWorker extends EventTarget {
       Layer.provide(RuntimeBackgroundRpc.toLayer(Effect.succeed(RuntimeBackgroundRpc.of({
         RuntimeBackgroundRecall: unused,
         RuntimeBackgroundTranscriptSearch: unused,
+        RuntimeBackgroundChatSearch: unused,
         RuntimeBackgroundOutputWindow: unused,
         RuntimeBackgroundOutputRange: unused,
         RuntimeBackgroundOutputGroupChildren: unused,

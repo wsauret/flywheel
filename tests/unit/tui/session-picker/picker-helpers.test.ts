@@ -52,6 +52,8 @@ function rowLabel(row: PickerRow): string {
       return `session:${row.session.id}`
     case "corrupt":
       return `corrupt:${row.sessionId}`
+    case "found":
+      return `found:${row.session.id}`
   }
 }
 

@@ -8,6 +8,7 @@ import { publishPaneHeight } from "./transcript-scroll.js"
 import { scrollEdges } from "./scroll-edges.js"
 import "../styles/find.css"
 import { KERNEL_COMMAND_NAMES } from "../../../src/protocol/command-names.js"
+import { snippetParts } from "../../../src/protocol/client/search-snippet.js"
 
 const DEBOUNCE_MS = 200
 
@@ -87,10 +88,7 @@ export function FindBar(props: { readonly query: string; readonly onClose: () =>
   const roleLabel = (role: TranscriptSearchHit["role"]): string =>
     role === "user" ? "You" : role === "assistant" ? "Flywheel" : role === "tool" ? "Tool" : "Summary"
   /** The snippet's bracketed matches as emphasis; the rest as text. */
-  const snippet = (text: string) => {
-    const parts = text.split(/(\[[^\]]*\])/)
-    return <For each={parts}>{(part) => part.startsWith("[") && part.endsWith("]") ? <mark>{part.slice(1, -1)}</mark> : <>{part}</>}</For>
-  }
+  const snippet = (text: string) => <For each={snippetParts(text)}>{(part) => part.match ? <mark>{part.text}</mark> : <>{part.text}</>}</For>
   // The hits hang over the top of the transcript and stay open after a pick,
   // so the pane learns their height while they show, and a landing centers
   // its row in the part of the transcript that they leave visible.

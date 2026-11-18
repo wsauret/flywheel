@@ -58,7 +58,7 @@ describe("SessionPreviewPane", () => {
     const lanes = fakeLanes()
     const selected = catalogSession({ id: "a" })
     const [catalog, setCatalog] = createSignal<SessionPickerResult>({
-      rows: [{ kind: "session", id: "a", category: "Recent", session: selected }], totalMatches: 1, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0,
+      rows: [{ kind: "session", id: "a", category: "Recent", session: selected }], totalMatches: 1, capped: false, effectiveHighlightQuery: "", timeAgoWidth: 0, searchingMessages: false,
     })
     const calls: { request: OutputRangeRequest; resolve: (range: HydratedOutputRange) => void; reject: (error: Error) => void }[] = []
     const held: AnyBlock[] = [

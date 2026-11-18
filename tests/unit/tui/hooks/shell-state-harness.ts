@@ -224,6 +224,7 @@ export function buildAppService(sessionStore: ReturnType<typeof createSessionSto
       ...projections.backgroundLane,
       recall: async () => { throw new Error("Conversation recall is not used in this harness") },
       transcriptSearch: async () => { throw new Error("Transcript search is not used in this harness") },
+      findChats: async () => { throw new Error("Chat search is not used in this harness") },
     },
     moduleProtocol: projections.moduleProtocol,
     projection,

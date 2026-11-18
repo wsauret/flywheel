@@ -1,6 +1,6 @@
 import { fg as stFg, type RGBA, type TextChunk } from "@opentui/core"
 import type { SessionCatalogRow } from "../../protocol/app-service-types.js"
-import type { PickerRow, PickerSessionRow } from "./picker-types.js"
+import type { PickerFoundRow, PickerRow, PickerSessionRow } from "./picker-types.js"
 
 export interface DiffStatChunkColors {
   readonly success: RGBA
@@ -108,4 +108,16 @@ function sessionRow(
     session,
     category,
   }
+}
+
+/** The terminal lines a picker row takes: a chat found by its messages adds
+ *  its matching words and, when known, where it stands. */
+export function pickerRowLines(row: PickerRow): number {
+  return row.kind === "found" ? (row.found.excerpt ? 3 : 2) : 1
+}
+
+/** When a row's chat was last active, in milliseconds: a found chat's newest entry, which the search read, or else
+ *  the catalog's last update. */
+export function pickerRowLastActive(row: PickerSessionRow | PickerFoundRow): number {
+  return row.kind === "found" && row.found.lastActivityAt !== undefined ? row.found.lastActivityAt : new Date(row.session.lastUpdated).getTime()
 }

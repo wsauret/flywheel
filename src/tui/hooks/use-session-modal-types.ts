@@ -11,7 +11,7 @@ export interface SessionModalDeps {
   modal: ModalContext
   renderModal: () => JSX.Element
   signals: ShellSignals
-  appService: Pick<RuntimeClient, "dispatch">
+  appService: Pick<RuntimeClient, "dispatch" | "query">
   showToast: ShellServices["showToast"]
   clipboard: Clipboard
   /** The rows the list shows (`ShellSignals.listedSessions`). */
@@ -19,6 +19,8 @@ export interface SessionModalDeps {
   sessionCatalogErrors: Accessor<readonly SessionCatalogError[]>
   activateSession: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   activateSessionById: (sessionId: string) => Promise<void>
+  /** Land the foreground transcript on an entry and mark it briefly. */
+  landOnEntry: (entryId: string) => void
   /** Close chat, which also removes the tab that shows the chat. */
   closeChat: (sessionId: string) => Promise<void>
   deleteActiveSession: (sessionId: string) => Promise<void>
@@ -30,6 +32,8 @@ export interface SessionPickerResult {
   readonly capped: boolean
   readonly effectiveHighlightQuery: string
   readonly timeAgoWidth: number
+  /** True while the filter's search of the chats' messages has not answered yet. */
+  readonly searchingMessages: boolean
 }
 
 export interface SessionModalAction {

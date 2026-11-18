@@ -12,7 +12,7 @@ import type { DurableSessionCatalogRow } from "../../../../src/orchestration/ses
 import { useSessionModal } from "../../../../src/tui/hooks/use-session-modal.js"
 import { createSignals } from "../hooks/_session-modal-fixtures.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
-import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const { createActiveSessionDelete } = await import("../../../../src/tui/hooks/create-modals.js")
 const TMP_ROOT = path.join(os.tmpdir(), `flywheel-session-modal-delete-${process.pid}`)
@@ -60,7 +60,7 @@ function appService(manager: SessionManager) {
     const plan = await manager.admitDeletion(command.sessionId)
     for (const target of plan.targets) await manager.finalizeDeletionTarget(target)
     return { ok: true }
-  } }) }
+  } }), query: runtimeQuery({}) }
   spyOn(service, "dispatch")
   return service
 }
@@ -93,6 +93,7 @@ describe("useSessionModal delete", () => {
           clipboard: { copy: async () => {}, readImage: async () => null },
           activateSession: mock(async () => ({ ok: true as const })),
           activateSessionById: mock(async () => {}),
+          landOnEntry: () => {},
           closeChat: async () => {},
           deleteActiveSession: mock(async () => {}),
         })
@@ -141,6 +142,7 @@ describe("useSessionModal delete", () => {
           clipboard: { copy: async () => {}, readImage: async () => null },
           activateSession: mock(async () => ({ ok: true as const })),
           activateSessionById: mock(async () => {}),
+          landOnEntry: () => {},
           closeChat: async () => {},
           deleteActiveSession,
         })

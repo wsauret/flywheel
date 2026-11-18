@@ -10,7 +10,7 @@ import { Context, Schema } from "effect"
 import { Rpc } from "effect/rpc"
 import { RuntimeBackgroundRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { protocolBackgroundSchema } from "../../../../src/protocol/modules.js"
-import type { TranscriptSearchResult } from "../../../../src/protocol/transcript-protocol-types.js"
+import type { ChatSearchResult, TranscriptSearchResult } from "../../../../src/protocol/transcript-protocol-types.js"
 import { asAsyncEventReadSurface } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
@@ -33,6 +33,7 @@ function backgroundClient(overrides: Partial<RuntimeBackgroundClient> = {}): Run
     waitForTotals: async () => ({ rows: [], errors: [], totalsLoading: false, generationSpeeds: {} }),
     sessionDetail: async () => ({ view: null }),
     transcriptSearch: async () => { throw new Error("Transcript search is not used in this fixture") },
+    findChats: async () => { throw new Error("Chat search is not used in this fixture") },
     recall: async () => { throw new Error("Recall is not used in this fixture") },
     moduleSnapshot: async () => { throw new Error("Module background snapshots are not used in this fixture") },
     close: async () => {},
@@ -200,13 +201,14 @@ describe("runtime background Worker lane", () => {
     expect(timerCalls).toBe(0)
   })
 
-  test("transcript search uses the bounded Worker lane and preserves failures", async () => {
+  test("transcript and chat search use the bounded Worker lane and preserve failures", async () => {
     const expected: TranscriptSearchResult = {
       hits: [{ sessionId: "s", sessionTitle: "Chat", entryId: "entry", role: "user", snippet: "[needle]" }],
       total: 1,
       page: 1,
       pageSize: 20,
     }
+    const found: ChatSearchResult = { chats: [{ sessionId: "s", entryId: "entry", snippet: "[needle]" }] }
     const original = new Error("derived index failed")
     const lane = createRuntimeBackgroundLane("/cwd", {
       createClient: () => backgroundClient({
@@ -214,11 +216,27 @@ describe("runtime background Worker lane", () => {
           if (request.query === "error") throw original
           return expected
         },
+        findChats: async (request) => {
+          if (request.query === "error") throw original
+          return found
+        },
       }),
     })
 
     expect(await lane.transcriptSearch({ query: "needle", page: 1, sessionId: "s" })).toEqual(expected)
     await expect(lane.transcriptSearch({ query: "error", page: 1 })).rejects.toBe(original)
+    expect(await lane.findChats({ query: "needle", exclude: ["t"] })).toEqual(found)
+    await expect(lane.findChats({ query: "error", exclude: [] })).rejects.toBe(original)
+  })
+
+  test("chat search RPC strictly roundtrips its public request and result", () => {
+    const rpc = RuntimeBackgroundRpc.requests.get("RuntimeBackgroundChatSearch")!
+    const payload = { projectRoot: "/project", request: { query: "needle", exclude: ["t"] } }
+    const result = { chats: [{ sessionId: "s", lastActivityAt: 5, entryId: "entry", snippet: "[needle]", excerpt: { source: "checkpoint" as const, text: "PR open" } }] }
+
+    expect(Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))(payload)).toEqual(payload)
+    expect(Schema.decodeUnknownSync(rpc.successSchema, served(rpc))(result)).toEqual(result)
+    expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ chats: [{ ...result.chats[0], excess: true }] })).toThrow()
   })
 
   test("transcript search RPC strictly roundtrips its public request and result", () => {

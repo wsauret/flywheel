@@ -9,7 +9,8 @@ import { ITALIC } from "@tui/utils/text-attributes"
 import { useBodyToggle, useHeaderToggle, useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
 import { createContext, createEffect, createMemo, createSignal, For, on, Show, useContext, type Accessor } from "solid-js"
 import { useBlockDisclosure } from "../context/block-disclosure.js"
-import { blockIdentity } from "../../protocol/block-identity.js"
+import { blockEntryKeys, blockIdentity } from "../../protocol/block-identity.js"
+import { useLanded } from "@tui/context/landing-highlight.js"
 import { useRowWidth } from "@tui/context/row-width.js"
 import { useTranscriptViewportHeight } from "@tui/context/transcript-viewport.js"
 import { createMeasuredWidth } from "@tui/hooks/create-measured-width.js"
@@ -97,6 +98,8 @@ function UserMessageContent(props: UserMessageBlockProps) {
   const { theme } = themeCtx
   const pending = () => props.block.pending === true
   const injected = () => props.block.injected === true
+  // The bubble already wears the landing background, so a landing marks its bar.
+  const landed = useLanded(() => blockEntryKeys(blockIdentity(props.block)))
   const disclosure = useBlockDisclosure()
   const key = () => `${blockIdentity(props.block)}#injected`
   const expanded = () => disclosure.disclosure(key()) ?? true
@@ -144,7 +147,7 @@ function UserMessageContent(props: UserMessageBlockProps) {
         // own color, with its sender header in the same color.
         <box
           border={["left"]}
-          borderColor={pending() ? theme.textMuted : props.block.from ? theme.sessionMessage : theme.secondary}
+          borderColor={landed() ? theme.primary : pending() ? theme.textMuted : props.block.from ? theme.sessionMessage : theme.secondary}
           customBorderChars={VerticalBarBorder}
         >
           <box
@@ -188,7 +191,7 @@ function UserMessageContent(props: UserMessageBlockProps) {
             <box
               ref={bodyToggle.body}
               border={["left"]}
-              borderColor={bodyToggle.hovered() ? theme.primary : theme.textMuted}
+              borderColor={bodyToggle.hovered() || landed() ? theme.primary : theme.textMuted}
               customBorderChars={VerticalBarBorder}
               {...bodyToggle.handlers}
             >

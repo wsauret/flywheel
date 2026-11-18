@@ -1,7 +1,10 @@
 import { Key } from "@solid-primitives/keyed"
-import { createEffect, createMemo, createSignal, onCleanup, Show, untrack } from "solid-js"
+import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack } from "solid-js"
 
 import type { SessionCatalogError } from "../../../src/protocol/app-service-types.js"
+import { contentRows, contentSettled, createContentSearch, type ContentAnswer } from "../../../src/protocol/client/chat-content-search.js"
+import { snippetParts } from "../../../src/protocol/client/search-snippet.js"
+import type { ChatSearchRequest, ChatSearchResult, FoundChat } from "../../../src/protocol/transcript-protocol-types.js"
 import { formatTimeAgo } from "../client/format-time.js"
 import type { SessionSummary } from "../client/view-state.js"
 import { Icon, ICONS } from "./icons.js"
@@ -30,6 +33,12 @@ export interface SessionListActions {
   readonly onRename?: (sessionId: string) => void
   /** True while an action on the session runs, such as Close or Delete. */
   readonly working: (sessionId: string) => boolean
+  /** The chats whose messages match a search; without it the list searches titles only. */
+  readonly searchChats?: (request: ChatSearchRequest) => Promise<ChatSearchResult>
+  /** Opens a chat that the search found by its messages, landed on the best matching entry. */
+  readonly onOpenAt?: (sessionId: string, entryId: string) => void
+  /** Reports a failed search of the messages. */
+  readonly onSearchFailed?: (cause: unknown) => void
 }
 
 /** The one row whose tray is showing, and by how much. `dragging` while a
@@ -62,12 +71,40 @@ export function SessionList(props: {
   readonly grouped?: boolean
   readonly filter?: string
   readonly actions: SessionListActions
+  /** The pause in typing before the messages are searched; the shared default when absent. */
+  readonly contentSearchDelayMs?: number
 }) {
   const rows = createMemo((previous: readonly Row[]) => {
     const query = props.filter?.trim().toLowerCase() ?? ""
     const visible = query.length === 0 ? props.sessions : props.sessions.filter((session) => matches(session, query))
     return layoutSessionRows(visible, props.grouped === true, previous)
   }, [])
+
+  // Title matches show at once; chats found by what was said in them come
+  // after a pause in typing and go below every title match, so an answer
+  // never moves a row above the reader (PI-INTERACTION-178).
+  const [contentAnswer, setContentAnswer] = createSignal<ContentAnswer | undefined>()
+  const contentSearch = createContentSearch({
+    search: (request) => props.actions.searchChats?.(request) ?? Promise.resolve({ chats: [] }),
+    publish: setContentAnswer,
+    fail: (cause) => props.actions.onSearchFailed?.(cause),
+    ...(props.contentSearchDelayMs === undefined ? {} : { delayMs: props.contentSearchDelayMs }),
+  })
+  onCleanup(contentSearch.dispose)
+  createEffect(() => {
+    const query = props.filter ?? ""
+    if (props.actions.searchChats === undefined) return
+    contentSearch.update(query, untrack(() => rows().map((row) => row.session.id)))
+  })
+  const found = createMemo(() => {
+    const listed = new Map(props.sessions.map((session) => [session.id, session]))
+    const shown = new Set(rows().map((row) => row.session.id))
+    return contentRows(contentAnswer(), shown).flatMap((chat) => {
+      const session = listed.get(chat.sessionId)
+      return session ? [{ chat, session }] : []
+    })
+  })
+  const searchingMessages = () => props.actions.searchChats !== undefined && !contentSettled(contentAnswer(), props.filter ?? "")
 
   const [tray, setTray] = createSignal<Tray | undefined>(undefined)
   let revealedSelected = false
@@ -104,8 +141,8 @@ export function SessionList(props: {
 
   return (
     <div class="session-list" ref={(root) => onCleanup(bindRowSwipe(root, tray, setTray))}>
-      <Show when={rows().length === 0 && props.errors.length === 0}>
-        <div class="session-list-empty">{(props.filter?.trim().length ?? 0) > 0 ? "No chats match." : "No chats yet."}</div>
+      <Show when={rows().length === 0 && found().length === 0 && props.errors.length === 0}>
+        <div class="session-list-empty">{searchingMessages() ? "Searching messages..." : (props.filter?.trim().length ?? 0) > 0 ? "No chats match." : "No chats yet."}</div>
       </Show>
       {/* Keyed by the session's id, not by row reference: a row object is
           minted whenever the tree is laid out again, and a reference-keyed
@@ -126,6 +163,19 @@ export function SessionList(props: {
               actions={actions()}
             />
           </>
+        )}
+      </Key>
+      <Show when={found().length > 0}>
+        <div class="session-group-label">In messages</div>
+      </Show>
+      <Key each={found()} by={(entry) => entry.chat.sessionId}>
+        {(entry) => (
+          <FoundRow
+            chat={entry().chat}
+            session={entry().session}
+            selected={entry().session.id === props.selected}
+            onOpen={() => props.actions.onOpenAt?.(entry().chat.sessionId, entry().chat.entryId)}
+          />
         )}
       </Key>
       <Show when={props.errors.length > 0}>
@@ -235,6 +285,39 @@ function SessionRow(props: {
           </button>
         </Show>
       </span>
+    </div>
+  )
+}
+
+/** A chat that the search found by what was said in it: its title and age,
+ *  the matching words with the matches marked, and where the chat stands. */
+function FoundRow(props: {
+  readonly chat: FoundChat
+  readonly session: SessionSummary
+  readonly selected: boolean
+  readonly onOpen: () => void
+}) {
+  return (
+    <div
+      class="session-row session-row-found"
+      role="option"
+      tabIndex={0}
+      aria-selected={props.selected}
+      data-found={props.chat.sessionId}
+      onClick={props.onOpen}
+      onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); props.onOpen() } }}
+    >
+      <div class="session-row-body">
+        <span class="session-lead">
+          <span class="session-dot" classList={{ open: props.session.active, live: props.session.working, waiting: props.session.awaitingAnswer === true }} />
+        </span>
+        <span class="session-title">{props.session.title}</span>
+        <span class="session-when">{formatTimeAgo(props.chat.lastActivityAt === undefined ? props.session.lastUpdated : new Date(props.chat.lastActivityAt).toISOString())}</span>
+        <span class="session-found-snippet">
+          <For each={snippetParts(props.chat.snippet)}>{(part) => part.match ? <mark>{part.text}</mark> : <>{part.text}</>}</For>
+        </span>
+        <Show when={props.chat.excerpt}>{(excerpt) => <span class="session-found-excerpt">{excerpt().text}</span>}</Show>
+      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { createRoot, createSelector, createSignal } from "solid-js"
 
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import type { AgentInputAnswer } from "../../../src/protocol/question-protocol-types.js"
-import type { ProjectFileEntry, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript-protocol-types.js"
+import type { ChatSearchRequest, ChatSearchResult, ProjectFileEntry, TranscriptSearchRequest, TranscriptSearchResult } from "../../../src/protocol/transcript-protocol-types.js"
 import type { CommandOutcome } from "../../../src/protocol/command-catalog-protocol-types.js"
 import type { CaptureSurfaceOpener } from "../../../src/protocol/client/surface-presentation.js"
 import type { ProtocolChatAttachment, SessionTitlePatch } from "../../../src/protocol/app-service-types.js"
@@ -86,6 +86,7 @@ export interface ClientActions {
   loadOlder(): Promise<boolean>
   jumpToLatest(): void
   searchTranscripts(request: TranscriptSearchRequest): Promise<TranscriptSearchResult>
+  searchChats(request: ChatSearchRequest): Promise<ChatSearchResult>
   /** Project files and folders matching `query`, best first, for a mention. */
   projectFiles(query: string, limit: number): Promise<readonly ProjectFileEntry[]>
   /** Answers the identity of the block the transcript landed on, if any. */
@@ -296,6 +297,7 @@ export function createClientActions(deps: ClientActionDeps): ClientActions {
       return false
     })),
     searchTranscripts: (request) => session.searchTranscripts(request),
+    searchChats: (request) => session.searchChats(request),
     projectFiles: async (query, limit) => {
       try {
         return (await session.projectFiles({ query, limit })).entries

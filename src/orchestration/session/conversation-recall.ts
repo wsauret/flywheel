@@ -235,12 +235,13 @@ function expandedRecallRecord(entry: RecallEntry, index: number, offset: number,
  *  OR is a plain term. Punctuation and operator words thus cannot make the
  *  result an FTS5 syntax error. A blank
  *  query yields an empty string, which FTS5 rejects, so a caller must not
- *  search with it. */
-export function buildFtsMatch(query: string): string {
-  return query
-    .split(/\s+/)
-    .filter((word) => word.length > 0)
-    .map((word) => `"${word.replace(/"/g, '""')}"`)
+ *  search with it. With `prefixLastWord`, the last word is an FTS5 prefix
+ *  query (`"zanzi"*`), so a search that runs while the person still types
+ *  matches the word they are typing; a complete word still matches itself. */
+export function buildFtsMatch(query: string, options: { readonly prefixLastWord?: boolean } = {}): string {
+  const words = query.split(/\s+/).filter((word) => word.length > 0)
+  return words
+    .map((word, index) => `"${word.replace(/"/g, '""')}"${options.prefixLastWord === true && index === words.length - 1 ? "*" : ""}`)
     .join(" OR ")
 }
 interface StringMap<T> { [key: string]: T }

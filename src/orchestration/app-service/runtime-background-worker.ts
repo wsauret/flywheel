@@ -22,8 +22,8 @@ import { asAsyncEventReadSurface, type AsyncEventStateReadSurface } from "../../
 import { resolveConversationSearchDbFile, resolveSessionSummaryDbFile } from "../../infra/paths.js"
 import { createConversationRecall } from "../session/conversation-recall.js"
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
-import { createTranscriptSearch } from "../session/transcript-search.js"
-import type { TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
+import { createTranscriptSearch, searchableSessions } from "../session/transcript-search.js"
+import type { ChatSearchRequest, ChatSearchResult, TranscriptSearchRequest, TranscriptSearchResult } from "../../protocol/transcript-protocol-types.js"
 import { createSessionMetadataProjection, sessionsFromProjection } from "../session/session-metadata-projection.js"
 import { acquireSessionSummaryIndex, type SessionSummaryIndex } from "../session/session-summary-index.js"
 import { createRuntimeBackgroundProjectMap, createRuntimeBackgroundProjectOperations } from "./runtime-background-projects.js"
@@ -55,6 +55,7 @@ interface RuntimeBackgroundProject {
   readonly moduleSnapshot: (domain: ProtocolBackgroundDomain, sessionId: string) => Promise<ProtocolBackgroundSnapshot<ProtocolBackgroundDomain>>
   readonly recall: (conversationId: string, contract: RecallInput) => Promise<RecallResult>
   readonly transcriptSearch: (request: TranscriptSearchRequest) => Promise<TranscriptSearchResult>
+  readonly findChats: (request: ChatSearchRequest) => Promise<ChatSearchResult>
   readonly close: () => Promise<void>
 }
 
@@ -92,9 +93,7 @@ function openRuntimeBackgroundProject(projectRoot: string): RuntimeBackgroundPro
   const transcriptSearch = createTranscriptSearch({
     index: { through: (upperPosition) => index().through(upperPosition) },
     source: projectionReader,
-    sessions: async () => sessionsFromProjection(await sessionMetadata.replay()).flatMap(({ id, data }) =>
-      data.kind !== "workflow" ? [{ id, conversationId: data.conversationId, ...(data.name === undefined ? {} : { name: data.name }) }] : []
-    ),
+    sessions: async () => searchableSessions(sessionsFromProjection(await sessionMetadata.replay())),
   })
   // Each module's durable reader, by registry lookup; a reader holds nothing
   // until the first request names a session.
@@ -113,6 +112,7 @@ function openRuntimeBackgroundProject(projectRoot: string): RuntimeBackgroundPro
     recall: (conversationId, contract) => operations.run(() =>
       createConversationRecall({ store: projectionReader, index: index(), conversationId })(contract)),
     transcriptSearch: (request) => operations.run(() => transcriptSearch.search(request)),
+    findChats: (request) => operations.run(() => transcriptSearch.findChats(request)),
     close: () => operations.close(
       () => summaryIndex?.cancel(),
       async () => {
@@ -157,6 +157,7 @@ export async function runRuntimeBackgroundWorker(worker: WorkerSelf, init: Runti
         RuntimeBackgroundModuleSnapshot: ({ projectRoot, domain, sessionId }) => fromPromise(async () => projects.get(projectRoot).moduleSnapshot(domain, sessionId)),
         RuntimeBackgroundRecall: ({ projectRoot, conversationId, contract }) => fromPromise(() => projects.get(projectRoot).recall(conversationId, contract)),
         RuntimeBackgroundTranscriptSearch: ({ projectRoot, request }) => fromPromise(() => projects.get(projectRoot).transcriptSearch(request)),
+        RuntimeBackgroundChatSearch: ({ projectRoot, request }) => fromPromise(() => projects.get(projectRoot).findChats(request)),
         RuntimeBackgroundReleaseProject: ({ projectRoot }) => fromPromise(() => projects.release(projectRoot)),
         RuntimeBackgroundShutdown: () => fromPromise(close),
       })))),

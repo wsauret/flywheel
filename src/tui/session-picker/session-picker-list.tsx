@@ -10,6 +10,7 @@ import { Key } from "@solid-primitives/keyed"
 import { isWorkingStatus, type StatusView } from "../../protocol/status-protocol-types.js"
 import { SessionPickerRow } from "./session-picker-row.js"
 import type { PickerRow } from "./picker-types.js"
+import { pickerRowLines } from "./picker-helpers.js"
 import { ModalFooter } from "../components/modal-footer.js"
 import { SESSION_CONTROL_COPY } from "../components/modal-copy.js"
 import { ControlledTextField } from "../components/controlled-text-field.js"
@@ -22,6 +23,7 @@ interface SessionPickerResult {
   capped: boolean
   effectiveHighlightQuery: string
   timeAgoWidth: number
+  searchingMessages: boolean
 }
 
 interface SessionPickerAction {
@@ -60,7 +62,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
   // The working-session blink dot shares the app-wide tick pool instead of a
   // modal-lifetime interval; the tick only runs while a working row is visible.
   const anyWorking = createMemo(() =>
-    props.result.rows.some((row) => row.kind === "session" && isWorkingStatus(props.statusView(row.session.id))))
+    props.result.rows.some((row) => (row.kind === "session" || row.kind === "found") && isWorkingStatus(props.statusView(row.session.id))))
   // eslint-disable-next-line solid/reactivity -- createSharedTick stores and reads the accessor inside its returned reactive tick
   const blinkTick = useTickPool().createSharedTick(700, anyWorking)
   const blinkOn = () => blinkTick() % 2 === 0
@@ -68,16 +70,25 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
   const viewportHeight = createMemo(() =>
     Math.max(1, props.height - LIST_CHROME_ROWS - (props.renaming ? 3 : 0) - (props.result.capped ? 1 : 0)))
 
+  /** The first line of each row; a row found by its messages takes more than one. */
+  const rowStarts = createMemo(() => {
+    let line = 0
+    return props.result.rows.map((row) => { const start = line; line += pickerRowLines(row); return start })
+  })
+
   function syncCursorScroll(scrollbox: ScrollBoxRenderable): boolean {
     const cursor = props.cursor
     const maxH = viewportHeight()
-    if (props.result.rows.length === 0 || maxH <= 0) return false
+    const cursorRow = props.result.rows[cursor]
+    if (cursorRow === undefined || maxH <= 0) return false
     const top = scrollbox.scrollTop
     const bottom = top + maxH - 1
     let reveal = cursor
     while (reveal > 0 && props.result.rows[reveal - 1]?.kind === "header") reveal--
-    if (reveal < top) scrollbox.scrollTo(reveal)
-    else if (cursor > bottom) scrollbox.scrollTo(Math.max(0, cursor - maxH + 1))
+    const revealTop = rowStarts()[reveal] ?? 0
+    const cursorBottom = (rowStarts()[cursor] ?? 0) + pickerRowLines(cursorRow) - 1
+    if (revealTop < top) scrollbox.scrollTo(revealTop)
+    else if (cursorBottom > bottom) scrollbox.scrollTo(Math.max(0, cursorBottom - maxH + 1))
     return true
   }
 
@@ -85,7 +96,8 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
     viewport: scrollboxRef,
     revision: () => props.navigationRevision,
     layout: () => [props.result.rows, viewportHeight()],
-    fixedKeys: () => props.result.rows.map(pickerIdentity),
+    // One key per line, so the reader's anchor survives rows of more than one line.
+    fixedKeys: () => props.result.rows.flatMap((row) => Array.from({ length: pickerRowLines(row) }, (_, line) => line === 0 ? pickerIdentity(row) : `${pickerIdentity(row)}:${line}`)),
     elements: () => [],
     reveal: syncCursorScroll,
   })
@@ -131,7 +143,7 @@ export function SessionPickerList(props: SessionPickerListProps): JSX.Element {
       </box>
       <Show when={props.result.rows.length === 0}>
         <box paddingTop={1} paddingBottom={1} paddingLeft={2}>
-          <text fg={props.theme.textMuted}>No results found</text>
+          <text fg={props.theme.textMuted}>{props.result.searchingMessages ? "Searching messages..." : "No results found"}</text>
         </box>
       </Show>
       <Show when={props.result.rows.length > 0}>
@@ -194,7 +206,7 @@ function PickerListRow(props: {
       {(row) => {
         const working = () => {
           const current = row()
-          return current.kind === "session" ? isWorkingStatus(props.statusView(current.session.id)) : false
+          return current.kind === "corrupt" ? false : isWorkingStatus(props.statusView(current.session.id))
         }
         return (
           <SessionPickerRow
@@ -229,9 +241,9 @@ function HeaderRow(props: { label: string; theme: TuiTheme }): JSX.Element {
 
 
 function selectableRowCount(rows: readonly PickerRow[]): number {
-  return rows.filter((row) => row.kind !== "header").length
+  return rows.filter((row) => row.kind !== "header" && row.kind !== "found").length
 }
 
 function pickerIdentity(row: PickerRow): string {
-  return row.kind === "session" ? row.session.id : row.kind === "corrupt" ? row.sessionId : row.id
+  return row.kind === "session" || row.kind === "found" ? row.session.id : row.kind === "corrupt" ? row.sessionId : row.id
 }

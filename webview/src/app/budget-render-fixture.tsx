@@ -324,6 +324,40 @@ export function mountSessionListBudget() {
   })
 }
 
+/** The rail's list with a search: title matches from the catalog, and the
+ *  chats `found` answers for the messages, after a pause of 0 ms. */
+export function mountSessionListSearch(found: (query: string) => Promise<{ chats: readonly { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint" | "final"; text: string } }[] }>) {
+  return createRoot((dispose) => {
+    const [filter, setFilter] = createSignal("")
+    const opened: string[] = []
+    const root = createElement("root")
+    insert(root, createComponent(SessionList, {
+      sessions: [summary({ id: "kafka", title: "Kafka pipeline" }), summary({ id: "other", title: "Other work" }), summary({ id: "third", title: "Third" })],
+      errors: [],
+      selected: undefined,
+      get filter() { return filter() },
+      contentSearchDelayMs: 0,
+      actions: { onSelect() {}, working: () => false, searchChats: ({ query }) => found(query), onOpenAt(sessionId, entryId) { opened.push(`${sessionId}@${entryId}`) } },
+    }))
+    return {
+      dispose,
+      setFilter,
+      opened,
+      text: () => textContent(root),
+      click(id: string) {
+        const row = nodes(root).find((node) => node.properties["data-found"] === id)
+        if (!row || typeof row.properties.onClick !== "function") throw new Error(`No found row for ${id}`)
+        row.properties.onClick()
+      },
+      row: (id: string) => nodes(root).find((node) => node.properties["data-session"] === id || node.properties["data-found"] === id),
+      rowOrder: () => nodes(root).flatMap((node) => {
+        const id = node.properties["data-session"] ?? node.properties["data-found"]
+        return typeof id === "string" ? [id] : []
+      }),
+    }
+  })
+}
+
 export function mountStatusBudget(nullableDetailBudget = false, source: "durable" | "live" = "durable") {
   return createRoot((dispose) => {
     const [current, setCurrent] = createSignal(state())

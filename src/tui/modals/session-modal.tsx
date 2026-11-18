@@ -47,7 +47,7 @@ export function SessionModal(props: SessionModalProps) {
   const layout = createMemo(() => computeResponsivePaneLayout(termWidth(), Math.max(0, modalWidth() - 4), listMaxHeight()))
   const selectedSession = createMemo(() => {
     const row = props.result.rows[props.cursor]
-    return row?.kind === "session" ? row.session : undefined
+    return row?.kind === "session" || row?.kind === "found" ? row.session : undefined
   })
   const selectedCorrupt = createMemo(() => {
     const row = props.result.rows[props.cursor]

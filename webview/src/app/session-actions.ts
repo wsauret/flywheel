@@ -1,3 +1,4 @@
+import { describeFailure } from "../client/failure-message.js"
 import { summaryOf } from "../client/view-state.js"
 import { useClient } from "./client-context.js"
 import { copySessionId } from "./session-copy.js"
@@ -47,6 +48,13 @@ export function useSessionActions(): SessionListActions {
     ...(writeClipboardText === undefined ? {} : {
       onCopy: (sessionId: string) => { void copySessionId(writeClipboardText, client.report, sessionId) },
     }),
+    searchChats: (request) => client.actions.searchChats(request),
+    onSearchFailed: (cause) => client.report("warning", `Flywheel could not search the chats' messages: ${describeFailure(cause)}`),
+    onOpenAt: async (sessionId, entryId) => {
+      if (client.stack) client.stack.openChat(sessionId)
+      client.closeSheet()
+      client.markBlock(await client.actions.openAround(sessionId, entryId))
+    },
     working: (sessionId) => client.actions.sessionWorking(sessionId),
     onClose: (sessionId) => client.actions.closeSession(sessionId),
     onDelete: async (sessionId) => {

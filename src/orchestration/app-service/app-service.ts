@@ -255,6 +255,8 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       case "outputWindow": return { snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: outputCursor(request.sessionId) }), ...await historyProjection.outputWindow(request.sessionId, request.request.range) }
       case "outputRange": return historyProjection.outputRange(request.sessionId, request.request)
       case "transcriptSearch": return deps.backgroundLane.transcriptSearch(request.request)
+      case "transcriptFind": return historyProjection.transcriptFind(request.sessionId, request.request)
+      case "chatSearch": return deps.backgroundLane.findChats(request.request)
       case "projectFiles": return deps.projectFiles.search(request.request)
       case "outputGroupChildren": return historyProjection.outputGroupChildren(request.sessionId, request.request)
       case "outputBlockBody": return historyProjection.outputBlockBody(request.sessionId, request.request)

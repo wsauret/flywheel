@@ -6,7 +6,7 @@ import flywheelTheme from "../../../../src/tui/context/theme/flywheel.json" with
 import { resolveTheme, type ThemeJson } from "../../../../src/tui/context/theme/resolve.js"
 import type { SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { SessionPickerRow } from "../../../../src/tui/session-picker/session-picker-row.js"
-import type { PickerCorruptRow, PickerSessionRow } from "../../../../src/tui/session-picker/picker-types.js"
+import type { PickerCorruptRow, PickerFoundRow, PickerSessionRow } from "../../../../src/tui/session-picker/picker-types.js"
 
 const themeJson: ThemeJson = flywheelTheme
 const theme = resolveTheme(themeJson, "dark")
@@ -194,6 +194,34 @@ describe("SessionPickerRow", () => {
       .map((chunk) => chunk.fg)
 
     expect(chipColors).toEqual([theme.success, theme.warning, theme.error])
+  })
+
+  it("renders a chat found by its messages with its title line, its last activity, the marked matching words, and where it stands", async () => {
+    const found: PickerFoundRow = {
+      kind: "found",
+      id: "found:session-1",
+      session: session({ title: "Graph matcher" }),
+      found: { sessionId: "session-1", lastActivityAt: now - 2 * 3_600_000, entryId: "e1", snippet: "fix the [kafka]\nconsumer lag", excerpt: { source: "checkpoint", text: "PR 5132 waits on review" } },
+    }
+    const result = await testRender(() => createComponent(SessionPickerRow, { row: found, theme, rowWidth: 60, selected: false, isWorking: false, blinkOn: true, now, timeAgoWidth: 3, rowIndex: 0, onRowClick: () => {} }), { width: 60, height: 3 })
+    try {
+      await result.renderOnce()
+      const lines = result.renderer.root.getChildren()[0]?.getChildren().map((text) => {
+        if (!(text instanceof TextRenderable)) throw new Error("expected a row line")
+        return [...text.content.chunks]
+      }) ?? []
+      const plainLines = lines.map((chunks) => chunks.map((chunk) => chunk.text).join("").trimEnd())
+      expect(plainLines[0]?.startsWith("  ○ Graph matcher")).toBe(true)
+      expect(plainLines[0]?.endsWith(" 2h")).toBe(true)
+      expect(plainLines.slice(1)).toEqual(["    fix the kafka consumer lag", "    PR 5132 waits on review"])
+      const match = lines[1]?.find((chunk) => chunk.text === "kafka")
+      expect(match?.fg).toEqual(theme.accent)
+      expect((match?.attributes ?? 0) & createTextAttributes({ bold: true })).toBe(createTextAttributes({ bold: true }))
+      expect(lines[1]?.find((chunk) => chunk.text === "fix the ")?.fg).toEqual(theme.textMuted)
+      expect(lines[2]?.find((chunk) => chunk.text === "PR 5132 waits on review")?.fg).toEqual(theme.textMuted)
+    } finally {
+      result.renderer.destroy()
+    }
   })
 
   it("renders corrupt rows with the session id, an error marker, and confirm-delete text", async () => {

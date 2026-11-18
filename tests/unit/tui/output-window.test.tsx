@@ -315,6 +315,44 @@ describe("OutputWindow", () => {
     }
   })
 
+  // A message search hit names a chat entry: a person's message, or an agent
+  // reply whose entry produced the text block `E:<part>`.
+  it("lands on a message entry far above the tail and marks that message alone", async () => {
+    const reply = (id: string, word: string): FrontendOutputBlock => ({ kind: "text", id, content: Array.from({ length: 80 }, (_, line) => `${word} line ${line}`).join("\n"), timestamp: 1 })
+    const { result, setCommand } = await renderWindow(transcriptOf([
+      { kind: "userMessage", id: "asked", content: "where is zanzibar", timestamp: 1, pending: false, injected: false },
+      reply("answered:0", "answer"),
+      { kind: "userMessage", id: "later", content: "thanks", timestamp: 2, pending: false, injected: false },
+      reply("closing:0", "closing"),
+    ]), 12, 60)
+    const theme = resolveTheme(flywheelTheme, "dark")
+    const spans = () => result.captureSpans().lines.flatMap((line) => line.spans)
+    const land = async (id: number, entryId: string) => {
+      setCommand({ id, type: "block", entryId })
+      await Promise.resolve()
+      await Promise.resolve()
+      await result.renderOnce()
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      await result.renderOnce()
+    }
+    try {
+      expect(result.captureCharFrame()).not.toContain("zanzibar")
+      await land(1, "asked")
+      expect(result.captureCharFrame()).toContain("where is zanzibar")
+      // The message bubble already wears the element background, so its bar marks the landing.
+      const bubbleRow = result.captureSpans().lines.find((line) => line.spans.some((span) => span.text.includes("zanzibar")))
+      expect(bubbleRow?.spans.find((span) => span.text.includes("┃"))?.fg.equals(theme.primary)).toBe(true)
+      expect(spans().find((span) => span.text.includes("answer line"))?.bg.equals(theme.backgroundElement)).toBe(false)
+
+      await land(2, "answered")
+      expect(result.captureCharFrame()).toContain("answer line 0")
+      expect(spans().find((span) => span.text.includes("answer line"))?.bg.equals(theme.backgroundElement)).toBe(true)
+      expect(spans().some((span) => span.text.includes("┃") && span.fg.equals(theme.primary))).toBe(false)
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
   it("renders the session intro before real output without putting it in outputBlocks", async () => {
     const outputBlocks: readonly TextBlock[] = [{
       kind: "text",

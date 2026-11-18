@@ -13,11 +13,12 @@
 }
 
 .sheet {
+  --sheet-height: min(88cqh, 44rem);
   display: flex;
   flex-direction: column;
   width: 100%;
   min-width: 0;
-  max-height: min(88cqh, 44rem);
+  max-height: var(--sheet-height);
   background: var(--fw-menu-bg);
   color: var(--fw-fg);
   border: 1px solid var(--fw-menu-border);
@@ -35,8 +36,8 @@
 @container client (min-width: 40rem) {
   .scrim.sheet-scrim { align-items: center; padding: var(--fw-s5); }
   .sheet {
+    --sheet-height: min(84cqh, 40rem);
     width: min(100%, 34rem);
-    max-height: min(84cqh, 40rem);
     border-bottom: 1px solid var(--fw-menu-border);
     border-radius: var(--fw-radius-lg);
     animation-name: dialog-rise;
@@ -44,6 +45,11 @@
   .sheet > :last-child { padding-bottom: var(--fw-s3); }
   .sheet-wide { width: min(100%, 56rem); }
 }
+/* A sheet whose rows change under a search field takes its full height
+   whatever it shows. A sheet sized by its rows grows and shrinks with each
+   answer, and the scrim's placement then moves the field and every row above
+   the change: a centred sheet re-centres, a bottom sheet rises. */
+.sheet-fill { height: var(--sheet-height); }
 
 .sheet-header {
   display: flex;

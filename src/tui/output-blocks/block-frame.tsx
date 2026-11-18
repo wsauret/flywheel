@@ -3,7 +3,7 @@
 import { Spinner } from "@tui/components/spinner.js"
 import { useTheme } from "@tui/context/theme"
 import type { Accessor, JSX } from "solid-js"
-import type { TextRenderable } from "@opentui/core"
+import type { RGBA, TextRenderable } from "@opentui/core"
 import { allowSelectionStartWithoutContent } from "@tui/utils/selection.js"
 
 /** The dot every rendering block is prefaced with - the same glyph tool calls use. */
@@ -21,6 +21,8 @@ interface BlockFrameProps {
    * an animated spinner, resolving back to the static dot when it flips false.
    * Undefined keeps the gutter static - the default for every non-agent block. */
   active?: Accessor<boolean>
+  /** The content's background, such as a landing mark; undefined paints none. */
+  background?: RGBA
 }
 
 /**
@@ -49,7 +51,7 @@ export function BlockFrame(props: BlockFrameProps) {
   const { theme } = useTheme()
   return (
     <box flexDirection="row-reverse">
-      <box flexGrow={1} flexDirection="column">
+      <box flexGrow={1} flexDirection="column" backgroundColor={props.background}>
         {props.children}
       </box>
       {props.active?.() ? (

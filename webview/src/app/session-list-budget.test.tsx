@@ -45,3 +45,61 @@ test("the list reveals its selected row on first show, not on updates or later s
     assert.equal(mounted.badge(), undefined)
   } finally { mounted.dispose() }
 })
+
+test("a search shows title matches at once and chats found by their messages below them, without moving or replacing a row", async () => {
+  const answers: Array<PromiseWithResolvers<{ chats: { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint"; text: string } }[] }>> = []
+  const mounted = (await loadBudgetRenderFixture()).mountSessionListSearch(() => {
+    const answer = Promise.withResolvers<{ chats: { sessionId: string; entryId: string; snippet: string; excerpt?: { source: "checkpoint"; text: string } }[] }>()
+    answers.push(answer)
+    return answer.promise
+  })
+  const pause = () => new Promise<void>((resolve) => { setTimeout(resolve, 1) })
+  try {
+    mounted.setFilter("kafk")
+    assert.deepEqual(mounted.rowOrder(), ["kafka"])
+    const titleRow = mounted.row("kafka")
+    await pause()
+    mounted.setFilter("kafka")
+    await pause()
+    assert.equal(answers.length, 2)
+    answers[1]!.resolve({ chats: [{ sessionId: "other", entryId: "e7", snippet: "the [kafka] lag", excerpt: { source: "checkpoint", text: "PR open" } }, { sessionId: "kafka", entryId: "e1", snippet: "[kafka]" }] })
+    await pause()
+    // A replaced query's late answer never shows.
+    answers[0]!.resolve({ chats: [{ sessionId: "third", entryId: "e9", snippet: "[kafk]" }] })
+    await pause()
+
+    assert.deepEqual(mounted.rowOrder(), ["kafka", "other"])
+    assert.equal(mounted.row("kafka"), titleRow, "an answer must not replace a title match")
+    assert.match(mounted.text(), /In messages/)
+    assert.match(mounted.text(), /the kafka lag/)
+    assert.match(mounted.text(), /PR open/)
+    mounted.click("other")
+    assert.deepEqual(mounted.opened, ["other@e7"])
+
+    // A new query keeps the last answer's rows, less the chats that match by title now, until its own answer
+    // replaces them in place. "kafka" no longer matches by title, so its found row shows.
+    mounted.setFilter("lag")
+    assert.deepEqual(mounted.rowOrder(), ["other", "kafka"])
+    const foundRow = mounted.row("other")
+    assert.doesNotMatch(mounted.text(), /Searching messages/)
+    await pause()
+    answers[2]!.resolve({ chats: [{ sessionId: "other", entryId: "e8", snippet: "the [lag]" }, { sessionId: "third", entryId: "e9", snippet: "[lag] again" }] })
+    await pause()
+    assert.deepEqual(mounted.rowOrder(), ["other", "third"])
+    assert.equal(mounted.row("other"), foundRow, "a new answer must not replace a row it keeps")
+
+    // A failed search clears the rows; with nothing to show, a pending query says it searches, not that nothing matches.
+    mounted.setFilter("lags")
+    await pause()
+    answers[3]!.reject(new Error("index closed"))
+    await pause()
+    assert.deepEqual(mounted.rowOrder(), [])
+    assert.match(mounted.text(), /No chats match/)
+    mounted.setFilter("lagsx")
+    assert.match(mounted.text(), /Searching messages/)
+    assert.doesNotMatch(mounted.text(), /No chats match/)
+
+    mounted.setFilter("")
+    assert.deepEqual(mounted.rowOrder(), ["kafka", "other", "third"])
+  } finally { mounted.dispose() }
+})

@@ -23,6 +23,7 @@ export function SessionsSheet() {
   return (
     <Sheet
       title={KERNEL_COMMAND_NAMES.sessions}
+      fill
       onClose={client.closeSheet}
       tools={
         <button class="ghost" title="New chat" aria-label="New chat" aria-busy={client.actions.working(actionKey("new-chat")) || undefined} onClick={() => { client.actions.newSession(); client.closeSheet() }}>

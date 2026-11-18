@@ -1,6 +1,10 @@
 import type { Database } from "bun:sqlite"
 import { CONVERSATION_FTS_TABLE } from "./conversation-fts.js"
 
+/** The tokens of a ranked conversation's snippet. A session list shows it on one line, so the window stays short and
+ *  FTS5 places the match a few tokens from its start; a 32-token window put a late match past the line's end. */
+const CONVERSATION_SNIPPET_TOKENS = 10
+
 export interface RecallSearchHit {
   entryId: string
   entryKind: string
@@ -88,6 +92,49 @@ export function searchTranscriptIndex(db: Database, query: TranscriptIndexQuery)
   return db.query<RecallSearchSqlRow & { conversation_id: string }, [SqlParameters]>(sql)
     .all({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition, $limit: query.limit, $offset: query.offset ?? 0 })
     .map((r) => ({ conversationId: r.conversation_id, entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank }))
+}
+
+/** Which conversations to rank and how many to answer. */
+export interface ConversationRankQuery {
+  upperPosition: number
+  /** FTS5 MATCH expression, built by the caller as for recall. */
+  match: string
+  /** The conversations that may rank; a hit in any other is dropped. */
+  conversationIds: ReadonlySet<string>
+  limit: number
+}
+
+/** The conversations whose messages best match, best first, each with its best hit: only the person's and the
+ *  model's messages rank, never tool results or summaries. A conversation ranks by the BM25 rank of its best message
+ *  alone, so a long conversation gains nothing from many weak hits. FTS5 refuses bm25() under an aggregate, so the
+ *  grouping happens here: the hits stream in rank order and stop at the `limit`-th conversation. The ranked query
+ *  selects the rowid alone, because a column that a filter or the sort reads is read for every hit, and a common word
+ *  in a large project matches about 500,000 rows (22 s to filter in SQL, about 1 s to rank). Only the hits that the
+ *  stream reaches read their columns, and only the answered hits read a snippet. */
+export function rankConversationsByBestMessage(db: Database, query: ConversationRankQuery): TranscriptIndexHit[] {
+  const ranked = db.query<{ rowid: number }, [SqlParameters]>(
+    `select rowid from ${CONVERSATION_FTS_TABLE} where ${CONVERSATION_FTS_TABLE} match $match order by rank`,
+  )
+  const columns = db.query<{ conversation_id: string; role: string; source_position: number }, [SqlParameters]>(
+    `select conversation_id, role, source_position from ${CONVERSATION_FTS_TABLE} where rowid = $rowid`,
+  )
+  const best = new Map<string, number>()
+  for (const { rowid } of ranked.iterate({ $match: query.match })) {
+    const row = columns.get({ $rowid: rowid })
+    if (row === null || (row.role !== "user" && row.role !== "assistant") || row.source_position > query.upperPosition) continue
+    if (!query.conversationIds.has(row.conversation_id) || best.has(row.conversation_id)) continue
+    best.set(row.conversation_id, rowid)
+    if (best.size === query.limit) break
+  }
+  const snippet = db.query<RecallSearchSqlRow, [SqlParameters]>(`
+    select entry_id, entry_kind, role, snippet(${CONVERSATION_FTS_TABLE}, 0, '[', ']', '...', ${CONVERSATION_SNIPPET_TOKENS}) as snippet, bm25(${CONVERSATION_FTS_TABLE}) as rank
+    from ${CONVERSATION_FTS_TABLE}
+    where ${CONVERSATION_FTS_TABLE} match $match and rowid = $rowid
+  `)
+  return [...best].flatMap(([conversationId, rowid]) => {
+    const row = snippet.get({ $match: query.match, $rowid: rowid })
+    return row ? [{ conversationId, entryId: row.entry_id, entryKind: row.entry_kind, role: row.role, snippet: row.snippet, rank: row.rank }] : []
+  })
 }
 
 export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery): number {
