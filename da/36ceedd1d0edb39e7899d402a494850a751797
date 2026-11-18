@@ -1,0 +1,16 @@
+bench/harbor/harbor_agent/flywheel_harbor_agent/benchmark-rules.md
+  h_4b47e9e4a8b456 1,3
+bench/harbor/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 106,359-363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "da36ceedd1d0edb39e7899d402a494850a751797",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
