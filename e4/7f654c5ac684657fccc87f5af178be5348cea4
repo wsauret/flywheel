@@ -1,0 +1,14 @@
+bench/harbor/harbor_agent/flywheel_harbor_agent/benchmark-rules.md
+  h_4b47e9e4a8b456 1,3-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e47f654c5ac684657fccc87f5af178be5348cea4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
