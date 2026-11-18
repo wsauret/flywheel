@@ -1,0 +1,18 @@
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 44,522,553
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 33,157,524-548,558
+tests/unit/tui/hooks/use-session-modal-content-search.test.ts
+  h_4b47e9e4a8b456 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "13cc08b360783965f5ac07e4b7e8c73fae7f74ad",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
