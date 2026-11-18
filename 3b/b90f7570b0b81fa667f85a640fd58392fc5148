@@ -1,0 +1,54 @@
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 227
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 247,259
+docs/product-intent/lead.md
+  h_4b47e9e4a8b456 27,51,84-87
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 27,203-204
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 34,358,360,374,380
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 175-179,189,214-215,218
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 157-158
+src/orchestration/modules/lead/module.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/modules/lead/prompt.ts
+  h_4b47e9e4a8b456 1-5,42-43
+src/orchestration/modules/lead/row.ts
+  h_4b47e9e4a8b456 101-126
+src/orchestration/modules/lead/rows.ts
+  h_4b47e9e4a8b456 18,69-71,92-93,361,368,375-377,390
+src/orchestration/modules/lead/service.ts
+  h_4b47e9e4a8b456 6,22-23,77-78,88-113,115,126,197-202,246-248,257-260,264-265,276-277,280,288-335,392,394,428,445,450-453,593,758-759
+src/protocol/modules/lead.ts
+  h_4b47e9e4a8b456 211,226-237,257-258,264-265
+src/tui/modules/lead/client.tsx
+  h_4b47e9e4a8b456 5,134-135,145
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 99
+tests/unit/orchestration/modules/lead/_lead-harness.ts
+  h_4b47e9e4a8b456 45-47,147,199-224
+tests/unit/orchestration/modules/lead/profile.test.ts
+  h_4b47e9e4a8b456 13,39-40,43,51
+tests/unit/orchestration/modules/lead/rows-work-count.test.ts
+  h_4b47e9e4a8b456 38-39,49,60,80,109-110,116
+tests/unit/orchestration/modules/lead/service-reports.test.ts
+  h_4b47e9e4a8b456 7-9,11,13,241-361
+tests/unit/orchestration/modules/lead/service.test.ts
+  h_4b47e9e4a8b456 3,11,529,540
+tests/unit/tui/modules/lead/transcript.test.tsx
+  h_4b47e9e4a8b456 10,203,205,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3bb90f7570b0b81fa667f85a640fd58392fc5148",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
