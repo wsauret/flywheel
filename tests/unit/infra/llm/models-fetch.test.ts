@@ -99,10 +99,45 @@ describe("createModelsClient fetch path", () => {
       { input: 1, output: 2, cache_write: Number.POSITIVE_INFINITY },
       { input: 1, output: 2, reasoning: Number.NaN },
       { input: 1, output: 2, context_over_200k: { input: -1 } },
+      { input: 1, output: 2, tiers: [{ input: -1, tier: { type: "context", size: 272_000 } }] },
     ]) {
       fs.writeFileSync(snapshotFile, combinedModelsDevJson({ cost }));
       const rows = createModelsClient(snapshotFile).getProviderCatalog(["anthropic"], CATALOG_ROW_LIMIT);
       expect(rows[0]?.provenance).toBe("bundled");
+    }
+  });
+
+  it("prices the long-context step from the first models.dev context tier, else from context_over_200k", () => {
+    for (const [cost, highContext] of [
+      [
+        { input: 10, output: 37.5, cache_read: 1, cache_write: 12.5, context_over_200k: { input: 20, output: 75 },
+          tiers: [{ input: 20, output: 75, cache_read: 2, cache_write: 25, tier: { type: "context", size: 272_000 } }] },
+        { threshold: 272_000, input: 20, output: 75, cacheRead: 2, cacheWrite: 25 },
+      ],
+      [
+        { input: 0.1, output: 0.5, cache_read: 0.01, cache_write: 0.125,
+          tiers: [{ input: 0.5, output: 2.5, cache_read: 0.05, cache_write: 0.625, tier: { type: "context", size: 100_000 } }] },
+        { threshold: 100_000, input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625 },
+      ],
+      [
+        { input: 0.05, output: 0.2,
+          tiers: [
+            { input: 9, output: 9, tier: { type: "batch" } },
+            { input: 0.2, output: 0.8, tier: { type: "context", size: 256_000 } },
+            { input: 0.1, output: 0.4, tier: { type: "context", size: 32_000 } },
+          ] },
+        { threshold: 32_000, input: 0.1, output: 0.4 },
+      ],
+      [{ input: 2, output: 12, context_over_200k: { input: 4 } }, { threshold: 200_000, input: 4, output: 12 }],
+      [
+        { input: 2, output: 12, cache_read: 0.2, context_over_200k: { input: 4, output: 18 }, tiers: [{ input: 9, output: 9, tier: { type: "batch" } }] },
+        { threshold: 200_000, input: 4, output: 18, cacheRead: 0.2 },
+      ],
+    ] as const) {
+      fs.writeFileSync(snapshotFile, combinedModelsDevJson({ cost }));
+      const metadata = makeClient().getProviderCatalog(["anthropic"], CATALOG_ROW_LIMIT)[0]?.metadata;
+      expect(metadata?.cost.highContext).toEqual(highContext);
+      expect(metadata?.pricing.status === "available" ? metadata.pricing.rateCard.highContext : undefined).toEqual(highContext);
     }
   });
 

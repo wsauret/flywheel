@@ -33,6 +33,7 @@ import { inferModelFamilyFromProvider } from "./model-family.js";
 import { awaitWithAbortSignal } from "../abort.js";
 import {
   admitModelsDocument,
+  contextPriceSteps,
   MAX_MODELS_DOCUMENT_BYTES,
   type AdmittedModelsDocument,
   type ModelsDevCatalogProvenance,
@@ -352,16 +353,19 @@ export function createModelsClient(
       cacheWrite: rawCost?.cache_write,
       reasoning: rawCost?.reasoning,
     };
-    if (!rawCost?.context_over_200k) return base;
+    // ModelCost holds one step, so a row with several context tiers keeps only
+    // the first: requests past a later step are priced at the first step.
+    const step = rawCost === undefined ? undefined : contextPriceSteps(rawCost)[0];
+    if (step === undefined) return base;
     return Object.freeze({
       ...base,
       highContext: {
-        threshold: 200_000,
-        input: rawCost.context_over_200k.input ?? base.input,
-        output: rawCost.context_over_200k.output ?? base.output,
-        cacheRead: rawCost.context_over_200k.cache_read ?? base.cacheRead,
-        cacheWrite: rawCost.context_over_200k.cache_write ?? base.cacheWrite,
-        reasoning: rawCost.context_over_200k.reasoning ?? base.reasoning,
+        threshold: step.size,
+        input: step.price.input ?? base.input,
+        output: step.price.output ?? base.output,
+        cacheRead: step.price.cache_read ?? base.cacheRead,
+        cacheWrite: step.price.cache_write ?? base.cacheWrite,
+        reasoning: step.price.reasoning ?? base.reasoning,
       },
     });
   }

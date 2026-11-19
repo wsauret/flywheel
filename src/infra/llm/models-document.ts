@@ -13,9 +13,17 @@ const RawModelCostTierSchema = Schema.Struct({
   reasoning: Schema.optionalKey(Schema.Number),
 });
 
+// `tier` stays unknown so a tier kind or shape that normalization does not
+// read never fails document admission; normalization reads only context tiers.
+const RawModelPriceTierSchema = Schema.Struct({
+  ...RawModelCostTierSchema.fields,
+  tier: Schema.optionalKey(Schema.Unknown),
+});
+
 const RawModelCostSchema = Schema.Struct({
   ...RawModelCostTierSchema.fields,
   context_over_200k: Schema.optionalKey(RawModelCostTierSchema),
+  tiers: Schema.optionalKey(Schema.Array(RawModelPriceTierSchema)),
 });
 
 const RawModelSchema = Schema.Struct({
@@ -79,6 +87,23 @@ const RawCombinedCatalogSchema = Schema.Struct({
 });
 
 export type RawModelCost = typeof RawModelCostSchema.Type;
+type RawModelCostTier = typeof RawModelCostTierSchema.Type;
+
+/** The long-context price steps of a models.dev cost, smallest first. Each
+ *  entry prices a whole request whose prompt is larger than `size` tokens.
+ *  The `tiers` array states the real step sizes; the older
+ *  `context_over_200k` field counts only when no context tier exists. Tiers of
+ *  another kind, or without a positive integer size, are ignored. */
+export function contextPriceSteps(cost: RawModelCost): readonly { readonly size: number; readonly price: RawModelCostTier }[] {
+  const steps = (cost.tiers ?? []).flatMap((price) => {
+    const tier = price.tier;
+    if (!isUnknownRecord(tier) || tier.type !== "context") return [];
+    const size = tier.size;
+    return typeof size === "number" && Number.isSafeInteger(size) && size > 0 ? [{ size, price }] : [];
+  });
+  if (steps.length > 0) return steps.toSorted((left, right) => left.size - right.size);
+  return cost.context_over_200k === undefined ? [] : [{ size: 200_000, price: cost.context_over_200k }];
+}
 export type RawModel = typeof RawModelSchema.Type;
 export type RawApi = typeof RawApiSchema.Type;
 type RawModelMap = typeof RawModelMapSchema.Type;
@@ -162,8 +187,8 @@ function assertValidModelCosts(models: RawModelMap): void {
 
 function validCost(cost: RawModelCost): boolean {
   if (![cost.input, cost.output, cost.cache_read, cost.cache_write, cost.reasoning].every(optionalNonNegative)) return false;
-  const high = cost.context_over_200k;
-  return high === undefined || [high.input, high.output, high.cache_read, high.cache_write, high.reasoning].every(optionalNonNegative);
+  return contextPriceSteps(cost).every(({ price }) =>
+    [price.input, price.output, price.cache_read, price.cache_write, price.reasoning].every(optionalNonNegative));
 }
 
 function optionalNonNegative(value: number | undefined): boolean {
