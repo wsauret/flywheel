@@ -42,6 +42,9 @@ describe("headless bootstrap", () => {
     })
     let acquired: ProviderAvailabilityOwner | undefined
     try {
+      // An earlier file in this process can leave the unowned fallback owner,
+      // which the bootstrap's idempotent acquisition would then adopt.
+      await disposeSharedProviderAvailability()
       await expect(runHeadlessBootstrap({ directories, launcher }, async () => {
         acquired = getSharedProviderAvailability()
         return { result: undefined, settle: async () => { stages.push("run-owned"); throw new Error("task settlement failed") } }
