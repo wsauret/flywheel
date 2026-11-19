@@ -209,7 +209,7 @@ describe("write retained authority", () => {
     // A search match shows lines but proves no version of the file.
     expect((await runTool({ id: "search", name: "search", input: { pattern: "second", path: "existing.txt", output_mode: "content" } }, ctx, testBaseTools())).outcome).toBe("ok");
     const result = await runTool({ id: "existing", name: "write", input: { path: "existing.txt", content: "after" } }, ctx, testBaseTools());
-    expect(result).toMatchObject({ outcome: "error", content: "write refused: existing.txt already exists, and this run has no verified version of it from the read tool or a file edit. Read it with read before you replace the whole file, or use edit to change part of it." });
+    expect(result).toMatchObject({ outcome: "error", content: "write refused: existing.txt already exists, and this run has no verified version of it: no read tool read, shell output that showed it whole, or file edit. Read it with read before you replace the whole file, or use edit to change part of it." });
     expect(fs.readFileSync(target, "utf8")).toBe("before\nsecond\n");
   });
 
