@@ -33,16 +33,26 @@ describe("bash tool: file reads count as reads", () => {
   const directory = temporaryDirectories();
   const lines = (count: number) => Array.from({ length: count }, (_, index) => `line ${index + 1}`).join("\n") + "\n";
 
-  async function ledgerAfter(command: string, exitCode = 0): Promise<{ root: string; ledger: FileReadLedger }> {
+  /** `output` stands for what the command printed; without it the command prints nothing. */
+  async function ledgerAfter(command: string, exitCode = 0, output?: (root: string) => string): Promise<{ root: string; ledger: FileReadLedger }> {
     const root = path.join(directory("bash-file-reads-"), "project");
-    fs.mkdirSync(root);
-    for (const [name, count] of [["a.ts", 3], ["b.ts", 5], ["c.ts", 5], ["d.ts", 3], ["big.ts", 4_000]] as const) fs.writeFileSync(path.join(root, name), lines(count));
+    fs.mkdirSync(path.join(root, "sub"), { recursive: true });
+    for (const [name, count] of [["a.ts", 3], ["b.ts", 5], ["c.ts", 5], ["d.ts", 3], ["big.ts", 4_000], ["sub/e.ts", 4]] as const) fs.writeFileSync(path.join(root, name), lines(count));
     fs.writeFileSync(path.join(root, "..", "outside.ts"), lines(3));
     const ledger = new FileReadLedger();
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ exited: Promise.resolve({ code: exitCode, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }) }));
-    await dispatch(createBashDefinition({ ...bashExecution(), operations: makeMockOps() }), { command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
+    const operations = output ? commandOutputOps(output(root)) : makeMockOps();
+    await dispatch(createBashDefinition({ ...bashExecution(), operations, postExitDrainGraceMs: 0, executionOutputThrottleMs: 0 }), { command }, makeContext({ executionCwd: root, projectRoot: root, spawnOwned: spawn.spawnOwned, readLedger: ledger }));
     return { root, ledger };
   }
+
+  function versionStaleness(root: string, ledger: FileReadLedger, name: string) {
+    const file = canonicalMutationPath(path.join(root, name));
+    return ledger.versionStaleness(file, fs.readFileSync(file));
+  }
+
+  /** `cat -n` output: each line after its number, right-aligned in six columns, and a tab. */
+  const numbered = (text: string) => text.replace(/\n$/, "").split("\n").map((line, index) => `${String(index + 1).padStart(6)}\t${line}`).join("\n") + "\n";
 
   afterEach(() => {
     mock.restore();
@@ -63,6 +73,23 @@ describe("bash tool: file reads count as reads", () => {
     // The read is inferred from command syntax, so it never authorizes a whole-file replacement.
     const a = canonicalMutationPath(path.join(root, "a.ts"));
     expect(ledger.versionStaleness(a, fs.readFileSync(a))).toBe("unread");
+  });
+
+  it("verifies the version of each named file whose whole text the output showed, in any shell form", async () => {
+    const show = (root: string, ...names: string[]) => names.map((name) => `===== ${name}\n${numbered(fs.readFileSync(path.join(root, name), "utf8"))}`).join("");
+    const loop = await ledgerAfter('for f in a.ts b.ts; do echo "===== $f"; cat -n "$f"; done', 0, (root) => show(root, "a.ts", "b.ts"));
+    expect([versionStaleness(loop.root, loop.ledger, "a.ts"), versionStaleness(loop.root, loop.ledger, "b.ts")]).toEqual([undefined, undefined]);
+    const glob = await ledgerAfter("cd sub && cat *.ts", 0, (root) => fs.readFileSync(path.join(root, "sub/e.ts"), "utf8"));
+    expect(versionStaleness(glob.root, glob.ledger, "sub/e.ts")).toBeUndefined();
+    // A file that the command names but whose whole text the output does not show proves no version.
+    const partial = await ledgerAfter("for f in a.ts c.ts; do head -n 2 $f; done", 0, () => lines(2) + lines(2));
+    expect([versionStaleness(partial.root, partial.ledger, "a.ts"), versionStaleness(partial.root, partial.ledger, "c.ts")]).toEqual(["unread", "unread"]);
+    // Output compression drops the middle of a long file, so the model did not see it whole.
+    const compressed = await ledgerAfter("cat big.ts", 0, (root) => fs.readFileSync(path.join(root, "big.ts"), "utf8"));
+    expect(versionStaleness(compressed.root, compressed.ledger, "big.ts")).toBe("unread");
+    // The output proves only the files that the command names.
+    const unnamed = await ledgerAfter("echo listing", 0, (root) => fs.readFileSync(path.join(root, "a.ts"), "utf8"));
+    expect(versionStaleness(unnamed.root, unnamed.ledger, "a.ts")).toBe("unread");
   });
 
   it("records a read from the command policy's parse, with no second parse", async () => {

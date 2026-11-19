@@ -11,8 +11,8 @@ type Coverage = "full" | readonly LineRange[]
 interface FileReadRecord {
   /** Content hash of the bytes the model saw. Absent when the file was only seen through search matches. */
   readonly sha256: string | undefined
-  /** Hash of the last version the model provably saw: a read tool read or a verified publication. A shell read is
-   *  inferred from command syntax after the command ran, so it never sets this. */
+  /** Hash of the last version the model provably saw: a read tool read, shell output that held the whole text, or a
+   *  verified publication. A shell read inferred from command syntax after the command ran never sets this. */
   readonly verifiedSha256: string | undefined
   readonly coverage: Coverage
   /** Store position when the file was seen, so a later change can be attributed to facts after it. */
@@ -50,8 +50,8 @@ export function lineRangeOfByteSpans(bytes: Uint8Array, spans: readonly { readon
 export class FileReadLedger {
   readonly #records = new Map<string, FileReadRecord>()
 
-  /** Record a read tool read: visible coverage against the SHA-256 hex digest computed while acquiring the complete
-   *  file. */
+  /** Record a read that the model provably saw: visible coverage against the SHA-256 hex digest of the complete file
+   *  whose text the read showed. */
   recordRead(canonicalPath: string, sha256: string, coverage: Coverage, position: number): void {
     this.#record(canonicalPath, sha256, sha256, coverage, position)
   }
@@ -99,7 +99,7 @@ export class FileReadLedger {
   }
 
   /** Whether this loop provably saw the exact bytes `current` holds, which a whole-file replacement needs. Search
-   *  matches and shell reads prove no version, so a path seen only through them counts as unread. */
+   *  matches and inferred shell reads prove no version, so a path seen only through them counts as unread. */
   versionStaleness(canonicalPath: string, current: Uint8Array): "unread" | "changed" | undefined {
     const sha256 = this.#records.get(canonicalPath)?.verifiedSha256
     if (sha256 === undefined) return "unread"

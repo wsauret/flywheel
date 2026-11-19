@@ -1,17 +1,25 @@
-/** Records the project files a successful shell command printed whole, so a later edit of them counts as read.
+/** Records the project files a shell command showed the model, so a later edit of them counts as read and a later
+ *  write can replace a file whose whole current text the model saw.
  *
- *  Models often read a file with `cat`, `head`, `tail`, `nl`, or `sed -n` instead of the read tool, and an edit
- *  that follows would then warn that the file was not read.
+ *  Models often read a file with `cat`, `head`, `tail`, `nl`, or `sed -n` instead of the read tool, often several
+ *  files in one loop, and an edit that follows would then warn that the file was not read, while a write would
+ *  refuse to replace it.
  *
- *  A command counts only when every simple command in it is one such read of one plain file argument, or an `echo`,
- *  `printf`, `true`, or `:`, joined by `&&`, `||`, or `;`. A pipe, a redirect, a substitution, an expansion, a glob,
- *  or any other shell syntax makes the whole command count for nothing. Each file is read again after the command
- *  exits, and the ledger receives the lines the command printed, with the hash of the file as it is now. A slice
- *  that output compression would shorten records nothing, since the model did not see it whole. */
+ *  Two records come from one command. `recordShellFileReads` infers the printed lines from the command syntax: it
+ *  counts a command only when every simple command in it is one such read of one plain file argument, or an
+ *  `echo`, `printf`, `true`, or `:`, joined by `&&`, `||`, or `;`. A pipe, a redirect, a substitution, an
+ *  expansion, a glob, or any other shell syntax makes the whole command count for nothing. Each file is read again
+ *  after the command exits, and the ledger receives the lines the command printed, with the hash of the file as it
+ *  is now. A slice that output compression would shorten records nothing, since the model did not see it whole.
+ *  This inference informs edit warnings only.
+ *
+ *  `recordShownFileVersions` proves a version from the output itself: a file that the command names, whose exact
+ *  current text the output that the model received holds whole, plain or numbered as `cat -n` prints it, is a
+ *  verified version in the ledger, as if the read tool had shown it. The shell form does not matter. */
 
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { canonicalMutationPath } from "../../../infra/file-mutation-queue.js";
 import type { ResolvedShellCommands } from "./bash-command-policy.js";
@@ -52,12 +60,11 @@ export async function recordShellFileReads(resolved: ResolvedShellCommands | und
   if (!ledger || !resolved || exitCode !== 0) return;
   const reads = shellFileReads(resolved);
   if (reads.length === 0) return;
-  const projectRoot = canonicalMutationPath(context.projectRoot);
   const position = await context.projectionReader?.capturePosition() ?? 0;
+  const projectRoot = canonicalMutationPath(context.projectRoot);
   for (const read of reads) {
-    const path = canonicalMutationPath(isAbsolute(read.path) ? read.path : resolve(context.executionCwd, read.path));
-    const fromRoot = relative(projectRoot, path);
-    if (fromRoot === "" || fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) continue;
+    const path = projectFile(resolve(context.executionCwd, read.path), projectRoot);
+    if (path === undefined) continue;
     const bytes = await fileBytes(path);
     if (bytes === undefined) continue;
     const coverage = printedCoverage(read.lines, bytes);
@@ -66,10 +73,91 @@ export async function recordShellFileReads(resolved: ResolvedShellCommands | und
   }
 }
 
-async function fileBytes(path: string): Promise<Uint8Array | undefined> {
+/** Marks in `context.readLedger` the current version of each project file that `command` names, by a path, or by a
+ *  glob that matches it from the working directory or a directory that the command enters with `cd`, when `shown`,
+ *  the output that the model received, holds the file's whole text. Empty files and text that is not UTF-8 prove
+ *  nothing. */
+export async function recordShownFileVersions(command: string, shown: string, context: ToolContext): Promise<void> {
+  const ledger = context.readLedger;
+  if (!ledger || shown === "") return;
+  const shownBytes = Buffer.byteLength(shown);
+  const verified: { path: string; sha256: string }[] = [];
+  for (const path of await namedProjectFiles(command, context)) {
+    const bytes = await fileBytes(path, shownBytes);
+    if (bytes === undefined || bytes.length === 0) continue;
+    let text: string;
+    try {
+      text = UTF8.decode(bytes);
+    } catch {
+      continue;
+    }
+    if (!shown.includes(text) && !shown.includes(catNumbered(text))) continue;
+    verified.push({ path, sha256: createHash("sha256").update(bytes).digest("hex") });
+  }
+  if (verified.length === 0) return;
+  const position = await context.projectionReader?.capturePosition() ?? 0;
+  for (const { path, sha256 } of verified) ledger.recordRead(path, sha256, "full", position);
+}
+
+const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+// Bounds the files one command can name, so a broad glob costs a bounded number of reads.
+const MAX_NAMED_FILES = 64;
+const WORD_SEPARATORS = /[\s;&|()<>'"`{}]+/;
+const GLOB = /[*?[]/;
+
+/** `text` as `cat -n` prints it: each line after its number, right-aligned in six columns, and a tab. */
+function catNumbered(text: string): string {
+  const ending = text.endsWith("\n") ? "\n" : "";
+  const lines = (ending ? text.slice(0, -1) : text).split("\n");
+  return lines.map((line, index) => `${String(index + 1).padStart(6)}\t${line}`).join("\n") + ending;
+}
+
+/** The project files that the words of `command` name. Words are split without shell parsing, since the output, not
+ *  the syntax, proves what the model saw; a word that needs expansion other than a glob names nothing. */
+async function namedProjectFiles(command: string, context: ToolContext): Promise<string[]> {
+  const words = command.split(WORD_SEPARATORS).filter((word) => word !== "" && !word.startsWith("-") && !word.startsWith("~") && !word.includes("$"));
+  const bases = [context.executionCwd, ...words.flatMap((word, index) => words[index - 1] === "cd" ? [resolve(context.executionCwd, word)] : [])];
+  const projectRoot = canonicalMutationPath(context.projectRoot);
+  const files = new Set<string>();
+  const add = (path: string): boolean => {
+    const file = projectFile(path, projectRoot);
+    if (file !== undefined) files.add(file);
+    return files.size < MAX_NAMED_FILES;
+  };
+  for (const word of words) {
+    if (!GLOB.test(word)) {
+      for (const base of isAbsolute(word) ? [word] : bases) if (!add(resolve(base, word))) return [...files];
+      continue;
+    }
+    // A recursive glob can walk the whole project for every command that spells one, such as a search filter.
+    if (word.includes("**")) continue;
+    const prefix = word.slice(0, word.search(GLOB));
+    const roots = isAbsolute(word) ? [/[\\/]$/.test(prefix) ? prefix : dirname(prefix)] : bases;
+    for (const root of roots) {
+      try {
+        for await (const match of new Bun.Glob(isAbsolute(word) ? relative(root, word) : word).scan({ cwd: root, onlyFiles: true, absolute: true })) {
+          if (!add(match)) return [...files];
+        }
+      } catch {
+        // A directory that does not exist matches nothing.
+      }
+    }
+  }
+  return [...files];
+}
+
+/** The canonical form of `path` when it lies inside the canonical `projectRoot`, or undefined. */
+function projectFile(path: string, projectRoot: string): string | undefined {
+  const canonical = canonicalMutationPath(path);
+  const fromRoot = relative(projectRoot, canonical);
+  return fromRoot === "" || fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot) ? undefined : canonical;
+}
+
+/** The bytes of a regular file of at most `maxBytes`, or undefined. */
+async function fileBytes(path: string, maxBytes = MAX_FILE_BYTES): Promise<Uint8Array | undefined> {
   try {
     const info = await stat(path);
-    if (!info.isFile() || info.size > MAX_FILE_BYTES) return undefined;
+    if (!info.isFile() || info.size > maxBytes) return undefined;
     return await readFile(path);
   } catch {
     return undefined;

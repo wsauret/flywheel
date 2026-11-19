@@ -53,7 +53,7 @@ function createWriteDefinition(updateTool?: string): RuntimeTool {
   return {
     name: "write",
     action: "file_write",
-    description: "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+    description: "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
     inputSchema: WRITE_INPUT_SCHEMA,
     // Mutates the filesystem: not gate-safe, but the target is declarable,
     // so disjoint writes in one batch overlap in time (path-scoped gate

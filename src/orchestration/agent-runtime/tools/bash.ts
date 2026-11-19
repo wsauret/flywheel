@@ -10,7 +10,7 @@ import { Log } from "../../../infra/log.js";
 import { processLoginShellPath } from "../../../infra/login-shell-path.js";
 import { SCRATCH_MUTATIONS_DIR } from "../../../infra/paths.js";
 import { interceptBashCommand, type BashPolicyOptions, type ResolvedShellCommands } from "./bash-command-policy.js";
-import { recordShellFileReads } from "./bash-file-reads.js";
+import { recordShellFileReads, recordShownFileVersions } from "./bash-file-reads.js";
 import { hasShellBackgroundJob } from "./bash-parser.js";
 import { bashToolSurface, type BashSurfaceOptions, type FileEditToolName } from "./bash-guidance.js";
 import { resolveToolPath, sessionPathInput } from "./tool-paths.js";
@@ -302,7 +302,10 @@ export function createBashDefinition(options: BashAdvertisement & {
       ? await runInPrivateCopy({ context, spawnOwned, command, env, platform, execPath, pool: shell.privateCopies, scratchDir, home: join(scratchDir, SCRATCH_MUTATIONS_DIR, randomUUID()), run: launch })
       : await launch();
     // A private copy's reads are of the copy, not the project file.
-    if (!mutates) await recordShellFileReads(resolved, parseBashResultDetails(result.details ?? {}).exitCode, context);
+    if (!mutates) {
+      await recordShellFileReads(resolved, parseBashResultDetails(result.details ?? {}).exitCode, context);
+      if (typeof result.content === "string") await recordShownFileVersions(command, result.content, context);
+    }
     return { ...result, content: `${result.content}${handoffCommandCitation(context, result.details)}` };
   }
 

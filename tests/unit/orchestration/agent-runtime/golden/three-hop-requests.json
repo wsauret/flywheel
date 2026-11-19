@@ -110,7 +110,7 @@
         },
         {
           "name": "write",
-          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -285,7 +285,7 @@
         },
         {
           "name": "write",
-          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -489,7 +489,7 @@
         },
         {
           "name": "write",
-          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+          "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
           "input_schema": {
             "type": "object",
             "properties": {
@@ -611,7 +611,7 @@
             "name": "read"
           },
           {
-            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
             "inputSchema": {
               "properties": {
                 "content": {
@@ -749,7 +749,7 @@
             "name": "read"
           },
           {
-            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
             "inputSchema": {
               "properties": {
                 "content": {
@@ -922,7 +922,7 @@
             "name": "read"
           },
           {
-            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version from the read tool or a file edit in this run; a shell read or search result does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
+            "description": "Create a file or replace a whole existing file, including any parent directories. Replacement needs the file's current version, shown whole by the read tool or a shell command's output, or written by a file edit in this run; a search result or a partial view does not count. Use the file-editing tool to change part of a file. Never create documentation or README files unless asked.",
             "inputSchema": {
               "properties": {
                 "content": {
