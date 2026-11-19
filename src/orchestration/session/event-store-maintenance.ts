@@ -399,7 +399,7 @@ export const INCREMENTAL_VACUUM_STEP_PAGES = 256
  *  `pages` free pages to the end of the file and truncates them, and answers
  *  how many pages it freed. A store that is not in incremental auto-vacuum
  *  mode frees nothing: only a full VACUUM changes the mode, and only the
- *  explicit Reclaim storage command runs one. The file shrinks on disk only
+ *  Reclaim storage run does one (ARCH-RUNTIME-083). The file shrinks on disk only
  *  when the WAL checkpoints, so the step that empties the free list
  *  checkpoints. */
 export function incrementalVacuumStep(dbPath: string, pages: number): number {

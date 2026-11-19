@@ -6,8 +6,9 @@ const TURN: ReplacementBlocker = { projectRoot: "/work/alpha", projectLabel: "al
 const OPENING: ReplacementBlocker = { projectRoot: "/work/alpha", projectLabel: "alpha", reason: "opening" }
 
 /** An idle reclaim whose runs and blockers the case controls. */
-function scheduler() {
+function scheduler(options: { readonly converts?: boolean } = {}) {
   let blockers: readonly ReplacementBlocker[] = []
+  let conversionOffers = 0
   let now = 1_000
   const runs: { withdrawn: number; end: () => void }[] = []
   let blockerReads = 0
@@ -15,6 +16,7 @@ function scheduler() {
   let timer: { readonly fire: () => void; readonly delayMs: number } | undefined
   const reclaim = createIdleStoreReclaim({
     blockers: async () => { blockerReads++; return blockers },
+    convert: () => { conversionOffers++; return options.converts ?? false },
     now: () => now,
     setTimer: (fire, delayMs) => {
       const armed = { fire, delayMs }
@@ -32,6 +34,7 @@ function scheduler() {
   return {
     reclaim, runs, settle,
     blockerReads: () => blockerReads,
+    conversionOffers: () => conversionOffers,
     timer: () => timer,
     /** Moves the clock to the armed timer and fires it. */
     fire: async () => {
@@ -98,6 +101,36 @@ describe("idle store reclaim", () => {
 
     await idle.reclaim.dispose()
     expect(idle.timer()).toBeUndefined()
+  })
+
+  test("an idle check offers the store's conversion before an idle run, and a busy check offers nothing", async () => {
+    const idle = scheduler()
+    idle.work([TURN])
+    idle.reclaim.check()
+    await idle.settle()
+    expect(idle.conversionOffers()).toBe(0)
+
+    // A store that needs no conversion gets its idle run.
+    idle.work([])
+    idle.reclaim.check()
+    await idle.settle()
+    expect(idle.conversionOffers()).toBe(1)
+    expect(idle.runs).toHaveLength(1)
+  })
+
+  test("a conversion that starts takes the place of the idle run, and the owner checks nothing more in this open", async () => {
+    const idle = scheduler({ converts: true })
+    idle.reclaim.check()
+    await idle.settle()
+    expect(idle.conversionOffers()).toBe(1)
+    expect(idle.runs).toHaveLength(0)
+    expect(idle.timer()).toBeUndefined()
+
+    idle.advance(IDLE_RECLAIM_INTERVAL_MS)
+    idle.reclaim.check()
+    await idle.settle()
+    expect(idle.conversionOffers()).toBe(1)
+    expect(idle.runs).toHaveLength(0)
   })
 
   test("starts no second run while one runs, and a disposed scheduler starts none and withdraws its run", async () => {

@@ -25,6 +25,10 @@ interface IdleReclaimRun {
 interface IdleStoreReclaimOptions {
   /** What runs in the project now; empty means idle. */
   readonly blockers: () => Promise<readonly ReplacementBlocker[]>
+  /** Starts the store's automatic conversion when it is due; answers whether
+   *  it started. A started conversion closes the project, so it takes the
+   *  place of the idle run and the owner starts nothing more. */
+  readonly convert: () => boolean
   /** Queues one idle reclaim run. */
   readonly start: () => IdleReclaimRun
   readonly now?: () => number
@@ -39,7 +43,8 @@ export interface IdleStoreReclaim {
    *  while one runs runs once after it. Once asked, the owner keeps checking
    *  by itself: again after the recheck time while work runs, and when the
    *  interval since the last start ends, so the order in which the project
-   *  becomes ready and idle does not decide whether a run starts. */
+   *  becomes ready and idle does not decide whether a run starts. An idle
+   *  check first offers the store's automatic conversion. */
   check(): void
   /** Admits no run from now on and joins the one that runs. */
   dispose(): Promise<void>
@@ -60,6 +65,7 @@ export function createIdleStoreReclaim(options: IdleStoreReclaimOptions): IdleSt
   let checking: Promise<void> | undefined
   let again = false
   let disposed = false
+  let converting = false
   let cancelLater: (() => void) | undefined
 
   const later = (delayMs: number): void => {
@@ -81,6 +87,12 @@ export function createIdleStoreReclaim(options: IdleStoreReclaimOptions): IdleSt
     }
     // A run's end arms the next check.
     if (running !== undefined) return
+    // Called in the same task as the blockers' answer, so nothing in this
+    // loop starts work between the idle answer and the close.
+    if (options.convert()) {
+      converting = true
+      return
+    }
     if (untilInterval() > 0) {
       later(untilInterval())
       return
@@ -96,7 +108,7 @@ export function createIdleStoreReclaim(options: IdleStoreReclaimOptions): IdleSt
   }
 
   function check(): void {
-    if (disposed) return
+    if (disposed || converting) return
     if (checking) {
       again = true
       return

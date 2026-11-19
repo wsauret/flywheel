@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import type { AccountService } from "../../../../../src/orchestration/app-service/account-service.js"
-import { createProjectStorage, createStorageReclaims } from "../../../../../src/orchestration/app-service/project-storage.js"
+import { AUTOMATIC_CONVERSION_MAX_STORE_BYTES, createProjectStorage, createStorageReclaims, type StorageReclaimHost } from "../../../../../src/orchestration/app-service/project-storage.js"
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js"
 import type { StorageReclaimOutcome } from "../../../../../src/protocol/store-reclaim.js"
 import { createStorageService } from "../../../../../src/orchestration/modules/reclaim-storage/service.js"
@@ -11,6 +11,9 @@ import { canonicalTestDirectory, temporaryDirectories, testDirectories } from ".
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js"
 import { prepareWorkspaceState } from "../../../../../src/orchestration/workspace-state.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
+import { join } from "node:path"
+import { Log } from "../../../../../src/infra/log.js"
+import type { DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
 
 const temporary = temporaryDirectories()
 
@@ -37,17 +40,38 @@ function reclaims() {
   const closes: string[] = []
   const ended = Promise.withResolvers<StorageReclaimOutcome>()
   const reopened = Promise.withResolvers<void>()
+  // The hosts the run's reopens made, as an open makes its host while it opens.
+  const reopenHosts: StorageReclaimHost[] = []
   const projects: Pick<AccountService<{ dispose(): Promise<void> }>, "closeFor" | "open"> = {
     closeFor: async (root, _reason, _step, work) => { closes.push(root); return work() },
-    open: async () => { await reopened.promise; return { dispose: async () => {} } },
+    open: async () => {
+      reopenHosts.push(open())
+      await reopened.promise
+      return { dispose: async () => {} }
+    },
   }
   const created = createStorageReclaims({ projects: () => projects, maintenance: { reclaim: () => ended.promise } })
-  return { host: created.host("/work/alpha", testDirectories("/work/alpha")), closes, ended, reopened }
+  /** The host one open of the project gets. */
+  const open = (): StorageReclaimHost => created.host("/work/alpha", testDirectories("/work/alpha"))
+  return { host: open(), open, reopenHosts, closes, ended, reopened }
+}
+
+/** A store from an older release, small enough to convert by itself. */
+const olderStore = { storeBytes: AUTOMATIC_CONVERSION_MAX_STORE_BYTES - 1, reclaimableBytes: 0, supersededBytes: 0, liveBytes: 4096, incremental: false }
+
+async function capturedLog<T>(work: () => Promise<T>): Promise<{ readonly value: T; readonly records: readonly DebugLogRecordInput[] }> {
+  const records: DebugLogRecordInput[] = []
+  await Log.init({ forward: (record) => { records.push(record) } })
+  try {
+    return { value: await work(), records }
+  } finally {
+    await Log.closeGlobal()
+  }
 }
 
 describe("the storage module service", () => {
   test("publishes the whole view each time the kernel reports usage, and reads nothing itself", () => {
-    const storage = createProjectStorage("/scratch/absent/.flywheel/flywheel.sqlite", { start: () => "started", last: () => undefined, takeAnnouncement: () => undefined })
+    const storage = createProjectStorage("/scratch/absent/.flywheel/flywheel.sqlite", { start: () => "started", claimAutomaticTry: () => false, last: () => undefined, takeAnnouncement: () => undefined })
     const { created, published } = service(storage)
     expect(created.view()).toEqual({ usage: null, lastReclaim: null })
 
@@ -61,11 +85,11 @@ describe("the storage module service", () => {
 
   test("a second start while the run has not reopened the project runs nothing more, and the reopened project announces the outcome once", async () => {
     const run = reclaims()
-    expect(run.host.start()).toBe("started")
-    expect(run.host.start()).toBe("running")
+    expect(run.host.start("command")).toBe("started")
+    expect(run.host.start("command")).toBe("running")
     run.ended.resolve({ kind: "reclaimed", beforeBytes: 4 * 1024 ** 3, afterBytes: 1024 ** 3, rowsDeleted: 3 })
     await Bun.sleep(1)
-    expect(run.host.start()).toBe("running")
+    expect(run.host.start("command")).toBe("running")
     expect(run.closes).toEqual(["/work/alpha"])
     run.reopened.resolve()
     await Bun.sleep(1)
@@ -78,17 +102,69 @@ describe("the storage module service", () => {
     const again = service(storage)
     again.created.start?.()
     expect(again.notified).toEqual([])
-    expect(run.host.start()).toBe("started")
+    expect(run.host.start("command")).toBe("started")
   })
 
   test("the call that starts a run is answered before the project closes, so the close never cuts the answer", async () => {
     const run = reclaims()
-    const answered = Promise.resolve().then(() => run.host.start())
+    const answered = Promise.resolve().then(() => run.host.start("command"))
     expect(await answered).toBe("started")
     for (let turn = 0; turn < 16; turn++) await Promise.resolve()
     expect(run.closes).toEqual([])
     await Bun.sleep(1)
     expect(run.closes).toEqual(["/work/alpha"])
+  })
+
+  test("an idle project converts a small store from an older release once per open through the command's run, with no notification", async () => {
+    const run = reclaims()
+    const storage = createProjectStorage(join(temporary("flywheel-storage-convert-"), "flywheel.sqlite"), run.host)
+    storage.report(olderStore)
+
+    const { value: converted, records } = await capturedLog(async () => {
+      const started = storage.convertIfSmall()
+      expect(storage.convertIfSmall()).toBe(false)
+      run.ended.resolve({ kind: "reclaimed", beforeBytes: olderStore.storeBytes, afterBytes: 1024 ** 3, rowsDeleted: 0 })
+      run.reopened.resolve()
+      await Bun.sleep(1)
+      return started
+    })
+
+    expect(converted).toBe(true)
+    expect(run.closes).toEqual(["/work/alpha"])
+    expect(records.filter((record) => record.type === "log.info").map((record) => record.payload)).toEqual([
+      expect.objectContaining({ message: "storage reclaim done", trigger: "automatic", beforeBytes: olderStore.storeBytes, afterBytes: 1024 ** 3, durationMs: expect.any(Number) }),
+    ])
+    // The open the run's reopen made shows the run and announces nothing.
+    const reopenHost = run.reopenHosts[0]
+    if (!reopenHost) throw new Error("the run did not reopen the project")
+    const reopened = createProjectStorage(join(temporary("flywheel-storage-reopened-"), "flywheel.sqlite"), reopenHost)
+    const view = service(reopened)
+    view.created.start?.()
+    expect(view.notified).toEqual([])
+    expect(view.created.view().lastReclaim).toMatchObject({ outcome: { kind: "reclaimed" } })
+    // That open tries no conversion of its own, so a refused run never loops.
+    reopened.report(olderStore)
+    expect(reopened.convertIfSmall()).toBe(false)
+    expect(run.closes).toHaveLength(1)
+    // A later open of the project tries again.
+    const later = createProjectStorage(join(temporary("flywheel-storage-later-"), "flywheel.sqlite"), run.open())
+    later.report(olderStore)
+    expect(later.convertIfSmall()).toBe(true)
+    expect(run.closes).toHaveLength(2)
+  })
+
+  test.each([
+    ["a store at 2 GiB", { ...olderStore, storeBytes: AUTOMATIC_CONVERSION_MAX_STORE_BYTES }],
+    ["a store already in incremental mode", { ...olderStore, incremental: true }],
+    ["a disk short of the space a VACUUM needs", { ...olderStore, liveBytes: Number.MAX_SAFE_INTEGER / 4 }],
+  ])("no conversion starts for %s, and the open tries none again", (_case, declined) => {
+    const run = reclaims()
+    const storage = createProjectStorage(join(temporary("flywheel-storage-convert-"), "flywheel.sqlite"), run.host)
+    storage.report(declined)
+    expect(storage.convertIfSmall()).toBe(false)
+    storage.report(olderStore)
+    expect(storage.convertIfSmall()).toBe(false)
+    expect(run.closes).toEqual([])
   })
 
   test("the preview counts the superseded bytes the last idle plan reported, without planning them itself", () => {

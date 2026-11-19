@@ -732,7 +732,7 @@ Close chat is the close command, which acts on the chat in front in every client
 
 ## PI-INTERACTION-181: The service gives back store space while a project is idle
 
-While a project runs no work, the Flywheel service deletes stored values that newer values replaced and gives the freed space back to the disk, a little at a time. When work starts, it stops at once, so work never waits on it. A store that an older release created gives space back this way only after one run of Reclaim storage.
+While a project runs no work, the Flywheel service deletes stored values that newer values replaced and gives the freed space back to the disk, a little at a time. When work starts, it stops at once, so work never waits on it. A store that an older release created gives space back this way only after one rebuild. When such a store is smaller than 2 GiB, the service rebuilds it by itself once, while the project is idle and the disk has room, and shows no notification. A larger store is rebuilt when the person runs Reclaim storage.
 
 ## PI-INTERACTION-182: Reclaim storage frees a project's space on request
 

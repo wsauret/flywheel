@@ -25,8 +25,8 @@ Not: Passing over a model that cannot serve to another role preference.
 
 ## ARCH-RUNTIME-083: The project's control composition owns store usage and idle reclaim
 
-The project's control composition in the account service owns the store's usage as live state. Each maintenance job reports usage when it ends, and idle reclaim also reports it once it has planned the superseded rows. Only idle reclaim plans them, so no per-change path reads the history. Idle reclaim starts after the startup job, while the executors report no work, at most once an hour. It writes through the state Worker in bounded steps and is withdrawn when work starts. A full VACUUM runs only for Reclaim storage, after the account closed the project, under the exclusive state generation.
-Because: A VACUUM holds the store's only lock for minutes, which only a closed project can give it; bounded steps keep a write's wait to one step.
+The project's control composition owns the store's usage as live state, which each maintenance job reports. Only idle reclaim plans superseded rows, so no per-change path reads the history. Idle reclaim runs after the startup job, while executors report no work, hourly at most. It writes through the state Worker in bounded steps and is withdrawn when work starts. A full VACUUM runs only in the Reclaim storage run, with the project closed, under the exclusive state generation. An open's first idle check starts that run, unannounced, for a store under 2 GiB not in incremental mode.
+Because: A VACUUM holds the store's only lock for minutes, which only a closed project can give it, though a small store's takes under half a minute; bounded steps keep a write's wait to one step.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 

@@ -188,6 +188,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
     const plannedThrough: { [eventType: string]: number } = {}
     const idleReclaim = scope.own("idle-reclaim", createIdleStoreReclaim({
       blockers: () => runtimeBlockers(),
+      convert: () => storage.convertIfSmall(),
       start: () => {
         const job = options.maintenance.project({
           kind: "idle-reclaim", directories, serveState, onUsage: storage.report,
