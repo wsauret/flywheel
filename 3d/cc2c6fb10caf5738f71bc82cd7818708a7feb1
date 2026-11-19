@@ -1,0 +1,26 @@
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 245-247
+src/orchestration/config/model-assignment-types.ts
+  h_4b47e9e4a8b456 66-67
+src/orchestration/config/model-assignments.ts
+  h_4b47e9e4a8b456 328
+src/orchestration/config/model-tiers.ts
+  h_4b47e9e4a8b456 31-34,104,106,109-110,112,114
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 151-152,162,164
+tests/unit/orchestration/config/model-tiers.test.ts
+  h_4b47e9e4a8b456 107-123
+tests/unit/orchestration/config/session-role-resolver.test.ts
+  h_4b47e9e4a8b456 12-16,163-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3dcc2c6fb10caf5738f71bc82cd7818708a7feb1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
