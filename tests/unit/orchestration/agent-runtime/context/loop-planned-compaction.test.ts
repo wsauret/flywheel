@@ -253,9 +253,9 @@ describe("planned agent-loop compaction", () => {
     expect(JSON.stringify(capturedMessages[2])).toContain("Approved intent: preserve the original request");
   });
 
-  // A reset after an unsaved round opens with no record of the latest work, so a response that saves nothing is
-  // asked again, and the round resets unsaved only at its bound of four responses. An empty round answers in text
-  // only; a "fail" round is a failed provider response.
+  // A reset after an unsaved round opens with no record of the latest work, so a response that saves nothing, or
+  // has any checkpoint write refused, is asked again, and the round resets unsaved only at its bound of four
+  // responses. An empty round answers in text only; a "fail" round is a failed provider response.
   const probe = { id: "probe", name: "probe", input: {} };
   const read = { id: "read", name: "checkpoint_read", input: {} };
   const save = { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved state" } };
@@ -266,6 +266,7 @@ describe("planned agent-loop compaction", () => {
     ["saves", [[probe, save]], 0, SAVED],
     ["reads twice, then saves", [[read], [read], [save]], 1, SAVED],
     ["has its write refused, then saves", [[refusedSave], [save]], 1, SAVED],
+    ["saves one write beside a refused one, then saves", [[save, refusedSave], [save]], 1, SAVED],
     ["answers in text only, then saves", [[], [save]], 1, SAVED],
     ["reads, answers in text only, then saves", [[read], [], [save]], 1, SAVED],
     ["fails, then saves", ["fail", [save]], 1, SAVED],

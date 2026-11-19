@@ -24,10 +24,10 @@ const log = Log.create({ service: "agent-loop" });
 const CHECKPOINT_WRITE_TOOLS: ReadonlySet<string> = new Set(["checkpoint_replace", "checkpoint_decide"]);
 // A save round spans at most four requests: one that may only read the checkpoint, and up to three that try to
 // write it. A reset that follows an unsaved round opens a fresh context with no record of the latest work, so a
-// response that saves nothing is asked again until the bound. The context limit can end the round sooner,
-// through overflow recovery.
+// response that saves nothing, or has any checkpoint write refused, is asked again until the bound. The context
+// limit can end the round sooner, through overflow recovery.
 const SAVE_ROUND_REQUESTS = 4;
-const SAVE_RETRY_NOTICE = "<context_window_reminder>\nThe checkpoint was not saved: no `checkpoint_replace` or `checkpoint_decide` call succeeded. Save the sections that changed now. Do not continue the task or use other tools in this exhausted context.\n</context_window_reminder>";
+const SAVE_RETRY_NOTICE = "<context_window_reminder>\nThe checkpoint was not saved: no `checkpoint_replace` or `checkpoint_decide` call succeeded, or one of them was refused. For each refused write, read its error, shrink the section it names if the checkpoint is over its limit, and send that write again. Save the sections that changed now. Do not continue the task or use other tools in this exhausted context.\n</context_window_reminder>";
 const SAVE_ROUND_WHITELIST: ExecutionWhitelist = {
   tools: CHECKPOINT_TOOL_NAMES,
   deniedReason: (toolName) => `Tool '${toolName}' denied: this context window is exhausted and waits for its checkpoint save. Only checkpoint_read, checkpoint_replace, and checkpoint_decide run now. Save the checkpoint; the task continues in the next context.`,
@@ -276,17 +276,19 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
       return operation;
     },
     /** Settles the plan against the response that answered its instruction.
-     *  The checkpoint is saved when the response served and one checkpoint
-     *  write succeeded. A first response that only read the checkpoint keeps
-     *  the plan for one more response. For a plan that resets, every later
-     *  response that saved nothing, whether it read again, had its write
-     *  refused, answered in text only, or failed, is asked again until the
-     *  round reaches `SAVE_ROUND_REQUESTS`. An idle plan keeps its context when
-     *  it saves nothing, so it does not ask again. */
+     *  The checkpoint is saved when the response served, it made at least one
+     *  checkpoint write, and no checkpoint write was refused: a refused write
+     *  beside a successful one still loses its section. A first response that
+     *  only read the checkpoint keeps the plan for one more response. For a
+     *  plan that resets, every later response that did not save, whether it
+     *  read again, had a write refused, answered in text only, or failed, is
+     *  asked again until the round reaches `SAVE_ROUND_REQUESTS`. An idle plan
+     *  keeps its context when it does not save, so it does not ask again. */
     settle(responseOk: boolean, calls: readonly { name: string; ok: boolean }[]): SettledCompaction | null {
       if (!planned) return null;
       planned.requests += 1;
-      const saved = responseOk && calls.some((call) => call.ok && CHECKPOINT_WRITE_TOOLS.has(call.name));
+      const writes = calls.filter((call) => CHECKPOINT_WRITE_TOOLS.has(call.name));
+      const saved = responseOk && writes.length > 0 && writes.every((call) => call.ok);
       const firstRead = planned.requests === 1 && responseOk && calls.length > 0 && calls.every((call) => call.name === "checkpoint_read" && call.ok);
       if (!saved && planned.requests < SAVE_ROUND_REQUESTS && (firstRead || planned.operation.kind !== "idle")) {
         planned.unsavedNotice = !firstRead;
