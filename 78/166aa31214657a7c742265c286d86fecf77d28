@@ -1,0 +1,28 @@
+bench/harbor/configs/oc-parity-ledger.json
+  h_4b47e9e4a8b456 59-60,222-258
+bench/harbor/configs/shipped-brevity-first.toml
+  h_4b47e9e4a8b456 1-102
+bench/harbor/configs/shipped-brevity-last.toml
+  h_4b47e9e4a8b456 1-102
+src/orchestration/agent-runtime/diagnostic-parity.ts
+  h_4b47e9e4a8b456 81-92,101-102,115-117
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 25,275-276,278-279
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 202
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 318-331
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 157-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "78166aa31214657a7c742265c286d86fecf77d28",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
