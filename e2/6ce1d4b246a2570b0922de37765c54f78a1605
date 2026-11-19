@@ -1,0 +1,16 @@
+src/orchestration/agent-runtime/tools/write.ts
+  h_4b47e9e4a8b456 104
+tests/unit/orchestration/agent-runtime/tools/tools-write.test.ts
+  h_4b47e9e4a8b456 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e26ce1d4b246a2570b0922de37765c54f78a1605",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
