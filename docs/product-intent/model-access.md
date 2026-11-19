@@ -102,7 +102,7 @@ Outside provider controls, only models checked for a current exact account enter
 
 SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, and so do Claude subscription accounts for models their login does not list. Background checks that never bill or enable paid use confirm what each account can serve. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests.
 
-## PI-MODEL-090: A Google Vertex key reaches every global model
+## PI-MODEL-092: A Google Vertex key reaches every global model
 
 A Google Vertex express key reaches every model that Vertex serves in its global location. Flywheel finds the key's project when the key is added and keeps it with the key, so the person enters only the key. A key saved before this behavior gains its project on first use without a new login.
 
