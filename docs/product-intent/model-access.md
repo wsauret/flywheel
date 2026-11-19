@@ -160,7 +160,7 @@ Opening model selection or provider model controls shows saved choices at once a
 
 ## PI-MODEL-016: Every agent role has an eligible default
 
-Flywheel resolves each agent role once, when the agent starts. A saved pair always applies. Without one, the role takes its first reachable coded preference in benchmark order, then the newest model of its fallback tier at its fallback effort. A benchmarked role's fallback is the average price tier, rounded toward cheaper, and the most common effort, ties to higher, of its settings that pass the benchmark filters. Another role uses its first preference's tier and effort. An empty tier yields to the nearest populated tier, then an unranked model. An unsupported effort maps to the nearest supported effort.
+Flywheel resolves each agent role once, when the agent starts. A saved pair always applies. Without one, the role takes its first reachable coded preference in benchmark order, then its fallback tier's newest model, subscription-served first, at its fallback effort. A benchmarked role's fallback is the average price tier, rounded toward cheaper, and the most common effort, ties to higher, of its settings that pass the benchmark filters. Another role uses its first preference's tier and effort. An empty tier yields to the nearest populated tier, then an unranked model. An unsupported effort maps to the nearest supported one.
 
 ## PI-MODEL-087: An agent never changes its model on its own
 
