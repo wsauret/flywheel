@@ -1,0 +1,20 @@
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 3,29,43,45
+tests/unit/orchestration/workflow-host/golden/pre-phase-lineage.json
+  h_4b47e9e4a8b456 732
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 67
+tests/unit/workflows/workflow-prompt-hygiene.test.ts
+  h_4b47e9e4a8b456 102,104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "03700d41f77b7ed736f86fa1a1254347abc0b4f0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
