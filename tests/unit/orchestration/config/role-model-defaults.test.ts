@@ -5,9 +5,10 @@ import { dirname } from "node:path";
 import { modelsSnapshotFile } from "../../../../src/infra/paths.js";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { reachableRoleModelDefaults, type RoleModelPreferences, selectRoleModelDefault } from "../../../../src/orchestration/config/role-model-defaults.js";
-import { resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
+import { resolveCapturedRole, resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
 import { installedConfigSchema } from "../../../../src/orchestration/config/schema.js";
 import { tierOptions, withTempDir } from "./_config-models-fixtures.js";
+import { roleCapture } from "../../../helpers/role-capture.js";
 
 const bothProviders = new Map<ModelFamily, ReadonlySet<string>>([
   ["openai", new Set(["deepseek-v4.1-flash", "gpt-6-astra", "gpt-6.1-sol", "gpt-6-luna"])],
@@ -143,6 +144,21 @@ describe("role model defaults", () => {
 
     expect(roles.get("reviewer-quality")).toMatchObject({ model: "claude-sonnet-4.6", effort: "low" });
     expect(roles.get("reviewer-design")).toMatchObject({ model: "claude-sonnet-4.6", effort: "low" });
+  });
+
+  it.each([
+    { models: ["gpt-6.2-sol"], kind: "selected", model: "gpt-6.2-sol" },
+    { models: ["gpt-6.2-sol", "gpt-6.3-sol", "gpt-7-sol", "gpt-6.4-luna"], kind: "selected", model: "gpt-6.3-sol" },
+    { models: ["gpt-6.1-sol", "gpt-6.2-sol"], kind: "selected", model: "gpt-6.1-sol" },
+    { models: ["gpt-6-sol", "gpt-7-sol", "gpt-6.2-luna"], kind: "unserved", model: "gpt-6.1-sol" },
+  ])("resolves saved gpt-6.1-sol to $model on $models (PI-MODEL-087)", async ({ models, kind, model }) => {
+    const capture = roleCapture(models);
+    expect(await resolveCapturedRole("chat", { model: "gpt-6.1-sol", effort: "max" }, {
+      selection: capture.providers.selection,
+      connection: capture.connection,
+      eligibility: capture.eligibility,
+      allowTrainingRoutes: false,
+    }, "/scratch")).toMatchObject({ kind, role: { model, effort: "high" } });
   });
 
 });

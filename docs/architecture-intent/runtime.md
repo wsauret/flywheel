@@ -20,7 +20,7 @@ Not: A recovery policy that retries or fails over inside a request.
 
 ## ARCH-RUNTIME-082: An agent's model is fixed for its run
 
-A run resolves its role once when it starts and uses that model and effort for every request, until the person changes the setting. For a role with no saved model, the run records the pick in its conversation, so a restart keeps it. When the model cannot serve, the recovery policy arms one wait. A stated time, a person's message or Resume, or an authentication or model-admission change that reaches the agent's host and lets the model serve ends it. A cut ends it and leaves the agent idle.
+A run resolves its role once at start and keeps that model and effort until the person changes the setting. An unoffered saved model resolves to the newest admitted later version of its family and major line. A role with no saved model records its pick in the conversation, so a restart keeps it. A model that cannot serve arms one wait, which a stated time, a person's message or Resume, or an admission change that lets the model serve ends. A cut ends it and leaves the agent idle.
 Not: Passing over a model that cannot serve to another role preference.
 
 ## ARCH-RUNTIME-083: The project's control composition owns store usage and idle reclaim

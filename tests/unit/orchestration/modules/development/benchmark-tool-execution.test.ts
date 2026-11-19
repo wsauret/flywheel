@@ -162,6 +162,7 @@ function harness(cells: CellBehavior = "blocks") {
         runtimeConfig: testRuntimeConfigCapture(),
         eligibility: {
           ...eligibility,
+          modelIds: new Set([...SEATS.map(({ model }) => model), "gpt-6.1-sol"]),
           candidateOfferings: (candidate, model, allowTrainingRoutes) => {
             const anthropicModel = model.startsWith("claude-");
             if (candidate.providerId === "anthropic_api" && !anthropicModel) return [];

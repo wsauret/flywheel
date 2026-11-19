@@ -62,8 +62,8 @@ describe("Chat routing benchmark CLI", () => {
     const parsed: unknown = JSON.parse(output);
     expect(parsed).toMatchObject({ dryRun: true, repeats: 1 });
     expect(admitted).toEqual([
-      { role: "candidate", model: "gpt-6.1-sol" },
-      { role: "candidate", model: "claude-fable-5" },
+      { role: "candidate", roleId: "chat", model: "gpt-6.1-sol", effort: "medium" },
+      { role: "candidate", roleId: "chat", model: "claude-fable-5", effort: "low" },
     ]);
     expect(disposed).toBe(1);
   });

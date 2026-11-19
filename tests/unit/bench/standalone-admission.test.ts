@@ -1,7 +1,7 @@
 /**
  * The standalone benchmark CLI's provider admission. It admits its matrix
  * through the same capture-and-plan contract the embedded tool uses: one
- * capture for preflight. Unreachable settings fall through without constructing
+ * capture for preflight. Unreachable settings refuse the run without constructing
  * a provider client.
  *
  * No test here may build a provider client: every admitted factory throws.
@@ -148,24 +148,20 @@ describe("standalone benchmark admission", () => {
       await runtime[Symbol.asyncDispose]();
     }
   });
-  it("preflights unavailable authored settings through the role defaults without building a client", async () => {
+  it("refuses an unavailable authored setting at preflight without building a client", async () => {
     const { create, spy } = fakeRuntime();
     const output: string[] = [];
     const log = spyOn(console, "log").mockImplementation((value) => { output.push(String(value)); });
     try {
-      await main(
+      await expect(main(
         ["--persona", "explorer", "--variant", "lost-model:medium", "--variant", "gpt-6-luna:xhigh", "--dry-run"],
         create,
-      );
+      )).rejects.toThrow('Benchmark candidate setting explorer "lost-model:medium" cannot serve');
     } finally { log.mockRestore(); }
 
     expect(spy.captures).toBe(1);
-    expect(spy.admitted?.has("gpt-6-luna")).toBe(true);
-    expect(JSON.parse(output[0] ?? "{}").providerPlans).toMatchObject([
-      { role: "candidate", model: "gpt-6.1-sol", effort: "low" },
-      { role: "candidate", model: "gpt-6-luna", effort: "high" },
-      { role: "judge", model: "gpt-6.1-sol", effort: "high" },
-    ]);
+    expect(spy.admitted).toBeNull();
+    expect(output).toEqual([]);
     expect(spy.clientBuilds).toBe(0);
     expect(spy.disposals).toBe(1);
   });
@@ -205,7 +201,7 @@ describe("standalone benchmark admission", () => {
       persona: "explorer",
       mode: "research",
       variants: [
-        { id: "gpt-6-astra@medium", model: "gpt-6-astra", effort: "medium" },
+        { id: "gpt-6.1-sol@medium", model: "gpt-6.1-sol", effort: "medium" },
         { id: "gpt-6-luna@xhigh", model: "gpt-6-luna", effort: "xhigh" },
       ],
       repeats: 1,

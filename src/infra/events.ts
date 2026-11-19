@@ -2,8 +2,8 @@ import { Schema } from "effect";
 import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES, type RuntimeEvent } from "./runtime-event-types.js";
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "./review-notice.js";
 import { MessageSenderSchema } from "./output-blocks.js";
-import { SESSION_NOTICE_PRESENTATION_IDS } from "./error-presentation.js";
-import { CAPACITY_WAIT_REASONS, type SessionNoticeOperation } from "./session-notice.js";
+import { CAPACITY_WAIT_REASONS, SESSION_NOTICE_PRESENTATION_IDS } from "./error-presentation.js";
+import type { SessionNoticeOperation } from "./session-notice.js";
 
 type EventActor = "agent" | "flywheel" | "provider" | "user" | "workflow";
 

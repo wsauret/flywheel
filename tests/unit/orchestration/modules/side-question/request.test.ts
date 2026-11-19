@@ -126,7 +126,7 @@ test.each(["answer", "unsolicited", "refusal", "no-provider"] as const)("the rea
       },
     }, client, undefined, capture),
     captureProviderConnection: capture,
-    resolveRoles: async () => scenario === "no-provider" ? new Map() : new Map([["chat", { roleId: "chat", model: "test", effort: "high" }]]),
+    resolveRoles: async () => scenario === "no-provider" ? new Map() : new Map([["chat", { roleId: "chat", model: "fresh-model", effort: "high" }]]),
   })
   await deps.treeWriter.commitUserTurn("parent context")
   await deps.treeWriter.recordCanonicalMessage({

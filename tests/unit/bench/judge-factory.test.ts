@@ -10,7 +10,7 @@ describe("shared benchmark judge factory", () => {
     const deps = {
       userDataRoot: "/user-data",
       accountHome: "/home",
-      captureProviderConnection: async () => roleCapture(["gpt-6.1-sol"]),
+      captureProviderConnection: async () => roleCapture(["judge-model"]),
       createAgent: (options: AgentOptions) => {
         received = options;
         return {
@@ -33,7 +33,7 @@ describe("shared benchmark judge factory", () => {
     expect(received?.conversation).toEqual({ kind: "stateless" });
     expect(received?.lifecycle).toEqual({ kind: "one-shot" });
     const roles = await received?.resolveRoles?.();
-    expect(roles && await received?.requestSelection?.(roles)).toMatchObject({ roleId: "benchmark-judge", model: "gpt-6.1-sol", effort: "high" });
+    expect(roles && await received?.requestSelection?.(roles)).toMatchObject({ roleId: "benchmark-judge", model: "judge-model", effort: "high" });
     expect(completion.text).toBe("graded");
     expect(completion.accounting.estimatedUsd.kind).toBe("unavailable");
   });

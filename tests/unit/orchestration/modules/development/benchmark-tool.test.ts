@@ -10,6 +10,7 @@ import { createBenchmarkTool } from "../../../../../src/orchestration/modules/de
 import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
 import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
+import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
 import type { DispatchedToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
@@ -199,17 +200,17 @@ describe("benchmark tool input contract", () => {
 });
 
 describe("benchmark tool admission", () => {
-  it("falls through unavailable candidate and judge settings with each role's effort", async () => {
+  it("refuses unavailable candidate and judge settings without falling through", async () => {
     const { deps } = toolDeps();
     const captured = roleCapture(["claude-haiku-4.5", "claude-opus-5.5"], { "benchmark-judge": { model: "lost-judge", effort: "low" } });
-    const admission = await admitBenchmark({
+    const depsWithCapture = {
       ...deps,
       captureProviderConnection: async () => ({ ...captured, admit: () => ({ createAgent: () => { throw new Error("unused"); }, createLLMClient: () => { throw new Error("unused"); } }) }),
-    }, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "low" }, { role: "judge" }]);
-    expect(admission.providerPlans).toEqual([
-      { role: "candidate", model: "claude-haiku-4.5", effort: "medium", profileId: "default", providers: ["anthropic_api"] },
-      { role: "judge", model: "claude-opus-5.5", effort: "high", profileId: "default", providers: ["anthropic_api"] },
-    ]);
+    };
+    await expect(admitBenchmark(depsWithCapture, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "low" }]))
+      .rejects.toThrow('Benchmark candidate setting explorer "lost-candidate:low" cannot serve');
+    await expect(admitBenchmark(depsWithCapture, [{ role: "judge" }]))
+      .rejects.toThrow('Benchmark judge setting benchmark-judge "lost-judge:low" cannot serve');
   });
 
   it("preserves the host foreground Bash hold without constructing a client", async () => {
@@ -220,6 +221,20 @@ describe("benchmark tool admission", () => {
     expect(admission.runtime.foregroundBashHold).toBe(foregroundBashHold);
     expect(spy.captures).toBe(1);
     foregroundBashHold.dispose();
+  });
+
+  it("refuses preflight when every provider of the fixed seat is in outage", async () => {
+    const { deps, spy, foregroundBashHold } = toolDeps();
+    const providerAvailability = createProviderAvailability();
+    try {
+      providerAvailability.forCandidates("default", []).markUnreachable("openai_api");
+      await expect(admitBenchmark({ ...deps, providerAvailability }, [{ role: "candidate", ...SEATS[0] }]))
+        .rejects.toThrow('Benchmark candidate setting workflow-agent "gpt-6-astra:medium" cannot serve');
+      expect(spy.admitted).toBeNull();
+    } finally {
+      foregroundBashHold.dispose();
+      await providerAvailability.dispose();
+    }
   });
 
   it("plans every candidate and the judge on one capture, and reports the chains it admitted", async () => {
@@ -309,15 +324,9 @@ describe("benchmark tool admission", () => {
     );
 
     expect(first.outcome).toBe("ok");
-    expect(second.outcome).toBe("ok");
-    expect(parseRecord(String(second.content)).providerPlans).toEqual([
-      { role: "candidate", profileId: "default", providers: [] },
-      { role: "candidate", profileId: "default", providers: [] },
-      { role: "judge", profileId: "default", providers: [] },
-    ]);
+    expect(second).toMatchObject({ outcome: "error", content: expect.stringContaining('Benchmark candidate setting explorer "gpt-6-astra:medium" cannot serve') });
     expect(spy.captures).toBe(2);
     await firstTasks.settled;
-    await secondTasks.settled;
   });
 
   it("loads fixtures and results from the parent execution directory", async () => {
@@ -356,21 +365,15 @@ describe("benchmark tool admission", () => {
     await settled;
   });
 
-  it("reports an empty profile without refusing launch or constructing a client", async () => {
+  it("refuses an authored setting that an empty profile cannot serve, without constructing a client", async () => {
     const { deps, spy } = toolDeps({ ...AUTH, providers: authProviders({ base: AUTH.providers, without: ["openai_api"] }),});
-    const { tasks, settled } = registry();
+    const { tasks } = registry();
     const result = await createBenchmarkTool(deps).execute(
       { action: "run", persona: "explorer", variants: SEATS, repeats: 1, dryRun: true },
       context(process.cwd(), tasks),
     );
-    expect(result.outcome).toBe("ok");
-    expect(parseRecord(String(result.content)).providerPlans).toEqual([
-      { role: "candidate", profileId: "default", providers: [] },
-      { role: "candidate", profileId: "default", providers: [] },
-      { role: "judge", profileId: "default", providers: [] },
-    ]);
-    expect(spy.admitted?.size).toBe(0);
-    await settled;
+    expect(result).toMatchObject({ outcome: "error", content: expect.stringContaining('Benchmark candidate setting explorer "gpt-6-astra:medium" cannot serve') });
+    expect(spy.admitted).toBeNull();
     expect(tasks.activeTaskCount()).toBe(0);
   });
 });

@@ -96,7 +96,7 @@ async function main(requestPath: string, resultPath: string, cancelPath: string)
       background: runtime.background,
       foregroundBashHold: runtime.foregroundBashHold,
       shell: runtime.shell,
-    }, [{ role: "candidate", roleId: request.persona.role, ...request.seat }]);
+    }, [{ role: "candidate", roleId: request.persona.role, ...request.seat, fixedModel: request.seat.model !== undefined }]);
     if (admission.runtime.admissionIdentity?.runtimeConfig !== request.admissionIdentity.runtimeConfig) {
       cause = "admission-changed";
       throw new Error("Native worker runtime configuration changed");

@@ -76,6 +76,8 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "conversation.checkpoint.updated": HISTORY,
     // Written once at a subagent's publication.
     "session.intent.inherited": HISTORY,
+    // The model that a conversation picked for a setting that names none; only its newest pick applies.
+    "conversation.role.picked": { policy: "replace-latest-keyed", key: "$.conversationId" },
 
     // File mutations: publication evidence, read by recovery and diff views.
     "file.changed": HISTORY,

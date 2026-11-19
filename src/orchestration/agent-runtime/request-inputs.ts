@@ -36,7 +36,7 @@ import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
 import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestCapture, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
 import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
-import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
+import type { Agent, AgentOptions, RoleHold, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import { createChildSlotRegistry } from "./child-slot-registry.js";
 import { loadAgentInstructions } from "./project-instructions.js";
 import { buildSystemPrompt, type BuildSystemPromptOptions } from "./system-prompt.js";
@@ -53,6 +53,7 @@ import { ModelUnavailable } from "./errors.js";
 import { AllCandidatesExhaustedError } from "./llm/errors.js";
 import { SAFE_RECHECK_MS } from "./llm/provider-availability.js";
 import { isModelTierReference } from "../../protocol/model-tier-reference.js";
+import { conversationRolePicks, rolePickSettingKey, type RolePickSetting } from "../session/conversation-role-pick.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
 import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./capability-narrowing.js";
 import { agentTypesTurnedOffSince } from "../app-service/definition-availability.js";
@@ -186,9 +187,9 @@ function headlessPromptOf(purpose: AgentOptions["purpose"]) {
  *  the agent waits for it and checks again after the safe recheck interval, or at once when a sign-in, a key, an
  *  account, or a model setting changes (PI-MODEL-039). An agent of an unattended run has no person who can change any
  *  of these, so its failure stands (PI-AGENT-128). */
-function notOfferedFailure(options: AgentOptions, model: string): Error {
+function notOfferedFailure(options: AgentOptions, model: string, fixedModel?: boolean): Error {
   const message = `No signed-in account or enabled provider offers "${model}".`;
-  if (options.capabilityAccess?.unattended === true) return new ModelUnavailable({ missing: "provider", message });
+  if (fixedModel || options.capabilityAccess?.unattended === true) return new ModelUnavailable({ missing: "provider", message });
   return new AllCandidatesExhaustedError({
     message,
     recovery: { kind: "at", atMs: Date.now() + SAFE_RECHECK_MS, hold: { kind: "recheck" } },
@@ -450,6 +451,20 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   const { runtimeSurfaces } = options;
   const providerRuntimeCache = input.providerRuntimeCache ?? new ProviderRuntimeCache<ModelClient>();
   const roleHold = options.roleHold ?? {};
+  // The pick of a setting that names no concrete model lives beside the agent's conversation, so the agent keeps it
+  // across its runs and a restart (ARCH-RUNTIME-082). A run that keeps no durable conversation holds it in memory.
+  const pickOwner = conversation.requestAccounting?.owner ?? (sessionId ? { kind: "session" as const, sessionId } : undefined);
+  const recordedPicks = pickOwner && conversationAggregateId && options.sessionEventWriter
+    ? conversationRolePicks(options.sessionEventReader, options.sessionEventWriter, pickOwner, conversationAggregateId)
+    : undefined;
+  const heldPick = async (setting: RolePickSetting): Promise<RoleHold["held"]> => {
+    const key = rolePickSettingKey(setting);
+    if (roleHold.held?.setting === key) return roleHold.held;
+    const recorded = await recordedPicks?.read();
+    if (recorded === undefined || rolePickSettingKey(recorded.setting) !== key) return undefined;
+    roleHold.held = { setting: key, model: recorded.model, effort: recorded.effort };
+    return roleHold.held;
+  };
   const captureSelection = async (runtimeConfig: RuntimeConfigRequestCapture, moduleSnapshot: FirstPartyModuleComposition): Promise<RequestModelSelection> => {
     const runtime = await input.captureModelRuntime();
     const connection = await runtime.captureProviderConnection?.(runtimeConfig, liveModules(moduleSnapshot));
@@ -470,22 +485,30 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
     const setting = authored.setting ?? authored;
     const roleId = authored.roleId ?? "chat";
     // A setting that names no concrete model resolves once, and the agent keeps that pair until the setting changes.
-    const settingKey = JSON.stringify([roleId, setting.model ?? null, setting.effort ?? null, authored.setting?.defaultEffort ?? null]);
-    const held = roleHold.held?.setting === settingKey ? roleHold.held : undefined;
+    const pickSetting: RolePickSetting = {
+      roleId,
+      ...(setting.model === undefined ? {} : { model: setting.model }),
+      ...(setting.effort === undefined ? {} : { effort: setting.effort }),
+      ...(authored.setting?.defaultEffort === undefined ? {} : { defaultEffort: authored.setting.defaultEffort }),
+    };
+    const picks = capture !== undefined && options.requestSelection !== undefined && (setting.model === undefined || isModelTierReference(setting.model));
+    const held = picks ? await heldPick(pickSetting) : undefined;
     const resolved = capture && options.requestSelection
       ? await resolveCapturedRole(roleId, held === undefined
-        ? { model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, defaultEffort: authored.setting?.defaultEffort }
-        : { model: held.model, effort: held.effort, provider_options: setting.providerOptions },
+        ? { model: setting.model, effort: setting.effort, provider_options: setting.providerOptions, defaultEffort: authored.setting?.defaultEffort, fixedModel: authored.fixedModel }
+        : { model: held.model, effort: held.effort, provider_options: setting.providerOptions, fixedModel: true },
       { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: runtimeConfig.allowTrainingRoutes }, options.userDataRoot)
       : undefined;
     if (resolved && (resolved.kind === "access-pending" || resolved.kind === "no-selection")) throw new ModelUnavailable({
       missing: resolved.kind === "access-pending" ? "access" : "provider",
       message: resolved.kind === "access-pending" ? "Model access is still being checked." : "The active profile has no reachable model.",
     });
-    if (resolved !== undefined && held === undefined && (setting.model === undefined || isModelTierReference(setting.model))) {
-      roleHold.held = { setting: settingKey, model: resolved.role.model, effort: resolved.role.effort };
+    // Only a send records the pick: a pre-start sends nothing, and the send after it picks again from the same capture.
+    if (picks && resolved !== undefined && held === undefined && turn !== undefined) {
+      roleHold.held = { setting: rolePickSettingKey(pickSetting), model: resolved.role.model, effort: resolved.role.effort };
+      await recordedPicks?.record({ setting: pickSetting, model: resolved.role.model, effort: resolved.role.effort });
     }
-    if (resolved?.kind === "unserved") throw notOfferedFailure(options, resolved.role.model);
+    if (resolved?.kind === "unserved") throw notOfferedFailure(options, resolved.role.model, authored.fixedModel);
     const selection = resolved?.kind === "selected" ? { ...resolved.role, effort: mapEffort(resolved.role.effort) } : authored;
     const { model, providerOptions } = selection;
     if (!model) throw new ModelUnavailable({ missing: "provider", message: "The active profile has no reachable model." });

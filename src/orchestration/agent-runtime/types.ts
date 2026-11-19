@@ -16,12 +16,14 @@ import type { AgentLoopWakeInput, InputSource, LogicalTurnStartedContext, TurnEn
 import type { ToolAction } from "../../infra/workflow-types.js";
 import type { BriefScope } from "../config/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
+import type { RoleSettingEntry } from "../session/schemas.js";
 import type { AskUserController } from "../runner/ask-user-controller.js";
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js";
 import type { SessionFactWriter } from "../session/session-fact-writer.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
+
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
 import type { ConversationMessage } from "./llm/types.js";
 import type { AgentRunTally } from "./agent-loop-state.js";
@@ -55,6 +57,17 @@ import type { ShellRuntimeClient } from "./tools/shell-runtime-types.js";
 import type { SessionMessaging } from "../session/session-messaging.js";
 import type { ExternalSkillChildGrant } from "./tools/skill.js";
 import type { CaptureRuntimeConfig } from "./request-config.js";
+
+export interface RequestRoleSelection {
+  readonly roleId?: string;
+  readonly model?: string;
+  readonly effort?: string;
+  readonly providerOptions?: ProviderRequestOptions;
+  readonly setting?: RoleSettingEntry & { readonly defaultEffort?: string };
+  /** The job already chose its pair. Only providers of this model can serve it. */
+  readonly fixedModel?: boolean;
+}
+
 export type HeadlessPrompt =
   | { readonly kind: "assembled"; readonly corePrompt: "You are a helpful AI Agent." }
   | { readonly kind: "literal"; readonly systemPrompt: string };
@@ -244,7 +257,9 @@ export interface AgentToolInput {
 
 /** The model and effort that an agent resolved once for a role setting that names no concrete model, such as a role
  *  with no saved model or a saved tier. Every request of the agent keeps the pair until the person changes the
- *  setting, so the agent never changes its model by itself (ARCH-RUNTIME-082). Its owner creates one per agent. */
+ *  setting, so the agent never changes its model by itself (ARCH-RUNTIME-082). Its owner creates one per agent; an
+ *  agent with a durable conversation also records the pair beside it (`conversation.role.picked`), which a restart
+ *  reads. */
 export interface RoleHold {
   held?: { readonly setting: string; readonly model: string; readonly effort: string };
 }
@@ -256,8 +271,8 @@ interface AgentBaseOptions {
   /** Fixed effort for a call without live roles, or an accessor for a fixed
    *  runner whose effort is resolved at each request boundary. */
   effort?: string | (() => Promise<string | undefined>);
-  /** Live role for request admission. Absent for intentionally fixed model calls. */
-  requestSelection?: (roles: Awaited<ReturnType<RoleResolver>>) => { roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions } | Promise<{ roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions }>;
+  /** Role for request admission, with `fixedModel` when a one-shot job already chose the exact model. */
+  requestSelection?: (roles: Awaited<ReturnType<RoleResolver>>) => RequestRoleSelection | Promise<RequestRoleSelection>;
   /** The role pair that this agent resolved at its start for a setting that names no concrete model, held across
    *  its runs. Absent: each run holds its own. */
   roleHold?: RoleHold;

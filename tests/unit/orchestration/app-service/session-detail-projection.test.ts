@@ -523,7 +523,7 @@ describe("controls of a session a successor owes its continuation", () => {
     }
   })
 
-  test("a session whose capacity wait no run holds shows the wait with its agent and continue time, with or without an idle runner, until the wait is withdrawn", async () => {
+  test("a session whose capacity wait no run holds shows the wait with its agent, model, reason, and continue time, with or without an idle runner, until the wait is withdrawn (PI-MODEL-063)", async () => {
     const { store, writer } = openStore()
     const continuesAt = Date.parse("2026-10-29T02:00:00.000Z")
     const notices = async (liveEntry?: ChatSessionEntry) => {
@@ -537,8 +537,15 @@ describe("controls of a session a successor owes its continuation", () => {
     try {
       await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(store), writer, continuation: { target: { sessionId: "chat-1", kind: "chat" }, continuesAt } })
       const waiting = [{ title: "Waiting for model capacity", message: `No provider can run the model of agent "Chat" now. The agent continues at ${new Date(continuesAt).toLocaleString()}.`, retry: undefined, wait: { agentName: "Chat", continuesAt } }]
+      // A row that a build before 2026-11-19 wrote names no model, and its notice names none.
       expect(await notices()).toEqual(waiting)
       expect(await notices(entry([]))).toEqual(waiting)
+      await authorizePlannedSessionContinuation({ reader: asAsyncEventReadSurface(store), writer, continuation: { target: { sessionId: "chat-1", kind: "chat" }, continuesAt, unserved: { model: "claude-opus-5.5", reason: "spent" } } })
+      expect(await notices()).toEqual([{
+        title: "Waiting for model capacity",
+        message: `claude-opus-5.5 cannot serve agent "Chat" now: its usage limit is spent. The agent continues at ${new Date(continuesAt).toLocaleString()}.`,
+        retry: undefined, wait: { agentName: "Chat", continuesAt, model: "claude-opus-5.5", reason: "spent" },
+      }])
 
       await retirePlannedSessionContinuation({ reader: asAsyncEventReadSurface(store), writer, sessionId: "chat-1", capacity: true })
       expect(await notices()).toEqual([])

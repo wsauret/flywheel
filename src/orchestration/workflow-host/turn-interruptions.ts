@@ -1,7 +1,9 @@
 import type { EmitFn } from "../../infra/event-bus.js"
+import type { TurnParkedContext } from "../../infra/agent-loop-events.js"
 import { interruptedLabel } from "../../infra/output/run-labels.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type TurnInterruption } from "../session/conversation/turn-end-record.js"
+import type { WorkflowAgentInput } from "./agent-inputs.js"
 
 /** The conversation a workflow turn owner holds, as its turn ends use it. */
 interface HeldConversation {
@@ -29,6 +31,13 @@ export interface WorkflowTurnInterruptions {
   /** The owner's loop records its interrupted turn end through the held
    *  conversation, naming who cut the turn. */
   record(): Promise<ConversationMessage>
+  /** Records a cut between runs and waits for an admitted hand-back without taking the next run's input. */
+  parkCutWait(
+    agentInput: Pick<WorkflowAgentInput, "cut" | "takeOpeningInterrupt" | "waitForHandBack">,
+    onTurnParked: (context: TurnParkedContext) => Promise<void>,
+    awaitedTaskCount: () => number,
+    signal: AbortSignal,
+  ): Promise<void>
   /** The owner's loop took a person's message or Resume, so its turn runs
    *  again and no cut ended it. */
   resumed(): void
@@ -53,6 +62,12 @@ export function createWorkflowTurnInterruptions(input: {
   // The runtime's cut of the owner's turn: `unwinding` until the loop has
   // recorded it, then `at-rest` while the loop parks on it.
   let cut: "unwinding" | "at-rest" | null = null
+  function record(): Promise<ConversationMessage> {
+    if (held === null) return Promise.reject(new Error("No workflow turn holds a conversation to record its turn end in"))
+    const by = input.currentInterruption()
+    cut = isRuntimeInterruption(by) ? "at-rest" : null
+    return held.commitTurnEnd(by)
+  }
   return {
     hold(conversation) {
       held = conversation
@@ -68,11 +83,18 @@ export function createWorkflowTurnInterruptions(input: {
       cut = before
       return false
     },
-    record() {
-      if (held === null) return Promise.reject(new Error("No workflow turn holds a conversation to record its turn end in"))
-      const by = input.currentInterruption()
-      cut = cut === "unwinding" && isRuntimeInterruption(by) ? "at-rest" : null
-      return held.commitTurnEnd(by)
+    record,
+    async parkCutWait(agentInput, onTurnParked, awaitedTaskCount, signal) {
+      do {
+        agentInput.takeOpeningInterrupt()
+        await record()
+        await onTurnParked({
+          park: "interrupted", userResumeRequired: true, handoffWritten: false, turnCount: 0,
+          activeBackgroundCount: awaitedTaskCount(), parkedOnBackgroundWork: false, waitRequested: false,
+        })
+        await agentInput.waitForHandBack(signal)
+        // Another interrupt can overtake the hand-back before it reaches the worker.
+      } while (!signal.aborted && agentInput.cut !== undefined)
     },
     resumed() {
       cut = null

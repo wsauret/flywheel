@@ -7,6 +7,13 @@ import { structuredIdentity } from "./content-identity.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
 import { resolveCapturedRole } from "../../../config/role-resolution.js";
 import type { WorkflowDeps } from "../../../workflow-host/deps.js";
+import type { ResolvedRole } from "../../../config/roles.js";
+import { candidateCredentialLineage } from "../../../agent-runtime/llm/client-factory.js";
+import { candidateReadiness } from "../../../agent-runtime/llm/failover-client.js";
+import { peekSharedProviderAvailability } from "../../../agent-runtime/llm/shared-provider-availability.js";
+import type { ProviderAvailabilityOwner } from "../../../agent-runtime/llm/provider-availability-types.js";
+
+const seatKey = (role: BenchmarkRole, model?: string, effort?: string): string => JSON.stringify([role, model, effort]);
 
 /** What a benchmark launch is given: the project surface it runs against with
  *  no client factory of its own, plus the capture every client of the run is
@@ -16,6 +23,7 @@ export interface BenchmarkAdmissionDeps extends Omit<BenchmarkRuntime, "createAg
   readonly captureProviderConnection: CaptureProviderConnection;
   readonly availableModels?: WorkflowDeps["availableModels"];
   readonly modelInfos?: WorkflowDeps["modelInfos"];
+  readonly providerAvailability?: Pick<ProviderAvailabilityOwner, "forCandidates">;
 }
 
 /** Which side of the matrix a planned model serves. */
@@ -65,6 +73,8 @@ export interface BenchmarkModelSeat {
   readonly roleId?: string;
   readonly model?: string;
   readonly effort?: string;
+  /** A native worker admits the concrete pair its parent has already resolved. */
+  readonly fixedModel?: boolean;
 }
 
 /** The provider decision for one model, as a launch reports it. It names no
@@ -121,24 +131,49 @@ export function benchmarkPreflightReport(
   };
 }
 
-/** Previews each seat against one captured profile. Requests capture again and resolve their authored settings. */
+/** Resolves every seat once against one captured profile, before the campaign starts: a seat's setting, else its
+ *  role's defaults. A seat whose resolved model no admitted account offers refuses the whole campaign and names that
+ *  setting, so no request falls through to another model (PI-MODEL-087). */
 export async function admitBenchmark(
   deps: BenchmarkAdmissionDeps,
   seats: readonly BenchmarkModelSeat[],
 ): Promise<BenchmarkAdmission> {
   const capture = await deps.captureProviderConnection();
   const plans = new Map<string, AdmittedFailoverPlan>();
-  const providerPlans = await Promise.all(seats.map(async ({ role, roleId = role === "judge" ? "benchmark-judge" : "workflow-agent", model, effort }): Promise<ProviderPlanReport> => {
+  const resolvedSeats = new Map<string, ResolvedRole>();
+  const providerPlans = await Promise.all(seats.map(async ({ role, roleId = role === "judge" ? "benchmark-judge" : "workflow-agent", model, effort, fixedModel }): Promise<ProviderPlanReport> => {
     const roles = await resolveSessionRoles({ defaults: {}, overrides: model === undefined && effort === undefined ? {} : { [roleId]: { model, effort } } }, capture, deps.userDataRoot, [roleId]);
     const setting = roles.get(roleId)?.setting;
     const selected = await resolveCapturedRole(roleId, {
-      model: setting?.model, effort: setting?.effort, provider_options: setting?.providerOptions,
+      model: setting?.model ?? model, effort: setting?.effort ?? effort, provider_options: setting?.providerOptions, fixedModel,
     }, { selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: capture.runtimeConfig.allowTrainingRoutes }, deps.userDataRoot);
+    if (selected.kind === "unserved") {
+      throw new Error(`Benchmark ${role} setting ${roleId} "${selected.role.model}:${selected.role.effort}" cannot serve: no signed-in account or enabled provider offers ${selected.role.model}.`);
+    }
     if (selected.kind !== "selected") {
-      return { role, profileId: capture.connection.profileId, providers: [] };
+      const authored = model === undefined ? roleId : `${roleId} "${model}:${effort ?? "default"}"`;
+      throw new Error(`Benchmark ${role} setting ${authored} cannot serve: ${selected.kind === "access-pending" ? "model access is still being checked" : "the active profile has no reachable model"}.`);
     }
     const chain = selected.plan;
+    const availability = (deps.providerAvailability ?? peekSharedProviderAvailability())?.forCandidates(capture.connection.profileId, chain.candidates);
+    if (availability) {
+      const requestAdmission = await capture.requestAdmission(chain.candidates);
+      availability.refreshProjection();
+      const inputs = {
+        ...requestAdmission,
+        availability,
+        family: chain.family,
+        providerOptions: selected.role.providerOptions,
+        conditions: capture.connection.auth.conditions ?? [],
+        credentialLineage: (candidate: (typeof chain.candidates)[number]) => candidateCredentialLineage(capture.connection, candidate),
+      };
+      const readiness = chain.candidates.map((candidate) => candidateReadiness(candidate, inputs));
+      if (readiness.every((route) => route.kind === "refused")) {
+        throw new Error(`Benchmark ${role} setting ${roleId} "${selected.role.model}:${selected.role.effort}" cannot serve: ${readiness.map((route) => route.state.detail).join("; ")}`);
+      }
+    }
     plans.set(selected.role.model, chain);
+    resolvedSeats.set(seatKey(role, model, effort), selected.role);
     return { role, model: selected.role.model, effort: selected.role.effort, profileId: capture.connection.profileId, providers: chain.candidates.map(candidateProviderId) };
   }));
   const admitted = capture.admit(plans);
@@ -163,6 +198,7 @@ export async function admitBenchmark(
     },
     createAgent: admitted.createAgent,
     createLLMClient: admitted.createLLMClient,
+    candidateRole: ({ model, effort }) => resolvedSeats.get(seatKey("candidate", model, effort)),
   };
   return {
     runtime,
@@ -170,6 +206,7 @@ export async function admitBenchmark(
       createAgent: admitted.createAgent,
       model,
       effort,
+      fixedRole: resolvedSeats.get(seatKey("judge", model, effort)) ?? [...resolvedSeats.values()].find((role) => role.roleId === "benchmark-judge" && role.model === model && role.effort === effort),
       captureProviderConnection: deps.captureProviderConnection,
       evidenceDirectory,
       validateModel,

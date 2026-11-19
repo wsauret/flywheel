@@ -85,7 +85,7 @@ test("models reads live eligibility while its request prefix stays byte-identica
   enabled = [];
   const empty = await tool.execute({}, context);
   if (typeof empty.content !== "string") throw new Error("models must return JSON text");
-  expect(JSON.parse(empty.content)).toMatchObject({ models: { rows: [] }, workflowAgentDefault: { unavailable: "no-selection" } });
+  expect(JSON.parse(empty.content)).toMatchObject({ models: { rows: [] }, workflowAgentDefault: { unavailable: "unserved" } });
 });
 
 test("models returns tiers per supported effort with attribution and exact absence reasons, never raw benchmarks", async () => {

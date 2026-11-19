@@ -35,6 +35,8 @@ export interface WorkflowAgentInput {
   resumeFromParent(): boolean
   /** A person's admitted private message releases only this member's cut. The message supplies the wake. */
   resumeFromPerson(): boolean
+  /** Waits for an admitted hand-back without draining the next run's input. Cancellation ends the wait. */
+  waitForHandBack(signal: AbortSignal): Promise<void>
   /** One generation-opening action, without replaying a restored cut after Resume. */
   takeOpeningInterrupt(): AttemptInterrupt | undefined
   /** The cut's actor remains available to an unwinding turn until its Resume is emitted. */
@@ -134,6 +136,7 @@ interface Slot {
   /** The slot's own cut and its generation-opening action. Only `advanceCut` produces its next value. */
   cut: SlotCut
   announcement: AttemptInterrupt | undefined
+  wakeHandBack?: () => void
 }
 
 interface AttemptInterrupt {
@@ -226,8 +229,12 @@ export function createWorkflowAgentInputs(input: {
     if (address) release((agent) => reaches(address, agent))
     else if (own) release((agent) => agent !== undefined && agent.id === own.id)
     else release((agent) => reaches(WHOLE_WORKFLOW, agent))
-    slot.cut = advanceCut(slot.cut, { kind: "authorize", address: address ?? WHOLE_WORKFLOW })
+    handBack(slot, address ?? WHOLE_WORKFLOW)
     input.onChange?.()
+  }
+  function handBack(slot: Slot, address: WorkflowDeliveryAddress): void {
+    slot.cut = advanceCut(slot.cut, { kind: "authorize", address })
+    slot.wakeHandBack?.()
   }
   function stateAt(address: WorkflowDeliveryAddress): WorkflowAgentInputs["state"] {
     let state: WorkflowAgentInputs["state"] = "between_steps"
@@ -366,6 +373,19 @@ export function createWorkflowAgentInputs(input: {
           input.onChange?.()
           return true
         },
+        async waitForHandBack(signal) {
+          if (!effective(slot) || signal.aborted) return
+          const wake = Promise.withResolvers<void>()
+          const finish = (): void => { wake.resolve() }
+          slot.wakeHandBack = finish
+          signal.addEventListener("abort", finish, { once: true })
+          try {
+            await wake.promise
+          } finally {
+            slot.wakeHandBack = undefined
+            signal.removeEventListener("abort", finish)
+          }
+        },
         interruptionToRecord: () => effective(slot)?.by ?? slot.announcement?.by ?? "person",
         interrupt(by, timestamp = Date.now()) {
           if (slot.queue.isHandingOff || slot.cut.kind === "unread") return false
@@ -441,7 +461,7 @@ export function createWorkflowAgentInputs(input: {
       for (const slot of taken) slot.announcement = effective(slot)
       release((agent) => reaches(address, agent))
       // An unread slot keeps the address, because its agent and its durable cut are not known yet.
-      for (const slot of slots.values()) if (taken.includes(slot) || slot.cut.kind === "unread") slot.cut = advanceCut(slot.cut, { kind: "authorize", address })
+      for (const slot of slots.values()) if (taken.includes(slot) || slot.cut.kind === "unread") handBack(slot, address)
       for (const slot of taken) slot.queue.enqueueResume()
       input.onChange?.()
       return taken.map(({ attempt }) => attempt.attemptId)

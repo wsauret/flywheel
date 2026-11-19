@@ -124,19 +124,41 @@ export function createLearningReviewExecution(deps: Partial<LearningReviewModelS
     effort: deps.effort ?? current?.setting?.effort,
     providerOptions: deps.providerOptions ?? (deps.model === undefined ? current?.setting?.providerOptions : undefined),
   });
+  const resolveInitial = async (capture: Awaited<ReturnType<CaptureProviderConnection>>) => {
+    const current = (await resolveRoles(capture)).get(LEARNING_REVIEW_ROLE_ID);
+    return roleSetting(current);
+  };
+  let pick: Promise<ResolvedRole> | undefined;
   const prepareRequest = async () => {
     const capture = await captureProviderConnection();
-    const current = (await resolveRoles(capture)).get(LEARNING_REVIEW_ROLE_ID);
-    const setting = roleSetting(current);
-    const selected = await resolveCapturedRole(LEARNING_REVIEW_ROLE_ID, {
-      model: setting.model, effort: setting.effort, provider_options: setting.providerOptions,
-    }, {
+    const access = {
       selection: capture.providers.selection, connection: capture.connection, eligibility: capture.eligibility, allowTrainingRoutes: capture.runtimeConfig.allowTrainingRoutes,
-    }, deps.userDataRoot);
-    if (selected.kind !== "selected") throw new ModelUnavailable({
-      missing: selected.kind === "access-pending" ? "access" : "provider",
-      message: selected.kind === "access-pending" ? "Model access is still being checked." : "The active profile has no reachable model.",
+    };
+    const held = pick;
+    const selection = held === undefined
+      ? resolveInitial(capture).then((setting) => resolveCapturedRole(LEARNING_REVIEW_ROLE_ID, {
+        model: setting.model, effort: setting.effort, provider_options: setting.providerOptions,
+      }, access, deps.userDataRoot))
+      : held.then((role) => resolveCapturedRole(LEARNING_REVIEW_ROLE_ID, {
+        model: role.model, effort: role.effort, provider_options: role.providerOptions, fixedModel: true,
+      }, access, deps.userDataRoot));
+    const admitted = selection.then((selected) => {
+      if (selected.kind === "selected") return selected;
+      if (selected.kind === "unserved") throw new ModelUnavailable({
+        missing: "provider",
+        message: `No signed-in account or enabled provider offers the learning review model "${selected.role.model}".`,
+      });
+      throw new ModelUnavailable({
+        missing: selected.kind === "access-pending" ? "access" : "provider",
+        message: selected.kind === "access-pending" ? "Model access is still being checked." : "The active profile has no reachable model.",
+      });
     });
+    // Even concurrent requests in a review share its first model pick (PI-MODEL-016).
+    if (held === undefined) {
+      pick = admitted.then(({ role }) => role);
+      await pick;
+    }
+    const selected = await admitted;
     return { capture, role: selected.role, runtime: capture.admit(new Map([[selected.role.model, selected.plan]])) };
   };
   let preparation: ReturnType<typeof prepareRequest> | undefined;
@@ -150,8 +172,7 @@ export function createLearningReviewExecution(deps: Partial<LearningReviewModelS
     const prepared = initial;
     return prepared.runtime.createAgent({
       ...options, model: prepared.role.model, effort: prepared.role.effort, providerOptions: prepared.role.providerOptions,
-      resolveRoles,
-      requestSelection: (roles) => ({ roleId: LEARNING_REVIEW_ROLE_ID, setting: roleSetting(roles.get(LEARNING_REVIEW_ROLE_ID)) }),
+      requestSelection: () => ({ ...prepared.role, fixedModel: true }),
       captureProviderConnection,
     });
   };

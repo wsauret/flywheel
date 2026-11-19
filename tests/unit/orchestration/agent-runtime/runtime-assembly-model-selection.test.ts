@@ -20,6 +20,9 @@ import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type
 import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
 import type { RoleHold } from "../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "./tools/_fixtures.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
 const tempDir = temporaryDirectories()
@@ -184,8 +187,21 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
       }]]),
     }).worker
   }
-  const assemble = async (input: { readonly eligibility: ReturnType<typeof access>; readonly saved?: { readonly model: string; readonly effort: string }; readonly roleHold?: RoleHold; readonly unattended?: true }) => {
+  const assemble = async (input: { readonly eligibility: ReturnType<typeof access>; readonly saved?: { readonly model: string; readonly effort: string }; readonly roleHold?: RoleHold; readonly unattended?: true; readonly durable?: LocalSqliteEventStore }) => {
     const signal = new AbortController().signal
+    const durableConversation = {
+      kind: "durable-tree", sessionId: "own-model-session", conversationId: "own-model-conversation",
+      priorMessages: [{ kind: "user", content: "work" }],
+      append: () => {},
+      reserveMessageId: async () => crypto.randomUUID(),
+      captureCommittedForkMessages: async () => [],
+      resolveLeafId: async () => null,
+      committedTree: async () => ({ leafId: null, entriesById: {} }),
+    } as const
+    const durable = input.durable === undefined ? {} : {
+      sessionEventReader: asAsyncEventReadSurface(input.durable),
+      sessionEventWriter: createSessionFactWriter({ sessionId: "own-model-session", writer: asAsyncEventWriter(input.durable) }),
+    }
     const assembled = await assembleRuntimeForTurn({
       providerSessionLifetime: testProviderSessionLifetime(),
       options: {
@@ -199,10 +215,10 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
         purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" }, agentsMd: "", onEvent: () => {},
         ...(input.unattended ? { capabilityAccess: { ...capabilityAccessHolding([]), unattended: true } } : {}),
         moduleSelection: testCapabilityModules, awaitModelAccessSettled: async () => {}, captureRuntimeConfig: testRuntimeConfigCapture,
-        runtimeSurfaces: {}, conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
+        runtimeSurfaces: {}, conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" }, ...durable,
       },
       definitions: repoDefinitions(),
-      conversation: resolveRuntimeConversation({ kind: "stateless" }, { providerSessionKey: "own-model-test", artifactScopeId: "own-model-test", retrievalSessionId: "own-model-test" }),
+      conversation: resolveRuntimeConversation(input.durable === undefined ? { kind: "stateless" } : durableConversation, { providerSessionKey: "own-model-test", artifactScopeId: "own-model-test", retrievalSessionId: "own-model-test" }),
       signal, disposalSignal: signal, instruction: "work", currentTurn: undefined,
       personas: new Map(), createRunner: () => { throw new Error("unused") },
       captureModelRuntime: async () => ({
@@ -242,4 +258,12 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
   expect((await assemble({ eligibility: haiku }))?.model).toBe("claude-haiku-4.5")
   // A saved pair replaces the held one at once.
   expect((await assemble({ eligibility: haiku, saved: { model: "claude-haiku-4.5", effort: "low" }, roleHold }))?.model).toBe("claude-haiku-4.5")
+  // The agent's conversation records the pair, so the agent keeps it after a restart, which holds nothing in memory.
+  const store = createSqliteEventStore(join(tempDir("own-model-store-"), "events.sqlite"))
+  try {
+    expect((await assemble({ eligibility: luna, roleHold: {}, durable: store }))?.model).toBe("gpt-6-luna")
+    await expect(assemble({ eligibility: haiku, roleHold: {}, durable: store })).rejects.toMatchObject(waitsFor("gpt-6-luna"))
+  } finally {
+    store.close()
+  }
 })

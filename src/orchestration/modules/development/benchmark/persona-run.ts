@@ -25,6 +25,7 @@ import { definitionAvailabilityOf } from "../../../app-service/definition-availa
 import { disabledAgentTypes } from "../../../module-catalog.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
+import type { ResolvedRole } from "../../../config/roles.js";
 
 export type PersonaDefinition = Extract<AgentDefinition, { kind: "persona" }>;
 
@@ -44,6 +45,7 @@ export type BenchmarkRuntime = Pick<
   readonly profileId?: string;
   readonly authorityIncarnation?: string;
   readonly captureProviderConnection?: CaptureProviderConnection;
+  readonly candidateRole?: (seat: { readonly model?: string; readonly effort?: string }) => ResolvedRole | undefined;
   readonly launcher?: LauncherScope;
   readonly background?: BackgroundExecutionOwner;
   readonly foregroundBashHold?: ForegroundBashHoldController;
@@ -190,6 +192,7 @@ function installedAgentTasks(): ModuleAgentTasks {
  *  failure after partial output, so the partial accounting survives. */
 export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTaskRequest): Promise<PersonaRunOutcome> {
   const { persona, seat, label, timeoutMs, signal } = request;
+  const fixed = deps.candidateRole?.(seat);
   const agentRegistry = request.agentRegistry ?? new Map<string, AgentDefinition>();
   const { availability, dispatchable } = personaRunAvailability(agentRegistry, deps);
   // A persona whose agent type is off cannot run, as a dispatch of it cannot; the run builds no runner.
@@ -234,15 +237,17 @@ export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTas
       ...(deps.shell ? { shell: deps.shell } : {}),
     },
     agentOptions: {
-      model: seat.model,
-      effort: seat.effort,
+      model: fixed?.model ?? seat.model,
+      effort: fixed?.effort ?? seat.effort,
       ...(captureProviderConnection ? {
         captureProviderConnection,
         resolveRoles: async (captured) => {
           const capture = captured ?? await captureProviderConnection();
-          const roles = await resolveSessionRoles({
-            defaults: {}, overrides: seat.model === undefined && seat.effort === undefined ? {} : { [persona.role]: seat },
-          }, capture, deps.userDataRoot, [persona.role]);
+          const bound = fixed ?? seat;
+          const roles = new Map(await resolveSessionRoles({
+            defaults: {}, overrides: bound.model === undefined && bound.effort === undefined ? {} : { [persona.role]: bound },
+          }, capture, deps.userDataRoot, [persona.role]));
+          if (fixed) roles.set(persona.role, fixed);
           if (transcriptPath) {
             const directory = dirname(transcriptPath);
             const requests = join(directory, "requests", capture.connection.profileId);
@@ -253,7 +258,7 @@ export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTas
           }
           return roles;
         },
-        requestSelection: (roles) => ({ roleId: persona.role, ...roles.get(persona.role) }),
+        requestSelection: (roles) => fixed ? { ...fixed, fixedModel: true } : { roleId: persona.role, ...roles.get(persona.role) },
       } : {}),
       purpose: { kind: "persona-benchmark" },
       executionCwd: request.workspace,

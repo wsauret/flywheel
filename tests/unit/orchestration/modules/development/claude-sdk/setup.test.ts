@@ -50,14 +50,14 @@ describe("the claude-sdk setup", () => {
     expect(roles.get("title-generation")).toMatchObject({ model: "claude-haiku-5.5", effort: "low" });
   });
 
-  test("stores an explicit model only in its profile and skips an unreachable setting as a whole", async () => {
+  test("keeps an unreachable chat setting and lets title generation use its default", async () => {
     const root = temporaryDirectory("claude-sdk-model-");
     const userDataRoot = join(root, ".flywheel");
     await setupClaudeSdkHome({ userDataRoot, accounts: () => [], model: "lost-model" });
     const config = Bun.TOML.parse(readFileSync(join(userDataRoot, "flywheel.toml"), "utf8"));
     expect(config).toMatchObject({ profiles: { [CLAUDE_SDK_PROFILE]: { roles: { chat: { model: "lost-model" }, "title-generation": { model: "lost-model" } } } } });
     const roles = await resolveSessionRoles({ defaults: {}, overrides: {} }, roleCapture(["claude-opus-5.5", "claude-haiku-5.5"], { chat: { model: "lost-model" }, "title-generation": { model: "lost-model" } }), userDataRoot);
-    expect(roles.get("chat")).toMatchObject({ model: "claude-opus-5.5", effort: "medium" });
+    expect(roles.get("chat")).toMatchObject({ model: "lost-model", effort: "medium" });
     expect(roles.get("title-generation")).toMatchObject({ model: "claude-haiku-5.5", effort: "low" });
     expect(config).not.toHaveProperty("roles");
   });

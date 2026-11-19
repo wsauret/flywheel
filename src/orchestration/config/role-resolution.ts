@@ -6,7 +6,7 @@ import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProvid
 import type { ProviderConnection } from "../../infra/auth/auth-context.js";
 import type { ModelInfo } from "../../infra/llm/models.js";
 import { EFFORT_VALUES } from "../../infra/workflow-types.js";
-import { clampReasoningEffort } from "../agent-runtime/llm/model-compat.js";
+import { clampReasoningEffort, newestLaterModelVersion } from "../agent-runtime/llm/model-compat.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../protocol/brief-role-id.js";
 import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
 import { modelTierForReference } from "../../protocol/model-tier-reference.js";
@@ -57,7 +57,7 @@ function configuredRole(
     ?? (parentId ? configuredRoles[parentId] : undefined);
 }
 
-export type RoleSetting = { readonly model?: string; readonly effort?: string; readonly defaultEffort?: string; readonly provider_options?: ResolvedRole["providerOptions"] };
+export type RoleSetting = { readonly model?: string; readonly effort?: string; readonly defaultEffort?: string; readonly provider_options?: ResolvedRole["providerOptions"]; readonly fixedModel?: boolean };
 
 /** The roles of background work that is no agent: an unreachable saved model yields to the role's default, so a
  *  session title or a failure summary is never held back (PI-MODEL-019). Every other role keeps its saved model and
@@ -164,8 +164,8 @@ function buildRoleCatalog(
   const options = beginTierResolutionOperation({ userDataRoot, modelInfos, includedModels });
   const resolve = async (roleId: RoleId, setting: RoleSetting): Promise<CapturedRoleSelection> => {
     if (!hasModels(available)) {
-      if (capture.eligibility?.accessPending(capture.allowTrainingRoutes)) return { kind: "access-pending" };
-      const saved = savedPreference(roleId, setting, () => false);
+      const saved = savedPreference(roleId, setting, new Set());
+      if (!setting.fixedModel && capture.eligibility?.accessPending(capture.allowTrainingRoutes)) return { kind: "access-pending" };
       return saved === undefined ? { kind: "no-selection" } : { kind: "unserved", role: finalizedRole(roleId, setting, saved, options) };
     }
     const preference = await rolePreference(roleId, setting, available, options);
@@ -185,14 +185,14 @@ function hasModels(available: ReadonlyMap<ModelFamily, ReadonlySet<string>> | un
   return available !== undefined && [...available.values()].some((models) => models.size > 0);
 }
 
-/** The role's saved concrete model with its effort, when it applies: always, also when it cannot serve
- *  (PI-MODEL-016, PI-MODEL-087), and for a role of `FALLBACK_ROLE_IDS` only when it is `reachable`. */
-function savedPreference(roleId: RoleId, configured: RoleSetting, reachable: (model: string) => boolean): RolePreference | undefined {
+/** A saved model follows its family only at selection, not when admitting an already fixed model (PI-MODEL-087). */
+function savedPreference(roleId: RoleId, configured: RoleSetting, available: ReadonlySet<string>): RolePreference | undefined {
   const model = configured.model ? canonicalModelId(configured.model) : undefined;
   if (model === undefined || modelTierForReference(model) !== undefined) return undefined;
-  if (FALLBACK_ROLE_IDS.has(roleId) && !reachable(model)) return undefined;
+  const selected = configured.fixedModel || available.has(model) ? model : newestLaterModelVersion(model, available);
+  if (selected === undefined && FALLBACK_ROLE_IDS.has(roleId)) return undefined;
   const { preferences } = roleModelDefault(roleId);
-  return { model, effort: configured.effort ?? preferences.find((preference) => preference.model === model)?.effort ?? preferences[0].effort };
+  return { model: selected ?? model, effort: configured.effort ?? preferences.find((preference) => preference.model === model)?.effort ?? preferences[0].effort };
 }
 
 /** The role's selection in PI-MODEL-016 order: the saved tier or the saved model (`savedPreference`), then the first
@@ -208,7 +208,7 @@ async function rolePreference(
   const [first] = preferences;
   const savedTier = modelTierForReference(configured.model ? canonicalModelId(configured.model) : undefined);
   if (savedTier) return { model: (await resolveModelForTierAcrossFamilies(savedTier, available, options)).model, effort: configured.effort ?? first.effort };
-  const saved = savedPreference(roleId, configured, (model) => [...available.values()].some((models) => [...models].some((listed) => canonicalModelId(listed) === model)));
+  const saved = savedPreference(roleId, configured, new Set([...available.values()].flatMap((models) => [...models].map(canonicalModelId))));
   if (saved !== undefined) return saved;
   const coded = reachableRoleModelDefaults(preferences, available)[0];
   if (coded !== undefined) return { model: coded.model, effort: coded.effort };

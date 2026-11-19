@@ -3,6 +3,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import { emitBackgroundCommandRecorded, emitToolExecutionOutput, emitToolExecutionOutputRecorded } from "../agent-runtime/emit.js"
 import type { EmitFn } from "../../infra/event-bus.js"
 import type { ConnectionState } from "../../infra/output-blocks.js"
+import type { TurnParkedContext } from "../../infra/agent-loop-events.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import type { ModelFamily } from "../../infra/llm/model-family.js"
 import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../session/conversation/turn-end-record.js"
@@ -437,6 +438,22 @@ export function createWorkerCallback(
       return priorContext
     }
 
+    const busBridge = createRunnerBusBridge({ emit: emitAgent, sessionId })
+    const onTurnParked = async (ctx: TurnParkedContext): Promise<void> => {
+      if (ctx.userResumeRequired) {
+        await treeWriter.flushSavePoint()
+        await resources.awaitDurableFacts()
+        slot.parkAcknowledgement?.resolve()
+      }
+      agentInput.parked(ctx.park)
+      busBridge.lifecycle.onTurnParked(ctx)
+    }
+    const onTurnResumed = (): void => {
+      slot.parkAcknowledgement = undefined
+      slot.interruptions.resumed()
+      agentInput.resumed()
+      busBridge.lifecycle.onTurnResumed()
+    }
     const selectModel = (roles: Awaited<ReturnType<RoleResolver>>) => resolveWorkflowAgentRole(attempt, roles, persona?.role)
     // The options of one run of the agent. Its capability plan reads them before the brief commits, with no history.
     const runOptions = (run: {
@@ -448,7 +465,6 @@ export function createWorkerCallback(
       const { selectedModel, providerSessionKey } = run
       const { restoredWait, continuedWait } = run.waits ?? {}
       const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(workflowAgentSubagents(resolvedAgent, opts.availability().availablePersonas))
-      const busBridge = createRunnerBusBridge({ emit: emitAgent, sessionId })
       let runnerAssembled = false
       return {
         purpose: { kind: "workflow-agent", briefScope: { briefId: attempt.briefId }, workflowAttemptId: attempt.id, ...(inheritedIntent === undefined ? {} : { inheritedIntent }) },
@@ -523,21 +539,8 @@ export function createWorkerCallback(
           onTurnEnded: observers.onTurnEnded,
           onToolBatchSettled: observers.onToolBatchSettled,
           onHandoffStarted: () => { injectionQueue.handoffStarted() },
-          onTurnParked: async (ctx) => {
-            if (ctx.userResumeRequired) {
-              await treeWriter.flushSavePoint()
-              await resources.awaitDurableFacts()
-              slot.parkAcknowledgement?.resolve()
-            }
-            agentInput.parked(ctx.park)
-            busBridge.lifecycle.onTurnParked(ctx)
-          },
-          onTurnResumed: () => {
-            slot.parkAcknowledgement = undefined
-            slot.interruptions.resumed()
-            agentInput.resumed()
-            busBridge.lifecycle.onTurnResumed()
-          },
+          onTurnParked,
+          onTurnResumed,
           // The agent's module runtimes are published before its first
           // request, and that request waits for any child the runtime
           // interrupted under this attempt, which the successor resumes
@@ -651,8 +654,6 @@ export function createWorkerCallback(
         createContextOptions,
         onContextCreated: (context) => { slot.runner = context },
         onContextStarted: () => {
-          const recovered = slot.recovery.takeCutInterrupt()
-          if (recovered) agentInput.interrupt(recovered)
           const opening = agentInput.takeOpeningInterrupt()
           if (opening) slot.interruptions.interrupt(opening.by, () => slot.runner?.interruptGeneration?.() ?? false)
         },
@@ -670,7 +671,14 @@ export function createWorkerCallback(
           // A run again is a new attempt of the agent, so its observers and
           // its handoff reminders start over.
           recover: async (failure, servedRequests, recoverySignal) => {
-            const next = await slot.recovery.recover(failure, servedRequests, recoverySignal)
+            let next = await slot.recovery.recover(failure, servedRequests, recoverySignal)
+            if (slot.recovery.takeCutInterrupt() !== undefined) {
+              // No generation took the cut, so the worker parks before authorizing any retry (ARCH-RUNTIME-082).
+              await slot.interruptions.parkCutWait(agentInput, onTurnParked, () => background.tasks.awaitedTaskCount(), recoverySignal)
+              if (recoverySignal.aborted) return null
+              onTurnResumed()
+              next ??= {}
+            }
             if (next !== null) observers.reset()
             return next
           },
@@ -723,10 +731,8 @@ export function createWorkerCallback(
     }
   }
 
-  // An agent that waits for provider capacity runs no generation. The
-  // interrupt ends the wait instead and keeps the input's opening interrupt,
-  // so the run after the wait opens interrupted and parks until a Resume or a
-  // message (ARCH-RUNTIME-082). A cut generation took the interrupt itself.
+  // Between runs, recovery records and parks a cut wait without opening a generation. Otherwise the generation
+  // takes the interrupt, or it remains pending while the first generation opens.
   function interruptSlot(slot: WorkerSlot, by: TurnInterruption): boolean {
     if (!slot.input.interrupt(by)) return false
     slot.parkAcknowledgement ??= Promise.withResolvers<void>()

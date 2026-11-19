@@ -113,7 +113,7 @@ export interface CapacityWaitAuthority {
 
 /** A capacity wait that runs now: the model it waits for, when known, and
  *  the end of the wait, after which the agent asks its model again. */
-export interface CapacityWaiter {
+interface CapacityWaiter {
   readonly model?: string
   recheck(): void
 }

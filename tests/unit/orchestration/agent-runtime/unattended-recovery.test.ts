@@ -192,7 +192,7 @@ describe("unattended recovery", () => {
       if (end === "cut") expect(waiting.cutWait("person")).toBe(true)
       else if (end === "message") expect(waiting.continueNow()).toBe(true)
       else if (end === "cancel") controller.abort()
-      expect(await pending).toEqual({})
+      expect(await pending).toEqual(end === "cut" ? null : {})
       if (end === "time") expect(waitClock.now()).toBe(NOW + 60_000)
     }
 
@@ -444,6 +444,18 @@ describe("unattended recovery", () => {
     expect(recovery.takeCutInterrupt()).toBeUndefined()
     expect(recovery.cutWait("person")).toBe(false)
     expect(recoveryRecords().at(-1)).toEqual(record({ decision: "interrupted", failure: "transient_disconnect", streak: 1, served: 0 }))
+  })
+
+  it("returns a cut access wait to the turn owner without retrying the failed run", async () => {
+    const audit = Promise.withResolvers<void>()
+    const clock = fakeClock()
+    clock.holdNextSleep()
+    const recovery = policy(clock, { caller: "workflow-agent", awaitAccessSettled: () => audit.promise })
+    const waiting = recovery.recover({ kind: "model_unavailable", message: "access pending", missing: "access" }, 0, signal)
+    expect(recovery.cutWait("person")).toBe(true)
+    expect(await waiting).toBeNull()
+    expect(recovery.takeCutInterrupt()).toBe("person")
+    audit.resolve()
   })
 
   it("holds the caller's liveness for the length of every wait", async () => {

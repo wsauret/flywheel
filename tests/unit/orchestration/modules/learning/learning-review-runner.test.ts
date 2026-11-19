@@ -30,7 +30,7 @@ const attempt: ServingAttempt = {
 
 function execution({
   output = '{"outcome":"independent"}', contextLimit = 20_000, failChild = false, auditBudget, preamble, planningFailure,
-  setting = { model: "lost-model", effort: "high" }, models = ["gpt-5.4"], profileRoles = {},
+  setting = { model: "gpt-5.4", effort: "medium" }, models = ["gpt-5.4"], profileRoles = {},
 }: {
   output?: string; contextLimit?: number; failChild?: boolean | "transient-once"; auditBudget?: number; preamble?: string; planningFailure?: Error;
   setting?: { model?: string; effort?: string }; models?: string[]; profileRoles?: FlywheelConfig["profiles"][string]["roles"];
@@ -158,8 +158,9 @@ describe("learning review execution", () => {
     expect(fixture.requested).toEqual([{ model: "gpt-5.4", effort: "medium" }]);
   });
 
-  it("captures a fresh admitted selection for independent semantic requests", async () => {
-    const fixture = execution();
+  it("captures fresh admission while keeping its initial default model for semantic requests", async () => {
+    const models = ["gpt-5.4"];
+    const fixture = execution({ setting: {}, models });
     expect(await fixture.review.request({ systemPrompt: "contract one", instruction: "packet one" })).toBe('{"outcome":"independent"}');
     expect(await fixture.review.request({ systemPrompt: "contract two", instruction: "packet two" })).toBe('{"outcome":"independent"}');
     expect(fixture.prompts).toEqual([
@@ -168,6 +169,11 @@ describe("learning review execution", () => {
     ]);
     expect(fixture.captureCount()).toBe(2);
     expect(fixture.admissionCount()).toBe(2);
+    models.splice(0, models.length, "gpt-5.5", "gpt-6.1-sol");
+    await expect(fixture.review.request({ systemPrompt: "contract three", instruction: "packet three" }))
+      .rejects.toThrow('No signed-in account or enabled provider offers the learning review model "gpt-5.4".');
+    expect(fixture.childCount()).toBe(2);
+    expect(fixture.admittedModels).toEqual(["gpt-5.4", "gpt-5.4"]);
   });
 
   it("an effort-only request setting keeps the profile's saved model", async () => {

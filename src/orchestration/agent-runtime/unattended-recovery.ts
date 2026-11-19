@@ -50,8 +50,8 @@
  * A wait shows as one status notice that names the agent and when it
  * continues, and a capacity wait also names the model and why it cannot
  * serve (PI-MODEL-063). Only the end of that wait removes it. It has no action: the
- * agent needs nothing from the person. An interrupt ends the wait, and the
- * next run opens interrupted, so the agent parks as an interrupted agent does.
+ * agent needs nothing from the person. An interrupt ends the wait without
+ * starting another run for model capacity or access.
  * The run's cancellation ends the wait, and the turn ends aborted.
  */
 
@@ -123,8 +123,7 @@ interface UnattendedRecovery {
   /** Ends the capacity wait that runs now for a person's message, and the
    *  run continues at once with it. False when no capacity wait runs. */
   continueNow(): boolean
-  /** The interrupt that ended the last wait, once: the run after the wait
-   *  opens interrupted by it. */
+  /** The interrupt that ended the last wait, once, for its turn owner to record. */
   takeCutInterrupt(): TurnInterruption | undefined
   /** The run's turns ended with `result`: the capacity wait that the run
    *  continued from, in this process or an earlier one, is withdrawn. */
@@ -327,15 +326,14 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
       const withdrawal = withdrawalOf(end)
       if (withdrawal !== undefined) await awaitWithdrawal(deps.capacity?.withdraw(withdrawal))
     }
-    return {}
+    return end === "cut" ? null : {}
   }
 
   async function accessWait(failure: AgentFailureReason, awaitAccessSettled: (signal: AbortSignal) => Promise<void>, signal: AbortSignal): Promise<NextRun | null> {
     record("wait", failure)
     const startedAt = now()
     const end = await wait(failure, signal, startedAt, startedAt + WAIT_LIMIT_MS, { until: awaitAccessSettled })
-    if (end === "cancelled") return null
-    if (end === "cut") return {}
+    if (end === "cancelled" || end === "cut") return null
     return await freshAttempt(failure, signal)
   }
 

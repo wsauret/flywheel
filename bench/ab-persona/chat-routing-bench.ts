@@ -237,7 +237,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2), deps
     background: runtime.background,
     foregroundBashHold: runtime.foregroundBashHold,
     shell: runtime.shell,
-  }, configInputs.variants.map((variant) => ({ role: "candidate" as const, model: variant.model })));
+  }, configInputs.variants.map(({ model, effort }) => ({ role: "candidate" as const, roleId: "chat", model, effort })));
   if (args.dryRun) {
     deps.writeOutput(JSON.stringify({
       dryRun: true,
@@ -273,13 +273,14 @@ export async function main(argv: readonly string[] = process.argv.slice(2), deps
     store,
     // Each routing turn reads the pinned research corpus, so its AGENTS.md is fixed and no live project memory enters it.
     run: (cell) => withSnapshotWorkspace(REPO_ROOT, RESEARCH_SNAPSHOT, runtime.deps.runOwnedCommand, (workspace) => {
+      const seat = admission.runtime.candidateRole?.(cell.seat) ?? cell.seat;
       const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({
         kind: "chat",
         enqueueNotification: () => {},
       }));
       return runChatRoutingTask({ createAgent: admission.runtime.createAgent, closeOwnedBackground: () => background.close() }, {
-        model: cell.seat.model,
-        effort: cell.seat.effort,
+        model: seat.model,
+        effort: seat.effort,
         prompt: cell.routingFixture.prompt,
         deadlineMs: config.deadlineMs,
         workspace,

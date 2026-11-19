@@ -131,6 +131,22 @@ function modelVersion(canonical: string): { readonly family: string; readonly ma
   return { family: match[4] === undefined ? match[1] : `${match[1]}-${match[4]}`, major: Number(match[2]), minor: Number(match[3] ?? 0) };
 }
 
+/** The newest later version within this model's family and major line, if one is offered. */
+export function newestLaterModelVersion(model: string, offered: Iterable<string>): string | undefined {
+  const version = modelVersion(canonicalModelId(model));
+  if (!version) return undefined;
+  let newest: string | undefined;
+  let minor = version.minor;
+  for (const offeredModel of offered) {
+    const canonical = canonicalModelId(offeredModel);
+    const candidate = modelVersion(canonical);
+    if (candidate?.family !== version.family || candidate.major !== version.major || candidate.minor <= minor) continue;
+    newest = canonical;
+    minor = candidate.minor;
+  }
+  return newest;
+}
+
 /** One per-model setting of `model`: the value of the model's own entry, or the value that it inherits from the entry
  *  of `inheritedFrom`, an earlier version of its family. */
 export interface FamilySetting<T> {

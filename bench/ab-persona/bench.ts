@@ -212,7 +212,7 @@ export async function main(
   const plan = await planPersonaBenchmark(args, catalog);
   await using runtime = await createRuntime(projectRoot, undefined, args.profile);
   const { persona } = await loadBenchmarkPersona(plan, catalog, runtime.deps);
-  // Preflight reports one capture. Every request resolves again from the current profile.
+  // Preflight fixes each seat before the campaign starts.
   const admission = await admitBenchmark({
     ...runtime.deps,
     profileId: runtime.profileId,

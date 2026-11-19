@@ -7,6 +7,7 @@ import type { BenchmarkAccounting } from "./evidence.js";
 import { buildResearchPairJudgePrompt } from "../../../../infra/benchmark-rubrics.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
+import type { ResolvedRole } from "../../../config/roles.js";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -70,8 +71,9 @@ export interface AgentJudgeOptions {
   readonly evidenceDirectory?: string;
   /** A harness scoring rule applied to the resolved model before any provider request. */
   readonly validateModel?: (model: string) => void;
-  /** Authored effort for this call. Unreachable model settings fall through as a pair. */
+  /** Authored effort for the judge. */
   readonly effort?: string;
+  readonly fixedRole?: ResolvedRole;
   readonly systemPrompt?: string;
   readonly userDataRoot: string;
   readonly accountHome: string;
@@ -87,10 +89,20 @@ function terminalMessage(model: string | undefined, terminal: AgentRunTerminal):
 
 /** Builds the tool-free, one-call Agent judge shared by every benchmark surface. */
 export function createAgentJudge(options: AgentJudgeOptions): JudgeModel {
+  const captureProviderConnection = options.captureProviderConnection;
+  let pick: Promise<ResolvedRole> | undefined;
+  const pickFromProfile = async (captureProvider: CaptureProviderConnection): Promise<ResolvedRole> => {
+    const capture = await captureProvider();
+    const roles = await resolveSessionRoles({
+      defaults: {}, overrides: options.model === undefined && options.effort === undefined ? {} : { "benchmark-judge": { model: options.model, effort: options.effort } },
+    }, capture, options.userDataRoot);
+    const role = roles.get("benchmark-judge");
+    if (role === undefined) throw new Error(`The active profile has no reachable benchmark judge model${options.model === undefined ? "" : ` for "${options.model}"`}.`);
+    return role;
+  };
   return {
     async complete(prompt: string, signal: AbortSignal): Promise<JudgeCompletion> {
       const ledger = createBenchmarkAccounting();
-      const captureProviderConnection = options.captureProviderConnection;
       const evidenceId = crypto.randomUUID();
       let text = "";
       const accounting = (): JudgeAccounting => ledger.observe();
@@ -107,22 +119,23 @@ export function createAgentJudge(options: AgentJudgeOptions): JudgeModel {
       // whatever project was there, which can bias a score and cost most of
       // each call.
       const blindRoot = await mkdtemp(join(tmpdir(), "flywheel-judge-"));
+      let model = options.model;
       try {
+        signal.throwIfAborted();
+        const fixed = options.fixedRole ?? (captureProviderConnection === undefined ? undefined : await (pick ??= pickFromProfile(captureProviderConnection)));
+        model = fixed?.model ?? model;
+        if (model !== undefined) options.validateModel?.(model);
         const run = await invokeBenchmarkAgent({
           createAgent: options.createAgent,
           runtimeSurfaces: options.runtimeSurfaces ?? {},
           agentOptions: {
-            model: options.model,
-            ...(options.effort ? { effort: options.effort } : {}),
+            model,
+            effort: fixed?.effort ?? options.effort,
             ...(captureProviderConnection ? {
               captureProviderConnection,
               resolveRoles: async (captured) => {
                 const capture = captured ?? await captureProviderConnection();
-                const roles = await resolveSessionRoles({
-                  defaults: {}, overrides: options.model === undefined && options.effort === undefined ? {} : { "benchmark-judge": { model: options.model, effort: options.effort } },
-                }, capture, options.userDataRoot);
-                const selected = roles.get("benchmark-judge");
-                if (selected) options.validateModel?.(selected.model);
+                const roles = fixed ? new Map([["benchmark-judge", fixed]]) : new Map<string, ResolvedRole>();
                 if (options.evidenceDirectory) {
                   const directory = join(options.evidenceDirectory, capture.connection.profileId, evidenceId);
                   await mkdir(directory, { recursive: true });
@@ -130,7 +143,7 @@ export function createAgentJudge(options: AgentJudgeOptions): JudgeModel {
                 }
                 return roles;
               },
-              requestSelection: (roles) => ({ roleId: "benchmark-judge", ...roles.get("benchmark-judge") }),
+              requestSelection: () => ({ roleId: "benchmark-judge", model, effort: fixed?.effort ?? options.effort, providerOptions: fixed?.providerOptions, fixedModel: true }),
             } : {}),
             purpose: {
               kind: "headless-task",
@@ -152,14 +165,14 @@ export function createAgentJudge(options: AgentJudgeOptions): JudgeModel {
         const failure = run.terminal.kind === "interrupted" || run.terminal.kind === "input_closed"
           ? { kind: "aborted" as const }
           : failureTerminal(run.terminal);
-        if (failure) throw new Error(terminalMessage(options.model, failure));
+        if (failure) throw new Error(terminalMessage(model, failure));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new JudgeCallFailure(accounting(), message);
       } finally {
         await rm(blindRoot, { recursive: true, force: true });
       }
-      if (!text.trim()) throw new JudgeCallFailure(accounting(), `Judge model ${options.model} returned no text`);
+      if (!text.trim()) throw new JudgeCallFailure(accounting(), `Judge model ${model} returned no text`);
       return { text, accounting: accounting() };
     },
   };

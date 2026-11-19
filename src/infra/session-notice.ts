@@ -1,4 +1,4 @@
-import { type PresentationChannel, type PresentationIdOn, presentationChannel } from "./error-presentation.js";
+import { type CAPACITY_WAIT_REASONS, type PresentationChannel, type PresentationIdOn, presentationChannel } from "./error-presentation.js";
 
 type SessionNoticeSeverity = "info" | "warning" | "error";
 
@@ -23,7 +23,6 @@ interface SessionNoticeRetry {
 /** Why an agent's model cannot serve now: its usage limit is spent, it is
  *  rate limited, its providers cannot serve it, or no signed-in account or
  *  enabled provider offers it. */
-export const CAPACITY_WAIT_REASONS = ["spent", "rate_limited", "unavailable", "not_offered"] as const;
 export type CapacityWaitReason = typeof CAPACITY_WAIT_REASONS[number];
 
 /** The words that state `reason` after a model's name, such as "its usage limit is spent". */

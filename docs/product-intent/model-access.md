@@ -164,7 +164,7 @@ Flywheel resolves each agent role once, when the agent starts. A saved pair alwa
 
 ## PI-MODEL-087: An agent never changes its model on its own
 
-Every agent, a chat included, runs only on its own model and effort. Flywheel never moves an agent to another model, also when its model's quota is spent, its account is signed out, or its model is turned off. The agent waits until its model can serve, and only the person changes its model.
+Every agent, a chat included, runs only on its own model and effort. Flywheel never moves an agent to another model, also when its model's quota is spent, its account is signed out, or its model is turned off. The agent waits until its model can serve, and only the person changes its model. A saved model that every account turns off follows the newest turned-on later version of its family, such as a newer GPT Sol for an older one.
 
 ## PI-MODEL-057: Role selection waits for model discovery
 
@@ -362,7 +362,7 @@ When an agent's model cannot serve, the agent waits and continues on its own onc
 
 ## PI-MODEL-063: Capacity wait status and end
 
-While an agent waits because its model cannot serve, every client shows "Waiting for model capacity" with the agent's name, its model, why it cannot serve, and any known time it continues, also after a restart. An interrupt, a Cancel, or a Stop ends the wait and leaves the agent idle, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
+While an agent's model cannot serve, every client shows "Waiting for model capacity" with the agent's name, its model, why it cannot serve, and any known time it continues, also after a restart. An interrupt, a Cancel, or a Stop ends the wait and leaves the agent idle, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
 
 ## PI-MODEL-088: A usage reading corrects a spent account's reset time
 

@@ -9,6 +9,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { LiveChildControl } from "../../../../../src/orchestration/session/live-session-control.js";
 import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -425,13 +426,13 @@ describe("child execution liveness and interruption", () => {
 /** Records each recovery wait of the unattended policy, which lasts 5 s or
  *  more, and ends it when `release` resolves, at once by default. Shorter
  *  sleeps keep their real duration. */
-function recoveryWaits(release: () => Promise<void> = async () => {}) {
+function recoveryWaits(release: (signal?: AbortSignal) => Promise<void> = async () => {}) {
   const real = abort.abortableSleep;
   const waits: number[] = [];
   const spy = spyOn(abort, "abortableSleep").mockImplementation((ms, signal) => {
     if (ms < 5_000) return real(ms, signal);
     waits.push(ms);
-    return release();
+    return release(signal);
   });
   return { waits, restore: () => { spy.mockRestore(); } };
 }
@@ -540,6 +541,38 @@ describe("child execution recovery", () => {
       expect(run.runs()).toBe(2);
       expect(run.notices.at(-1)).toEqual(expect.objectContaining({ data: { operation: expect.objectContaining({ type: "resolve" }) } }));
     } finally { release.resolve(); waits.restore(); clock.mockRestore(); }
+  });
+
+  it.each(["capacity", "access"] as const)("settles a person's interrupt of a child in a %s wait without starting another run", async (kind) => {
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const waits = recoveryWaits((signal) => {
+      if (kind === "capacity") entered.resolve();
+      return abort.awaitWithAbortSignal(release.promise, signal);
+    });
+    const terminal: AgentRunResult["terminal"] = kind === "capacity"
+      ? { kind: "api_error", message: "unserved model", recovery: { kind: "at", atMs: Date.now() + 60_000, hold: { kind: "recheck" } }, unserved: { model: "test-model", reason: "not_offered" } }
+      : { kind: "model_unavailable", message: "access pending", missing: "access" };
+    const run = scriptedDispatch([terminal]);
+    const control = Promise.withResolvers<LiveChildControl>();
+    const register = run.deps.subagentSessions.registerLiveControl;
+    run.deps.subagentSessions.registerLiveControl = (child) => {
+      control.resolve(child);
+      return register(child);
+    };
+    try {
+      await createSubagentDispatch({ ...run.deps, awaitModelAccessSettled: async (signal) => {
+        entered.resolve();
+        await abort.awaitWithAbortSignal(release.promise, signal);
+      } }).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext());
+      await entered.promise;
+      expect(await (await control.promise).child.interrupt("person")).toBe(true);
+      expect(await run.settled).toMatchObject({ status: "interrupted", interruptedBy: "person" });
+      expect(run.runs()).toBe(1);
+    } finally {
+      release.resolve();
+      waits.restore();
+    }
   });
 
   // ARCH-CONTEXT-038: a failed child's summary is a side call of the child's tree, so it carries the child's boundary

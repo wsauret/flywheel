@@ -21,6 +21,7 @@ import { isRecord } from "../../infra/record.js";
 import type { ToolExposurePlan } from "./tools/tool-exposure-planner.js";
 import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
 import type { RuntimeTool } from "./tools/types.js";
+import type { RequestRoleSelection } from "./types.js";
 import { moduleDisabledReason } from "../../protocol/module-ids.js";
 import { exposedToolName, toolRegistryFromComposition } from "./tools/tool-registry.js";
 import type { ExecutionAdmission } from "./tools/tool-dispatch.js";
@@ -123,17 +124,12 @@ export interface PreparedRequestAttempt {
   readonly omittedTools: ReadonlyArray<{ readonly name: string; readonly reason: string }>;
 }
 
-export type RequestModelSelection = {
-  readonly roleId?: string;
-  readonly model?: string;
-  readonly effort?: string;
-  readonly providerOptions?: import("../../infra/llm/provider-options.js").ProviderRequestOptions;
-  readonly setting?: import("../session/schemas.js").RoleSettingEntry & { readonly defaultEffort?: string };
+export type RequestModelSelection = RequestRoleSelection & {
   readonly capture?: { readonly runtime: ModelRuntimeCapture; readonly connection?: ProviderConnectionCapture };
 };
 
 export function requestModelSelectionKey(selection: RequestModelSelection): string {
-  return JSON.stringify({ roleId: selection.roleId, model: selection.model, effort: selection.effort, providerOptions: selection.providerOptions, setting: selection.setting });
+  return JSON.stringify({ roleId: selection.roleId, model: selection.model, effort: selection.effort, providerOptions: selection.providerOptions, setting: selection.setting, fixedModel: selection.fixedModel });
 }
 
 export interface RequestProviderRuntime {

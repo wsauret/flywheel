@@ -363,7 +363,7 @@ export async function main(
     foregroundBashHold: runtime.foregroundBashHold,
     shell: runtime.shell,
   }, [
-    ...admissionPlan.variants.map((variant) => ({ role: "candidate" as const, model: variant.model })),
+    { role: "candidate", roleId: "explorer", ...seat },
     { role: "judge", ...JUDGE_SEAT },
   ]);
   if (args.dryRun) {

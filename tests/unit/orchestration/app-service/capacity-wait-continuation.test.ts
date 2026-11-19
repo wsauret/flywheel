@@ -71,6 +71,27 @@ describe("capacity waits", () => {
     waits.dispose()
   })
 
+  test("record the model a wait waits for and why, and on a recheck end only the waits whose model can serve now, every wait when a setting changed, and a wait that names no model (PI-MODEL-039, PI-MODEL-063)", async () => {
+    const waits = registerCapacityWaits(reader(), { reader: reader(), writer: writer() })
+    const opus = capacityWaitAuthority(reader(), { target: { kind: "chat", sessionId: "chat-1" } })
+    await opus?.arm(AT, { model: "claude-opus-5.5", reason: "spent" })
+    expect(await row("chat-1")).toMatchObject({ continuesAt: AT, unserved: { model: "claude-opus-5.5", reason: "spent" } })
+    const ended: string[] = []
+    const waiter = (sessionId: string, model?: string) => capacityWaitAuthority(reader(), { target: { kind: "workflow-agent", sessionId } })
+      ?.whileWaiting({ ...(model === undefined ? {} : { model }), recheck: () => { ended.push(sessionId) } })
+    const releases = [waiter("served", "gpt-6-luna"), waiter("spent", "claude-opus-5.5"), waiter("unnamed")]
+    const asked: string[] = []
+    waits.recheck(async (sessionId, model) => { asked.push(`${sessionId} ${model}`); return model === "gpt-6-luna" })
+    await Bun.sleep(0)
+    expect(asked).toEqual(["served gpt-6-luna", "spent claude-opus-5.5"])
+    expect(ended.toSorted()).toEqual(["served", "unnamed"])
+    ended.length = 0
+    waits.recheck()
+    expect(ended.toSorted()).toEqual(["served", "spent", "unnamed"])
+    for (const release of releases) release?.()
+    waits.dispose()
+  })
+
   test("leave a planned replacement's row of the session as it is", async () => {
     registerCapacityWaits(reader(), { reader: reader(), writer: writer() })
     await authorizePlannedSessionContinuation({ reader: reader(), writer: writer(), continuation: { target: { kind: "chat", sessionId: "chat-1" }, handoffId: "handoff" } })

@@ -105,6 +105,7 @@ export async function createNativePersonaInvocation(
       request.signal?.addEventListener("abort", onAbort, { once: true });
       try {
         const registry = request.agentRegistry ?? new Map<string, AgentDefinition>();
+        const seat = runtime.candidateRole?.(request.seat) ?? request.seat;
         const dto = decodeNativePersonaRequest({
           sourceRoot: root,
           accountHome: runtime.accountHome,
@@ -117,8 +118,8 @@ export async function createNativePersonaInvocation(
           persona: request.persona,
           registry: [...registry],
           seat: {
-            ...(request.seat.model === undefined ? {} : { model: request.seat.model }),
-            ...(request.seat.effort === undefined ? {} : { effort: request.seat.effort }),
+            ...(seat.model === undefined ? {} : { model: seat.model }),
+            ...(seat.effort === undefined ? {} : { effort: seat.effort }),
           },
           prompt: request.prompt,
           label: request.label,
