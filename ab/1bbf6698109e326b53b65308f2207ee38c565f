@@ -1,0 +1,14 @@
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 283-290,293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ab1bbf6698109e326b53b65308f2207ee38c565f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
