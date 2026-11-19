@@ -22,6 +22,11 @@ Not: A recovery policy that retries or fails over inside a request.
 
 When a workflow agent's or subagent's run fails because its model's quota is spent until a known time, the recovery policy continues it at once, without counting an attempt or arming a capacity wait. The next request boundary resolves the role against current availability. A capacity wait follows only when that boundary itself finds that no preference serves, until the earliest moment one serves again. The policy keeps no memory of earlier continuations. An unattended run never continues this way.
 
+## ARCH-RUNTIME-083: The project's control composition owns store usage and idle reclaim
+
+The project's control composition in the account service owns the store's usage as live state. Each maintenance job reports usage when it ends, and idle reclaim also reports it once it has planned the superseded rows. Only idle reclaim plans them, so no per-change path reads the history. Idle reclaim starts after the startup job, while the executors report no work, at most once an hour. It writes through the state Worker in bounded steps and is withdrawn when work starts. A full VACUUM runs only for Reclaim storage, after the account closed the project, under the exclusive state generation.
+Because: A VACUUM holds the store's only lock for minutes, which only a closed project can give it; bounded steps keep a write's wait to one step.
+
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
 Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf. Its framing is the versioned JSONL channel or Agent Client Protocol version 1, over one channel and one settlement rule.
