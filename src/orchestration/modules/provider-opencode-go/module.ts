@@ -23,6 +23,7 @@ const definition = {
   paidModes: ["prepaid"],
   rank: 30,
   catalogId: "opencode-go",
+  apiHosts: [new URL(OPENCODE_GO_API_BASE).host],
   dynamicCatalog: {
     limits: DEFAULT_DYNAMIC_CATALOG_LIMITS,
     extractRows: extractDataCatalogRows,

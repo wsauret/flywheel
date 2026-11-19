@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { load } from "js-yaml";
 import { prepareHarborRun } from "../../../bench/harbor/run-harbor.js";
@@ -138,7 +138,7 @@ describe("Harbor jobs", () => {
   });
 
   test.each([
-    ["OpenRouter", DEEPSEEK_ARM, ["openrouter.ai", "models.dev"]],
+    ["DeepSeek failover", DEEPSEEK_ARM, ["api.deepseek.com", "opencode.ai", "openrouter.ai", "models.dev"]],
     ["Claude subscription", CLAUDE_ARM, ["api.anthropic.com", "models.dev"]],
     ["Baseten", BASETEN_ARM, ["inference.baseten.co", "models.dev"]],
     ["ChatGPT subscription", ARM_CONFIG, ["chatgpt.com", "auth.openai.com", "models.dev"]],
@@ -159,8 +159,11 @@ describe("Harbor jobs", () => {
   });
 
   test("an offline agent phase refuses an arm that enables a provider which declares no hosts, and names it", async () => {
-    const args = ["--benchmark", "deep-swe-1.1", "--arm", "bench/harbor/configs/fh-deepseek-1017-max.toml", "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
-    await expect(prepareHarborRun(args, dependencies(temporaryDirectory("harbor-offline-refused-"), [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: deepseek, opencode_go");
+    const root = temporaryDirectory("harbor-offline-refused-");
+    const arm = join(root, "openai-api.toml");
+    await writeFile(arm, (await readFile("bench/harbor/configs/fh-deepseek-1017-max.toml", "utf8")).replace('  "provider-openai-api",\n', ""));
+    const args = ["--benchmark", "deep-swe-1.1", "--arm", arm, "--auth-profile", "Fixture", "--agent-repo", "owner/agent", "--task-names", DEEP_SWE_TASK, "--hosted"];
+    await expect(prepareHarborRun(args, dependencies(root, [], "no-network"))).rejects.toThrow("the arm enables providers that declare no API hosts: openai_api");
   });
 
   test("an executing run in a round is recorded in the round at preparation with the round's identity and its purpose; a dry run is not", async () => {

@@ -26,6 +26,7 @@ const definition = {
   // A first-party endpoint ahead of the aggregator that also serves its models.
   rank: 78,
   catalogId: undefined,
+  apiHosts: [new URL(BASE_URL).host],
   dynamicCatalog: {
     ...catalog,
     canonicalize: (row) => canonicalizeProviderIdCatalogRow("deepseek", row),

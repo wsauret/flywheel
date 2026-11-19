@@ -1,9 +1,13 @@
 # Flywheel config of the DeepSeek low-effort arm, matched to the harness
 # leaderboard (huggingface.co/spaces/joelniklaus/harness-leaderboard): its
 # DeepSeek-V4.1-Flash September release, served by DeepInfra at fp8, at
-# reasoning effort low. Flywheel reaches it through OpenRouter, which this
-# config restricts to DeepInfra's fp8 endpoint with no fallback; the board
-# reaches DeepInfra through the Hugging Face router. The launcher validates
+# reasoning effort low. Flywheel walks its providers in its fixed spend
+# order: the OpenCode Go subscription and the DeepSeek API first, where they
+# serve this release, then OpenRouter, which this config restricts to
+# DeepInfra's fp8 endpoint with no fallback; the board reaches DeepInfra
+# through the Hugging Face router. A provider that does not serve the model
+# is skipped. Workflows and the reviewer and ship agent types stay on, as
+# Flywheel ships them; only the advisor is off. The launcher validates
 # this file with Flywheel's config schema before any trial, records its
 # sha256 in run_manifest.json, and installs it in the trial as
 # $HOME/.flywheel/flywheel.toml. The trial exports its credentials under the
@@ -29,27 +33,23 @@ disabled_modules = [
   "provider-anthropic-api",
   "provider-baseten",
   "provider-claude-agent-sdk",
-  "provider-deepseek",
   "provider-github-copilot",
   "provider-google-api",
   "provider-google-vertex",
   "provider-openai-api",
   "provider-chatgpt",
-  "provider-opencode-go",
   "provider-supergrok",
   "remote",
   "side-question",
   "web",
   "web-chatgpt",
   "web-exa",
-  "workflows",
 ]
 
-# Subagents stay on with the agent types that do the task's work. The advisor and
-# the reviewers give a second opinion from another model, which a run of one
-# model cannot give, and nothing in a trial publishes.
+# The advisor gives a second opinion from another model, which a run of one
+# model cannot give. Every other agent type stays on.
 [subagents]
-disabled_types = ["advisor", "reviewer", "ship"]
+disabled_types = ["advisor"]
 
 [updates]
 auto_install = false
@@ -79,6 +79,21 @@ effort = "low"
 provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
 
 [profiles.benchmark.roles.title-generation]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.workflow-agent]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.reviewer]
+model = "deepseek-v4.1-flash"
+effort = "low"
+provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
+
+[profiles.benchmark.roles.ship]
 model = "deepseek-v4.1-flash"
 effort = "low"
 provider_options = { openrouter = { only = ["deepinfra/fp8"], allow_fallbacks = false } }
