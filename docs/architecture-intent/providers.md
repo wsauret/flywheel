@@ -22,7 +22,12 @@ Declarative custom providers materialize from validated configuration as provide
 
 ## ARCH-PROVIDERS-004: Authentication is a strategy on the provider definition
 
-Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity. It owns credentials, model catalogs, and eligibility across all spend modes of that account. Request and availability identity also include the spend mode. The auth store decoder rejects unknown credential keys by name.
+Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity. It owns credentials, model catalogs, and eligibility across all spend modes of that account. Request and availability identity also include the spend mode.
+
+## ARCH-PROVIDERS-083: The auth store reads leniently and writes exactly
+
+A read with the installed provider ids leaves each unknown provider key out of the loaded store and names it in a diagnostic, and no read writes the file. A credential write keeps each unknown entry that it can decode and refuses the whole write when any entry does not decode exactly.
+Because: A read must not lose a credential that another release or provider wrote, and a write must not rewrite bytes it did not understand.
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
