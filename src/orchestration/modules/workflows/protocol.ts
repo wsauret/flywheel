@@ -156,7 +156,7 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
         if (observed(id)) ids.add(id)
       }
       // A detail that a query reads has no known parent yet.
-      if (fact.type === "tool.result.recorded") for (const id of [...heldByParent.get(fact.sessionId) ?? [], ...querying.keys()]) calls.add(id)
+      if (fact.type === "tool.result.recorded" || fact.type === "workflow.tool_result.corrected" || fact.type === "workflow.tool_result.resumed") for (const id of [...heldByParent.get(fact.sessionId) ?? [], ...querying.keys()]) calls.add(id)
     }
     if (ids.size > 0) changed(ids, WORKFLOW_DETAIL_INPUTS)
     if (calls.size > 0) changed(calls, ["record"])
@@ -222,7 +222,7 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
       async "workflow.resume"(command) {
         const address = command.targets?.length ? await resolveWorkflowDeliveryAddress(services.projectionReader, command.workflowId, command.targets) : { ok: true as const, address: WHOLE_WORKFLOW }
         if (!address.ok) return { ok: false, error: address.refusal }
-        const result = await port.controller.resumeWorkflow(command.workflowId, address.address)
+        const result = await port.controller.resumeWorkflow(command.workflowId, address.address, { explicit: "person" })
         return result.kind === "resumed" || result.kind === "already_running" ? ok : { ok: false, error: result.message }
       },
       async "workflow.restart"(command) {

@@ -12,7 +12,7 @@ import { arrayField, numberField, stringField } from "./json-field.js";
 import type { PlacedTool } from "./output-tool-projection-types.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
 import type { ToolOutcome } from "../tool-outcome.js";
-import { CANCELED_LABEL, STOPPED_LABEL } from "./run-labels.js";
+import { CANCELED_LABEL, PARENT_CANCELED_LABEL } from "./run-labels.js";
 import { asRecord } from "../record.js";
 import { ToolResultActionSchema, type ToolResultAction } from "../tool-result-action.js";
 import { mutationEvidenceSummaryDisplayPaths } from "./display-paths.js";
@@ -340,8 +340,8 @@ function resolveStandaloneResult(
     builder.pushUserMessage(text, Date.now(), false, true);
   } else if (outcome === "error" || outcome === "cancelled" || outcome === "stopped") {
     const rawText = extractErrorText(rawContent) ?? "Unknown error";
-    const message = tracked.toolName === "subagent" && outcome === "cancelled" ? CANCELED_LABEL
-      : tracked.toolName === "subagent" && outcome === "stopped" ? STOPPED_LABEL
+    const message = tracked.toolName === "subagent" && outcome === "cancelled" ? PARENT_CANCELED_LABEL
+      : tracked.toolName === "subagent" && outcome === "stopped" ? CANCELED_LABEL
       : launderToolError(rawText);
     builder.errorTool(index, message, failureEvidence(displayMeta));
   } else {

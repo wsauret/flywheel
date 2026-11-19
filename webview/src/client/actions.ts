@@ -66,7 +66,7 @@ export interface ClientActions {
   /** Interrupts or resumes the open session. Workflow targets select items or agents; omitted targets act on the whole workflow. */
   interrupt(targets?: readonly string[]): void
   resume(targets?: readonly string[]): void
-  /** Stops a session that answers a parent's tool call. Terminal: it never resumes. */
+  /** Cancels a session that answers a parent's tool call, which ends the call. */
   stop(sessionId: string): void
   /** Moves to a new chat at once. A tap while one is being created joins it
    *  in the session, which also moves the pane back to it. */
@@ -78,7 +78,7 @@ export interface ClientActions {
   removeSession(sessionId: string): void
   closeSession(sessionId: string): void
   renameSession(sessionId: string, patch: SessionTitlePatch): void
-  /** Whether Close, Stop, Delete, or Rename of `sessionId` runs. Every
+  /** Whether Close, Cancel, Delete, or Rename of `sessionId` runs. Every
    *  surface that names the session reads it here, such as its list row and
    *  the open chat's title, so an action started anywhere shows on both.
    *  Reactive. */

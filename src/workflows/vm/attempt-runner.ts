@@ -44,10 +44,13 @@ interface AttemptRunHost {
   readonly conversationsOf: (attemptId: string) => Promise<readonly string[]>;
 }
 
-/** What an attempt's agent reads first: its user prompt and its task. */
+/** What an attempt's agent reads first: its user prompt and its task. An
+ *  attempt that reopens a failed one also gives the failure reason that the
+ *  failed attempt recorded, which its continued conversation states. */
 interface AttemptBrief {
   readonly userPrompt: string;
   readonly task: string;
+  readonly reopenedFailure?: string;
 }
 
 /** Composes the brief of an attempt for the check of the agent that runs it (ARCH-CONTEXT-033): the tools that its
@@ -120,6 +123,15 @@ function attemptRowFor(
       : resolvedAgent.description === undefined ? {} : { description: resolvedAgent.description }),
     ...(input.item === null ? {} : { item: input.item }),
   };
+}
+
+/** The failure reason of the failed attempt that the attempt `attemptId`
+ *  reopens. Only a failed attempt is reopened. */
+function failureOfReopened(control: ReassessmentControl, attemptId: string): string {
+  const parentAttemptId = control.attempts.find(({ id }) => id === attemptId)?.parentAttemptId;
+  const state = control.attempts.find(({ id }) => id === parentAttemptId)?.state;
+  if (state?._tag !== "failed") throw new Error(`Workflow invariant: attempt "${attemptId}" reopens no failed attempt`);
+  return state.reason;
 }
 
 function describeInvariant(error: unknown): string {
@@ -275,6 +287,9 @@ export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecuto
           conversationsOf: host.conversationsOf,
         });
 
+        const reopenedFailure = input.provenance._tag === "continuation" && input.provenance.reason === "reopen"
+          ? failureOfReopened(host.committedControl(), input.attemptId)
+          : undefined;
         // The refusal that the brief raised, which the attempt reports as its failure.
         let refusal: string | undefined;
         const brief: ComposeAttemptBrief = async (capabilities) => {
@@ -297,7 +312,7 @@ export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecuto
           host.signal.throwIfAborted();
           await deps.recordInvocation();
           host.signal.throwIfAborted();
-          return { task, userPrompt };
+          return { task, userPrompt, ...(reopenedFailure === undefined ? {} : { reopenedFailure }) };
         };
 
         host.signal.throwIfAborted();

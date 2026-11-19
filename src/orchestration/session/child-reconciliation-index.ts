@@ -36,8 +36,9 @@ interface SweepBatches {
   readonly bindings: { readonly routed: WorkflowBindings; readonly taken: ReadonlyMap<string, number> }
 }
 
-/** The parent facts that change membership or a launching call's result. */
-const PARENT_FACT_TYPES = ["session.child.linked", "session.child.unlinked", "tool.result.recorded", "workflow.tool_result.corrected"]
+/** The parent facts that change membership, a launching call's result, or
+ *  whether a Resume passed its Cancel. */
+const PARENT_FACT_TYPES = ["session.child.linked", "session.child.unlinked", "tool.result.recorded", "workflow.tool_result.corrected", "workflow.tool_result.resumed"]
 
 /** The one workspace cursor over the facts that bind a workflow to a parent.
  *  No fact on a parent's own aggregate records a workflow launch or an
@@ -243,9 +244,9 @@ export async function readChildReconciliationChanges(reader: AsyncEventStateRead
         index.activeByRun.delete(childId)
       }
     }
-    if (event.type === "tool.result.recorded" || event.type === "workflow.tool_result.corrected") {
+    if (event.type === "tool.result.recorded" || event.type === "workflow.tool_result.corrected" || event.type === "workflow.tool_result.resumed") {
       const toolUseId = resultToolUseId(event)
-      index.resultPositions.set(toolUseId, { id: event.id, position: event.position })
+      if (event.type !== "workflow.tool_result.resumed") index.resultPositions.set(toolUseId, { id: event.id, position: event.position })
       const child = index.toolChildren.get(toolUseId)
       if (child && index.workflows.has(child)) changedWorkflows.add(child)
       else if (child) changedChildren.add(child)
@@ -254,12 +255,12 @@ export async function readChildReconciliationChanges(reader: AsyncEventStateRead
   return { index, batches: { changes, bindings }, childChanges, first, changedChildren, changedWorkflows }
 }
 
-/** The call that a parent result fact names. A reference-backed stored result
+/** The call that a parent result fact, or a Resume that passes one, names. A reference-backed stored result
  *  decodes from its stored version, so the index loads no tool content. */
 function resultToolUseId(event: StoredFact): string {
   const stored = storedToolCallIdentity(event)
   if (stored) return stored.toolUseId
   const fact = parseSessionRuntimeFact({ type: event.type, version: event.version, actor: event.actor, payload: event.payload })
-  if (fact.type !== "tool.result.recorded" && fact.type !== "workflow.tool_result.corrected") throw new Error(`Expected a parent result fact, got ${fact.type}`)
+  if (fact.type !== "tool.result.recorded" && fact.type !== "workflow.tool_result.corrected" && fact.type !== "workflow.tool_result.resumed") throw new Error(`Expected a parent result fact, got ${fact.type}`)
   return fact.payload.toolUseId
 }

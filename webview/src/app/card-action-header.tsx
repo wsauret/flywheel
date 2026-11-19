@@ -5,7 +5,7 @@ export const CARD_ACTION_COPY = {
   interrupt: { word: "Interrupt", meaning: "Cut it now. Resume continues it." },
   resume: { word: "Resume", meaning: "Continue it." },
   restart: { word: "Restart", meaning: "Run it again from its request." },
-  stop: { word: "Stop", meaning: "End this run." },
+  stop: { word: "Cancel", meaning: "End this run for its parent." },
 }
 
 export interface CardAction {

@@ -74,8 +74,11 @@ function eventTransition(context: WorkflowMachineContext, event: DecodedWorkflow
       }
       // A failed run resumes by running its failed agents again; every
       // finished agent that does not read a failed agent's output keeps its
-      // result.
-      const resumed = context.committed.status === "failed" ? reopenFailedNodes(context.committed, encoding, event.readers) : context.committed;
+      // result. A run whose other agents still run reopens its failed agents
+      // the same way, beside the agents that run. A paused run keeps its
+      // failed agents failed, as stored Resumes of paused runs replay.
+      const { status } = context.committed;
+      const resumed = status === "failed" || status === "executing" ? reopenFailedNodes(context.committed, encoding, event.readers) : context.committed;
       const prepared = prepareExecution({ ...resumed, status: "ready" }, encoding);
       return { committed: prepared.control, nextLifecycle: lifecycleFor(prepared.control), facts: [buildWorkflowResumedFact(), ...prepared.facts], eventKey: "resume" };
     }

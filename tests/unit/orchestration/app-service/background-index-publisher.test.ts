@@ -130,6 +130,30 @@ describe("the background index owner", () => {
     expect(rows.map((row) => row.id)).toContain("toolu_lint")
   })
 
+  test("a canceled workflow reads canceled until an explicit Resume passes its Cancel, and its own changes read nothing of its parent's results", async () => {
+    const fixture = await chatWithWork()
+    const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))
+    const { owner, patches, settled } = ownedIndex(fixture, { reader: counter.reader })
+    await owner.snapshot("chat")
+    const workflowRow = () => patches.flatMap(({ payload }) => payload.kind === "background.row.updated" && payload.row.id === "workflow" ? [payload.row] : []).at(-1)
+
+    const cancel = fixture.store.append({ aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId: "toolu_workflow", outcome: "stopped", contentPreview: "stopped" } })
+    await settled()
+    expect(workflowRow()?.status).toBe("stopped")
+
+    // The canceled run's own changes, such as its teardown, keep it canceled
+    // and read no result history of its parent.
+    counter.take()
+    fixture.store.append({ aggregateId: "workflow:workflow", sessionId: "workflow", timestamp: Date.now(), type: "workflow.resumed", version: 1, actor: "flywheel", payload: {} })
+    await settled()
+    expect(workflowRow()?.status).toBe("stopped")
+    expect(counter.take().filter((request) => request.aggregateId === "session:chat")).toEqual([])
+
+    fixture.store.append({ aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "workflow.tool_result.resumed", version: 1, actor: "flywheel", payload: { toolUseId: "toolu_workflow", childSessionId: "workflow", resultEventId: cancel.id, by: "person" } })
+    await settled()
+    expect(workflowRow()?.status).not.toBe("stopped")
+  })
+
   test("a change of the live commands is read once: the same commands again read nothing", async () => {
     const fixture = await chatWithWork()
     const counter = countStateRequests(asAsyncEventReadSurface(fixture.store))

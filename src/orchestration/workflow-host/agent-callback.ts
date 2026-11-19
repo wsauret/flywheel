@@ -20,7 +20,7 @@ import type { CapabilityPlanner } from "../agent-runtime/request-preparation.js"
 import { createAgentHost } from "../runner/host.js"
 import { createBackgroundNotificationDelivery } from "../runner/background-notification-delivery.js"
 import type { AgentHostContextOptions } from "../runner/types.js"
-import { CONTINUATION_MESSAGES } from "../agent-runtime/continuation-messages.js"
+import { CONTINUATION_MESSAGES, reopenedContinuation } from "../agent-runtime/continuation-messages.js"
 import { readAuthorizedRestoredWait, readChatTurnEndEvidence } from "../session/chat-session-run-evidence.js"
 import type { SessionFactWriter } from "../session/session-fact-writer.js"
 import { personaRoleChain, resolveWorkflowAgentRole } from "../config/role-selection.js"
@@ -361,6 +361,7 @@ export function createWorkerCallback(
     // The agent's brief, composed for its check before the run starts.
     let userPrompt: string
     let task: string
+    let reopenedFailure: string | undefined
 
     // The save point coalesces a turn's assistant + tool_result entries into
     // one fact/fsync. Returning the serialized flush keeps the loop from
@@ -389,6 +390,11 @@ export function createWorkerCallback(
             `workflow-task-recovery:${rootId}:${attempt.id}`,
           )
         }
+        // A reopened agent continues the copy of its failed attempt's
+        // conversation, which can end on its answer. The continuation says
+        // why it continues, before the context builder can add an
+        // unexpected-exit nudge, and its entry id commits it once per attempt.
+        if (reopenedFailure !== undefined) await treeWriter.commitSystemTurn(reopenedContinuation(reopenedFailure), `workflow-reopen:${attempt.id}`)
       }
       let priorContext = await buildContextCommittingContinuation(treeWriter, restoringWait)
       if (firstRun) {
@@ -579,6 +585,7 @@ export function createWorkerCallback(
     const brief = await composeBrief(capabilities)
     userPrompt = brief.userPrompt
     task = personaTask(persona, brief.task, capabilities)
+    reopenedFailure = brief.reopenedFailure
     if (fresh) await treeWriter.commitSystemTurn([userPrompt, task].filter(Boolean).join("\n\n"), briefEntryId(attempt.id))
     await resources.attach(opts.attachChildProjection)
     reportToolUses()

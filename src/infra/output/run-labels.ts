@@ -23,11 +23,16 @@ export const UNEXPECTED_EXIT_LABEL = "Interrupted by an unexpected exit"
 /** An interrupted or unexpectedly exited turn continued from where it stopped. */
 export const RESUMED_LABEL = "Resumed"
 
-/** A child a person ended with Stop: terminal, never resumed. */
+/** A background command a person stopped. */
 export const STOPPED_LABEL = "Stopped"
 
-/** A child the requesting agent canceled: terminal, never resumed. */
+/** A child a person ended with Cancel, or a background command its agent
+ *  stopped. */
 export const CANCELED_LABEL = "Canceled"
+
+/** A child its requesting agent canceled. It names the parent, as an
+ *  interrupt by the parent does, so it reads apart from a person's Cancel. */
+export const PARENT_CANCELED_LABEL = "Canceled by the parent"
 
 /** A subagent that reached its turn budget: what it had, not a completion. */
 export const PARTIAL_LABEL = "Partial"

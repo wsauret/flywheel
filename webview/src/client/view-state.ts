@@ -190,9 +190,9 @@ export interface SessionSummary {
   readonly durationMs?: number
   readonly diffStats?: SessionRow["diffStats"]
   readonly parentSessionId?: string
-  /** The parent's tool call this session answers; Stop terminates it. */
+  /** The parent's tool call this session answers; Cancel terminates it. */
   readonly parentToolUseId?: string
-  /** Who ended this child's run with Stop; a stopped child admits nothing. */
+  /** Who ended this child's run with Cancel; a canceled child admits only an explicit Resume. */
   readonly stoppedBy?: SessionRow["stoppedBy"]
   readonly runOutcome?: Extract<SessionRow, { kind: "subagent" }>["runOutcome"]
   /** The actions the runtime admits: always for a child, and for a listed

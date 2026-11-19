@@ -1,5 +1,4 @@
 import { CorruptEventRowError, type StoredFact } from "../../infra/event-store-types.js"
-import type { ToolOutcome } from "../../infra/tool-outcome.js"
 import { workflowCallLaunched } from "../../infra/tools/workflow-call-source.js"
 import { readAdvancingCompletionEvidence, readTerminalHandoff, terminalWorkflow, workflowStartFailureContent, workflowStopContent, type AgentResult, type FailedAgent, type TerminalHandoff } from "../../workflows/output-contract/workflow-completion.js"
 import { createReplayingWorkflowView } from "../../workflows/view/view-projection.js"
@@ -10,6 +9,7 @@ import { readParentTools, type ChildReconciliationReadContext } from "./child-re
 import { historicalCompletionEntryId, retainedSettledContent, workflowNotificationLabel } from "./child-session-completion.js"
 import { createConversationTreeProjection } from "./conversation/conversation-projection.js"
 import { liveWorkflowControl } from "./live-session-control.js"
+import { childCallOf } from "./chat-session-run-evidence.js"
 import type { ReplayedSession } from "./schemas.js"
 import { callsRuntimeInvocationTool } from "./tool-execution-projection.js"
 import type { ToolExecutionEntry } from "./tool-execution-types.js"
@@ -43,6 +43,10 @@ export interface SettledCandidate {
   readonly childSessionId: string
   readonly content: string
   readonly revision: string
+  /** An explicit Resume passed an earlier Cancel of the call, so this
+   *  result is a later decision than any notice the parent holds, also in
+   *  the same words. */
+  readonly afterResume?: true
 }
 
 /** The parent already holds the completion of a run that has not changed
@@ -80,9 +84,12 @@ export async function completionCandidate(
     || !eligibleTool(tool, child.workflowDefinitionId, launch.description))) return null
   const reader = input.projectionReader
   const label = workflowNotificationLabel(tool.input, child.workflowDefinitionId)
-  const stoppedBy = stopOf(tool.resultOutcome)
   if (await delivered(context, parent.conversationId, childSessionId, tool)) return { kind: "delivered" }
   measurement.workflowAggregateReads += 1
+  // An explicit Resume that passed the Cancel runs the workflow again, so its
+  // end corrects the Cancel through the terminal path, as it does a start
+  // failure.
+  const { stoppedBy } = childCallOf(tool)
   if (stoppedBy) {
     const handoff = await readTerminalHandoff(reader, childSessionId)
     return {
@@ -91,6 +98,7 @@ export async function completionCandidate(
       childSessionId,
       content: retainedSettledContent(workflowStopContent({ label, sessionId: childSessionId, stoppedBy, handoff }), childSessionId, tool),
       revision: tool.resultEventId ?? toolUseId,
+      ...(tool.resumedResultEventId === undefined ? {} : { afterResume: true as const }),
     }
   }
   const control = await readWorkflowControl(reader, childSessionId)
@@ -166,10 +174,6 @@ async function readRecordedResult(context: ChildReconciliationReadContext, tool:
   const recorded = { id: latest.id, position: latest.position }
   context.index.resultPositions.set(toolUseId, recorded)
   return recorded
-}
-
-function stopOf(outcome: ToolOutcome | undefined): "person" | "agent" | undefined {
-  return outcome === "stopped" ? "person" : outcome === "cancelled" ? "agent" : undefined
 }
 
 function eligibleTool(tool: ToolExecutionEntry, workflowDefinitionId: string, description: string): boolean {

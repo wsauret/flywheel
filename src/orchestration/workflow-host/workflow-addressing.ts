@@ -80,6 +80,12 @@ export function addressReachesStartedAgent(queue: Pick<WorkflowView, "tree" | "a
   return startedAgents(queue).some(({ agent }) => addressReachesAgent(address.addressedTo, agent))
 }
 
+/** Whether `address` reaches an agent of the run that failed, which a
+ *  person's Resume runs again. */
+export function addressReachesFailedAgent(queue: Pick<WorkflowView, "tree"> | undefined, address: WorkflowDeliveryAddress): boolean {
+  return queue?.tree.nodes.some((node) => node.kind === "agent" && node.disposition === "failed" && addressReachesAgent(address.addressedTo, node)) ?? false
+}
+
 /** The message targets of a workflow as its parent reads them in
  *  `process`: one line per item or agent that takes a message. `cut` is the
  *  word of the cut that holds the run, so its held agents read in that word. */

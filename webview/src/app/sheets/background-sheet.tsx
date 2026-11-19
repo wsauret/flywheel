@@ -5,6 +5,7 @@ import type { BackgroundWorkRow } from "../../../../src/protocol/background-inde
 import {
   backgroundIndexEntries,
   backgroundRowDetail,
+  backgroundStopWord,
   canStopBackgroundRow,
   stopBackgroundRow,
   type BackgroundIndexFilter,
@@ -24,8 +25,9 @@ import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
  *  lazily still lists work whose card is outside the loaded window. The
  *  client follows the index from the chat's selection, so the sheet opens on
  *  held rows and row patches change them in place. A tap
- *  lands on the row's card, a child opens with Open or Enter, and Stop ends
- *  the launching call after a confirmation. */
+ *  lands on the row's card, a child opens with Open or Enter, and Stop (of a
+ *  command) or Cancel (of a child) ends the launching call after a
+ *  confirmation. */
 
 const TAIL_LINES = 6
 const FILTER_KEY = "flywheel.background.filter"
@@ -95,7 +97,10 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
     else land(row)
   }
   const stop = (row: BackgroundWorkRow) => {
-    void client.confirm({ title: `Stop ${row.title}?`, detail: "The work ends now. Its output so far stays in the transcript.", confirmLabel: "Stop", destructive: true })
+    const word = backgroundStopWord(row)
+    const detail = row.kind === "command" ? "The work ends now. Its output so far stays in the transcript."
+      : "Its run ends for its parent now. Its output so far stays in the transcript."
+    void client.confirm({ title: `${word} ${row.title}?`, detail, confirmLabel: word, destructive: true })
       .then((confirmed) => {
         if (confirmed) void client.actions.run(actionKey("stop-tool", row.id), () => stopBackgroundRow(client.connection, row))
       })
@@ -112,7 +117,7 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
           <button class="tool-action" onClick={(event) => { event.stopPropagation(); open(entry().row) }}>Open</button>
         </Show>
         <Show when={canStopBackgroundRow(entry().row)}>
-          <button class="tool-action" aria-busy={client.actions.working(actionKey("stop-tool", entry().row.id)) || undefined} onClick={(event) => { event.stopPropagation(); stop(entry().row) }}>Stop</button>
+          <button class="tool-action" aria-busy={client.actions.working(actionKey("stop-tool", entry().row.id)) || undefined} onClick={(event) => { event.stopPropagation(); stop(entry().row) }}>{backgroundStopWord(entry().row)}</button>
         </Show>
       </SheetRow>
       <Show when={tail(entry().row).length > 0}>

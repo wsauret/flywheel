@@ -49,7 +49,10 @@ export const workflowWorkControl: ModuleWorkControl<WorkflowWorkTarget> = {
   resume: (input) => launchHost(input).resumeLaunch(input.workflowId, input.address),
   cut: (input) => launchHost(input).launchCut(input.workflowId),
   progress: workflowProgressLines,
-  addresses: async (input) => workflowAddressText(input.projectionReader, input.workflowId, await launchHost(input).launchCut(input.workflowId) ? "interrupted" : undefined),
+  addresses: async (input) => {
+    const cut = await launchHost(input).launchCut(input.workflowId)
+    return workflowAddressText(input.projectionReader, input.workflowId, cut !== undefined && cut.kind !== "stop" ? "interrupted" : undefined)
+  },
 }
 
 export const workflowWorkState: ModuleWorkflowRuns["state"] = async (input) => {

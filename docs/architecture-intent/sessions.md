@@ -75,21 +75,21 @@ Each module that launches child sessions registers the owner of its child kind, 
 
 ## ARCH-SESSIONS-016: Stop belongs to the parent's tool call
 
-Every Stop of a subagent, a child workflow, or a background command is addressed through and terminates the parent's tool call, never through the child's chat interrupt. Stop is durable and distinct by actor. Concurrent Stop and Resume of one waiting run cannot both take effect, so neither settles or starts the wrong attempt.
+Every Stop of a subagent, a child workflow, or a background command is addressed through and terminates the parent's tool call, never through the child's chat interrupt. Stop is durable and distinct by actor, and it stays current until an explicit Resume of the child records a later run. Concurrent Stop and Resume of one waiting run cannot both take effect, so neither settles or starts the wrong attempt.
 Not: A child-specific Stop control or a Stop through the child's chat interrupt.
 
 ## ARCH-SESSIONS-017: Child controls run only after their call commits
 
 Interrupt, resume, and stop of a child are not concurrency-safe. They run only after the assistant message that calls them commits, so a crash never leaves a child control without its call in parent history. The runtime and crash recovery read a call's contract from the tool registration recorded with that call, never from its input alone.
 
-## ARCH-SESSIONS-018: Interrupt is the one resumable cut, and its actor is a parameter
+## ARCH-SESSIONS-018: Interrupt is the one cut inside a session, and its actor is a parameter
 
-Interrupt is the one resumable cut of every agent-shaped session: a chat turn, a subagent run, and a workflow agent. It is the ordinary per-session interrupt with its actor, the person, a parent agent, or the runtime, as a parameter that its turn-end record keeps (ARCH-SESSIONS-035). Interrupt never ends background work, which keeps its own terminal Stop, and interrupt and continuation of one session take turns in one lane where the person's latest decision wins.
+Interrupt is the one cut inside every agent-shaped session: a chat turn, a subagent run, and a workflow agent. It is the ordinary per-session interrupt with its actor, the person, a parent agent, or the runtime, as a parameter that its turn-end record keeps (ARCH-SESSIONS-035). Interrupt never ends background work, which keeps its own Stop or Cancel through the parent's call, and interrupt and continuation of one session take turns in one lane where the person's latest decision wins.
 Not: A person-facing pause beside Interrupt, or a separate interrupt-actor field beside the turn-end record.
 
 ## ARCH-SESSIONS-019: One predicate decides whether a parent may continue its child
 
-One admission predicate decides both whether a parent may resume its child and whether a parent's message continues it: the parent may continue every cut that a person did not make. Behind a person's interrupt or Stop, the parent's Resume refuses and its message stays held. Rules test for the runtime actor, never for the person.
+One admission predicate decides both whether a parent may resume its child and whether a parent's message continues it: the parent may continue every cut that a person did not make. Behind a person's interrupt or Cancel, the parent's Resume refuses and its message stays held. Rules test for the runtime actor, never for the person.
 
 ## ARCH-SESSIONS-020: A child runs only under its direct parent's live runtime
 

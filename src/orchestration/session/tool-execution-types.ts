@@ -43,6 +43,10 @@ export interface ToolExecutionEntry {
   validationFailedAt?: number
   callEventId?: string
   resultEventId?: string
+  /** The result, a Cancel of a launched workflow, that the newest explicit
+   *  Resume of that workflow passed. The Cancel is current while it is the
+   *  call's result and no Resume names it. */
+  resumedResultEventId?: string
   ackEventId?: string
   validationEventId?: string
   input?: StringMap<unknown>

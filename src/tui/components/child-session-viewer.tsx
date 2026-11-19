@@ -199,7 +199,7 @@ export function ChildSessionViewer(props: ChildSessionViewerProps) {
   const controls = createMemo(() => sessionControls(summary() ?? undefined))
   // Interrupt only while the child runs, Resume only while it does not.
   const offered = createMemo(() => offeredSessionControls(summary() ?? undefined, surface.interruptible()))
-  // Stop terminates the parent's tool call, so it names the parent session,
+  // Cancel terminates the parent's tool call, so it names the parent session,
   // not this child.
   const stop = createMemo(() => stopMutation(summary() ?? undefined))
   const stopControl = (mutation: ReturnType<typeof stopMutation>) => mutation === undefined ? {} : { stop: () => { void props.appService.dispatch(mutation).then(report) } }

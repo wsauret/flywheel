@@ -17,6 +17,17 @@ import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { readChildCall, readChildStop, workflowSessionActions, workflowToolCall } from "../../../../src/orchestration/session/chat-session-run-evidence"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
+import { personCutRefusal } from "../../../../src/orchestration/session/child-continuation"
+import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/types.js"
+import { Database } from "bun:sqlite"
+import { cpSync, mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
+import { newTestRunner } from "../../../helpers/agent-runner.js"
+import { asModelClient } from "../agent-runtime/_model-client.js"
+import { cleanup, compose, context, modelCall, parentChat } from "../app-service/_runtime-supervisor-workflow-launch-fixtures.js"
 
 afterEach(() => {
   cleanupProjectRoots()
@@ -144,8 +155,8 @@ describe("workflow Stop", () => {
   })
 })
 
-describe("a stopped workflow child", () => {
-  it("never resumes and takes no message, before and after a restart, because its parent's tool call records the Stop", async () => {
+describe("a canceled workflow child", () => {
+  it("takes no message and no automatic wake, and an explicit Resume of a person runs it again as its parent's work", async () => {
     const manager = createMockManager()
     await manager.createChat({ id: "parent-chat", conversationId: "parent-conversation", name: "Parent chat" })
     const workflowHosts = createMockWorkflowHosts()
@@ -156,7 +167,8 @@ describe("a stopped workflow child", () => {
       const launchedFrom = (await workflowRunReader(deps.projectionReader).read(id))?.launchedFrom
       const call = await readChildCall(deps.eventReader, launchedFrom)
       const toolCall = workflowToolCall(launchedFrom?.toolUseId, call)
-      atTeardown = { stoppedBy: call?.stoppedBy, actions: workflowSessionActions("inactive", "paused", toolCall ? { toolCall } : {}) }
+      atTeardown = { stoppedBy: call?.stoppedBy, actions: workflowSessionActions("inactive", "paused", toolCall ? { toolCall, message: false } : {}) }
+      workflowHosts._runners.delete(id)
       return true
     })
     await recordWorkflowCall(deps)
@@ -173,16 +185,146 @@ describe("a stopped workflow child", () => {
     // teardown is what takes the child idle, and every client re-reads the
     // child's detail on that edge: the Stop is already durable then.
     await until(() => atTeardown !== undefined, "the child's teardown")
-    expect(atTeardown).toEqual({ stoppedBy: "person", actions: ["session.delete"] })
+    expect(atTeardown).toEqual({ stoppedBy: "person", actions: ["workflow.resume", "session.delete"] })
 
-    const child = await workflowRunReader(deps.projectionReader).read(launch.workflowId)
+    const id = launch.workflowId
+    const child = await workflowRunReader(deps.projectionReader).read(id)
     expect(await readChildStop(deps.eventReader, child?.launchedFrom)).toBe("person")
     await expect(launch.done).resolves.toMatchObject({ status: "stopped" })
-    expect(await controller.resumeWorkflow(launch.workflowId)).toEqual({ kind: "stopped", message: "This workflow was stopped, so it cannot resume" })
-    expect(await controller.sendWorkflow(launch.workflowId, "keep going")).toMatchObject({ kind: "resume_failed" })
+    expect(await controller.sendWorkflow(id, "keep going")).toEqual({ kind: "resume_failed", sessionId: id, message: "This workflow was canceled. Resume it to continue." })
+    expect(await controller.resumeWorkflow(id, WHOLE_WORKFLOW, { wake: "planned" })).toMatchObject({ kind: "stopped" })
+    // A person canceled it, so its parent agent cannot run it again.
+    expect(await controller.resumeLaunch(id)).toEqual({ ok: false, error: personCutRefusal({ kind: "stop", by: "person" }) })
 
-    // A new controller holds no memory of the Stop; the durable result alone refuses.
-    const restarted = createWorkflowController({ ...deps, workflowHosts: createMockWorkflowHosts() })
-    expect(await restarted.resumeWorkflow(launch.workflowId)).toMatchObject({ kind: "stopped" })
+    // A resume that a message or a settled question implies is no Resume.
+    expect(await controller.resumeWorkflow(id)).toMatchObject({ kind: "stopped" })
+
+    // A new controller holds no memory of the Cancel; a person's explicit
+    // Resume starts the run again from the durable state alone.
+    const restarted = createWorkflowController(deps)
+    expect(await restarted.resumeWorkflow(id, WHOLE_WORKFLOW, { explicit: "person" })).toEqual({ kind: "resumed", sessionId: id })
+    expect(workflowHosts._startCalls.at(-1)).toMatchObject({ sessionId: id, startMode: "operator_resume", wake: WHOLE_WORKFLOW })
+
+    // The Resume passed the Cancel before the run started: the call waits
+    // again, so the row offers Cancel again and the child is no longer
+    // canceled.
+    const resumedCall = await readChildCall(deps.eventReader, child?.launchedFrom)
+    expect(resumedCall).toEqual({})
+    const resumedToolCall = workflowToolCall(child?.launchedFrom.toolUseId, resumedCall)
+    expect(workflowSessionActions("active", "running", resumedToolCall ? { toolCall: resumedToolCall } : {})).toContain("background.terminate")
+  })
+})
+
+describe("a canceled workflow child in a workflow host", () => {
+  afterEach(cleanup)
+
+  /** A model launch whose child runs in a real workflow host. Each agent of
+   *  a step counts once it starts and works until its run aborts it. While
+   *  `holdPreparation` holds, each start of the child's runtime waits in its
+   *  preparation, after the host read its durable state. */
+  async function hostedLaunch(baseDir?: string) {
+    let agents = 0
+    let preparation: PromiseWithResolvers<void> | undefined
+    const preparing = { count: 0 }
+    const runsWorkflows: AgentFactory = (options) => {
+      if (options.purpose.kind !== "workflow-agent") return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
+      agents += 1
+      return newTestRunner({ ...options, agentRegistry: new Map(), agentsMd: "" }, async () => asModelClient({
+        accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+        async *streamWithTools(request) {
+          yield { kind: "text_delta", text: "working", blockKey: "text" }
+          await new Promise<void>((resolve) => {
+            if (request.signal?.aborted) resolve()
+            request.signal?.addEventListener("abort", () => resolve(), { once: true })
+          })
+        },
+      }))
+    }
+    const ctx = context(baseDir)
+    const composition = compose(ctx, { runsWorkflows, runtimePreflight: async () => { preparing.count += 1; await preparation?.promise } })
+    return {
+      ctx, composition,
+      agents: () => agents,
+      preparing: () => preparing.count,
+      holdPreparation: () => { preparation = Promise.withResolvers() },
+      releasePreparation: () => { preparation?.resolve() },
+    }
+  }
+
+  async function launchAndCancel(hosted: Awaited<ReturnType<typeof hostedLaunch>>) {
+    const { ctx, composition } = hosted
+    const parentId = await parentChat(ctx)
+    const launch = await modelCall(ctx, composition, parentId)
+    await until(() => hosted.agents() === 1, "the first step's agent")
+    await composition.supervisor.terminateBackgroundWork(parentId, "workflow-call")
+    await expect(launch.done).resolves.toMatchObject({ status: "stopped" })
+    await until(() => !ctx.workflowHosts.isRunning(launch.workflowId), "the canceled run's teardown")
+    const launchedFrom = (await workflowRunReader(composition.reader).read(launch.workflowId))?.launchedFrom
+    return { parentId, id: launch.workflowId, launchedFrom }
+  }
+
+  it("refuses every automatic wake and implicit resume of a paused canceled run, and a person's Resume starts its first attempt again", async () => {
+    const hosted = await hostedLaunch()
+    const { composition, ctx } = hosted
+    const { id, launchedFrom } = await launchAndCancel(hosted)
+    expect(replayWorkflowControl(ctx.store.read({ aggregateId: `workflow:${id}` })).status).toBe("paused")
+
+    for (const start of [{ wake: "planned" as const }, { wake: { capacity: new Set(["agent"]) } }, undefined]) {
+      expect(await composition.controller.resumeWorkflow(id, WHOLE_WORKFLOW, start)).toEqual({ kind: "stopped", message: "This workflow was canceled. Resume it to continue." })
+    }
+    expect(ctx.workflowHosts.allIds()).toEqual([])
+    expect(await readChildStop(composition.reader, launchedFrom)).toBe("person")
+
+    expect(await composition.controller.resumeWorkflow(id, WHOLE_WORKFLOW, { explicit: "person" })).toEqual({ kind: "resumed", sessionId: id })
+    await until(() => hosted.agents() === 2, "the resumed run's first attempt")
+    expect(ctx.workflowHosts.isRunning(id)).toBe(true)
+    expect(await readChildStop(composition.reader, launchedFrom)).toBeUndefined()
+  })
+
+  it("runs a run that a crash left executing when a person resumes it after a Cancel, rather than pausing it again", async () => {
+    const first = await hostedLaunch()
+    const parentId = await parentChat(first.ctx)
+    const launch = await modelCall(first.ctx, first.composition, parentId)
+    await until(() => first.agents() === 1, "the first step's agent")
+    // The project as a crash leaves it while the run executes: a copy of its
+    // files and a consistent snapshot of its store, with no teardown.
+    const crashDir = mkdtempSync(join(tmpdir(), "flywheel-crash-left-"))
+    cpSync(first.ctx.baseDir, crashDir, { recursive: true })
+    const crashedStore = resolveEventStoreDbFile(crashDir)
+    for (const suffix of ["", "-wal", "-shm"]) rmSync(`${crashedStore}${suffix}`, { force: true })
+    const live = new Database(resolveEventStoreDbFile(first.ctx.baseDir), { readonly: true })
+    live.run(`VACUUM INTO '${crashedStore}'`)
+    live.close()
+
+    const hosted = await hostedLaunch(crashDir)
+    const { composition } = hosted
+    const launchedFrom = (await workflowRunReader(composition.reader).read(launch.workflowId))?.launchedFrom
+    expect(replayWorkflowControl(hosted.ctx.store.read({ aggregateId: `workflow:${launch.workflowId}` })).status).toBe("executing")
+    await composition.supervisor.terminateBackgroundWork(parentId, "workflow-call")
+    expect(await readChildStop(composition.reader, launchedFrom)).toBe("person")
+    expect(await composition.controller.resumeWorkflow(launch.workflowId, WHOLE_WORKFLOW, { explicit: "person" })).toEqual({ kind: "resumed", sessionId: launch.workflowId })
+    await until(() => hosted.agents() === 1, "the resumed run's attempt")
+    expect(hosted.ctx.workflowHosts.isRunning(launch.workflowId)).toBe(true)
+    expect(await readChildStop(composition.reader, launchedFrom)).toBeUndefined()
+  })
+
+  it("lets a Cancel that lands while a Resume prepares the run win: the run starts no attempt and stays canceled", async () => {
+    const hosted = await hostedLaunch()
+    const { composition, ctx } = hosted
+    const { parentId, id, launchedFrom } = await launchAndCancel(hosted)
+
+    hosted.holdPreparation()
+    const resuming = composition.controller.resumeWorkflow(id, WHOLE_WORKFLOW, { explicit: "person" })
+    await until(() => hosted.preparing() === 2, "the Resume's preparation")
+    expect(await readChildStop(composition.reader, launchedFrom)).toBeUndefined()
+    await composition.supervisor.terminateBackgroundWork(parentId, "workflow-call")
+    expect(await readChildStop(composition.reader, launchedFrom)).toBe("person")
+    hosted.releasePreparation()
+
+    expect(await resuming).toEqual({ kind: "stopped", message: "This workflow was canceled. Resume it to continue." })
+    expect(ctx.workflowHosts.allIds()).toEqual([])
+    expect(hosted.agents()).toBe(1)
+    expect(await composition.controller.resumeWorkflow(id, WHOLE_WORKFLOW, { wake: "planned" })).toMatchObject({ kind: "stopped" })
   })
 })

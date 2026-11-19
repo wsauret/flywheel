@@ -1,9 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
-import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
+import { initializeWorkflow, replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/transition.js";
 import { acknowledge, runningControl, startPreparedAttempt, success } from "./_machine-semantics-fixtures.js";
-import { createMemoryStore, initialFacts, sequentialWorkflow, testHost } from "./host-test-support.js";
-import { replayWorkflowControl, resumesFailedAgents } from "../../../../src/workflows/vm/fact-fold.js";
+import { createMemoryStore, initialFacts, sequentialWorkflow, testHost, waitFor } from "./host-test-support.js";
+import { replayWorkflowControl, resumesFailedAgents, resumesFailedAgentsWith, resumesLiveFailedAgents } from "../../../../src/workflows/vm/fact-fold.js";
+import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js";
+import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
+import { buildWorkflowControlInitializedFact, type WorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js";
+import { CURRENT_PROPOSAL_ENCODING } from "../../../../src/workflows/vm/events.js";
+import type { WorkflowTransitionResult } from "../../../../src/workflows/vm/commands.js";
+import type { WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";
+import { testSkillRevision } from "../../../helpers/skill-fixtures.js";
+import { loadedWorkflow } from "../../../helpers/workflow-files.js";
 import { failedAgents, agentResults, workflowCompletionContent } from "../../../../src/workflows/output-contract/workflow-completion.js";
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js";
 
@@ -290,5 +298,142 @@ describe("a Resume of a run that a failed step ended", () => {
     const last = store.events.findLastIndex(({ type }) => type === "workflow.control.committed")
     const recorded = store.events.map((event, index) => index === last ? { ...event, version: 7 } : event)
     expect(resumesFailedAgents(recorded, replayWorkflowControl(store.events))).toBe(false)
+  })
+})
+
+// A refused expansion fails the run at once. A Resume runs the failed agents
+// of such a run again unless the refused list is still ready after the
+// reopen, where it would expand again and meet the same refusal first.
+describe("a Resume of a failed run that also refused an expansion", () => {
+  const itemsList = { type: "list", description: "Items.", max: 2, unique: "id", of: { type: "object", fields: { id: { type: "string", description: "Id." } } } }
+  const lister = (phase: string) => ({ phase, brief: `List for ${phase}.`, name: phase, output: { summary: "Listed.", fields: { items: itemsList } }, writes: [] })
+  const worker = (phase: string, over: string) => ({ phase, over, brief: `Work one ${phase} item.`, name: phase, writes: [] })
+
+  /** Run `workflow` through the machine until it ends. Each lister lists
+   *  the next entry of `lists`, the first item agent fails, and every other
+   *  agent succeeds. */
+  function refusedRun(workflow: WorkflowDefinition, lists: readonly (readonly string[])[]) {
+    const root = buildWorkflowControlInitializedFact(compileWorkflowControl(workflow, resolveWorkflowAgents(workflow), { skills: testSkillRevision([]) }))
+    const facts: WorkflowSessionFact[] = [root]
+    const commit = (result: WorkflowTransitionResult): WorkflowTransitionResult => {
+      facts.push(...(result.state.context.pending?.facts ?? []))
+      return acknowledge(result)
+    }
+    let listed = 0
+    let failed = false
+    let state = commit(transitionDecodedWorkflow(initializeWorkflow(root.payload.control).state, { type: "START" }))
+    while (state.command.kind === "prepare_attempt") {
+      const { attemptId, definitionId } = state.command.attempt
+      state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_STARTED", attemptId, conversationId: attemptId }))
+      const item = state.state.context.committed.attempts.find(({ id }) => id === attemptId)?.ownership._tag === "item"
+      if (item && !failed) {
+        failed = true
+        state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_FAILED", failure: { attemptId, kind: "fatal", reason: "database or disk is full", conversationId: attemptId } }))
+        continue
+      }
+      const handoff = definitionId.startsWith("list") ? { summary: "Listed.", items: (lists[listed++] ?? []).map((id) => ({ id })) } : { summary: "done" }
+      state = commit(transitionDecodedWorkflow(state.state, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId, conversationId: attemptId, handoff, reassessment: null } }))
+    }
+    const control = state.state.context.committed
+    expect(control.status).toBe("failed")
+    expect(facts.map(({ type }) => type)).toContain("group.expansion_rejected")
+    expect(replayWorkflowControl(facts)).toEqual(control)
+    return control
+  }
+
+  it("runs the failed item agent again when the refused list waits on it", () => {
+    const workflow = loadedWorkflow({ id: "later", name: "Later", phases: [lister("list-a"), worker("work-a", "list-a.items"), lister("list-b"), worker("work-b", "list-b.items")] })
+    const control = refusedRun(workflow, [["x", "y"], ["p", "q", "r"]])
+    expect(resumesFailedAgentsWith({ endingVersion: CURRENT_PROPOSAL_ENCODING }, control)).toBe(true)
+    const resumed = transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "RESUME", readers: {} })
+    expect(resumed.state.context.pending?.proposedCommitted.status).not.toBe("failed")
+    expect(resumed.state.context.pending?.facts.map(({ type }) => type)).not.toContain("group.expansion_rejected")
+  })
+
+  it("is not offered when the refused list is still ready after the reopen, in a later round of a repeat", () => {
+    const workflow = loadedWorkflow({
+      id: "rounds", name: "Rounds",
+      phases: [lister("list-rounds"), { repeat: { each: "list-rounds.items" }, phases: [lister("list-inner"), worker("work-inner", "list-inner.items")] }],
+    })
+    const control = refusedRun(workflow, [["a", "b"], ["x", "y"], ["p", "q", "r"]])
+    expect(control.attempts.some(({ state }) => state._tag === "failed")).toBe(true)
+    expect(resumesFailedAgentsWith({ endingVersion: CURRENT_PROPOSAL_ENCODING }, control)).toBe(false)
+    // The Resume that the check refuses would refuse the expansion again.
+    const resumed = transitionDecodedWorkflow(replayDecodedWorkflow(control), { type: "RESUME", readers: {} })
+    expect(resumed.state.context.pending?.facts.map(({ type }) => type)).toContain("group.expansion_rejected")
+  })
+})
+
+// A failed agent resumes while the other agents of its run still run, so
+// a person who fixed the cause, such as a full disk, continues it at once.
+// Its kind of failure never decides whether it resumes.
+describe("a Resume of a failed agent while its sibling runs", () => {
+  const record = (id: string) => ({ brief: `Do the ${id} work.`, name: id, writes: [] })
+  const phaseWorkflow = loadedWorkflow({
+    id: "live-resume",
+    name: "Live resume",
+    phases: [{ phase: "build", agents: [{ agent: "left", ...record("left") }, { agent: "right", ...record("right") }] }, { phase: "ship", ...record("ship") }],
+  })
+
+  it("continues the failed agent's conversation inside the live run, runs its dependents after it, and completes the run", async () => {
+    const store = createMemoryStore(initialFacts(phaseWorkflow))
+    const sibling = Promise.withResolvers<void>()
+    const ran: string[] = []
+    let conversations = 0
+    const host = testHost(store, {
+      workflow: phaseWorkflow,
+      conversationId: () => `conversation-${++conversations}`,
+      attemptRunner: {
+        run: async (input, active) => {
+          ran.push(`${input.definitionId}:${input.attemptId}`)
+          if (input.definitionId === "left" && input.provenance._tag !== "continuation") {
+            return { kind: "fatal", attemptId: input.attemptId, conversationId: active.conversationId, reason: "unexpected error - database or disk is full" }
+          }
+          if (input.definitionId === "right") await sibling.promise
+          return { kind: "success", attemptId: input.attemptId, conversationId: active.conversationId, handoff: { summary: input.definitionId }, reassessment: null }
+        },
+      },
+    })
+    const result = host.run()
+    const control = () => replayWorkflowControl(store.events)
+    await waitFor(() => control().attempts.some(({ definitionId, state }) => definitionId === "left" && state._tag === "failed"))
+    expect(resumesLiveFailedAgents(control())).toBe(true)
+    const failed = control().attempts.find(({ definitionId }) => definitionId === "left")
+
+    expect(await host.resumeFailedAgents()).toBe(true)
+    await waitFor(() => control().attempts.filter(({ definitionId, state }) => definitionId === "left" && state._tag === "completed").length === 1)
+    // The run did not fail while the resumed agent ran, and the next phase
+    // waits for the sibling that still runs.
+    expect(control().status).toBe("executing")
+    expect(ran.some((entry) => entry.startsWith("ship:"))).toBe(false)
+    sibling.resolve()
+
+    expect((await result).kind).toBe("completed")
+    const left = control().attempts.filter(({ definitionId }) => definitionId === "left")
+    expect(left.map(({ state }) => state._tag)).toEqual(["failed", "completed"])
+    expect(left[1]).toMatchObject({ parentAttemptId: failed?.id, provenance: { _tag: "continuation", reason: "reopen", sourceConversationId: failed?.conversationId } })
+    expect(ran.map((entry) => entry.split(":")[0])).toEqual(["left", "right", "left", "ship"])
+    expect(store.events.filter(({ type }) => type === "workflow.resumed")).toHaveLength(1)
+  })
+
+  it("refuses a live Resume while no agent failed", async () => {
+    const store = createMemoryStore(initialFacts(phaseWorkflow))
+    const sibling = Promise.withResolvers<void>()
+    const host = testHost(store, {
+      workflow: phaseWorkflow,
+      conversationId: () => `conversation-${crypto.randomUUID()}`,
+      attemptRunner: {
+        run: async (input, active) => {
+          if (input.definitionId === "right") await sibling.promise
+          return { kind: "success", attemptId: input.attemptId, conversationId: active.conversationId, handoff: { summary: input.definitionId }, reassessment: null }
+        },
+      },
+    })
+    const result = host.run()
+    await waitFor(() => replayWorkflowControl(store.events).attempts.some(({ definitionId, state }) => definitionId === "left" && state._tag === "completed"))
+    expect(await host.resumeFailedAgents()).toBe(false)
+    sibling.resolve()
+    expect((await result).kind).toBe("completed")
+    expect(store.events.filter(({ type }) => type === "workflow.resumed")).toHaveLength(0)
   })
 })

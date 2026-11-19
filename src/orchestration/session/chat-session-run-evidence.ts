@@ -271,10 +271,13 @@ export function resumableAgentTurnEnd(agents: readonly WorkflowAgentTurnEnd[]): 
  *  empty value is a call that still waits and a Stop can end. Crash
  *  recovery's `interrupted` guess is not a result, as reconciliation reads
  *  it, so a call that holds only the guess still waits. `stoppedBy`
- *  names who stopped it when a Stop is that result: `stopped` is a
- *  person's, `cancelled` the requesting agent's. `settled` is a call that
- *  holds another result, such as a start failure, or that the parent never
- *  recorded. A live tracked run can correct an earlier result with its Stop. */
+ *  names who canceled it when its current result is a Cancel: `stopped` is
+ *  a person's, `cancelled` the requesting agent's. An explicit Resume that
+ *  names that result passes it, so the call waits again until a later
+ *  result or Cancel lands, and the newest decision wins. `settled` is a call
+ *  that holds another result, such as a start failure, or that the parent
+ *  never recorded. A live tracked run can correct an earlier result with its
+ *  Stop. */
 export interface ChildCall {
   readonly stoppedBy?: StoppedBy
   readonly settled?: true
@@ -290,30 +293,32 @@ export async function readChildCall(reader: AsyncEventStateReadSurface, launched
 /** The launching call of a child as `readChildCall` reads it, from the
  *  call's tool execution, for a reader that reads many calls at once. */
 export function childCallOf(tool: ToolExecutionEntry | undefined): ChildCall {
-  if (tool?.resultOutcome === "stopped") return { stoppedBy: "person" }
-  if (tool?.resultOutcome === "cancelled") return { stoppedBy: "agent" }
-  return tool !== undefined && (tool.resultEventId === undefined || holdsInterruptedGuess(tool)) ? {} : { settled: true }
+  const passed = tool?.resultEventId !== undefined && tool.resumedResultEventId === tool.resultEventId
+  if (tool?.resultOutcome === "stopped" && !passed) return { stoppedBy: "person" }
+  if (tool?.resultOutcome === "cancelled" && !passed) return { stoppedBy: "agent" }
+  return tool !== undefined && (tool.resultEventId === undefined || passed || holdsInterruptedGuess(tool)) ? {} : { settled: true }
 }
 
-/** Who ended a child's run for its parent with Stop.
- *  Absent for a child no Stop ended and for one no tool call waits on. A
- *  stopped child is terminal for its parent, whatever its own control says,
- *  so every reader that admits an Interrupt or a Resume reads this first. */
+/** Who ended a child's run for its parent with a Cancel that no explicit
+ *  Resume passed. Absent for a child no Cancel ended and for one no tool
+ *  call waits on. A canceled child is not its parent's work, and it admits
+ *  an explicit Resume and no message. */
 export async function readChildStop(reader: AsyncEventStateReadSurface, launchedFrom: { readonly parentSessionId: string; readonly toolUseId?: string } | undefined): Promise<StoppedBy | undefined> {
   return (await readChildCall(reader, launchedFrom))?.stoppedBy
 }
 
-/** Why a Stop left a workflow uninteractable, or nothing: a stopped child
- *  never resumes and takes no message, whatever its own control says. */
+/** Why a current Cancel refuses a message or an implicit resume of a
+ *  workflow, or nothing. An explicit Resume continues it. */
 export async function workflowStopRefusal(reader: AsyncEventStateReadSurface, launchedFrom: { readonly parentSessionId: string; readonly toolUseId?: string } | undefined): Promise<string | undefined> {
   const stoppedBy = await readChildStop(reader, launchedFrom)
   return workflowInteractionRefusal(undefined, stoppedBy)
 }
 
-/** Terminal control or a parent Stop forbids both a message and Resume.
+/** Terminal control forbids both a message and Resume. A current Cancel
+ *  forbids a message and leaves Resume to an explicit request.
  * Unknown control remains eligible for explicit-message recovery, never implicit execution. */
 export function workflowInteractionRefusal(status: string | undefined, stoppedBy?: StoppedBy): string | undefined {
-  if (stoppedBy !== undefined) return stoppedBy === "person" ? "This workflow was stopped, so it cannot resume" : "This workflow was canceled, so it cannot resume"
+  if (stoppedBy !== undefined) return stoppedBy === "person" ? "This workflow was canceled. Resume it to continue." : "This workflow was canceled by its parent agent. Resume it to continue."
   return status === "completed" || status === "failed"
     ? "This workflow has finished and is read-only. Continue in its parent chat."
     : undefined
@@ -378,19 +383,25 @@ interface WorkflowActionEvidence {
   readonly toolCall?: WorkflowToolCall
   /** Whether a successor owes the workflow its continuation, from the detail read. */
   readonly continuationOwed?: boolean
-  /** Whether a Resume runs the failed agents of a failed run again
-   *  (`resumesFailedAgents`), from the detail read. */
+  /** Whether a Resume runs failed agents again, from the detail read: the
+   *  failed agents of a failed run (`resumesFailedAgents`), or of a run whose
+   *  other agents still run (`resumesLiveFailedAgents`), whatever the kind
+   *  of their failure. */
   readonly retriesFailedAgents?: boolean
 }
 
-/** The actions a workflow's row admits. A workflow a Stop ended admits
- *  nothing but deletion: it is terminal for its parent. In every lifecycle
- *  a workflow admits Stop while its parent's tool call waits on it, because
+/** The actions a workflow's row admits. A workflow that a Cancel ended
+ *  takes no message and no Cancel: its run ended for its parent. Once its
+ *  teardown ended, it admits an explicit Resume as a paused one does
+ *  (PI-INTERACTION-140). In every lifecycle a workflow admits Stop while
+ *  its parent's tool call waits on it, because
  *  each child has its own Stop (PI-INTERACTION-043, PI-INTERACTION-115): a
  *  call that holds another result, such as a start failure, has no Stop left
  *  to record, so a Resume of its workflow brings back Interrupt but no Stop.
  *  A running workflow admits Interrupt and Resume while any started agent's
- *  turn end records an interrupt; a listed row cannot tell whether its call
+ *  turn end records an interrupt or any of its agents failed
+ *  (`retriesFailedAgents`), whatever the kind of the failure (PI-AGENT-072);
+ *  a listed row cannot tell whether its call
  *  waits, and admits Stop while it runs. An inactive one admits Resume while
  *  its committed control is not terminal: paused by the runtime, or left
  *  running by an unexpected exit; a listed one with an unread launching call
@@ -407,9 +418,10 @@ interface WorkflowActionEvidence {
  *  no Resume until its detail is read. */
 export function workflowSessionActions(lifecycleState: SessionLifecycleState, workflowState: WorkflowView["status"] | undefined, evidence: WorkflowActionEvidence = {}): readonly WorkflowSessionAction[] {
   const toolCall = evidence.toolCall
-  if (toolCall?.read === true && toolCall.stoppedBy !== undefined) return ["session.delete"]
+  const canceled = toolCall?.read === true && toolCall.stoppedBy !== undefined
+  if (canceled && lifecycleState === "active") return ["session.delete"]
   const retry = workflowState === "failed" && evidence.retriesFailedAgents === true
-  if (!retry && (evidence.message === false || workflowInteractionRefusal(workflowState) !== undefined)) return ["session.delete"]
+  if (!retry && ((evidence.message === false && !canceled) || workflowInteractionRefusal(workflowState) !== undefined)) return ["session.delete"]
   const message = evidence.message === true ? ["session.send" as const] : []
   const owed = evidence.continuationOwed === true
   // A Resume after a changed definition checks the definition again, so
@@ -418,12 +430,12 @@ export function workflowSessionActions(lifecycleState: SessionLifecycleState, wo
   // it itself, so the run offers no Resume of its own until that settles.
   const executable = evidence.executable !== false && !owed
   const restart = evidence.executable === false && evidence.restartable === true ? ["workflow.restart" as const] : []
-  const stop = toolCall !== undefined && (toolCall.read === false || toolCall.settled !== true) ? ["background.terminate" as const] : []
+  const stop = !canceled && toolCall !== undefined && (toolCall.read === false || toolCall.settled !== true) ? ["background.terminate" as const] : []
   if (lifecycleState === "active") {
     return [
       ...message,
       "workflow.interrupt",
-      ...(executable && admitsResume("workflow-agent", lifecycleState, evidence.stepTurnEnd) ? ["workflow.resume" as const] : []),
+      ...(executable && (admitsResume("workflow-agent", lifecycleState, evidence.stepTurnEnd) || evidence.retriesFailedAgents === true) ? ["workflow.resume" as const] : []),
       ...stop,
       "session.delete",
     ]

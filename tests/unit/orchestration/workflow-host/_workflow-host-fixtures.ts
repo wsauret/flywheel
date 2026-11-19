@@ -148,6 +148,7 @@ export function createMockWorkflowHosts() {
     get: (id) => runners.get(id),
     allIds: () => [...runners.keys()],
     isRunning: (id) => runners.has(id),
+    whenClosed: async () => {},
     abort: mock(async (id, by) => { aborts.push(id); await runners.get(id)?.abort(by); return runners.has(id) }),
     remove: async (id) => { runners.delete(id) },
     refreshDeps: async () => {},

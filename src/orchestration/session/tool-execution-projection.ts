@@ -18,6 +18,7 @@ export const TOOL_EXECUTION_FACT_TYPES = [
   "tool.runtime_invocation.recorded",
   "tool.result.recorded",
   "workflow.tool_result.corrected",
+  "workflow.tool_result.resumed",
   "tool.execution_output.recorded",
   "tool.result.acknowledged",
   "tool.validation.failed",
@@ -244,6 +245,8 @@ function reduceToolExecutionEvent(state: ToolExecutionProjectionState, event: St
       return recordToolResultRecorded(state, event, fact.payload)
     case "workflow.tool_result.corrected":
       return recordWorkflowToolResultCorrection(state, event, fact.payload)
+    case "workflow.tool_result.resumed":
+      return recordWorkflowToolResultResume(state, event, fact.payload)
     case "tool.execution_output.recorded":
       return recordToolExecutionOutput(state, event, fact.payload)
     case "tool.result.acknowledged":
@@ -279,6 +282,18 @@ function recordWorkflowToolResultCorrection(
     completedCount: 0,
     failedCount: (payload.outcome === "error" ? 1 : 0) - (input.resultOutcome === "error" || input.resultOutcome === "blocked" ? 1 : 0),
   })
+}
+
+/** Its writer appends the Resume guarded on the call's newest result, so it
+ *  always names that result. */
+function recordWorkflowToolResultResume(
+  state: ToolExecutionProjectionState,
+  event: StoredFact,
+  payload: ToolFactPayload<"workflow.tool_result.resumed">,
+): ToolExecutionProjectionState {
+  const input = requireTool(state, payload.toolUseId, event)
+  if (input.resultEventId !== payload.resultEventId) throwIdentityConflict(event, `workflow resume expected result ${payload.resultEventId}, found ${input.resultEventId ?? "none"}`)
+  return upsertTool(state, payload.toolUseId, input.status, { resumedResultEventId: payload.resultEventId })
 }
 
 /** The call description that a correction names. A Stop recorded before

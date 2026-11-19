@@ -1,6 +1,7 @@
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import { publishedDefinitionDrift } from "../../../workflows/vm/definition-identity.js"
 import { readWorkflowRecovery } from "../../../workflows/vm/recovery-fold.js"
+import { resumesLiveFailedAgents } from "../../../workflows/vm/fact-fold.js"
 import type { WorkflowDetail } from "../../../protocol/modules/workflows.js"
 import { readWorkflowUsage } from "../../workflow-host/member-totals.js"
 import { readChildCall, readWorkflowAgentTurnEnds, resumableAgentTurnEnd, workflowSessionActions, workflowInteractionRefusal, type WorkflowAgentTurnEnd } from "../../session/chat-session-run-evidence.js"
@@ -101,7 +102,9 @@ export function composeWorkflowDetail(workflowId: string, parts: WorkflowDetailP
     workflowExecutable: plan.executable,
     workflowMessage: workflowInteractionRefusal(controlState, childCall?.stoppedBy) === undefined,
     workflowRestartable: record.restartable,
-    workflowRetriesFailedAgents: retry, continuationOwed: record.continuationOwed,
+    // A failed run's Resume runs its failed agents again, and so does the
+    // Resume of a run whose other agents still run.
+    workflowRetriesFailedAgents: retry || (plan.executable && resumesLiveFailedAgents(plan.control)), continuationOwed: record.continuationOwed,
     ...(turnEnd ? { stepTurnEnd: turnEnd } : {}),
     ...(childCall ? { childCall } : {}),
   }))

@@ -216,7 +216,7 @@ A person, the parent agent, or the runtime can interrupt a running subagent from
 
 ## PI-AGENT-072: Any unfinished subagent can resume under its running parent
 
-Every subagent that has not completed successfully, including partial, failed, stopped, and canceled work, admits explicit Resume from a person or its parent agent. A child resumes only while its parent runs, and resuming opens an idle chat parent without starting its turn. When the parent cannot run, Resume says to resume the parent first, and any other failed Resume says what prevents it.
+Every subagent that has not completed successfully, including partial, failed, stopped, and canceled work, admits explicit Resume from a person or its parent agent. A failed workflow agent admits Resume at any time, whatever its error, also while its siblings run. Resume continues its saved conversation, and the agents that wait for it run after it completes. A child resumes only while its parent runs, and resuming opens an idle chat parent without starting its turn. When the parent cannot run, Resume says to resume the parent first, and any other failed Resume says what prevents it.
 
 ## PI-AGENT-073: A person's interrupt or stop binds the parent agent
 
@@ -280,7 +280,7 @@ An agent can read the progress of its own child without waking it or sending it 
 
 ## PI-AGENT-026: A child hands off only after its background work ends
 
-A subagent or an agent of a workflow hands off only when none of its background work remains. No command, subagent, or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own and stops a command that does not, such as a server, before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity.
+A subagent or an agent of a workflow hands off only when none of its background work remains. No command, subagent, or workflow that it started still runs or has a result that has not reached it. It waits for work that ends on its own and stops a command that does not, such as a server. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity. Canceled work that nobody resumed is not background work.
 
 ## PI-AGENT-027: A message to a workflow reaches the agents that it is for
 

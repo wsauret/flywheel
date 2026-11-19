@@ -107,7 +107,7 @@ export function workflowCardCut(status: CardStatus): string | undefined {
 
 /** What a settled phase did: its agent's handoff summary, a list's join, a
  *  phase's count, why it failed or was skipped, or how far it got before a
- *  Stop cut it. The count reads a list's failed agents as finished, as its
+ *  Cancel cut it. The count reads a list's failed agents as finished, as its
  *  join does, so `9/14 done, 5 stopped` adds up to the phase's agents. */
 function phaseDetail(phase: WorkflowPhase, cut: string, full: boolean): CardPhase["detail"] {
   const agent = phase.agents[0]
@@ -204,7 +204,7 @@ export function workflowCardChoice(current: WorkflowCardChoices | undefined, sel
 }
 
 /** The status that a card without a block shows, as the full-size card and
- *  the agent view read it from the workflow's view and row: a Stop, the
+ *  the agent view read it from the workflow's view and row: a Cancel, the
  *  run's end, or an interrupt that holds it. A run that a successor owes its
  *  continuation is active (`presentedWorkflowState`). */
 export function workflowViewCardStatus(state: LoadedWorkflowView["state"], row: Pick<WorkflowStateRow, "stoppedBy" | "continuationOwed"> | null | undefined, parked: boolean): CardStatus {
@@ -338,7 +338,7 @@ export type WorkflowCardSize = "inline" | "full"
  *  block, and that a client folds from the workflow view once a person made
  *  a choice or opened the full-size card. Its fold depends on line counts
  *  only, never on width. Each phase carries its agents' states as units for
- *  its chits, what it did once it settled, and the agents it shows. A Stop
+ *  its chits, what it did once it settled, and the agents it shows. A Cancel
  *  or an interrupt reaches the outline as its cut, which parks the agents
  *  it cut. */
 export function workflowCard(outline: WorkflowOutline, options: { readonly settled: boolean; readonly choices?: WorkflowCardChoices; readonly size?: WorkflowCardSize }): WorkflowCard {
@@ -394,7 +394,7 @@ export function workflowCard(outline: WorkflowOutline, options: { readonly settl
   }
 }
 
-/** Whether an interrupt or a Stop holds a card's run, so its running agents
+/** Whether an interrupt or a Cancel holds a card's run, so its running agents
  *  read as parked. */
 function cardCut(status: CardStatus): boolean {
   return status === "paused" || status === "interrupted" || status === "stopped" || status === "cancelled"
@@ -402,7 +402,7 @@ function cardCut(status: CardStatus): boolean {
 
 /** An agent's or a phase's state as its card shows it. The card's live
  *  status wins over a fold that its summary reader built from older
- *  evidence: after a Stop, work that did not finish never runs, so it reads
+ *  evidence: after a Cancel, work that did not finish never runs, so it reads
  *  skipped; an agent of a card that an interrupt holds reads parked; and a
  *  parked agent of a card whose resumed run goes on reads running, unless
  *  its own interrupt (`interrupted`, from its live value) still holds it. */

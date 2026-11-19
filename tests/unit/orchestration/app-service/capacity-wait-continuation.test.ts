@@ -134,8 +134,8 @@ describe("capacity waits", () => {
         return sessionId === "chat-refused" ? { ok: false, error: "the runner refused the resume" } : { ok: true }
       }),
       workflows: {
-        resumeWorkflow: async (workflowId, _address, continuation) => {
-          const wake = continuation?.wake
+        resumeWorkflow: async (workflowId, _address, start) => {
+          const wake = start !== undefined && "wake" in start ? start.wake : undefined
           steps.push(`workflow ${workflowId} ${typeof wake === "object" ? [...wake.capacity].sort().join(" ") : String(wake)}`)
           return workflowId === "workflow-stopped" ? { kind: "unavailable", message: "the workflow's modules are off" } : { kind: "resumed", sessionId: workflowId }
         },

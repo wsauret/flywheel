@@ -4,7 +4,10 @@ import { readCapturedFacts, type AsyncEventStateReadSurface, type AsyncEventWrit
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import { chatInputText, type ChatInputLike } from "../../infra/chat-input.js"
-import { readWorkflowAgentTurnEnds, workflowInteractionRefusal, workflowStopRefusal } from "../session/chat-session-run-evidence.js"
+import { childCallOf, readChildStop, readWorkflowAgentTurnEnds, workflowInteractionRefusal, workflowStopRefusal } from "../session/chat-session-run-evidence.js"
+import { readToolExecution } from "../session/tool-execution-projection.js"
+import { recordChildWorkflowResume } from "../session/child-workflow-result.js"
+import type { StoppedBy } from "../../protocol/app-service-types.js"
 import { parentMayContinue, personCutRefusal, workflowStepCut, type ChildCut } from "../session/child-continuation.js"
 import type { ChildControlAnswer } from "../module-seams.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
@@ -123,6 +126,14 @@ type RestartWorkflowResult =
   | { kind: "restarted"; sessionId: string }
   | { kind: "failed"; message: string }
 
+/** What asks a workflow to run again: the explicit Resume of a person or
+ *  of the parent agent (`explicit` names which), which alone passes a
+ *  Cancel, or an automatic wake. A resume that a message or a settled
+ *  question implies passes neither, and a Cancel refuses it. */
+type WorkflowResumeStart =
+  | { readonly explicit: StoppedBy }
+  | { readonly wake: Exclude<WorkflowWake, WorkflowDeliveryAddress> }
+
 type TerminalControl =
   | { readonly kind: "open" }
   | { readonly kind: "refused"; readonly message: string }
@@ -133,8 +144,9 @@ type TerminalControl =
 export interface WorkflowController extends WorkflowLaunchHost {
   /** A model's workflow tool call. */
   startWorkflow(request: ModelWorkflowLaunchRequest): Promise<StartWorkflowResult | WorkflowLaunchRefusal>
-  /** Explicit controls retain their address. Only the internal successor supplies planned wake. */
-  resumeWorkflow(sessionId: string, address?: WorkflowDeliveryAddress, continuation?: { readonly wake: Exclude<WorkflowWake, WorkflowDeliveryAddress> }): Promise<ResumeWorkflowResult>
+  /** Explicit controls retain their address and name who asks. Only the
+   *  internal successor supplies planned wake. */
+  resumeWorkflow(sessionId: string, address?: WorkflowDeliveryAddress, start?: WorkflowResumeStart): Promise<ResumeWorkflowResult>
   /** A person's message to a workflow, which starts an interrupted or
    *  paused workflow again: to the whole workflow, to the items and agents
    *  that `targets` names, or, from an agent view, to the item or named
@@ -276,11 +288,14 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     })
   }
 
-  /** The latest cut of a launched workflow: its recorded run cut, its live
-   *  runner's cut of the addressed agents, or the turn end its agent recorded
-   *  while no runner holds it. A cut that only a person may continue wins
-   *  over any cut the parent may continue, wherever each is recorded. */
+  /** The latest cut of a launched workflow: a Cancel that no explicit
+   *  Resume passed, its recorded run cut, its live runner's cut of the
+   *  addressed agents, or the turn end its agent recorded while no runner
+   *  holds it. A cut that only a person may continue wins over any cut the
+   *  parent may continue, wherever each is recorded. */
   async function launchCut(sessionId: string, address: WorkflowDeliveryAddress = WHOLE_WORKFLOW): Promise<ChildCut | undefined> {
+    const stoppedBy = await readChildStop(projectionReader, (await runs.read(sessionId))?.launchedFrom)
+    if (stoppedBy) return { kind: "stop", by: stoppedBy }
     const pending = await runs.readCut(sessionId)
     const recorded = pending && (pending.by === "person" || pending.by === "agent") ? { kind: "interrupt", by: pending.by } as const : undefined
     if (recorded?.by === "person") return recorded
@@ -292,7 +307,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   async function resumeLaunch(sessionId: string, address: WorkflowDeliveryAddress = WHOLE_WORKFLOW): Promise<ChildControlAnswer> {
     const cut = await launchCut(sessionId, address)
     if (cut && !parentMayContinue(cut)) return { ok: false, error: personCutRefusal(cut) }
-    const resumed = await resumeWorkflow(sessionId, address)
+    const resumed = await resumeWorkflow(sessionId, address, { explicit: "agent" })
     switch (resumed.kind) {
       case "resumed": return { ok: true }
       case "already_running": return { ok: false, error: "This workflow is not interrupted, so there is nothing to resume." }
@@ -300,34 +315,46 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     }
   }
 
-  async function resumeWorkflow(sessionId: string, address: WorkflowDeliveryAddress = WHOLE_WORKFLOW, continuation?: { readonly wake: Exclude<WorkflowWake, WorkflowDeliveryAddress> }): Promise<ResumeWorkflowResult> {
+  async function resumeWorkflow(sessionId: string, address: WorkflowDeliveryAddress = WHOLE_WORKFLOW, start?: WorkflowResumeStart): Promise<ResumeWorkflowResult> {
     const session = await runs.read(sessionId)
-    const stopped = await workflowStopRefusal(projectionReader, session?.launchedFrom)
-    if (stopped) return { kind: "stopped", message: stopped }
-    const terminal = await terminalControl(sessionId, "resume")
+    const wake = start !== undefined && "wake" in start ? start.wake : undefined
+    // A Cancel ended the run for its parent, so only an explicit Resume of a
+    // person or the parent agent runs it again (PI-INTERACTION-140), never
+    // an automatic wake, a message, or a settled question. The Resume passes
+    // the Cancel that it reads here and no later one.
+    const launch = session?.launchedFrom
+    const call = launch?.toolUseId === undefined ? undefined : await readToolExecution(projectionReader, launch.parentSessionId, launch.toolUseId)
+    const canceledBy = call === undefined ? undefined : childCallOf(call).stoppedBy
+    const stopped = workflowInteractionRefusal(undefined, canceledBy)
+    if (stopped !== undefined && (start === undefined || !("explicit" in start))) return { kind: "stopped", message: stopped }
+    let terminal = await terminalControl(sessionId, "resume")
     if (terminal.kind === "refused") return { kind: "terminal", message: terminal.message }
     // The runner that the failed run ended with, which this Resume may
     // retire. Any other runner is the successor of a concurrent Resume.
-    const endedRunner = terminal.kind === "failed_agents" ? workflowHosts.get(sessionId) : undefined
+    let endedRunner = terminal.kind === "failed_agents" ? workflowHosts.get(sessionId) : undefined
     if (!session) {
       return { kind: "not_found", message: `Workflow session ${sessionId} was not found` }
     }
     // Every Resume is new work, so it passes the same module gate a launch
     // does, and a refusal starts nothing and leaves the workflow paused.
     const operation = `resuming the ${session.workflowDefinitionId} workflow`
+    // A host whose teardown runs holds a run that ended, such as one that a
+    // Cancel ended, so no Resume hands an agent of that run back.
+    await workflowHosts.whenClosed(sessionId)
     // A run that its failed agents ended has no agent to hand back: a runner
     // still registered for it only waits for its parent to acknowledge the
-    // end, so the Resume runs the failed agents in a new run.
-    if (terminal.kind !== "failed_agents" && workflowHosts.isRunning(sessionId)) {
+    // end, so the Resume runs the failed agents in a new run. So does a run
+    // that a Cancel ended, whose host the Cancel tears down.
+    if (canceledBy === undefined && terminal.kind !== "failed_agents" && workflowHosts.isRunning(sessionId)) {
       // A capacity wake continues the waiting agents inside the live run, and
       // only them, so an agent whose wait outlived an earlier wake's start
       // continues at its own time (PI-MODEL-039).
-      if (continuation !== undefined && continuation.wake !== "planned") {
-        return { kind: "resumed", sessionId, continued: workflowHosts.get(sessionId)?.continueCapacity(continuation.wake.capacity) ?? new Set() }
+      if (wake !== undefined && wake !== "planned") {
+        return { kind: "resumed", sessionId, continued: workflowHosts.get(sessionId)?.continueCapacity(wake.capacity) ?? new Set() }
       }
       // A person can start the successor's owed work first. Its live runner
       // already continued runtime cuts; the successor cannot authorize other parks.
-      if (continuation !== undefined) return { kind: "already_running", sessionId }
+      if (wake !== undefined) return { kind: "already_running", sessionId }
       // A live workflow whose agent a person interrupted continues that agent
       // inside its own attempt and conversation; the same evidence the row
       // admits Resume from gates it (PI-INTERACTION-044). The run keeps the
@@ -342,6 +369,14 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
         case "refused": return { kind: "unavailable", message: handBack.reason }
         case "continued": return { kind: "resumed", sessionId }
         case "not_parked": return { kind: "already_running", sessionId }
+        case "ended": {
+          // The run failed while the Resume reached its failed agent, so the
+          // Resume runs the failed agents in a new run, as it does for any
+          // failed run.
+          terminal = await terminalControl(sessionId, "resume")
+          if (terminal.kind !== "failed_agents") return { kind: "already_running", sessionId }
+          endedRunner = runner
+        }
       }
     }
 
@@ -380,6 +415,22 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     }
     const description = await runs.readRequest(sessionId)
     if (description === null) return { kind: "runtime_start", message: "The original workflow request is unreadable. The workflow remains paused." }
+    if (canceledBy !== undefined && call?.resultEventId !== undefined && launch !== undefined && start !== undefined && "explicit" in start) {
+      // The Resume is recorded beside the Cancel before anything starts, so
+      // every start reads the Cancel passed, and a Cancel that lands from
+      // here on is current again and ends the new run.
+      const passed = await recordChildWorkflowResume({
+        projectionReader, writer: deps.eventWriter, parentSessionId: launch.parentSessionId, toolUseId: call.toolUseId,
+        childSessionId: sessionId, resultEventId: call.resultEventId, by: start.explicit,
+      })
+      log.info("workflow resume decision", { sessionId, canceledBy, by: start.explicit, decision: passed ? "passed-cancel" : "cancel-changed" })
+      if (!passed) {
+        const current = await workflowStopRefusal(projectionReader, launch)
+        return current === undefined ? { kind: "already_running", sessionId } : { kind: "stopped", message: current }
+      }
+      // The run that the Cancel ended leaves before the new run starts.
+      await workflowHosts.remove(sessionId, canceledBy)
+    }
     if (terminal.kind === "failed_agents") {
       const current = workflowHosts.get(sessionId)
       if (current !== undefined ? current !== endedRunner : workflowHosts.allIds().includes(sessionId)) return { kind: "already_running", sessionId }
@@ -395,7 +446,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
         sessionId,
         workflow: admission.workflow,
         startMode: "operator_resume",
-        wake: continuation?.wake ?? address,
+        wake: wake ?? address,
         description,
         executionCwd,
         projectRoot,
@@ -436,6 +487,10 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
         onRunnerError: handleRunnerError,
       })
     } catch (err) {
+      // A Cancel that landed while the run prepared tore its host down, and
+      // it is the newer decision.
+      const canceled = await workflowStopRefusal(projectionReader, launch)
+      if (canceled !== undefined) return { kind: "stopped", message: canceled }
       if (err instanceof WorkflowPreflightError) {
         switch (err.failure.kind) {
           case "attempt_refused":
@@ -517,8 +572,6 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   async function restartWorkflow(sessionId: string): Promise<RestartWorkflowResult> {
     const session = await runs.read(sessionId)
     if (!session) return { kind: "failed", message: `Workflow session ${sessionId} was not found` }
-    const stopped = await workflowStopRefusal(projectionReader, session.launchedFrom)
-    if (stopped) return { kind: "failed", message: stopped }
     if (workflowHosts.isRunning(sessionId)) return { kind: "failed", message: "This workflow runs, so it has nothing to restart." }
     try {
       for (;;) {
@@ -559,7 +612,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       if (error instanceof WorkflowRecoveryPreparationError) return { kind: "failed", message: error.message }
       throw error
     }
-    const resumed = await resumeWorkflow(sessionId)
+    const resumed = await resumeWorkflow(sessionId, WHOLE_WORKFLOW, { explicit: "person" })
     return resumed.kind === "resumed" || resumed.kind === "already_running" ? { kind: "restarted", sessionId } : { kind: "failed", message: resumed.message }
   }
 

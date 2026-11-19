@@ -102,7 +102,7 @@ describe("WorkflowController", () => {
         return options.sessionId
       })
       const workflowHosts: WorkflowHosts = {
-        start, get: () => undefined, allIds: () => [], isRunning: () => false,
+        start, get: () => undefined, allIds: () => [], isRunning: () => false, whenClosed: async () => {},
         abort: async () => false, remove: async () => {}, onChange: () => () => {}, refreshDeps: async () => {}, disposeAll: async () => {},
       }
       const deps = createDeps({
@@ -212,6 +212,51 @@ describe("WorkflowController", () => {
       expect(remove).toHaveBeenCalledTimes(1)
       expect(workflowHosts._startCalls.map(({ startMode }) => startMode)).toEqual(["operator_resume"])
       expect(workflowHosts._runners.get(sessionId)).toBe(successor)
+    })
+    // A Resume can reach a failed agent of a live run just as its last
+    // sibling ends and fails the run. The runner then reopens nothing, and
+    // the Resume runs the failed agents in a new run, as for any failed run.
+    it("runs the failed agents in a new run when the live run fails while its Resume reaches them", async () => {
+      const projectRoot = mkdtempSync(join(tmpdir(), "flywheel-controller-failed-race-"))
+      trackProjectRoot(projectRoot)
+      const eventReader = trackEventStore(createSqliteEventStore(resolveEventStoreDbFile(projectRoot)))
+      const reader = asAsyncEventReadSurface(eventReader)
+      const manager = createSessionManager({ projectRoot, executionCwd: projectRoot, store: eventReader })
+      const wfDeps = makeWorkflowDeps()
+      const workflow = await fixtureWorkflow({ projectRoot }, ITEMS_WORKFLOW)
+      const prepared = await prepareWorkflowLaunch({
+        authProfileId: wfDeps.activeProfileId ?? "default", workflow, description: "Two items",
+        input: { items: [{ id: "alpha" }, { id: "bad" }] },
+        deps: wfDeps, projectRoot, definitionRevision: wfDeps.definitions.captureRevision(),
+      })
+      const sessionId = await manager.publishWorkflow({
+        id: manager.allocateId(), description: prepared.description, workflowDefinitionId: prepared.workflowDefinitionId,
+        initialRoles: prepared.initialRoles, facts: prepared.workflowFacts,
+        launchedFrom: await workflowParentBinding(manager, { workflowDefinitionId: prepared.workflowDefinitionId }),
+      })
+      const commits = { manager, projectionReader: reader }
+      let control = await commitWorkflowEvent(commits, sessionId, workflow, { type: "START" })
+      const [alpha, bad] = control.attempts
+      if (!alpha || !bad) throw new Error("The fixture expands two items")
+      for (const attempt of [alpha, bad]) control = await commitWorkflowEvent(commits, sessionId, workflow, { type: "ATTEMPT_STARTED", attemptId: attempt.id, conversationId: `conversation-${attempt.id}` }, control)
+      control = await commitWorkflowEvent(commits, sessionId, workflow, { type: "ATTEMPT_FAILED", failure: { attemptId: bad.id, kind: "fatal", reason: "database or disk is full", conversationId: `conversation-${bad.id}` } }, control)
+      expect(control.status).toBe("executing")
+
+      const workflowHosts = createMockWorkflowHosts()
+      // The sibling ends while the runner hands the Resume to its run.
+      const handBack = mock(async (): Promise<WorkflowHandBack> => {
+        control = await commitWorkflowEvent(commits, sessionId, workflow, { type: "ATTEMPT_SUCCEEDED", outcome: { attemptId: alpha.id, conversationId: `conversation-${alpha.id}`, handoff: { summary: "Alpha is done." }, reassessment: null } }, control)
+        return { kind: "ended" }
+      })
+      workflowHosts._runners.set(sessionId, { ...workflowRunner(sessionId), handBack })
+      const remove = spyOn(workflowHosts, "remove")
+      const controller = createWorkflowController(createDeps({ workflowHosts, manager, projectRoot, eventReader: reader, prepareWorkflowDeps: async () => wfDeps }))
+
+      expect(await controller.resumeWorkflow(sessionId)).toEqual({ kind: "resumed", sessionId })
+      expect(control.status).toBe("failed")
+      expect(handBack).toHaveBeenCalledTimes(1)
+      expect(remove).toHaveBeenCalledTimes(1)
+      expect(workflowHosts._startCalls.map(({ startMode }) => startMode)).toEqual(["operator_resume"])
     })
     // A step of an earlier build could ask the person, and the workflow then
     // refused to resume while the question was open. Steps no longer ask

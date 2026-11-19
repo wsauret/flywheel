@@ -185,7 +185,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
         <box flexDirection="row" gap={1}>
           <Show when={props.controls().interrupt}>{(action) => <Button label="Interrupt" onPress={() => action()()} />}</Show>
           <Show when={props.controls().resume}>{(action) => <Button label="Resume" onPress={() => action()()} />}</Show>
-          <Show when={props.controls().stop}>{(action) => <Button label="Stop" onPress={() => action()()} />}</Show>
+          <Show when={props.controls().stop}>{(action) => <Button label="Cancel" onPress={() => action()()} />}</Show>
         </box>
       </box>
     </box>

@@ -113,6 +113,7 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "tool.runtime_invocation.recorded": HISTORY,
     "tool.result.recorded": HISTORY,
     "workflow.tool_result.corrected": HISTORY,
+    "workflow.tool_result.resumed": HISTORY,
     "tool.result.acknowledged": HISTORY,
     "tool.validation.failed": HISTORY,
     // One settled output per tool call. Builds before 2026-09-22 also recorded

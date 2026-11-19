@@ -230,11 +230,11 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     conversationId: () => `agent-${crypto.randomUUID()}`,
     emit: (event) => { emit(event.type, { sessionId, data: event.data }) },
     preAttemptPolicy: async () => {
-      // A child whose parent's call holds a Stop starts no attempt. The
-      // Stop's teardown finds no runner to abort while the child's runtime
-      // still starts, and a launch, a Resume, or a message reads the Stop only
-      // before its start, so only this read, where work begins, holds for
-      // every start.
+      // A child whose parent's call holds a current Cancel starts no attempt.
+      // A Cancel can land while the child's runtime still starts, so only
+      // this read, where work begins, holds for every start. An explicit
+      // Resume records that it passes the Cancel before its start, so every
+      // read here finds the Cancel passed until a later Cancel lands.
       const stopped = await workflowStopRefusal(input.projectionReader, (await runs.read(sessionId))?.launchedFrom)
       if (stopped) return stopped
       return await workflowBudgetRefusal({

@@ -30,8 +30,14 @@ import { frontendAttempts } from "../../../../src/orchestration/workflow-host/fr
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline"
 import { activeTimeMs } from "../../../../src/protocol/client/session-time"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
+import { readCapturedFacts } from "../../../../src/infra/event-store-types"
+import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
+import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail"
+import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
 
-async function fixture(queuedSuccessor = false, opening?: "before" | "assembling", messageAtPublication = false) {
+/** `failFirst`: the first agent that opens answers and ends without a
+ *  handoff, which fails its attempt while its sibling runs. */
+async function fixture(queuedSuccessor = false, opening?: "before" | "assembling", messageAtPublication = false, failFirst = false) {
   const root = mkdtempSync(join(tmpdir(), "workflow-target-interrupt-"))
   const runtime = ManagedRuntime.make(EventStoreLive(resolveEventStoreDbFile(root)))
   const store = await runtime.runPromise(EventStoreService)
@@ -58,6 +64,11 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
   const interrupted: string[] = []
   const aggregate: (string | undefined)[] = []
   const allInterrupted = Promise.withResolvers<void>()
+  let failNext = failFirst
+  const failed: string[] = []
+  // The messages of each agent's first request.
+  const opened = new Map<string, string>()
+  const expected = failFirst ? 1 : 2
   const base = makeWorkflowDeps()
   const capabilities = createCapabilities()
   let handBackEnabled = true
@@ -92,6 +103,18 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
       createAgent(options) {
         if (options.purpose.kind !== "workflow-agent") return { send() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
         const id = options.purpose.workflowAttemptId
+        if (failNext && options.conversation.kind === "durable-tree") {
+          failNext = false
+          failed.push(id)
+          const { conversation } = options
+          // The conversation ends on the agent's answer, as an agent's that ends without a handoff does.
+          const done = (async () => {
+            await conversation.append({ kind: "assistant", content: "I stopped before the handoff." })
+            await conversation.flush?.()
+            return { servedRequests: 1, durationMs: 0, terminal: { kind: "completed" as const } }
+          })()
+          return { send() {}, abort() {}, done }
+        }
         if (cutOpening) {
           cutOpening = false
           assemblingCut = runner.interrupt("person")
@@ -104,14 +127,15 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
             interrupted.push(id)
             if (!parks.has(id)) parks.set(id, Promise.withResolvers<void>())
             parks.get(id)?.resolve()
-            if (new Set([...parks.keys(), ...counts.keys()]).size === 2) ready.resolve()
+            if (new Set([...parks.keys(), ...counts.keys()]).size === expected) ready.resolve()
           } },
         }, async () => asModelClient({
           accessProvider: "openai_api", modelFamily: "openai", model: "gpt-5.4", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
           priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
           async *streamWithTools(request) {
             counts.set(id, (counts.get(id) ?? 0) + 1)
-            if (new Set([...parks.keys(), ...counts.keys()]).size === 2) ready.resolve()
+            if (!opened.has(id)) opened.set(id, JSON.stringify(request.messages))
+            if (new Set([...parks.keys(), ...counts.keys()]).size === expected) ready.resolve()
             if (counts.get(id)! > 1) resumed.get(id)?.resolve(JSON.stringify(request.messages))
             yield { kind: "text_delta", text: "working", blockKey: "text" }
             await Promise.race([finishes.get(id)!.promise, new Promise<void>((resolve) => {
@@ -146,7 +170,7 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
   const attempts = [...new Set([...counts.keys(), ...parks.keys()])]
   for (const id of attempts) { if (!parks.has(id)) parks.set(id, Promise.withResolvers<void>()); resumed.set(id, Promise.withResolvers<string>()); completed.set(id, Promise.withResolvers<void>()) }
   return {
-    localStore: runtime.runSync(LocalEventStoreService), get runner() { return runner }, get running() { return running }, store, root, counts, interrupted, aggregate, address, attempts, parks, resumed, finishes, completed, allInterrupted: allInterrupted.promise,
+    failed, opened, localStore: runtime.runSync(LocalEventStoreService), get runner() { return runner }, get running() { return running }, store, root, counts, interrupted, aggregate, address, attempts, parks, resumed, finishes, completed, allInterrupted: allInterrupted.promise,
     control: liveWorkflowControl(runtime.runSync(EventReaderService), "session")!,
     async member(attemptId: string) { return (await workflowMembershipReader(store).attempt("session", attemptId))! },
     async message(sessionId: string) { return deliverSessionInput({ manager, projectionReader: store, eventWriter: store }, sessionId, { text: "Continue this agent only." }) },
@@ -539,5 +563,56 @@ test.each(["Resume", "hand-back"] as const)("a whole-run Interrupt stops the run
   } finally {
     await f.dispose()
     clock.mockRestore()
+  }
+})
+
+// An agent that failed while its sibling still runs admits Resume, whatever
+// its failure (PI-AGENT-072). The Resume reaches the live runner through the
+// controller and continues the failed agent's conversation in the same run.
+test("a person's Resume of an agent that failed while its sibling runs continues it in the live run, and the run completes", async () => {
+  const f = await fixture(false, undefined, false, true)
+  try {
+    const [failedAttempt] = f.failed
+    const [sibling] = f.attempts
+    if (failedAttempt === undefined || sibling === undefined) throw new Error("The fixture runs one failing agent and one sibling")
+    const control = async () => replayWorkflowControl(await readCapturedFacts(f.store, { aggregateId: "workflow:session" }))
+    const nodeOf = attemptNodeIdOf(failedAttempt)
+    for (let tries = 0; !(await control()).attempts.some(({ id, state }) => id === failedAttempt && state._tag === "failed"); tries += 1) {
+      if (tries > 400) throw new Error("The failing agent did not fail")
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+    expect((await control()).status).toBe("executing")
+    const detail = await createWorkflowDetailReader({ projectRoot: f.root, manager: { read: async () => null }, reader: f.store })("session")
+    expect(detail?.admittedActions).toEqual(expect.arrayContaining(["workflow.interrupt", "workflow.resume"]))
+
+    const workflowHosts = createMockWorkflowHosts()
+    workflowHosts._runners.set("session", f.runner)
+    const controller = createWorkflowController(createDeps({ workflowHosts, eventReader: f.store, projectionReader: f.store, eventWriter: f.store }))
+    expect(await controller.resumeWorkflow("session")).toEqual({ kind: "resumed", sessionId: "session" })
+    expect(workflowHosts._startCalls).toEqual([])
+
+    // The failed agent continues while its sibling still runs, and the run
+    // does not fail meanwhile.
+    for (let tries = 0; f.counts.size < 2; tries += 1) {
+      if (tries > 400) throw new Error("The failed agent did not continue")
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    }
+    expect((await control()).status).toBe("executing")
+    for (const finish of f.finishes.values()) finish.resolve()
+    expect(await f.running).toMatchObject({ completed: true })
+    const attempts = (await control()).attempts.filter(({ logicalNodeId }) => logicalNodeId === nodeOf)
+    expect(attempts.map(({ state }) => state._tag)).toEqual(["failed", "completed"])
+    expect(attempts[1]).toMatchObject({ parentAttemptId: failedAttempt, provenance: { _tag: "continuation", reason: "reopen" } })
+    // The continued conversation states the recorded failure that the Resume
+    // continues from, and no process exit, because none happened.
+    const failure = attempts[0]!.state._tag === "failed" ? attempts[0]!.state.reason : ""
+    expect(failure).not.toBe("")
+    const reopened = f.opened.get(attempts[1]!.id)
+    expect(reopened).toContain("Your previous attempt at this work failed")
+    expect(reopened).toContain(JSON.stringify(failure).slice(1, -1))
+    expect(reopened).not.toContain(CONTINUATION_MESSAGES.unexpected_exit)
+  } finally {
+    await f.dispose()
+    cleanupProjectRoots()
   }
 })

@@ -52,6 +52,9 @@ export type WorkflowHandBack =
   | { readonly kind: "continued" }
   /** No agent of this run waits for the person. */
   | { readonly kind: "not_parked" }
+  /** The Resume reached a failed agent that this run did not reopen,
+   *  because the run ended or stops meanwhile: control decides the Resume. */
+  | { readonly kind: "ended" }
   /** A module the run requires is off, so the agent stays interrupted.
    *  `reason` names each module and how to turn it on. */
   | { readonly kind: "refused"; readonly reason: string }

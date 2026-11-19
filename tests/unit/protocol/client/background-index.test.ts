@@ -6,6 +6,7 @@ import {
   backgroundIndexEntries,
   backgroundIndexState,
   backgroundRowDetail,
+  backgroundStopWord,
   canStopBackgroundRow,
   createBackgroundIndexReadings,
   stopBackgroundRow,
@@ -67,6 +68,10 @@ describe("background index rows", () => {
     // A command that traps the stop signal still exits with a code, and Windows termination always exits 1: neither is the command's outcome.
     expect(backgroundRowDetail(row({ id: "dev", status: "stopped", exitCode: 1, durationMs: 195_000 }))).toBe("Stopped · 3m 15s")
     expect(backgroundRowDetail(row({ id: "build", status: "cancelled", exitCode: 143, durationMs: 1_500 }))).toBe("Canceled · 1.5s")
+    // A person stops a command but cancels a child, whose run ends for its parent.
+    expect(backgroundRowDetail(row({ id: "reviewer", kind: "subagent", status: "stopped" }))).toBe("Canceled")
+    expect(backgroundRowDetail(row({ id: "plan", kind: "workflow", status: "cancelled" }))).toBe("Canceled by the parent")
+    expect(ROWS.map(backgroundStopWord)).toEqual(["Cancel", "Cancel", "Cancel", "Stop", "Stop"])
     expect(ROWS.find((candidate) => candidate.id === "explorer")?.cardToolUseId).toBe("toolu_workflow")
   })
 

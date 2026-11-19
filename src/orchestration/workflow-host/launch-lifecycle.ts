@@ -214,8 +214,8 @@ export function createWorkflowLaunchLifecycle(deps: WorkflowControllerDeps): Wor
    *  on the answer. The teardown reports the child's end from the fact, so
    *  it does not wait for the parent (`reportEnd`). A runner that began to
    *  report an earlier end before the Stop landed still waits for that
-   *  report, and its teardown ends when that report does. A child whose
-   *  runtime still starts has no runner to abort: its run pauses before its
+   *  report, and its teardown ends when that report does. A host that
+   *  still prepares is torn down too, and its run also pauses before its
    *  first attempt, where the workflow host reads the Stop. The session
    *  store owns the teardown, and its disposal awaits it. A failure of
    *  either is logged, and the parent's next activation reconciles again. */
@@ -227,9 +227,20 @@ export function createWorkflowLaunchLifecycle(deps: WorkflowControllerDeps): Wor
       return
     }
     const { parentSessionId } = binding
-    const stopped = await recordChildWorkflowStop({ reader: deps.eventReader, projectionReader, writer: deps.eventWriter, parentSessionId, toolUseId: binding.toolUseId, childSessionId: id, workflowDefinitionId: child.workflowDefinitionId, stoppedBy, correctPriorResult: origins.has(id) })
-    log.info("workflow stop decision", { sessionId: id, parentSessionId, stoppedBy, decision: stopped ? "stopped" : "already-settled" })
-    if (!stopped) return
+    // A tracked run is work to stop whatever result its call holds, and so
+    // is a run whose host still prepares it, which is tracked only once
+    // prepared. A host whose run ended only waits for its parent.
+    const hosted = origins.has(id) || (workflowHosts.allIds().includes(id) && !workflowHosts.isRunning(id))
+    const stopped = await recordChildWorkflowStop({ reader: deps.eventReader, projectionReader, writer: deps.eventWriter, parentSessionId, toolUseId: binding.toolUseId, childSessionId: id, workflowDefinitionId: child.workflowDefinitionId, stoppedBy, correctPriorResult: hosted })
+    log.info("workflow stop decision", { sessionId: id, parentSessionId, stoppedBy, hosted, decision: stopped ? "stopped" : "already-settled" })
+    if (!stopped) {
+      // The call holds a current Cancel already: a host that still holds the
+      // run is the teardown of that Cancel, which this Stop joins.
+      if (hosted) void workflowHosts.abort(id, stoppedBy).catch((error: unknown) => {
+        log.warn("workflow stop teardown failed", { sessionId: id, parentSessionId, error: errorMessage(error) })
+      })
+      return
+    }
     await answerStop(id, stoppedBy)
     // An interrupted child has no live run to report its end, so each wait
     // on it learns of the Stop here (PI-INTERACTION-136).

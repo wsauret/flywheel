@@ -11,7 +11,7 @@ import type { AttemptRunOutcome } from "./attempt-runner.js"
 import type { WorkflowTransitionResult } from "./commands.js"
 import type { CommittedWorkflowControl } from "./committed-control.js"
 import type { NewWorkflowProposalEvent } from "./events.js"
-import { resumesFailedAgents, workflowInsertionRefusalReason } from "./fact-fold.js"
+import { resumesFailedAgents, resumesLiveFailedAgents, workflowInsertionRefusalReason } from "./fact-fold.js"
 import {
   WorkflowAttemptRefusedError,
   WorkflowHostFollowUpError,
@@ -90,6 +90,13 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
   const stops: NewWorkflowProposalEvent[] = []
   // The attempts that the current admission decision started.
   let admitted = 0
+  // A person's Resume of the failed agents while other agents run, which
+  // the loop proposes at its next turn, and the wait that it wakes.
+  let liveResume: PromiseWithResolvers<boolean> | null = null
+  let wake = Promise.withResolvers<void>()
+  // The next end of a child, taken from the queue once and kept while a
+  // Resume wakes the loop, so no end is lost.
+  let childEnd: Promise<WorkflowHostChildSettlement<AttemptRunOutcome, WorkflowHostWorkerError>> | null = null
 
   async function queue(): Promise<WorkflowView> {
     const value = await deps.queueStore.loadQueue()
@@ -319,6 +326,16 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
             current = drive(current.result, input)
             continue
           }
+          // A Resume waits for a turn that starts nothing, so it never
+          // drops an attempt that a commit started and the host has not forked.
+          if (liveResume && command.kind === "none") {
+            const request = liveResume
+            liveResume = null
+            const admits = abortState === "idle" && current.result.state.lifecycle === "executing" && resumesLiveFailedAgents(current.result.state.context.committed)
+            if (admits) current = drive(current.result, { type: "RESUME", readers })
+            request.resolve(admits)
+            continue
+          }
         }
 
         const action = runnableAction(command)
@@ -327,10 +344,18 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
           interruptStoppedChildren()
         } else if (action === "prepare") current = await prepareAttempt(current)
         else if (action === "start") current = startAttempt(current)
-        else if (children.inFlight().size > 0) {
-          // Every attempt that can start runs; wait for the first to end.
+        else if (children.inFlight().size > 0 || childEnd) {
+          // Every attempt that can start runs; wait for the first to end, or
+          // for a Resume of the failed agents.
           recordAdmission()
-          const next = await settleChild(await children.next())
+          childEnd ??= children.next()
+          const end = await Promise.race([childEnd, wake.promise.then(() => null)])
+          if (end === null) {
+            wake = Promise.withResolvers()
+            continue
+          }
+          childEnd = null
+          const next = await settleChild(end)
           if (next) current = next
           continue
         } else if (stops.length > 0) {
@@ -361,6 +386,9 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
       children.interrupt()
       stops.length = 0
       return failureResult(toPublicFailure(error))
+    } finally {
+      liveResume?.resolve(false)
+      liveResume = null
     }
   }
 
@@ -410,6 +438,19 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
     return true
   }
 
+  /** A person's Resume of the failed agents while other agents of the run
+   *  still run: the loop proposes RESUME at its next turn, which reopens
+   *  each failed agent in a continuation of its conversation, and its
+   *  dependents run once it completes. False when the run does not execute
+   *  now, an abort is under way, or control holds no failed agent to run
+   *  again; a run that already ended takes the Resume of a failed run. */
+  function resumeFailedAgents(): Promise<boolean> {
+    if (!acceptingInputs || abortState !== "idle" || !activeRun || !current || !resumesLiveFailedAgents(current.result.state.context.committed)) return Promise.resolve(false)
+    liveResume ??= Promise.withResolvers()
+    wake.resolve()
+    return liveResume.promise
+  }
+
   async function disposeHost(): Promise<WorkflowVmHostDisposeResult> {
     acceptingInputs = false
     if (abortState === "accepted") {
@@ -455,7 +496,7 @@ export function createWorkflowVmHost(deps: WorkflowVmHostDeps): WorkflowVmHost {
     return runnableAction(command) !== undefined
   }
 
-  return { preflight, run, abort, dispose, hasRunnableWork }
+  return { preflight, run, abort, resumeFailedAgents, dispose, hasRunnableWork }
 }
 
 /** The RECOVER of a crashed run. It names each attempt in flight whose

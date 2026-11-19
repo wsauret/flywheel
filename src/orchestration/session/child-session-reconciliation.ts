@@ -641,10 +641,12 @@ async function deliverSettledNotification(context: ReconciliationContext, candid
   const baseEntry = state.entriesById[baseId]
   const heldRows = await input.projectionReader.readInFlight(input.parentSessionId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)
   // The parent already read or still holds an earlier outcome of this call,
-  // such as the start failure before a Resume; a different one is new.
+  // such as the start failure before a Resume, or the Cancel that a Resume
+  // passed; a different one, or a Cancel after a Resume, is new.
   const heldBase = heldRows.find((row) => row.key === baseId)
   const priorDiffers = baseEntry ? !isCompletionEntry(baseEntry, candidate.content) : heldBase !== undefined && heldBase.payload.text !== candidate.content
-  const entryId = priorDiffers ? revisedCompletionEntryId(candidate.childSessionId, candidate.revision, candidate.content) : baseId
+  const revised = priorDiffers || (candidate.afterResume === true && (baseEntry !== undefined || heldBase !== undefined))
+  const entryId = revised ? revisedCompletionEntryId(candidate.childSessionId, candidate.revision, candidate.content) : baseId
   const existing = state.entriesById[entryId] ?? state.entriesById[historicalCompletionEntryId(candidate.childSessionId)]
   if (!existing) context.index.pendingWorkflows.set(candidate.childSessionId, { conversationId: candidate.conversationId, key: entryId })
   tree.getStorage().dispose()

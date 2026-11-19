@@ -170,5 +170,10 @@ export interface WorkflowVmHost {
   run(): Promise<WorkflowVmHostRunResult>
   preflight(): Promise<WorkflowVmHostFailure | null>
   abort(reason: string): Promise<boolean>
+  /** A person's Resume of the failed agents while other agents of the run
+   *  still run: true once the run proposes the Resume that reopens them,
+   *  false when the run does not execute now or holds no failed agent to
+   *  run again. */
+  resumeFailedAgents(): Promise<boolean>
   dispose(): Promise<WorkflowVmHostDisposeResult>
 }

@@ -227,6 +227,10 @@ const workflowMachine = createMachine({
         ATTEMPT_BLOCKED: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
         ATTEMPT_FAILED: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
         PAUSE: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
+        // A person's Resume of the failed agents of a run whose other agents
+        // still run (`reopenFailedNodes`); the host proposes it only while
+        // control holds such an agent (`resumesLiveFailedAgents`).
+        RESUME: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
         RECOVER: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
         ABORT: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },
         REASSESSMENT_PROPOSED: { to: ({ context, event }, enq) => proposalRoute(context, event, enq) },

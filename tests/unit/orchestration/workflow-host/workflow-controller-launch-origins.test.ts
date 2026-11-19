@@ -186,7 +186,7 @@ describe("model file launches under Workflows Ask", () => {
   it("keeps a published child and reports a runner start failure once", async () => {
     const onRunnerError = mock(async () => {})
     const setup = await askSetup({ workflowMode: () => "on", onRunnerError, workflowHosts: {
-      onChange: () => () => {}, get: () => undefined, allIds: () => [], isRunning: () => false,
+      onChange: () => () => {}, get: () => undefined, allIds: () => [], isRunning: () => false, whenClosed: async () => {},
       start: mock(async () => { throw new Error("runner start failed") }),
       abort: async () => false, remove: async () => {}, refreshDeps: async () => {}, disposeAll: async () => {},
     } })

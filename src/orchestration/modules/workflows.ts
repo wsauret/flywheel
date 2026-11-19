@@ -211,8 +211,9 @@ export const workflowsModule = {
   // The VM control ledger, attempts, lifecycle, context bundles, definition
   // provenance, handoffs, follow-ups, and the queue view, all defined in
   // `src/workflows/`. The runner's own `workflow.step.started`,
-  // `workflow.worker_boundary.recorded`, and `workflow.tool_result.corrected`
-  // share the spelling and stay kernel in the retention registry.
+  // `workflow.worker_boundary.recorded`, `workflow.tool_result.corrected`, and
+  // `workflow.tool_result.resumed` share the spelling and stay kernel in the
+  // retention registry.
   facts: {
     prefixes: ["attempt.", "workflow.", "for.", "group.", "context.", "step_context.", "definition.", "handoff.", "follow_up.", "queue.", "step."],
     sessionSchemas: () => [...DefinitionProvenanceFactSchemas, ...HandoffFactSchemas, ...WorkflowRunFactSchemas] as const,
@@ -246,9 +247,9 @@ export const workflowsModule = {
   sessionHistory: { createToolSummaryReader: createWorkflowToolSummaryReader },
   sessionAdmission: {
     affectedSessions(fact) {
-      if (fact.type === "workflow.tool_result.corrected") {
-        const corrected = parseProjectionFact(fact, parseSessionRuntimeFact)
-        return corrected.type === "workflow.tool_result.corrected" ? [corrected.payload.childSessionId] : []
+      if (fact.type === "workflow.tool_result.corrected" || fact.type === "workflow.tool_result.resumed") {
+        const decided = parseProjectionFact(fact, parseSessionRuntimeFact)
+        return decided.type === "workflow.tool_result.corrected" || decided.type === "workflow.tool_result.resumed" ? [decided.payload.childSessionId] : []
       }
       return fact.type === "workflow.control.initialized" || fact.type === "workflow.control.recovered"
         || fact.type === "workflow.control.committed" || fact.type === "definition.drift_rejected" || fact.type.startsWith("attempt.")

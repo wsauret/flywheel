@@ -174,7 +174,7 @@ describe("BackgroundModal", () => {
       lines.findIndex((line) => line.includes("completed action")),
     )
     expect(rendered).toContain("enter open")
-    expect(rendered).toContain("x stop")
+    expect(rendered).toContain("x end")
     expect(rendered).toContain("space output")
     expect(rendered).not.toContain("Recent output")
     expect(rendered).toContain("x")

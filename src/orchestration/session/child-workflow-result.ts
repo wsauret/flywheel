@@ -7,6 +7,8 @@ import { readTerminalHandoff, workflowStartFailureContent, workflowStopContent }
 import { childSessionResultFact, workflowNotificationLabel } from "./child-session-completion.js"
 import { prepareSessionFactAppend } from "./session-fact-writer.js"
 import { holdsInterruptedGuess, readToolExecution } from "./tool-execution-projection.js"
+import { childCallOf } from "./chat-session-run-evidence.js"
+import type { StoppedBy } from "../../protocol/app-service-types.js"
 
 const MAX_CONFLICT_RETRIES = 3
 
@@ -21,11 +23,12 @@ interface ChildWorkflowResultInput {
 }
 
 /** Records a workflow Stop as its parent's terminal tool result: stopped by a
- * person or cancelled by the requesting agent. The result prevents workflow
- * Resume regardless of its control state. Reconciliation delivers its notice.
- * A live tracked run can correct an earlier result without changing that fact.
- * Returns false when the call already holds a Stop, or holds another result
- * and the caller has no live run to stop. */
+ * person or cancelled by the requesting agent. The run ends for its parent
+ * until an explicit Resume passes it (`recordChildWorkflowResume`).
+ * Reconciliation delivers its notice. A Stop of a run that a host holds, or
+ * of a call whose Cancel a Resume passed, corrects the earlier result without
+ * changing that fact. Returns false when the call already holds a current
+ * Cancel, or holds another result and the caller has no run to stop. */
 export async function recordChildWorkflowStop(input: ChildWorkflowResultInput & { readonly stoppedBy: "person" | "agent"; readonly correctPriorResult?: boolean }): Promise<boolean> {
   const handoff = await readTerminalHandoff(input.projectionReader, input.childSessionId)
   return await recordChildWorkflowResult(input, "Child workflow stop", input.stoppedBy === "person" ? "stopped" : "cancelled",
@@ -46,9 +49,12 @@ async function recordChildWorkflowResult(input: ChildWorkflowResultInput, operat
     const reader = input.projectionReader
     const expectedSeq = await reader.aggregateSeq(`session:${input.parentSessionId}`) + 1
     const tool = await readToolExecution(reader, input.parentSessionId, input.toolUseId)
-    if (!tool || tool.resultOutcome === "stopped" || tool.resultOutcome === "cancelled") return false
+    if (!tool || childCallOf(tool).stoppedBy !== undefined) return false
     const priorResultEventId = holdsInterruptedGuess(tool) ? undefined : tool.resultEventId
-    if (priorResultEventId !== undefined && !correctPriorResult) return false
+    // A Cancel that an explicit Resume passed no longer ends the run, so a
+    // new Stop corrects it as it corrects any earlier result.
+    const passedStop = priorResultEventId !== undefined && tool.resumedResultEventId === priorResultEventId
+    if (priorResultEventId !== undefined && !correctPriorResult && !passedStop) return false
     const text = content(workflowNotificationLabel(tool.input, input.workflowDefinitionId))
     const extracted: ExtractedToolContentFact = priorResultEventId !== undefined && (outcome === "stopped" || outcome === "cancelled")
       ? { fact: {
@@ -67,6 +73,32 @@ async function recordChildWorkflowResult(input: ChildWorkflowResultInput, operat
     if (result.kind === "stored") return true
     if (result.conflict.aggregateId !== `session:${input.parentSessionId}` || attempt === MAX_CONFLICT_RETRIES) {
       throw new Error(`${operation} stayed contended`, { cause: result.conflict })
+    }
+  }
+  return false
+}
+
+/** Records an explicit Resume of a workflow whose launching call holds a
+ *  current Cancel: a person's, or the parent agent's (`by`). The Resume
+ *  names `resultEventId`, the Cancel that its requester saw, and lands only
+ *  while that Cancel is still the call's current result, so a Cancel that
+ *  lands meanwhile is the newer decision and wins. Returns false when the
+ *  call no longer holds that Cancel as its current result. */
+export async function recordChildWorkflowResume(input: Omit<ChildWorkflowResultInput, "reader" | "workflowDefinitionId"> & { readonly resultEventId: string; readonly by: StoppedBy }): Promise<boolean> {
+  for (let attempt = 0; attempt <= MAX_CONFLICT_RETRIES; attempt += 1) {
+    const expectedSeq = await input.projectionReader.aggregateSeq(`session:${input.parentSessionId}`) + 1
+    const tool = await readToolExecution(input.projectionReader, input.parentSessionId, input.toolUseId)
+    if (tool?.resultEventId !== input.resultEventId || childCallOf(tool).stoppedBy === undefined) return false
+    const result = await input.writer.appendBatchGuarded([{
+      ...prepareSessionFactAppend(input.parentSessionId, {
+        type: "workflow.tool_result.resumed", version: 1, actor: "flywheel",
+        payload: { toolUseId: input.toolUseId, childSessionId: input.childSessionId, resultEventId: input.resultEventId, by: input.by },
+      }),
+      expectedSeq,
+    }])
+    if (result.kind === "stored") return true
+    if (result.conflict.aggregateId !== `session:${input.parentSessionId}` || attempt === MAX_CONFLICT_RETRIES) {
+      throw new Error("Child workflow resume stayed contended", { cause: result.conflict })
     }
   }
   return false

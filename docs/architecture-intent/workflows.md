@@ -94,7 +94,7 @@ One workflow host is the only production path that executes workflow commands, a
 
 ## ARCH-WORKFLOWS-020: Each workflow member owns its own runtime inside the run's host
 
-No workflow member gets an independent runner, and each member owns its own event lane, conversation writer, budget, output, background work, and teardown. A workflow member publishes its assembled runtime and decides whether work remains only after its own nested children register, and those children continue after it. Continuation never crosses a person's interrupt or Stop.
+No workflow member gets an independent runner, and each member owns its own event lane, conversation writer, budget, output, background work, and teardown. A workflow member publishes its assembled runtime and decides whether work remains only after its own nested children register, and those children continue after it. Continuation never crosses a person's interrupt or Cancel.
 
 ## ARCH-WORKFLOWS-021: Workers are bounded and persistence-free
 
@@ -157,7 +157,7 @@ A workflow whose control history is degraded becomes executable only when an exp
 
 ## ARCH-WORKFLOWS-035: Completion stays owed until the parent acknowledges it
 
-A workflow's terminal result and notification stay owed until durable parent reconciliation acknowledges them, and the host and its work registration are not released before that. One rendering produces both the live notification and the durable parent entry, so they never disagree about the verdict, the coverage, or which handoffs fit. A Stop commits the parent call's result first and requests reconciliation and teardown without waiting for the parent's turn.
+A workflow's terminal result and notification stay owed until durable parent reconciliation acknowledges them, and the host and its work registration are not released before that. One rendering produces both the live notification and the durable parent entry, so they never disagree about the verdict, the coverage, or which handoffs fit. A Cancel commits the parent call's result first and requests reconciliation and teardown without waiting for the parent's turn.
 Not: Separate renderings for the notification and the durable parent entry.
 
 ## ARCH-WORKFLOWS-036: Clients see a workflow through workflow cursors and its member sessions

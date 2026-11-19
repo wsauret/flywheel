@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { agentGroupClockRuns, agentGroupGlyph, agentGroupInFlight } from "../../../protocol/client/agent-group-summary.js"
-import { workflowCardControls } from "../../../protocol/client/session-controls.js"
+import { workflowCardControls, workflowHoldsFailedAgent } from "../../../protocol/client/session-controls.js"
 import type { AgentGroupBlock as AgentGroupBlockModel } from "@infra/output-blocks"
 import { StyledText, bg as stBg, bold as stBold, fg as stFg, type MouseEvent, type TextChunk, type TextRenderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
@@ -123,7 +123,7 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
     return glyph === undefined ? [label] : [stFg(theme.accent)(`${glyph} `), label]
   }
 
-  // Stop remains a separate target, and text selection wins over clicks.
+  // Cancel remains a separate target, and text selection wins over clicks.
   const groupAction = useUnifiedToggle(canOpen, () => {
     const uri = openUri()
     if (uri && navigateUri) navigateUri(uri)
@@ -159,14 +159,18 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
     return { label, chunks: [stFg(theme.text)("  "), stBg(theme.primary)(stFg(theme.background)(label))], dispatch }
   }
   // A workflow card's header holds the workflow's Interrupt or Resume, as
-  // its held detail admits them, before the Stop of its parent's call.
+  // its held detail admits them, before the Cancel of its parent's call.
   const headerControls = createMemo((): readonly HeaderControl[] => {
     const row = reads().detail ? workflowRow() : undefined
-    const admitted = workflowCardControls(row, isActive(), props.block.status === "paused")
+    const id = workflowId()
+    const view = id === undefined ? undefined : cards?.view(id)
+    const admitted = workflowCardControls(row, isActive(), props.block.status === "paused", view?.attemptsStatus === "loaded" && workflowHoldsFailedAgent(view))
     const stop = childProcessControl(props.processControls, props.block.toolUseId, workflowId() !== undefined, admitted.stop)
     const primary = admitted.primary === undefined || row === undefined || cards === undefined ? undefined : workflowControl(admitted.primary, () => cards[admitted.primary ?? "resume"](row))
+    const resumeFailed = !admitted.resumeFailed || row === undefined || cards === undefined ? undefined : workflowControl("resume", () => cards.resume(row))
     return [
       ...(primary === undefined ? [] : [primary]),
+      ...(resumeFailed === undefined ? [] : [resumeFailed]),
       ...(stop === undefined ? [] : [{ label: stop.label, chunks: processControlChunks(theme, stop.label), dispatch: stop.dispatch }]),
     ]
   })

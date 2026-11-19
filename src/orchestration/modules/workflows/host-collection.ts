@@ -90,8 +90,10 @@ export function createWorkflowHosts(input: {
     get: (id) => hosts.get(id),
     allIds: () => [...new Set([...hosts.keys(), ...pending.keys()])],
     isRunning: (id) => hosts.has(id),
+    // A failed teardown is its remover's to report.
+    async whenClosed(id) { await closing.get(id)?.catch(() => {}) },
     async abort(id, by) {
-      if (!hosts.has(id)) return false
+      if (!hosts.has(id) && !pending.has(id)) return false
       await remove(id, by)
       return true
     },

@@ -1,5 +1,5 @@
 import { errorMessage } from "../../infra/error-message.js"
-import { CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
+import { CANCELED_LABEL, PARENT_CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
 import type { AttachedRuntimeClient } from "../app-service-types.js"
 import {
   backgroundCursor,
@@ -92,14 +92,22 @@ const STATUS_LABELS = {
   completed: "Completed",
   partial: PARTIAL_LABEL,
   failed: "Failed",
-  stopped: STOPPED_LABEL,
-  cancelled: CANCELED_LABEL,
+  stopped: CANCELED_LABEL,
+  cancelled: PARENT_CANCELED_LABEL,
   ended: "Ended",
 } as const satisfies { readonly [S in BackgroundWorkStatus]: string }
 
+/** A person stops a command but cancels a child, whose run ends for its parent. */
+const COMMAND_END_LABELS = { stopped: STOPPED_LABEL, cancelled: CANCELED_LABEL } as const
+
 /** The status of a row in the words both clients show. */
 function backgroundStatusLabel(row: BackgroundWorkRow): string {
-  return STATUS_LABELS[row.status]
+  return row.kind === "command" && (row.status === "stopped" || row.status === "cancelled") ? COMMAND_END_LABELS[row.status] : STATUS_LABELS[row.status]
+}
+
+/** The word of a row's end control: Stop for a command, Cancel for a child. */
+export function backgroundStopWord(row: Pick<BackgroundWorkRow, "kind">): "Stop" | "Cancel" {
+  return row.kind === "command" ? "Stop" : "Cancel"
 }
 
 /** How many names of running agents a workflow row lists before it counts the rest. */
@@ -133,12 +141,12 @@ export function backgroundRowDetail(row: BackgroundWorkRow): string {
   ].filter((part) => part !== undefined).join(" · ")
 }
 
-/** Whether the runtime admits Stop on the row now. */
+/** Whether the runtime admits Stop or Cancel on the row now. */
 export function canStopBackgroundRow(row: BackgroundWorkRow): row is BackgroundWorkRow & { readonly stop: NonNullable<BackgroundWorkRow["stop"]> } {
   return row.stop !== undefined && isActiveBackgroundRow(row)
 }
 
-/** Stops an active row through its launching call. False when the row admits no Stop. */
+/** Stops or cancels an active row through its launching call. False when the row admits neither. */
 export async function stopBackgroundRow(client: Pick<AttachedRuntimeClient, "dispatch">, row: BackgroundWorkRow): Promise<boolean> {
   if (!canStopBackgroundRow(row)) return false
   await client.dispatch({ type: "background.terminate", sessionId: row.stop.sessionId, toolUseId: row.stop.toolUseId })

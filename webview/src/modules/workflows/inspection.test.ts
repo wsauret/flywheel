@@ -74,7 +74,7 @@ test("a workflow card draws its phases with their chits, the agents of a running
   assert.match(html, /6\/21 done/)
   // A phone reads the short count, and drops the running part first when the label does not fit.
   assert.match(html, /bar-label phone-only"><span class="workflow-card-bar-part tone-plain ">6\/21<\/span><span class="workflow-card-bar-part tone-plain active"> \u00b7 11 running<\/span><span class="workflow-card-bar-part tone-failed "> \u00b7 1 failed</)
-  assert.match(html, />Stop</)
+  assert.match(html, />Cancel</)
   for (const absent of [/operations/, /claude-opus-5\.5/, /inner-call/, /agent-activity-preview/]) assert.doesNotMatch(html, absent)
   const settled = renderBlock({ ...card, status: "completed", duration: 686_000, card: {
     ...workflowCard, done: 21, running: 0,
@@ -83,7 +83,7 @@ test("a workflow card draws its phases with their chits, the agents of a running
   assert.match(settled, /class="workflow-card settled opens *"/)
   assert.match(settled, /The scout gate exists</)
   assert.match(settled, /Completed/)
-  assert.doesNotMatch(settled, />Stop</)
+  assert.doesNotMatch(settled, />Cancel</)
   assert.match(renderBlock({ ...card, status: "completed", card: undefined }), /This workflow&#39;s plan is unavailable\.|This workflow's plan is unavailable\./)
 })
 const view = (state: LoadedWorkflowView["state"]): LoadedWorkflowView => ({ attemptsStatus: "loaded", state, attempts: [], tree: plainAgentTree([]) })
@@ -95,7 +95,7 @@ const detail: WorkflowDetail = {
   totals, policyUsage: totals, attribution: "available", durationMs: 0, streamingStartedAt: null, activeIntervals: [], totalsLoading: false,
 }
 
-test("inline workflow menus keep admitted controls and dispatch the selected action or parent-call Stop", async () => {
+test("inline workflow menus keep admitted controls and dispatch the selected action or parent-call Cancel", async () => {
   const build = await Bun.build({
     entrypoints: [fileURLToPath(new URL("activity-fixture.tsx", import.meta.url))],
     target: "bun", conditions: ["browser"], format: "esm",
@@ -126,12 +126,12 @@ test("inline workflow menus keep admitted controls and dispatch the selected act
   const menuWords = () => mounted.elements().filter(node => node.properties.role === "menuitem").map(node => node.properties["aria-label"])
   try {
     mounted.click("Actions")
-    assert.deepEqual(menuWords(), ["Interrupt", "Stop"])
+    assert.deepEqual(menuWords(), ["Interrupt", "Cancel"])
     mounted.click("Interrupt", true)
     assert.deepEqual(sent, ["run:interrupt"])
     assert.deepEqual(menuWords(), [])
     mounted.click("Actions")
-    mounted.click("Stop", true)
+    mounted.click("Cancel", true)
     assert.deepEqual(mounted.terminated, ["workflow-call"])
     mounted.setBlock({ ...block, status: "paused", pausedBy: "person" })
     publish?.({ detail: { ...detail, workflowState: "paused", admittedActions: ["workflow.resume"] }, view: undefined, live: [] })
@@ -223,7 +223,7 @@ test("a cold failed transcript card reads detail and offers Resume without openi
     const release = inspections.subscribe("run", reading => { controls = workflowCardControls(reading.detail, false, false) }, { kind: "card", status: "error", hasChoices: false })
     await settle()
     expect(reads).toEqual(["workflowDetail"])
-    expect(controls).toEqual({ primary: "resume", stop: false })
+    expect(controls).toEqual({ primary: "resume", resumeFailed: false, stop: false })
     release()
   } finally { inspections.dispose() }
 })

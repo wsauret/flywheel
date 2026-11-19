@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, Index, on, onCleanup, Show, untrack } from "solid-js"
 import { parseWorkflowLink } from "../../../../src/protocol/client/session-links.js"
 import { workflowCard, workflowCardChoice, workflowCardCut, workflowCardHeaderParts, workflowCardNotice, workflowCardSettled, workflowPlanAbsence } from "../../../../src/protocol/client/workflow-card.js"
-import { workflowCardControls } from "../../../../src/protocol/client/session-controls.js"
+import { workflowCardControls, workflowHoldsFailedAgent, workflowResumeTitle } from "../../../../src/protocol/client/session-controls.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import { workflowAgentOpenTarget } from "../../../../src/protocol/client/workflow-agent.js"
 import type { BlockProps } from "../../app/blocks.js"
@@ -56,7 +56,10 @@ export function WorkflowActivity(props: BlockProps) {
       : [])
   })
   const roles = untrack(() => props.roleAssignments)
-  const controls = () => workflowCardControls(workflowSurfaceReads(surface()).detail ? reading().detail : undefined, active(), block()?.status === "paused")
+  const controls = () => {
+    const view = reading().view
+    return workflowCardControls(workflowSurfaceReads(surface()).detail ? reading().detail : undefined, active(), block()?.status === "paused", view?.attemptsStatus === "loaded" && workflowHoldsFailedAgent(view))
+  }
   const open = () => { const id = workflowId(); if (id !== undefined) client.open(id) }
   const parts = () => { const current = block(); return current ? workflowCardHeaderParts(current, now()) : [] }
   const actions = (): readonly CardAction[] => {
@@ -67,7 +70,9 @@ export function WorkflowActivity(props: BlockProps) {
       result.push({ kind, ...CARD_ACTION_COPY[kind], title: WORKFLOW_CONTROLS[kind].title,
         busyKey: controlActionKey(kind, workflowId() ?? ""), run: () => { const id = workflowId(); if (id) client.control(id, kind) } })
     }
-    if (admitted.stop) result.push({ kind: "stop", ...CARD_ACTION_COPY.stop, title: "Stop this workflow.",
+    if (admitted.resumeFailed) result.push({ kind: "resume", ...CARD_ACTION_COPY.resume, title: workflowResumeTitle("failed"),
+      busyKey: controlActionKey("resume", workflowId() ?? ""), run: () => { const id = workflowId(); if (id) client.control(id, "resume") } })
+    if (admitted.stop) result.push({ kind: "stop", ...CARD_ACTION_COPY.stop, title: "Cancel this workflow. Its run ends for the chat that started it.",
       busyKey: actionKey("stop-tool", block()?.toolUseId ?? ""), run: () => { const current = block(); if (current) props.onTerminateBackground(current.toolUseId) } })
     return result
   }

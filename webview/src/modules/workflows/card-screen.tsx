@@ -3,7 +3,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show, untrack, 
 import type { LoadedWorkflowView } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { formatElapsed } from "../../../../src/protocol/client/format.js"
 import { activeTimeMs } from "../../../../src/protocol/client/session-time.js"
-import { workflowCardControls, workflowParked, workflowResumeTitle, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
+import { workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowResumeTitle, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
 import { workflowCard, workflowCardChoice, workflowCardNotice, workflowCardSettled, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import { workflowAgentOpenTarget } from "../../../../src/protocol/client/workflow-agent.js"
@@ -17,7 +17,7 @@ import type { WorkflowReading } from "./inspection.js"
  *  in the pane of the selected workflow. The toolbar names it and its way
  *  back to the chat. The header line names the workflow's state and time,
  *  and the controls its row admits: Interrupt, Resume, or Restart,
- *  then Stop. Every phase follows in run order, with every agent of an
+ *  then Cancel. Every phase follows in run order, with every agent of an
  *  expanded phase in item order, and the plan bar stays at the foot of the
  *  scroller. The card is one tree that the keys move through; a selection
  *  of an agent opens its agent view. */
@@ -75,7 +75,7 @@ export function WorkflowCardScreen(props: {
     const word = stateWord() ?? ""
     return [word === "" ? "" : `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`, elapsed >= 1000 ? formatElapsed(elapsed) : ""].filter(Boolean)
   })
-  const controls = () => workflowCardControls(row(), false, parked())
+  const controls = () => workflowCardControls(row(), false, parked(), workflowHoldsFailedAgent(props.view()))
 
   return (
     <div class="workflow-card-screen">
@@ -100,11 +100,17 @@ export function WorkflowCardScreen(props: {
             ><span aria-hidden="true">{WORKFLOW_CONTROLS[control()].icon}</span><span class="control-word">{WORKFLOW_CONTROLS[control()].word}</span></button>
           )}
         </Show>
+        <Show when={controls().resumeFailed}>
+          <button type="button" class="workflow-action" aria-label={WORKFLOW_CONTROLS.resume.word} title={workflowResumeTitle("failed")}
+            aria-busy={client.host.actions.working(controlActionKey("resume", sessionId())) || undefined}
+            onClick={() => client.control(sessionId(), "resume")}
+          ><span aria-hidden="true">{WORKFLOW_CONTROLS.resume.icon}</span><span class="control-word">{WORKFLOW_CONTROLS.resume.word}</span></button>
+        </Show>
         <Show when={controls().stop}>
-          <button type="button" class="workflow-action" aria-label="Stop" title="Stop this workflow. Its run ends for the chat that started it and cannot resume."
+          <button type="button" class="workflow-action" aria-label="Cancel" title="Cancel this workflow. Its run ends for the chat that started it."
             aria-busy={client.host.actions.working(actionKey("stop", sessionId())) || undefined}
             onClick={() => client.control(sessionId(), "stop")}
-          ><span aria-hidden="true">{"■"}</span><span class="control-word">Stop</span></button>
+          ><span aria-hidden="true">{"■"}</span><span class="control-word">Cancel</span></button>
         </Show>
       </div>
       <div class="workflow-card-screen-scroll">

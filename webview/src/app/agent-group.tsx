@@ -78,7 +78,7 @@ export function AgentGroup(props: {
         title: kind === "interrupt" ? "Interrupt this subagent. Resume continues it." : "Continue this subagent with no new message.",
         busyKey: controlActionKey(kind, linkedSession() ?? ""), run: () => control(kind) })
     }
-    if (admitted.stop) result.push({ kind: "stop", ...CARD_ACTION_COPY.stop, title: "Stop this subagent.",
+    if (admitted.stop) result.push({ kind: "stop", ...CARD_ACTION_COPY.stop, title: "Cancel this subagent. Its run ends for its parent.",
       busyKey: actionKey("stop-tool", props.block.toolUseId), run: () => props.onTerminateBackground(props.block.toolUseId) })
     return result
   }

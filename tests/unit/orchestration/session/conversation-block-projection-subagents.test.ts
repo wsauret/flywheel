@@ -79,7 +79,7 @@ describe("subagent conversation block reconstruction", () => {
       { kind: "agentGroup", id: "dispatch", label: "Reviewer", status: "interrupted" },
       { kind: "tool", id: "interrupt", presentation: { name: "Interrupt", detail: "Trace repaint" }, status: "completed" },
       { kind: "agentGroup", id: "resume", label: "Reviewer resume", description: "Trace repaint", totalToolCount: 3, status: "active" },
-      { kind: "tool", id: "stop", presentation: { name: "Stop", detail: "Trace repaint" }, status: "completed" },
+      { kind: "tool", id: "stop", presentation: { name: "Cancel", detail: "Trace repaint" }, status: "completed" },
     ])
   })
 

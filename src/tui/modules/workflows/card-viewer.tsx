@@ -7,7 +7,7 @@ import { Key } from "@solid-primitives/keyed"
 import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
 import { useListSelectionReveal } from "../../hooks/use-list-selection-reveal.js"
 import type { RuntimeClient } from "../../../protocol/app-service-types.js"
-import { dispatchInterrupt, resumeMutation, workflowCardControls, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
+import { dispatchInterrupt, resumeMutation, workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowCard, workflowCardChoice, workflowCardNotice, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../protocol/client/workflow-outline.js"
 import { workflowAgentOpenTarget, type WorkflowAgentTarget } from "../../../protocol/client/workflow-agent.js"
@@ -135,20 +135,23 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
     if (!result.ok) props.showToast({ message: result.error, variant: "error" })
   }
   const reportRefusal = (failed: ControlRefusal | undefined): void => { if (failed) props.showToast({ message: `Interrupt failed: ${failed.reason}`, variant: failed.variant }) }
+  const admitted = createMemo(() => workflowCardControls(row(), false, parked(), workflowHoldsFailedAgent(view())))
   const controls = createMemo(() => {
     const current = row()
-    const admitted = workflowCardControls(current, false, parked())
+    const { primary, resumeFailed } = admitted()
     const stop = current?.admittedActions.includes("workflow.stop") ? { type: "workflow.stop", workflowId: props.workflowId } as const : undefined
     return [
-      ...(current === undefined || admitted.primary === undefined ? [] : [{
-        label: admitted.primary === "interrupt" ? "Interrupt" : admitted.primary === "resume" ? "Resume" : "Restart",
+      ...(current === undefined || primary === undefined ? [] : [{
+        label: primary === "interrupt" ? "Interrupt" : primary === "resume" ? "Resume" : "Restart",
         press: () => {
-          if (admitted.primary === "interrupt") void dispatchInterrupt(props.appService, current).then(reportRefusal)
-          else if (admitted.primary === "resume") void props.appService.dispatch(resumeMutation(current)).then(report)
-          else void props.appService.dispatch({ type: "workflow.restart", workflowId: current.workflowId }).then(report)
+          const pressed = admitted().primary
+          if (pressed === "interrupt") void dispatchInterrupt(props.appService, current).then(reportRefusal)
+          else if (pressed === "resume") void props.appService.dispatch(resumeMutation(current)).then(report)
+          else if (pressed === "restart") void props.appService.dispatch({ type: "workflow.restart", workflowId: current.workflowId }).then(report)
         },
       }]),
-      ...(stop === undefined ? [] : [{ label: "Stop", press: () => { void props.appService.dispatch(stop).then(report) } }]),
+      ...(current === undefined || !resumeFailed ? [] : [{ label: "Resume", press: () => { void props.appService.dispatch(resumeMutation(current)).then(report) } }]),
+      ...(stop === undefined ? [] : [{ label: "Cancel", press: () => { void props.appService.dispatch(stop).then(report) } }]),
     ]
   })
 
@@ -214,7 +217,7 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
   // and the close affordance leave. A narrow header drops the cost.
   // Only a header that is still full cuts the way back and
   // the name, the longer one first, so the state, the time, and every
-  // control stay.
+  // control stay, also at 60 columns.
   const header = createMemo(() => {
     const detail = row()
     const totals = detail?.totals
@@ -231,7 +234,10 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
     const back = chatTitle()
     const fitted = [words(label(), stats.cost), words(label())].find((text) => modalFrameBackWidth(back) + displayWidth(text) <= room)
     if (fitted !== undefined) return { back, title: fitted }
-    const [backWidth = 0, nameWidth = 0] = shareWidth([displayWidth(back), displayWidth(label())], room - modalFrameBackWidth("") - displayWidth(words("")))
+    const shared = room - modalFrameBackWidth("") - displayWidth(words(""))
+    // Below one column each, the way back gives up its words first: its
+    // arrow still leads back, and the name keeps the column that is left.
+    const [backWidth = 0, nameWidth = 0] = shared < 2 ? [0, shared] : shareWidth([displayWidth(back), displayWidth(label())], shared)
     return { back: truncateToWidth(back, backWidth, "…"), title: words(truncateToWidth(label(), nameWidth, "…")) }
   })
   return <ModalFrame title={header().title} width={width()} onClose={props.onClose} back={{ label: header().back, onPress: props.onClose }}

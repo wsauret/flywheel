@@ -45,7 +45,11 @@ export interface WorkflowHosts {
   get(workflowId: string): WorkflowRunner | undefined
   allIds(): readonly string[]
   isRunning(workflowId: string): boolean
-  /** The Stop of a run, by a person or its parent agent. */
+  /** Resolves once the teardown of the run's host ends, at once when none
+   *  runs. A host that tears down belongs to a run that ended. */
+  whenClosed(workflowId: string): Promise<void>
+  /** The Stop of a run, by a person or its parent agent: it tears down the
+   *  run's host, also one that still prepares. False when no host holds it. */
   abort(workflowId: string, by: StoppedBy): Promise<boolean>
   /** Aborts the run with `cause` and releases its host. */
   remove(workflowId: string, cause: WorkflowInterruption): Promise<void>

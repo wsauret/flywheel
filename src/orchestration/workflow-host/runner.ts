@@ -25,7 +25,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import { messageSenderOf } from "../../infra/output-blocks.js"
 import { notifyLiveWorkChanged, registerLiveWorkflowControl, type DeliveryOutcome, type LiveWorkflowControl } from "../session/live-session-control.js"
 import { retireAddressedWorkflowMessages, WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
-import { addressReachesStartedAgent, workflowInterruptRefusal } from "./workflow-addressing.js"
+import { addressReachesFailedAgent, addressReachesStartedAgent, workflowInterruptRefusal } from "./workflow-addressing.js"
 import { dropQueuedUserInput, readWorkflowQueuedUserInputs } from "../session/conversation/queued-user-inputs.js"
 import type { CapabilityAdmission } from "../config/module-policy.js"
 import { createWorkflowAgentInputs } from "./agent-inputs.js"
@@ -441,12 +441,22 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
     return Log.runWithSession(sessionId, async () => {
       const refusal = await handBackRefusal()
       if (refusal) return { kind: "refused" as const, reason: refusal.reason }
+      if (createdRuntime === null) return { kind: "not_parked" as const }
       // The cut that a person's message meets, so an agent that has not read
       // its durable cut yet takes the Resume as its slot's hand-back.
-      if (createdRuntime === null || (await cut(address))?.kind !== "interrupt") return { kind: "not_parked" as const }
-      await handOverHeldMessages(address)
-      await resume(address)
-      return { kind: "continued" as const }
+      const parked = (await cut(address))?.kind === "interrupt"
+      if (parked) {
+        await handOverHeldMessages(address)
+        await resume(address)
+      }
+      // A failed agent that the Resume reaches runs again beside the agents
+      // that run, whatever its kind of failure (PI-AGENT-072). A run that
+      // its last sibling failed meanwhile reopens it no more.
+      const failed = addressReachesFailedAgent(await readQueue(), address)
+      const reopened = failed && await (createdRuntime?.host.resumeFailedAgents() ?? false)
+      if (reopened) log.info("workflow resumed its failed agents", { sessionId, addressKinds: address.addressedTo.map(({ _tag }) => _tag) })
+      if (parked || reopened) return { kind: "continued" as const }
+      return failed ? { kind: "ended" as const } : { kind: "not_parked" as const }
     })
   }
 

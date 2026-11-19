@@ -224,7 +224,8 @@ export interface RuntimeSession {
   /** Continues the open session with no new message, using the same optional workflow targets as Interrupt. */
   resume(targets?: readonly string[]): Promise<void>
   /** Stops a session that answers a parent's tool call: the parent's
-   *  `background.terminate` of that call. Stop is terminal and never resumes. */
+   *  `background.terminate` of that call. Cancel ends the call; a canceled
+   *  subagent or workflow admits only an explicit Resume. */
   stop(sessionId: string): Promise<void>
   /** Moves to a new chat at once and creates it behind the move, or joins
    *  the creation that runs. A failure shows in the pending destination; it

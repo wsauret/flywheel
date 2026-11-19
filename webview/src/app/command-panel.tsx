@@ -172,7 +172,7 @@ function buildGroups(deps: PanelDeps, settingRows: () => readonly InPlaceSetting
       run: () => { void copySessionId(writeClipboardText, client.report, sessionId) },
     }]),
     // Interrupt for every session kind while a turn runs (PI-INTERACTION-043,
-    // PI-AGENT-020). Stop is terminal and exists only for a session that
+    // PI-AGENT-020). Cancel is terminal and exists only for a session that
     // answers a parent's tool call.
     ...(sessionId === undefined || offered.primary !== "interrupt" ? [] : [{
       id: "interrupt-session",
@@ -182,8 +182,8 @@ function buildGroups(deps: PanelDeps, settingRows: () => readonly InPlaceSetting
     }]),
     ...(sessionId === undefined || !offered.stop ? [] : [{
       id: "stop-session",
-      label: "Stop",
-      description: "End this run for the chat that started it; it cannot resume",
+      label: "Cancel",
+      description: "End this run for the chat that started it",
       run: () => actions.stop(sessionId),
     }]),
     ...(sessionId === undefined || childActions !== undefined ? [] : [{

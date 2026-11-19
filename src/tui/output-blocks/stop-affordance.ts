@@ -10,6 +10,7 @@ import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type
  * a unit, never split mid-button (which also broke the lastIndexOf hit test). */
 const STOP_TEXT = "\u00a0stop\u00a0"
 const DETACH_TEXT = "\u00a0detach\u00a0"
+const CANCEL_TEXT = "\u00a0cancel\u00a0"
 
 /** Process actions available to every transcript row for one selected session. */
 export interface RowProcessControls {
@@ -20,12 +21,12 @@ export interface RowProcessControls {
   onDetach: (toolUseId: string) => void
   onStop: (toolUseId: string) => void
   /** Stops a linked child (a durable subagent or a workflow) by ending the
-   *  parent's tool call it answers, the same Stop every surface offers. */
+   *  parent's tool call it answers, the same Cancel every surface offers. */
   onStopChild?: (toolUseId: string) => void
 }
 
 export interface RowProcessControl {
-  label: typeof STOP_TEXT | typeof DETACH_TEXT
+  label: typeof STOP_TEXT | typeof DETACH_TEXT | typeof CANCEL_TEXT
   dispatch: () => void
 }
 
@@ -41,7 +42,7 @@ export function rowProcessControl(
   return undefined
 }
 
-/** The Stop of a running linked child's card: its parent's tool call. */
+/** The Cancel of a running linked child's card: its parent's tool call. */
 export function childProcessControl(
   controls: RowProcessControls | undefined,
   toolUseId: string,
@@ -50,7 +51,7 @@ export function childProcessControl(
 ): RowProcessControl | undefined {
   const onStopChild = controls?.onStopChild
   if (!active || !linked || onStopChild === undefined) return undefined
-  return { label: STOP_TEXT, dispatch: () => onStopChild(toolUseId) }
+  return { label: CANCEL_TEXT, dispatch: () => onStopChild(toolUseId) }
 }
 
 export function processControlChunks(theme: TuiTheme, label: RowProcessControl["label"]): TextChunk[] {

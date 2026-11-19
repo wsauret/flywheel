@@ -122,7 +122,7 @@ export function workflowWaitingText(tree: WorkflowTree, node: WorkflowTreeNode):
 }
 
 /** Where one agent stands. `cut` is the run's cut word, such as
- *  `interrupted`, when an interrupt or a Stop cut the run, and `live` is
+ *  `interrupted`, when an interrupt or a Cancel cut the run, and `live` is
  *  the live value of the agent's current attempt. */
 function workflowAgentState(tree: WorkflowTree, agent: WorkflowTreeAgent, cut: string | undefined, live: WorkflowAgentLive | undefined): WorkflowAgentState {
   if ((agent.disposition === "pending" || agent.disposition === "running") && (
@@ -158,7 +158,7 @@ function workflowNodeState(node: WorkflowTreeNode): WorkflowAgentState {
  *  then work that has not started, and finished work reads failed when any
  *  of its agents failed. Work that some agents finished and others have not
  *  started reads running while the run goes on, and queued once an
- *  interrupt or a Stop cut the run (`cut`), because none of its agents runs
+ *  interrupt or a Cancel cut the run (`cut`), because none of its agents runs
  *  then. */
 function workflowSumState(states: readonly WorkflowAgentState[], fallback: WorkflowAgentState, cut: boolean): WorkflowAgentState {
   if (states.length === 0) return fallback
@@ -322,7 +322,7 @@ export interface WorkflowRunActivity {
 export interface WorkflowOutline {
   readonly phases: readonly WorkflowPhase[]
   readonly progress: WorkflowProgress
-  /** The run's cut word, such as `interrupted`, when an interrupt or a Stop
+  /** The run's cut word, such as `interrupted`, when an interrupt or a Cancel
    *  cut it. */
   readonly cut?: string
 }

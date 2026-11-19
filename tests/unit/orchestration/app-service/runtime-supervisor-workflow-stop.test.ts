@@ -226,9 +226,10 @@ describe("a person's Stop of a workflow child", () => {
     await expect(launch.done).resolves.toMatchObject({ status: "stopped" })
     await childEnds(ctx, launch.workflowId)
     expect(stepAgents).toBe(0)
-    // The child's run started and paused before its first step; it did not
-    // fail to start.
-    expect(ctx.store.read({ aggregateId: `workflow:${launch.workflowId}`, types: ["workflow.paused"] })).toHaveLength(1)
+    // The Stop tore down the host that still prepared the run, so the run
+    // never started, and the call holds the Stop, not a start failure.
+    expect(ctx.store.read({ aggregateId: `workflow:${launch.workflowId}`, types: ["workflow.paused"] })).toEqual([])
+    expect(composition.workflows.allIds()).toEqual([])
     expect(callResults(ctx, parentId, "workflow-call")).toEqual([expect.objectContaining({ outcome: "stopped" })])
   })
 

@@ -163,7 +163,15 @@ export function WorkflowAgentViewer(props: WorkflowAgentViewerProps) {
     if (refusal) props.showToast({ message: `Interrupt failed: ${refusal.reason}`, variant: refusal.variant })
   }
   const control = createMemo(() => history() === undefined ? offeredSessionControls(surface.summary(), surface.interruptible()).primary : null)
+  // A failed agent's session takes no turn of its own: the workflow's Resume
+  // runs it again, also while its siblings run (PI-AGENT-072).
+  const resumesFailed = createMemo(() => history() === undefined && model()?.state === "failed" && sessionControls(row() ?? undefined).resume)
   const press = (): void => {
+    const workflowRow = row()
+    if (resumesFailed() && workflowRow) {
+      void props.appService.dispatch(resumeMutation(workflowRow)).then(report)
+      return
+    }
     const current = surface.summary()
     const selected = control()
     if (!current || selected === null) return
@@ -171,7 +179,11 @@ export function WorkflowAgentViewer(props: WorkflowAgentViewerProps) {
     else void props.appService.dispatch(resumeMutation(current)).then(report)
   }
   // The agent's own Interrupt or Resume, at the end of its agent line.
-  const agentControl = createMemo(() => { const shown = control(); return shown === null ? undefined : { label: shown === "interrupt" ? "Interrupt" : "Resume", onPress: press } })
+  const agentControl = createMemo(() => {
+    if (resumesFailed()) return { label: "Resume", onPress: press }
+    const shown = control()
+    return shown === null ? undefined : { label: shown === "interrupt" ? "Interrupt" : "Resume", onPress: press }
+  })
 
   // The workflow band: the way back as a button, the workflow's name in
   // bold behind the workflow's glyph, as the full-size card's title names

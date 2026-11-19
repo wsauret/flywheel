@@ -9,7 +9,8 @@
 // an answer, but error-rate bookkeeping skips it: nothing failed.
 //
 // "stopped" is a person's Stop of a child's run (a subagent or a workflow)
-// through its parent's tool call. It is terminal and distinct from the
+// through its parent's tool call. It ends the run for its parent, only an
+// explicit Resume runs the child again, and it is distinct from the
 // requesting agent's own cancellation ("cancelled"), so every surface can say
 // who ended the run. The model sees it as an error: the call failed.
 //

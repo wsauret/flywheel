@@ -143,7 +143,7 @@ export function Composer(props: {
   }))
   const childRoles = createSessionReading(childSessionId, roleAssignments)
   const displayedModel = () => composerModel(selectedRow()?.kind, childRoles(), state().activeModel)
-  // Interrupt, Resume, and Stop for the open session, whatever its kind,
+  // Interrupt, Resume, and Cancel for the open session, whatever its kind,
   // from its row, the one reader of what the runtime admits (ARCH-PROTOCOL-050,
   // PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044, PI-INTERACTION-115, PI-AGENT-020); the composer
   // holds no control state of its own. Interrupt is offered only while
@@ -686,7 +686,8 @@ export function Composer(props: {
                 </button>
               </Show>
               {/* Interrupt keeps the child's work and Resume continues it
-                  from there; Stop ends it for its parent and never resumes. */}
+                  from there; Cancel ends it for its parent, and only an
+                  explicit Resume of a subagent continues it (PI-INTERACTION-140). */}
               <Show when={controls().interrupt}>
                 <button data-input-focus={focusKey("interrupt")} class="composer-stop" title="Interrupt this agent. Its work so far is kept and it can resume." aria-label="Interrupt" aria-busy={working("interrupt")} onClick={interrupt}>
                   <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -702,7 +703,7 @@ export function Composer(props: {
                 </button>
               </Show>
               <Show when={controls().stop}>
-                <button data-input-focus={focusKey("stop")} class="composer-stop" title="Stop this run. It ends for its parent and cannot resume." aria-label="Stop" aria-busy={working("stop")} onClick={() => { const sessionId = state().sessionId; if (sessionId !== undefined) client.actions.stop(sessionId) }}>
+                <button data-input-focus={focusKey("stop")} class="composer-stop" title="Cancel this run. It ends for its parent." aria-label="Cancel" aria-busy={working("stop")} onClick={() => { const sessionId = state().sessionId; if (sessionId !== undefined) client.actions.stop(sessionId) }}>
                   <Icon path={ICONS.stop} size={16} />
                 </button>
               </Show>

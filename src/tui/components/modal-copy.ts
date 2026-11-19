@@ -40,7 +40,7 @@ export const SUBSCRIPTION_SPEND_CONSENT_COPY = {
 export const MODAL_BACK_HINT = "← back"
 
 export const MODAL_CONTROL_COPY = {
-  background: ["space output · enter open · x stop · a all · ↑↓ navigate · esc close", "a all · esc close"],
+  background: ["space output · enter open · x end · a all · ↑↓ navigate · esc close", "a all · esc close"],
   commands: ["enter select · ↑↓ navigate · type to filter · esc close", "Type to filter · esc close"],
   help: ["↑↓ scroll · pageup/pagedown page · enter/esc close"],
   profile: ["enter switch · ↑↓ navigate · esc close"],

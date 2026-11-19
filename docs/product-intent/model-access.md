@@ -102,6 +102,10 @@ Outside provider controls, only models checked for a current exact account enter
 
 SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, and so do Claude subscription accounts for models their login does not list. Background checks that never bill or enable paid use confirm what each account can serve. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests.
 
+## PI-MODEL-090: A Google Vertex key reaches every global model
+
+A Google Vertex express key reaches every model that Vertex serves in its global location. Flywheel finds the key's project when the key is added and keeps it with the key, so the person enters only the key. A key saved before this behavior gains its project on first use without a new login.
+
 ## PI-MODEL-084: Access check results persist until a recheck
 
 An inconclusive access check never erases an earlier success. An explicit refusal hides the model, and every background discovery checks it again, so a model that an account gains appears after the next discovery. A manual recheck checks every model of the account at once. Every check result survives restart and token refresh.
@@ -354,7 +358,7 @@ When no role preference of an agent can serve until a stated time, such as a usa
 
 ## PI-MODEL-063: Capacity wait status and end
 
-While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
+While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt, a Cancel, or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
 
 ## PI-MODEL-088: A usage reading corrects a spent account's reset time
 

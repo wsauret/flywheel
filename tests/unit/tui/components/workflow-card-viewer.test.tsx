@@ -160,7 +160,7 @@ describe("workflow full-size card", () => {
     const { frame, render } = await renderCard(mapRun())
     // The run's name that its view carries names it, as its inline card
     // does, and not the session's generated title.
-    expect(frame()).toMatch(/‹ Fanout-fail\s+⚙ Probe each surface[^\n]*Interrupt\s+Stop\s+x/)
+    expect(frame()).toMatch(/‹ Fanout-fail\s+⚙ Probe each surface[^\n]*Interrupt\s+Cancel\s+x/)
     expect(frame()).not.toContain("Run Workflow With Supplied Input")
     // A phase's name and an agent's name read in the colours they have on the inline card and in the agent view.
     const span = (text: string) => render.captureSpans().lines.flatMap((line) => line.spans).find((candidate) => candidate.text === text)
@@ -262,7 +262,7 @@ describe("workflow full-size card", () => {
     expect(frame()).toMatch(/⚙ Run workflow with supplied[^\n]*… · Interrupted · 1m 20s\s+Resume\s+x/)
   })
 
-  it("keeps a long way back whole while the header has room, and cuts the longer of it and the name first once the header is full, so a 60-column header keeps the state and the time", async () => {
+  it("keeps a long way back whole while the header has room, and cuts the longer of it and the name first once the header is full, so a 60-column header keeps the state and the time beside Resume and Cancel", async () => {
     const paused = { ...mapRun(), state: "paused" as const }
     const chat = "Investigate the flaky login tests on the CI runners"
     const wide = await renderCard(paused, { admittedActions: ["workflow.resume", "session.delete"] }, { title: () => chat }, 160)
@@ -270,7 +270,25 @@ describe("workflow full-size card", () => {
     const full = await renderCard(paused, { admittedActions: ["workflow.resume", "session.delete"] }, { title: () => chat }, 100)
     expect(full.frame()).toMatch(/‹ Investigate the flaky login tes…\s+⚙ Probe each surface · Interrupted · 1m 20s\s+Resume\s+x/)
     const { frame } = await renderCard({ ...paused, name: "Run workflow with supplied surfaces and files for every reviewer" }, { admittedActions: ["workflow.resume", "background.terminate", "session.delete"], totalTokens: 18_000 }, {}, 60)
-    expect(frame()).toMatch(/‹ \S+\s+⚙ \S+ · Interrupted · 1m 20s\s+Resume\s+Stop\s+x/)
+    expect(frame()).toMatch(/‹\s+⚙ \S+ · Interrupted · 1m 20s\s+Resume\s+Cancel\s+x/)
+  })
+
+  it("offers Resume of a failed agent beside the Interrupt of its running siblings, and resumes the workflow", async () => {
+    const view = { ...mapRun(), state: "running" as const }
+    const running = view.attempts.find(({ status }) => status === "running")
+    if (!running) throw new Error("The map run holds a running agent")
+    const dispatched: FrontendMutation[] = []
+    const { frame, render } = await renderCard(view, { admittedActions: ["workflow.interrupt", "workflow.resume", "session.delete"] }, {
+      appService: { dispatch: runtimeDispatch({ "workflow.resume": async (command) => { dispatched.push(command); return { ok: true } } }) },
+      inspectWorkflow: () => ({ detail: () => workflowDetail({ admittedActions: ["workflow.interrupt", "workflow.resume", "workflow.delete"] }), view: () => view, live: () => [{ attemptId: running.id, sessionId: "running-agent", operations: 1, duration: 0, revision: 1 }] }),
+    }, 120)
+    const rows = frame().split("\n")
+    const y = rows.findIndex((row) => row.includes(" Interrupt ") && row.includes(" Resume "))
+    expect(y).toBeGreaterThanOrEqual(0)
+    await render.mockMouse.pressDown(rows[y]!.indexOf(" Resume ") + 2, y)
+    await render.mockMouse.release(rows[y]!.indexOf(" Resume ") + 2, y)
+    await render.flush()
+    expect(dispatched).toEqual([{ type: "workflow.resume", workflowId: "child" }])
   })
 
   it("offers Restart for saved progress that cannot run, and runs it", async () => {

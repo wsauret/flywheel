@@ -33,7 +33,7 @@ export function Icon(props: { readonly path: string; readonly size?: number }) {
 export const ICONS = {
   plus: "M8 3.5v9M3.5 8h9",
   close: "M5 5l6 6M11 5l-6 6",
-  /** Stop: ends a child's run for its parent, never to resume. An outlined
+  /** Cancel: ends a child's run for its parent, never to resume. An outlined
    *  square, apart from Close's cross and Interrupt's filled square. */
   stop: "M4 4h8v8H4z",
   chevronDown: "M4 6.5L8 10.5L12 6.5",

@@ -23,6 +23,8 @@ import {
   type WorkflowSessionFact,
 } from "./session-facts.js"
 import { retriableFailedNodes } from "./attempt-continuation.js"
+import { CURRENT_PROPOSAL_ENCODING } from "./events.js"
+import { proposedTransition } from "./machine.js"
 import { inheritGraphTopology } from "./graph-topology.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "./transition.js"
 import { selectNewestWorkflowRoot, workflowFamilyEvents } from "../workflow-root.js"
@@ -63,36 +65,53 @@ export function workflowInsertionRefusalReason(events: readonly StoredFact[]): s
 /** Whether a person's Resume runs failed workflow `control` again, which
  *  replays `events`. A run fails this way only from encoding 8, where an
  *  agent that fails fails only itself: the proposal that ended the run is of
- *  encoding 8 or later, no refusal of an insertion or of a list's expansion
- *  ended it, and it holds a failed agent to run again
- *  (`retriableFailedNodes` at that encoding). A refusal would repeat on a run again. A run
- *  that failed at encoding 7 or earlier failed on such a refusal or on a
- *  recorded blocked attempt, so it stays failed as it did then. */
+ *  encoding 8 or later, and it holds a failed agent to run again
+ *  (`retriableFailedNodes` at that encoding), whatever the kind of its
+ *  failure. A recorded refusal of an insertion or of a list's expansion
+ *  stops it only when the Resume would fail the run again at once: a
+ *  refused list that is still ready after the reopen, such as one in a
+ *  later round of a repeat, expands again and meets the same refusal before
+ *  any failed agent runs. A run that failed at encoding 7 or earlier failed
+ *  on such a refusal or on a recorded blocked attempt, so it stays failed as
+ *  it did then. */
 export function resumesFailedAgents(events: readonly StoredFact[], control: CommittedWorkflowControl): boolean {
   return resumesFailedAgentsWith(workflowFamilyEvents(events).reduce(advanceRetryEvidence, NO_RETRY_EVIDENCE), control)
 }
 
 /** What the family's facts say about running failed agents again: the
- *  encoding of the proposal that ended the run, and whether a refusal of an
- *  insertion or of a list's expansion was recorded. A held fold advances it
- *  one family fact at a time, so it never reads the family again. */
+ *  encoding of the proposal that ended the run. A held fold advances it one
+ *  family fact at a time, so it never reads the family again. */
 export interface FailedAgentRetryEvidence {
   readonly endingVersion: number | undefined
-  readonly refused: boolean
 }
 
-export const NO_RETRY_EVIDENCE: FailedAgentRetryEvidence = { endingVersion: undefined, refused: false }
+export const NO_RETRY_EVIDENCE: FailedAgentRetryEvidence = { endingVersion: undefined }
 
 export function advanceRetryEvidence(evidence: FailedAgentRetryEvidence, event: StoredFact): FailedAgentRetryEvidence {
-  if (event.type === "workflow.control.committed") return { ...evidence, endingVersion: event.version }
-  if (event.type === "attempt.insertion_rejected" || event.type === "group.expansion_rejected") return { ...evidence, refused: true }
-  return evidence
+  return event.type === "workflow.control.committed" ? { endingVersion: event.version } : evidence
 }
 
 /** `resumesFailedAgents` for a caller that holds the family's retry evidence. */
-export function resumesFailedAgentsWith({ endingVersion, refused }: FailedAgentRetryEvidence, control: CommittedWorkflowControl): boolean {
-  return endingVersion !== undefined && endingVersion >= 8 && !refused
+export function resumesFailedAgentsWith({ endingVersion }: FailedAgentRetryEvidence, control: CommittedWorkflowControl): boolean {
+  return endingVersion !== undefined && endingVersion >= 8
     && control.status === "failed" && retriableFailedNodes(control, endingVersion).length > 0
+    && !resumeFailsAtOnce(control)
+}
+
+/** Whether the RESUME that a person's Resume commits would fail `control`
+ *  again before any agent runs. Only completed work reruns for what it
+ *  reads, so the readers that the host adds cannot reopen a refused list or
+ *  the repeat that runs it, and the check needs none. */
+function resumeFailsAtOnce(control: CommittedWorkflowControl): boolean {
+  return proposedTransition({ committed: control, pending: null }, { type: "RESUME", readers: {} }, CURRENT_PROPOSAL_ENCODING).committed.status === "failed"
+}
+
+/** Whether a person's Resume reopens failed agents of `control` while its
+ *  other agents still run: a run that executes and holds a failed agent to
+ *  run again, whatever the kind of its failure. A live run commits at the
+ *  current encoding, so the agents of items count. */
+export function resumesLiveFailedAgents(control: CommittedWorkflowControl): boolean {
+  return control.status === "executing" && retriableFailedNodes(control, CURRENT_PROPOSAL_ENCODING).length > 0
 }
 
 /** A known workflow fact that is not control: a view, context, provenance,

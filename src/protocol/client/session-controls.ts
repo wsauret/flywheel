@@ -12,7 +12,7 @@ import type { LoadedWorkflowView, WorkflowAgentLive } from "../workflow-view-pro
 import { errorMessage } from "../../infra/error-message.js"
 import type { AgentGroupBlock, PausedBy } from "../../infra/output-blocks.js"
 import { lostToCleanClose } from "./connection-failures.js"
-import { CANCELED_LABEL, interruptedLabel, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
+import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, PARTIAL_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
 interface WorkControlOwner {
   readonly workflowId: string
   readonly admittedActions: readonly ("workflow.send" | "workflow.interrupt" | "workflow.resume" | "workflow.restart" | "workflow.stop" | "workflow.delete")[]
@@ -23,8 +23,8 @@ type SessionAction = ChatSessionAction | WorkflowSessionAction | SubagentSession
 
 /** The controls a row admits. A message reaches every chat, and a child
  *  while it has not ended; Interrupt is the one resumable cut of every
- *  agent-shaped session; Resume continues it; Stop ends the current child
- *  execution. Non-completed subagents also admit explicit Resume after Stop.
+ *  agent-shaped session; Resume continues it; Cancel ends the current child
+ *  execution. Non-completed subagents also admit explicit Resume after Cancel.
  *  A row listed without turn-end evidence
  *  admits no Resume; the detail read always carries it. */
 export interface SessionControls {
@@ -54,7 +54,7 @@ export function sessionControls(row: ControlRow | undefined): SessionControls {
 /** The controls a session offers now. Interrupt and Resume are one slot:
  *  Interrupt while a turn or an agent runs and the row admits it, Resume while
  *  nothing runs and the row admits it; never both, and neither when the
- *  row cannot say (a listing without evidence). Stop ends the current execution and is
+ *  row cannot say (a listing without evidence). Cancel ends the current execution and is
  *  separate. */
 export interface OfferedSessionControls {
   readonly primary: "interrupt" | "resume" | null
@@ -73,7 +73,7 @@ export function offeredSessionControls(row: Pick<SessionRow, "kind" | "admittedA
 }
 
 /** A subagent header takes Interrupt or Resume from its child's admitted
- *  row. Stop belongs to the running parent call, not to a settled card. */
+ *  row. Cancel belongs to the running parent call, not to a settled card. */
 export function subagentCardControls(row: Parameters<typeof offeredSessionControls>[0], inFlight: boolean): OfferedSessionControls {
   const offered = offeredSessionControls(row, inFlight)
   return { primary: offered.primary, stop: inFlight }
@@ -190,9 +190,11 @@ export function workflowParked(live: readonly WorkflowAgentLive[], row?: Control
 export type WorkflowControl = "interrupt" | "resume" | "restart"
 
 /** The controls of a workflow card's header: the workflow's own control,
- *  when the row admits one, and whether Stop shows. */
+ *  when the row admits one, whether Resume of its failed agents shows beside
+ *  an Interrupt, and whether Cancel shows. */
 export interface WorkflowCardControls {
   readonly primary?: WorkflowControl
+  readonly resumeFailed: boolean
   readonly stop: boolean
 }
 
@@ -202,13 +204,21 @@ export interface WorkflowCardControls {
  *  cannot run offers Restart, which runs the workflow again from its
  *  recorded request. While an interrupt parks the run (`parked`), the
  *  workflow's own control is Resume; otherwise it is Interrupt, else Resume,
- *  as the row admits them. Stop ends the parent's call, which the card's
+ *  as the row admits them. Cancel ends the parent's call, which the card's
  *  block can stop while its run goes on and the row admits while the call
  *  still waits. */
-export function workflowCardControls(row: ControlRow | undefined, inFlight: boolean, parked: boolean): WorkflowCardControls {
+export function workflowCardControls(row: ControlRow | undefined, inFlight: boolean, parked: boolean, failedAgents = false): WorkflowCardControls {
   const admitted = sessionControls(row)
   const primary = workflowPrimaryControl(admitted, parked)
-  return { ...(primary === undefined ? {} : { primary }), stop: inFlight || admitted.stop }
+  // While other agents run, the row admits Resume for an agent that failed
+  // (PI-AGENT-072), so the card offers it beside the Interrupt.
+  const resumeFailed = primary === "interrupt" && admitted.resume && failedAgents
+  return { ...(primary === undefined ? {} : { primary }), resumeFailed, stop: inFlight || admitted.stop }
+}
+
+/** Whether an agent of the workflow failed, which a Resume runs again. */
+export function workflowHoldsFailedAgent(view: Pick<LoadedWorkflowView, "tree"> | undefined): boolean {
+  return view?.tree.nodes.some((node) => node.kind === "agent" && node.disposition === "failed") ?? false
 }
 
 /** A parked workflow offers Resume, never Interrupt. */
@@ -218,17 +228,17 @@ function workflowPrimaryControl(admitted: SessionControls, parked: boolean): Wor
   return admitted.resume ? "resume" : undefined
 }
 
-/** Stop is the parent's termination of the tool call this session answers:
+/** Cancel is the parent's termination of the tool call this session answers:
  *  the same `background.terminate` that stops a background command. It is
- *  absent for a row that admits no Stop or carries no parent tool call. */
+ *  absent for a row that admits no Cancel or carries no parent tool call. */
 export function stopMutation(row: Pick<SessionRow, "kind" | "admittedActions" | "parentSessionId" | "parentToolUseId"> | undefined): Extract<FrontendMutation, { type: "background.terminate" }> | undefined {
   if (!sessionControls(row).stop || row?.parentSessionId === undefined || row.parentToolUseId === undefined) return undefined
   return { type: "background.terminate", sessionId: row.parentSessionId, toolUseId: row.parentToolUseId }
 }
 
-/** Who ended a stopped child, in the words its card uses. */
-function stoppedLabel(by: StoppedBy): string {
-  return by === "person" ? STOPPED_LABEL : CANCELED_LABEL
+/** Who canceled a child, in the words its card uses. */
+function canceledLabel(by: StoppedBy): string {
+  return by === "person" ? CANCELED_LABEL : PARENT_CANCELED_LABEL
 }
 
 /** The run state a child card carries on either side of the wire: the saved
@@ -244,8 +254,8 @@ export function runStatusLabel(block: RunState): string | undefined {
   switch (block.status) {
     case "interrupted": return SUBAGENT_INTERRUPTED_LABEL
     case "paused": return interruptedLabel(block.pausedBy)
-    case "cancelled": return CANCELED_LABEL
-    case "stopped": return STOPPED_LABEL
+    case "cancelled": return PARENT_CANCELED_LABEL
+    case "stopped": return CANCELED_LABEL
     case "partial": return PARTIAL_LABEL
     default: return undefined
   }
@@ -255,13 +265,13 @@ export function runStatusLabel(block: RunState): string | undefined {
  *  words a person reads, or nothing while the workflow runs or waits to start. The
  *  state is the workflow view's, which every control commit restates from
  *  committed control. The saved `paused` state is an interrupt, unless its
- *  last Resume found a changed definition, and a Stop ends the run for its
- *  parent whatever the saved state says. A Stop reads "Stopped" or
- *  "Canceled" exactly as every other card names it, because the product
- *  names stopped work by who stopped it. The phase line of the web client and
+ *  last Resume found a changed definition, and a Cancel ends the run for its
+ *  parent whatever the saved state says. A Cancel reads "Canceled" or
+ *  "Canceled by the parent" exactly as every other card names it, because
+ *  the product names canceled work by who canceled it. The phase line of the web client and
  *  of the terminal both read this. */
 export function workflowStateLabel(state: LoadedWorkflowView["state"], row: WorkflowStateRow | null | undefined, parked = false): string | undefined {
-  if (row?.stoppedBy !== undefined) return stoppedLabel(row.stoppedBy)
+  if (row?.stoppedBy !== undefined) return canceledLabel(row.stoppedBy)
   const presented = presentedWorkflowState(state, row)
   if (presented === "paused") return row?.definitionDrift === undefined ? "interrupted" : "cannot continue"
   return presented === "completed" || presented === "failed" ? presented : parked ? "interrupted" : undefined

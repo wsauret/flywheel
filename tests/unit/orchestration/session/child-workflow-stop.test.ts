@@ -11,7 +11,7 @@ import { createSessionManager } from "../../../../src/orchestration/session/mana
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { createSessionToolExecutionStore, repairInterruptedToolExecutions } from "../../../../src/orchestration/session/tool-execution-store"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation"
-import { recordChildWorkflowStartFailure, recordChildWorkflowStop } from "../../../../src/orchestration/session/child-workflow-result.js"
+import { recordChildWorkflowResume, recordChildWorkflowStartFailure, recordChildWorkflowStop } from "../../../../src/orchestration/session/child-workflow-result.js"
 import { readToolExecution } from "../../../../src/orchestration/session/tool-execution-projection"
 import { readChildCall, readChildStop, workflowSessionActions, workflowToolCall } from "../../../../src/orchestration/session/chat-session-run-evidence"
 import { workflowRunReader, workflowRunOwner } from "../../../../src/orchestration/module-catalog"
@@ -96,7 +96,8 @@ function parentNotifications(store: LocalSqliteEventStore, writer: AsyncEventWri
       const notice = queue.drainPending()
       if (notice?.kind !== "message") throw new Error("missing workflow completion")
       expect(queue.drainPending()).toBeNull()
-      await tree.recordCanonicalMessage({ kind: "user", origin: "system", content: notice.text, backgroundNotificationIds: notice.backgroundNotificationIds })
+      // The runner's commit: the notice's entry has the key of its notification.
+      await tree.commitBackgroundNotification({ text: notice.text, key: notice.backgroundNotificationIds?.[0] })
       await tree.flushSavePoint()
       return notice.text
     },
@@ -120,7 +121,33 @@ describe("a workflow Stop", () => {
     const reopened = openStore()
     expect(await readChildStop(asAsyncEventReadSurface(reopened.store), LAUNCH)).toBe("person")
     const call = await readChildCall(asAsyncEventReadSurface(reopened.store), LAUNCH)
-    expect(workflowSessionActions("inactive", "paused", { toolCall: workflowToolCall(TOOL_USE_ID, call) })).toEqual(["session.delete"])
+    expect(workflowSessionActions("inactive", "paused", { toolCall: workflowToolCall(TOOL_USE_ID, call), message: false })).toEqual(["workflow.resume", "session.delete"])
+  })
+
+  test("is passed only by a Resume that names it, after which a new Stop ends the run again and owes its own notice", async () => {
+    const { store, writer } = await setup()
+    const reader = asAsyncEventReadSurface(store)
+    const notifications = parentNotifications(store, writer)
+    const reconcile = () => reconcileChildSessionCompletions({ parentSessionId: "parent", reader, projectionReader: reader, writer, deliverNotification: notifications.deliverNotification })
+    const resume = (resultEventId: string) => recordChildWorkflowResume({ projectionReader: reader, writer, parentSessionId: "parent", toolUseId: TOOL_USE_ID, childSessionId: "child", resultEventId, by: "person" })
+    await stop(store, writer, "person")
+    await reconcile()
+    const first = await notifications.commit()
+    const cancel = (await readToolExecution(reader, "parent", TOOL_USE_ID))?.resultEventId
+    if (cancel === undefined) throw new Error("the Cancel recorded no result")
+    expect(await resume("an-earlier-result")).toBe(false)
+    expect(await resume(cancel)).toBe(true)
+    expect(await readChildCall(reader, LAUNCH)).toEqual({})
+    expect((await reconcile()).linkedNonterminalWorkflowToolUseIds).toEqual([TOOL_USE_ID])
+
+    expect(await stop(store, writer, "person")).toBe(true)
+    expect(await readChildStop(reader, LAUNCH)).toBe("person")
+    expect(await resume(cancel)).toBe(false)
+    // The second Cancel says what the first said, and it is still a new
+    // decision that the parent reads.
+    await reconcile()
+    expect(await notifications.commit()).toBe(first)
+    expect(store.readInFlight("parent", QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
   })
 
   test("ends a call that crash recovery guessed interrupted, because the guess is no result: the row offers Stop, and the Stop becomes the call's result", async () => {

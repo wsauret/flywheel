@@ -61,9 +61,12 @@ describe("chat session admission from turn-end evidence", () => {
 })
 
 describe("workflow session admission", () => {
-  test("a running workflow admits Interrupt, Resume while its step's turn end records an interrupt, and Stop only for a parent's tool call", () => {
+  test("a running workflow admits Interrupt, Resume while its step's turn end records an interrupt or an agent failed, and Cancel only for a parent's tool call", () => {
     expect(workflowSessionActions("active", "running")).toEqual(["workflow.interrupt", "session.delete"])
     expect(workflowSessionActions("active", "running", { stepTurnEnd: interrupted })).toEqual(["workflow.interrupt", "workflow.resume", "session.delete"])
+    // A failed agent resumes while its sibling still runs (PI-AGENT-072).
+    expect(workflowSessionActions("active", "running", { retriesFailedAgents: true })).toEqual(["workflow.interrupt", "workflow.resume", "session.delete"])
+    expect(workflowSessionActions("active", "running", { retriesFailedAgents: true, executable: false })).toEqual(["workflow.interrupt", "session.delete"])
     expect(workflowSessionActions("active", "running", { toolCall: { read: true } })).toEqual(["workflow.interrupt", "background.terminate", "session.delete"])
     // A step whose continuation already committed is a turn in progress.
     expect(workflowSessionActions("active", "running", { stepTurnEnd: { end: { reason: "crash" }, recorded: false } })).toEqual(["workflow.interrupt", "session.delete"])
@@ -104,9 +107,9 @@ describe("workflow session admission", () => {
     expect(workflowSessionActions("inactive", "paused", { message: true, restartable: true, toolCall: { read: true } })).toEqual(["session.send", "workflow.resume", "background.terminate", "session.delete"])
   })
 
-  test("a workflow a Stop ended admits nothing but deletion, running or not", () => {
+  test("a workflow a Cancel ended takes no message and no Cancel, and admits an explicit Resume once its teardown ended", () => {
     expect(workflowSessionActions("active", "running", { stepTurnEnd: interrupted, toolCall: { read: true, stoppedBy: "person" } })).toEqual(["session.delete"])
-    expect(workflowSessionActions("inactive", "paused", { toolCall: { read: true, stoppedBy: "agent" } })).toEqual(["session.delete"])
+    expect(workflowSessionActions("inactive", "paused", { message: false, toolCall: { read: true, stoppedBy: "agent" } })).toEqual(["workflow.resume", "session.delete"])
   })
 
   test("a listed workflow cannot tell whether a Stop ended it, so it admits no Resume until its detail is read", () => {

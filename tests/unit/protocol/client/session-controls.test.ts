@@ -36,7 +36,7 @@ describe("session controls", () => {
     // Saved progress that cannot run holds the run, as an interrupt does.
     expect(workflowParked([], { workflowId: "w", admittedActions: ["workflow.restart", "workflow.stop"] })).toBe(true)
     expect(workflowStateLabel("running", undefined, true)).toBe("interrupted")
-    expect(workflowStateLabel("running", { stoppedBy: "person" }, true)).toBe("Stopped")
+    expect(workflowStateLabel("running", { stoppedBy: "person" }, true)).toBe("Canceled")
   })
   test("one Interrupt and one Resume for every kind, read from the row's admitted actions", () => {
     expect(sessionControls({ kind: "chat", admittedActions: ["chat.interrupt", "session.delete"] })).toEqual({ message: true, interrupt: true, resume: false, restart: false, stop: false })
@@ -79,7 +79,7 @@ describe("session controls", () => {
     expect(resumeMutationType("subagent")).toBe("subagent.resume")
   })
 
-  test("Stop terminates the parent's tool call, and only a row that admits it and names the call has one", () => {
+  test("Cancel terminates the parent's tool call, and only a row that admits it and names the call has one", () => {
     const running = { kind: "subagent" as const, admittedActions: ["subagent.interrupt", "background.terminate", "session.delete"] as const, parentSessionId: "parent", parentToolUseId: "call-1" }
     expect(stopMutation(running)).toEqual({ type: "background.terminate", sessionId: "parent", toolUseId: "call-1" })
     expect(stopMutation({ ...running, admittedActions: ["subagent.resume", "session.delete"] })).toBeUndefined()
@@ -101,16 +101,20 @@ describe("session controls", () => {
     expect(offeredSessionControls({ kind: "subagent", admittedActions: ["subagent.interrupt", "background.terminate"], parentSessionId: "p", parentToolUseId: "t" }, false)).toEqual({ primary: null, stop: true })
   })
 
-  test("a workflow card's header offers Resume while an interrupt parks its run and Interrupt otherwise, with Stop while its call runs", () => {
+  test("a workflow card's header offers Resume while an interrupt parks its run and Interrupt otherwise, with Cancel while its call runs", () => {
     // The detail row admits both while the interrupt's evidence is durable and the runner still holds the run.
     const both = { workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.resume", "workflow.delete"] as const }
-    expect(workflowCardControls(both, true, false)).toEqual({ primary: "interrupt", stop: true })
-    expect(workflowCardControls(both, true, true)).toEqual({ primary: "resume", stop: true })
-    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, true)).toEqual({ stop: true })
-    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.resume", "workflow.delete"] }, false, false)).toEqual({ primary: "resume", stop: false })
-    expect(workflowCardControls(undefined, false, false)).toEqual({ stop: false })
+    expect(workflowCardControls(both, true, false)).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
+    expect(workflowCardControls(both, true, true)).toEqual({ primary: "resume", resumeFailed: false, stop: true })
+    // A failed agent's Resume shows beside the Interrupt of its running siblings.
+    expect(workflowCardControls(both, true, false, true)).toEqual({ primary: "interrupt", resumeFailed: true, stop: true })
+    expect(workflowCardControls(both, true, true, true)).toEqual({ primary: "resume", resumeFailed: false, stop: true })
+    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, false, true)).toEqual({ primary: "interrupt", resumeFailed: false, stop: true })
+    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.interrupt", "workflow.delete"] }, true, true)).toEqual({ resumeFailed: false, stop: true })
+    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.resume", "workflow.delete"] }, false, false)).toEqual({ primary: "resume", resumeFailed: false, stop: false })
+    expect(workflowCardControls(undefined, false, false)).toEqual({ resumeFailed: false, stop: false })
     // Saved progress that cannot run offers Restart in place of Resume.
-    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.restart", "workflow.delete"] }, false, true)).toEqual({ primary: "restart", stop: false })
+    expect(workflowCardControls({ workflowId: "w", admittedActions: ["workflow.restart", "workflow.delete"] }, false, true)).toEqual({ primary: "restart", resumeFailed: false, stop: false })
   })
 
   test("says who interrupted a turn or run, and names the other ends in the same words everywhere", () => {
@@ -118,31 +122,31 @@ describe("session controls", () => {
     expect(interruptedLabel("runtime")).toBe("Interrupted by the runtime")
     expect(UNEXPECTED_EXIT_LABEL).toBe("Interrupted by an unexpected exit")
     expect(RESUMED_LABEL).toBe("Resumed")
-    expect(workflowStateLabel("running", { stoppedBy: "person" })).toBe("Stopped")
-    expect(workflowStateLabel("running", { stoppedBy: "agent" })).toBe("Canceled")
+    expect(workflowStateLabel("running", { stoppedBy: "person" })).toBe("Canceled")
+    expect(workflowStateLabel("running", { stoppedBy: "agent" })).toBe("Canceled by the parent")
   })
 
   test("names a child card's run state, and nothing for a state its header does not name", () => {
     expect(runStatusLabel({ status: "interrupted" })).toBe("Interrupted")
     expect(runStatusLabel({ status: "paused", pausedBy: "runtime" })).toBe("Interrupted by the runtime")
-    expect(runStatusLabel({ status: "stopped" })).toBe("Stopped")
-    expect(runStatusLabel({ status: "cancelled" })).toBe("Canceled")
+    expect(runStatusLabel({ status: "stopped" })).toBe("Canceled")
+    expect(runStatusLabel({ status: "cancelled" })).toBe("Canceled by the parent")
     expect(runStatusLabel({ status: "partial" })).toBe("Partial")
     expect(runStatusLabel({ status: "active" })).toBeUndefined()
   })
 
-  test("names a workflow's ended or interrupted phase, a Stop over any saved state, and nothing while it runs", () => {
+  test("names a workflow's ended or interrupted phase, a Cancel over any saved state, and nothing while it runs", () => {
     expect(workflowStateLabel("paused", undefined)).toBe("interrupted")
     expect(workflowStateLabel("completed", undefined)).toBe("completed")
     expect(workflowStateLabel("failed", undefined)).toBe("failed")
     expect(workflowStateLabel("running", undefined)).toBeUndefined()
     expect(workflowStateLabel("idle", undefined)).toBeUndefined()
     expect(workflowStateLabel(undefined, undefined)).toBeUndefined()
-    expect(workflowStateLabel("paused", { stoppedBy: "person" })).toBe("Stopped")
-    expect(workflowStateLabel("completed", { stoppedBy: "agent" })).toBe("Canceled")
+    expect(workflowStateLabel("paused", { stoppedBy: "person" })).toBe("Canceled")
+    expect(workflowStateLabel("completed", { stoppedBy: "agent" })).toBe("Canceled by the parent")
     const drift = { workflowDefinitionId: "implement", changes: [{ component: "graph" as const }] }
     expect(workflowStateLabel("paused", { definitionDrift: drift })).toBe("cannot continue")
-    expect(workflowStateLabel("paused", { stoppedBy: "person", definitionDrift: drift })).toBe("Stopped")
+    expect(workflowStateLabel("paused", { stoppedBy: "person", definitionDrift: drift })).toBe("Canceled")
     // A planned replacement's pause runs on in its successor, unless an agent's own interrupt holds it.
     expect(workflowStateLabel("paused", { continuationOwed: true })).toBeUndefined()
     expect(workflowStateLabel("paused", { continuationOwed: true }, true)).toBe("interrupted")

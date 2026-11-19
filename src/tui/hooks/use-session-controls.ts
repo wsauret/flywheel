@@ -6,7 +6,7 @@ import type { Accessor } from "solid-js"
 
 /** The one slice of a row the controls read: its id for the mutation, its
  *  kind for the mutation type, the actions it admits, and the parent's tool
- *  call that Stop terminates. */
+ *  call that Cancel terminates. */
 type ControlledSessionRow = Pick<SessionRow, "id" | "kind" | "admittedActions" | "parentSessionId" | "parentToolUseId">
 
 interface SessionControlsDeps {
@@ -30,7 +30,7 @@ export interface SessionControlsHook {
   stop(): void
 }
 
-/** One Interrupt, one Resume, and one Stop for every session kind
+/** One Interrupt, one Resume, and one Cancel for every session kind
  *  (PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044, PI-INTERACTION-115, PI-AGENT-020, PI-AGENT-072): the row's kind
  *  picks the mutation, and the runtime's refusal is shown in its own words. */
 export function useSessionControls(deps: SessionControlsDeps): SessionControlsHook {
@@ -66,8 +66,8 @@ export function useSessionControls(deps: SessionControlsDeps): SessionControlsHo
     const mutation = stopMutation(deps.row() ?? undefined)
     if (!mutation) return
     void deps.appService.dispatch(mutation)
-      .then((result) => report("Stop failed", refusalOf(result)))
-      .catch(failed("Stop failed"))
+      .then((result) => report("Cancel failed", refusalOf(result)))
+      .catch(failed("Cancel failed"))
   }
 
   return { offered, interrupt, resume, stop }

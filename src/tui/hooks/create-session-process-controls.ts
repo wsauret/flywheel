@@ -26,7 +26,7 @@ export function createSessionProcessControls(deps: SessionProcessControlDeps): (
         if (!toolProcess(status(), toolUseId).managed) return
         void terminateBackgroundCommand(deps, sessionId, toolUseId)
       },
-      // A child's Stop ends the parent's tool call it answers: the parent is
+      // A child's Cancel ends the parent's tool call it answers: the parent is
       // this transcript's session, and the call is the card's.
       onStopChild: (toolUseId) => {
         void deps.appService.dispatch({ type: "background.terminate", sessionId, toolUseId }).then((result) => {

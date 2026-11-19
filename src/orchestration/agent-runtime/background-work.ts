@@ -36,8 +36,9 @@ export type BackgroundWorkResult =
   | BackgroundWorkResultBase & {
     /** `partial`: the work stopped at its turn budget and `content` is what it
      *  had, not a completion. The parent decides whether to retask or accept. */
-    /** `stopped`: a person ended the work with Stop; `cancelled`: the
-     *  requesting agent did. Both are terminal and never resume. */
+    /** `stopped`: a person ended the work with Cancel; `cancelled`: the
+     *  requesting agent did. Both end the run for its parent; only an
+     *  explicit Resume of a child runs it again. */
     status: "completed" | "partial" | "cancelled" | "stopped";
   }
   | BackgroundWorkResultBase & {

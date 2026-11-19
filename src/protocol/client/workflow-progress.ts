@@ -27,7 +27,7 @@ export interface WorkflowProgress {
   /** Agents that run now. Several run at once in a phase of several agents. */
   readonly running: number
   /** The attempt of the first agent that has not settled: the one that
-   *  runs, the one an interrupt or a Stop cut, or the one that is blocked
+   *  runs, the one an interrupt or a Cancel cut, or the one that is blocked
    *  or failed. Absent when every agent settled. */
   readonly current?: WorkflowAttempt
   /** Agents that run only if an earlier agent's handoff asks for them. */

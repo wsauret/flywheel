@@ -267,7 +267,7 @@ Not: Activity-edge polling, or a parent children-list stream that duplicates det
 
 ## ARCH-PROTOCOL-050: Controls derive from runtime admission, never navigation
 
-Navigation holds belong to root chats; a child viewer holds read resources, not a runner claim, and closing it releases only the viewer. Messages, Stop, interrupt, resume, deletion, and read-only settlement derive from runtime-admitted actions and status, never from navigation, presentation state, or result text. Every client derives a child's controls and its Stopped or Canceled label from that admission.
+Navigation holds belong to root chats; a child viewer holds read resources, not a runner claim, and closing it releases only the viewer. Messages, Stop, interrupt, resume, deletion, and read-only settlement derive from runtime-admitted actions and status, never from navigation, presentation state, or result text. Every client derives a child's controls and its Canceled or Canceled by the parent label from that admission.
 
 ## ARCH-PROTOCOL-051: Returned input has no per-child draft store
 

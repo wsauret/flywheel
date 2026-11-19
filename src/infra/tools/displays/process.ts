@@ -4,19 +4,21 @@ import type { ToolDisplay } from "../types.js";
 
 /** The row name of a control of a child session, or nothing for any other
  *  call. Interrupt and resume act on children only. A stop acts on a child
- *  when its process id is a session id; a stop of a command, as history
- *  from before children were processes holds, stays model plumbing. */
+ *  when its process id is a session id, and its row reads Cancel, as a
+ *  person's control of a child does (PI-INTERACTION-140); a stop of a
+ *  command, as history from before children were processes holds, stays
+ *  model plumbing. */
 function controlName(input: Parameters<typeof strField>[0]): string | undefined {
   switch (strField(input, "action")) {
     case "interrupt": return "Interrupt";
     case "resume": return "Resume";
-    case "stop": return isSessionId(strField(input, "process_id") ?? "") ? "Stop" : undefined;
+    case "stop": return isSessionId(strField(input, "process_id") ?? "") ? "Cancel" : undefined;
     default: return undefined;
   }
 }
 
 /** The work an agent started. Its reads, waits, and command stops are model
- *  plumbing; its interrupt, resume, and stop of its own child show a row, so
+ *  plumbing; its interrupt, resume, and cancel of its own child show a row, so
  *  a person sees what the agent did to its child. The row names the action
  *  and its target by name or goal, as a message row does. */
 export const processDisplay: ToolDisplay = {
@@ -39,7 +41,7 @@ export const processDisplay: ToolDisplay = {
     switch (strField(input, "action")) {
       case "wait": return { name: "Waited", detail: `for ${target ?? "processes"}` };
       case "read_output": return { name: "Read", detail: `output of ${target ?? "a process"}` };
-      case "stop": return { name: "Stopped", detail: target ?? "a process" };
+      case "stop": return { name: controlName(input) ? "Canceled" : "Stopped", detail: target ?? "a process" };
       case "interrupt": return { name: "Interrupted", detail: target ?? "" };
       case "resume": return { name: "Resumed", detail: target ?? "" };
       case "list": return { name: "Listed", detail: "processes" };

@@ -267,6 +267,24 @@ const WorkflowToolResultCorrected = defineRuntimeFact({
   }),
 });
 
+/** An explicit Resume of a workflow whose launching call holds a Cancel:
+ *  a person's (`by: "person"`) or the parent agent's. It names the result,
+ *  a Cancel or the correction to one, that it passes, so the call waits
+ *  again until a later result or correction lands. No automatic wake
+ *  records one. Additive since 2026-11-19: a store without it keeps every
+ *  Cancel current. */
+const WorkflowToolResultResumed = defineRuntimeFact({
+  type: "workflow.tool_result.resumed",
+  version: 1,
+  actor: "flywheel",
+  payload: Schema.Struct({
+    toolUseId: Schema.NonEmptyString,
+    childSessionId: Schema.NonEmptyString,
+    resultEventId: Schema.NonEmptyString,
+    by: Schema.Literals(["person", "agent"]),
+  }),
+});
+
 /** The settled record of a command. An `mutates` command that settled after its
  *  result was recorded (a background or transferred command) also carries the
  *  project edits it published at exit; its result has no other place for them.
@@ -628,6 +646,7 @@ export const SESSION_RUNTIME_FACT_DEFINITIONS = [
   ToolResultRecorded,
   ToolResultRecordedV3,
   WorkflowToolResultCorrected,
+  WorkflowToolResultResumed,
   ToolExecutionOutputRecorded,
   ToolExecutionOutputRecordedV3,
   ToolBackgroundCommandRecorded,

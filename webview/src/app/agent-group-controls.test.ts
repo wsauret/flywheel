@@ -11,32 +11,32 @@ const group: Extract<FrontendOutputBlock, { kind: "agentGroup" }> = {
   status: "active", children: [], totalToolCount: 1, timestamp: 0, linkUri: "flywheel://session/child",
 }
 
-test("subagent controls use child admission and dispatch its interrupt, resume, and parent-call Stop", async () => {
+test("subagent controls use child admission and dispatch its interrupt, resume, and parent-call Cancel", async () => {
   const mounted = mountAgentGroup(group, undefined, ["subagent.interrupt", "subagent.resume"])
   try {
     await settle()
-    assert.match(mounted.text(), /OpenInterruptStop/)
-    const buttons = mounted.elements().filter(node => node.properties["aria-label"] === "Interrupt" || node.properties["aria-label"] === "Stop")
+    assert.match(mounted.text(), /OpenInterruptCancel/)
+    const buttons = mounted.elements().filter(node => node.properties["aria-label"] === "Interrupt" || node.properties["aria-label"] === "Cancel")
     assert.equal(buttons.length, 2)
     assert.equal(buttons[0]!.parentNode, buttons[1]!.parentNode)
     mounted.click("Actions")
-    assert.deepEqual(mounted.elements().filter(node => node.properties.role === "menuitem").map(node => node.properties["aria-label"]), ["Interrupt", "Stop"])
+    assert.deepEqual(mounted.elements().filter(node => node.properties.role === "menuitem").map(node => node.properties["aria-label"]), ["Interrupt", "Cancel"])
     assert.match(mounted.text(), /Cut it now\. Resume continues it\./)
-    assert.match(mounted.text(), /End this run\./)
+    assert.match(mounted.text(), /End this run for its parent\./)
     const menu = mounted.elements().find(node => node.properties.role === "menu")
     mounted.setBlock({ ...group, totalTokens: 50 })
     assert.equal(mounted.elements().find(node => node.properties.role === "menu"), menu, "a publication keeps the open menu")
     mounted.click("Interrupt", true)
     assert.equal(mounted.elements().some(node => node.properties.role === "menu"), false)
     mounted.click("Actions")
-    mounted.click("Stop", true)
+    mounted.click("Cancel", true)
     await settle()
     assert.deepEqual(mounted.mutations, [{ type: "subagent.interrupt", sessionId: "child" }])
     assert.deepEqual(mounted.terminated, ["dispatch"])
     mounted.setBlock({ ...group, status: "paused", pausedBy: "person" })
     await settle()
     assert.match(mounted.text(), /OpenResume/)
-    assert.doesNotMatch(mounted.text(), /Stop/)
+    assert.doesNotMatch(mounted.text(), /Cancel/)
     mounted.click("Actions")
     assert.deepEqual(mounted.elements().filter(node => node.properties.role === "menuitem").map(node => node.properties["aria-label"]), ["Resume"])
     assert.match(mounted.text(), /Continue it\./)
@@ -53,7 +53,7 @@ test("subagent controls use child admission and dispatch its interrupt, resume, 
   try {
     await settle()
     assert.doesNotMatch(noAdmission.text(), /Interrupt|Resume/)
-    assert.match(noAdmission.text(), /Stop/)
+    assert.match(noAdmission.text(), /Cancel/)
   } finally { noAdmission.dispose() }
 })
 
@@ -83,7 +83,7 @@ test("header actions open on a held press or right-click, suppress Open, and clo
     jest.runOnlyPendingTimers()
     assert.equal(expanded(), true)
     document.dispatch("keydown", { key: "ArrowDown", preventDefault() {}, stopPropagation() {} })
-    assert.equal(document.activeElement?.properties["aria-label"], "Stop")
+    assert.equal(document.activeElement?.properties["aria-label"], "Cancel")
     document.dispatch("keydown", { key: "ArrowUp", preventDefault() {}, stopPropagation() {} })
     assert.equal(document.activeElement?.properties["aria-label"], "Interrupt")
     let stopped = false
@@ -165,7 +165,7 @@ test("a narrow header drops operations while keeping the model, persona, control
     assert.equal(dropped("operations"), true)
     assert.equal(dropped("persona"), false)
     assert.equal(dropped("model"), false)
-    assert.match(mounted.text(), /OpenStop/)
+    assert.match(mounted.text(), /OpenCancel/)
     assert.match(mounted.text(), /2s/)
   } finally { mounted.dispose() }
 })

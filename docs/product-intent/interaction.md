@@ -30,9 +30,9 @@ Flywheel shows each transcript-visible tool call with its available input, outpu
 
 Detach and Stop are separate controls on a running command. Detach, or the command reaching its foreground time limit, moves that one command to the background, and its row then offers Stop instead. A command that ends first stays an ordinary foreground result and never appears as background work. On the web client, both controls sit at the end of the command's own row, over the tail of a long command, so the row keeps one line.
 
-## PI-INTERACTION-140: Stopped work reads apart from interrupted work
+## PI-INTERACTION-140: Stopped and canceled work reads apart from interrupted work
 
-Stop ends a background command, a subagent's current work, or a workflow, and a stopped child's pending tool call in its parent resolves. Work a person stopped reads Stopped and work an agent stopped reads Canceled, also in saved transcripts. Work that its parent agent interrupted reads as interrupted by the parent, in the parent's transcript and in the child's own transcript. A stopped or canceled subagent admits explicit Resume, but completed subagents, stopped commands, and stopped workflows do not.
+Stop ends a background command, and Cancel ends a subagent's current work or a workflow. The pending tool call in the parent then resolves. A command a person stopped reads Stopped, and one an agent stopped reads Canceled. A child a person canceled reads Canceled, and one its parent agent canceled reads Canceled by the parent, also in saved transcripts. Work that its parent agent interrupted reads as interrupted by the parent, in both transcripts. A canceled subagent or workflow admits explicit Resume, but completed subagents and stopped commands do not.
 
 ## PI-INTERACTION-141: File edits preview as diffs while they stream
 
@@ -72,7 +72,7 @@ A script the agent runs through the code tool has no row of its own, and on ever
 
 ## PI-INTERACTION-150: A subagent reads as one compact row
 
-A subagent dispatch appears in the parent transcript as a header and one agent line, in the words of an agent line on a workflow card (PI-INTERACTION-164). The header names the subagent's persona, goal, model and effort, and operations, and holds Open, Interrupt or Resume as its state admits, and Stop while it runs. The agent line marks its handoff summary as partial when the subagent stopped at its turn budget. The parent transcript renders none of the subagent's tool output, and the subagent's own session keeps its normal tool views.
+A subagent dispatch appears in the parent transcript as a header and one agent line, in the words of an agent line on a workflow card (PI-INTERACTION-164). The header names the subagent's persona, goal, model and effort, and operations, and holds Open, Interrupt or Resume as its state admits, and Cancel while it runs. The agent line marks its handoff summary as partial when the subagent stopped at its turn budget. The parent transcript renders none of the subagent's tool output, and the subagent's own session keeps its normal tool views.
 
 ## PI-INTERACTION-151: A subagent header fits a narrow width
 
@@ -246,7 +246,7 @@ Every workflow belongs to the chat whose agent launches it, including a headless
 
 ## PI-INTERACTION-087: A workflow's launch call waits for its result
 
-A workflow's launching call stays pending while the workflow runs or has interrupted work that can continue. Completion and Stop resolve that call and deliver the result to the parent once.
+A workflow's launching call stays pending while the workflow runs or has interrupted work that can continue. Completion and Cancel resolve that call and deliver the result to the parent once.
 
 ## PI-INTERACTION-088: Deleting a chat deletes the work it owns
 
@@ -342,7 +342,7 @@ When a supported model provides a user-facing progress update, every client show
 
 ## PI-INTERACTION-035: Agent work never blocks interaction
 
-Flywheel keeps typing, rendering, navigation, session and tab controls, Stop, and connection liveness responsive while agents, tools, searches, indexing, builds, and tests run.
+Flywheel keeps typing, rendering, navigation, session and tab controls, Stop and Cancel, and connection liveness responsive while agents, tools, searches, indexing, builds, and tests run.
 
 ## PI-INTERACTION-036: A recovered connection is invisible and a lost one is explained
 
@@ -382,7 +382,7 @@ Clicking or tapping a row in the background list closes the list and shows the r
 
 ## PI-INTERACTION-095: A background row opens or stops its work
 
-Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate x control, and the x key in the terminal, stops a row that is still active, and on the web client Stop asks for confirmation first.
+Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate x control, also the x key in the terminal, ends a row that is still active: it stops a command and cancels a child. On the web client it asks for confirmation first.
 
 ## PI-INTERACTION-096: Background command output expands in the list
 
@@ -416,7 +416,7 @@ A session open in a tab is always served. After a runtime restart it returns on 
 
 ## PI-INTERACTION-043: A chat turn is interrupted, never stopped
 
-A running chat turn has one way to stop, which is interrupt, and a chat offers no terminal stop. Every surface's control interrupts the turn, and so does Escape while no question waits at the prompt. Interrupting cuts the turn at once, including a tool call or a wait that it is in, keeps everything already committed, and leaves the session idle. Subagents, workflows, and background commands that the turn started keep running, and each has its own Stop.
+A running chat turn has one way to stop, which is interrupt, and a chat offers no terminal stop. Every surface's control interrupts the turn, and so does Escape while no question waits at the prompt. Interrupting cuts the turn at once, including a tool call or a wait that it is in, keeps everything already committed, and leaves the session idle. Subagents, workflows, and background commands that the turn started keep running. Each subagent and workflow has its own Cancel, and each command its own Stop.
 
 ## PI-INTERACTION-101: Interrupted work says who interrupted it
 
@@ -442,9 +442,9 @@ Interrupt stops the agents it names at once: from an agent view, that agent alon
 
 While a module that a workflow needs is off, Resume says which module is off and how to turn it on. A message that the person sends to an interrupted agent meanwhile stays in its agent view, marked as waiting. Once the module is on, the agent continues with that message, and the person does not send it again.
 
-## PI-INTERACTION-115: Stop ends a workflow for its parent
+## PI-INTERACTION-115: Cancel ends a workflow for its parent
 
-Stop ends a workflow for its parent and resolves the parent's call as stopped. The parent's result includes the last handoff written before the Stop, as a record of finished work and not as a request to continue. An agent view has no Stop for its agent alone.
+Cancel ends a workflow for its parent and resolves the parent's call as stopped. A canceled workflow is not its parent's work until an explicit Resume runs it again. The parent's result includes the last handoff written before the Cancel, as a record of finished work and not as a request to continue. An agent view has no Cancel for its agent alone.
 
 ## PI-INTERACTION-116: Escape and Back in a workflow's views
 
@@ -488,7 +488,7 @@ A settled phase's line and the plan bar show a survey's coverage in the same wor
 
 ## PI-INTERACTION-169: A workflow card's header names the run and holds its controls
 
-The header names the run by its launch title, or else by the workflow's name, and every surface of the run uses that name. It shows the elapsed time and, at full size, the cost. At both sizes it shows the state of a run that is not running, and Interrupt, Resume, or Restart as the run admits. It also shows Open on the inline card, and Stop while the parent's call can stop the run. A narrow header shortens the name, then the state, but keeps the time and keeps every control reachable from its action menu.
+The header names the run by its launch title, or else by the workflow's name, and every surface of the run uses that name. It shows the elapsed time and, at full size, the cost. At both sizes it shows the state of a run that is not running, and Interrupt, Resume, or Restart as the run admits. It also shows Open on the inline card, and Cancel while the parent's call can end the run. A narrow header shortens the name, then the state, but keeps the time and keeps every control reachable from its action menu.
 
 ## PI-INTERACTION-175: A workflow card hides inner tool calls and flags a changed or damaged run
 
@@ -728,4 +728,16 @@ Closing a chat's tab only stops showing the chat. Its running turn, its backgrou
 
 ## PI-INTERACTION-119: Close chat interrupts the turn and leaves workflows running
 
-Close chat is the close command, which acts on the chat in front in every client and is refused in a subagent or a workflow agent. Every client offers Close chat on an active chat's session row, and Close chat asks for no confirmation. It interrupts the running turn as the runtime so that Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop.
+Close chat is the close command, which acts on the chat in front in every client and is refused in a subagent or a workflow agent. Every client offers Close chat on an active chat's session row, and Close chat asks for no confirmation. It interrupts the running turn as the runtime so that Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Cancel.
+
+## PI-INTERACTION-181: The service gives back store space while a project is idle
+
+While a project runs no work, the Flywheel service deletes stored values that newer values replaced and gives the freed space back to the disk, a little at a time. When work starts, it stops at once, so work never waits on it. A store that an older release created gives space back this way only after one run of Reclaim storage.
+
+## PI-INTERACTION-182: Reclaim storage frees a project's space on request
+
+Reclaim storage is a command in every client. It first shows the store's size, the space it can give back, and the free disk space. On confirmation, the service pauses the project's sessions, rebuilds the store, and opens the project again with the sizes before and after. A paused session continues on its next message. When the disk has too little free space, the command says how much more it needs and changes nothing.
+
+## PI-INTERACTION-183: The welcome card suggests Reclaim storage when much space is reclaimable
+
+When Reclaim storage can give back more than 1 GiB, the welcome card suggests it, and choosing the suggestion opens the command. The status view always shows the store's size and the space that Reclaim storage can give back.

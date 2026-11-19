@@ -23,8 +23,9 @@ const COMMAND_FACT_TYPE = "tool.background_command.recorded"
 const CHILD_FACT_TYPES: ReadonlySet<string> = new Set(["session.lifecycle.changed", "session.label.updated"])
 /** The facts that change the child list of the session they land on. */
 const CHILD_LIST_FACT_TYPES: ReadonlySet<string> = new Set(["session.child.linked", "session.child.unlinked"])
-/** The root's facts that can record a Stop of a workflow's launching call. */
-const CALL_RESULT_FACT_TYPES: ReadonlySet<string> = new Set(["tool.result.recorded", "workflow.tool_result.corrected"])
+/** The root's facts that can record a Stop of a workflow's launching call,
+ *  or a Resume that passes it. */
+const CALL_RESULT_FACT_TYPES: ReadonlySet<string> = new Set(["tool.result.recorded", "workflow.tool_result.corrected", "workflow.tool_result.resumed"])
 
 export interface BackgroundIndexOwnerDeps {
   readonly index: Pick<BackgroundIndex, "tree">
@@ -191,8 +192,10 @@ function createBackgroundIndexOwner(deps: BackgroundIndexOwnerDeps): BackgroundI
       // A stored result decodes in its stored shape: a large result's text is
       // a content reference, which this reader never loads.
       const fact = parseProjectionFact(event, parseStoredSessionRuntimeFact)
-      if (fact.type !== "tool.result.recorded" && fact.type !== "workflow.tool_result.corrected") return
-      const outcome = fact.payload.outcome
+      if (fact.type !== "tool.result.recorded" && fact.type !== "workflow.tool_result.corrected" && fact.type !== "workflow.tool_result.resumed") return
+      // A Resume names the call's newest result, so it passes the Cancel
+      // that the tree holds.
+      const outcome = fact.type === "workflow.tool_result.resumed" ? undefined : fact.payload.outcome
       const workflowId = tree.callResult(fact.payload.toolUseId, outcome === "stopped" ? "person" : outcome === "cancelled" ? "agent" : undefined)
       if (workflowId !== undefined) mark(index, { kind: "workflow", workflowId })
     }

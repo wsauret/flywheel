@@ -5,7 +5,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import { readWorkflowControlStatuses } from "../../workflows/vm/control-status.js"
 import type { WorkflowRunRecord } from "../workflow-host/run-record.js"
-import { readPendingTurnEnd, workflowInteractionRefusal, workflowStopRefusal } from "./chat-session-run-evidence.js"
+import { childCallOf, readPendingTurnEnd, workflowInteractionRefusal, workflowStopRefusal } from "./chat-session-run-evidence.js"
 import { workflowRunReader, workflowRunOwner } from "../module-catalog.js"
 import { readChildSessionRunEvidence, type ChildSessionRunEvidence } from "./child-session-run-evidence.js"
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
@@ -149,8 +149,7 @@ export async function readWorkflowRecipientStates(deps: Pick<SessionInputDeliver
   await Promise.all([...callsByParent].map(async ([parentId, children]) => {
     const calls = await readToolExecutions(reader, parentId, children.map(({ run }) => run.launchedFrom.toolUseId))
     for (const { workflowId, run } of children) {
-      const outcome = calls.get(run.launchedFrom.toolUseId)?.resultOutcome
-      if (outcome === "stopped" || outcome === "cancelled") stopped.add(workflowId)
+      if (childCallOf(calls.get(run.launchedFrom.toolUseId)).stoppedBy !== undefined) stopped.add(workflowId)
     }
   }))
   return Promise.all(runs.map(async ({ workflowId, run }) => ({

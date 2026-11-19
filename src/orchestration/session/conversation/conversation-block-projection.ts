@@ -21,7 +21,7 @@ import { resetFailedFileChange } from "../../../infra/output/file-change-settlem
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import type { AgentInputEntry } from "../agent-input-projection.js";
 import { formatAgentInputAnswers } from "../../../protocol/question-protocol-types.js";
-import { CANCELED_LABEL, interruptedLabel, RESUMED_LABEL, STOPPED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../infra/output/run-labels.js";
+import { CANCELED_LABEL, interruptedLabel, PARENT_CANCELED_LABEL, RESUMED_LABEL, UNEXPECTED_EXIT_LABEL } from "../../../infra/output/run-labels.js";
 import { isContextResetRecord, isVisibleTurnEnd, turnEndOfEntry } from "./turn-end-record.js";
 import { isHistoricalCompletionEntry } from "../child-session-completion.js";
 import { isBriefEntry } from "./brief-entry.js";
@@ -637,10 +637,10 @@ function settleToolEntry(call: ToolEntry, result: ToolResultMessage, meta: ToolR
         settled = { ...tool, ...preserved, status: "completed" };
         break;
       case "cancelled":
-        settled = { ...tool, ...preserved, status: "error", errorMessage: CANCELED_LABEL };
+        settled = { ...tool, ...preserved, status: "error", errorMessage: PARENT_CANCELED_LABEL };
         break;
       case "stopped":
-        settled = { ...tool, ...preserved, status: "error", errorMessage: STOPPED_LABEL };
+        settled = { ...tool, ...preserved, status: "error", errorMessage: CANCELED_LABEL };
         break;
     }
   } else if (result.interrupted === true) settled = { ...tool, ...preserved, status: "interrupted" };
