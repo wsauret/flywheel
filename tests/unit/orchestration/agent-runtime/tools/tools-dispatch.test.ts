@@ -229,9 +229,10 @@ describe("tool dispatch", () => {
     expect(invalid.repairNotice).toBeUndefined();
   });
 
-  // ARCH-TOOLS-058: a short-form tool answers a call with no arguments with its contract, refuses an invalid call
-  // with its problems and the contract, and runs a valid call after the shared repairs.
-  it("answers a short-form tool's empty call with its contract, an invalid call with problems and the contract, and runs a valid call", async () => {
+  // ARCH-TOOLS-058: a short-form tool names the inputs that a call needs in its one line, answers a call with no
+  // arguments with its contract, refuses an invalid call with its problems and the contract, and runs a valid call
+  // after the shared repairs.
+  it("names a short-form tool's required inputs, answers its empty call with its contract, an invalid call with problems and the contract, and runs a valid call", async () => {
     let preparations = 0;
     const received: RuntimeToolInput[] = [];
     const full: RuntimeTool = {
@@ -240,6 +241,7 @@ describe("tool dispatch", () => {
       prepareAdmission: async () => { preparations++; return {}; }, execute: async (input) => { received.push(input); return { content: "ran", outcome: "ok" }; },
     };
     const tool = shortFormTool(full, "Probe things.");
+    expect(tool.description).toBe("Probe things. Required inputs: value. Call with {} to read its full contract first.");
     const tools = new Map([[tool.name, tool]]);
     const contract = tool.contract?.() ?? "";
     for (const part of ["Probe the full description.", "- Probe guideline.", JSON.stringify(full.inputSchema)]) expect(contract).toContain(part);

@@ -35,13 +35,20 @@ function renderContract(tool: AdvertisedTool, schema: RuntimeTool["inputSchema"]
   ].join("\n\n");
 }
 
+/** The names of the inputs that every call of a tool with `schema` must send. A model that calls without reading the
+ *  contract otherwise guesses them, and dispatch refuses the guessed call. */
+function requiredInputs(schema: RuntimeTool["inputSchema"]): string {
+  const required = Array.isArray(schema.required) ? schema.required.filter((name): name is string => typeof name === "string") : [];
+  return required.length > 0 ? ` Required inputs: ${required.join(", ")}.` : "";
+}
+
 /** `tool` in its short form with `summary` as its one line. Its guidelines and examples leave the system prompt and
  *  render only in its contract. */
 export function shortFormTool<Tool extends AdvertisedTool>(tool: Tool, summary: string): Tool {
   const schema = tool.inputValidationSchema ?? tool.inputSchema;
   return {
     ...tool,
-    description: `${summary} ${CONTRACT_HINT}`,
+    description: `${summary}${requiredInputs(schema)} ${CONTRACT_HINT}`,
     promptGuidelines: undefined,
     livePromptGuidelines: undefined,
     promptExamples: undefined,
