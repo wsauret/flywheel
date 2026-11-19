@@ -22,7 +22,12 @@ Declarative custom providers materialize from validated configuration as provide
 
 ## ARCH-PROVIDERS-004: Authentication is a strategy on the provider definition
 
-Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity. It owns credentials, model catalogs, and eligibility across all spend modes of that account. Request and availability identity also include the spend mode. The auth store decoder rejects unknown credential keys by name.
+Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity. It owns credentials, model catalogs, and eligibility across all spend modes of that account. Request and availability identity also include the spend mode.
+
+## ARCH-PROVIDERS-083: The auth store reads leniently and writes exactly
+
+A read with the installed provider ids leaves each unknown provider key out of the loaded store and names it in a diagnostic, and no read writes the file. A credential write keeps each unknown entry that it can decode and refuses the whole write when any entry does not decode exactly.
+Because: A read must not lose a credential that another release or provider wrote, and a write must not rewrite bytes it did not understand.
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
@@ -178,8 +183,14 @@ Each model request owns the selection that PI-MODEL-021 fixes for it: it capture
 
 ## ARCH-PROVIDERS-025: The runtime owns each session's serving model seat
 
-Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. An agent's seat is the role's model and effort that its run resolved when it started (ARCH-RUNTIME-082). The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any.
+Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. An agent's request resolves its seat against the captured availability readiness of its role's preferences (ARCH-PROVIDERS-080). The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any. The runtime records the serving-selection notices of PI-MODEL-056 as display-only system entries in the session's conversation.
 Not: A client that computes the serving model from role inheritance.
+
+## ARCH-PROVIDERS-080: Role preference fallback lives at the request boundary
+
+An agent's request boundary asks each preference of its own role in order whether its model can serve now. It reads the captured availability with the walk's readiness rule, under the role's provider options. A model cannot serve when each usable candidate spent its limit until a known time, or when no candidate is usable. A model with only paid routes yields to a preference with included quota. The request captures its spend admission once for the boundary and the walk. The boundary claims no probe, builds no adapter, and keeps no state between requests.
+Because: Tokenizer identity, effort, prompt preparation, and selection capture are per model.
+Not: Extending the failover walk's candidate list across models.
 
 ## ARCH-PROVIDERS-026: Request identity is separate from prompt-cache keys
 
