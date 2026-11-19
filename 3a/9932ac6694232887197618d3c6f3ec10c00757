@@ -1,0 +1,44 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 181,220-225
+src/infra/auth/auth-context.ts
+  h_4b47e9e4a8b456 29,51-56,58-59,70,77,212,260
+src/infra/auth/auth-store-mutations.ts
+  h_4b47e9e4a8b456 231-256
+src/infra/auth/auth-store-types.ts
+  h_4b47e9e4a8b456 18-19,23-26
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 1,274-277,357-359
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 4,113,394,428
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 59-64,66-69,71,77-78,84,86-87,400-402
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 276-278
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 168,173,191-206,215
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 425
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 2-4,6-8,12-13,23-120,132,148,151-152,163,169-177,179
+tests/unit/infra/auth/auth-context.test.ts
+  h_4b47e9e4a8b456 4,86-87,90-91
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 38,41
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 139-155,368,370-373,405,407-409,413,415
+tests/unit/orchestration/auth/auth-actions.test.ts
+  h_4b47e9e4a8b456 98-122
+tests/unit/orchestration/modules/provider-google-vertex/module.test.ts
+  h_4b47e9e4a8b456 2-3,5-9,13-15,18-23,29-35,38,40-49,52,54-57,60,74-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3a9932ac6694232887197618d3c6f3ec10c00757",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
