@@ -1,0 +1,16 @@
+src/orchestration/app-service/replacement-handoffs.ts
+  h_4b47e9e4a8b456 212-216,226,228-240
+tests/unit/orchestration/app-service/replacement-handoffs.test.ts
+  h_4b47e9e4a8b456 39,43,299-321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7be5345d36d2c559438e91d09c54f11a4dbe10ca",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
