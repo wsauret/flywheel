@@ -9,6 +9,11 @@ import { roleCapture } from "../../../helpers/role-capture.js"
 import { resolveWorkflowAgentRole } from "../../../../src/orchestration/config/role-selection.js"
 import { resolveCapturedRole } from "../../../../src/orchestration/config/role-resolution.js"
 import type { RoleSettings } from "../../../../src/orchestration/session/schemas.js"
+import { Redacted } from "effect"
+import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
+import { testAuthContext } from "../../../helpers/auth-context.js"
+import { modelInfo } from "../../../helpers/model-tier-fixtures.js"
+import { testEligibility, testProviderRegistry } from "../../../helpers/provider-authority.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -154,4 +159,25 @@ test("a request's session roles and its serving role share one catalog of the ca
   } finally {
     plan.mockRestore()
   }
+})
+
+test("an unsaved role's tier fallback prefers a model that a subscription offers on included quota over a newer one that only a paid route offers", async () => {
+  const auth = testAuthContext({ oauth: ["chatgpt"], apiKeys: { openai_api: "key" } })
+  const subscription = { instanceId: "account", credential: { type: "oauth", access: Redacted.make("access"), refresh: Redacted.make("refresh"), expires: 0 } } as const
+  const released = new Map([["gpt-paid-newer", "2026-10-01"], ["gpt-included-older", "2026-05-01"]])
+  const resolved = await resolveCapturedRole("chat", {}, {
+    selection: testProviderRegistry().selection,
+    connection: captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth, subscriptionCredentials: new Map([["chatgpt", [subscription]]]) }),
+    eligibility: testEligibility({
+      modelIds: new Set(released.keys()),
+      candidateOfferings(candidate, model) {
+        const date = released.get(model)
+        const offers = candidate.providerId === "openai_api" || (model === "gpt-included-older" && candidate.spendMode === "included")
+        if (date === undefined || !offers) return []
+        return [{ candidate, wireModelId: model, dataUse: "standard", transport: "openai-responses", resolvedModelMetadata: { ...modelInfo("openai", model, "fixture", 2, 8, date), reasoningEfforts: ["low", "medium", "high"] } }]
+      },
+    }),
+    allowTrainingRoutes: false,
+  }, "/scratch")
+  expect(resolved.kind === "selected" ? resolved.role.model : resolved.kind).toBe("gpt-included-older")
 })

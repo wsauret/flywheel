@@ -28,6 +28,10 @@ const operationFamilyCatalogCache = Symbol("operationFamilyCatalogCache");
 export interface TierResolutionOptions {
   readonly userDataRoot: string;
   readonly modelInfos?: Pick<ReadonlyMap<string, ModelInfo>, "get">;
+  /** The canonical ids of the models that an included subscription route of the active profile serves. Inside each
+   *  tier, tier resolution picks one of these before a model that only a paid route serves. Absent, no model has
+   *  that preference. */
+  readonly includedModels?: Pick<ReadonlySet<string>, "has">;
   readonly [operationFamilyCatalogCache]?: Map<string, Promise<FamilyTierCatalog>>;
 }
 
@@ -97,15 +101,17 @@ export async function resolveModelForTierAcrossFamilies(
     throw new Error("Tier resolution requires provider listing.");
   }
   const families = MODEL_FAMILY_ORDER.filter((family) => (availableModels.get(family)?.size ?? 0) > 0);
+  const included = (model: string) => options.includedModels?.has(model) ?? false;
   for (const candidateTier of TIER_RESOLUTION_ORDER[tier]) {
-    const candidates: Array<ResolvedTierModel & { rank: ModelPowerSortRank }> = [];
+    const candidates: Array<ResolvedTierModel & { rank: ModelPowerSortRank; included: boolean }> = [];
     for (const family of families) {
       const catalog = await catalogForFamily(family, availableModels.get(family), options);
-      const model = catalog.tiers[candidateTier][0];
+      const models = catalog.tiers[candidateTier];
+      const model = models.find(included) ?? models[0];
       const rank = model ? catalog.sortRanks.get(normalizeSelectableModelId(model)) : undefined;
-      if (model && rank) candidates.push({ family, model, rank });
+      if (model && rank) candidates.push({ family, model, rank, included: included(model) });
     }
-    const best = candidates.sort(compareTierCandidates)[0];
+    const best = candidates.sort((a, b) => Number(b.included) - Number(a.included) || compareTierCandidates(a, b))[0];
     if (best) return { family: best.family, model: best.model };
   }
   const unranked = (await Promise.all(families.map(async (family) => ({

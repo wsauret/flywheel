@@ -104,6 +104,23 @@ describe("dynamic tier catalog", () => {
       .toEqual({ family: "openai", model: "newer-mid" });
   });
 
+  test("prefers a subscription-served model inside the requested tier and falls back to paid-only models", async () => {
+    const client = makeModelsClient({
+      "paid-newest-cheap": modelInfo("anthropic", "paid-newest-cheap", "fixture", 0.1, 0.4, "2026-10-01"),
+      "paid-newer-cheap": modelInfo("openai", "paid-newer-cheap", "fixture", 0.2, 0.8, "2026-09-01"),
+      "included-cheap": modelInfo("openai", "included-cheap", "fixture", 0.5, 2, "2026-05-01"),
+      "included-mid": modelInfo("openai", "included-mid", "fixture", 2, 8, "2026-10-01"),
+    });
+    const available = new Map([
+      ["anthropic", new Set(["paid-newest-cheap"])],
+      ["openai", new Set(["paid-newer-cheap", "included-cheap", "included-mid"])],
+    ] as const);
+    const options = { ...tierOptions, modelInfos: client.modelInfos, includedModels: new Set(["included-cheap", "included-mid"]) };
+    expect(await resolveModelForTierAcrossFamilies("cheap", available, options)).toEqual({ family: "openai", model: "included-cheap" });
+    expect(await resolveModelForTierAcrossFamilies("cheap", available, { ...options, includedModels: new Set(["included-mid"]) }))
+      .toEqual({ family: "anthropic", model: "paid-newest-cheap" });
+  });
+
   test("uses cheap before powerful only when mid is empty, even across families", async () => {
     const client = makeModelsClient({
       "cheap": modelInfo("openai", "cheap", "fixture", 1, 5, "2026-05-01"),

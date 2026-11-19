@@ -63,6 +63,8 @@ export interface ModelConfigDeps {
   modelInfos?: Pick<ReadonlyMap<string, ModelInfo>, "get" | "keys">;
   /** Revision of the admitted profile eligibility that owns model metadata. */
   readonly eligibilityRevision?: number;
+  /** The models that a subscription offers on its included quota, which the tier fallback prefers inside each tier. */
+  readonly includedModels?: ReadonlySet<string>;
   modelsClient?: ModelsClient;
   availableModels?: ReadonlyMap<ModelFamily, ReadonlySet<string>>;
   /** Published immutable eligibility catalogs for the active profile. */

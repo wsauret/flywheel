@@ -242,6 +242,9 @@ export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmiss
           ]))
         },
         eligibilityRevision: state.revision,
+        // The tier fallback prefers these inside each tier, as a request's role resolution does.
+        includedModels: new Set([...state.enabledCandidates.values()].flatMap((entry) =>
+          entry.candidate.spendMode === "included" && entry.configured && entry.currentConnection && entry.enabledOfferings !== null ? [...entry.enabledOfferings.keys()] : [])),
         modelInfos: admission.selectedModelRoutes === undefined
           ? catalogInfos
           : {

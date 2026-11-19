@@ -325,7 +325,7 @@ function assignmentRoles(deps: ModelConfigDeps, available: ReadonlyMap<ModelFami
 
 /** Tier resolution reads the account snapshot the caller names. */
 function tierOptions(deps: ModelConfigDeps, modelInfos: TierResolutionOptions["modelInfos"] = deps.modelInfos): RoleResolutionOptions {
-  return { userDataRoot: deps.userDataRoot, modelInfos, roleEnvironment: deps.roleEnvironment };
+  return { userDataRoot: deps.userDataRoot, modelInfos, roleEnvironment: deps.roleEnvironment, ...(deps.includedModels === undefined ? {} : { includedModels: deps.includedModels }) };
 }
 
 async function resolveAuth(deps: ModelConfigDeps): Promise<AuthContext> {

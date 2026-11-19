@@ -148,6 +148,8 @@ function buildRoleCatalog(
   const plans = new Map<string, AdmittedFailoverPlan>();
   const available = new Map<ModelFamily, Set<string>>();
   const modelInfos = new Map<string, ModelInfo>();
+  // The models that a subscription offers on its included quota, which the tier fallback prefers inside each tier.
+  const includedModels = new Set<string>();
   for (const model of capture.eligibility?.modelIds ?? []) {
     const plan = capture.selection.plan(model, capture.connection, capture.eligibility, capture.allowTrainingRoutes);
     if (plan.kind !== "admitted") continue;
@@ -157,8 +159,9 @@ function buildRoleCatalog(
     available.set(plan.family, models);
     const metadata = plan.candidateAttributions[0]?.resolvedModelMetadata;
     if (metadata) modelInfos.set(plan.model, metadata);
+    if (plan.candidateAttributions.some(({ candidate }) => candidate.spendMode === "included")) includedModels.add(plan.model);
   }
-  const options = beginTierResolutionOperation({ userDataRoot, modelInfos });
+  const options = beginTierResolutionOperation({ userDataRoot, modelInfos, includedModels });
   const resolve = async (roleId: RoleId, setting: RoleSetting): Promise<CapturedRoleSelection> => {
     if (!hasModels(available)) {
       if (capture.eligibility?.accessPending(capture.allowTrainingRoutes)) return { kind: "access-pending" };
