@@ -1,0 +1,16 @@
+src/orchestration/agent-runtime/tools/short-form.ts
+  h_4b47e9e4a8b456 38-44,51
+tests/unit/orchestration/agent-runtime/tools/tools-dispatch.test.ts
+  h_4b47e9e4a8b456 232-235,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a02aa2ebe9c3e207b74dc182d939c5d31ebc4507",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
