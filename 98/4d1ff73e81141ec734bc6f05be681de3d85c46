@@ -1,0 +1,164 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 181
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 44,58,60
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 155,163,165,167,199,359,361,365
+src/infra/events.ts
+  h_4b47e9e4a8b456 6,58-59
+src/infra/session-notice.ts
+  h_4b47e9e4a8b456 23-38,40-41,45-46
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 136
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 2,7,62
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 6,132-137,148-149,151,155
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 798,802-803
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 5-6,54-55,87,185-195,452,471-474,476-479,481,485-488,508
+src/orchestration/agent-runtime/runtime-assembly.ts
+  h_4b47e9e4a8b456 7,77-78
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 8,245-251,261-263,479-480
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 27-35,51-52,139-142,162-163,181,197,218,247-250,254-261,303,306,311-314,317-320,325,350,372
+src/orchestration/app-service/auth-profile-target.ts
+  h_4b47e9e4a8b456 6,21,32,43
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 62,84-85,159-171,505,545
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 36,58-60,197-201,388-389,393-398,401-411,417-425
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 441
+src/orchestration/app-service/session-detail-projection.ts
+  h_4b47e9e4a8b456 278,283
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 5,27-28,36
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 15,62-65,68-70,89,104,162-166,168-171,185-198,203,206-211,213,234
+src/orchestration/config/session-role-resolver.ts
+  h_4b47e9e4a8b456 157
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 1,307-308,326
+src/orchestration/module-diagnostics.ts
+  h_4b47e9e4a8b456 8-16
+src/orchestration/modules/development/diagnostics/step-efficiency-projection.ts
+  h_4b47e9e4a8b456 1,74,85-90,95,105
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 319-320
+src/orchestration/modules/workflows/history/efficiency.ts
+  h_4b47e9e4a8b456 5,9-10,14,19-21,23-29
+src/orchestration/modules/workflows/history/tool-summary.ts
+  h_4b47e9e4a8b456 22,138,140,166,170,192,263,276,280,293-294,313
+src/orchestration/modules/workflows/live-protocol.ts
+  h_4b47e9e4a8b456 13-14,92-95,104-106,109,112,118-137,169-170,294
+src/orchestration/modules/workflows/protocol.ts
+  h_4b47e9e4a8b456 18,258-263
+src/orchestration/modules/workflows/run-record.ts
+  h_4b47e9e4a8b456 14,37,148-153
+src/orchestration/modules/workflows/view-protocol.ts
+  h_4b47e9e4a8b456 14,65,68
+src/orchestration/session/capacity-wait.ts
+  h_4b47e9e4a8b456 31,43-48,68,70-73,80-81,95-96,99,109-111,114-124,134-141,159-160,184,191-201,219,229-232,243-246
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 4,50-54,62,830
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 251
+src/orchestration/session/workflow-membership.ts
+  h_4b47e9e4a8b456 55-61
+src/orchestration/session/workflow-publication.ts
+  h_4b47e9e4a8b456 4,37-47,68-71,73,85
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 40,62,70-72,241-242,244-250,256,312-314,405-408,419,467,480,602,722,727-729,733-734
+src/orchestration/workflow-host/factory.ts
+  h_4b47e9e4a8b456 166
+src/orchestration/workflow-host/frontend-attempts.ts
+  h_4b47e9e4a8b456 12,18,20-25,31,41-45
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 26-28
+src/protocol/client/workflow-agent.ts
+  h_4b47e9e4a8b456 44-61,151
+src/protocol/session-catalog-protocol-schemas.ts
+  h_4b47e9e4a8b456 4,17
+src/tui/hooks/spinner-status-notice.ts
+  h_4b47e9e4a8b456 1,25-26
+src/workflows/view/live-conversations.ts
+  h_4b47e9e4a8b456 14-19,24
+src/workflows/vm/attempt-continuation.ts
+  h_4b47e9e4a8b456 20-23,39-46
+src/workflows/vm/attempt-conversations.ts
+  h_4b47e9e4a8b456 43-74,76-81,100
+src/workflows/vm/attempt-transitions.ts
+  h_4b47e9e4a8b456 1,225
+tests/helpers/role-capture.ts
+  h_4b47e9e4a8b456 29
+tests/unit/orchestration/agent-runtime/child-conversation-factory.test.ts
+  h_4b47e9e4a8b456 82
+tests/unit/orchestration/agent-runtime/llm/client-factory-subscription-consent.test.ts
+  h_4b47e9e4a8b456 178,198-200,202-203
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter-validation.test.ts
+  h_4b47e9e4a8b456 50,54
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 19,21,36,54,95,102,105,118,133,172-173,175-187,189,192,195,198-200,205,212-213,219,221,229,231-244
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 529-530
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 77,158,184,219,232,235,237-259
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 200,262-263,315,339,341,370,376-379,381,383,425
+tests/unit/orchestration/app-service/model-assignment-service.test.ts
+  h_4b47e9e4a8b456 280,415-416,455,461-462
+tests/unit/orchestration/app-service/session-send.test.ts
+  h_4b47e9e4a8b456 12-13,122-124,131,133-134,137,154
+tests/unit/orchestration/config/model-assignment-controller-scopes.test.ts
+  h_4b47e9e4a8b456 144,151-152,158,233-234,239-240
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 121,127,131,135,137
+tests/unit/orchestration/config/session-role-resolver.test.ts
+  h_4b47e9e4a8b456 28,39,73,76,82-83,133-136
+tests/unit/orchestration/headless/headless-role-authority.test.ts
+  h_4b47e9e4a8b456 24-27,42-43
+tests/unit/orchestration/module-diagnostics.test.ts
+  h_4b47e9e4a8b456 9,19
+tests/unit/orchestration/modules/development/diagnostics/_step-efficiency-fixtures.ts
+  h_4b47e9e4a8b456 343,353-354,362
+tests/unit/orchestration/modules/development/diagnostics/step-efficiency-projection.test.ts
+  h_4b47e9e4a8b456 15,259-280
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 307-309,313,330
+tests/unit/orchestration/session/workflow-session-publication.test.ts
+  h_4b47e9e4a8b456 15-20,245-247,264,266-269,272,274-333
+tests/unit/orchestration/workflow-host/_worker-step-fixtures.ts
+  h_4b47e9e4a8b456 58
+tests/unit/orchestration/workflow-host/historical-worker-task.test.ts
+  h_4b47e9e4a8b456 150
+tests/unit/orchestration/workflow-host/recovery-input.test.ts
+  h_4b47e9e4a8b456 113
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 456,467,471-472,476,485,509-512,517,521-525,527-534,536-537,539-540,544-560,562-570
+tests/unit/orchestration/workflow-host/worker-conversation-tree.test.ts
+  h_4b47e9e4a8b456 121
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 30-31,39-40,605-618,628-630,633-640
+tests/unit/orchestration/workflow-host/workflow-agent-models.test.ts
+  h_4b47e9e4a8b456 64-66,68,149-151
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 193
+tests/unit/workflows/vm/host-continuation.test.ts
+  h_4b47e9e4a8b456 15-17,38
+tests/unit/workflows/vm/step-failure.test.ts
+  h_4b47e9e4a8b456 148-149,256,258-260,274-275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "984d1ff73e81141ec734bc6f05be681de3d85c46",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
