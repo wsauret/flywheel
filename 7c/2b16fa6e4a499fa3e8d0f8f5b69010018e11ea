@@ -1,0 +1,16 @@
+src/orchestration/agent-runtime/tools/diagnostic-parity-limits.ts
+  h_4b47e9e4a8b456 5,43
+tests/unit/orchestration/agent-runtime/diagnostic-parity.test.ts
+  h_4b47e9e4a8b456 310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7c2b16fa6e4a499fa3e8d0f8f5b69010018e11ea",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
