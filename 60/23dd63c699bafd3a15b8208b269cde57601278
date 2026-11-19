@@ -1,0 +1,20 @@
+scripts/anti-slop-llm/diff-rules/backends.ts
+  h_4b47e9e4a8b456 6,161
+src/infra/auth/resolve-key.ts
+  h_4b47e9e4a8b456 6,23-27
+src/infra/shell-command.ts
+  h_4b47e9e4a8b456 1-26
+tests/unit/infra/auth/resolve-key.test.ts
+  h_4b47e9e4a8b456 4-5,8,20-56,135-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6023dd63c699bafd3a15b8208b269cde57601278",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
