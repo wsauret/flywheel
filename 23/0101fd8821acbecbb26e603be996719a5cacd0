@@ -1,0 +1,188 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 270
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 78,85,87,92
+docs/architecture-intent/workflows.md
+  h_4b47e9e4a8b456 97,160
+docs/architecture.md
+  h_4b47e9e4a8b456 102,104,256-261,357,512,521
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 219,283
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 33,35,75,249,345,385,419,445,447,491,731-743
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 105-108,361
+docs/terminology.md
+  h_4b47e9e4a8b456 80
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 116
+src/infra/output/run-labels.ts
+  h_4b47e9e4a8b456 26,29-30,33-36
+src/infra/output/structured-event-tool-results.ts
+  h_4b47e9e4a8b456 15,343-344
+src/infra/runtime-fact-types.ts
+  h_4b47e9e4a8b456 270-287,649
+src/infra/tool-outcome.ts
+  h_4b47e9e4a8b456 12-13
+src/infra/tools/displays/process.ts
+  h_4b47e9e4a8b456 7-10,15,21,44
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 39-41
+src/orchestration/agent-runtime/continuation-messages.ts
+  h_4b47e9e4a8b456 9-14
+src/orchestration/app-service/background-index-publisher.ts
+  h_4b47e9e4a8b456 26-28,195-198
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 214-216,250-252
+src/orchestration/modules/workflows/child-session.ts
+  h_4b47e9e4a8b456 52-55
+src/orchestration/modules/workflows/detail.ts
+  h_4b47e9e4a8b456 4,105-107
+src/orchestration/modules/workflows/host-collection.ts
+  h_4b47e9e4a8b456 93-94,96
+src/orchestration/modules/workflows/protocol.ts
+  h_4b47e9e4a8b456 159,225
+src/orchestration/session/chat-session-run-evidence.ts
+  h_4b47e9e4a8b456 274-280,296-299,302-305,310-311,317-318,321,386-389,393-397,402-404,421-422,424,433,438
+src/orchestration/session/child-reconciliation-index.ts
+  h_4b47e9e4a8b456 39-41,247,249,258,264
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 644-645,648-649
+src/orchestration/session/child-workflow-candidate.ts
+  h_4b47e9e4a8b456 12,46-49,89-92,101
+src/orchestration/session/child-workflow-result.ts
+  h_4b47e9e4a8b456 10-11,26-31,52,54-57,80-105
+src/orchestration/session/conversation/conversation-block-projection.ts
+  h_4b47e9e4a8b456 24,640,643
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 8,152
+src/orchestration/session/tool-execution-projection.ts
+  h_4b47e9e4a8b456 21,248-249,287-298
+src/orchestration/session/tool-execution-types.ts
+  h_4b47e9e4a8b456 46-49
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 23,364,393-397,588
+src/orchestration/workflow-host/controller.ts
+  h_4b47e9e4a8b456 7-10,129-136,147-149,291-295,297-298,310,318,320-330,334,341-343,346-348,352-353,357,372-379,418-433,449,490-493,615
+src/orchestration/workflow-host/factory.ts
+  h_4b47e9e4a8b456 233-237
+src/orchestration/workflow-host/host-collection.ts
+  h_4b47e9e4a8b456 48-52
+src/orchestration/workflow-host/launch-lifecycle.ts
+  h_4b47e9e4a8b456 217-218,230-243
+src/orchestration/workflow-host/runner-types.ts
+  h_4b47e9e4a8b456 55-57
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 28,444,447-459
+src/orchestration/workflow-host/workflow-addressing.ts
+  h_4b47e9e4a8b456 83-88
+src/protocol/client/background-index.ts
+  h_4b47e9e4a8b456 2,95-96,100-102,105-110,144,149
+src/protocol/client/session-controls.ts
+  h_4b47e9e4a8b456 15,26-27,57,76,193-194,197,207,210,213-221,231,233,239-241,257-258,268-271,274
+src/protocol/client/workflow-card.ts
+  h_4b47e9e4a8b456 110,207,341,397,405
+src/protocol/client/workflow-outline.ts
+  h_4b47e9e4a8b456 125,161,325
+src/protocol/client/workflow-progress.ts
+  h_4b47e9e4a8b456 30
+src/tui/components/child-session-body.tsx
+  h_4b47e9e4a8b456 188
+src/tui/components/child-session-viewer.tsx
+  h_4b47e9e4a8b456 202
+src/tui/components/modal-copy.ts
+  h_4b47e9e4a8b456 43
+src/tui/hooks/create-session-process-controls.ts
+  h_4b47e9e4a8b456 29
+src/tui/hooks/use-session-controls.ts
+  h_4b47e9e4a8b456 9,33,69-70
+src/tui/modules/workflows/activity-block.tsx
+  h_4b47e9e4a8b456 4,126,162,165-167,170,173
+src/tui/modules/workflows/agent-viewer.tsx
+  h_4b47e9e4a8b456 166-168,170-174,182-186
+src/tui/modules/workflows/card-viewer.tsx
+  h_4b47e9e4a8b456 10,138,141,144-145,147-150,153-154,220,237-240
+src/tui/output-blocks/stop-affordance.ts
+  h_4b47e9e4a8b456 13,24,29,45,54
+src/workflows/vm/attempt-runner.ts
+  h_4b47e9e4a8b456 47-49,53,128-136,290-292,315
+src/workflows/vm/fact-fold.ts
+  h_4b47e9e4a8b456 26-27,68-76,82-83,88,91,95-96,98-114
+src/workflows/vm/host-types.ts
+  h_4b47e9e4a8b456 173-177
+src/workflows/vm/host.ts
+  h_4b47e9e4a8b456 14,93-99,329-338,347-349,351-358,389-391,441-453,499
+src/workflows/vm/machine.ts
+  h_4b47e9e4a8b456 77-81
+src/workflows/vm/transition.ts
+  h_4b47e9e4a8b456 230-233
+tests/unit/orchestration/app-service/background-index-publisher.test.ts
+  h_4b47e9e4a8b456 133-156
+tests/unit/orchestration/app-service/capacity-wait-continuation.test.ts
+  h_4b47e9e4a8b456 137-138
+tests/unit/orchestration/app-service/runtime-supervisor-workflow-stop.test.ts
+  h_4b47e9e4a8b456 229-232
+tests/unit/orchestration/session/chat-session-run-evidence.test.ts
+  h_4b47e9e4a8b456 64,67-69,110,112
+tests/unit/orchestration/session/child-workflow-stop.test.ts
+  h_4b47e9e4a8b456 14,99-100,124-150
+tests/unit/orchestration/session/conversation-block-projection-subagents.test.ts
+  h_4b47e9e4a8b456 82
+tests/unit/orchestration/workflow-host/_workflow-host-fixtures.ts
+  h_4b47e9e4a8b456 151
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 33-36,38-40,67-71,106-117,130,137-138,173,568-618
+tests/unit/orchestration/workflow-host/workflow-controller-interrupt.test.ts
+  h_4b47e9e4a8b456 20-30,158-159,170-171,188,190-191,194-197,199-328
+tests/unit/orchestration/workflow-host/workflow-controller-launch-origins.test.ts
+  h_4b47e9e4a8b456 189
+tests/unit/orchestration/workflow-host/workflow-controller-resume.test.ts
+  h_4b47e9e4a8b456 105,216-260
+tests/unit/protocol/client/background-index.test.ts
+  h_4b47e9e4a8b456 9,71-74
+tests/unit/protocol/client/session-controls.test.ts
+  h_4b47e9e4a8b456 39,82,104,107-115,117,125-126,132-133,138,145-146,149
+tests/unit/tui/components/workflow-card-viewer.test.tsx
+  h_4b47e9e4a8b456 163,265,273-291
+tests/unit/tui/modals/background-modal.test.tsx
+  h_4b47e9e4a8b456 177
+tests/unit/workflows/vm/step-failure.test.ts
+  h_4b47e9e4a8b456 3,5-14,303-439
+webview/src/app/agent-group-controls.test.ts
+  h_4b47e9e4a8b456 14,18-19,23,25,32,39,56,86,168
+webview/src/app/agent-group.tsx
+  h_4b47e9e4a8b456 81
+webview/src/app/card-action-header.tsx
+  h_4b47e9e4a8b456 8
+webview/src/app/command-panel.tsx
+  h_4b47e9e4a8b456 175,185-186
+webview/src/app/composer.tsx
+  h_4b47e9e4a8b456 146,689-690,706
+webview/src/app/icons.tsx
+  h_4b47e9e4a8b456 36
+webview/src/app/sheets/background-sheet.tsx
+  h_4b47e9e4a8b456 8,28-30,100-103,120
+webview/src/client/actions.ts
+  h_4b47e9e4a8b456 69,81
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 227-228
+webview/src/client/view-state.ts
+  h_4b47e9e4a8b456 193,195
+webview/src/modules/workflows/activity.tsx
+  h_4b47e9e4a8b456 4,59-62,73-75
+webview/src/modules/workflows/card-screen.tsx
+  h_4b47e9e4a8b456 6,20,78,103-108,110,113
+webview/src/modules/workflows/inspection.test.ts
+  h_4b47e9e4a8b456 77,86,98,129,134,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "230101fd8821acbecbb26e603be996719a5cacd0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
