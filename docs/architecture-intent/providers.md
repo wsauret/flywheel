@@ -178,14 +178,8 @@ Each model request owns the selection that PI-MODEL-021 fixes for it: it capture
 
 ## ARCH-PROVIDERS-025: The runtime owns each session's serving model seat
 
-Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. An agent's request resolves its seat against the captured availability readiness of its role's preferences (ARCH-PROVIDERS-080). The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any. The runtime records the serving-selection notices of PI-MODEL-056 as display-only system entries in the session's conversation.
+Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. An agent's seat is the role's model and effort that its run resolved when it started (ARCH-RUNTIME-082). The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any.
 Not: A client that computes the serving model from role inheritance.
-
-## ARCH-PROVIDERS-080: Role preference fallback lives at the request boundary
-
-An agent's request boundary asks each preference of its own role in order whether its model can serve now. It reads the captured availability with the walk's readiness rule, under the role's provider options. A model cannot serve when each usable candidate spent its limit until a known time, or when no candidate is usable. A model with only paid routes yields to a preference with included quota. The request captures its spend admission once for the boundary and the walk. The boundary claims no probe, builds no adapter, and keeps no state between requests.
-Because: Tokenizer identity, effort, prompt preparation, and selection capture are per model.
-Not: Extending the failover walk's candidate list across models.
 
 ## ARCH-PROVIDERS-026: Request identity is separate from prompt-cache keys
 
@@ -222,6 +216,12 @@ Not: List-position routing.
 A provider that serves open-weight models on its own infrastructure spends as a direct API. It ranks after the API of the model's developer and before every aggregator.
 Because: The host bills the request itself and routes it to no third party, and the developer's own endpoint is the reference route for its model.
 Not: An aggregator class for every provider that is not the model's developer.
+
+## ARCH-PROVIDERS-082: The Vertex contribution owns its key's project number
+
+The Google Vertex provider contribution owns the project number of an express key. It reads the number from Vertex's not-found reply, stores it in the credential record beside the key, and every Vertex request, access checks included, addresses that project in the global location.
+Because: Vertex sends a request that names no project to one regional location, where newer models are not served, and an express key cannot read its project through any lookup interface.
+Not: A request without a project path, a placeholder project, or a project number that the person must type.
 
 ## ARCH-PROVIDERS-032: The admitted request's walk is the only retry owner
 

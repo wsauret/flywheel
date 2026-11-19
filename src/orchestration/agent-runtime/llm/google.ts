@@ -56,29 +56,35 @@ interface GoogleClientOverrides {
   apiErrorStatus: (error: Error) => number | undefined;
 }
 
-async function createGoogleClientOverrides(apiKey: Redacted.Redacted<string>, vertex: boolean): Promise<GoogleClientOverrides> {
-  // Vertex express mode: same Gemini wire on aiplatform.googleapis.com, the
-  // API key sent as x-goog-api-key with no project or location (verified live).
+async function createGoogleClientOverrides(apiKey: Redacted.Redacted<string>, vertexProject: string | undefined): Promise<GoogleClientOverrides> {
+  // Vertex express mode: the same Gemini wire on aiplatform.googleapis.com with the API key sent as x-goog-api-key.
+  // Every request names the key's project in the global location, because Vertex sends a request without a project
+  // to one regional location, where newer models are not served (ARCH-PROVIDERS-082). The project goes into the
+  // model's resource name, not the SDK's project option, because the SDK's browser build, which every Flywheel build
+  // resolves, refuses that option when an API key is set. Vertex accepts the project number there (verified live).
   const identity = { httpOptions: { headers: await providerRequestHeaders() } };
-  const client = new GoogleGenAI(vertex ? { vertexai: true, apiKey: Redacted.value(apiKey), ...identity } : { apiKey: Redacted.value(apiKey), ...identity });
+  const client = new GoogleGenAI(vertexProject === undefined
+    ? { apiKey: Redacted.value(apiKey), ...identity }
+    : { vertexai: true, apiKey: Redacted.value(apiKey), ...identity });
+  const resourceName = (model: string) => vertexProject === undefined ? model : `projects/${vertexProject}/locations/global/publishers/google/models/${model}`;
   return {
-    generateContentStream: (request) => client.models.generateContentStream(request),
+    generateContentStream: (request) => client.models.generateContentStream({ ...request, model: resourceName(request.model) }),
     apiErrorStatus: (error: Error) => error instanceof ApiError ? error.status : undefined,
   };
 }
 
 /** The two access providers this adapter serves; they differ only in the
- *  endpoint host the SDK targets and the identity stamped on the stream. */
-export type GoogleAccessProvider = "google_api" | "google_vertex";
+ *  endpoint the SDK targets and the identity stamped on the stream. */
+type GoogleAccessProvider = "google_api" | "google_vertex";
 
 export async function createGoogleAdapter(
   apiKey: Redacted.Redacted<string>,
   defaultModel: string,
   openingInfo: ModelInfo,
-  overrides?: { client?: GoogleClientOverrides; accessProvider?: GoogleAccessProvider },
+  overrides?: { client?: GoogleClientOverrides; vertexProject?: string },
 ): Promise<ConnectedClient> {
-  const accessProvider = overrides?.accessProvider ?? "google_api";
-  const client = overrides?.client ?? await createGoogleClientOverrides(apiKey, accessProvider === "google_vertex");
+  const accessProvider: GoogleAccessProvider = overrides?.vertexProject === undefined ? "google_api" : "google_vertex";
+  const client = overrides?.client ?? await createGoogleClientOverrides(apiKey, overrides?.vertexProject);
   // Counter for synthesizing tool_call IDs when Gemini doesn't supply one.
   // Factory-scoped so each adapter instance has its own monotonic source
   // and no module-level singleton exists.
@@ -391,8 +397,9 @@ function getThinkingConfig(
   const thinkingConfigMode = geminiThinkingConfigMode(model);
   if (effort === "off") {
     if (thinkingConfigMode === "budget") return { thinkingBudget: 0 };
-    const isPro = /gemini-3(?:\.\d+)?-pro/i.test(model);
-    return { thinkingLevel: isPro ? ThinkingLevel.LOW : ThinkingLevel.MINIMAL };
+    // Gemini 3 Pro and every Gemini 4 model refuse the minimal level, so they think at the low level instead.
+    const refusesMinimal = /gemini-3(?:\.\d+)?-pro/i.test(model) || Number(/gemini-(\d+)/i.exec(model)?.[1] ?? 0) >= 4;
+    return { thinkingLevel: refusesMinimal ? ThinkingLevel.LOW : ThinkingLevel.MINIMAL };
   }
   if (thinkingConfigMode === "level") {
     return { includeThoughts: true, thinkingLevel: thinkingLevelForModel(model, effort) };

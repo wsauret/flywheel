@@ -422,7 +422,7 @@ export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot
       if (credential.type === "oauth") return accessOnlyCredential(provider, credential, refreshes)
       const resolved = resolvedKeys.get(credential.key)
       if (resolved === undefined) throw new Error("credential resolution failed")
-      return { type: "api_key", key: Redacted.value(resolved) }
+      return { ...credential, key: Redacted.value(resolved) }
     }
     const credentials: AuthStore = {}
     for (const [provider, value] of Object.entries(captured.store)) {

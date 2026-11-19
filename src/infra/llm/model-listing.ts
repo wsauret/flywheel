@@ -1,7 +1,7 @@
 /** Provider model discovery with one first-party then models.dev fallback. */
 import { createHash } from "node:crypto";
 import { Redacted } from "effect";
-import { apiKey, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials } from "../auth/auth-context.js";
+import { apiKeyCredential, currentCredentialLineage, type AuthContext, type CapturedSubscriptionCredential, type OAuthPersistencePolicy, type RuntimeCredential, type SubscriptionCredentials } from "../auth/auth-context.js";
 import type { CredentialLineages, CredentialSlotClassifier } from "../auth/auth-store-types.js";
 import { deleteProviderModelCatalog, liveModelRefusals, writeProviderModelCatalog, writeProviderModelCandidates, type CatalogProfile, type ModelRefusal, type ProviderModelAccessSnapshot, type SavedModelRefusals } from "../auth/provider-model-catalog-store.js";
 import { openExistingAuthProfileDirectory } from "../auth/auth-profile-store.js";
@@ -27,11 +27,6 @@ export const LISTING_SETTLEMENT_MS = 15_000;
 const MAX_FETCH_CONCURRENCY = 4;
 
 export interface RequestHeaders { [name: string]: string }
-
-function singletonCredential(providerId: AccessProviderId, auth: AuthContext): RuntimeCredential | undefined {
-  const key = apiKey(auth, providerId);
-  return key ? { type: "api_key", key } : undefined;
-}
 
 export function classifyFetchFailure(error: unknown): CatalogDiscovery {
   if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) return { kind: "failed", reason: "timeout" };
@@ -115,7 +110,7 @@ async function fetchProviderCatalog(
   launcher: LauncherScope | undefined,
 ): Promise<AccessProviderCatalogFetchResult | undefined> {
   const contribution = definition.dynamicCatalog;
-  const credential = instance?.credential ?? singletonCredential(definition.id, auth);
+  const credential = instance?.credential ?? apiKeyCredential(auth, definition.id);
   if (contribution?.fetch === undefined || !credential) return undefined;
   return contribution.fetch({
     credential,
@@ -396,7 +391,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
       if (!credentialIsCurrent(candidate, auth, instance, credential)) return invalid();
       audit = await runAccessAudit({
         probe,
-        probeInput: { credential, ...(instance === undefined ? {} : { instance }), authDir: options.authDir, classifySlot: options.classifySlot, oauthPersistence: options.oauthPersistence ?? "profile", signal, ...(launcher === undefined ? {} : { launcher }) },
+        probeInput: { credential, ...(instance === undefined ? {} : { instance }), ...(lineage === undefined ? {} : { lineage }), authDir: options.authDir, classifySlot: options.classifySlot, oauthPersistence: options.oauthPersistence ?? "profile", signal, ...(launcher === undefined ? {} : { launcher }) },
         account,
         lineage: durableLineage,
         limits: contribution.limits,
@@ -430,7 +425,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
     signal: AbortSignal,
     pass: ListingPass,
   ): Promise<ListedCandidate> {
-    const credential = instance?.credential ?? singletonCredential(definition.id, auth);
+    const credential = instance?.credential ?? apiKeyCredential(auth, definition.id);
     const contribution = definition.dynamicCatalog;
     if (!credential || !contribution) return { listed: { models: null }, refusals: {} };
     const lineage = capturedCredentialLineage(candidate, auth, instance);

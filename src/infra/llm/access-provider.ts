@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Schema, type Redacted } from "effect";
 import type { AuthContext, CapturedSubscriptionCredential, OAuthPersistencePolicy, ProviderConnection, RuntimeCredential, RuntimeOAuthCredential, SubscriptionCredentials } from "../auth/auth-context.js";
 import type { AuthProfileAccess } from "../auth/auth-profile-store.js";
 import type { CredentialSlotClassifier } from "../auth/auth-store-types.js";
@@ -271,6 +271,10 @@ type AccessProviderAuthStrategy =
      *  provider's prefix is refused before it is stored, because the store would
      *  report success and then serve no models. */
     readonly keyPrefix?: { readonly prefix: string; readonly description: string };
+    /** Finds the provider project of a key that is being added, for a provider that addresses every request to the
+     *  key's project. The login saves the project with the key. It throws an error that names the cause for the
+     *  person, such as a key that the provider rejects, and the login then stores nothing. */
+    readonly discoverProject?: (key: Redacted.Redacted<string>) => Promise<string>;
   }
   | (AccessProviderOAuthStrategy & AccessProviderOAuthLogin)
   | ({ readonly kind: "external"; readonly statusRank: number } & AccessProviderExternalLogin);
@@ -350,6 +354,9 @@ export type AccessProviderAccessOutcome = "completed" | "refused" | "inconclusiv
 
 export interface AccessProviderAccessProbeInput extends AccessProviderCatalogFetchInput {
   readonly wireModelId: string;
+  /** The credential lineage of the checked account, when it has one. A probe that saves a fact about the
+   *  credential saves it only while this lineage is current. */
+  readonly lineage?: string;
 }
 
 /** A provider's numeric settings for one profile, keyed by the declared

@@ -95,6 +95,31 @@ describe("auth-actions", () => {
     expect(second).toEqual({ type: "api_key", key: "second-key", lineageId: expect.any(String) });
   });
 
+  it("stores a Google Vertex key with the project that Vertex names, and stores nothing when Vertex names none", async () => {
+    const originalFetch = globalThis.fetch;
+    const replies = [
+      Response.json({ error: { code: 404, message: "Publisher model `projects/412275039031/locations/us-central1/publishers/google/models/flywheel-project-discovery` was not found" } }, { status: 404 }),
+      Response.json({ error: { code: 401, message: "API key not valid. Please pass a valid API key." } }, { status: 401 }),
+      Response.json({ error: { code: 404, message: "Not found" } }, { status: 404 }),
+    ];
+    globalThis.fetch = Object.assign(async () => {
+      const reply = replies.shift();
+      if (reply === undefined) throw new Error("unexpected request");
+      return reply;
+    }, { preconnect: originalFetch.preconnect });
+    try {
+      await loginWithApiKey("google_vertex", "AQ.first", AUTH_DIR, resolveKey, undefined, settleCatalog);
+      expect(readStore(AUTH_DIR).google_vertex).toEqual({ type: "api_key", key: "AQ.first", project: "412275039031", lineageId: expect.any(String) });
+      const stored = readStore(AUTH_DIR);
+
+      await expect(loginWithApiKey("google_vertex", "AQ.rejected", AUTH_DIR, resolveKey, undefined, settleCatalog)).rejects.toThrow("Google Vertex rejected this API key");
+      await expect(loginWithApiKey("google_vertex", "AQ.unnamed", AUTH_DIR, resolveKey, undefined, settleCatalog)).rejects.toThrow("Google Vertex did not name the key's project");
+      expect(readStore(AUTH_DIR)).toEqual(stored);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("restores the old direct key when catalog settlement rejects", async () => {
     await loginWithApiKey("anthropic_api", "first-key", AUTH_DIR, resolveKey, undefined, settleCatalog);
     const before = Schema.decodeUnknownSync(MeteredCredentialRecordSchema)(readStore(AUTH_DIR).anthropic_api);

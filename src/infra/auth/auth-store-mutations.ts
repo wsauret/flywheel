@@ -228,6 +228,32 @@ export async function setMeteredCredentialWithReceipt(
   }
 }
 
+/** Saves the project of a stored metered API key while `lineageId` is still the key's lineage. The lineage stays, so
+ *  what Flywheel saved for the key stays the key's and the key needs no new login (PI-UPDATES-003). Returns false and
+ *  writes nothing when the key was replaced or removed, or already holds a project. */
+export async function setMeteredKeyProject(
+  providerId: CredentialProviderId,
+  lineageId: string,
+  project: string,
+  destination: string | AuthProfileAccess,
+  classifySlot: CredentialSlotClassifier,
+): Promise<boolean> {
+  if (classifySlot(providerId) !== "metered") throw new Error(`Credential provider ${providerId} is not a metered slot`);
+  const access = openMutationAccess(destination);
+  try {
+    return await access.withLock(() => {
+      const { store, lineages } = loadMutableAuthStoreFromAccess(access, classifySlot);
+      const entry = store[providerId];
+      if (lineages[providerId] !== lineageId || entry === undefined || isCredentialCollection(entry) || entry.type !== "api_key" || entry.project !== undefined) return false;
+      store[providerId] = { ...entry, project };
+      writeAuthStoreAccess(access, store, lineages, new Set());
+      return true;
+    });
+  } finally {
+    if (typeof destination === "string") access.close();
+  }
+}
+
 /** The accounts of a provider that a caller reviewed before it adds one, by instance id and identity, and the
  *  reviewed accounts that the addition replaces. */
 export interface CredentialCollectionReview { readonly reviewed: readonly { readonly id: string; readonly identity: string }[]; readonly replaces: readonly string[] }

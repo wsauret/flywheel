@@ -26,7 +26,7 @@ import type { ProviderModelAccessSnapshot } from "./provider-model-catalog-store
  *  because the runtime reads OAuth tokens from captured subscription
  *  instances, never from this snapshot. */
 type ProviderAuthState =
-  | { readonly kind: "api_key"; readonly key: Redacted.Redacted<string> }
+  | { readonly kind: "api_key"; readonly key: Redacted.Redacted<string>; readonly project?: string }
   | { readonly kind: "oauth" };
 
 export interface AuthContext {
@@ -48,8 +48,15 @@ export interface AuthContext {
 /** The stored API key for one credential id, or undefined when the account
  *  holds none or holds an OAuth credential there. */
 export function apiKey(auth: AuthContext, providerId: string): Redacted.Redacted<string> | undefined {
+  return apiKeyCredential(auth, providerId)?.key;
+}
+
+/** The stored API key for one credential id with the project saved beside it, or undefined when the account holds
+ *  none or holds an OAuth credential there. */
+export function apiKeyCredential(auth: AuthContext, providerId: string): RuntimeApiKeyCredential | undefined {
   const state = auth.providers.get(providerId);
-  return state?.kind === "api_key" ? state.key : undefined;
+  if (state?.kind !== "api_key") return undefined;
+  return { type: "api_key", key: state.key, ...(state.project === undefined ? {} : { project: state.project }) };
 }
 
 /** Everything provider selection and client construction read from the account,
@@ -60,13 +67,14 @@ export function apiKey(auth: AuthContext, providerId: string): Redacted.Redacted
 
 export type OAuthPersistencePolicy = "profile" | "memory-only" | "access-only";
 export type RuntimeCredential =
-  | { readonly type: "api_key"; readonly key: Redacted.Redacted<string> }
+  | { readonly type: "api_key"; readonly key: Redacted.Redacted<string>; readonly project?: string }
   | { readonly type: "oauth"; readonly access: Redacted.Redacted<string>; readonly refresh?: Redacted.Redacted<string>; readonly expires: number; readonly accountId?: string; readonly enterpriseDomain?: string }
   /** A login that another program owns: the directory in which the program keeps the login, and, for a token login
    *  that a headless auth snapshot carried, the token that only the program receives. */
   | { readonly type: "external"; readonly configDir: string; readonly token?: Redacted.Redacted<string> };
 
 export type RuntimeOAuthCredential = Extract<RuntimeCredential, { readonly type: "oauth" }>;
+export type RuntimeApiKeyCredential = Extract<RuntimeCredential, { readonly type: "api_key" }>;
 
 /** One immutable runtime credential captured for a subscription instance. */
 export interface CapturedSubscriptionCredential {
@@ -201,7 +209,7 @@ export function runtimeCredential(credential: OAuthCredential): RuntimeOAuthCred
 export function runtimeCredential(credential: Credential): RuntimeCredential;
 export function runtimeCredential(credential: Credential): RuntimeCredential {
   return credential.type === "api_key"
-    ? Object.freeze({ type: "api_key", key: Redacted.make(credential.key) })
+    ? Object.freeze({ type: "api_key", key: Redacted.make(credential.key), ...(credential.project === undefined ? {} : { project: credential.project }) })
     : Object.freeze({
         type: "oauth",
         access: Redacted.make(credential.access),
@@ -249,7 +257,7 @@ async function providerAuthState(value: AuthStore[string], resolveKey: KeyResolv
   if (value?.type === "oauth") return { kind: "oauth" };
   if (value?.type !== "api_key") return undefined;
   const resolved = await resolveKey(value.key);
-  return resolved === undefined ? undefined : { kind: "api_key", key: resolved };
+  return resolved === undefined ? undefined : { kind: "api_key", key: resolved, ...(value.project === undefined ? {} : { project: value.project }) };
 }
 
 export interface ResolveAuthContextFromStoreOptions {

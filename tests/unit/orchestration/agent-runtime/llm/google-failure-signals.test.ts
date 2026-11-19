@@ -136,6 +136,23 @@ it("declares a custom-wire tool to Google with the description it declares for t
   expect(lastRequest?.config).toMatchObject({ tools: [{ functionDeclarations: [{ name: "apply_patch", description: "Put the patch in the input string" }] }] });
 });
 
+// Gemini 3 and later take a thinking level, and Gemini 4 refuses a thinking budget and the minimal level, so it gets
+// the low level when thinking is off (each refusal observed live on Vertex).
+it("sends each Gemini generation the thinking setting that it accepts", async () => {
+  streamChunks = [{ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "ok" }] } }], usageMetadata: USAGE }];
+  const client = await createTestGoogleAdapter();
+  const thinking = async (model: string, reasoningEffort: "off" | "medium") => {
+    for await (const _event of client.streamWithTools({ model, reasoningEffort, messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("sys") })) {}
+    const config: unknown = lastRequest?.config;
+    return typeof config === "object" && config !== null && "thinkingConfig" in config ? config.thinkingConfig : undefined;
+  };
+
+  expect(await thinking("gemini-4-neon", "medium")).toEqual({ includeThoughts: true, thinkingLevel: "MEDIUM" });
+  expect(await thinking("gemini-4-neon", "off")).toEqual({ thinkingLevel: "LOW" });
+  expect(await thinking("gemini-3-flash", "off")).toEqual({ thinkingLevel: "MINIMAL" });
+  expect(await thinking("gemini-2.5-flash", "medium")).toEqual({ includeThoughts: true, thinkingBudget: 8192 });
+});
+
 describe("Google failure signals", () => {
   beforeEach(() => {
     streamChunks = [];
@@ -348,9 +365,12 @@ describe("Google failure signals", () => {
       failure: "OverloadedFailure",
     },
   ])("uses the real SDK transport once for $name", async ({ accessProvider, status, message, code, failure }) => {
-    const { error, fetchCalls } = await failureThroughSdk(accessProvider, status, { error: { code: status, message, status: code } });
+    const { error, urls } = await failureThroughSdk(accessProvider, status, { error: { code: status, message, status: code } });
 
-    expect(fetchCalls).toBe(1);
+    // Vertex names the key's project in the global location, where every model it serves is reachable (ARCH-PROVIDERS-082).
+    expect(urls).toEqual([accessProvider === "google_vertex"
+      ? "https://aiplatform.googleapis.com/v1beta1/projects/412275039031/locations/global/publishers/google/models/gemini-3-pro:streamGenerateContent?alt=sse"
+      : "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro:streamGenerateContent?alt=sse"]);
     expect(error).toBeInstanceOf(ProviderAttemptFailure);
     expect(error).toMatchObject({ failure: { _tag: failure } });
     expect(error?.message).toContain(message);
@@ -382,17 +402,17 @@ describe("Google failure signals", () => {
 });
 
 /** Runs one request through the real Google SDK transport against a fetch that answers `body` with `status`. */
-async function failureThroughSdk(accessProvider: "google_api" | "google_vertex", status: number, body: UnknownRecord): Promise<{ error: Error | undefined; fetchCalls: number }> {
+async function failureThroughSdk(accessProvider: "google_api" | "google_vertex", status: number, body: UnknownRecord): Promise<{ error: Error | undefined; urls: string[] }> {
   const originalFetch = globalThis.fetch;
-  let fetchCalls = 0;
-  globalThis.fetch = Object.assign(async () => {
-    fetchCalls += 1;
+  const urls: string[] = [];
+  globalThis.fetch = Object.assign(async (request: string | URL | Request) => {
+    urls.push(request instanceof Request ? request.url : String(request));
     return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   }, { preconnect: originalFetch.preconnect });
   try {
-    const client = await createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", MODEL_INFO, { accessProvider });
+    const client = await createGoogleAdapter(Redacted.make("test-key"), "gemini-3-pro", MODEL_INFO, accessProvider === "google_vertex" ? { vertexProject: "412275039031" } : undefined);
     const { error } = await collectWithError(client);
-    return { error, fetchCalls };
+    return { error, urls };
   } finally {
     globalThis.fetch = originalFetch;
   }

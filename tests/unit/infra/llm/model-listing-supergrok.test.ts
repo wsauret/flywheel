@@ -35,10 +35,10 @@ test("API-key access audits persist exact-lineage results, discover new candidat
   const access = await new AuthProfileStore(root).create("default");
   const vertexAccount = { kind: "singleton", providerId: "google_vertex" } as const;
   const writeAuth = (lineageId: string) => access.writeFile("auth.json", JSON.stringify({
-    google_vertex: { type: "api_key", key: "AQ.test", lineageId },
+    google_vertex: { type: "api_key", key: "AQ.test", project: "412275039031", lineageId },
   }));
   writeAuth(lineage);
-  const auth = { ...AUTH_NONE, providers: new Map([["google_vertex", { kind: "api_key", key: Redacted.make("AQ.test") } as const]]), credentialLineages: { google_vertex: lineage } };
+  const auth = { ...AUTH_NONE, providers: new Map([["google_vertex", { kind: "api_key", key: Redacted.make("AQ.test"), project: "412275039031" } as const]]), credentialLineages: { google_vertex: lineage } };
   const document = modelsDevDocument();
   document["google-vertex"] = { name: "Vertex", npm: "@ai-sdk/google-vertex", models: {
     "gemini-ok": model("gemini-ok"), "gemini-flash-latest": model("gemini-flash-latest"), "gemini-flaky": model("gemini-flaky"),

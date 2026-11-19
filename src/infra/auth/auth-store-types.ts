@@ -15,9 +15,15 @@ const LineageIdSchema = Schema.String.pipe(Schema.refine(
   { message: "expected a UUID credential lineage" },
 ));
 
+const ProjectSchema = Schema.String.pipe(Schema.refine((value): value is string => /^\d{1,32}$/.test(value), { message: "expected a numeric project" }));
+
 const ApiKeyCredentialFields = {
   type: Schema.Literal("api_key"),
   key: ApiSecretSchema,
+  /** The provider project that the key belongs to, for a provider that addresses every request to it. The provider
+   *  finds it from the key when the key is added (ARCH-PROVIDERS-082). Absent for every other provider, and for a
+   *  Google Vertex key saved before 2026-11-19 until its first use. */
+  project: Schema.optionalKey(ProjectSchema),
 };
 const ApiKeyCredentialSchema = Schema.Struct(ApiKeyCredentialFields);
 

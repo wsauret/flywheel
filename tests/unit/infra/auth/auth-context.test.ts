@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Redacted } from "effect";
 import * as fs from "node:fs";
-import { apiKey, resolveAuthContext as resolveAuthContextWithSlots } from "../../../../src/infra/auth/auth-context.js";
+import { apiKey, apiKeyCredential, resolveAuthContext as resolveAuthContextWithSlots } from "../../../../src/infra/auth/auth-context.js";
 import { plainApiKey } from "../../../helpers/auth-context.js";
 import { createKeyResolver, type CredentialCommandRunner } from "../../../../src/infra/auth/resolve-key.js";
 import { setMeteredCredentialWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
@@ -83,11 +83,12 @@ describe("resolveAuthContext", () => {
     expect(first.credentialLineages.anthropic_api).not.toContain("stored-key");
   });
 
-  it("resolves a !command API key from the store through the injected resolver", async () => {
-    await setMeteredCredentialWithReceipt("openai_api", { type: "api_key", key: "!print-my-key" }, TEST_DIR, () => "metered");
+  it("resolves a !command API key from the store through the injected resolver and keeps the key's project", async () => {
+    await setMeteredCredentialWithReceipt("google_vertex", { type: "api_key", key: "!print-my-key", project: "412275039031" }, TEST_DIR, () => "metered");
     const resolver = keyResolver({ "print-my-key": "test-key-from-cmd" });
     const auth = await resolveAuthContext({ authDir: TEST_DIR, resolveKey: resolver.resolveKey });
-    expect(plainApiKey(auth, "openai_api")).toBe("test-key-from-cmd");
+    expect(plainApiKey(auth, "google_vertex")).toBe("test-key-from-cmd");
+    expect(apiKeyCredential(auth, "google_vertex")?.project).toBe("412275039031");
     expect(resolver.commands).toEqual(["print-my-key"]);
   });
 

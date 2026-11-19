@@ -165,14 +165,12 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
     const rejection = apiKeyRejectionReason(installedAccessProviderDefinitions(), providerId, original);
     if (rejection) throw new Error(rejection);
   }
-  const credential = { type: "api_key", key: original } as const;
+  const credential = await apiKeyLoginCredential(providerId, original, resolveKey);
   let account: AccessProviderAccountIdentity = { kind: "singleton", providerId };
   let receipt: AuthStoreMutationReceipt | undefined;
   const target = destination(authDir, writeAccess);
   if (installedCredentialSlotClassifier()(providerId) === "subscription") {
-    const resolved = await resolveKey(original);
-    if (resolved === undefined) throw new Error(`${credentialProviderDisplayName(providerId)} credential could not be resolved`);
-    const value = Redacted.value(resolved);
+    const value = Redacted.value(await resolveLoginKey(providerId, original, resolveKey));
     const persisted = await appendSubscription(providerId, `••••${value.slice(-4)}`, credential, authDir, writeAccess, persistSubscription);
     account = { kind: "subscription", providerId, instanceId: persisted.instanceId };
     receipt = persisted.receipt;
@@ -190,6 +188,22 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
   return freshContext(authDir, resolveKey);
 }
 
+async function resolveLoginKey(providerId: CredentialProviderId, key: string, resolveKey: KeyResolver): Promise<Redacted.Redacted<string>> {
+  const resolved = await resolveKey(key);
+  if (resolved === undefined) throw new Error(`${credentialProviderDisplayName(providerId)} credential could not be resolved`);
+  return resolved;
+}
+
+/** The credential that an entered key stores: the key as entered and, for a provider that addresses every request to
+ *  the key's project, the project that the provider finds from the resolved key (ARCH-PROVIDERS-082). A discovery that
+ *  fails throws its cause, and the login stores nothing. */
+async function apiKeyLoginCredential(providerId: CredentialProviderId, key: string, resolveKey: KeyResolver): Promise<Credential> {
+  const definition = installedAccessProviderDefinitions().find((candidate) => candidate.auth.kind === "api_key" && credentialIdOf(candidate) === providerId);
+  const discoverProject = definition?.auth.kind === "api_key" ? definition.auth.discoverProject : undefined;
+  if (discoverProject === undefined) return { type: "api_key", key };
+  return { type: "api_key", key, project: await discoverProject(await resolveLoginKey(providerId, key, resolveKey)) };
+}
+
 /** Re-authenticates one API-key account and replaces it only if the selected
  *  instance still has the credential captured when the flow started. Only a
  *  provider with a subscription credential slot has instances to reconnect. */
@@ -198,8 +212,7 @@ export async function reconnectWithApiKey({ providerId, instanceId }: Subscripti
   const expected = selectedInstance({ providerId, instanceId }, authDir).credential;
   const original = key.trim();
   if (!original) throw new Error("API key must not be empty");
-  const resolved = await resolveKey(original);
-  if (resolved === undefined) throw new Error(`${credentialProviderDisplayName(providerId)} credential could not be resolved`);
+  await resolveLoginKey(providerId, original, resolveKey);
   const replacement = { type: "api_key", key: original } as const;
   const receipt = await replaceCredentialInstanceWithReceipt(providerId, instanceId, expected, replacement, authDir, installedCredentialSlotClassifier());
   if (receipt === undefined) return false;

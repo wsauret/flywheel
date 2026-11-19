@@ -273,8 +273,9 @@ export function supportsParallelToolCalls(model: string): boolean {
 export function geminiThinkingConfigMode(model: string): "level" | "budget" {
   const entry = lookup(model);
   if (entry?.geminiThinkingConfigMode !== undefined) return entry.geminiThinkingConfigMode;
-  // Fallback: Gemini 3 + Gemma 4 use levels; older variants use budgets.
-  if (/gemini-3/i.test(model)) return "level";
+  // Fallback: Gemini 3 and later and Gemma 4 use levels; older variants use budgets. Gemini 4 refuses a budget.
+  const geminiMajor = /gemini-(\d+)/i.exec(model)?.[1];
+  if (geminiMajor !== undefined && Number(geminiMajor) >= 3) return "level";
   if (/gemma-?4/i.test(model)) return "level";
   return "budget";
 }
