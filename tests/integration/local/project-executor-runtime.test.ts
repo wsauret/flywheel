@@ -172,9 +172,7 @@ function startCommandProvider(command: string) {
     hostname: "127.0.0.1",
     port: 0,
     async fetch(request) {
-      if (new URL(request.url).pathname.endsWith("/models")) {
-        return Response.json({ object: "list", data: [{ id: FIXTURE_MODEL, object: "model", created: 0, owned_by: "fixture" }] })
-      }
+      if (new URL(request.url).pathname.endsWith("/models")) return Response.json({ object: "list", data: [{ id: FIXTURE_MODEL, object: "model", created: 0, owned_by: "fixture" }] })
       const body: unknown = await request.json()
       const text = JSON.stringify(body)
       const turn = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0 && !isSessionTitleRequest(body)

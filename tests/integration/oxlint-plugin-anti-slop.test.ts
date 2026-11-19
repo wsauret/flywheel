@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 
 const repoRoot = resolve(import.meta.dir, "../..");
 const oxlint = join(repoRoot, "node_modules", ".bin", "oxlint");
@@ -193,7 +193,8 @@ function firesPerCase(rule: string, cases: readonly RuleCase[], diagnostics: rea
   const [plugin, name] = rule.split("/");
   const code = `${plugin}(${name})`;
   for (const [index, testCase] of cases.entries()) {
-    const file = join(`${index}`, casePath(testCase, index));
+    // oxlint reports `/` separators on every platform.
+    const file = posix.join(`${index}`, casePath(testCase, index));
     const count = diagnostics.filter((diagnostic) => diagnostic.code === code && diagnostic.filename.endsWith(file)).length;
     expect({ source: testCase.source, fires: count > 0 }).toEqual({ source: testCase.source, fires: testCase.expect === "fires" });
   }

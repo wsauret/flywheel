@@ -154,15 +154,24 @@ export function parseJudgeAnswers(json: unknown, rules: ReadonlyArray<DiffRule>,
   });
 }
 
-const shellArgv = (command: string): readonly string[] =>
+const WINDOWS_COMMAND_VARIABLE = "ANTI_SLOP_JUDGE_COMMAND";
+
+// Windows argument quoting escapes each `"` in an argument as `\"`, which cmd does not read, so a
+// command with quoted parts cannot reach cmd as an argument. cmd expands a variable before it parses
+// the line, so the command goes in through the environment and keeps its quotes and pipes.
+const shellLaunch = (command: string): { readonly argv: readonly string[]; readonly env?: Env } =>
   process.platform === "win32"
-    ? [process.env.ComSpec ?? process.env.COMSPEC ?? "cmd.exe", "/d", "/s", "/c", command]
-    : ["sh", "-c", command];
+    ? {
+        argv: [process.env.ComSpec ?? process.env.COMSPEC ?? "cmd.exe", "/d", "/s", "/c", `%${WINDOWS_COMMAND_VARIABLE}%`],
+        env: { ...process.env, [WINDOWS_COMMAND_VARIABLE]: command },
+      }
+    : { argv: ["sh", "-c", command] };
 
 // The command runs in an owned container, so a timeout ends every process it started, such as
 // each side of a pipeline, and the result settles only after they are gone.
 async function runCommand(command: string, stdin: string, timeoutMs: number): Promise<string> {
-  const result = await withOwnedCommands((run) => run(shellArgv(command), { stdin, timeoutMs }));
+  const { argv, env } = shellLaunch(command);
+  const result = await withOwnedCommands((run) => run(argv, { stdin, timeoutMs, env }));
   if (result.timedOut) throw new Error(`judge command timed out after ${timeoutMs}ms`);
   if (result.exitCode !== 0) {
     throw new Error(`judge command exited with ${String(result.exitCode)}: ${result.stderr.trim().slice(-500)}`);

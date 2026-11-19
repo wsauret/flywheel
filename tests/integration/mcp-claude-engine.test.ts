@@ -141,16 +141,18 @@ describe("the bundled Claude engine as an MCP client", () => {
 
       expect(await manager.call({ server: "echo", name: "echo_long", arguments: { message: "hey", style: "plain", repeat: 2 } })).toMatchObject({ content: [{ type: "text", text: "heyhey" }], structuredContent: { echoed: "heyhey" } });
       expect(await manager.call({ server: "echo", name: "sum.numbers", arguments: { values: [2, 3] } })).toMatchObject({ content: [{ type: "text", text: "5" }] });
+      // Every engine answer below is awaited as a plain promise. Bun's `expect(promise).rejects` waits in a nested
+      // event loop, which on Windows reads no more of the engine's stdout, so a pending answer never arrives.
       // The engine passes a JSON-RPC error on as `MCP error <code>: <message>`, the one failure that proves the server
       // answered. It rejects an `isError` result with nothing but the server's text, as it does a network failure.
-      const refused = manager.call({ server: "echo", name: "sum.numbers", arguments: { values: "none" } });
-      await expect(refused).rejects.toThrow("MCP error -32601: unknown tool sum.numbers");
-      await expect(refused).rejects.not.toBeInstanceOf(McpOutcomeUnknownError);
-      const failed = manager.call({ server: "echo", name: "echo_long", arguments: { message: "hey" } });
-      await expect(failed).rejects.toThrow("style is required");
-      await expect(failed).rejects.toBeInstanceOf(McpOutcomeUnknownError);
+      const refused = await manager.call({ server: "echo", name: "sum.numbers", arguments: { values: "none" } }).catch((error: unknown) => error);
+      expect(refused).toMatchObject({ message: expect.stringContaining("MCP error -32601: unknown tool sum.numbers") });
+      expect(refused).not.toBeInstanceOf(McpOutcomeUnknownError);
+      const failed = await manager.call({ server: "echo", name: "echo_long", arguments: { message: "hey" } }).catch((error: unknown) => error);
+      expect(failed).toMatchObject({ message: expect.stringContaining("style is required") });
+      expect(failed).toBeInstanceOf(McpOutcomeUnknownError);
 
-      await expect(manager.acquire("secure")).rejects.toThrow("needs authentication");
+      expect(await manager.acquire("secure").catch((error: unknown) => error)).toMatchObject({ message: expect.stringContaining("needs authentication") });
       const authorization = await manager.authorize("secure");
       try {
         const page = new URL(authorization.url ?? "");

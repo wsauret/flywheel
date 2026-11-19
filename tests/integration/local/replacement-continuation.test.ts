@@ -425,7 +425,7 @@ describe("planned interruption and automatic continuation", () => {
 
   test.each([
     ["background", "background-1"],
-    ["idleBackground", "idle-background-1"],
+    ["idleBackground", "rest-background-1"],
     ["stepBackground", "step-background-1"],
     ["childBackground", "child-background-1"],
     ["childForeground", "child-foreground-1"],

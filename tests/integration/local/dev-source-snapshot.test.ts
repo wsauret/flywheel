@@ -130,7 +130,6 @@ function startProvider() {
     async fetch(request) {
       if (new URL(request.url).pathname.endsWith("/models")) return Response.json({ object: "list", data: [{ id: MODEL, object: "model", created: 0, owned_by: "fixture" }] })
       const body: unknown = await request.json()
-      const whole = JSON.stringify(body)
       const word = /\b(alpha|bravo|charlie)\b/.exec(lastPersonMessage(body))?.[1] ?? "other"
       const hasTools = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0
       if (!hasTools || isSessionTitleRequest(body)) return answer(`TITLE: Chat ${word}\nSHORT: ${word}`)
