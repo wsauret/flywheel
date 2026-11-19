@@ -280,9 +280,17 @@ The Anthropic Subscription provider keeps Flywheel's tool capabilities, tool exe
 
 At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. On every route, the system prompt states the turn's start date, and the local date matches the Claude engine's, in the TZ setting's zone on macOS and Linux and the system zone on Windows. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
 
+## PI-MODEL-091: Every route names the model that serves the request
+
+On every route, a hidden reminder gives the model the name, knowledge cutoff, and context size of the model that serves the request. A later reminder states each change of model or context window. A fallback after partial output names the new model.
+
+## PI-MODEL-090: Reminders stay hidden history, and a request reads only its own model's reminders
+
+Reminders stay in model history but hidden from the transcript. They survive resume and forks, reset with the active context, and stay across a provider or model switch. A request reads a reminder that names a model only when that model serves the request.
+
 ## PI-MODEL-081: Context text from the Claude engine stays hidden history
 
-Reminders stay in model history but hidden from the transcript. They survive resume and forks, reset with the active context, and stay across a provider switch. On a Claude login the engine also gives the model the account's email address, which Flywheel does not record and the API-key provider never sends. A shared Claude engine also gives each agent the engine's identity line, agent instructions, environment, and resume lines, which Flywheel records hidden in that agent's history. On Windows with Git for Windows, the engine names the shell bash, but Flywheel's shell tool description, which says PowerShell, is the authority.
+On a Claude login the engine gives the model the account's email address, which Flywheel does not record and the API-key provider never sends. A shared Claude engine also gives each agent the engine's identity line, agent instructions, environment, and resume lines, which Flywheel records hidden in that agent's history. On Windows with Git for Windows, the engine names the shell bash, but Flywheel's shell tool description, which says PowerShell, is the authority.
 
 ## PI-MODEL-028: A workflow file can set each agent's default model
 

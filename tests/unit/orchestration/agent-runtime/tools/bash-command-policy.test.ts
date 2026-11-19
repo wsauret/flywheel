@@ -361,6 +361,18 @@ describe("isYieldPlaceholderToolCall", () => {
     // No wait intent: a leading no-op alone is not a yield.
     expect(isYieldPlaceholderToolCall(bash("echo hi; some-junk"), true)).toBe(false);
   });
+
+  it("never treats a background launch as a yield: it starts the work that the turn then owes", () => {
+    for (const command of ["printf ok > /scratch/idle-background-1.marker; sleep 30", "echo waiting", "sleep 5", "true"]) {
+      expect(isYieldPlaceholderToolCall({ id: "tc", name: "bash", input: { command, background: true } }, true)).toBe(false);
+    }
+  });
+
+  it("reads wait intent only in the leading no-op, and a leading write is not a no-op", () => {
+    for (const command of ["printf ok > /scratch/idle.marker; bun run serve", "echo started >> pending.log", "sleep 1; cat pending.log"]) {
+      expect(isYieldPlaceholderToolCall(bash(command), true)).toBe(false);
+    }
+  });
 });
 
 describe("refusedShellWrite", () => {
