@@ -1,0 +1,26 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 43
+bench/harbor/configs/tb-board-deepseek-high.toml
+  h_4b47e9e4a8b456 4-10,49-50,52,85-99
+bench/harbor/configs/tb-board-deepseek-low.toml
+  h_4b47e9e4a8b456 4-10,49-50,52,85-99
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 29
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 26
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 99-100
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 2,141,162-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "aaa59fa54cc7b01932602879b9684398b96580fa",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
