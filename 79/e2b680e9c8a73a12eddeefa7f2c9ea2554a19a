@@ -1,0 +1,30 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 28-29
+docs/architecture.md
+  h_4b47e9e4a8b456 258,260
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 735
+src/orchestration/app-service/idle-store-reclaim.ts
+  h_4b47e9e4a8b456 28-31,46-47,68,90-95,111
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 191
+src/orchestration/app-service/project-storage.ts
+  h_4b47e9e4a8b456 13-23,35-41,62-68,86-89,96-99,101,108-111,114-140,179-197,203
+src/orchestration/session/event-store-maintenance.ts
+  h_4b47e9e4a8b456 402
+tests/unit/orchestration/app-service/idle-store-reclaim.test.ts
+  h_4b47e9e4a8b456 9,11,19,37,106-135
+tests/unit/orchestration/modules/reclaim-storage/service.test.ts
+  h_4b47e9e4a8b456 4,14-16,43-44,47-51,54-69,74,88-89,92,105,110,118-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "79e2b680e9c8a73a12eddeefa7f2c9ea2554a19a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
