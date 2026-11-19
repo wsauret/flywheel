@@ -169,7 +169,7 @@ unixClaimants("two claimants of one account", () => {
 
     // The first claimant now finishes. Its fence is no longer the account's.
     expect(stale.renew({ fence: staleFence, nowMs: afterExpiry + 1, leaseMs: LEASE_MS })).toBe("superseded");
-    await expect(install(older, { authority: stale, fence: staleFence }, afterExpiry + 1)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install(older, { authority: stale, fence: staleFence }, afterExpiry + 1).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
 
     expect(serviceCommands).toHaveLength(commandCount);
     expect(currentTarget()).toBe(winner.buildDir.slice(userDataRoot.length + 1));
@@ -189,7 +189,7 @@ unixClaimants("two claimants of one account", () => {
     const claimant = authority();
     const fence = win(claimant, START_MS);
 
-    await expect(install(source, { authority: claimant, fence }, START_MS)).rejects.toThrow(InstallRevokedError);
+    expect(await install(source, { authority: claimant, fence }, START_MS).catch((error: unknown) => error)).toBeInstanceOf(InstallRevokedError);
 
     expect(serviceCommands).toHaveLength(0);
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
@@ -216,7 +216,7 @@ unixClaimants("two claimants of one account", () => {
     const source = await payload("1.4.0");
     const claimant = authority();
 
-    await expect(install(source, { authority: claimant, fence: win(claimant, START_MS) }, START_MS)).rejects.toThrow(InstallRevokedError);
+    expect(await install(source, { authority: claimant, fence: win(claimant, START_MS) }, START_MS).catch((error: unknown) => error)).toBeInstanceOf(InstallRevokedError);
 
     expect(serviceCommands).toHaveLength(0);
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
@@ -233,7 +233,7 @@ unixClaimants("what a crash leaves for the next claimant", () => {
 
     const claimant = authority();
     const fence = win(claimant, START_MS);
-    await expect(install(source, { authority: claimant, fence }, START_MS)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install(source, { authority: claimant, fence }, START_MS).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
 
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
     expect(authorityState()).toMatchObject({ checkedAtMs: 0, fence });
@@ -297,7 +297,7 @@ unixClaimants("what the activation order guarantees", () => {
       writeFileSync(join(wrapperDir, "flywheel"), "#!/bin/sh\n# someone else's launcher\n");
     });
 
-    await expect(install(source, { authority: intruded, fence }, START_MS)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install(source, { authority: intruded, fence }, START_MS).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
 
     expect(currentTarget()).toContain("1.4.0");
     expect(readFileSync(join(wrapperDir, "flywheel"), "utf8")).toContain("someone else");

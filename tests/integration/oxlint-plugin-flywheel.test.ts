@@ -72,6 +72,13 @@ const ruleCases: RuleCases = {
     { file: "ok.ts", source: `const FOO = "foo";\nexport const x = FOO;\n`, expect: "silent" },
     { file: "ok-lower.ts", source: `const greeting = "greeting";\nexport const x = greeting;\n`, expect: "silent" },
   ],
+  "no-expect-promise-modifier": [
+    { file: "rejects.ts", source: `declare const p: Promise<number>;\nawait expect(p).rejects.toThrow("x");\n`, expect: "fires-once" },
+    { file: "resolves.ts", source: `declare const p: Promise<number>;\nawait expect(p).resolves.toBe(1);\n`, expect: "fires-once" },
+    { file: "negated.ts", source: `declare const p: Promise<number>;\nawait expect(p).not.resolves.toBe(1);\n`, expect: "fires-once" },
+    { file: "plain.ts", source: `declare const p: Promise<number>;\nexpect(await p.catch((error: unknown) => error)).toMatchObject({ message: "x" });\nexpect(await p).toBe(1);\n`, expect: "silent" },
+    { file: "assert.ts", source: `import assert from "node:assert";\ndeclare const p: Promise<number>;\nawait assert.rejects(p);\nexport const resolves = { rejects: 1 }.rejects;\n`, expect: "silent" },
+  ],
   "no-tmp-literal-path": [
     { file: "root.ts", source: `import { join } from "node:path";\nexport const x = join("/tmp", "a");\n`, expect: "fires-once" },
     { file: "below.ts", source: `export const x = "/tmp/a";\n`, expect: "fires-once" },

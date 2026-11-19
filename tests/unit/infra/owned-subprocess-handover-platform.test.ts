@@ -181,7 +181,7 @@ describe("reaching a handed-over command", () => {
     const channel = supervisorChannel("late")
     const reached = await createOwnedProcessBackend(recordingHost(kernel()).posix).reach({ token: TOKEN, pid: 4242, channel: channel.address, recordPath: channel.recordPath }, 20)
 
-    await expect(reached?.adopt(999, 5, handBack(channel)) ?? Promise.resolve()).rejects.toThrow()
+    expect(await (reached?.adopt(999, 5, handBack(channel)) ?? Promise.resolve()).catch((error: unknown) => error)).toBeInstanceOf(Error)
 
     await until(() => channel.heard.length === 2)
     expect(decodeSupervisorWord(channel.heard[1] ?? "")).toEqual({ kind: "handover", handover: handBack(channel) })
@@ -207,7 +207,7 @@ describe("reaching a handed-over command", () => {
     const recorded = recordingHost(kernel())
     const reached = await createOwnedProcessBackend(recorded.posix).reach({ token: TOKEN, pid: 4242, channel: channel.address, recordPath: channel.recordPath }, 20)
 
-    await expect(reached?.adopt(999, 1_000, handBack(channel)) ?? Promise.resolve()).rejects.toThrow(/another owner controls/)
+    expect(await (reached?.adopt(999, 1_000, handBack(channel)) ?? Promise.resolve()).catch((error: unknown) => error)).toHaveProperty("message", expect.stringMatching(/another owner controls/))
     expect(recorded.calls.filter((call) => call.includes("4242"))).toEqual([])
     channel.end()
   })

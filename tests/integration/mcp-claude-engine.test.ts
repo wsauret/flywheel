@@ -146,13 +146,13 @@ describe("the bundled Claude engine as an MCP client", () => {
       // The engine passes a JSON-RPC error on as `MCP error <code>: <message>`, the one failure that proves the server
       // answered. It rejects an `isError` result with nothing but the server's text, as it does a network failure.
       const refused = await manager.call({ server: "echo", name: "sum.numbers", arguments: { values: "none" } }).catch((error: unknown) => error);
-      expect(refused).toMatchObject({ message: expect.stringContaining("MCP error -32601: unknown tool sum.numbers") });
+      expect(refused).toHaveProperty("message", expect.stringContaining("MCP error -32601: unknown tool sum.numbers"));
       expect(refused).not.toBeInstanceOf(McpOutcomeUnknownError);
       const failed = await manager.call({ server: "echo", name: "echo_long", arguments: { message: "hey" } }).catch((error: unknown) => error);
-      expect(failed).toMatchObject({ message: expect.stringContaining("style is required") });
+      expect(failed).toHaveProperty("message", expect.stringContaining("style is required"));
       expect(failed).toBeInstanceOf(McpOutcomeUnknownError);
 
-      expect(await manager.acquire("secure").catch((error: unknown) => error)).toMatchObject({ message: expect.stringContaining("needs authentication") });
+      expect(await manager.acquire("secure").catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("needs authentication"));
       const authorization = await manager.authorize("secure");
       try {
         const page = new URL(authorization.url ?? "");

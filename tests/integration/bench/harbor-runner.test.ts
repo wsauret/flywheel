@@ -100,24 +100,24 @@ describe("Harbor launch boundary", () => {
     const mismatched = JSON.parse(await readFile(candidatePath, "utf8"));
     mismatched.source_archive_sha256 = "e".repeat(64);
     await writeFile(candidatePath, JSON.stringify(mismatched));
-    await expect(createHarborComparisonManifest(controlPath, candidatePath)).rejects.toThrow("identical");
+    expect(await createHarborComparisonManifest(controlPath, candidatePath).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("identical"));
     mismatched.source_archive_sha256 = "d".repeat(64);
     mismatched.concurrency = 3;
     await writeFile(candidatePath, JSON.stringify(mismatched));
-    await expect(createHarborComparisonManifest(controlPath, candidatePath)).rejects.toThrow("concurrency");
+    expect(await createHarborComparisonManifest(controlPath, candidatePath).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("concurrency"));
     mismatched.concurrency = 2;
     mismatched.analyzer_result = structuredClone(candidateAnalyzer);
     mismatched.analyzer_result.analysis.rows[0].reward = 1;
     await writeFile(candidatePath, JSON.stringify(mismatched));
-    await expect(createHarborComparisonManifest(controlPath, candidatePath)).rejects.toThrow("summary");
+    expect(await createHarborComparisonManifest(controlPath, candidatePath).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("summary"));
     mismatched.analyzer_result = structuredClone(candidateAnalyzer);
     mismatched.analyzer_result.summary.sha256 = "0".repeat(64);
     await writeFile(candidatePath, JSON.stringify(mismatched));
-    await expect(createHarborComparisonManifest(controlPath, candidatePath)).rejects.toThrow("summary");
+    expect(await createHarborComparisonManifest(controlPath, candidatePath).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("summary"));
     mismatched.analyzer_result = structuredClone(candidateAnalyzer);
     mismatched.analyzer_result.summary.denominator = 4;
     await writeFile(candidatePath, JSON.stringify(mismatched));
-    await expect(createHarborComparisonManifest(controlPath, candidatePath)).rejects.toThrow("summary");
+    expect(await createHarborComparisonManifest(controlPath, candidatePath).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("summary"));
   });
 
   test("dirty seed prepares the normal leaderboard-valid path and records provenance", async () => {
@@ -141,10 +141,10 @@ describe("Harbor launch boundary", () => {
 
   test("persists installed-schema refusal evidence", async () => {
     const root = temporaryDirectory("tb-schema-refusal-");
-    await expect(prepareHarborRun([...launchArgs, "--task-names", "one", "--job-name", "invalid"], {
+    expect(await prepareHarborRun([...launchArgs, "--task-names", "one", "--job-name", "invalid"], {
       ...packageDependencies(root),
       validateConfig: async () => { throw new Error("schema rejected"); },
-    })).rejects.toThrow("generated Harbor config refused");
+    }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("generated Harbor config refused"));
     const [artifact] = await readdir(join(root, "jobs"));
     const manifest = JSON.parse(await readFile(join(root, "jobs", artifact ?? "", "run_manifest.json"), "utf8"));
     expect(manifest.state).toBe("refused");

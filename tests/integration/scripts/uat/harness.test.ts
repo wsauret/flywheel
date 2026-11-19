@@ -86,7 +86,7 @@ describe("TUI UAT sandbox", () => {
     expect(referenceFiles).toHaveLength(1)
     expect(JSON.parse(await readFile(join(references, referenceFiles[0]!), "utf8"))).toEqual({ version: 1, configDir: login })
     await rm(join(profile, "auth.json"))
-    await expect(cloneAuthProfileFiles(profile, join(root, "missing-auth"))).rejects.toThrow("auth.json")
+    expect(await cloneAuthProfileFiles(profile, join(root, "missing-auth")).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("auth.json"))
     await rm(root, { recursive: true, force: true })
   })
 
@@ -96,7 +96,7 @@ describe("TUI UAT sandbox", () => {
     await mkdir(profile)
     await writeFile(join(root, "secret"), "{}")
     await symlink(join(root, "secret"), join(profile, "auth.json"))
-    await expect(cloneAuthProfileFiles(profile, join(root, "destination"))).rejects.toThrow()
+    expect(await cloneAuthProfileFiles(profile, join(root, "destination")).catch((error: unknown) => error)).toBeInstanceOf(Error)
     await rm(root, { recursive: true, force: true })
   })
 
@@ -111,9 +111,9 @@ describe("TUI UAT sandbox", () => {
     const oldHome = process.env.HOME
     process.env.HOME = sourceHome
     try {
-      await expect(prepareTuiUatSandbox({ scratchRoot, sourceProjectRoot: project })).rejects.toThrow("default")
+      expect(await prepareTuiUatSandbox({ scratchRoot, sourceProjectRoot: project }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("default"))
       expect(await readFile(join(sourceRoot, "auth", "auth.json"), "utf8")).toContain("legacy")
-      await expect(lstat(join(sourceRoot, "auth", "profiles"))).rejects.toThrow()
+      expect(await lstat(join(sourceRoot, "auth", "profiles")).catch((error: unknown) => error)).toBeInstanceOf(Error)
     } finally {
       process.env.HOME = oldHome
       await rm(scratchRoot, { recursive: true, force: true })
@@ -125,12 +125,12 @@ describe("TUI UAT sandbox", () => {
     await writeFile(join(root, "auth.json"), "secret")
     await chmod(root, 0o700)
     try {
-      await expect(removeUatHome(root, async () => {
+      expect(await removeUatHome(root, async () => {
         throw new Error("stop failed")
-      })).rejects.toThrow("stop failed")
+      }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("stop failed"))
       expect((await lstat(root)).isDirectory()).toBe(true)
       await removeUatHome(root)
-      await expect(lstat(root)).rejects.toThrow()
+      expect(await lstat(root).catch((error: unknown) => error)).toBeInstanceOf(Error)
     } finally {
       await rm(root, { recursive: true, force: true })
     }

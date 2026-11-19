@@ -260,7 +260,7 @@ describe("the account's update Worker", () => {
     const { guardian, counts } = countingGuardian();
     const install = installer(guardian).install({ release: release(`file://${OVERSIZED_ARCHIVE}`), fence: 4, signal: new AbortController().signal });
 
-    await expect(install).rejects.toThrow(/could not be transferred/);
+    expect(await install.catch((error: unknown) => error)).toHaveProperty("message", expect.stringMatching(/could not be transferred/));
     expect(counts).toEqual({ opened: 1, closed: 1 });
   });
 });

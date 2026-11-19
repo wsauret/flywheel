@@ -332,7 +332,7 @@ test("executor composes real query and dispatch over account state and leaves it
     const afterStop = await state.sessions.createChat({ name: "State still available" })
     expect(await state.sessions.read(afterStop)).not.toBeNull()
     expect(await state.capturePosition()).toBeGreaterThan(0)
-    await expect(runtime.query({ type: "snapshot" })).rejects.toThrow()
+    expect(await runtime.query({ type: "snapshot" }).catch((error: unknown) => error)).toBeInstanceOf(Error)
   })
 }, 60_000)
 
@@ -550,7 +550,7 @@ test("an executor keeps its heartbeat while it stops", async () => {
         expect(held.heartbeats()).toBeGreaterThanOrEqual(10)
         expect(held.answered()).toBe(false)
         expect(settled).toBe(false)
-        await expect(runtime.dispatch({ type: "chat.open" })).rejects.toThrow("project executor is stopping")
+        expect(await runtime.dispatch({ type: "chat.open" }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("project executor is stopping"))
       } finally {
         held.release()
         expect(await withDeadline(stop, 10_000)).toEqual({ settled: true })

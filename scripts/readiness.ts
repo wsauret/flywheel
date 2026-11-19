@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { dockerRuntimeCommand, readinessPlan, RELEASE_LOGIN_VOLUME, releaseLoginContainerCommand, releaseLoginStatusContainerCommand, type LinuxClaudeLive } from "./readiness-plan.js";
+import { dockerRuntimeCommand, readinessPlan, RELEASE_LOGIN_VOLUME, releaseLoginContainerCommand, type LinuxClaudeLive } from "./readiness-plan.js";
 import { engineBump, FRESHNESS_BLOCKED_EXIT, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile, type EngineBump } from "./claude-engine-release.js";
 import { parseReleaseLoginStatus, RELEASE_LOGIN_SETTING, WINDOWS_HOST_SETTING, WINDOWS_RELEASE_LOGIN_FOLDER } from "./readiness-login.js";
 import { selectStartupDirectories } from "../src/infra/directory-authorities.js";
@@ -75,6 +75,8 @@ export interface ReadinessOptions {
   readonly quick: boolean;
   readonly bunExecutable: string;
   readonly bunVersion: string;
+  /** The `packageManager` field of package.json, which pins the Bun that every gate, build, and container runs on. */
+  readonly packageManager: string | undefined;
   readonly version: string;
   /** The home of this host's account, whose live auth profile the live tier reads without a release login home. */
   readonly accountHome: string;
@@ -145,17 +147,17 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     checks.push({ name, status, detail });
     dependencies.log(`readiness: ${status.padEnd(7)} ${name}${detail ? ` (${detail})` : ""}`);
   };
-  const run = (name: string, command: readonly string[], env?: CommandEnvironment) => {
-    const result = dependencies.run(command, env);
+  const settle = (name: string, result: CommandResult) => {
     if (result.exitCode === 0) { record(name, "pass"); return true; }
     // A test runner names its failures on stdout and its exit on stderr, so a
     // report that keeps one stream loses the name.
     record(name, "fail", `${result.stderr}\n${result.stdout}`.trim() || `exit ${result.exitCode}`);
     return false;
   };
+  const run = (name: string, command: readonly string[], env?: CommandEnvironment) => settle(name, dependencies.run(command, env));
   const withDocker = (command: readonly string[], docker: string) => command.map((part, index) => index === 0 ? docker : part);
   /** Records what one login status read found, and whether the live tier still runs on that login. A missing login
-   *  blocks the tier here, before the long gates. */
+   *  blocks the tier here, before the long gates, and a login that the engine can stop renewing fails here. */
   const loginReady = (prefix: string, location: LoginLocation, profile: string, bump: EngineBump, result: CommandResult, unanswered: (result: CommandResult) => string): boolean => {
     const token = result.exitCode === 0 ? parseReleaseLoginStatus(result.stdout) : undefined;
     if (token === undefined) {
@@ -165,6 +167,9 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     switch (token.kind) {
       case "absent":
         record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; ${location.where} holds no Claude login with a stored token in the auth profile "${profile}": run ${location.remedy}`);
+        return false;
+      case "ending":
+        record(`${prefix}${LIVE_LOGIN}`, "fail", `${location.where} holds a Claude login in the auth profile "${profile}" that the engine can stop renewing at any time, by ${token.endsAt.slice(0, 10)}, after which it refuses every request: run ${location.remedy}`);
         return false;
       case "present":
         record(`${prefix}${LIVE_LOGIN}`, "pass", `${location.where} holds a Claude login in the auth profile "${profile}", with its token in ${token.store === "file" ? "the credentials file" : "the macOS keychain"}`);
@@ -192,26 +197,30 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
       record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; Docker CLI is unavailable; install Docker Desktop`);
       return { host, linux: undefined };
     }
-    const linuxStatus = dependencies.run(withDocker(releaseLoginStatusContainerCommand({ dockerPlatform: live.dockerPlatform, root: options.root, bunVersion: options.bunVersion, liveAuthProfile: profile }), docker));
+    const linuxStatus = runCandidateContainer({ docker, live, profile }, "status");
     return { host, linux: loginReady(prefix, LINUX_LOGIN_LOCATION, profile, bump, linuxStatus, dockerFailureDetail) ? { docker, live, profile } : undefined };
   };
-  /** Runs the live tier in a Linux container on the release login volume. It needs no build of this run, so it runs
-   *  beside the host's live tier, before any later stop of the pass can drop its row. The container installs the
+  /** Runs one step of the candidate in a Linux container on the release login volume. The container installs the
    *  candidate's tracked files for Linux: a copy of the checkout would carry the Mac's dependencies and its ignored
    *  project state. The tar lives in a temporary folder of its own, which is removed when the container is done. */
-  const runLinuxLive = ({ docker, live, profile }: NonNullable<LiveTiers["linux"]>) => {
-    const name = `${live.target} ${LIVE_QUALIFICATION}`;
-    const diagnostic = dependencies.run([docker, "info"]);
-    if (diagnostic.exitCode !== 0) { record(name, "blocked", dockerFailureDetail(diagnostic)); return; }
+  const runCandidateContainer = ({ docker, live, profile }: NonNullable<LiveTiers["linux"]>, step: "status" | "live"): CommandResult => {
     const scratch = mkdtempSync(join(tmpdir(), "flywheel-readiness-candidate-"));
     try {
       const candidate = join(scratch, "candidate.tar");
       const archived = dependencies.run(["git", "archive", "--format=tar", `--output=${candidate}`, "HEAD"]);
-      if (archived.exitCode !== 0) record(name, "fail", `the candidate archive was not written: ${`${archived.stderr}\n${archived.stdout}`.trim() || `exit ${archived.exitCode}`}`);
-      else run(name, withDocker(releaseLoginContainerCommand({ dockerPlatform: live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, step: "live" }), docker));
+      if (archived.exitCode !== 0) return { exitCode: archived.exitCode, stdout: "", stderr: `the candidate archive was not written: ${`${archived.stderr}\n${archived.stdout}`.trim() || `exit ${archived.exitCode}`}` };
+      return dependencies.run(withDocker(releaseLoginContainerCommand({ dockerPlatform: live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, step }), docker));
     } finally {
       rmSync(scratch, { recursive: true, force: true });
     }
+  };
+  /** Runs the live tier in a Linux container on the release login volume. It needs no build of this run, so it runs
+   *  beside the host's live tier, before any later stop of the pass can drop its row. */
+  const runLinuxLive = (linux: NonNullable<LiveTiers["linux"]>) => {
+    const name = `${linux.live.target} ${LIVE_QUALIFICATION}`;
+    const diagnostic = dependencies.run([linux.docker, "info"]);
+    if (diagnostic.exitCode !== 0) { record(name, "blocked", dockerFailureDetail(diagnostic)); return; }
+    settle(name, runCandidateContainer(linux, "live"));
   };
   const finish = (): ReadinessOutcome => {
     dependencies.log("\nreadiness: summary");
@@ -219,6 +228,14 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     return { exitCode: checks.some(({ status }) => status === "fail" || status === "blocked") ? 1 : 0, checks };
   };
 
+  // Every gate runs on this Bun and every Linux container on its image, so a pass on another Bun proves another
+  // runtime. The release build refuses it too, but only after the long gates, and a quick pass never builds.
+  const pinnedBun = `bun@${options.bunVersion}`;
+  if (options.packageManager !== pinnedBun) {
+    record("pinned Bun", "fail", `this host runs ${pinnedBun}, but package.json pins ${options.packageManager ?? "no packageManager"}; install the pinned Bun and run the pass again`);
+    return finish();
+  }
+  record("pinned Bun", "pass", pinnedBun);
   const tree = dependencies.run(["git", "status", "--porcelain=v1", "--untracked-files=all"]);
   const cleanTree = tree.exitCode === 0 && tree.stdout.trim() === "";
   if (tree.exitCode !== 0) record("clean worktree", "fail", tree.stderr || tree.stdout);
@@ -333,6 +350,7 @@ if (import.meta.main) {
   const releaseLoginHome = process.env[RELEASE_LOGIN_SETTING];
   const readinessResult = runReadiness({
     root, platform: process.platform, arch: process.arch, quick: process.argv.includes("--quick"), bunExecutable: process.execPath, bunVersion: Bun.version, version: metadata.version,
+    packageManager: "packageManager" in metadata && typeof metadata.packageManager === "string" ? metadata.packageManager : undefined,
     accountHome: selectStartupDirectories({ cwd: root, env: process.env }).accountHome, liveAuthProfile: liveAuthProfile(process.env),
     releaseLoginHome: releaseLoginHome === undefined || releaseLoginHome === "" ? undefined : resolve(releaseLoginHome),
   }, {

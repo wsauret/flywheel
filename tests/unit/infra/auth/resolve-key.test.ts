@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { Redacted } from "effect";
 import type { OwnedSecretResult } from "../../../../src/infra/owned-command.js";
+import type { OwnedProcess, OwnedProcessExit } from "../../../../src/infra/owned-subprocess.js";
+import type { OwnedLaunchOptions } from "../../../../src/infra/owned-subprocess-backend.js";
 import {
   createKeyResolver,
+  createOwnedCredentialCommandRunner,
   type CredentialCommandRunner,
 } from "../../../../src/infra/auth/resolve-key.js";
 
@@ -12,6 +15,43 @@ function captured(value: string): OwnedSecretResult {
 
 function failed(exitCode: number | null, timedOut = false): OwnedSecretResult {
   return { tag: "failed", failure: { exitCode, timedOut } };
+}
+
+interface Launch {
+  readonly argv: readonly string[];
+  readonly options: OwnedLaunchOptions | undefined;
+}
+
+/** A launcher scope that records each launch and answers it with a helper that
+ *  prints `stdout` and exits cleanly. */
+function recordingScope(stdout: string) {
+  const launches: Launch[] = [];
+  const exited = Promise.resolve<OwnedProcessExit>({ code: 0, signal: null, statusOf: "payload", ownership: "surrendered" });
+  const stream = (text: string) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (text.length > 0) controller.enqueue(new TextEncoder().encode(text));
+        controller.close();
+      },
+    });
+  const scope = {
+    spawnOwned(argv: readonly string[], options?: OwnedLaunchOptions): Promise<OwnedProcess> {
+      launches.push({ argv: [...argv], options });
+      return Promise.resolve({ pid: 4242, token: "owned:test", stdin: undefined, stdout: stream(stdout), stderr: stream(""), exited, terminate: () => exited });
+    },
+  };
+  return { scope, launches };
+}
+
+/** The command line the launched shell parses. cmd expands `%NAME%` from the
+ *  launch environment before it parses, and Windows argument quoting escapes
+ *  each `"` as `\"`, which cmd does not read, so on Windows no argument may
+ *  carry a quote. */
+function commandTheShellParses({ argv, options }: Launch): string {
+  const line = argv.at(-1) ?? "";
+  if (process.platform !== "win32") return line;
+  expect(argv.filter((arg) => arg.includes('"'))).toEqual([]);
+  return line.replace(/%([^%]+)%/g, (whole, name: string) => options?.env?.[name] ?? whole);
 }
 
 /** A runner that records what it was asked for, so a test can prove how many
@@ -90,6 +130,18 @@ describe("a key resolver", () => {
     const resolve = createKeyResolver(runner.run);
 
     expect(await resolve("!print-my-key")).toBeUndefined();
+  });
+
+  test("hands the shell a helper command with quoted parts intact", async () => {
+    const { scope, launches } = recordingScope("helper-key\n");
+    const resolve = createKeyResolver(createOwnedCredentialCommandRunner(scope));
+    const command = `"C:\\Program Files\\x\\op.exe" read "op://vault/key" | findstr key`;
+
+    const result = await resolve(`!${command}`);
+
+    expect(result && Redacted.value(result)).toBe("helper-key");
+    expect(launches).toHaveLength(1);
+    expect(commandTheShellParses(launches[0]!)).toBe(command);
   });
 
   test("retries a helper that first fails and then delivers", async () => {

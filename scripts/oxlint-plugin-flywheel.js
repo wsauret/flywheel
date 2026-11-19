@@ -1,5 +1,6 @@
 import noBarrelFile from "./oxlint-plugin-flywheel/rules/no-barrel-file.js";
 import noEffectEscapeHatch from "./oxlint-plugin-flywheel/rules/no-effect-escape-hatch.js";
+import noExpectPromiseModifier from "./oxlint-plugin-flywheel/rules/no-expect-promise-modifier.js";
 import noSchemaClass from "./oxlint-plugin-flywheel/rules/no-schema-class.js";
 import noRecord from "./oxlint-plugin-flywheel/rules/no-record.js";
 import noShoutyConstants from "./oxlint-plugin-flywheel/rules/no-shouty-constants.js";
@@ -15,6 +16,7 @@ export default {
   rules: {
     "no-barrel-file": noBarrelFile,
     "no-effect-escape-hatch": noEffectEscapeHatch,
+    "no-expect-promise-modifier": noExpectPromiseModifier,
     "no-schema-class": noSchemaClass,
     "no-record": noRecord,
     "no-shouty-constants": noShoutyConstants,

@@ -192,7 +192,7 @@ describe("runtime state generation ownership", () => {
       await composition.client.dispatch({ type: "session.rename", sessionId, title: "Kept Chat" })
 
       disposing = true
-      await expect(composition.dispose({ clientsHold: false })).resolves.toEqual({ kind: "settled" })
+      expect(await composition.dispose({ clientsHold: false })).toEqual({ kind: "settled" })
       // The role projection resolves provider connections through admission, so
       // its pending pushes finish before admission refuses every later read.
       expect(shutdownSettlements).toEqual(["role projection", "auth admission"])
@@ -267,7 +267,7 @@ describe("a composition that fails after preparation", () => {
       if (entry.type === "startup.finished") records.push(entry.payload)
     })
     try {
-      await expect(createTestRuntimeComposition(options)).rejects.toThrow(`${stage} boom`)
+      expect(await createTestRuntimeComposition(options).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining(`${stage} boom`))
       const failedStage = stage === "background lane" ? "prepare" : stage === "app service" ? "services" : "kernel"
       expect(records).toEqual(expect.arrayContaining([expect.objectContaining({
         owner: "project-execution",

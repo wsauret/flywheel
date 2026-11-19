@@ -259,7 +259,7 @@ describe("the edges of a planned replacement's cut", () => {
         // any paused project, and never waits on the reattach.
         expect(declinedByPausedProject(await firstI.client.query({ type: "commandUsageSnapshot" }).then(() => undefined, (error: unknown) => error))).toBe(true)
         await Bun.sleep(2_000)
-        await expect(executorOf(projectI)).rejects.toThrow("no executor serves")
+        expect(await executorOf(projectI).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("no executor serves"))
         // Nothing refuses the person's message: it restarts the executor here,
         // and the tab's reattach joins that generation.
         expect(await firstI.client.dispatch({ type: "session.send", sessionId: chat, input: TASKS.restarted })).toMatchObject({ ok: true })

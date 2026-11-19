@@ -102,14 +102,14 @@ test("keep rejects a commit hook that changes staged content", async () => {
   await writeFile(hook, "#!/bin/sh\nprintf hook > tracked.txt\ngit add tracked.txt\n")
   await chmod(hook, 0o755)
 
-  await expect(keepExperimentChanges({
+  expect(await keepExperimentChanges({
     cwd: directory,
     scratchDir: scratch,
     description: "hook mutation",
     result: { run: 1, segment: 0, metric: 1, metrics: {}, status: "keep", description: "hook mutation", confidence: null, durationMs: null },
     measuredTree,
     run,
-  })).rejects.toThrow("Experiment tree mismatch at commit")
+  }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("Experiment tree mismatch at commit"))
 })
 
 test("discard restores staged candidate content in both index and worktree", async () => {

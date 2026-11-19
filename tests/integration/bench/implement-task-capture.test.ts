@@ -92,7 +92,7 @@ test("captures the final candidate tree after commits and rejects a missing base
     expect(captured.diffStats).toEqual({ linesAdded: 2, linesRemoved: 2, filesTouched: 3 });
 
     await checked(["git", "update-ref", "-d", "refs/flywheel/benchmark-baseline"], sandbox);
-    await expect(captureImplementation(task, sandbox, run)).rejects.toThrow("exit code 128");
+    expect(await captureImplementation(task, sandbox, run).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("exit code 128"));
   } finally {
     await rm(sandbox, { recursive: true, force: true });
     await rm(root, { recursive: true, force: true });

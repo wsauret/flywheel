@@ -138,7 +138,7 @@ describe("account service web wake surface", () => {
       for (let waited = 0; account.registrySubscriptions() === 0 && waited < 5_000; waited += 20) await Bun.sleep(20)
       expect(account.registrySubscriptions()).toBe(1)
     } finally {
-      await expect(runtime.dispose()).resolves.toBeUndefined()
+      expect(await runtime.dispose()).toBeUndefined()
       await account.release()
     }
     expect(hubStopped).toBe(true)
@@ -158,11 +158,11 @@ describe("account service web wake surface", () => {
     try {
       // No directory holds the socket's path, so the listen throws after the
       // hub started and the account root is watched.
-      await expect(createAccountServiceRuntime({
+      expect(await createAccountServiceRuntime({
         ...account.options,
         socketPath: path.join(account.root, "missing", "account.sock"),
         startHub: () => ({ origin: "http://127.0.0.1:41000", held: () => true, stop: () => { hubStopped = true } }),
-      })).rejects.toThrow()
+      }).catch((error: unknown) => error)).toBeInstanceOf(Error)
       expect(hubStopped).toBe(true)
       expect(watch.mock.results).toHaveLength(1)
       expect(close.mock.contexts).toHaveLength(1)

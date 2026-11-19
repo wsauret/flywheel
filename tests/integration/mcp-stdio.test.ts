@@ -275,7 +275,7 @@ describe("MCP stdio integration", () => {
     const observedManager = manager;
     observedManager.subscribe(() => { for (const row of observedManager.status()) order.push(`status:${row.status}`); });
 
-    await expect(manager.acquire("blocked")).rejects.toThrow("did not connect within 600ms");
+    expect(await manager.acquire("blocked").catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("did not connect within 600ms"));
     // The attempt publishes the timeout only after the connection scope closed,
     // and this transport settles its container inside that close.
     expect(order.indexOf("settled")).toBeGreaterThanOrEqual(0);
@@ -283,7 +283,7 @@ describe("MCP stdio integration", () => {
     expect(launched).toHaveLength(1);
     expect(processExists(launched[0] ?? 0)).toBe(false);
 
-    await expect(manager.acquire("blocked")).rejects.toThrow("did not connect within 600ms");
+    expect(await manager.acquire("blocked").catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("did not connect within 600ms"));
 
     expect(order.filter((event) => event === "settled")).toHaveLength(2);
     expect(launched).toHaveLength(2);

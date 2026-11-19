@@ -279,10 +279,7 @@ export function startReplacementProvider(options: { readonly markerDir: string }
     killedExecutor: commandChat("killed-executor-1"),
     mutates: commandChat("edits-1", { command: editingCommand("edits-1"), mutates: true }),
     // The chat answers its launch, then ignores the one pending-work
-    // reminder, so the runtime parks it on the command. Its command id names
-    // no wait word (`WAIT_INTENT_PATTERN`): a POSIX launch that opens with
-    // `printf` would then read as a yield placeholder and park the turn on its
-    // own launch, with no reminder.
+    // reminder, so the runtime parks it on the command.
     idleBackground: (request, body, _text, task) => task.requests > 3
       ? successors.has("idleBackground") ? answer({ content: "Idle chat answered." }) : held(request)
       : backgroundTurn(request, body, task, "rest-background-1", () => answer({ content: "The server is running." })),

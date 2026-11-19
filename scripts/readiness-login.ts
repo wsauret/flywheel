@@ -20,6 +20,10 @@
  *   bun run readiness:login --in-home <home>   add the profile if it is missing, then run the CLI's own Claude login
  *   bun run readiness:login --status <home>    print the login's status line, which readiness reads
  *
+ * The status mode asks the bundled engine for each login's sign-in (`claude auth status`), which states when the
+ * engine stops renewing the login. The engine reads its own token for that; this script reads only the engine's
+ * answer, and prints no field of it but the date.
+ *
  * The engine's login needs no browser on the machine that runs it. It prints "If the browser didn't open, visit:
  * <url>" and reads the code that the page shows, which `flywheel auth login` asks the person to paste.
  */
@@ -30,11 +34,14 @@ import { join } from "node:path";
 import { LIVE_AUTH_PROFILE_SETTING, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile, liveClaudeAccounts } from "./claude-engine-release.js";
 import { readinessPlan, releaseLoginContainerCommand } from "./readiness-plan.js";
 import { canonicalAccountHome, FLYWHEEL_DIR_NAME } from "../src/infra/directory-authorities.js";
+import { processEngineHost, type EngineHost } from "../src/infra/claude-engine.js";
 import { keychainUnlocked } from "../src/infra/macos-keychain.js";
 import { ownedCommandRunner } from "../src/infra/owned-command.js";
+import { isRecord } from "../src/infra/record.js";
 import { osAccount } from "../src/infra/os-account.js";
 import { createLauncherScope, createProcessSupervisor, guardianCommand } from "../src/infra/process-supervisor.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
+import { cliLoginEnvironment } from "../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
 import { CLAUDE_AGENT_SDK_CLI_FLAG } from "../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { loginToken, type LoginToken, type TokenProbe } from "../src/orchestration/modules/provider-claude-agent-sdk/login-token.js";
 
@@ -47,30 +54,90 @@ export const WINDOWS_RELEASE_LOGIN_FOLDER = "FlywheelReadiness";
 /** The Windows release login home, as PowerShell on the Windows machine expands it. */
 const WINDOWS_HOME = `$env:LOCALAPPDATA\\${WINDOWS_RELEASE_LOGIN_FOLDER}`;
 
-/** The release login of the account home `home`: present when a login of its auth profile `profile` has a
- *  stored token, unchecked when the engine can keep the token in a store that this check cannot search, and absent
- *  otherwise, also when the home has no such profile. It reads each login folder's account file and the engine's
- *  token-free store checks (`loginToken`), never a token. */
-export async function releaseLoginStatus(home: string, root: string, probe: TokenProbe, profile: string): Promise<LoginToken> {
-  const userDataRoot = join(canonicalAccountHome(home), FLYWHEEL_DIR_NAME);
-  const tokens = await Promise.all(liveClaudeAccounts(userDataRoot, root, profile).map(({ configDir }) => loginToken(configDir, probe)));
-  return tokens.find(({ kind }) => kind === "present") ?? tokens.find(({ kind }) => kind === "unchecked") ?? { kind: "absent" };
+/** A release login: its token (`LoginToken`), or `ending` when the engine holds a token that it can stop renewing
+ *  at any time, by `endsAt`, an ISO date. Such a login can refuse every request of the live tier, with "this login
+ *  reached its time limit and cannot be renewed". */
+export type ReleaseLogin = LoginToken | { readonly kind: "ending"; readonly endsAt: string };
+
+/** What the status check needs: the token probe, the engine that states each login's sign-in, which runs through
+ *  the probe's runner, and the time of the check. */
+export interface ReleaseLoginCheck {
+  readonly probe: TokenProbe;
+  readonly engine: EngineHost;
+  readonly nowMs: number;
 }
 
-/** The one line that the status mode prints for `token`. */
-function statusLine(token: LoginToken): string {
-  switch (token.kind) {
-    case "present": return `present ${token.store}`;
+/** `claude auth status` reads the stored login and sends nothing: it answered in 120 to 230 ms (engine 2.1.321). */
+const AUTH_STATUS_BOUND_MS = 10_000;
+/** The engine can end a sign-in this long before the end date that it states, and warns from then on to sign in
+ *  again (engine 2.1.321: "this sign-in can end at any time from now until <date>"). */
+const SIGN_IN_END_WINDOW_MS = 3 * 86_400_000;
+
+/** What the engine's `auth status --json` states about the sign-in, or undefined when its output states none. */
+interface AuthStatus {
+  readonly loggedIn: boolean;
+  readonly loginExpiresAt: string | undefined;
+}
+
+function authStatus(text: string): AuthStatus | undefined {
+  let status: unknown;
+  try {
+    status = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  if (!isRecord(status) || typeof status["loggedIn"] !== "boolean") return undefined;
+  const expiresAt = status["loginExpiresAt"];
+  return { loggedIn: status["loggedIn"], loginExpiresAt: typeof expiresAt === "string" ? expiresAt : undefined };
+}
+
+/** The release login in `configDir`: its token (`loginToken`), and for a stored token what the engine's
+ *  `auth status` states about the sign-in. The engine names no login when the token holds none (`absent`), and the
+ *  date after which it renews the login no more (`loginExpiresAt`, engine 2.1.318 and later). A login without that
+ *  date keeps its token's status. An engine that does not answer leaves the login `unchecked`. */
+async function releaseLogin(configDir: string, { probe, engine, nowMs }: ReleaseLoginCheck): Promise<ReleaseLogin> {
+  const token = await loginToken(configDir, probe);
+  if (token.kind !== "present") return token;
+  if (probe.run === undefined) return { kind: "unchecked", reason: "this runtime starts no program" };
+  const answer = await probe.run([engine.enginePath, "auth", "status", "--json"], { env: cliLoginEnvironment({ ...engine, configDir }), cwd: engine.temporaryDirectory, timeoutMs: AUTH_STATUS_BOUND_MS });
+  if (answer.timedOut) return { kind: "unchecked", reason: `the engine did not state the sign-in within ${AUTH_STATUS_BOUND_MS / 1000} s` };
+  // The engine exits with code 1 when it names no login, and states that in the same JSON.
+  const status = authStatus(answer.stdout);
+  if (status === undefined) return { kind: "unchecked", reason: `the engine's auth status exited with code ${String(answer.exitCode)} and stated no sign-in` };
+  if (!status.loggedIn) return { kind: "absent" };
+  const endsAtMs = status.loginExpiresAt === undefined ? Number.NaN : Date.parse(status.loginExpiresAt);
+  return Number.isNaN(endsAtMs) || endsAtMs - SIGN_IN_END_WINDOW_MS > nowMs ? token : { kind: "ending", endsAt: new Date(endsAtMs).toISOString() };
+}
+
+/** The release login of the account home `home`: present when a login of its auth profile `profile` has a
+ *  stored token that the engine still renews, unchecked when a token store or the engine could not be asked, ending
+ *  when the only stored tokens are ones that the engine can stop renewing at any time, and absent otherwise, also
+ *  when the home has no such profile. It reads each login folder's account file, the engine's token-free store
+ *  checks, and the engine's own auth status (`releaseLogin`), never a token. */
+export async function releaseLoginStatus(home: string, root: string, profile: string, check: ReleaseLoginCheck): Promise<ReleaseLogin> {
+  const userDataRoot = join(canonicalAccountHome(home), FLYWHEEL_DIR_NAME);
+  const logins = await Promise.all(liveClaudeAccounts(userDataRoot, root, profile).map(({ configDir }) => releaseLogin(configDir, check)));
+  return logins.find(({ kind }) => kind === "present") ?? logins.find(({ kind }) => kind === "unchecked") ?? logins.find(({ kind }) => kind === "ending") ?? { kind: "absent" };
+}
+
+/** The one line that the status mode prints for `login`. */
+function statusLine(login: ReleaseLogin): string {
+  switch (login.kind) {
+    case "present": return `present ${login.store}`;
     case "absent": return "absent";
-    case "unchecked": return `unchecked ${token.reason}`;
+    case "unchecked": return `unchecked ${login.reason}`;
+    case "ending": return `ending ${login.endsAt}`;
   }
 }
 
-/** The status that a line of the status mode states, or undefined for any other output. */
-export function parseReleaseLoginStatus(output: string): LoginToken | undefined {
-  const line = output.trim();
+/** The status that the last line of the status mode's output states, or undefined for any other output. The lines
+ *  before it are the output of what ran before the status mode, such as a container's install. */
+export function parseReleaseLoginStatus(output: string): ReleaseLogin | undefined {
+  const line = output.trim().split("\n").at(-1)?.trim() ?? "";
   if (line === "present file" || line === "present keychain") return { kind: "present", store: line === "present file" ? "file" : "keychain" };
   if (line === "absent") return { kind: "absent" };
+  const endsAt = /^ending (\S+)$/u.exec(line)?.[1];
+  if (endsAt !== undefined) return Number.isNaN(Date.parse(endsAt)) ? undefined : { kind: "ending", endsAt };
   const unchecked = /^unchecked (.+)$/u.exec(line)?.[1];
   return unchecked === undefined ? undefined : { kind: "unchecked", reason: unchecked };
 }
@@ -183,8 +250,11 @@ async function main(args: readonly string[]): Promise<number> {
     const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() });
     const launcher = createLauncherScope(supervisor);
     try {
-      const token = await releaseLoginStatus(home, root, { platform: process.platform, account: osAccount(), run: ownedCommandRunner(launcher), keychainUnlocked }, profile);
-      console.log(statusLine(token));
+      const account = osAccount();
+      const login = await releaseLoginStatus(home, root, profile, {
+        probe: { platform: process.platform, account, run: ownedCommandRunner(launcher), keychainUnlocked }, engine: processEngineHost(account), nowMs: Date.now(),
+      });
+      console.log(statusLine(login));
       return 0;
     } finally {
       await launcher.close();

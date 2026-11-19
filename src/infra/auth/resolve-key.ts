@@ -3,6 +3,7 @@ import { Redacted } from "effect";
 import { Log } from "../log.js";
 import { captureOwnedSecret, type OwnedSecretResult } from "../owned-command.js";
 import type { LauncherScope } from "../process-supervisor.js";
+import { shellCommandLaunch } from "../shell-command.js";
 
 const log = Log.create({ service: "resolve-key" });
 
@@ -19,8 +20,11 @@ export type KeyResolver = (value: string) => Promise<Redacted.Redacted<string> |
 
 /** The production runner: the helper runs in a container the guardian owns and
  *  its output is captured as a secret, never as text. */
-export function createOwnedCredentialCommandRunner(scope: LauncherScope): CredentialCommandRunner {
-  return (command) => captureOwnedSecret(scope, shellCommandArgs(command), { timeoutMs: COMMAND_TIMEOUT_MS });
+export function createOwnedCredentialCommandRunner(scope: Pick<LauncherScope, "spawnOwned">): CredentialCommandRunner {
+  return (command) => {
+    const { argv, env } = shellCommandLaunch(command);
+    return captureOwnedSecret(scope, argv, { timeoutMs: COMMAND_TIMEOUT_MS, env });
+  };
 }
 
 export function createKeyResolver(run: CredentialCommandRunner): KeyResolver {
@@ -57,11 +61,4 @@ export function createKeyResolver(run: CredentialCommandRunner): KeyResolver {
     resolutions.set(value, resolution);
     return resolution;
   };
-}
-
-function shellCommandArgs(command: string): string[] {
-  if (process.platform === "win32") {
-    return [process.env.ComSpec ?? process.env.COMSPEC ?? "cmd.exe", "/d", "/s", "/c", command];
-  }
-  return ["sh", "-c", command];
 }

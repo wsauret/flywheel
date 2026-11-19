@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { RELEASE_ARCHIVES, RELEASE_BUILD_COMMANDS, RELEASE_TARGETS } from "../../../scripts/release-contract.js";
-import { dockerRuntimeCommand, readinessPlan, releaseLoginContainerCommand, releaseLoginStatusContainerCommand } from "../../../scripts/readiness-plan.js";
+import { dockerRuntimeCommand, readinessPlan, releaseLoginContainerCommand } from "../../../scripts/readiness-plan.js";
 import { readinessCommandTimeout, runReadiness, type CommandEnvironment, type ReadinessDependencies } from "../../../scripts/readiness.js";
 
 const ROOT = resolve("/repo");
@@ -32,7 +32,8 @@ const ENGINE_BUMP_READS = [["git", "describe", "--tags", "--abbrev=0", "--match"
 const ACCOUNT_HOME = resolve("/home/person");
 /** What the fake status mode answers for every home and volume, unless a test gives another answer. */
 const PRESENT = { exitCode: 0, stdout: "present file\n", stderr: "" };
-const isStatusRead = (command: readonly string[]) => command.includes("--status");
+/** A status read on this host, or in a container whose shell step ends with one. */
+const isStatusRead = (command: readonly string[]) => command.includes("--status") || /readiness-login\.ts --status /u.test(command.at(-1) ?? "");
 /** The auth profile that the live auth profile setting names, unless a scenario leaves it unset. */
 const PROFILE = "Live";
 
@@ -44,6 +45,8 @@ interface Scenario {
   readonly releaseLoginHome?: string;
   /** Leaves the live auth profile setting unset. */
   readonly noLiveAuthProfile?: true;
+  /** The `packageManager` field of package.json; by default it pins the Bun that runs the pass. */
+  readonly packageManager?: string;
 }
 
 /** Runs readiness on fake dependencies. Git answers the engine bump's reads from `scenario`, which by default pins the
@@ -77,7 +80,7 @@ function orchestrate(platform: string, arch: string, overrides: Partial<Readines
     },
   };
   const outcome = runReadiness({
-    root: ROOT, platform, arch, quick: scenario.quick ?? false, bunExecutable: BUN, bunVersion: "1.3.14", version: "0.0.8",
+    root: ROOT, platform, arch, quick: scenario.quick ?? false, bunExecutable: BUN, bunVersion: "1.3.14", packageManager: scenario.packageManager ?? "bun@1.3.14", version: "0.0.8",
     accountHome: ACCOUNT_HOME, releaseLoginHome: scenario.releaseLoginHome, liveAuthProfile: scenario.noLiveAuthProfile ? undefined : PROFILE,
   }, dependencies);
   return { commands, environments, outcome };
@@ -92,12 +95,14 @@ const statusAnswering = (line: string): ReadinessDependencies["run"] => (command
 const check = (outcome: ReturnType<typeof orchestrate>["outcome"], name: string) => outcome.checks.find((entry) => entry.name === name);
 const LIVE_TIER = [BUN, "run", "test:integration:claude-engine"];
 const hostStatus = (home: string) => [BUN, "run", "scripts/readiness-login.ts", "--status", home];
-const LINUX_STATUS = releaseLoginStatusContainerCommand({ dockerPlatform: "linux/arm64", root: ROOT, bunVersion: "1.3.14", liveAuthProfile: PROFILE }).map((part, index) => index === 0 ? "/docker" : part);
-const linuxLive = (candidate: string) => releaseLoginContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate, liveAuthProfile: PROFILE, step: "live" }).map((part, index) => index === 0 ? "/docker" : part);
+const linuxContainer = (step: "status" | "live") => (candidate: string) => releaseLoginContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate, liveAuthProfile: PROFILE, step }).map((part, index) => index === 0 ? "/docker" : part);
+const linuxStatus = linuxContainer("status");
+const linuxLive = linuxContainer("live");
 const LINUX_LIVE = linuxLive("/scratch/candidate.tar");
 const isLinuxLive = (command: readonly string[]) => command[0] === "/docker" && command.join(" ").includes("test:integration:claude-engine");
-/** The candidate tar that the Linux live tier's `git archive` writes. */
-const candidateOf = (commands: readonly (readonly string[])[]) => commands.find((command) => command[1] === "archive")?.find((part) => part.startsWith("--output="))?.slice("--output=".length);
+/** The candidate tars that `git archive` writes, in order: the Linux status read's, then the Linux live tier's. */
+const candidatesOf = (commands: readonly (readonly string[])[]) => commands.filter((command) => command[1] === "archive").map((command) => command.find((part) => part.startsWith("--output="))!.slice("--output=".length));
+const archiveTo = (candidate: string) => ["git", "archive", "--format=tar", `--output=${candidate}`, "HEAD"];
 
 describe("deployment readiness planning", () => {
   test("derives macOS builds and Linux evidence from the canonical matrix", () => {
@@ -126,8 +131,9 @@ describe("deployment readiness planning", () => {
 
   test("bounds hermetic Docker probes and leaves every repository command to its own hang guards", () => {
     expect(readinessCommandTimeout(["/docker", "run", "--rm", "--network=none", "image"], "/docker")).toBe(180_000);
-    expect(readinessCommandTimeout(LINUX_STATUS, "/docker")).toBe(180_000);
-    // The live tier in a container is the repository's own integration script, behind its own budgets.
+    // The Linux login status read and live tier install the candidate from the network, behind the install's own
+    // budgets, and the live tier is the repository's own integration script.
+    expect(readinessCommandTimeout(linuxStatus("/scratch/candidate.tar"), "/docker")).toBeUndefined();
     expect(readinessCommandTimeout(LINUX_LIVE, "/docker")).toBeUndefined();
     expect(readinessCommandTimeout([BUN, "run", "build"], "/docker")).toBeUndefined();
     expect(readinessCommandTimeout([BUN, "run", "test:integration:no-api"], "/docker")).toBeUndefined();
@@ -203,6 +209,13 @@ describe("readiness orchestration", () => {
     const noTmux = orchestrate("win32", "x64", { which: () => undefined });
     expect(noTmux.commands.some((command) => command.includes("test:perf"))).toBe(false);
     expect(noTmux.outcome.checks.find(({ name }) => name === "performance gate")).toEqual({ name: "performance gate", status: "skip", detail: "performance gate: tmux is unavailable; install psmux, which provides tmux on Windows" });
+  });
+
+  test("refuses at once to run on another Bun than package.json pins", () => {
+    const { commands, outcome } = orchestrate("win32", "x64", {}, { packageManager: "bun@1.4.4" });
+    expect(commands).toEqual([]);
+    expect(outcome.exitCode).toBe(1);
+    expect(outcome.checks).toEqual([{ name: "pinned Bun", status: "fail", detail: "this host runs bun@1.3.14, but package.json pins bun@1.4.4; install the pinned Bun and run the pass again" }]);
   });
 
   test("fails dirty trees and failed required checks", () => {
@@ -355,25 +368,49 @@ describe("readiness orchestration", () => {
     expect(outcome.exitCode).toBe(0);
   });
 
-  test("on a Mac bump, qualifies the engine on Linux in a container on the release login volume, right after the host's live tier", () => {
-    let folderDuringRun: boolean | undefined;
-    const { commands, outcome } = orchestrate("darwin", "arm64", { run: (command) => {
-      const mounted = isLinuxLive(command) ? /source=([^,]+),target=\/input\/candidate\.tar/u.exec(command.join(" "))?.[1] : undefined;
-      if (mounted !== undefined) folderDuringRun = existsSync(dirname(mounted));
+  test("fails the live login with the command that logs in again, and runs no live tier on it, when the engine can stop renewing the login", () => {
+    const ending = statusAnswering("ending 2026-11-18T08:16:10.836Z\n");
+    const release = orchestrate("win32", "x64", { run: ending }, { shipped: "0.3.295", releaseLoginHome: resolve("/release") });
+    expect(release.commands).not.toContainEqual(LIVE_TIER);
+    expect(check(release.outcome, "Claude engine live login")).toEqual({
+      name: "Claude engine live login", status: "fail",
+      detail: `the release login home ${resolve("/release")} holds a Claude login in the auth profile "Live" that the engine can stop renewing at any time, by 2026-11-18, after which it refuses every request: run \`bun run readiness:login windows\` (run it on the release machine, with FLYWHEEL_READINESS_WINDOWS_HOST naming the SSH host of this machine); it logs in to %LOCALAPPDATA%\\FlywheelReadiness of the real profile, so FLYWHEEL_READINESS_CLAUDE_HOME must name that folder`,
+    });
+    expect(release.outcome.exitCode).toBe(1);
+
+    const linux = orchestrate("darwin", "arm64", { run: (command) => {
+      if (command[0] === "/docker" && isStatusRead(command)) return { exitCode: 0, stdout: "bun install v1.3.14\nending 2026-11-18T08:16:10.836Z\n", stderr: "" };
       if (isStatusRead(command)) return PRESENT;
       if (command[0] === "git" && command[1] === "show") return { exitCode: 0, stdout: COMMITTED_TOKENIZER, stderr: "" };
       return { exitCode: 0, stdout: "", stderr: "" };
     } }, { shipped: "0.3.295" });
+    expect(linux.commands.some(isLinuxLive)).toBe(false);
+    expect(linux.commands).toContainEqual(LIVE_TIER);
+    expect(check(linux.outcome, "linux-arm64 Claude engine live login")?.status).toBe("fail");
+    expect(check(linux.outcome, "linux-arm64 Claude engine live login")?.detail).toEndWith("run `bun run readiness:login linux`");
+    expect(linux.outcome.exitCode).toBe(1);
+  });
+
+  test("on a Mac bump, reads the Linux login and qualifies the engine on Linux in containers of the candidate on the release login volume, right after the host's live tier", () => {
+    const foldersDuringRun: boolean[] = [];
+    const { commands, outcome } = orchestrate("darwin", "arm64", { run: (command) => {
+      const mounted = command[0] === "/docker" ? /source=([^,]+),target=\/input\/candidate\.tar/u.exec(command.join(" "))?.[1] : undefined;
+      if (mounted !== undefined) foldersDuringRun.push(existsSync(dirname(mounted)));
+      if (isStatusRead(command)) return PRESENT;
+      if (command[0] === "git" && command[1] === "show") return { exitCode: 0, stdout: COMMITTED_TOKENIZER, stderr: "" };
+      return { exitCode: 0, stdout: "", stderr: "" };
+    } }, { shipped: "0.3.295" });
+    // Each tar is written in a temporary folder of its own, which exists while its container reads it and is gone after.
+    const [statusCandidate, candidate] = candidatesOf(commands);
+    for (const tar of [statusCandidate!, candidate!]) {
+      expect(dirname(tar)).toStartWith(join(tmpdir(), "flywheel-readiness-candidate-"));
+      expect(existsSync(dirname(tar))).toBe(false);
+    }
+    expect(foldersDuringRun).toEqual([true, true]);
     const contract = commands.findIndex((command) => command.includes("check:commits"));
-    expect(commands.slice(contract + 1, contract + 6)).toEqual([...ENGINE_BUMP_READS, hostStatus(ACCOUNT_HOME), LINUX_STATUS]);
-    // The tar is written in a temporary folder of its own, which exists while the container reads it and is gone after.
-    const candidate = candidateOf(commands);
-    expect(candidate).toBeDefined();
-    expect(dirname(candidate!)).toStartWith(join(tmpdir(), "flywheel-readiness-candidate-"));
-    expect(folderDuringRun).toBe(true);
-    expect(existsSync(dirname(candidate!))).toBe(false);
+    expect(commands.slice(contract + 1, contract + 7)).toEqual([...ENGINE_BUMP_READS, hostStatus(ACCOUNT_HOME), archiveTo(statusCandidate!), linuxStatus(statusCandidate!)]);
     const live = commands.findIndex((command) => command.join(" ") === LIVE_TIER.join(" "));
-    expect(commands.slice(live, live + 4)).toEqual([LIVE_TIER, ["/docker", "info"], ["git", "archive", "--format=tar", `--output=${candidate}`, "HEAD"], linuxLive(candidate!)]);
+    expect(commands.slice(live, live + 4)).toEqual([LIVE_TIER, ["/docker", "info"], archiveTo(candidate!), linuxLive(candidate!)]);
     expect(check(outcome, "linux-arm64 Claude engine live login")?.status).toBe("pass");
     expect(check(outcome, "linux-arm64 Claude engine live qualification")).toEqual({ name: "linux-arm64 Claude engine live qualification", status: "pass", detail: "" });
     expect(outcome.exitCode).toBe(0);
@@ -388,7 +425,7 @@ describe("readiness orchestration", () => {
     expect(check(outcome, "tokenizer rebuild")?.status).toBe("fail");
     expect(commands.some(isLinuxLive)).toBe(true);
     expect(check(outcome, "linux-arm64 Claude engine live qualification")?.status).toBe("pass");
-    expect(existsSync(dirname(candidateOf(commands)!))).toBe(false);
+    expect(candidatesOf(commands).map((tar) => existsSync(dirname(tar)))).toEqual([false, false]);
   });
 
   test("blocks the Linux live qualification with Docker's reason when Docker stops answering before the tier", () => {

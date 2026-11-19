@@ -85,7 +85,7 @@ async function verifyRoleRequests(): Promise<void> {
   const constrained = await admission.createJudge("lost-judge", "", "low", undefined, (model) => {
     if (model === "claude-opus-5.5") throw new Error("same-family scoring is not allowed");
   });
-  await expect(constrained.complete("No provider call.", new AbortController().signal)).rejects.toThrow("same-family scoring is not allowed");
+  expect(await constrained.complete("No provider call.", new AbortController().signal).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("same-family scoring is not allowed"));
   expect(outgoing).toHaveLength(4);
 }
 

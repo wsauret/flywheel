@@ -3,6 +3,7 @@ import { experimental_decide } from "ai";
 import { chooseDecisionBackend } from "../../oxlint-plugin-jev/src/backend.ts";
 import { decisionModelFor, decisionProviderOptions } from "../../oxlint-plugin-jev/src/decision-model.ts";
 import type { Backend as DecisionBackend } from "../../oxlint-plugin-jev/src/types.ts";
+import { shellCommandLaunch } from "../../../src/infra/shell-command.ts";
 import { withOwnedCommands } from "../owned-commands.ts";
 import type { BackendName, ResolvedConfig } from "./config.ts";
 import { renderJudgePrompt, type JudgeInput } from "./input.ts";
@@ -154,23 +155,10 @@ export function parseJudgeAnswers(json: unknown, rules: ReadonlyArray<DiffRule>,
   });
 }
 
-const WINDOWS_COMMAND_VARIABLE = "ANTI_SLOP_JUDGE_COMMAND";
-
-// Windows argument quoting escapes each `"` in an argument as `\"`, which cmd does not read, so a
-// command with quoted parts cannot reach cmd as an argument. cmd expands a variable before it parses
-// the line, so the command goes in through the environment and keeps its quotes and pipes.
-const shellLaunch = (command: string): { readonly argv: readonly string[]; readonly env?: Env } =>
-  process.platform === "win32"
-    ? {
-        argv: [process.env.ComSpec ?? process.env.COMSPEC ?? "cmd.exe", "/d", "/s", "/c", `%${WINDOWS_COMMAND_VARIABLE}%`],
-        env: { ...process.env, [WINDOWS_COMMAND_VARIABLE]: command },
-      }
-    : { argv: ["sh", "-c", command] };
-
 // The command runs in an owned container, so a timeout ends every process it started, such as
 // each side of a pipeline, and the result settles only after they are gone.
 async function runCommand(command: string, stdin: string, timeoutMs: number): Promise<string> {
-  const { argv, env } = shellLaunch(command);
+  const { argv, env } = shellCommandLaunch(command);
   const result = await withOwnedCommands((run) => run(argv, { stdin, timeoutMs, env }));
   if (result.timedOut) throw new Error(`judge command timed out after ${timeoutMs}ms`);
   if (result.exitCode !== 0) {
