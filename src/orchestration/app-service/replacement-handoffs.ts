@@ -209,7 +209,11 @@ export function createReplacementHandoffs(options: ReplacementHandoffsOptions): 
    *  (PI-REMOTE-023). The release returns the project to its idle grace: a
    *  surface that reattaches within it holds the project, and a project
    *  that nothing holds and no work keeps closes, as any idle project does
-   *  (PI-REMOTE-013). */
+   *  (PI-REMOTE-013). Each row continues on its own. A row whose
+   *  continuation fails keeps its place for `root`, and the later rows
+   *  continue and settle. The attempt then rejects with one AggregateError
+   *  that names each failed row, so the duty retries only those rows. A
+   *  failed open or browser endpoint fails the whole attempt. */
   const continueOnce = async (root: string): Promise<void> => {
     for (const handoff of pendingFor(root)) await awaitPredecessor(handoff, lane, predecessorBoundMs, disposal.signal)
     // Read again: a predecessor narrows its row before it stops serving.
@@ -219,12 +223,21 @@ export function createReplacementHandoffs(options: ReplacementHandoffsOptions): 
     const release = project.holdClient()
     try {
       await project.openBrowser()
+      const failures: { readonly handoffId: string; readonly error: unknown }[] = []
       for (const handoff of pending) {
-        const resumed = await project.composition.handoff("continue_after_replacement", handoff.handoffId)
-        const awake = handoff.phoneAwakeRoots.includes(root)
-        log.info("replacement continued in a project", { projectRoot: root, handoffId: handoff.handoffId, resumed: resumed.length, awakeForPhone: awake })
-        if (awake) await options.holdAwakeForPhone(root)
-        await settle(handoff.handoffId, root)
+        try {
+          const resumed = await project.composition.handoff("continue_after_replacement", handoff.handoffId)
+          const awake = handoff.phoneAwakeRoots.includes(root)
+          log.info("replacement continued in a project", { projectRoot: root, handoffId: handoff.handoffId, resumed: resumed.length, awakeForPhone: awake })
+          if (awake) await options.holdAwakeForPhone(root)
+          await settle(handoff.handoffId, root)
+        } catch (error) {
+          failures.push({ handoffId: handoff.handoffId, error })
+        }
+      }
+      if (failures.length > 0) {
+        const reasons = failures.map(({ handoffId, error }) => `${handoffId}: ${errorMessage(error)}`).join("; ")
+        throw new AggregateError(failures.map(({ error }) => error), `The continuation of ${failures.length} of ${pending.length} handoffs failed, and each keeps its row: ${reasons}`)
       }
     } finally {
       release()

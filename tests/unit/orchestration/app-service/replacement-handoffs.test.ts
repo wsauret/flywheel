@@ -36,11 +36,11 @@ function account() {
 /** An account that holds no project awake for the phone. */
 const noPhone = { awakeForPhone: () => false, holdAwakeForPhone: async (): Promise<void> => {} }
 
-function openedProject(calls: string[], name: string, fail: () => boolean = () => false, surface: { readonly held?: boolean; readonly browsers?: string[] } = {}) {
+function openedProject(calls: string[], name: string, fail: (handoffId: string) => boolean = () => false, surface: { readonly held?: boolean; readonly browsers?: string[] } = {}) {
   return {
     composition: {
       async handoff(kind: "interrupt_for_replacement" | "continue_after_replacement", handoffId: string) {
-        if (fail()) throw new Error(`${name} executor is recovering`)
+        if (fail(handoffId)) throw new Error(`${name} executor is recovering`)
         calls.push(`${name}:${kind}:${handoffId}`)
         return kind === "interrupt_for_replacement" && name === "idle" ? [] : [`${name}-session`]
       },
@@ -292,6 +292,29 @@ describe("replacement handoffs", () => {
     await continued
     expect(calls.filter((call) => call.startsWith("locked:"))).toEqual(["locked:continue_after_replacement:h1"])
     // A project whose directory is gone has nothing to continue and leaves the row.
+    expect(registry.replacementHandoffs("installed")).toEqual([])
+    expect(held.count).toBe(0)
+  })
+
+  test("an older handoff whose continuation fails never holds a newer handoff of the same project", async () => {
+    const { registry, project } = account()
+    const shared = project("shared")
+    await registry.recordReplacementHandoff("installed", { handoffId: "old", requestedAt: 1, predecessorPid: process.pid, projectRoots: [shared], phoneAwakeRoots: [] })
+    await registry.recordReplacementHandoff("installed", { handoffId: "new", requestedAt: 2, predecessorPid: process.pid, projectRoots: [shared], phoneAwakeRoots: [] })
+    const calls: string[] = []
+    const held = { count: 0 }
+    let oldUnreadable = true
+    const projects = new Map([[shared, openedProject(calls, "shared", (handoffId) => handoffId === "old" && oldUnreadable)]])
+    const handoffs = createReplacementHandoffs({ lane: "installed", ...noPhone, registry, openProjects: () => new Map(), open: opener(projects, held), retryDelayMs: () => 2 })
+
+    const continued = handoffs.continueAll()
+    // While the older row still fails, the newer one continues and retires.
+    await until("newer handoff continued", () => calls.includes("shared:continue_after_replacement:new"))
+    await until("newer row retired", () => JSON.stringify(registry.replacementHandoffs("installed").map((row) => row.handoffId)) === JSON.stringify(["old"]))
+
+    oldUnreadable = false
+    await continued
+    expect(calls).toEqual(["shared:continue_after_replacement:new", "shared:continue_after_replacement:old"])
     expect(registry.replacementHandoffs("installed")).toEqual([])
     expect(held.count).toBe(0)
   })
