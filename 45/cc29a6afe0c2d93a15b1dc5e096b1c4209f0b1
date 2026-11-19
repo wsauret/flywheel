@@ -1,0 +1,30 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 141-144
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 13
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 1266,1272
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 325-329,387,393
+tests/unit/orchestration/app-service/runtime-config-projection.test.ts
+  h_4b47e9e4a8b456 282,324
+tests/unit/orchestration/config/config-settings-persistence.test.ts
+  h_4b47e9e4a8b456 132,140
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/tui/modals/_settings-modal-fixtures.ts
+  h_4b47e9e4a8b456 176,252
+tests/unit/tui/modals/settings-modal-controls.test.ts
+  h_4b47e9e4a8b456 215,220,227,301,318,335,351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "45cc29a6afe0c2d93a15b1dc5e096b1c4209f0b1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
