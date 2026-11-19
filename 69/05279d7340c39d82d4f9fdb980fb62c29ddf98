@@ -1,0 +1,14 @@
+tests/unit/orchestration/headless/headless-bootstrap.test.ts
+  h_4b47e9e4a8b456 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6905279d7340c39d82d4f9fdb980fb62c29ddf98",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
