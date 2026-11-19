@@ -22,8 +22,11 @@ describe.skipIf(process.platform === "win32")("bash tool: search shims", () => {
   let scratchDir: string;
   const bash = createBashDefinition({ ...bashExecution(), loginShellPath: () => undefined });
 
+  // Each model tool call has its own ID, and the managed shell holds a command under it.
+  let toolCalls = 0;
   async function run(command: string, timeout?: number): Promise<string> {
-    const result = await bash.execute({ command, raw_output: true, ...(timeout ? { timeout } : {}) }, makeContext({ executionCwd: project, scratchDir }));
+    const toolUseId = `call-${++toolCalls}`;
+    const result = await bash.execute({ command, raw_output: true, ...(timeout ? { timeout } : {}) }, makeContext({ executionCwd: project, scratchDir, toolUseId }));
     expect(result.outcome).toBe("ok");
     if (typeof result.content !== "string") throw new Error("bash returned content that is not text");
     return result.content;

@@ -216,7 +216,7 @@ describe("the shared agent host's recovery", () => {
     });
   }, 120_000);
 
-  test.each([[404, "model_not_found"], [403, "authentication_failed"], [429, "rate_limit"]] as const)(
+  test.each([[404, "model_not_found"], [403, "authentication_failed"]] as const)(
     "a coordinator request refused with %d moves the coordinator to the next model for the host's life, and no agent, login, or quota sees the failure", async (status, kind) => {
       const quota = fakeAvailability({});
       const refusals: Array<readonly [string, ModelRefusal]> = [];
@@ -417,9 +417,30 @@ describe("the shared agent host's coordinator", () => {
     }, account.options("claude-haiku-5-5"));
   }, 120_000);
 
-  test("a Haiku agent whose Haiku coordinator is rate limited and whose other coordinators are refused keeps its own model unrefused", async () => {
+  test("a coordinator request that the service rate limits is throttling of the login: the agent's request fails with the rate limit for its own retry, no coordinator moves, no model, login, or quota is marked, and the next request runs on the same host and coordinator", async () => {
     const account = accountObservers();
-    await onFakeHost(temporary, (request, index) => isDispatcher(request) ? (onHaiku(request) ? { blocks: [], status: 429 } : modelRefused(request)) : hostScript(lookupThenAnswer)(request, index), async ({ stage, projectRoot }) => {
+    let limited = true;
+    await onFakeHost(temporary, (request, index) => isDispatcher(request) && limited ? { blocks: [], status: 429 } : hostScript(lookupThenAnswer)(request, index), async ({ host, stage, projectRoot }) => {
+      const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
+      expect((await agent.request()).error).toMatchObject({ failure: { _tag: "RateLimitFailure", status: 429 } });
+      expect(diagnostics.payloads("provider.claude_sdk.host.coordinator_demoted")).toEqual([]);
+      expect(diagnostics.payloads("provider.claude_sdk.host.coordinator_exhausted")).toEqual([]);
+      limited = false;
+      const served = host.requests.length;
+      const retried = await agent.request();
+      expect(retried.error).toBeUndefined();
+      expect(streamedToolCalls(retried)[0]?.name).toBe("lookup");
+      expect(host.requests.slice(served).filter(isDispatcher).map((request) => request.body["model"])).toEqual(host.requests.slice(served).filter(isDispatcher).map(() => "claude-haiku-5-5"));
+      expect(hostLaunches()).toHaveLength(1);
+      expect(account.refusals).toEqual([]);
+      expect(account.outcomes.filter((outcome) => outcome === "login-rejected")).toEqual([]);
+      expect(account.quota.genericEntryCount()).toBe(0);
+    }, account.options("claude-opus-5-5"));
+  }, 120_000);
+
+  test("a Haiku agent whose Haiku coordinator the service refuses the login and whose other coordinators are refused keeps its own model unrefused", async () => {
+    const account = accountObservers();
+    await onFakeHost(temporary, (request, index) => isDispatcher(request) ? (onHaiku(request) ? { blocks: [], status: 403 } : modelRefused(request)) : hostScript(lookupThenAnswer)(request, index), async ({ stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       expect((await agent.request()).error).toMatchObject({ failure: { _tag: "TransientNetworkFailure" } });
       expect(account.refusals).toEqual(COORDINATORS.slice(1).map((model) => [model, { kind: "model" }]));
@@ -430,12 +451,12 @@ describe("the shared agent host's coordinator", () => {
 
   test("after every coordinator model failed, the host's next frame starts again at the first model", async () => {
     const account = accountObservers();
-    let limited = true;
-    await onFakeHost(temporary, (request, index) => isDispatcher(request) && limited ? { blocks: [], status: 429 } : hostScript(lookupThenAnswer)(request, index), async ({ host, stage, projectRoot }) => {
+    let forbidden = true;
+    await onFakeHost(temporary, (request, index) => isDispatcher(request) && forbidden ? { blocks: [], status: 403 } : hostScript(lookupThenAnswer)(request, index), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       expect((await agent.request()).error).toMatchObject({ failure: { _tag: "TransientNetworkFailure" } });
       expect(diagnostics.payloads("provider.claude_sdk.host.coordinator_exhausted")).toHaveLength(1);
-      limited = false;
+      forbidden = false;
       const served = host.requests.length;
       expect((await agent.request()).error).toBeUndefined();
       expect(host.requests.slice(served).find(isDispatcher)?.body["model"]).toBe("claude-haiku-5-5");

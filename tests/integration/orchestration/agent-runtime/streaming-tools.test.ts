@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { Effect, Exit, Scope } from "effect";
 
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
@@ -200,28 +199,12 @@ describe("deterministic provider streaming and recovery", () => {
     reopenedStore.close();
   });
 
-  it("keeps proposal identity and pending continuity for child, workflow, and all-at-once provider publication", () => {
+  // A subagent's calls render in its own session, as top-level calls of that transcript, so they take the same path as a
+  // workflow step's calls.
+  it("keeps proposal identity and pending continuity for workflow and all-at-once provider publication", () => {
     const root = temporaryRoot("streaming-proposal-surfaces");
     const output = createOutputSession({ executionCwd: root, updateEntry: () => {} });
     try {
-      emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: "agent", name: "subagent", input: { description: "child" } }]);
-      output.applyProjectionEvent({ type: "tool-use", toolUseId: "child-write", name: "write", input: {}, timestamp: 1, parentToolUseId: "agent" });
-      output.applyProjectionEvent({ type: "tool-input-delta", toolUseId: "child-write", partialJson: '{"path":"child.ts","content":"draft', parentToolUseId: "agent" });
-      output.applyProjectionEvent({ type: "tool-input-complete", toolUseId: "child-write", name: "write", input: { path: "child.ts", content: "final\n" }, timestamp: 2, parentToolUseId: "agent" });
-      const group = output.getBlocks().find((block) => block.kind === "agentGroup");
-      // A compact subagent row carries its proposed file as the change kind and
-      // file link; the full proposal body stays out of the hidden child row.
-      expect(group?.kind === "agentGroup" ? group.children : []).toEqual([
-        expect.objectContaining({
-          id: "child-write",
-          status: "streaming",
-          fileChangeKind: "create",
-          linkUri: pathToFileURL(join(root, "child.ts")).href,
-          presentation: expect.objectContaining({ detail: "child.ts" }),
-        }),
-      ]);
-      expect(group?.kind === "agentGroup" ? group.children[0] : undefined).not.toHaveProperty("proposedDiff");
-
       output.pushDivider("Workflow step", 3);
       emitAssistant(output.dispatchRuntimeEvent, [{ type: "tool_use", id: "workflow-write", name: "write", input: {} }]);
       emitToolInputDelta(output.dispatchRuntimeEvent, "workflow-write", '{"path":"workflow.ts","content":"draft');

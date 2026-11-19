@@ -35,7 +35,7 @@ function match(pattern: RegExp, text: string): string {
 // The test calls the skill and the agent that the exported text itself names, the way the model reads them: the
 // main agent's design skill, and a reviewer of the code-review skill with that skill's dispatch template, filled in.
 const SKILL = match(/load the `(flywheel:[a-z-]+)` skill/, body("agents/flywheel.md"));
-const reviewText = body(`skills/${match(/load the `flywheel:([a-z-]+)` skill and run its review/, body("agents/flywheel.md"))}/SKILL.md`);
+const reviewText = body(`skills/${match(/load the `flywheel:([a-z-]+)` skill when its description says that the change needs review, and run its review/, body("agents/flywheel.md"))}/SKILL.md`);
 const AGENT = match(/`flywheel:(reviewer-[a-z-]+)`/, reviewText);
 const REVIEW_PROMPT = match(/```text\n(Review this completed change\.[^`]*)```/, reviewText)
   .replace("[the approved Design intent and the user's dated decisions, verbatim]", INTENT);

@@ -11,6 +11,7 @@ import { defaultRoleSlots } from "../../../src/orchestration/config/role-selecti
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/role-model-defaults.js"
 import { attachAccountProject, joinIsolatedAccountService } from "./_account-service.js"
 import { removeWhenReleased } from "../../helpers/remove-when-released.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 
 // ARCH-RUNTIME-076, the guarded steady-state volume budget: the
 // default-level diagnostics stream stays storage-neutral. An idle account
@@ -92,7 +93,7 @@ function startFixtureProvider() {
       const body: unknown = await request.json()
       const tools = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0
       const whole = JSON.stringify(body)
-      if (!tools || whole.includes("Generate a session title")) return answer({ content: "TITLE: Budget session\nSHORT: Budget" }, "stop")
+      if (!tools || isSessionTitleRequest(body)) return answer({ content: "TITLE: Budget session\nSHORT: Budget" }, "stop")
       turnRequests += 1
       if (whole.includes("Run the step commands")) {
         let done = 0

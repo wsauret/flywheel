@@ -21,6 +21,7 @@ import { DeadlineExceeded, withDeadline } from "../../../src/infra/with-deadline
 import type { FrontendOutputBlock, RuntimeClient, RuntimeTransportHealth } from "../../../src/protocol/app-service-types.js"
 import { writeFixtureAccountConfig } from "./_fixture-account.js"
 import { until } from "./_replacement-harness.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 import { descendantProcesses } from "../../helpers/real-process-fixture.js"
 
 // A dev service runs from a snapshot of its checkout's source, fixed at its
@@ -132,7 +133,7 @@ function startProvider() {
       const whole = JSON.stringify(body)
       const word = /\b(alpha|bravo|charlie)\b/.exec(lastPersonMessage(body))?.[1] ?? "other"
       const hasTools = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0
-      if (!hasTools || whole.includes("Generate a session title")) return answer(`TITLE: Chat ${word}\nSHORT: ${word}`)
+      if (!hasTools || isSessionTitleRequest(body)) return answer(`TITLE: Chat ${word}\nSHORT: ${word}`)
       return answer(`answer ${word}`)
     },
   })

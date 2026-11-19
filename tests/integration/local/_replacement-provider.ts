@@ -5,6 +5,7 @@ import { CONTINUATION_MESSAGES } from "../../../src/orchestration/agent-runtime/
 import { interruptedTurnMessage } from "../../../src/orchestration/session/conversation/turn-end-record.js"
 import { interruptedWorkMessage } from "../../../src/orchestration/session/conversation/interrupted-turn-summary.js"
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 
 export const MODEL = "gpt-5"
 /** The opening of a runtime interrupt's record, whether or not it cut a tool call. */
@@ -324,7 +325,7 @@ export function startReplacementProvider(options: { readonly markerDir: string }
       }
       const body: unknown = await request.json()
       const text = userText(body)
-      if (!requestHasTools(body) || text.includes("Generate a session title")) return answer({ content: "TITLE: Fixture session\nSHORT: Fixture" })
+      if (!requestHasTools(body) || isSessionTitleRequest(body)) return answer({ content: "TITLE: Fixture session\nSHORT: Fixture" })
       const launch = /FIXTURE-WORKFLOW-LAUNCH:([a-zA-Z]+):([a-zA-Z0-9+/=]+)/.exec(text)
       // The launching chat takes turns of its own after its launch, and the
       // workflow's result it reads there names the workflow's task. Those

@@ -28,6 +28,7 @@ import { servingAccountService } from "../../helpers/account-service-state.js"
 import { idleAccountUpdates } from "../../helpers/account-updates.js"
 import { frameKind, holdStopAcknowledgement, recordAccountLog, TEST_EXECUTOR_HEARTBEAT_INTERVAL_MS } from "./_executor-heartbeats.js"
 import { writeFixtureAccountConfig } from "./_fixture-account.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 
 const temporaryDirectory = temporaryDirectories()
 
@@ -176,7 +177,7 @@ function startCommandProvider(command: string) {
       }
       const body: unknown = await request.json()
       const text = JSON.stringify(body)
-      const turn = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0 && !text.includes("Generate a session title")
+      const turn = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0 && !isSessionTitleRequest(body)
       const runsCommand = turn && !text.includes(`"tool_call_id":"command-1"`)
       const delta = runsCommand
         ? { tool_calls: [{ index: 0, id: "command-1", type: "function", function: { name: "bash", arguments: JSON.stringify({ command }) } }] }

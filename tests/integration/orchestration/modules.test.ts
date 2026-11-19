@@ -24,6 +24,8 @@ import { moduleProtocolRows, type ModuleId, composeFirstPartyModules, composeRea
 import { composeModuleRuntimes } from "../../../src/infra/module-runtime.js";
 import { capabilityAccessFor } from "../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
+import { bashExecution } from "../../unit/orchestration/agent-runtime/tools/_bash-fixtures.js";
+import { requestCapabilities, type PlannedRequest } from "../../../src/orchestration/agent-runtime/request-tool-surface.js";
 import { createBackgroundWorkRegistry } from "../../../src/orchestration/agent-runtime/background-work.js";
 import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { toolRegistryFromComposition } from "../../../src/orchestration/agent-runtime/tools/tool-registry.js";
@@ -88,7 +90,7 @@ interface Harness {
   readonly configText: () => string;
   /** The model tool surface one request would be planned with, under the live
    *  policy or under an operation's own grant. */
-  readonly toolPlan: (access?: ReturnType<typeof capabilityAccessFor>) => ReturnType<typeof planToolExposure>;
+  readonly toolPlan: (access?: ReturnType<typeof capabilityAccessFor>) => Promise<PlannedRequest>;
   readonly access: () => ReturnType<typeof capabilityAccessFor>;
 }
 
@@ -144,19 +146,23 @@ async function startHarness(configSource = ""): Promise<Harness> {
   disposals.push(() => { commandCatalog.dispose() });
 
   const access = () => capabilityAccessFor(capabilities);
-  const toolPlan = (granted?: ReturnType<typeof capabilityAccessFor>) => {
+  const toolPlan = async (granted?: ReturnType<typeof capabilityAccessFor>): Promise<PlannedRequest> => {
     const requestAccess = granted ?? access();
     const composition = composeFirstPartyModules(SHIPPED_MODULES, MODULE_IDS.filter((id) => !requestAccess.available(id)));
     const skillManage: SkillManageToolDeps = { userDataRoot, origin: { kind: "agent", sessionId: "session-under-test" }, registry: () => definitions.skills() };
-    return planToolExposure({
-      kernel: testKernelToolDeps({
-        userDataRoot,
-        capabilities: requestAccess,
-        skills: definitions.skills(),
-        ...(requestAccess.available("ask-user") ? { askUser: ASK_USER_CONTROLLER } : {}),
-        backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
-        moduleSnapshot: composition,
-      }),
+    // Every runner gives its requests the session's shell runtime over its background registry.
+    const backgroundTasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
+    const kernel = testKernelToolDeps({
+      userDataRoot,
+      capabilities: requestAccess,
+      skills: definitions.skills(),
+      ...(requestAccess.available("ask-user") ? { askUser: ASK_USER_CONTROLLER } : {}),
+      backgroundTasks,
+      ...bashExecution(backgroundTasks),
+      moduleSnapshot: composition,
+    });
+    const plan = await planToolExposure({
+      kernel,
       modules: composeModuleRuntimes([
         // No case launches a workflow file, so no launch needs this session's tool or persona authority.
         ["workflows", { deps: () => workflowDeps(moduleProjection.workflowsMode()), authority: () => ({ toolActions: new Set(), personas: new Set() }) }],
@@ -164,6 +170,7 @@ async function startHarness(configSource = ""): Promise<Harness> {
       ]),
       registry: toolRegistryFromComposition(composition),
     });
+    return { ...plan, kernel };
   };
 
   return {
@@ -454,7 +461,7 @@ describe("one runtime's optional capability surfaces", () => {
     const nextRequest = await harness.toolPlan();
     const skill = nextRequest.tools.get("skill");
     expect(skill).toBeDefined();
-    expect((await skill!.execute({ action: "load", skill_id: "probe.plain" }, makeContext())).outcome).toBe("ok");
+    expect((await skill!.execute({ action: "load", skill_id: "probe.plain" }, makeContext({ capabilities: requestCapabilities(nextRequest) }))).outcome).toBe("ok");
     const admission = await harness.policy.admit({
       operation: "skill lifecycle maintenance",
       required: moduleRequirementsForContribution("tools", "skill_manage"),

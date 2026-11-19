@@ -21,6 +21,7 @@ import { attachAccountProject, joinIsolatedAccountService } from "./_account-ser
 import { LANE, requestAccountCutover, sessionRow, sessionStatus, systemRows, until } from "./_replacement-harness.js"
 import { descendantProcesses } from "../../helpers/real-process-fixture.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 
 // Canonical, because the service address is a hash of the account data root
 // string, and `/tmp` is a symlink on macOS.
@@ -95,10 +96,10 @@ function startProvider() {
       const body: unknown = await request.json()
       const text = userText(body)
       // A title request quotes the person's first message and carries the
-      // runner's tools, so only its instruction tells it apart; a well-formed
+      // runner's tools, so only its system prompt tells it apart; a well-formed
       // title keeps the title generator from retrying for the whole run.
       let delta: SseData = { content: "TITLE: Fixture session\nSHORT: Fixture" }
-      const isTurn = requestHasTools(body) && !text.includes("Generate a session title")
+      const isTurn = requestHasTools(body) && !isSessionTitleRequest(body)
       const keys: readonly ProjectKey[] = ["a", "b"]
       const key = keys.find((candidate) => text.includes(CHAT_TASKS[candidate]))
       if (isTurn && key !== undefined) {

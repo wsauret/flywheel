@@ -54,12 +54,12 @@ async function verifyRoleRequests(): Promise<void> {
     captureRuntimeConfig: testRuntimeConfigCapture,
     runOwnedCommand: () => { throw new Error("no command may be launched in this harness"); },
     captureProviderConnection: async () => ({
-      ...roleCapture(models, { explorer: { model: "gpt-6.1-sol", effort: "low" }, "benchmark-judge": { model: "lost-judge", effort: "low" } }),
+      ...roleCapture(models, { explorer: { model: "gpt-6-luna", effort: "medium" }, "benchmark-judge": { model: "lost-judge", effort: "low" } }),
       admit: () => ({ createAgent, createLLMClient: client }),
     }),
-  }, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "low" }, { role: "judge" }]);
+  }, [{ role: "candidate", roleId: "explorer", model: "lost-candidate", effort: "high" }, { role: "judge" }]);
   const persona = { kind: "persona", name: "explorer", role: "explorer", description: "Inspect.", systemPrompt: "Inspect.", maxTurns: 1, tools: [] } as const;
-  for (const [index, seat] of [{ model: "lost-candidate", effort: "low" as const }, {}].entries()) {
+  for (const [index, seat] of [{ model: "lost-candidate", effort: "high" as const }, {}].entries()) {
     await runPersonaTask(admission.runtime, {
       persona, seat, label: `candidate-${index}`, prompt: "Answer.", workspace: root,
       transcriptPath: join(root, `candidate-${index}`, "transcript.jsonl"),
@@ -70,12 +70,12 @@ async function verifyRoleRequests(): Promise<void> {
   models = ["claude-haiku-4.5", "claude-opus-5.5"];
   await judge.complete("Judge again.", new AbortController().signal);
   expect(outgoing).toEqual([
-    { model: "gpt-6-luna", effort: "high" },
     { model: "gpt-6.1-sol", effort: "low" },
+    { model: "gpt-6-luna", effort: "medium" },
     { model: "gpt-6.1-sol", effort: "high" },
     { model: "claude-opus-5.5", effort: "high" },
   ]);
-  expect(await Bun.file(join(root, "candidate-0", "roles.json")).json()).toMatchObject({ explorer: { model: "gpt-6-luna", effort: "high" } });
+  expect(await Bun.file(join(root, "candidate-0", "roles.json")).json()).toMatchObject({ explorer: { model: "gpt-6.1-sol", effort: "low" } });
   const judgeCalls = await readdir(join(root, "judge-requests", "default"));
   const judgeEvidence = await Promise.all(judgeCalls.map((id) => Bun.file(join(projectRoot, "judge-requests", "default", id, "roles.json")).json()));
   expect(judgeEvidence).toEqual(expect.arrayContaining([

@@ -13,6 +13,7 @@ import { defaultRoleSlots } from "../../../src/orchestration/config/role-selecti
 import { ROLE_MODEL_DEFAULTS } from "../../../src/orchestration/config/role-model-defaults.js"
 import { stopHarnessProcesses } from "../../helpers/real-process-fixture.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 
 // A terminal that meets a service of its current build speaking another
 // protocol replaces itself with the build that serves and comes back at the
@@ -123,7 +124,7 @@ function startProvider() {
       const whole = JSON.stringify(body)
       const word = /\b(alpha|bravo|charlie|delta)\b/.exec(whole)?.[1] ?? "other"
       const hasTools = typeof body === "object" && body !== null && "tools" in body && Array.isArray(body.tools) && body.tools.length > 0
-      if (!hasTools || whole.includes("Generate a session title")) return answer(`TITLE: Chat ${word}\nSHORT: ${word}`)
+      if (!hasTools || isSessionTitleRequest(body)) return answer(`TITLE: Chat ${word}\nSHORT: ${word}`)
       return answer(Array.from({ length: REPLY_LINES }, (_value, index) => `- ${word} row ${String(index + 1).padStart(2, "0")}`).join("\n"))
     },
   })

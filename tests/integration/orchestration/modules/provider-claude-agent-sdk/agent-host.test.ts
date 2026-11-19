@@ -386,19 +386,23 @@ describe("the shared agent host's history and records", () => {
       const served = agentRequests.map((request) => ({ model: request.body["model"], extended: request.betas.some((beta) => beta.startsWith("context-1m")), lines: wireLines(request) }));
       // The engine (CLI 2.1.321) sends no 1M beta for its native 1M models (`nativeBetasOnFakeHost`).
       const opusExtended = !ENGINE_NATIVE_1M_MODELS.has(opus.wireModelId);
-      // Each first request reads one model line, its own model's. After each model change the request reads every line
-      // that its history holds, the newest naming its new model, as its own engine would show them; the engine adds none.
+      // Each first request reads one model line, its own model's. After each model change the history holds every line,
+      // the newest naming its new model, and the request reads only the lines that name the model that serves it, so it
+      // never reads a line that names a different model; the engine adds none.
       expect(served.slice(0, 2).toSorted((left, right) => String(left.model).localeCompare(String(right.model))))
         .toEqual([haiku, opus].map(({ wireModelId }) => ({ model: wireModelId, extended: wireModelId === opus.wireModelId && opusExtended, lines: [line(wireModelId)] })));
       expect(served.slice(2)).toEqual([
-        { model: opus.wireModelId, extended: opusExtended, lines: [line(haiku.wireModelId), line(opus.wireModelId)] },
         { model: opus.wireModelId, extended: opusExtended, lines: [line(opus.wireModelId)] },
-        { model: haiku.wireModelId, extended: false, lines: [line(haiku.wireModelId), line(opus.wireModelId), line(haiku.wireModelId)] },
+        { model: opus.wireModelId, extended: opusExtended, lines: [line(opus.wireModelId)] },
+        { model: haiku.wireModelId, extended: false, lines: [line(haiku.wireModelId), line(haiku.wireModelId)] },
       ]);
-      // Every model line on the wire states a model reminder of canonical history and is a reminder addition of the transport record.
+      const histories = [[haiku, opus], [opus], [haiku, opus, haiku]].map((models) => models.map(({ wireModelId }) => line(wireModelId)));
+      // Every model line on the wire states a model reminder of canonical history that names the served model and is a
+      // reminder addition of the transport record.
       for (const [index, [agent, result]] of ([[parked, switched], [deep!, second], [back, third]] as const).entries()) {
-        const lines = served[index + 2]!.lines;
-        expect(historyLines(agent.history)).toEqual(lines);
+        const { model, lines } = served[index + 2]!;
+        expect(historyLines(agent.history)).toEqual(histories[index]!);
+        expect(historyLines(agent.history).filter((modelLine) => modelLine === line(String(model)))).toEqual(lines);
         expect(result.events.flatMap((event) => event.kind === "transport_context" ? event.context.additions.filter(({ kind }) => kind === "reminder:model") : [])).toHaveLength(lines.length);
       }
       // The dispatcher runs on the host's launch model, with no rewrite.

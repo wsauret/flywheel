@@ -14,6 +14,7 @@ import { COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../../../src/orchestration/sess
 import { PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND } from "../../../src/orchestration/session/planned-session-continuation.js"
 import { attachAccountProject, joinIsolatedAccountService, startIsolatedAccountService } from "./_account-service.js"
 import { readStoreFile } from "./_replacement-harness.js"
+import { isSessionTitleRequest } from "./_session-title-request.js"
 import { descendantProcesses } from "../../helpers/real-process-fixture.js"
 import { socketTemporaryRoot } from "../../helpers/directories.js"
 
@@ -109,11 +110,11 @@ function startProvider() {
       const body: unknown = await request.json()
       const text = userText(body)
       // A title request quotes the person's first message and carries the
-      // runner's tools, so only its instruction tells it apart; a well-formed
+      // runner's tools, so only its system prompt tells it apart; a well-formed
       // title keeps the title generator from retrying for the whole run.
       let delta: SseData = { content: "TITLE: Fixture session\nSHORT: Fixture" }
       let finishReason = "stop"
-      const held = requestHasTools(body) && !text.includes("Generate a session title")
+      const held = requestHasTools(body) && !isSessionTitleRequest(body)
       if (held && text.includes(WORKFLOW_LAUNCH)) {
         if (hasToolResult(body, "workflow-launch")) {
           delta = { content: "The workflow launched." }
