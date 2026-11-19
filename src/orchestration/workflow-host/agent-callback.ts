@@ -270,7 +270,14 @@ export function createWorkerCallback(
       resources.emit<typeof type>(type, { sessionId, data: event.data, ...(timestamp === undefined ? {} : { timestamp }) })
     }
     const setConnectionState = (state: ConnectionState): void => { resources.projection?.lifecycle.onConnectionState?.(state) }
-    const observerChain = opts.createObserverChain?.(async () => (await resources.contextUtilization()).percent)
+    const chain = opts.createObserverChain?.(async () => (await resources.contextUtilization()).percent)
+    // The batch notices read the usage that the agent's requests recorded as
+    // facts of its session, which its writer stores after the request ends:
+    // a notice that reads before they are durable reports stale usage.
+    const observerChain = chain && {
+      onBatchSettled: async () => { await resources.awaitDurableFacts(); return chain.onBatchSettled() },
+      reset: () => { chain.reset() },
+    }
     const countToolUses = createToolUseCounter(toolUseIds)
     // The agent's live entry carries the same count, so the workflow's live
     // view reads no durable tree while the agent runs.
