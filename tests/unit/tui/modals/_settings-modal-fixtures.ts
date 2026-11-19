@@ -173,7 +173,7 @@ export function configValues(overrides: Partial<RuntimeConfigValues> = {}): Runt
     theme: "flywheel", moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 2,
     showThinking: true, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, writeSyntaxTheme: "nord", requireWorkflowConfirmation: true,
     diffColors: "theme", compatibleRendering: "auto", webSearchProvider: "chatgpt",
-    fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 270_000, showBuild: false,
+    fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 500_000, showBuild: false,
     moduleSections: { subscription_usage: { alert_thresholds: [] }, remote: { keep_awake: true } }, autoInstall: true,
     profiles: { default: profileConfig() }, keybindings: {}, budget: { max_invocations: 10, max_tokens: 10, max_wall_clock_minutes: 10 },
     workflow: { max_attempts: 10 }, notificationsDesktop: true,
@@ -249,7 +249,7 @@ export function createModal(options: {
   const [config, publishConfig] = createSignal<RuntimeConfigView>({
     revision: 1,
     values: configValues({
-      proactiveCompactionThreshold: options.initialProactiveCompactionThreshold ?? 270_000,
+      proactiveCompactionThreshold: options.initialProactiveCompactionThreshold ?? 500_000,
       profiles: { default: profileConfig(options.initialCopilotMonthlyCreditCap ?? 3_900), work: profileConfig(options.siblingCopilotMonthlyCreditCap ?? 3_900) },
     }),
     status: options.configStatus ?? { kind: "valid" }, warnings: options.configWarnings ?? [], diagnostics: options.configDiagnostics ?? [],

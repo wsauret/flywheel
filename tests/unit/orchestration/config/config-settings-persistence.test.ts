@@ -129,7 +129,7 @@ describe("config settings persistence", () => {
   });
 
   test("resets modal-owned config values without changing roles", async () => {
-    await withConfig('theme = "aura"\nshow_thinking = true\ndiff_colors = "standard"\nproactive_compaction_threshold = 500000\nfeatures = ["skills"]\n\n[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"\n\n[updates]\nauto_install = false\n\n[web_search]\nprovider = "exa"\n', async (path) => {
+    await withConfig('theme = "aura"\nshow_thinking = true\ndiff_colors = "standard"\nproactive_compaction_threshold = 400000\nfeatures = ["skills"]\n\n[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"\n\n[updates]\nauto_install = false\n\n[web_search]\nprovider = "exa"\n', async (path) => {
       await resetSettings(path);
 
       const text = await readFile(path, "utf8");
@@ -137,7 +137,7 @@ describe("config settings persistence", () => {
       expect(config.theme).toBe("flywheel");
       expect(config.show_thinking).toBe(false);
       expect(config.diff_colors).toBe("theme");
-      expect(config.proactive_compaction_threshold).toBe(270_000);
+      expect(config.proactive_compaction_threshold).toBe(500_000);
       expect(config.web_search.provider).toBe("chatgpt");
       expect(text).toContain('[profiles.personal.roles.chat]\nmodel = "gpt-5.4-mini"');
       expect(text).toContain('features = ["skills"]');

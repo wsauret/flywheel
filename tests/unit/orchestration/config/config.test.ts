@@ -37,7 +37,7 @@ describe("installed config schema", () => {
         max_tokens: 0,
         max_wall_clock_minutes: 0,
       });
-      expect(result.data.proactive_compaction_threshold).toBe(270_000);
+      expect(result.data.proactive_compaction_threshold).toBe(500_000);
       expect(result.data.notifications.desktop).toBe(true);
       expect(result.data.allow_persistent_processes).toBe(false);
       expect(result.data.foreground_bash_hold_seconds).toBe(240);

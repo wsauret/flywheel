@@ -212,19 +212,19 @@ describe("useSettingsModal controls", () => {
       modal.openSettingsModal()
 
       expect(rowOf(modal, "proactive-compaction-threshold").kind).toBe("edit")
-      expect(valueOf(modal, "proactive-compaction-threshold")).toBe("270k")
+      expect(valueOf(modal, "proactive-compaction-threshold")).toBe("500k")
 
       activate(modal, "proactive-compaction-threshold")
       const emptyEditView = modal.settingsView()
       expect(emptyEditView.kind).toBe("edit")
-      if (emptyEditView.kind === "edit") expect(emptyEditView.current).toBe("270,000")
+      if (emptyEditView.kind === "edit") expect(emptyEditView.current).toBe("500,000")
 
       modals.paste("1,000,000")
       const draftedEditView = modal.settingsView()
       if (draftedEditView.kind === "edit") expect(draftedEditView.presentation.value).toBe("1,000,000")
       modals.input({ name: "return" })
 
-      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 270_000 }, desired: 1_000_000 } })
+      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 500_000 }, desired: 1_000_000 } })
       await flush()
       expect(settings.values.proactiveCompactionThreshold).toBe(1_000_000)
       expect(modal.settingsView().kind).toBe("list")
@@ -298,7 +298,7 @@ describe("useSettingsModal controls", () => {
       if (draftedEditView.kind === "edit") expect(draftedEditView.presentation.value).toBe("1,000,000")
       modals.input({ name: "return" })
 
-      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 270_000 }, desired: 1_000_000 } })
+      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 500_000 }, desired: 1_000_000 } })
       expect(settings.values.proactiveCompactionThreshold).toBe(1_000_000)
       dispose()
     })
@@ -315,7 +315,7 @@ describe("useSettingsModal controls", () => {
       modals.input({ name: "return" })
 
       expect(configDispatch).not.toHaveBeenCalled()
-      expect(settings.values.proactiveCompactionThreshold).toBe(270_000)
+      expect(settings.values.proactiveCompactionThreshold).toBe(500_000)
       expect(modal.settingsView().kind).toBe("edit")
       dispose()
     })
@@ -332,7 +332,7 @@ describe("useSettingsModal controls", () => {
       modals.input({ name: "return" })
 
       expect(configDispatch).not.toHaveBeenCalled()
-      expect(settings.values.proactiveCompactionThreshold).toBe(270_000)
+      expect(settings.values.proactiveCompactionThreshold).toBe(500_000)
       expect(modal.settingsView().kind).toBe("edit")
       dispose()
     })
@@ -348,7 +348,7 @@ describe("useSettingsModal controls", () => {
       modals.paste("0")
       modals.input({ name: "return" })
 
-      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 270_000 }, desired: 0 } })
+      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "proactiveCompactionThreshold", expected: { kind: "value", value: 500_000 }, desired: 0 } })
       expect(settings.values.proactiveCompactionThreshold).toBe(0)
       expect(valueOf(modal, "proactive-compaction-threshold")).toBe("None")
       dispose()

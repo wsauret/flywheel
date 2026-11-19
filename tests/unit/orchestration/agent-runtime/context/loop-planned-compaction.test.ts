@@ -322,11 +322,11 @@ describe("planned agent-loop compaction", () => {
     expect(opening.content).toEndWith(recovery);
   });
 
-  // The test model counts 4 characters per token: the brief is 300k tokens,
-  // above the default 270k trigger and below 85% of a 1M window (850k).
-  const BRIEF = "b".repeat(1_200_000);
-  const deferred = (freshTokens: number) => `Automatic compaction is deferred: a fresh context would start at about ${freshTokens.toLocaleString("en-US")} tokens, which is not below its trigger of 270,000 tokens. It now runs at 850,000 tokens, near the model's context window.`;
-  const deferral = (sessionId: string, freshContextTokens: number) => ({ sessionId, freshContextTokens, triggerTokens: 270_000, effectiveTriggerTokens: 850_000, contextLimit: 1_000_000 });
+  // The test model counts 4 characters per token: the brief is 600k tokens,
+  // above the default 500k trigger and below 85% of a 1M window (850k).
+  const BRIEF = "b".repeat(2_400_000);
+  const deferred = (freshTokens: number) => `Automatic compaction is deferred: a fresh context would start at about ${freshTokens.toLocaleString("en-US")} tokens, which is not below its trigger of 500,000 tokens. It now runs at 850,000 tokens, near the model's context window.`;
+  const deferral = (sessionId: string, freshContextTokens: number) => ({ sessionId, freshContextTokens, triggerTokens: 500_000, effectiveTriggerTokens: 850_000, contextLimit: 1_000_000 });
   async function runAboveTrigger(name: string, prior: ConversationMessage[], responses: ProviderStreamEvent[][]) {
     let stored: ConversationCheckpoint = { ...emptyConversationCheckpoint(), currentState: "state" };
     let checkpointReads = 0;
@@ -384,13 +384,13 @@ describe("planned agent-loop compaction", () => {
     expect(freshTokens).toBeGreaterThan(BRIEF.length / 4);
     expect(run.deferrals).toEqual([deferral("brief-above-trigger", freshTokens)]);
     expect(run.notices).toEqual([deferred(freshTokens)]);
-    // Every context measurement states the trigger that the deferral left, not the configured 270,000.
+    // Every context measurement states the trigger that the deferral left, not the configured 500,000.
     expect(run.publishedTriggers.length).toBeGreaterThanOrEqual(4);
     expect(new Set(run.publishedTriggers)).toEqual(new Set([850_000]));
   });
 
   test("a brief above the trigger still gets one saved reset at the window share", async () => {
-    const run = await runAboveTrigger("brief-at-window-share", [{ kind: "user", content: BRIEF }, { kind: "assistant", content: "w".repeat(2_300_000) }, { kind: "user", content: "work" }], [
+    const run = await runAboveTrigger("brief-at-window-share", [{ kind: "user", content: BRIEF }, { kind: "assistant", content: "w".repeat(1_100_000) }, { kind: "user", content: "work" }], [
       [{ kind: "tool_use", toolCall: save }, done("tool_use")], [text("Task work done.", "done"), done("end_turn")],
     ]);
     expect(run.result.kind).toBe("completed");

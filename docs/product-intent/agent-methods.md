@@ -138,6 +138,10 @@ With automatic compaction on, Flywheel compacts a large idle chat before its pro
 
 Automatic compaction starts only when the fresh context that follows is smaller than the size that triggers it. When an agent's brief and checkpoint alone exceed the configured size, the agent keeps working and compacts when its context nears the model's window instead. The session's transcript states this once. A compaction that the person asks for always runs.
 
+## PI-AGENT-133: Automatic compaction runs at 500,000 tokens or near the model's window
+
+By default, automatic compaction runs when the context reaches 500,000 tokens, or 85% of the model's context window when that is smaller. A size that the person sets replaces the 500,000-token default, and the 85% limit still applies.
+
 ## PI-AGENT-092: Children receive the approved design intent
 
 A subagent, reviewer, or workflow agent that starts while its parent's design intent is approved receives that intent and the user's decisions, with their provenance, and cannot change the parent's checkpoint. The agents of one workflow receive the same snapshot, taken when the workflow starts. A child never receives a design intent that the user has not approved.

@@ -1263,13 +1263,13 @@ desktop = true
 
 - Type: `number`
 - Constraints: 0 or integer, at least 50000
-- Default: `270000`
+- Default: `500000`
 - Application: `next-request`. Applies when the next provider request captures configuration.
 
 Compact after this many context tokens. 0 turns it off.
 
 ```toml
-proactive_compaction_threshold = 270000
+proactive_compaction_threshold = 500000
 ```
 
 ## `profiles`

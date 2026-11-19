@@ -279,7 +279,7 @@ show_thinking = true
 write_syntax_theme = "vesper"
 diff_colors = "standard"
 compatible_rendering = "on"
-proactive_compaction_threshold = 500000
+proactive_compaction_threshold = 400000
 disabled_modules = ["remote"]
 allow_persistent_processes = true
 require_workflow_confirmation = false
@@ -321,7 +321,7 @@ monthly_credit_cap = 200
       expect(text).toContain("# retained")
       expect(Bun.TOML.parse(text)).toMatchObject({
         theme: "flywheel", show_thinking: false, write_syntax_theme: "nord", diff_colors: "theme",
-        compatible_rendering: "auto", proactive_compaction_threshold: 270_000,
+        compatible_rendering: "auto", proactive_compaction_threshold: 500_000,
         notifications: { desktop: true }, web_search: { provider: "chatgpt" },
         subscription_usage: { alert_thresholds: [70, 90, 100] },
         disabled_modules: ["remote"], remote: { keep_awake: false },
