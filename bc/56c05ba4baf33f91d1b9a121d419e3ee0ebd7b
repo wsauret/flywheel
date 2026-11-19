@@ -1,0 +1,42 @@
+tests/integration/bench/benchmark-role-requests.test.ts
+  h_4b47e9e4a8b456 57,60,62,74,78
+tests/integration/local/_replacement-provider.ts
+  h_4b47e9e4a8b456 8,328
+tests/integration/local/_session-title-request.ts
+  h_4b47e9e4a8b456 1-14
+tests/integration/local/chat-workflow-interrupt-resume.test.ts
+  h_4b47e9e4a8b456 17,113,117
+tests/integration/local/claude-plugin-export.test.ts
+  h_4b47e9e4a8b456 38
+tests/integration/local/dev-source-snapshot.test.ts
+  h_4b47e9e4a8b456 24,136
+tests/integration/local/diagnostics-volume-budget.test.ts
+  h_4b47e9e4a8b456 14,96
+tests/integration/local/project-executor-runtime.test.ts
+  h_4b47e9e4a8b456 31,180
+tests/integration/local/replacement-recovery.test.ts
+  h_4b47e9e4a8b456 24,99,102
+tests/integration/local/terminal-reexecution.test.ts
+  h_4b47e9e4a8b456 16,127
+tests/integration/orchestration/agent-runtime/streaming-tools.test.ts
+  h_4b47e9e4a8b456 202-204
+tests/integration/orchestration/agent-runtime/tools/search-shims.test.ts
+  h_4b47e9e4a8b456 25-26,28-29
+tests/integration/orchestration/modules.test.ts
+  h_4b47e9e4a8b456 27-28,93,149,153-165,173,464
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 219,420,422-443,454-455,459
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 389-391,396-397,399-401,403-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bc56c05ba4baf33f91d1b9a121d419e3ee0ebd7b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
