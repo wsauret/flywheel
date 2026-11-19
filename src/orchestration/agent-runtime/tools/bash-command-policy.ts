@@ -466,21 +466,27 @@ function isPlainBunRunPackageScript(command: string): boolean {
 //      timing, and with background work pending the timing is pointless.
 //      No wait-intent text required.
 //   2. The LEADING statement is a no-op (echo/printf, sleep, `true`, `:`)
-//      AND the text expresses wait/yield intent. This agent narrates in
-//      prose, never via echo, so a command that opens with a no-op while it
-//      is waiting on background work is a yield signal even if junk trails
-//      it (`echo waiting; yielding`). Over-classifying is bounded: the
-//      completing task re-drives the loop.
+//      that itself expresses wait/yield intent. This agent narrates in
+//      prose, never via echo, so a command that opens with such a no-op
+//      while it is waiting on background work is a yield signal even if junk
+//      trails it (`echo waiting; yielding`). Only the no-op's own words
+//      count: a wait word in a later statement, such as a file name in
+//      `sleep 1; cat pending.log`, is not intent, and a leading echo that
+//      redirects into a file writes it, so it is no no-op. Over-classifying
+//      is bounded: the completing task re-drives the loop.
 //
 // The wait-intent requirement on shape 2 keeps harmless `echo hello` from
 // parking the turn.
+//
+// A background launch is never a placeholder, whatever its command: it starts
+// work that the turn then owes (ARCH-TOOLS-031), so the turn continues and
+// the pending-work reminder applies.
 const BARE_NOOP_PATTERN = /^(true|:)\s*(#.*)?$/;
 const BARE_SLEEP_PATTERN = /^sleep\s+\d+(\.\d+)?[smhd]?\s*(#.*)?$/;
 const NOOP_COMMAND_PATTERN = /^(echo|printf|sleep|true|:)(\s|$)/;
 const WAIT_INTENT_PATTERN = /\b(wait|yield|standby|stand by|standing by|idle|holding|pending|in progress|still (?:run|work|process))/i;
 
-function isYieldPlaceholderCommand(command: string, hasPendingBackgroundWork: boolean): boolean {
-  if (!hasPendingBackgroundWork) return false;
+function isYieldPlaceholderCommand(command: string): boolean {
   const segments = command
     .split(/(?:&&|\|\||[;&|\n])/)
     .map((s) => s.trim())
@@ -488,12 +494,11 @@ function isYieldPlaceholderCommand(command: string, hasPendingBackgroundWork: bo
   const [first] = segments;
   if (!first) return false;
   if (segments.every((seg) => BARE_SLEEP_PATTERN.test(seg) || BARE_NOOP_PATTERN.test(seg))) return true;
-  if (!WAIT_INTENT_PATTERN.test(command)) return false;
-  return NOOP_COMMAND_PATTERN.test(first);
+  return NOOP_COMMAND_PATTERN.test(first) && !first.includes(">") && WAIT_INTENT_PATTERN.test(first);
 }
 
 export function isYieldPlaceholderToolCall(toolCall: ToolCall, hasPendingBackgroundWork: boolean): boolean {
-  if (toolIdentity(toolCall.name) !== "bash") return false;
+  if (!hasPendingBackgroundWork || toolIdentity(toolCall.name) !== "bash" || toolCall.input.background === true) return false;
   const command = toolCall.input.command;
-  return typeof command === "string" && isYieldPlaceholderCommand(command, hasPendingBackgroundWork);
+  return typeof command === "string" && isYieldPlaceholderCommand(command);
 }
