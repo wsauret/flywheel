@@ -1,0 +1,16 @@
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 27-28,30,279-286,290-291
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 256-258,269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d6cdfcc4fc7b5321adba8caa4f0639e1efe28e03",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
