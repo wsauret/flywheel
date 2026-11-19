@@ -1,0 +1,24 @@
+scripts/anti-slop-llm/diff-rules/backends.ts
+  h_4b47e9e4a8b456 157-162,164-168,173-174
+tests/integration/local/_replacement-provider.ts
+  h_4b47e9e4a8b456 281-286,288
+tests/integration/local/project-executor-runtime.test.ts
+  h_4b47e9e4a8b456 175
+tests/integration/local/replacement-continuation.test.ts
+  h_4b47e9e4a8b456 428
+tests/integration/mcp-claude-engine.test.ts
+  h_4b47e9e4a8b456 144-145,148-153,155
+tests/integration/oxlint-plugin-anti-slop.test.ts
+  h_4b47e9e4a8b456 5,196-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ca0f2e6c7f36eeab62863d0ce30ab93783ffe716",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
