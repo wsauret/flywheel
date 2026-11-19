@@ -18,6 +18,8 @@
     "flywheel/require-suppression-reason": "error"
   },
   "overrides": [
-    { "files": ["**/tests/**"], "rules": { "flywheel/no-tmp-literal-path": "error" } }
+    { "files": ["**/tests/**"], "rules": { "flywheel/no-tmp-literal-path": "error" } },
+    // The end-to-end tier runs real processes; oxlint.config.ts states why this rule binds such tiers.
+    { "files": ["**/tests/e2e/**"], "rules": { "flywheel/no-expect-promise-modifier": "error" } }
   ]
 }

@@ -411,7 +411,7 @@ test("a successor's continuation that a wedged executor never answers fails once
   }, async ({ runtime, ends }) => {
     await withDeadline(runtime.client.query({ type: "commandUsageSnapshot" }), 30_000)
     // The failed attempt is what makes the continuation duty try again.
-    await expect(withDeadline(runtime.handoff("continue_after_replacement", "handoff"), 15_000)).rejects.toThrow("project executor terminated")
+    expect(await withDeadline(runtime.handoff("continue_after_replacement", "handoff"), 15_000).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("project executor terminated"))
     expect(await ends()).toEqual([expect.objectContaining({ generation: 1, cause: "stopped answering, so Flywheel ended it", waitedBy: ["continuation"] })])
   })
 }, 60_000)

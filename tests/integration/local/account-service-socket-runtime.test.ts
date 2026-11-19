@@ -125,7 +125,7 @@ describe("account service socket runtime", () => {
     const client = await attachAccountProject(options)
     try {
       expect((await client.client.query({ type: "snapshot" })).rows).toEqual([])
-      await expect(attach.openProject()).rejects.toThrow()
+      expect(await attach.openProject().catch((error: unknown) => error)).toBeInstanceOf(Error)
       fs.rmSync(tokenPath, { recursive: true })
       await attach.openProject()
       const endpoint = await fetch(`${await waitForBrowserOrigin(projectRoot)}/`)

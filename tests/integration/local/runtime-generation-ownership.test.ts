@@ -103,8 +103,8 @@ describe("runtime generation ownership", () => {
       const dead = launcher.scope.open()
       await dead.close()
 
-      await expect(dead.spawnOwned(payloadThatRunsForever())).rejects.toThrow("launcher scope is closed")
-      await expect(dead.open().spawnOwned(payloadThatRunsForever())).rejects.toThrow("launcher scope is closed")
+      expect(await dead.spawnOwned(payloadThatRunsForever()).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("launcher scope is closed"))
+      expect(await dead.open().spawnOwned(payloadThatRunsForever()).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("launcher scope is closed"))
     } finally {
       await launcher.dispose()
     }

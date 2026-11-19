@@ -165,7 +165,7 @@ unixInstallation("installing one build", () => {
     expect(readFileSync(join(outcome.buildDir, "webview", "index.html"), "utf-8")).toBe("<!doctype html>");
 
     const older = await makePayload("older", { version: "1.1.0" });
-    await expect(install(older.dir)).rejects.toThrow("activation must move forward");
+    expect(await install(older.dir).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("activation must move forward"));
     expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(outcome.buildDir));
 
     const output = runWrapper(outcome.wrapperPath);
@@ -225,14 +225,14 @@ unixInstallation("installing one build", () => {
       return { exitCode: serviceEnsure ? 17 : 0, stdoutBytes: new TextEncoder().encode(stdout), stdout, stderr: serviceEnsure ? "service manager unavailable" : "", timedOut: false };
     };
 
-    await expect(installBuild({
+    expect(await installBuild({
       userDataRoot,
       sourceDir: payload.dir,
       wrapperDir,
       platform: process.platform,
       platformArch: PLATFORM_ARCH,
       runCommand: failingCommand,
-    })).rejects.toThrow("service manager unavailable");
+    }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("service manager unavailable"));
 
     expect(realpathSync(join(userDataRoot, "current"))).toContain(payload.buildId);
     expect(existsSync(join(wrapperDir, "flywheel"))).toBe(true);
@@ -258,7 +258,7 @@ unixInstallation("installing one build", () => {
     writeFileSync(join(tampered.dir, "build.json"), readFileSync(join(first.buildDir, "build.json")));
     writeFileSync(join(tampered.dir, "fonts", "monaspace.txt"), "tampered");
 
-    await expect(install(tampered.dir)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install(tampered.dir).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
     expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(first.buildDir));
     expect(readFileSync(join(first.buildDir, "fonts", "monaspace.txt"), "utf-8")).not.toBe("tampered");
   });
@@ -361,7 +361,7 @@ exec "$SELF_DIR/flywheel-bin" "$@"
     plant(wrapperDir);
     const payload = await makePayload("first", { version: "1.2.3" });
 
-    await expect(install(payload.dir)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install(payload.dir).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
     expect(existsSync(join(userDataRoot, "versions", "1.2.3", payload.buildId))).toBe(false);
   });
@@ -370,7 +370,7 @@ exec "$SELF_DIR/flywheel-bin" "$@"
     await writeProductionWrapperFixture();
     linkSync(join(wrapperDir, "flywheel"), join(wrapperDir, "flywheel-also"));
 
-    await expect(install((await makePayload("first", { version: "1.2.3" })).dir)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install((await makePayload("first", { version: "1.2.3" })).dir).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
   });
 
@@ -394,7 +394,7 @@ exec "$SELF_DIR/flywheel-bin" "$@"
     mkdirSync(wrapperDir, { recursive: true });
     writeFileSync(join(wrapperDir, "flywheel"), "#!/bin/sh\n# quoting # flywheel-owned-wrapper v1 proves nothing\necho someone else\n");
 
-    await expect(install((await makePayload("first", { version: "1.2.3" })).dir)).rejects.toThrow("was not written by Flywheel");
+    expect(await install((await makePayload("first", { version: "1.2.3" })).dir).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("was not written by Flywheel"));
     expect(existsSync(join(userDataRoot, "current"))).toBe(false);
   });
 
@@ -405,7 +405,7 @@ exec "$SELF_DIR/flywheel-bin" "$@"
     writeLegacyLayout(stale);
     const older = await makePayload("older", { version: "1.2.3" });
 
-    await expect(install(older.dir, stale)).rejects.toThrow("activation must move forward");
+    expect(await install(older.dir, stale).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("activation must move forward"));
 
     expect(readFileSync(join(stale, "flywheel"), "utf-8")).toBe(legacyWrapper);
     expect(readFileSync(join(stale, "flywheel-bin"), "utf-8")).toBe("#!/bin/sh\nexit 0\n");
@@ -424,7 +424,7 @@ unixInstallation("the build current already names", () => {
     await install((await makePayload("first", { version: "1.2.3" })).dir);
     bendCurrentTo(join("versions", "1.2.3"));
 
-    await expect(install((await makePayload("next", { version: "1.3.0" })).dir)).rejects.toThrow("is not an installed build directory");
+    expect(await install((await makePayload("next", { version: "1.3.0" })).dir).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("is not an installed build directory"));
     expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(join(userDataRoot, "versions", "1.2.3")));
   });
 
@@ -432,7 +432,7 @@ unixInstallation("the build current already names", () => {
     const first = await install((await makePayload("first", { version: "1.2.3" })).dir);
     writeFileSync(join(first.buildDir, "build.json"), `${JSON.stringify({ version: "1.2.4", buildId: first.buildId, asset: ASSET }, null, 2)}\n`);
 
-    await expect(install((await makePayload("next", { version: "1.3.0" })).dir)).rejects.toMatchObject({ _tag: "Install", reason: expect.any(String) });
+    expect(await install((await makePayload("next", { version: "1.3.0" })).dir).catch((error: unknown) => error)).toMatchObject({ _tag: "Install", reason: expect.any(String) });
     expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(first.buildDir));
   });
 
@@ -460,7 +460,7 @@ unixInstallation("the build current already names", () => {
     const first = await install((await makePayload("first", { version: "1.2.3" })).dir);
     writeFileSync(join(first.buildDir, "fonts", "monaspace.txt"), "tampered");
 
-    await expect(install((await makePayload("older", { version: "1.2.2" })).dir)).rejects.toThrow("activation must move forward");
+    expect(await install((await makePayload("older", { version: "1.2.2" })).dir).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("activation must move forward"));
     expect(realpathSync(join(userDataRoot, "current"))).toBe(realpathSync(first.buildDir));
   });
 

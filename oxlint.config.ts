@@ -264,6 +264,14 @@ export default defineConfig({
       },
     },
     {
+      // The tiers that run real processes, pipes, and Workers. Bun's nested wait for `.rejects` and `.resolves`
+      // delivers no further read of a pipe on Windows, so a test that passes on POSIX hangs there. Unit tests may run no
+      // real process (AGENTS.md section 5), and a wait for a further Worker or MessagePort message hangs on every
+      // platform, where its author sees it at once.
+      files: ["tests/integration/**/*.{ts,tsx}", "tests/release/**/*.{ts,tsx}"],
+      rules: { "flywheel/no-expect-promise-modifier": "error" },
+    },
+    {
       files: [
         "src/infra/code-mode/**/*.ts",
         "tests/unit/infra/code-mode/{callbacks,codemode,enumeration,parity,promise,signature,stdlib,tool-paths}.test.ts",

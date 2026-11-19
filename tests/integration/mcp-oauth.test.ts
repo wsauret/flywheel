@@ -170,7 +170,7 @@ describe("MCP OAuth integration", () => {
     }
     rejectRefresh = true;
     currentAccess = "rejected-again";
-    await expect(connection.callTool({ name: "echo" })).rejects.toThrow("needs authentication");
+    expect(await connection.callTool({ name: "echo" }).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("needs authentication"));
     expect(manager.entries()[0]?.state.tag).toBe("needs_auth");
 
     await manager.dispose();

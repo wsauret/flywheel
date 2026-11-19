@@ -67,7 +67,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     spyOn(fs, "access").mockImplementation(async (path) => {
       if (String(path) !== wrapper) throw new Error("not executable")
     })
-    await expect(installed.resolveInstalledBinary(root)).rejects.toThrow("installed flywheel binary was not found")
+    expect(await installed.resolveInstalledBinary(root).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("installed flywheel binary was not found"))
   })
 
   it.each([undefined, "0"])("waits for readiness and keeps the home until disposal (automatic dialog override %s)", async (automaticDialogOverride) => {
@@ -100,7 +100,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     expect(readiness?.[1]("New Chat")).toBe(false)
     expect(dispose).toHaveBeenCalledTimes(1)
     expect(disposalHome).toBe(sandbox.home)
-    await expect(lstat(sandbox.home)).rejects.toThrow()
+    expect(await lstat(sandbox.home).catch((error: unknown) => error)).toBeInstanceOf(Error)
     expect(await readFile(join(sandbox.evidence, "pane.log"), "utf8")).toBe("visible pane")
     expect(await readFile(join(sandbox.evidence, "history.log"), "utf8")).toBe("full history")
   })
@@ -141,7 +141,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     })
 
     const running = await startTuiUat(options)
-    await expect(running.activateSelectedRow("Chat", 654)).rejects.toThrow("row stayed unavailable")
+    expect(await running.activateSelectedRow("Chat", 654).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("row stayed unavailable"))
     await stopTuiUat(running.sandbox.root)
     expect(sendKeys).not.toHaveBeenCalled()
   })
@@ -160,8 +160,8 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     expect(dispose).toHaveBeenCalledTimes(1)
     expect(dispose).toHaveBeenCalledWith(true)
     expect(driver.killTmuxSession).toHaveBeenCalledWith(running.sandbox.tmuxServer, running.sessionName)
-    await expect(lstat(running.sandbox.home)).rejects.toThrow()
-    await expect(lstat(join(running.sandbox.root, "session.json"))).rejects.toThrow()
+    expect(await lstat(running.sandbox.home).catch((error: unknown) => error)).toBeInstanceOf(Error)
+    expect(await lstat(join(running.sandbox.root, "session.json")).catch((error: unknown) => error)).toBeInstanceOf(Error)
   })
 
   it("retains the last pane and removes credentials when readiness fails", async () => {
@@ -169,10 +169,10 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
     spyOn(app, "pollPane").mockRejectedValue(new driver.PanePollError("pane exited", "last visible pane"))
     spyOn(app, "capture").mockImplementation(() => { throw new Error("pane gone") })
     spyOn(app, "captureHistory").mockImplementation(() => { throw new Error("pane gone") })
-    await expect(startTuiUat(options)).rejects.toThrow("pane exited")
+    expect(await startTuiUat(options).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("pane exited"))
     const launched = launch.mock.calls[0]?.[0]
     if (!launched?.home) throw new Error("app was not launched")
-    await expect(lstat(launched.home)).rejects.toThrow()
+    expect(await lstat(launched.home).catch((error: unknown) => error)).toBeInstanceOf(Error)
     expect(await readFile(join(launched.stderrFile, "..", "failure-pane.log"), "utf8")).toBe("last visible pane")
     expect(await readFile(join(launched.stderrFile, "..", "failure-history.log"), "utf8")).toBe("last visible pane")
   })
@@ -191,7 +191,7 @@ describe.skipIf(process.platform === "win32")("UAT persistent lifecycle with tmu
       throw failure
     })
     spyOn(app, "captureHistory").mockImplementation(() => { throw new Error("pane gone") })
-    await expect(startTuiUat(options)).rejects.toBe(failure)
+    expect(await startTuiUat(options).catch((error: unknown) => error)).toBe(failure)
     const launched = launch.mock.calls[0]?.[0]
     if (!launched?.home) throw new Error("app was not launched")
     expect(existsSync(launched.home)).toBe(false)
@@ -289,8 +289,8 @@ describe.skipIf(!hasTmux || process.platform === "win32")("UAT lifecycle with re
     expect(processExists(pid)).toBe(false)
     expect(await readFile(join(outside, "keep"), "utf8")).toBe("untouched")
     expect(sessionExists(decoySession, app.sandbox.tmuxServer)).toBe(true)
-    await expect(attachTuiUat(app.sandbox.root)).rejects.toThrow("ENOENT")
-    await expect(attachTuiUat(outside)).rejects.toThrow("ENOENT")
+    expect(await attachTuiUat(app.sandbox.root).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("ENOENT"))
+    expect(await attachTuiUat(outside).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("ENOENT"))
   }, 15_000)
 
   it("reaps an idle fixture and removes its process, tmux session, and HOME", async () => {

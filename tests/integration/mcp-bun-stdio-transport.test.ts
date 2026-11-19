@@ -135,7 +135,7 @@ await Bun.sleep(10);
       },
     })
 
-    await expect(transport.start()).rejects.toThrow("attempt retired")
+    expect(await transport.start().catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("attempt retired"))
 
     expect(launches).toEqual([])
     expect(transport.pid).toBeNull()
@@ -206,7 +206,7 @@ await Bun.sleep(10);
     const closing = transport.close()
     const refused = transport.send({ jsonrpc: "2.0", method: "three" })
 
-    await expect(refused).rejects.toThrow("closing")
+    expect(await refused.catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("closing"))
     await Promise.all([...accepted, closing])
     expect(recordedMethods(output)).toEqual(["one", "two"])
   }, 20_000)
@@ -329,7 +329,7 @@ await Bun.sleep(10);
     await transport.start()
     const refused = transport.send({ jsonrpc: "2.0", method: "tools/call", params: { name: "x", arguments: { token: "quartz-pelican-7731" } } })
 
-    await expect(refused).rejects.toThrow("MCP stdio write #0 failed")
+    expect(await refused.catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("MCP stdio write #0 failed"))
     await transport.close()
 
     const reported = errors.map((error) => error.message).join("\n")

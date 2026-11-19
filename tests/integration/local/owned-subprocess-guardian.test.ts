@@ -153,7 +153,7 @@ describe("owned subprocess ownership barrier", () => {
     })
 
     try {
-      await expect(supervisor.spawnOwned([process.execPath, TARGET, marker])).rejects.toThrow(/refused ownership/)
+      expect(await supervisor.spawnOwned([process.execPath, TARGET, marker]).catch((error: unknown) => error)).toHaveProperty("message", expect.stringMatching(/refused ownership/))
       // The barrier holds the payload before exec, so the marker cannot appear
       // later either; give the refused container time to prove that.
       await Bun.sleep(300)
@@ -231,7 +231,7 @@ describe("eager guardian start", () => {
     const info = spyOn(log, "info")
 
     try {
-      await expect(supervisor.start()).rejects.toThrow(/never became ready/)
+      expect(await supervisor.start().catch((error: unknown) => error)).toHaveProperty("message", expect.stringMatching(/never became ready/))
 
       const owned = await supervisor.spawnOwned([process.execPath, TARGET, marker])
       scratch.guard(owned.pid)
@@ -470,7 +470,7 @@ describe("owned subprocess crash containment", () => {
       expect(processAlive(payloadPid)).toBe(true)
       // A launch meanwhile refuses with the channel's reason before any
       // container comes to depend on the guardian that is being ended.
-      await expect(supervisor.spawnOwned(payloadThatRunsForever())).rejects.toThrow("guardian control channel ended")
+      expect(await supervisor.spawnOwned(payloadThatRunsForever()).catch((error: unknown) => error)).toHaveProperty("message", expect.stringContaining("guardian control channel ended"))
       expect(launchedFor).toEqual([muted])
 
       // The guardian's exit ended its leases, so what it held settles without
@@ -550,7 +550,7 @@ describe("owned subprocess crash containment", () => {
     const supervisor = createProcessSupervisor({ acknowledgeTimeoutMs: 500, guardianCommand: [process.execPath, "-e", SILENT_GUARDIAN] })
 
     try {
-      await expect(supervisor.spawnOwned([process.execPath, TARGET, marker])).rejects.toThrow()
+      expect(await supervisor.spawnOwned([process.execPath, TARGET, marker]).catch((error: unknown) => error)).toBeInstanceOf(Error)
       await Bun.sleep(500)
 
       expect(await Bun.file(marker).exists()).toBe(false)
