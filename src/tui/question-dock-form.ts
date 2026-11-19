@@ -358,11 +358,9 @@ export function createQuestionForm(opts: QuestionFormOptions): QuestionForm {
     if (settlement() !== "idle") { evt.preventDefault?.(); return true }
     if ((evt.name === "up" || evt.name === "down") && handleNavigation(evt)) return true
     const choice = currentChoices()[cursor()]
-    // A digit that names another choice selects it while the focused field is
-    // still empty. Once the field holds text, every digit is text.
-    const shortcut = numberShortcut(evt)
-    const selectsAnotherChoice = shortcut !== undefined && shortcut !== cursor() && textAt(tab(), cursor()) === ""
-    if (isEditableChoice(choice) && !selectsAnotherChoice) {
+    // A focused text field takes every digit as text; number shortcuts apply
+    // only while the cursor is on a choice without a field.
+    if (isEditableChoice(choice)) {
       const editor = editors[tab()]?.[cursor()]
       const result = editor?.handleKey(evt) ?? "unhandled"
       if (result === "cancel") { cancel(); return true }

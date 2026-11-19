@@ -59,7 +59,7 @@ describe("question dock Escape and number keys", () => {
     })
   })
 
-  it("selects a later option by its number while an empty text option has focus", () => {
+  it("types a digit as text into an empty focused text option", () => {
     createRoot((dispose) => {
       const onAnswer = mock(() => {})
       const block: QuestionBlock = {
@@ -80,8 +80,9 @@ describe("question dock Escape and number keys", () => {
 
       form.handleKey({ name: "2", sequence: "2", raw: "2" })
 
-      expect(form.editorPresentation(0).value).toBe("")
-      expect(onAnswer).toHaveBeenCalledWith({ "Remote?": { kind: "choice", selections: [{ choiceId: "choice-2" }], text: "Leave uncommitted" } })
+      expect(form.editorPresentation(0).value).toBe("2")
+      expect(form.cursor()).toBe(0)
+      expect(onAnswer).not.toHaveBeenCalled()
       dispose()
     })
   })
