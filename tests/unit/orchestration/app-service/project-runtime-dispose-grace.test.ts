@@ -21,6 +21,29 @@ describe("ProjectRuntime disposal", () => {
     expect(order).toEqual(["endpoint", "transports", "barrier"])
   })
 
+  test("ends each connection that holds the project once its barrier settles, and keeps it held through the barrier", async () => {
+    const order: string[] = []
+    let runtime: ReturnType<typeof createProjectRuntime> | undefined = undefined
+    runtime = createProjectRuntime({
+      projectRoot: "/project",
+      idleGraceMs: 0,
+      blockers: async () => [],
+      onIdle: async () => {},
+      closeEndpoint: async () => { order.push("endpoint") },
+      closeTransports: async () => { order.push("transports") },
+      runShutdownBarrier: async () => { order.push(`barrier held=${String(runtime?.held())}`) },
+    })
+    const release = runtime.holdClient(() => {
+      order.push("connection ended")
+      release()
+    })
+    runtime.holdClient(() => { throw new Error("a released connection is not ended") })()
+
+    await runtime.dispose()
+    expect(order).toEqual(["endpoint", "transports", "barrier held=true", "connection ended"])
+    expect(runtime.held()).toBe(false)
+  })
+
   test("bounds presentation transport disposal without abandoning the runtime barrier", async () => {
     const order: string[] = []
     let timedOut = false

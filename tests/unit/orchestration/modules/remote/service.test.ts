@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test"
+import { createProjectStorage } from "../../../../../src/orchestration/app-service/project-storage.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import type { AccountModuleFaults, AccountProjectModuleServices } from "../../../../../src/orchestration/app-service/module-service-host.js"
@@ -68,6 +69,7 @@ function fixture(transports?: ModuleTransports, onSelectionChanged?: AccountProj
     projectRegistry: { list: async () => [], record: async () => { throw new Error("not used") }, forget: async () => {}, watch: () => () => {} },
     directories: testDirectories("/scratch/remote-service"), launcher: createLauncherScope({ spawnOwned: () => { throw new Error("No process starts in this service fixture") }, adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
     eventStore: asAsyncEventReadSurface(inMemoryEventReader([])),
+    storage: createProjectStorage("/scratch/remote-service/.flywheel/flywheel.sqlite", undefined),
     projectionReader: asAsyncEventReadSurface(inMemoryEventReader([])),
     eventWriter: refusingEventWriter({ pruneSupersededEvents: async () => 0 }),
     onStored: () => () => {},

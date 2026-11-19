@@ -13,6 +13,9 @@ import type { RuntimeStartupPhase } from "./app-service-types.js"
 const STARTUP_STEPS = {
   "account-service": "Starting account service",
   "project": "Preparing project",
+  // An open that waits while Reclaim storage rebuilds the project's store,
+  // for minutes on a large one.
+  "storage-reclaim": "Reclaiming storage",
   "project-module-preparation": "Preparing project modules",
   "state-worker": "Starting project state worker",
   "workspace-state": "Preparing workspace state",

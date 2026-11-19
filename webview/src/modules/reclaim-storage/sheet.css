@@ -1,0 +1,5 @@
+.reclaim-storage { display: flex; flex-direction: column; gap: var(--fw-s3); }
+.reclaim-storage p { margin: 0; }
+.reclaim-storage-status { overflow-wrap: anywhere; }
+.reclaim-storage-warning { color: var(--fw-warning); }
+.reclaim-storage-error { color: var(--fw-error); }

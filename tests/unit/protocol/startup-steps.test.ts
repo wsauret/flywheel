@@ -9,6 +9,7 @@ import { isStartupStep, startupPhase, type StartupStep } from "../../../src/prot
 const EVERY_STEP = {
   "account-service": true,
   "project": true,
+  "storage-reclaim": true,
   "project-module-preparation": true,
   "state-worker": true,
   "workspace-state": true,

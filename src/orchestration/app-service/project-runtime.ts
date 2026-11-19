@@ -23,7 +23,14 @@ export interface ProjectRuntimeOptions {
 }
 
 export interface ProjectRuntime {
-  holdClient(): () => void
+  /** Registers one client hold and answers its release. `end`, when given,
+   *  ends the connection that holds: a connection that serves this runtime
+   *  alone, such as an account socket bound to it, must not outlive it, or
+   *  its client keeps a lane to a closed project. The runtime ends it once
+   *  its shutdown barrier settles, so the stop sees it held and keeps the
+   *  client's sessions (ARCH-RUNTIME-024), and its client attaches again to
+   *  the project's next open. */
+  holdClient(end?: () => void): () => void
   /** A hold the service takes on behalf of a client that is away and
    *  expected back, such as one whose session holds wait out their grace
    *  (ARCH-RUNTIME-024). A closing project waits for no client, so it takes none. */
@@ -54,6 +61,7 @@ async function disposeProjectTransportWithGrace(
 /** Owns one project's endpoint, transport clients, live-work idle grace, and shutdown barrier. */
 export function createProjectRuntime(options: ProjectRuntimeOptions): ProjectRuntime {
   let clients = 0
+  const connectionEnds = new Set<() => void>()
   let timer: ReturnType<typeof setTimeout> | undefined
   let disposed = false
   let disposal: Promise<void> | undefined
@@ -119,6 +127,7 @@ export function createProjectRuntime(options: ProjectRuntimeOptions): ProjectRun
       if (disposalStep === 2) {
         await options.runShutdownBarrier()
         disposalStep = 3
+        for (const end of connectionEnds) end()
       }
     })().catch((error) => {
       disposal = undefined
@@ -129,15 +138,17 @@ export function createProjectRuntime(options: ProjectRuntimeOptions): ProjectRun
 
   // Each change between held and not held is recorded, because a stop
   // decides the project's empty chats by it (ARCH-RUNTIME-024).
-  const holdClient = (): () => void => {
+  const holdClient = (end?: () => void): () => void => {
     if (disposed) throw new Error("Project runtime is closing")
     clients += 1
     if (clients === 1) log.info("project held", { projectRoot: options.projectRoot, held: true })
     clear()
+    if (end) connectionEnds.add(end)
     let held = true
     return () => {
       if (!held) return
       held = false
+      if (end) connectionEnds.delete(end)
       clients -= 1
       if (clients > 0) return
       log.info("project held", { projectRoot: options.projectRoot, held: false })

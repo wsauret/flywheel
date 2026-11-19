@@ -66,6 +66,7 @@ function directories(projectRoot: string): StartupDirectories {
 function job(projectRoot: string) {
   const served = { opened: 0, stopped: 0 }
   const spec: Parameters<MaintenanceQueue["project"]>[0] = {
+    kind: "startup",
     directories: directories(projectRoot),
     serveState: () => {
       served.opened++
@@ -174,5 +175,25 @@ describe("the account's startup maintenance queue", () => {
     maintenance.project(job("/work/beta").spec).admit()
     await Bun.sleep(5)
     expect(FakeWorker.instances).toHaveLength(0)
+  })
+
+  test("a reclaim runs in the queue's turn with no state channel and answers the Worker's outcome", async () => {
+    const maintenance = queue()
+    const alpha = job("/work/alpha")
+    maintenance.project(alpha.spec).admit()
+    const answer = maintenance.reclaim(directories("/work/beta"))
+    const first = await nextWorker(1)
+    await Bun.sleep(5)
+    expect(FakeWorker.instances).toHaveLength(1)
+    first.exit()
+
+    const reclaim = await nextWorker(2)
+    expect(reclaim.init).toMatchObject({ job: "reclaim", directories: { projectRoot: "/work/beta" } })
+    expect(reclaim.init && "state" in reclaim.init).toBe(false)
+    const outcome = { kind: "reclaimed", beforeBytes: 10, afterBytes: 4, rowsDeleted: 2 } as const
+    reclaim.dispatchEvent(new MessageEvent("message", { data: { flywheel: "maintenance.reclaimed", outcome } }))
+    reclaim.exit()
+    expect(await answer).toEqual(outcome)
+    await maintenance.dispose()
   })
 })

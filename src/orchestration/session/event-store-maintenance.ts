@@ -260,6 +260,207 @@ function supersededFamilies(): SupersededFamily[] {
   })
 }
 
+/** Rows one superseded-prune step deletes beside a live runtime. Each row's
+ *  delete checks again that a newer row of its live value exists, so a step
+ *  holds the write lock for milliseconds. */
+const SUPERSEDED_STEP_ROWS = 500
+
+/** One bounded step of the superseded prune beside a live runtime: rows of
+ *  one family that the planning read found superseded. */
+export interface SupersededPruneStep {
+  readonly eventType: string
+  readonly positions: readonly number[]
+}
+
+export interface SupersededStepPruneResult {
+  readonly rowsDeleted: number
+  readonly payloadBytesDeleted: number
+}
+
+/** The position through which each replace-latest family was planned, by
+ *  fact type. A row above it is one a later plan has not seen yet. */
+export interface SupersededPlanBounds { readonly [eventType: string]: number }
+
+/** The superseded prune beside a live project, whose state Worker is the
+ *  store's sole writer (ARCH-SUBSTRATE-018). Every family is planned first,
+ *  once per run, on a read-only connection; then the planned rows are
+ *  deleted by `deleteStep` in bounded steps, each one `deleteSupersededStep`
+ *  of that writer. A family planned through a position before plans only the
+ *  aggregates that rows above it touched: a row can become superseded only
+ *  when a newer row of its aggregate lands, and the plan through the bound
+ *  left none behind. So a run's planning grows with the rows written since
+ *  the last run, a family with no new rows costs one index read, and the
+ *  planned rows are every superseded row of the store. `onPending` hears the
+ *  payload bytes of the planned rows not deleted yet: once the plan is read,
+ *  and again as each family finishes. `onPlanned` hears each family's new bound once all its rows are deleted;
+ *  a withdrawn run keeps the bound of a family it did not finish. Tool content
+ *  collection is not part of it: its scan and delete must share one
+ *  transaction, which only a caller that owns the store alone may hold. */
+export async function pruneSupersededFactsThrough(
+  dbPath: string,
+  deleteStep: (step: SupersededPruneStep) => Promise<number>,
+  options: {
+    readonly signal: AbortSignal
+    readonly plannedThrough?: SupersededPlanBounds
+    readonly onPending?: (supersededBytes: number) => void
+    readonly onPlanned?: (eventType: string, through: number) => void
+  },
+): Promise<SupersededStepPruneResult> {
+  const { signal } = options
+  signal.throwIfAborted()
+  const db = openMaintenanceDb(dbPath, { readonly: true })
+  if (!db) return { rowsDeleted: 0, payloadBytesDeleted: 0 }
+  let rowsDeleted = 0
+  let payloadBytesDeleted = 0
+  try {
+    if (!tableExists(db, "event")) return { rowsDeleted, payloadBytesDeleted }
+    const plans: { type: string; through: number; rows: { position: number; bytes: number }[] }[] = []
+    for (const family of supersededFamilies()) {
+      signal.throwIfAborted()
+      const after = options.plannedThrough?.[family.type] ?? 0
+      // Read before the plan: a row that lands between the two is planned now
+      // and again next run, which deletes nothing twice.
+      const through = db.query<{ through: number }, { $type: string }>("select coalesce(max(position), 0) as through from event where type = $type").get({ $type: family.type })?.through ?? 0
+      if (through <= after) continue
+      plans.push({ type: family.type, through, rows: planSuperseded(db, family, after) })
+    }
+    let pending = sum(plans, (plan) => sum(plan.rows, (row) => row.bytes))
+    options.onPending?.(pending)
+    for (const plan of plans) {
+      for (let offset = 0; offset < plan.rows.length; offset += SUPERSEDED_STEP_ROWS) {
+        if (offset > 0) await Bun.sleep(PRUNE_CHUNK_PAUSE_MS)
+        signal.throwIfAborted()
+        const rows = plan.rows.slice(offset, offset + SUPERSEDED_STEP_ROWS)
+        const deleted = await deleteStep({ eventType: plan.type, positions: rows.map((row) => row.position) })
+        rowsDeleted += deleted
+        // The planned bytes of a step that deleted every planned row; a row a
+        // concurrent delete took first is not counted.
+        if (deleted === rows.length) payloadBytesDeleted += sum(rows, (row) => row.bytes)
+      }
+      options.onPlanned?.(plan.type, plan.through)
+      pending -= sum(plan.rows, (row) => row.bytes)
+      options.onPending?.(pending)
+    }
+    return { rowsDeleted, payloadBytesDeleted }
+  } finally {
+    db.close()
+  }
+}
+
+/** Every superseded row of one family in the aggregates that rows above
+ *  `after` touched, in one statement, so SQLite builds the newest-row set
+ *  once. With `after` 0 that is every aggregate of the family. */
+function planSuperseded(db: Database, family: SupersededFamily, after: number): { position: number; bytes: number }[] {
+  const grouping = family.key === undefined ? "aggregate_id" : "aggregate_id, json_extract(payload, $key)"
+  const keyed = family.key === undefined ? "" : "and json_extract(payload, $key) is not null"
+  return db.query<{ position: number; bytes: number }, { [name: string]: string | number }>(`
+    with touched as (select distinct aggregate_id from event where type = $type and position > $after)
+    select position, length(payload) as bytes from event
+    where type = $type ${keyed} and aggregate_id in touched and position not in (
+      select max(position) from event where type = $type and aggregate_id in touched group by ${grouping}
+    )
+    order by position
+  `).all({ ...familyBindings(family), $after: after })
+}
+
+/** One bounded step of the superseded prune, run by the store's writer:
+ *  deletes each named row that a newer row of the same live value still
+ *  supersedes, and answers how many it deleted. The check runs again here
+ *  because the plan was read on another connection; a row whose newer value
+ *  is gone since is kept. A type the retention registry does not declare as
+ *  one live value is refused, so this step can never delete history. */
+export function deleteSupersededStep(dbPath: string, step: SupersededPruneStep): number {
+  const family = supersededFamilies().find((candidate) => candidate.type === step.eventType)
+  if (family === undefined) throw new Error(`${step.eventType} is not a replace-latest fact family`)
+  if (step.positions.length === 0) return 0
+  const db = openMaintenanceDb(dbPath, { readonly: false })
+  if (!db) return 0
+  try {
+    const sameValue = family.key === undefined ? "" : "and json_extract(newer.payload, $key) = json_extract(event.payload, $key)"
+    db.query<unknown, SqlBindings>(`
+      delete from event
+      where position in (select value from json_each($positions)) and type = $type
+        and exists (
+          select 1 from event newer
+          where newer.aggregate_id = event.aggregate_id and newer.type = event.type and newer.position > event.position ${sameValue}
+        )
+    `).run({ ...familyBindings(family), $positions: JSON.stringify(step.positions) })
+    return factRowsChanged(db)
+  } finally {
+    db.close()
+  }
+}
+
+/** Pages one incremental-vacuum step gives back. On a 4 KiB page this is
+ *  1 MiB, and a step measured at most 18.5 ms in the probe that chose it. */
+export const INCREMENTAL_VACUUM_STEP_PAGES = 256
+
+/** One bounded step of idle reclaim, run by the store's writer: moves at most
+ *  `pages` free pages to the end of the file and truncates them, and answers
+ *  how many pages it freed. A store that is not in incremental auto-vacuum
+ *  mode frees nothing: only a full VACUUM changes the mode, and only the
+ *  explicit Reclaim storage command runs one. The file shrinks on disk only
+ *  when the WAL checkpoints, so the step that empties the free list
+ *  checkpoints. */
+export function incrementalVacuumStep(dbPath: string, pages: number): number {
+  const db = openMaintenanceDb(dbPath, { readonly: false })
+  if (!db) return 0
+  try {
+    if (pragmaNumber(db, "auto_vacuum") !== AUTO_VACUUM_INCREMENTAL) return 0
+    const before = pragmaNumber(db, "freelist_count")
+    // The pragma frees one page per result row it steps, so every row is read.
+    db.query(`PRAGMA incremental_vacuum(${Math.max(1, Math.floor(pages))})`).all()
+    const after = pragmaNumber(db, "freelist_count")
+    // The state Worker's writer stays open while the project idles, so no close
+    // checkpoints and the truncated pages would wait in the WAL until the next
+    // write. PASSIVE waits on no reader or writer.
+    if (after === 0 && after < before) db.query("PRAGMA wal_checkpoint(PASSIVE)").all()
+    return Math.max(0, before - after)
+  } finally {
+    db.close()
+  }
+}
+
+/** The `auto_vacuum` pragma value of incremental mode. */
+const AUTO_VACUUM_INCREMENTAL = 2
+
+/** How large a store is and what the Reclaim storage command can give back.
+ *  `reclaimableBytes` is the free pages, the payload of the retired families,
+ *  and `supersededBytes`, the payload of the superseded rows the last plan
+ *  counted and no prune has deleted yet. `liveBytes` is what a full VACUUM
+ *  copies. */
+export interface StoreUsage {
+  readonly storeBytes: number
+  readonly reclaimableBytes: number
+  readonly supersededBytes: number
+  readonly liveBytes: number
+  readonly incremental: boolean
+}
+
+/** Reads the store's usage on a read-only connection: page headers and the
+ *  retired families' index, never a walk of every event row. No index counts
+ *  the superseded rows, and planning them walks every replace-latest row and
+ *  payload (51 s on a 42 GB store), so the caller passes the bytes that a
+ *  superseded prune's plan counted, or 0 where a finished prune left them as
+ *  free pages, which this read counts already. */
+export function readStoreUsage(dbPath: string, supersededBytes: number): StoreUsage | undefined {
+  const db = openMaintenanceDb(dbPath, { readonly: true })
+  if (!db) return undefined
+  try {
+    const size = readSizeStats(db, dbPath)
+    const retired = tableExists(db, "event") ? sum(retiredFamilySummaries(db), (row) => row.payloadBytes) : 0
+    return {
+      storeBytes: size.dbFileSize + size.walFileSize,
+      reclaimableBytes: size.reclaimableBytes + retired + supersededBytes,
+      supersededBytes,
+      liveBytes: (size.pageCount - size.freelistCount) * size.pageSize,
+      incremental: pragmaNumber(db, "auto_vacuum") === AUTO_VACUUM_INCREMENTAL,
+    }
+  } finally {
+    db.close()
+  }
+}
+
 /** Deletes every row a newer row of the same live value supersedes, as the
  *  retention registry declares it, then deletes the tool content rows that no
  *  remaining fact references. Idempotent: a clean store deletes nothing.
@@ -304,20 +505,28 @@ export function pruneSupersededFacts(dbPath: string, options: { busyTimeoutMs?: 
  *  the key names no live value, so it is never treated as superseded: SQLite
  *  would otherwise group every such row of an aggregate as one value. */
 function deleteSuperseded(db: Database, family: SupersededFamily): EventTypeMaintenanceSummary {
-  const grouping = family.key === undefined ? "aggregate_id" : "aggregate_id, json_extract(payload, $key)"
-  const keyed = family.key === undefined ? "" : "and json_extract(payload, $key) is not null"
-  const superseded = `
-    type = $type ${keyed} and position not in (
-      select max(position) from event where type = $type group by ${grouping}
-    )
-  `
-  const params: SqlBindings = family.key === undefined ? { $type: family.type } : { $type: family.type, $key: family.key }
+  const superseded = supersededPredicate(family)
+  const params = familyBindings(family)
   const measured = db.query<{ count: number; payloadBytes: number }, SqlBindings>(
     `select count(*) as count, coalesce(sum(length(payload)), 0) as payloadBytes from event where ${superseded}`,
   ).get(params)
   if (!measured || measured.count === 0) return { type: family.type, count: 0, payloadBytes: 0 }
   db.query<unknown, SqlBindings>(`delete from event where ${superseded}`).run(params)
   return { type: family.type, ...measured }
+}
+
+function supersededPredicate(family: SupersededFamily): string {
+  const grouping = family.key === undefined ? "aggregate_id" : "aggregate_id, json_extract(payload, $key)"
+  const keyed = family.key === undefined ? "" : "and json_extract(payload, $key) is not null"
+  return `
+    type = $type ${keyed} and position not in (
+      select max(position) from event where type = $type group by ${grouping}
+    )
+  `
+}
+
+function familyBindings(family: SupersededFamily): SqlBindings {
+  return family.key === undefined ? { $type: family.type } : { $type: family.type, $key: family.key }
 }
 
 interface SqlBindings { [name: string]: string }
@@ -419,11 +628,13 @@ export function dropRetiredEventStoreIndexes(dbPath: string): string[] {
   }
 }
 
-/** Rebuilds the whole file to reclaim freed pages. `VACUUM` holds an exclusive
- *  lock for its full duration - minutes on a multi-gigabyte store - and cannot
- *  be chunked or yielded, so every other connection's write blocks for the whole
- *  run. Only a caller that owns the store alone may run it: the shutdown path
- *  after the runtime generation is disposed, and the explicit
+/** Rebuilds the whole file to reclaim freed pages, and moves the store to
+ *  incremental auto-vacuum, so idle reclaim can give later freed pages back in
+ *  small steps. `VACUUM` holds an exclusive lock for its full duration -
+ *  minutes on a multi-gigabyte store - and cannot be chunked or yielded, so
+ *  every other connection's write blocks for the whole run. Only a caller that
+ *  owns the store alone may run it: the Reclaim storage command after the
+ *  account service closed the project, and the explicit
  *  `flywheel events maintain` command. Never a path that runs beside a live
  *  runtime. */
 export function vacuumEventStore(dbPath: string, options: { force?: boolean; busyTimeoutMs?: number } = {}): VacuumResult {
@@ -435,6 +646,8 @@ export function vacuumEventStore(dbPath: string, options: { force?: boolean; bus
       return { storeFound: true, dbPath, skippedReason: "below-threshold", before }
     }
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)")
+    // Takes effect through this VACUUM; on its own the pragma changes nothing.
+    db.exec("PRAGMA auto_vacuum = INCREMENTAL")
     db.exec("VACUUM")
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)")
     return { storeFound: true, dbPath, before, after: readSizeStats(db, dbPath) }
@@ -490,7 +703,7 @@ function retiredFamilySummaries(db: Database): EventTypeMaintenanceSummary[] {
   `).all()
 }
 
-function pragmaNumber(db: Database, name: "page_count" | "page_size" | "freelist_count"): number {
+function pragmaNumber(db: Database, name: "page_count" | "page_size" | "freelist_count" | "auto_vacuum"): number {
   const row = db.query<StringMap<number>, []>(`PRAGMA ${name}`).get()
   return row?.[name] ?? 0
 }

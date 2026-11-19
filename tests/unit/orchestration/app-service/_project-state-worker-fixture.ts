@@ -8,7 +8,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStoreReadSurface, type FactQuery, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import type { SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
-import { deleteRetiredFamilyChunk, dropRetiredEventStoreIndexes } from "../../../../src/orchestration/session/event-store-maintenance.js"
+import { deleteRetiredFamilyChunk, deleteSupersededStep, dropRetiredEventStoreIndexes, incrementalVacuumStep } from "../../../../src/orchestration/session/event-store-maintenance.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { openProjectState, recoverOwedSessions } from "../../../helpers/project-recovery.js"
 
@@ -95,6 +95,8 @@ export async function fixture(
     pruneSupersededKeyedEvents: (...args) => store.pruneSupersededKeyedEvents(...args),
     pruneRetiredFamilyChunk: (eventType) => deleteRetiredFamilyChunk(path, eventType),
     dropRetiredIndexes: () => dropRetiredEventStoreIndexes(path).length,
+    pruneSupersededStep: (eventType, positions) => deleteSupersededStep(path, { eventType, positions }),
+    incrementalVacuumStep: (pages) => incrementalVacuumStep(path, pages),
     retireFinalizedCheckpointPage: async (plan) => ({
       kind: "checkpoint-maintenance",
       ...(await import("../../../../src/orchestration/migrations/finalized-tool-result-checkpoints")).retireRecordedFinalizedToolResultCheckpointPage(path, plan.afterRowid, plan),

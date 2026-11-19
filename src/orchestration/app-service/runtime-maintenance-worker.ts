@@ -10,7 +10,9 @@ import { connectOwnedProcessBridge } from "../../infra/owned-process-bridge.js"
 import { resolveEventStoreDbFile } from "../../infra/paths.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { AsyncEventWriter } from "../../infra/event-store-types.js"
-import { pruneRetiredFactFamiliesThrough, readEventStoreSizeStats, shouldVacuum } from "../session/event-store-maintenance.js"
+import { INCREMENTAL_VACUUM_STEP_PAGES, pruneRetiredFactFamiliesThrough, pruneSupersededFactsThrough, readEventStoreSizeStats, readStoreUsage, type StoreUsage, type SupersededPlanBounds } from "../session/event-store-maintenance.js"
+import { reclaimStoreExclusively } from "../session/store-reclaim.js"
+import type { StorageReclaimOutcome } from "../../protocol/store-reclaim.js"
 import { sweepIdleScratch } from "../session/session-artifacts.js"
 import type { WorkerSelf } from "./bun-worker-rpc.js"
 import { createProjectExecutionState } from "./project-execution-state.js"
@@ -18,18 +20,37 @@ import type { ProjectStateClient } from "./project-state-client.js"
 import { connectProjectStateChannel } from "./project-state-channel.js"
 import { planFinalizedToolResultCheckpointPage } from "../migrations/finalized-tool-result-checkpoints.js"
 
-export interface RuntimeMaintenanceWorkerInit {
+/* The jobs one maintenance Worker runs:
+ *  - `startup`: the upkeep a project's open defers until its foreground is ready.
+ *  - `idle-reclaim`: the superseded prune and incremental vacuum while the
+ *    project runs no work, in bounded steps that stop when work starts.
+ *  - `reclaim`: the Reclaim storage command's prune and full VACUUM, on a
+ *    project the account has closed, so it has no state channel. */
+
+export type RuntimeMaintenanceWorkerInit = {
   readonly flywheel: "maintenance.init"
   readonly directories: StartupDirectories
   /** The Worker's end of its guardian generation. */
   readonly ownership: MessagePort
-  /** The Worker's end of the project's state channel, which the account
-   *  serves from the project's one writer. */
-  readonly state: MessagePort
-}
+} & (
+  | {
+    readonly job: "startup" | "idle-reclaim"
+    /** The Worker's end of the project's state channel, which the account
+     *  serves from the project's one writer. */
+    readonly state: MessagePort
+    /** Idle reclaim's superseded-prune bounds from the project's last runs. */
+    readonly plannedThrough?: SupersededPlanBounds
+  }
+  | { readonly job: "reclaim" }
+)
 
-/** The frames the maintenance Worker posts to its owner. */
-type RuntimeMaintenanceWorkerFrame = { readonly flywheel: "maintenance.log"; readonly record: DebugLogRecordInput }
+/** The frames the maintenance Worker posts to its owner: its log records,
+ *  the store usage a project job measured last, and the reclaim's outcome. */
+export type RuntimeMaintenanceWorkerFrame =
+  | { readonly flywheel: "maintenance.log"; readonly record: DebugLogRecordInput }
+  | { readonly flywheel: "maintenance.usage"; readonly usage: StoreUsage }
+  | { readonly flywheel: "maintenance.reclaimed"; readonly outcome: StorageReclaimOutcome }
+  | { readonly flywheel: "maintenance.planned"; readonly eventType: string; readonly through: number }
 
 const log = Log.create({ service: "runtime-maintenance" })
 
@@ -48,17 +69,42 @@ export async function runRuntimeMaintenanceWorker(worker: WorkerSelf, init: Runt
       return Log.closeGlobal().finally(() => process.exit(1))
     },
   })
+  const post = (frame: RuntimeMaintenanceWorkerFrame): void => { worker.postMessage(frame, []) }
   const ownership = connectOwnedProcessBridge({ port: init.ownership })
-  const state = connectProjectStateChannel(createMessagePortProcessEndpoint({ port: init.state, decode: (value) => value }), { kind: "maintenance", projectId: init.directories.projectRoot })
+  const state = init.job === "reclaim" ? undefined : connectProjectStateChannel(createMessagePortProcessEndpoint({ port: init.state, decode: (value) => value }), { kind: "maintenance", projectId: init.directories.projectRoot })
   await runRuntimeMaintenanceLifecycle({
     lifetime: ownership.lifetime,
-    work: (signal) => runMaintenanceWork(init.directories, ownership.launcher, state, signal),
+    work: async (signal) => {
+      if (!state) {
+        post({ flywheel: "maintenance.reclaimed", outcome: await reclaimStoreExclusively(init.directories.projectRoot) })
+        return
+      }
+      const dbPath = resolveEventStoreDbFile(init.directories.projectRoot)
+      // A usage read is page headers and one index walk, so it never holds
+      // the job past its work.
+      const postUsage = (supersededBytes: number): void => {
+        const usage = readStoreUsage(dbPath, supersededBytes)
+        if (usage) post({ flywheel: "maintenance.usage", usage })
+      }
+      const steps: MaintenanceSteps = init.job === "idle-reclaim"
+        ? (directories, _launcher, channel, _writer, cut) => runIdleReclaim(directories, channel, cut, init.plannedThrough ?? {}, {
+          onPlanned: (eventType, through) => { post({ flywheel: "maintenance.planned", eventType, through }) },
+          onPending: postUsage,
+        })
+        : runStartupSteps
+      await runMaintenanceWork(steps, init.directories, ownership.launcher, state, signal)
+      // No superseded bytes are left to add: a finished idle run deleted every
+      // row it planned, whose pages the read counts as free, and the startup
+      // job plans none, because the idle run that follows it plans them from
+      // the start of the store.
+      postUsage(0)
+    },
     closeLauncher: async () => {
       try {
         const closure = await ownership.launcher.close()
         if (!closure.settled) throw new Error(closure.reason)
       } finally {
-        await state.close()
+        await state?.close()
       }
     },
     logOwnershipClosed: () => { log.debug("startup maintenance ownership closed") },
@@ -118,16 +164,58 @@ async function runSerializedMaintenanceSteps(
   }
 }
 
-async function runMaintenanceWork(directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, signal: AbortSignal): Promise<void> {
+type MaintenanceSteps = (directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, writer: AsyncEventWriter, signal: AbortSignal) => Promise<void>
+
+async function runMaintenanceWork(steps: MaintenanceSteps, directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, signal: AbortSignal): Promise<void> {
   const execution = await createProjectExecutionState(state)
   try {
-    await runMaintenanceSteps(directories, launcher, state, execution.eventStore, signal)
+    await steps(directories, launcher, state, execution.eventStore, signal)
   } finally {
     await execution.eventStoreRuntime.dispose()
   }
 }
 
-async function runMaintenanceSteps(directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, writer: AsyncEventWriter, signal: AbortSignal): Promise<void> {
+/** Gives space back while the project runs no work (ARCH-RUNTIME-083): the
+ *  superseded rows first, then the free pages, each in bounded steps through
+ *  the store's one writer with a pause between steps, so a write that arrives
+ *  waits out one step at most. The owner withdraws the job when work starts,
+ *  which stops it at the next step. One record when the run finishes: INFO
+ *  when it gave something back, DEBUG for a run that found nothing. */
+async function runIdleReclaim(
+  directories: StartupDirectories,
+  state: ProjectStateClient,
+  signal: AbortSignal,
+  plannedThrough: SupersededPlanBounds,
+  listeners: Pick<Parameters<typeof pruneSupersededFactsThrough>[2], "onPlanned" | "onPending">,
+): Promise<void> {
+  const started = performance.now()
+  const dbPath = resolveEventStoreDbFile(directories.projectRoot)
+  const pruned = await pruneSupersededFactsThrough(dbPath, (step) => state.upkeep.pruneSupersededStep(step.eventType, step.positions), { signal, plannedThrough, ...listeners })
+  const { pageSize } = readEventStoreSizeStats(dbPath)
+  let pagesFreed = 0
+  for (;;) {
+    signal.throwIfAborted()
+    const freed = await state.upkeep.incrementalVacuumStep(INCREMENTAL_VACUUM_STEP_PAGES)
+    pagesFreed += freed
+    // A step that frees less than it may has emptied the free list, and a
+    // store not in incremental mode frees nothing at its first step.
+    if (freed < INCREMENTAL_VACUUM_STEP_PAGES) break
+    await Bun.sleep(IDLE_STEP_PAUSE_MS)
+  }
+  const done = {
+    rowsDeleted: pruned.rowsDeleted,
+    payloadBytesDeleted: pruned.payloadBytesDeleted,
+    bytesFreed: pagesFreed * pageSize,
+    durationMs: Math.round(performance.now() - started),
+  }
+  if (done.rowsDeleted > 0 || done.bytesFreed > 0) log.info("idle store reclaim done", done)
+  else log.debug("idle store reclaim done", done)
+}
+
+/** The window between idle-reclaim steps in which a waiting write takes the lock. */
+const IDLE_STEP_PAUSE_MS = 15
+
+async function runStartupSteps(directories: StartupDirectories, launcher: LauncherScope, state: ProjectStateClient, writer: AsyncEventWriter, signal: AbortSignal): Promise<void> {
   // The state client is the reader, as in the executor, so a projection that
   // maintenance holds is keyed by the same object that releases it.
   const input = { directories, launcher, reader: state, writer, signal }
@@ -170,12 +258,9 @@ async function runMaintenanceSteps(directories: StartupDirectories, launcher: La
     }),
     contained("startup event-store maintenance failed", async () => {
       const result = await pruneRetiredFactFamiliesThrough(dbPath, (eventType) => state.upkeep.pruneRetiredFamilyChunk(eventType), signal)
-      const stats = readEventStoreSizeStats(dbPath)
       log.info("startup event-store maintenance done", {
         rowsDeleted: result.rowsDeleted,
         deletedByType: Object.fromEntries(result.deletedByType.map((family) => [family.type, family.count])),
-        reclaimableBytes: stats.reclaimableBytes,
-        ...(shouldVacuum(stats) ? { vacuumAdvised: "run `flywheel events maintain --vacuum` with no session open" } : {}),
       })
     }),
     contained("startup module maintenance failed after store maintenance", () => runModuleMaintenance("after-store", input)),

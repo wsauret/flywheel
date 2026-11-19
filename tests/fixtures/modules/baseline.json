@@ -1151,6 +1151,7 @@
         "provider-opencode-go",
         "provider-openrouter",
         "provider-supergrok",
+        "reclaim-storage",
         "side-question",
         "workflows"
       ],
@@ -1201,6 +1202,7 @@
       "provider-openrouter",
       "provider-supergrok",
       "recall",
+      "reclaim-storage",
       "remote",
       "side-question",
       "skills",

@@ -284,7 +284,7 @@ describe("catalog-derived harness capability policy", () => {
       expect(await readFile(configPath, "utf8")).not.toContain("features =");
       await writeFile(configPath, 'modules = ["core-tools", "runtime-tools", "skills", "skills"]\n');
       await started.policy.refresh();
-      const enabled = (["ask-user", "bash", "definition-overrides", "discovery", "experiments", "file-tools", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "recall", "side-question", "skills"] as const).toSorted();
+      const enabled = (["ask-user", "bash", "definition-overrides", "discovery", "experiments", "file-tools", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "recall", "reclaim-storage", "side-question", "skills"] as const).toSorted();
       expect(started.policy.state().moduleIds).toEqual(enabled);
       expect(await readFile(configPath, "utf8")).toBe(disabledLine(enabled));
     });

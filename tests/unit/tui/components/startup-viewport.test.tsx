@@ -36,7 +36,7 @@ it("shows each startup step on one bar and keeps it visible until a pending chat
     // A pass of the upgrade names itself in the label; the bar counts steps
     // of the whole start and stays at the upgrade step.
     expect(startup).toContain("Upgrading stored facts, pass 2 of 24: memory facts...")
-    expect(startup).toContain("█████████████░░░░░░░░░░░ 7/13")
+    expect(startup).toContain("██████████████░░░░░░░░░░ 8/14")
     expect(startup).not.toContain("Opening chat")
     const theme = resolveTheme(flywheelTheme, "dark")
     const spans = () => result.captureSpans().lines.flatMap((line) => line.spans)
@@ -50,10 +50,10 @@ it("shows each startup step on one bar and keeps it visible until a pending chat
     setStatus({ kind: "phase", ...startupPhase({ step: "interrupted-sessions" }) })
     await result.renderOnce()
     expect(result.captureCharFrame()).toContain("Checking interrupted sessions...")
-    expect(result.captureCharFrame()).toContain("██████████████████░░░░░░ 10/13")
+    expect(result.captureCharFrame()).toContain("███████████████████░░░░░ 11/14")
     expect(spans().find((span) => span.text === "Checking interrupted sessions...")?.fg.equals(theme.textMuted)).toBe(true)
-    expect(spans().find((span) => span.text === "██████████████████░░░░░░")?.fg.equals(theme.primary)).toBe(true)
-    expect(spans().find((span) => span.text === "10/13")?.fg.equals(theme.textMuted)).toBe(true)
+    expect(spans().find((span) => span.text === "███████████████████░░░░░")?.fg.equals(theme.primary)).toBe(true)
+    expect(spans().find((span) => span.text === "11/14")?.fg.equals(theme.textMuted)).toBe(true)
 
     setFault({ tone: "fault", title: "Startup failed", remedy: "Restart Flywheel", detail: "Runtime stopped" })
     await result.renderOnce()

@@ -51,6 +51,7 @@ import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import type { RuntimeShutdownResult } from "./runtime-shutdown.js"
 import { createProcessBackgroundClient } from "./worker-background-client.js"
 import { createMaintenanceQueue } from "./runtime-maintenance-owner.js"
+import { createStorageReclaims } from "./project-storage.js"
 import { createAccountUpdates, type AccountUpdates, type AccountUpdatesOptions } from "../update/account-updates.js"
 import { createBuildFallback, type FallbackBuild } from "../update/build-fallback.js"
 import type { ServiceSource } from "../../infra/source-snapshot.js"
@@ -71,7 +72,9 @@ interface ProjectComposition {
   readonly composition: ProjectControlRuntime
   readonly browserState: ProjectBrowserState | undefined
   readonly openBrowser: () => Promise<string>
-  readonly holdClient: () => () => void
+  /** `end` ends the holding connection when the project closes, as
+   *  `ProjectRuntime.holdClient` states. */
+  readonly holdClient: (end?: () => void) => () => void
   readonly held: () => boolean
   readonly dispose: () => Promise<void>
 }
@@ -283,6 +286,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
   })
   // Created with the account service, which starts its addresses at once.
   let webAddresses: AccountWebAddresses | undefined
+  const storageReclaims = createStorageReclaims({ projects: () => projects, maintenance })
   const projects = createAccountService<ProjectComposition>({
     canonicalizeProjectRoot: canonicalPathWithMissingTail,
     claimProject: (projectRoot) => claimProjectServing(projectRoot, options.lane),
@@ -350,6 +354,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
           rearm: () => { capacityWakes.rearm(projectRoot) },
         },
         maintenance,
+        storageReclaim: storageReclaims.host(projectRoot, directories),
         ...(buildProof === undefined ? {} : { buildProof }),
       })
       endStage()
@@ -466,7 +471,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
         composition,
         get browserState() { return browserState },
         openBrowser,
-        holdClient: () => projectRuntime.holdClient(),
+        holdClient: (end) => projectRuntime.holdClient(end),
         held: () => projectRuntime.held(),
         dispose: () => projectRuntime.dispose(),
       }
@@ -583,7 +588,10 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
       },
       openProject: async (projectRoot, intent, connection, onStartupStep) => {
         const project = await projects.open(projectRoot, intent === "browser" ? "browser" : "client attach", onStartupStep)
-        const releaseProject = project.holdClient()
+        // The socket's handlers serve this composition alone, so the socket
+        // ends when the project closes, as for Reclaim storage while a client
+        // holds it. Its client then attaches again and meets the next open.
+        const releaseProject = project.holdClient(() => connection.close())
         if (intent === "browser") {
           try {
             await project.openBrowser()

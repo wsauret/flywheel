@@ -283,6 +283,11 @@ function createStampedDatabase(flywheel: ContainedDirectory, flywheelDir: string
   flywheel.requireSamePathAs(flywheelDir)
   const db = new Database(path.join(flywheelDir, name), { create: true })
   try {
+    // Incremental auto-vacuum lets the service give freed pages back to the
+    // file system in small idle steps. SQLite fixes the mode when the first
+    // page is written, so it is set before the epoch stamp; an older store
+    // changes mode only through a full VACUUM.
+    db.exec("PRAGMA auto_vacuum = INCREMENTAL")
     db.exec(`PRAGMA user_version = ${WORKSPACE_STATE_EPOCH}`)
   } finally {
     db.close()

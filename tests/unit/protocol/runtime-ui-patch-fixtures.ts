@@ -48,7 +48,7 @@ function workflowPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain
 function sessionPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "session" | "session_detail" | "output" | "status" | "budget" | "question" | "roles" | "auth" | "changes" | "background" | "experiment_view"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "session", domain, sessionId: "session-1" }, position: 17, prevPosition: 11, payload }
 }
-function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote"): RuntimeUiPatch & { readonly payload: P } {
+function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "reclaim_storage"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "workspace", domain }, position: 17, prevPosition: 11, payload }
 }
 
@@ -94,6 +94,7 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
   "project_notifications.raised": workspacePatch({ kind: "project_notifications.raised", episode: notification }, "project_notifications"),
   "project_notifications.resolved": workspacePatch({ kind: "project_notifications.resolved", sourceId: "fixture", episodeId: "episode-1", resolvedAt: 2 }, "project_notifications"),
   "project_notifications.dismissed": workspacePatch({ kind: "project_notifications.dismissed", sourceId: "fixture", episodeId: "episode-1", dismissedAt: 2 }, "project_notifications"),
+  "reclaim_storage.changed": workspacePatch({ kind: "reclaim_storage.changed", storage: { usage: { storeBytes: 2048, reclaimableBytes: 1024 }, lastReclaim: null } }, "reclaim_storage"),
   "remote.changed": workspacePatch({ kind: "remote.changed", remote }, "remote"),
   "side-question.changed": {
     cursor: sideQuestionCursor("session-1"), position: 17, prevPosition: 11,

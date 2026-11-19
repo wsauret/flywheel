@@ -10,12 +10,13 @@ import type { GuardianControl } from "../../../../src/infra/process-supervisor.j
 import { createMaintenanceQueue } from "../../../../src/orchestration/app-service/runtime-maintenance-owner.js";
 import { serveProjectStateChannel } from "../../../../src/orchestration/app-service/project-state-channel.js";
 import { servedProjectState } from "./_served-project-state-fixture.js";
-import { pruneRetiredFactFamilies } from "../../../../src/orchestration/session/event-store-maintenance.js";
+import { pruneRetiredFactFamilies, type StoreUsage } from "../../../../src/orchestration/session/event-store-maintenance.js";
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
 import { canonicalTestDirectory } from "../../../helpers/directories.js";
 import { withEventStore } from "../../../../src/infra/with-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
+import { Database } from "bun:sqlite";
 
 const created: string[] = [];
 
@@ -43,7 +44,7 @@ const WORKER_BOOT_TEST_TIMEOUT_MS = 60_000;
  *  state channel. `holdCheckpoints` holds the job's first step until the case
  *  releases it. `requests` lists the maintenance requests that reach the
  *  writer, in order. */
-function maintainedProject(holdCheckpoints: Promise<void>) {
+function maintainedProject(holdCheckpoints: Promise<void>, kind: "startup" | "idle-reclaim" = "startup") {
   const directories = workspace("[]");
   const checkpointsEntered = Promise.withResolvers<void>();
   const project = servedProjectState(directories, {
@@ -55,8 +56,13 @@ function maintainedProject(holdCheckpoints: Promise<void>) {
     },
   });
   const served = { opened: 0, stopped: 0 };
+  const reported: StoreUsage[] = [];
+  const planned: { [eventType: string]: number } = {};
   const job = {
+    kind,
     directories,
+    onUsage: (usage: StoreUsage) => { reported.push(usage) },
+    onPlanned: (eventType: string, through: number) => { planned[eventType] = through },
     serveState: (port: MessagePort) => {
       served.opened++;
       const stop = serveProjectStateChannel(project.state, createMessagePortProcessEndpoint({ port, decode: (value) => value }), { kind: "maintenance", projectId: directories.projectRoot });
@@ -64,8 +70,8 @@ function maintainedProject(holdCheckpoints: Promise<void>) {
     },
   };
   return {
-    job, served, checkpointsEntered: checkpointsEntered.promise,
-    get requests() { return project.requests.filter((kind) => kind.startsWith("maintenance.")); },
+    job, served, reported, planned, store: project.store, checkpointsEntered: checkpointsEntered.promise,
+    get requests() { return project.requests.filter((request) => request.startsWith("maintenance.")); },
     close: project.close,
   };
 }
@@ -87,6 +93,39 @@ const payloadOf = (record: DebugLogRecordInput): { readonly [field: string]: unk
 const messages = (records: readonly DebugLogRecordInput[]): readonly unknown[] => records.map((record) => payloadOf(record).message);
 const workFailures = (records: readonly DebugLogRecordInput[]) =>
   records.filter((record) => payloadOf(record).message === "startup maintenance settlement failed" && payloadOf(record).stage === "work");
+
+describe("the idle reclaim job", () => {
+  test("deletes superseded rows through the writer in bounded steps, records one run, and reports the store's usage with the planned superseded bytes", async () => {
+    const project = maintainedProject(Promise.resolve(), "idle-reclaim");
+    for (const output of ["tail", "settled"]) {
+      await project.store.append({ aggregateId: "session:s", type: "tool.execution_output.recorded", version: 1, timestamp: 1, actor: "flywheel", sessionId: "s", payload: { toolUseId: "call", output } });
+    }
+    const db = new Database(resolveEventStoreDbFile(project.job.directories.projectRoot), { readonly: true });
+    const tailBytes = db.query<{ bytes: number }, []>("select length(payload) as bytes from event order by position limit 1").get()!.bytes;
+    db.close();
+    const maintenance = createMaintenanceQueue({ workerUrl: WORKER_URL, guardian: idleGuardian });
+    try {
+      const records = await forwardedRecords(async () => {
+        const handle = maintenance.project(project.job);
+        handle.admit();
+        await handle.settled;
+        await maintenance.dispose();
+      });
+      expect(project.requests).toEqual(["maintenance.prune-superseded", "maintenance.incremental-vacuum"]);
+      expect(project.store.read({}).map((fact) => fact.payload)).toEqual([{ toolUseId: "call", output: "settled" }]);
+      expect(messages(records).filter((message) => message === "idle store reclaim done")).toHaveLength(1);
+      // The plan's bytes as soon as it is read, then none once its family is
+      // deleted, and the job's closing read.
+      expect(project.reported.map((usage) => usage.supersededBytes)).toEqual([tailBytes, 0, 0]);
+      expect(project.reported[0]?.reclaimableBytes).toBeGreaterThanOrEqual(tailBytes);
+      expect(project.reported[0]?.storeBytes).toBeGreaterThan(0);
+      // The owner keeps where each family was planned through, so the next run plans only what landed since.
+      expect(project.planned["tool.execution_output.recorded"]).toBe(Math.max(...project.store.read({}).map((fact) => fact.position)));
+    } finally {
+      await project.close();
+    }
+  }, WORKER_BOOT_TEST_TIMEOUT_MS);
+});
 
 describe("the startup maintenance job", () => {
   test("Maintenance steps run one at a time in order", async () => {

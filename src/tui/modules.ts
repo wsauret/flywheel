@@ -8,6 +8,7 @@ import type { TuiErrorReportProps, TuiFaultNotice, TuiFaultNoticeHost, TuiModule
 import { workflowsTui } from "./modules/workflows/index.js"
 import type { TuiModuleClient, TuiModuleClientHost } from "./tui-module-client.js"
 import { bugReportsTui } from "./modules/bug-reports/index.js"
+import { reclaimStorageTui } from "./modules/reclaim-storage/index.js"
 import type { RuntimeFaultCopy } from "../protocol/client/runtime-fault-copy.js"
 import type { RuntimeHealth, SessionRow } from "../protocol/app-service-types.js"
 import type { BackgroundWorkTarget } from "../protocol/background-index-protocol-types.js"
@@ -17,7 +18,7 @@ import type { JSX } from "solid-js"
 /** The terminal client's module registry. The slot host renders strips,
  *  surfaces, and rows from this list alone, so a module's terminal presence is
  *  its home under `modules/<id>/` plus this one line. */
-export const TUI_MODULES = [remoteTui, experimentsTui, mcpTui, sideQuestionTui, projectNotificationsTui, subscriptionUsageTui, workflowsTui, bugReportsTui] as const satisfies readonly TuiModule[]
+export const TUI_MODULES = [remoteTui, experimentsTui, mcpTui, sideQuestionTui, projectNotificationsTui, subscriptionUsageTui, workflowsTui, bugReportsTui, reclaimStorageTui] as const satisfies readonly TuiModule[]
 
 /** Composes the installed client contributions once, independent of admission to new work. */
 export function createTuiModuleClients(host: TuiModuleClientHost): readonly TuiModuleClient[] {

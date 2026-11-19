@@ -40,6 +40,8 @@ function fixture() {
     pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents(aggregate, type, key),
     pruneRetiredFamilyChunk: () => { throw new Error("unexpected retired-family prune") },
     dropRetiredIndexes: () => { throw new Error("unexpected retired-index drop") },
+    pruneSupersededStep: () => { throw new Error("unexpected superseded prune") },
+    incrementalVacuumStep: () => { throw new Error("unexpected incremental vacuum") },
     retireFinalizedCheckpointPage: () => { throw new Error("unexpected checkpoint maintenance") },
     sessions,
     notifySessionChange: (change) => receiveChange?.(change),

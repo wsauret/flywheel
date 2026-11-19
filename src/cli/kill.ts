@@ -63,8 +63,9 @@ const USAGE = [
 ].join("\n")
 
 /** How long every host gets between the request to stop and the kill. A
- *  runtime's ordered shutdown settles its durable writers and vacuums the
- *  store, so this is longer than the guardian's own grace. */
+ *  runtime's ordered shutdown settles its durable writers, so this is longer
+ *  than the guardian's own grace. Shutdown never vacuums the store: only
+ *  Reclaim storage and `flywheel events maintain` do. */
 const HOST_GRACE_MS = 8_000
 
 /** How long a guardian is given to notice its host is gone, sweep the

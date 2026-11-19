@@ -168,6 +168,10 @@ export interface ProjectStateServicePorts {
   pruneRetiredFamilyChunk(eventType: string): number | Promise<number>
   /** Drops the indexes the schema retired; answers how many it dropped. */
   dropRetiredIndexes(): number | Promise<number>
+  /** One planned page of superseded rows; answers the rows deleted. */
+  pruneSupersededStep(eventType: string, positions: readonly number[]): number | Promise<number>
+  /** One incremental-vacuum step; answers the pages freed. */
+  incrementalVacuumStep(pages: number): number | Promise<number>
   retireFinalizedCheckpointPage(plan: Omit<Extract<ProjectStateControlOperation, { kind: "maintenance.finalized-checkpoints" }>, "kind">): Promise<Extract<ProjectStateResult, { kind: "checkpoint-maintenance" }>> | Extract<ProjectStateResult, { kind: "checkpoint-maintenance" }>
   readonly sessions: ProjectStateSessionsService
   notifySessionChange(change: SessionMetadataChange): void
@@ -275,6 +279,7 @@ export function createProjectStateService(ports: ProjectStateServicePorts) {
         if (refusal) return refusal
         operation = operation.operation
       }
+      if (isUpkeepStep(operation)) return { kind: "maintenance", affected: await upkeepStep(ports, operation) }
       switch (operation.kind) {
         case "position.capture":
           return { kind: "position", position: reader.currentPosition() }
@@ -346,10 +351,6 @@ export function createProjectStateService(ports: ProjectStateServicePorts) {
           return { kind: "maintenance", affected: await ports.pruneSupersededEvents(operation.aggregateId, operation.eventType) }
         case "maintenance.prune-keyed":
           return { kind: "maintenance", affected: await ports.pruneSupersededKeyedEvents(operation.aggregateId, operation.eventType, operation.payloadKey) }
-        case "maintenance.prune-retired":
-          return { kind: "maintenance", affected: await ports.pruneRetiredFamilyChunk(operation.eventType) }
-        case "maintenance.drop-retired-indexes":
-          return { kind: "maintenance", affected: await ports.dropRetiredIndexes() }
         case "maintenance.finalized-checkpoints":
           return ports.retireFinalizedCheckpointPage(operation)
         case "generation.admit": {
@@ -524,6 +525,8 @@ async function createWorkerProjectStateService(init: ProjectStateWorkerInit) {
       // step, after readiness, so it adds nothing to this Worker's start.
       pruneRetiredFamilyChunk: async (eventType) => (await import("../session/event-store-maintenance.js")).deleteRetiredFamilyChunk(ownedPreparation.dbFile, eventType),
       dropRetiredIndexes: async () => (await import("../session/event-store-maintenance.js")).dropRetiredEventStoreIndexes(ownedPreparation.dbFile).length,
+      pruneSupersededStep: async (eventType, positions) => (await import("../session/event-store-maintenance.js")).deleteSupersededStep(ownedPreparation.dbFile, { eventType, positions }),
+      incrementalVacuumStep: async (pages) => (await import("../session/event-store-maintenance.js")).incrementalVacuumStep(ownedPreparation.dbFile, pages),
       retireFinalizedCheckpointPage: async (plan) => ({
         kind: "checkpoint-maintenance",
         ...(await import("../migrations/finalized-tool-result-checkpoints.js")).retireRecordedFinalizedToolResultCheckpointPage(ownedPreparation.dbFile, plan.afterRowid, plan),
@@ -616,6 +619,24 @@ async function settleItems(
  *  next evidence read. */
 function pageFoldEvidence(reader: Pick<EventStoreReadSurface, "foldEvidence">, query: FactQuery, request: FoldEvidenceRequest | undefined) {
   return request ? { foldEvidence: reader.foldEvidence(query, request.anchorAt) } : {}
+}
+
+type UpkeepStep = Extract<ProjectStateControlOperation, { kind: "maintenance.prune-retired" | "maintenance.drop-retired-indexes" | "maintenance.prune-superseded" | "maintenance.incremental-vacuum" }>
+
+function isUpkeepStep(operation: { readonly kind: string }): operation is UpkeepStep {
+  return operation.kind === "maintenance.prune-retired" || operation.kind === "maintenance.drop-retired-indexes"
+    || operation.kind === "maintenance.prune-superseded" || operation.kind === "maintenance.incremental-vacuum"
+}
+
+/** One bounded step of store upkeep, which the store's writer runs for
+ *  startup maintenance and idle reclaim. */
+function upkeepStep(ports: ProjectStateServicePorts, operation: UpkeepStep): number | Promise<number> {
+  switch (operation.kind) {
+    case "maintenance.prune-retired": return ports.pruneRetiredFamilyChunk(operation.eventType)
+    case "maintenance.drop-retired-indexes": return ports.dropRetiredIndexes()
+    case "maintenance.prune-superseded": return ports.pruneSupersededStep(operation.eventType, operation.positions)
+    case "maintenance.incremental-vacuum": return ports.incrementalVacuumStep(operation.pages)
+  }
 }
 
 function generationKey(projectId: string, generation: number): string {

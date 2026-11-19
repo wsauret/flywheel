@@ -8,9 +8,15 @@ import { durationMs } from "../../infra/operation-log.js"
 const log = Log.create({ service: "account-service" })
 
 /** Who asked for a project to open, which its open record names. */
-type ProjectOpenRequester = "client attach" | "browser" | "device wake" | "repository clone" | "replacement continuation" | "capacity wake"
+type ProjectOpenRequester = "client attach" | "browser" | "device wake" | "repository clone" | "replacement continuation" | "capacity wake" | "storage reclaim"
+/** What runs after a close while the project's slot still holds it closed. */
+interface CloseFollowUp {
+  readonly step: StartupReached
+  readonly run: () => Promise<void>
+}
+
 /** Why a project closes, which its close record names. */
-type ProjectCloseReason = "idle" | "account service stopping" | "reopen after a failed close"
+type ProjectCloseReason = "idle" | "account service stopping" | "reopen after a failed close" | "storage reclaim"
 
 type AccountProjectState = "opening" | "open" | "closing" | "failed"
 
@@ -41,6 +47,12 @@ export interface AccountService<Runtime extends AccountProjectRuntime> {
   /** Join one canonical project opening. The reporter receives the latest step it reached and updates until this open settles. */
   open(projectRoot: string, requester?: ProjectOpenRequester, onStartupStep?: (reached: StartupReached) => void): Promise<Runtime>
   close(projectRoot: string, reason?: ProjectCloseReason): Promise<void>
+  /** Closes the project, then runs `work` while its slot still holds the
+   *  project's claim and every open of it waits, reporting `step` to each
+   *  waiting open. The slot is released once `work` settles, and the waiting
+   *  opens then open the project again. Answers what `work` answers. A close
+   *  that fails runs no `work` and rejects. */
+  closeFor<A>(projectRoot: string, reason: ProjectCloseReason, step: StartupReached, work: () => Promise<A>): Promise<A>
   state(projectRoot: string): AccountProjectState | undefined
   project(projectRoot: string): ProjectSlot<Runtime> | undefined
   /** Every project this service holds a slot for, by canonical root. */
@@ -65,7 +77,7 @@ export interface AccountService<Runtime extends AccountProjectRuntime> {
 export type ProjectSlot<Runtime> =
   | { readonly state: "opening"; readonly opening: Promise<Runtime> }
   | { readonly state: "open"; readonly runtime: Runtime }
-  | { readonly state: "closing"; readonly closing: Promise<void> }
+  | { readonly state: "closing"; readonly closing: Promise<void>; readonly reached?: StartupReached }
   | { readonly state: "failed"; readonly error: unknown; readonly runtime?: Runtime }
 
 type OpeningProjectSlot<Runtime> = Extract<ProjectSlot<Runtime>, { state: "opening" }> & {
@@ -123,7 +135,10 @@ export function createAccountService<Runtime extends AccountProjectRuntime>(opti
     const current = projects.get(root)
     if (current?.state === "opening") return awaitOpening(current, onStartupStep)
     if (current?.state === "open") return Promise.resolve(current.runtime)
-    if (current?.state === "closing") return current.closing.then(() => openCanonical(root, requester, onStartupStep))
+    if (current?.state === "closing") {
+      if (current.reached) onStartupStep?.(current.reached)
+      return current.closing.then(() => openCanonical(root, requester, onStartupStep))
+    }
     if (current?.state === "failed" && current.runtime) return closeCanonical(root, "reopen after a failed close").then(() => openCanonical(root, requester, onStartupStep))
 
     const started = performance.now()
@@ -182,39 +197,57 @@ export function createAccountService<Runtime extends AccountProjectRuntime>(opti
     return waiting
   }
 
-  const closeCanonical = (root: string, reason?: ProjectCloseReason): Promise<void> => {
+  const closeCanonicalFor = <A>(root: string, reason: ProjectCloseReason, step: StartupReached, work: () => Promise<A>): Promise<A> => {
+    // The answer settles once the slot is released, so a caller that opens
+    // the project on it never meets the slot still closing.
+    let settled: { readonly ok: true; readonly value: A } | { readonly ok: false; readonly error: unknown } | undefined
+    const run = (): Promise<void> => work().then((value) => { settled = { ok: true, value } }, (error: unknown) => { settled = { ok: false, error } })
+    return closeCanonical(root, reason, { step, run }).then(() => {
+      if (settled === undefined) throw new Error("The work after the close did not run")
+      if (!settled.ok) throw settled.error
+      return settled.value
+    })
+  }
+
+  /** Closes the project. With `after`, the slot stays closing until
+   *  `after.run` settles, so every open of the project waits for it and is
+   *  told `after.step`; a close that fails runs nothing after it. */
+  const closeCanonical = (root: string, reason?: ProjectCloseReason, after?: CloseFollowUp): Promise<void> => {
     const current = projects.get(root)
-    if (!current) return Promise.resolve()
-    if (current.state === "closing") return current.closing
-    let source: Promise<Runtime>
+    if (current?.state === "closing") return after ? current.closing.then(() => closeCanonical(root, reason, after)) : current.closing
+    let source: Promise<Runtime | undefined>
     let retainedRuntime: Runtime | undefined
-    if (current.state === "opening") {
+    if (current?.state === "opening") {
       // The opener finishes rollback before rejecting. A joined close inherits
       // any runtime that rollback could not release.
       source = current.opening.catch((error: unknown) => {
         retainedRuntime = current.runtime
         throw error
       })
-    } else if (current.state === "open") {
+    } else if (current?.state === "open" || current?.runtime) {
       retainedRuntime = current.runtime
       source = Promise.resolve(current.runtime)
+    } else if (after) {
+      source = Promise.resolve(undefined)
     } else {
-      if (!current.runtime) return Promise.resolve()
-      retainedRuntime = current.runtime
-      source = Promise.resolve(current.runtime)
+      return Promise.resolve()
     }
     const started = performance.now()
     const closingCompletion = Promise.withResolvers<void>()
     const closing = closingCompletion.promise
     void source
-      .then((runtime) => {
+      .then(async (runtime) => {
+        if (!runtime) return
         retainedRuntime = runtime
-        return runtime.dispose()
+        await runtime.dispose()
+        log.info("project closed", { projectRoot: root, reason, durationMs: durationMs(started) })
       })
-      .then(() => {
+      .then(async () => {
+        // The slot, and with it the serving claim, stays until `after`
+        // settles, so neither another lane nor an open starts before it ends.
+        if (after) await after.run()
         const latest = projects.get(root)
         if (latest?.state === "closing" && latest.closing === closing) transition(root, undefined)
-        log.info("project closed", { projectRoot: root, reason, durationMs: durationMs(started) })
         closingCompletion.resolve()
       }, (error) => {
         log.error("project close failed", { projectRoot: root, reason, durationMs: durationMs(started), error: errorMessage(error), errorDetail: errorDetail(error) })
@@ -224,13 +257,14 @@ export function createAccountService<Runtime extends AccountProjectRuntime>(opti
         }
         closingCompletion.reject(error)
       })
-    transition(root, { state: "closing", closing })
+    transition(root, { state: "closing", closing, ...(after ? { reached: after.step } : {}) })
     return closing
   }
 
   const service: AccountService<Runtime> = {
     open(projectRoot, requester, onStartupStep) { return openCanonical(options.canonicalizeProjectRoot(projectRoot), requester, onStartupStep) },
     close(projectRoot, reason) { return closeCanonical(options.canonicalizeProjectRoot(projectRoot), reason) },
+    closeFor(projectRoot, reason, step, work) { return closeCanonicalFor(options.canonicalizeProjectRoot(projectRoot), reason, step, work) },
     state(projectRoot) { return projects.get(options.canonicalizeProjectRoot(projectRoot))?.state },
     project(projectRoot) { return projects.get(options.canonicalizeProjectRoot(projectRoot)) },
     slots() { return projects },

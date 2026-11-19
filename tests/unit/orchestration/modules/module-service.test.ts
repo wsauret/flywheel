@@ -65,7 +65,7 @@ const refusingAccountPorts: Omit<Parameters<typeof createAccountModuleServiceOwn
   version: "0.0.0-test",
   registry: { list: refuse("registry.list"), record: refuse("registry.record"), forget: refuse("registry.forget"), watch: refuse("registry.watch"), dispose: refuse("registry.dispose") },
   projects: {
-    open: refuse("projects.open"), close: refuse("projects.close"), state: refuse("projects.state"), project: refuse("projects.project"), slots: refuse("projects.slots"),
+    open: refuse("projects.open"), close: refuse("projects.close"), closeFor: refuse("projects.closeFor"), state: refuse("projects.state"), project: refuse("projects.project"), slots: refuse("projects.slots"),
     watch: refuse("projects.watch"), openAdmission: refuse("projects.openAdmission"), closeAdmission: refuse("projects.closeAdmission"), dispose: refuse("projects.dispose"),
   },
   projectClone: { clone: refuse("projectClone.clone") },

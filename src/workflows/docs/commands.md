@@ -28,6 +28,7 @@ Type a command at the start of the prompt, or choose it in the command palette (
 | `/notifications` |  |  | View project notifications |
 | `/papercuts` |  |  | Drain project papercuts in the foreground chat, with any words that follow the command as direction |
 | `/profile` |  |  | Switch the auth profile, or name a profile to switch to it at once |
+| `/reclaim-storage` | `/vacuum` |  | Show how much space this project's Flywheel store can give back, and reclaim it |
 | `/remote` | `/pair`, `/phone` |  | Pair a phone and manage remote access |
 | `/report` |  |  | Send a bug report with an optional note |
 | `/restart` |  |  | Restart Flywheel in place and keep your tabs, drafts, and running work |

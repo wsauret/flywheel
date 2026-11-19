@@ -50,6 +50,7 @@ export const MODULE_IDS = [
   "provider-openrouter",
   "provider-supergrok",
   "recall",
+  "reclaim-storage",
   "remote",
   "side-question",
   "skills",

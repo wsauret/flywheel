@@ -111,6 +111,51 @@ describe("AccountService", () => {
     expect(opens).toBe(2)
   })
 
+  test("runs work after a close while the claim holds and every open waits on its step, then releases the root and the claim", async () => {
+    const events: string[] = []
+    const work = deferred<string>()
+    const service = createAccountService<Runtime>({
+      canonicalizeProjectRoot: (root) => root,
+      claimProject: async () => { events.push("claim"); return () => { events.push("release") } },
+      openProject: async (root) => ({ root, dispose: async () => { events.push("dispose") } }),
+      recordTrustedAttach: async () => { events.push("open") },
+    })
+    service.openAdmission()
+    await service.open("/project")
+
+    const answer = service.closeFor("/project", "storage reclaim", { step: "storage-reclaim" }, () => { events.push("work"); return work.promise })
+    for (let turn = 0; turn < 10; turn += 1) await Promise.resolve()
+    const steps: StartupReached[] = []
+    const reopened = service.open("/project", "client attach", (reached) => { steps.push(reached) })
+    await Bun.sleep(1)
+    expect(events).toEqual(["claim", "open", "dispose", "work"])
+    expect(steps).toEqual([{ step: "storage-reclaim" }])
+    expect(service.state("/project")).toBe("closing")
+
+    work.resolve("done")
+    expect(await answer).toBe("done")
+    await reopened
+    expect(events).toEqual(["claim", "open", "dispose", "work", "release", "claim", "open"])
+    await service.dispose()
+  })
+
+  test("runs work for a project that is not open, and a failed close runs none", async () => {
+    const service = createAccountService<Runtime>({
+      canonicalizeProjectRoot: (root) => root,
+      openProject: async (root) => ({ root, dispose: async () => { if (root === "/broken") throw new Error("dispose failed") } }),
+      recordTrustedAttach: async () => {},
+    })
+    service.openAdmission()
+    expect(await service.closeFor("/closed", "storage reclaim", { step: "storage-reclaim" }, async () => "ran")).toBe("ran")
+    expect(service.state("/closed")).toBeUndefined()
+
+    await service.open("/broken")
+    let ran = false
+    await expect(service.closeFor("/broken", "storage reclaim", { step: "storage-reclaim" }, async () => { ran = true })).rejects.toThrow("dispose failed")
+    expect(ran).toBe(false)
+    expect(service.state("/broken")).toBe("failed")
+  })
+
   test("records only a completed trusted attach and rolls back publication failure", async () => {
     let disposed = 0
     const service = createAccountService<Runtime>({

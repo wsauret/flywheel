@@ -111,10 +111,10 @@ describe("account socket router", () => {
     ]);
     expect(responses).toEqual([
       '{"flywheel":"account.attach.starting"}\n',
-      '{"flywheel":"serve.startup.phase","label":"Upgrading stored facts, pass 1 of 2: memory facts","progress":{"step":7,"total":13}}\n',
+      '{"flywheel":"serve.startup.phase","label":"Upgrading stored facts, pass 1 of 2: memory facts","progress":{"step":8,"total":14}}\n',
       '{"flywheel":"account.attach.ready"}\n',
       '{"flywheel":"account.attach.starting"}\n',
-      '{"flywheel":"serve.startup.phase","label":"Upgrading stored facts, pass 1 of 2: memory facts","progress":{"step":7,"total":13}}\n',
+      '{"flywheel":"serve.startup.phase","label":"Upgrading stored facts, pass 1 of 2: memory facts","progress":{"step":8,"total":14}}\n',
       '{"flywheel":"account.attach.ready"}\n',
     ]);
     router.close("first");

@@ -55,6 +55,7 @@ import { customProviderGeneration } from "../infra/llm/custom-provider-registry.
 import { recallModule } from "./modules/recall.js"
 import { papercutsModule } from "./modules/papercuts.js"
 import { projectNotificationsModule } from "./modules/project-notifications/module.js"
+import { reclaimStorageModule } from "./modules/reclaim-storage/module.js"
 import { skillsModule } from "./modules/skills.js"
 import { sideQuestionModule } from "./modules/side-question/module.js"
 // oxlint-disable-next-line import/no-cycle -- the installed catalog is the retained reader registry for disabled modules.
@@ -325,7 +326,7 @@ export function composeRealmModuleSnapshot(
  *  these. A source run adds the development catalog to this half through
  *  `installModuleCatalog`; nothing here names that catalog by value, so a
  *  release bundle never contains it. */
-export const SHIPPED_OTHER_MODULES = [askUserModule, backgroundCommandsModule, bashModule, bugReportsModule, codeModeModule, definitionOverridesModule, discoveryModule, experimentsModule, fileToolsModule, learningModule, mcpModule, papercutsModule, projectNotificationsModule, recallModule, remoteModule, sideQuestionModule, skillsModule, subagentsModule, subscriptionUsageModule, webModule, webChatgptModule, workflowsModule] as const satisfies readonly FirstPartyModule[]
+export const SHIPPED_OTHER_MODULES = [askUserModule, backgroundCommandsModule, bashModule, bugReportsModule, codeModeModule, definitionOverridesModule, discoveryModule, experimentsModule, fileToolsModule, learningModule, mcpModule, papercutsModule, projectNotificationsModule, recallModule, reclaimStorageModule, remoteModule, sideQuestionModule, skillsModule, subagentsModule, subscriptionUsageModule, webModule, webChatgptModule, workflowsModule] as const satisfies readonly FirstPartyModule[]
 publishShippedOtherModules(SHIPPED_OTHER_MODULES)
 
 /** The catalog every release composes from. */
@@ -366,7 +367,7 @@ const _registryStatesVocabulary: RegistryStatesVocabulary = true; const _vocabul
 // IDs shipped after the retired `modules` snapshot format. A retired snapshot
 // cannot state a decision about them, so migration and reads treat them as enabled.
 const DEFAULT_ENABLED_SINCE_MODULES_SNAPSHOT: readonly ModuleId[] = [
-  "definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", "side-question",
+  "definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", "side-question", "reclaim-storage",
   "provider-anthropic-api", "provider-baseten", "provider-chatgpt", "provider-claude-agent-sdk", "provider-deepseek", "provider-github-copilot", "provider-google-api",
   "provider-google-vertex", "provider-openai-api", "provider-opencode-go", "provider-openrouter", "provider-supergrok",
 ]

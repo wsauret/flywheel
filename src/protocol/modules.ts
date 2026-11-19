@@ -9,6 +9,7 @@ import { experimentsProtocol } from "./modules/experiments.js"
 import { mcpProtocol } from "./modules/mcp.js"
 import { papercutsProtocol } from "./modules/papercuts.js"
 import { projectNotificationsProtocol } from "./modules/project-notifications.js"
+import { reclaimStorageProtocol } from "./modules/reclaim-storage.js"
 import { subagentsProtocol } from "./modules/subagents.js"
 import { workflowsProtocol } from "./modules/workflows.js"
 import {
@@ -47,7 +48,7 @@ import {
  *  Its value-import closure is pure schema: the module homes name no
  *  orchestration path and reach no Bun API, which is what lets a Node-hosted
  *  editor extension and a browser hold the whole contract (ARCH-PROTOCOL-033). */
-export const PROTOCOL_MODULES = [bugReportsProtocol, definitionOverridesProtocol, experimentsProtocol, mcpProtocol, papercutsProtocol, projectNotificationsProtocol, remoteProtocol, sideQuestionProtocol, subagentsProtocol, subscriptionUsageProtocol, workflowsProtocol] as const satisfies readonly ProtocolModule[]
+export const PROTOCOL_MODULES = [bugReportsProtocol, definitionOverridesProtocol, experimentsProtocol, mcpProtocol, papercutsProtocol, projectNotificationsProtocol, reclaimStorageProtocol, remoteProtocol, sideQuestionProtocol, subagentsProtocol, subscriptionUsageProtocol, workflowsProtocol] as const satisfies readonly ProtocolModule[]
 
 /** A contract the registry holds; the runtime serves no other. */
 export type ProtocolRegistryModule = (typeof PROTOCOL_MODULES)[number]

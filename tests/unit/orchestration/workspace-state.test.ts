@@ -239,11 +239,12 @@ describe("prepareWorkspaceState", () => {
     expect(fs.existsSync(resolveEventStoreDbFile(baseDir))).toBe(false)
   })
 
-  it("creates private workspace storage", () => {
+  it("creates private workspace storage in incremental auto-vacuum mode", () => {
     const directories = makeWorkspace()
     const prepared = prepareWorkspaceState(directories)
     const store = createSqliteEventStore(prepared.dbFile)
     try {
+      expect(readAutoVacuum(prepared.dbFile)).toBe(2)
       if (POSIX_FILE_MODES) expect(fs.statSync(path.dirname(prepared.dbFile)).mode & 0o777).toBe(0o700)
       if (POSIX_FILE_MODES) expect(fs.statSync(prepared.dbFile).mode & 0o777).toBe(0o600)
       for (const sidecar of [`${prepared.dbFile}-wal`, `${prepared.dbFile}-shm`]) {
@@ -629,6 +630,15 @@ function headPosition(dbFile: string): number {
   const db = new Database(dbFile, { readonly: true })
   try {
     return db.query<{ position: number }, []>("select coalesce(max(position), 0) as position from event").get()?.position ?? 0
+  } finally {
+    db.close()
+  }
+}
+
+function readAutoVacuum(dbFile: string): number | undefined {
+  const db = new Database(dbFile, { readonly: true })
+  try {
+    return db.query<{ auto_vacuum: number }, []>("PRAGMA auto_vacuum").get()?.auto_vacuum
   } finally {
     db.close()
   }

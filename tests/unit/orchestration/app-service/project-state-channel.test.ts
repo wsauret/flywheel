@@ -146,6 +146,8 @@ function stateHarness() {
     upkeep: {
       pruneRetiredFamilyChunk: async () => 0,
       dropRetiredIndexes: async () => 0,
+      pruneSupersededStep: async () => 0,
+      incrementalVacuumStep: async () => 0,
       retireFinalizedCheckpointPage: async ({ afterRowid }) => ({ kind: "checkpoint-maintenance", afterRowid, examined: 0, retired: 0, complete: true, transactionMs: 0 }),
     },
     onStored(listener) {

@@ -30,6 +30,7 @@ async function hubReading(slot: ProjectSlot<Runtime> | undefined, assets: Contro
   const service: AccountService<Runtime> = {
     open: async () => { throw new Error("the hub's listing opens no project") },
     close: async () => {},
+    closeFor: async () => { throw new Error("the hub's listing closes no project") },
     state: () => undefined,
     project: () => slot,
     slots: () => new Map(),

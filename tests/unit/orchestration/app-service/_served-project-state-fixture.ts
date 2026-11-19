@@ -7,7 +7,7 @@ import { decodeProjectStateRequest, encodeProjectStateResponseFrame, operationUn
 import { createProjectStateSessionsService } from "../../../../src/orchestration/app-service/project-state-sessions.js"
 import { createProjectStateService } from "../../../../src/orchestration/app-service/project-state-worker.js"
 import { retireRecordedFinalizedToolResultCheckpointPage } from "../../../../src/orchestration/migrations/finalized-tool-result-checkpoints.js"
-import { deleteRetiredFamilyChunk, dropRetiredEventStoreIndexes } from "../../../../src/orchestration/session/event-store-maintenance.js"
+import { deleteRetiredFamilyChunk, deleteSupersededStep, dropRetiredEventStoreIndexes, incrementalVacuumStep } from "../../../../src/orchestration/session/event-store-maintenance.js"
 import { createSessionManager, type SessionMetadataChange } from "../../../../src/orchestration/session/manager.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
 
@@ -45,6 +45,8 @@ export function servedProjectState(directories: ProjectDirectories, options: Ser
     pruneSupersededKeyedEvents: (aggregate, type, key) => store.pruneSupersededKeyedEvents(aggregate, type, key),
     pruneRetiredFamilyChunk: maintenance ? (eventType) => deleteRetiredFamilyChunk(dbFile, eventType) : unexpected("retired-family prune"),
     dropRetiredIndexes: maintenance ? () => dropRetiredEventStoreIndexes(dbFile).length : unexpected("retired-index drop"),
+    pruneSupersededStep: maintenance ? (eventType, positions) => deleteSupersededStep(dbFile, { eventType, positions }) : unexpected("superseded prune"),
+    incrementalVacuumStep: maintenance ? (pages) => incrementalVacuumStep(dbFile, pages) : unexpected("incremental vacuum"),
     retireFinalizedCheckpointPage: maintenance
       ? async (plan) => {
         await maintenance.enterCheckpointPage()

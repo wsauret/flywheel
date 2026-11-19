@@ -15,12 +15,18 @@ The runner host owns runner-context construction, one logical turn lease, explic
 
 ## ARCH-RUNTIME-003: One recovery policy restarts unattended runs
 
-One unattended recovery policy, the only restart owner, decides from its in-memory count of served requests whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation. A run that it starts again keeps the failed run's limits, so its model-call budget continues and a failure that a limit ended stands. A run that no role preference can serve until a stated time waits until the earliest such time (ARCH-RUNTIME-082); a headless task waits only while its process lives. A chat waits only for its own model.
+One unattended recovery policy, the only restart owner, decides from its in-memory count of served requests whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation. A run that it starts again keeps the failed run's limits, so its model-call budget continues and a failure that a limit ended stands. A run whose model cannot serve waits for that model (ARCH-RUNTIME-082); a headless task waits only while its process lives.
 Not: A recovery policy that retries or fails over inside a request.
 
-## ARCH-RUNTIME-082: A spent model's agent continues at once on its role
+## ARCH-RUNTIME-082: An agent's model is fixed for its run
 
-When a workflow agent's or subagent's run fails because its model's quota is spent until a known time, the recovery policy continues it at once, without counting an attempt or arming a capacity wait. The next request boundary resolves the role against current availability. A capacity wait follows only when that boundary itself finds that no preference serves, until the earliest moment one serves again. The policy keeps no memory of earlier continuations. An unattended run never continues this way.
+A run resolves its role once when it starts and uses that model and effort for every request, until the person changes the setting. For a role with no saved model, the run records the pick in its conversation, so a restart keeps it. When the model cannot serve, the recovery policy arms one wait. A stated time, a person's message or Resume, or an authentication or model-admission change that reaches the agent's host and lets the model serve ends it. A cut ends it and leaves the agent idle.
+Not: Passing over a model that cannot serve to another role preference.
+
+## ARCH-RUNTIME-083: The project's control composition owns store usage and idle reclaim
+
+The project's control composition in the account service owns the store's usage as live state. Each maintenance job reports usage when it ends, and idle reclaim also reports it once it has planned the superseded rows. Only idle reclaim plans them, so no per-change path reads the history. Idle reclaim starts after the startup job, while the executors report no work, at most once an hour. It writes through the state Worker in bounded steps and is withdrawn when work starts. A full VACUUM runs only for Reclaim storage, after the account closed the project, under the exclusive state generation.
+Because: A VACUUM holds the store's only lock for minutes, which only a closed project can give it; bounded steps keep a write's wait to one step.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
@@ -226,7 +232,7 @@ Not: Update work in each project runtime.
 
 ## ARCH-RUNTIME-044: The account service runs startup maintenance one job at a time
 
-Each open project admits one startup maintenance job after its foreground readiness, and the account service runs the jobs one at a time in one-shot Workers. A job reads the store read-only and writes only through its project's state Worker, runs deterministic maintenance before optional cleanup, contains cleanup failure, and is withdrawn and joined when its project closes.
+Each open project admits one startup maintenance job after its foreground readiness, and the account service runs the jobs, with its idle reclaim and Reclaim storage jobs, one at a time in one-shot Workers. A startup or idle reclaim job reads the store read-only and writes only through its project's state Worker. It runs deterministic maintenance before optional cleanup, contains cleanup failure, and is withdrawn and joined when its project closes. The Reclaim storage job owns the closed store alone under the exclusive state generation (ARCH-RUNTIME-083).
 
 Because: Maintenance contends for the store's write lock, so readiness comes first and jobs never overlap.
 

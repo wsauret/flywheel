@@ -71,13 +71,17 @@ export interface ProjectStateClientTransport {
   close(): void | Promise<void>
 }
 
-/** The store upkeep startup maintenance asks of the sole writer (ARCH-SUBSTRATE-018, ARCH-SUBSTRATE-026),
- *  one bounded step per call. */
+/** The store upkeep startup maintenance and idle reclaim ask of the sole
+ *  writer (ARCH-SUBSTRATE-018, ARCH-SUBSTRATE-026), one bounded step per call. */
 interface ProjectStateUpkeep {
   /** Deletes one chunk of one retired family; answers the rows deleted. */
   pruneRetiredFamilyChunk(eventType: string): Promise<number>
   /** Drops the indexes the schema retired; answers how many it dropped. */
   dropRetiredIndexes(): Promise<number>
+  /** Deletes one planned page of superseded rows; answers the rows deleted. */
+  pruneSupersededStep(eventType: string, positions: readonly number[]): Promise<number>
+  /** Gives at most `pages` free pages back; answers the pages freed. */
+  incrementalVacuumStep(pages: number): Promise<number>
   /** Rechecks and retires one page of fully recorded finalized results. */
   retireFinalizedCheckpointPage(plan: Omit<Extract<ProjectStateControlOperation, { kind: "maintenance.finalized-checkpoints" }>, "kind">): Promise<Extract<ProjectStateResult, { kind: "checkpoint-maintenance" }>>
 }
@@ -459,6 +463,8 @@ export function createProjectStateClient(
     upkeep: {
       pruneRetiredFamilyChunk: (eventType) => maintenance({ kind: "maintenance.prune-retired", eventType }),
       dropRetiredIndexes: () => maintenance({ kind: "maintenance.drop-retired-indexes" }),
+      pruneSupersededStep: (eventType, positions) => maintenance({ kind: "maintenance.prune-superseded", eventType, positions }),
+      incrementalVacuumStep: (pages) => maintenance({ kind: "maintenance.incremental-vacuum", pages }),
       async retireFinalizedCheckpointPage(plan) {
         const result = await request("control", { kind: "maintenance.finalized-checkpoints", ...plan })
         if (result.kind !== "checkpoint-maintenance") throw stateReadError(result)

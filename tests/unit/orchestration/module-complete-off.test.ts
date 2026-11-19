@@ -97,6 +97,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   "provider-openrouter": { contributions: { providers: ["openrouter"] } },
   "provider-supergrok": { contributions: { providers: ["supergrok"] } },
   recall: { contributions: { tools: ["recall"] } },
+  "reclaim-storage": { contributions: { settings: ["reclaim-storage"], commands: ["reclaim-storage"] } },
   remote: {
     contributions: { cli: ["remote"], config: ["remote"], settings: ["remote", "remote-keep-awake"], commands: ["remote"] },
     settlesAfterAdmission: ["remote"],

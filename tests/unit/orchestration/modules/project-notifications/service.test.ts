@@ -33,6 +33,7 @@ test("the sink takes a producer's episode after shutdown begins and refuses one 
       eventWriter: asAsyncEventWriter(store),
       onStored: store.onStored,
       publish: () => undefined,
+      notify: async () => {},
     }
     const services = composeModuleProcessServices(modules, () => composition.enabledModuleIds, kernelPorts(control))
     services.reconcile()

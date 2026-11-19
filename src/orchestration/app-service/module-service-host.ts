@@ -1,4 +1,5 @@
 import type { Schema } from "effect"
+import type { ProjectStorage } from "./project-storage.js"
 import type { ModuleTransports } from "./module-transports.js"
 import type { FrontendEvent } from "../../protocol/app-service-types.js"
 import type { AuthRuntime } from "./auth-runtime.js"
@@ -90,6 +91,8 @@ export type AccountProjectModuleServices = Pick<ModuleProcessServices,
   "transports" | "onFrontendEvent" | "onSelectionChanged" | "notify" |
   "directories" | "publish" | "snapshotPosition" | "launcher" | "modules" | "enabled" | "eventWriter" | "onStored" | "projectionReader"> & {
     readonly eventStore: AsyncEventStateReadSurface
+    /** The project's store usage and its Reclaim storage command (ARCH-RUNTIME-083). */
+    readonly storage: ProjectStorage
     readonly projectRegistry: Omit<AccountProjectRegistry, "dispose">
     /** The account's one web client resolution. Absent in a composition no
      *  account serves, which serves no client. */
@@ -211,8 +214,10 @@ export function createAccountModuleServiceOwner<Runtime extends { dispose(): Pro
   }
 }
 
-/** State-backed control services run in the account when attached, or in the standalone host. */
-export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish">
+/** State-backed control services run in the account when attached, or in
+ *  the standalone host, such as a headless run, where the account's ports,
+ *  such as `storage`, are absent. */
+export type ControlModuleServices = Pick<ModuleProcessServices, "projectionReader" | "eventWriter" | "onStored" | "publish" | "notify"> & Partial<Pick<AccountProjectModuleServices, "storage">>
 
 /** What every module service instance owes composition: one disposal that
  *  settles admitted work and releases what the service holds. Composition runs

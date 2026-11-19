@@ -111,6 +111,10 @@ export type ProjectStateControlOperation =
    *  bounded steps: one chunk of one retired family, or the retired indexes. */
   | { readonly kind: "maintenance.prune-retired"; readonly eventType: string }
   | { readonly kind: "maintenance.drop-retired-indexes" }
+  /** Idle reclaim's store upkeep, in the same bounded steps: one page of
+   *  superseded rows of one family, or one incremental-vacuum step. */
+  | { readonly kind: "maintenance.prune-superseded"; readonly eventType: string; readonly positions: readonly number[] }
+  | { readonly kind: "maintenance.incremental-vacuum"; readonly pages: number }
   | { readonly kind: "maintenance.finalized-checkpoints"; readonly afterRowid: number; readonly throughRowid: number; readonly evidencePositions: readonly number[] }
   | { readonly kind: "session.control"; readonly command: ProjectStateSessionCommand }
 
@@ -526,6 +530,8 @@ const WireControlOperationSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("maintenance.prune-keyed"), aggregateId: Schema.String, eventType: Schema.String, payloadKey: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("maintenance.prune-retired"), eventType: Schema.NonEmptyString }),
   Schema.Struct({ kind: Schema.Literal("maintenance.drop-retired-indexes") }),
+  Schema.Struct({ kind: Schema.Literal("maintenance.prune-superseded"), eventType: Schema.NonEmptyString, positions: Schema.Array(Positive).check(Schema.isMaxLength(1_000)) }),
+  Schema.Struct({ kind: Schema.Literal("maintenance.incremental-vacuum"), pages: Positive.check(Schema.isLessThanOrEqualTo(65_536)) }),
   Schema.Struct({ kind: Schema.Literal("maintenance.finalized-checkpoints"), afterRowid: Natural, throughRowid: Natural, evidencePositions: Schema.Array(Positive) }),
   Schema.Struct({ kind: Schema.Literal("session.control"), command: WireSessionCommand }),
 ])
@@ -592,5 +598,6 @@ function operationBelongsToLane(kind: string, lane: ProjectStateLane): boolean {
     || kind === "append" || kind === "append.batch"
     || kind === "maintenance.prune" || kind === "maintenance.prune-keyed"
     || kind === "maintenance.prune-retired" || kind === "maintenance.drop-retired-indexes" || kind === "maintenance.finalized-checkpoints"
+    || kind === "maintenance.prune-superseded" || kind === "maintenance.incremental-vacuum"
     || kind === "session.control"
 }

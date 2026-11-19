@@ -38,6 +38,9 @@ import { createRuntimeOwnership } from "./runtime-ownership.js"
 import { runRuntimeShutdownBarrier } from "./runtime-shutdown.js"
 import { createRuntimeBackgroundLane, serveRuntimeBackgroundQuery } from "./runtime-background-lane.js"
 import type { MaintenanceQueue } from "./runtime-maintenance-owner.js"
+import { createIdleStoreReclaim } from "./idle-store-reclaim.js"
+import { createProjectStorage, type StorageReclaimHost } from "./project-storage.js"
+import { resolveEventStoreDbFile } from "../../infra/paths.js"
 import { serveProjectStateChannel } from "./project-state-channel.js"
 import { createMessagePortProcessEndpoint } from "../../infra/internal-process-channel.js"
 import type { RuntimeBackgroundClient } from "./worker-background-client.js"
@@ -126,6 +129,9 @@ export interface ProjectControlRuntimeOptions {
   /** The account's startup maintenance, which runs this project's job once
    *  its foreground is ready. */
   readonly maintenance: Pick<MaintenanceQueue, "project">
+  /** The account's half of the Reclaim storage command. Absent in a
+   *  composition no account serves. */
+  readonly storageReclaim?: StorageReclaimHost
   /** The fallback of the account service's build, which every executor
    *  generation of this project tells whether it opened. Absent in a
    *  composition no account serves. */
@@ -169,10 +175,29 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
     endStage()
     // The job's writes reach this project's state Worker through the account,
     // as the account's own writes do, so the store keeps one writer.
+    const serveState = (port: MessagePort) => serveProjectStateChannel(state, createMessagePortProcessEndpoint({ port, decode: (value) => value }), { kind: "maintenance", projectId })
+    const storage = createProjectStorage(resolveEventStoreDbFile(directories.projectRoot), options.storageReclaim)
     const maintenance = scope.own("maintenance", options.maintenance.project({
-      directories,
-      serveState: (port) => serveProjectStateChannel(state, createMessagePortProcessEndpoint({ port, decode: (value) => value }), { kind: "maintenance", projectId }),
+      kind: "startup", directories, serveState, onUsage: storage.report,
     }), (job) => job.withdraw())
+    // Armed once the startup job has settled, so idle reclaim never runs
+    // before the store's startup upkeep.
+    let idleReclaimArmed = false
+    // Each run plans the superseded rows written since the runs before it,
+    // so its cost follows the change, not the store's whole history.
+    const plannedThrough: { [eventType: string]: number } = {}
+    const idleReclaim = scope.own("idle-reclaim", createIdleStoreReclaim({
+      blockers: () => runtimeBlockers(),
+      start: () => {
+        const job = options.maintenance.project({
+          kind: "idle-reclaim", directories, serveState, onUsage: storage.report,
+          plannedThrough: { ...plannedThrough }, onPlanned: (eventType, through) => { plannedThrough[eventType] = through },
+        })
+        job.admit()
+        return job
+      },
+    }), (owner) => owner.dispose())
+    const checkIdleReclaim = (): void => { if (idleReclaimArmed) idleReclaim.check() }
     const selection = () => composeRealmModuleSnapshot({ moduleIds: config.snapshot().config.modules })
     const enabled = () => selection().enabledModuleIds
     const failures: unknown[] = []
@@ -273,7 +298,11 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       },
       serve(record, runtime) {
         const isCurrent = () => generations.current === record && !record.recovery
-        const stopBlockerReports = record.owner.onBlockersChanged(() => { if (generations.current === record) options.replacement?.changed() })
+        const stopBlockerReports = record.owner.onBlockersChanged(() => {
+          if (generations.current !== record) return
+          options.replacement?.changed()
+          checkIdleReclaim()
+        })
         const stopRecovery = runtime.onOutputGap?.(async () => { if (isCurrent()) await repairOutput?.() })
         const unsubscribeExecution = runtime.subscribe((event) => {
           if (isCurrent()) for (const listener of executionListeners) listener(event)
@@ -284,6 +313,9 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
         if (publicClientAttached) startChatDefault(record)
         if (options.replacement && options.replacement.state().kind !== "none") syncReplacement(record)
         options.replacement?.changed()
+        // Startup maintenance can settle while the generation opens, when
+        // its one check finds the project busy; a ready generation checks.
+        checkIdleReclaim()
         return () => {
           if (stateWatchedOutput === stateWatches) stateWatchedOutput = undefined
           unsubscribeExecution()
@@ -336,7 +368,16 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
     endStage = timeline.begin("modules")
     options.onStartupStep?.({ step: "project-modules" })
     const transports = scope.own("transports", createModuleTransports(), (owner) => owner.dispose())
+    const runtimeBlockers = async (): Promise<readonly ReplacementBlocker[]> => {
+      const hold = generations.replacementHold()
+      if (hold === undefined) return []
+      if (hold !== "live") return [projectBlocker(hold)]
+      // An executor that misses its read before it reports any list has its
+      // loop inside a call, so it counts as an admitted call.
+      return (await generations.current.owner.blockers()) ?? [projectBlocker("call")]
+    }
     const services = scope.own("modules", composeAccountProjectModuleServices(installedModules(), enabled, {
+      storage,
       directories, launcher: options.launcher.scope, projectRegistry: options.registry,
       readFaultReport: (source) => source === "service" ? options.readServiceFaultReport?.() : generations.failedReport(),
       ...(options.webClient === undefined ? {} : { webClient: options.webClient }),
@@ -464,6 +505,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
     }), (owner) => owner.dispose())
     scope.sequence("executor", "stop-runners", ["session-auto-delete", "client", "executor"])
     scope.shutdown("maintenance", "stop-runners")
+    scope.shutdown("idle-reclaim", "stop-runners")
     scope.sequence("account-modules", "flush-durable-state", ["selection", "modules", "notification-delivery-failures"])
     scope.sequence("account-views", "close-client-streams", ["history", "routes", "transports", "bus", "config"])
     scope.sequence("state-worker", "release-state", ["state", "endpoints"])
@@ -481,16 +523,13 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       admitDeferredWork: () => {
         services.start()
         maintenance.admit()
+        void maintenance.settled.then(() => {
+          idleReclaimArmed = true
+          checkIdleReclaim()
+        })
         autoDelete.start()
       },
-      async blockers(): Promise<readonly ReplacementBlocker[]> {
-        const hold = generations.replacementHold()
-        if (hold === undefined) return []
-        if (hold !== "live") return [projectBlocker(hold)]
-        // An executor that misses its read before it reports any list has its
-        // loop inside a call, so it counts as an admitted call.
-        return (await generations.current.owner.blockers()) ?? [projectBlocker("call")]
-      },
+      blockers: runtimeBlockers,
       syncReplacement: () => syncReplacement(generations.current),
       /** One half of a planned replacement's handoff in this project's
        *  executor: the cut before the old build stops, or the resume after

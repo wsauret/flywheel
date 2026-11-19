@@ -1,7 +1,7 @@
 import { invalidateSupersededQueueFacts } from "../../../../src/orchestration/modules/workflows/queue-maintenance.js"
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
@@ -10,8 +10,14 @@ import type { ToolContentRow } from "../../../../src/infra/tool-content"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { buildSessionContent, type SessionContentNodeRow } from "../../../../src/infra/session-content"
 import {
+  INCREMENTAL_VACUUM_STEP_PAGES,
   RETIRED_FACT_TYPES,
+  deleteSupersededStep,
   dropRetiredEventStoreIndexes,
+  incrementalVacuumStep,
+  pruneSupersededFactsThrough,
+  readStoreUsage,
+  type SupersededPruneStep,
   pruneRetiredFactFamilies,
   pruneSupersededFacts,
   readEventStoreMaintenanceStats,
@@ -374,7 +380,143 @@ describe("superseded-fact prune", () => {
     expect(storedContent()).toEqual(nodes.map(row => `session-a:${row.sha256}`).sort())
     expect(store.readSessionContentNode?.("session-a", staged.root)).not.toBeNull()
   })
+
+  test("the step-wise prune beside a live writer keeps the newest row of each live value", async () => {
+    appendOutput("session-a", "call-1", "tail one")
+    appendOutput("session-a", "call-2", "other call")
+    appendOutput("session-a", "call-1", "settled")
+    appendTo("workflow:session-a", "session-a", "queue.state.changed", 1, { status: "running" })
+    appendTo("workflow:session-a", "session-a", "queue.state.changed", 1, { status: "paused" })
+    const steps: SupersededPruneStep[] = []
+    const pending: number[] = []
+    const bounds: { [eventType: string]: number } = {}
+    const prune = () => pruneSupersededFactsThrough(dbPath, async (step) => {
+      steps.push(step)
+      return deleteSupersededStep(dbPath, step)
+    }, { signal: new AbortController().signal, plannedThrough: { ...bounds }, onPlanned: (type, through) => { bounds[type] = through }, onPending: (bytes) => { pending.push(bytes) } })
+    const [tailBytes] = payloadBytes("tool.execution_output.recorded")
+    const [runningBytes] = payloadBytes("queue.state.changed")
+
+    const result = await prune()
+
+    expect(result.rowsDeleted).toBe(2)
+    // The whole plan's bytes first, then what each finished family leaves.
+    expect(pending).toEqual([tailBytes! + runningBytes!, runningBytes!, 0])
+    expect(steps.map((step) => step.eventType)).toEqual(["tool.execution_output.recorded", "queue.state.changed"])
+    expect(payloads("tool.execution_output.recorded")).toEqual([{ toolUseId: "call-2", output: "other call" }, { toolUseId: "call-1", output: "settled" }])
+    expect(payloads("queue.state.changed")).toEqual([{ status: "paused" }])
+    expect(bounds["tool.execution_output.recorded"]).toBe(Math.max(...positions("tool.execution_output.recorded")))
+
+    // A later run plans only what landed since: the family with a new row
+    // deletes the row it supersedes, and the family with none takes no step.
+    steps.length = 0
+    pending.length = 0
+    const [otherCallBytes] = payloadBytes("tool.execution_output.recorded")
+    appendOutput("session-a", "call-2", "other settled")
+    expect((await prune()).rowsDeleted).toBe(1)
+    expect(steps.map((step) => step.eventType)).toEqual(["tool.execution_output.recorded"])
+    expect(pending).toEqual([otherCallBytes!, 0])
+    expect(payloads("tool.execution_output.recorded")).toEqual([{ toolUseId: "call-1", output: "settled" }, { toolUseId: "call-2", output: "other settled" }])
+  })
+
+  test("a superseded step keeps a row whose newer value is gone, and refuses a history family", () => {
+    appendOutput("session-a", "call-1", "tail one")
+    appendOutput("session-a", "call-1", "settled")
+    const [older, newer] = positions("tool.execution_output.recorded")
+    const db = new Database(dbPath)
+    db.query("delete from event where position = ?1").run(newer!)
+    db.close()
+
+    expect(deleteSupersededStep(dbPath, { eventType: "tool.execution_output.recorded", positions: [older!] })).toBe(0)
+    expect(payloads("tool.execution_output.recorded")).toEqual([{ toolUseId: "call-1", output: "tail one" }])
+    expect(() => deleteSupersededStep(dbPath, { eventType: "tool.result.recorded", positions: [older!] })).toThrow("tool.result.recorded is not a replace-latest fact family")
+  })
 })
+
+describe("space reclaim", () => {
+  test("a vacuum moves an existing store to incremental mode, and idle steps then give freed pages back", async () => {
+    insertRetiredRows("reclaim", 8)
+    expect(incrementalVacuumStep(dbPath, INCREMENTAL_VACUUM_STEP_PAGES)).toBe(0)
+    expect(readStoreUsage(dbPath, 0)?.incremental).toBe(false)
+
+    await pruneRetiredFactFamilies(dbPath)
+    const pruned = readStoreUsage(dbPath, 0)!
+    expect(pruned.reclaimableBytes).toBeGreaterThan(4 * 1024 * 1024)
+    // Without the mode, a step frees nothing: only the explicit command converts.
+    expect(incrementalVacuumStep(dbPath, INCREMENTAL_VACUUM_STEP_PAGES)).toBe(0)
+
+    vacuumEventStore(dbPath, { force: true })
+    const converted = readStoreUsage(dbPath, 0)!
+    expect(converted.incremental).toBe(true)
+    expect(converted.storeBytes).toBeLessThan(pruned.storeBytes / 2)
+
+    insertRetiredRows("reclaim-again", 4)
+    await pruneRetiredFactFamilies(dbPath)
+    const freeBefore = readEventStoreSizeStats(dbPath).freelistCount
+    expect(freeBefore).toBeGreaterThan(INCREMENTAL_VACUUM_STEP_PAGES)
+    // The state Worker's writer keeps its connection open, so no close checkpoints the WAL.
+    const writer = new Database(dbPath)
+    try {
+      writer.query("select count(*) from event").get()
+      const fileBefore = statSync(dbPath).size
+      expect(incrementalVacuumStep(dbPath, INCREMENTAL_VACUUM_STEP_PAGES)).toBe(INCREMENTAL_VACUUM_STEP_PAGES)
+      expect(readEventStoreSizeStats(dbPath).freelistCount).toBe(freeBefore - INCREMENTAL_VACUUM_STEP_PAGES)
+      while (incrementalVacuumStep(dbPath, INCREMENTAL_VACUUM_STEP_PAGES) === INCREMENTAL_VACUUM_STEP_PAGES) { /* until the free list is empty */ }
+      expect(readEventStoreSizeStats(dbPath).freelistCount).toBe(0)
+      // The step that empties the free list checkpoints, so the file shrinks while the project stays idle.
+      expect(statSync(dbPath).size).toBeLessThan(fileBefore - freeBefore * 4096 / 2)
+    } finally {
+      writer.close()
+    }
+  })
+
+  test("usage counts free pages, retired payload, and the superseded bytes its caller planned as reclaimable", () => {
+    insertRetiredRows("usage", 2)
+    const usage = readStoreUsage(dbPath, 0)!
+    expect(usage.reclaimableBytes).toBeGreaterThanOrEqual(2 * 1024 * 1024)
+    expect(usage.liveBytes).toBeGreaterThan(usage.reclaimableBytes)
+    const planned = readStoreUsage(dbPath, 3 * 1024 * 1024)!
+    expect(planned.supersededBytes).toBe(3 * 1024 * 1024)
+    expect(planned.reclaimableBytes).toBe(usage.reclaimableBytes + 3 * 1024 * 1024)
+    expect(readStoreUsage(join(tmpDir, "absent.sqlite"), 0)).toBeUndefined()
+  })
+})
+
+/** Rows of one megabyte each in a retired family, inserted in SQL so the
+ *  fixture allocates real pages without host JSON encoding. */
+function insertRetiredRows(sessionId: string, count: number): void {
+  const db = new Database(dbPath)
+  try {
+    db.transaction(() => {
+      db.query("insert into event_sequence (aggregate_id, seq) values (?1, ?2)").run(`session:${sessionId}`, count)
+      db.query(`
+        with recursive n(i) as (select 0 union all select i + 1 from n where i < $last)
+        insert into event (id, aggregate_id, seq, type, version, timestamp, actor, session_id, payload)
+        select $session || '-' || i, 'session:' || $session, i + 1, 'model.stream.event_observed', 1, 1000 + i, 'provider', $session, $payload from n
+      `).run({ $last: count - 1, $session: sessionId, $payload: JSON.stringify({ blob: "x".repeat(1024 * 1024) }) })
+    })()
+  } finally {
+    db.close()
+  }
+}
+
+function positions(type: string): number[] {
+  const db = new Database(dbPath, { readonly: true })
+  try {
+    return db.query<{ position: number }, [string]>("select position from event where type = ?1 order by position").all(type).map((row) => row.position)
+  } finally {
+    db.close()
+  }
+}
+
+function payloadBytes(type: string): number[] {
+  const db = new Database(dbPath, { readonly: true })
+  try {
+    return db.query<{ bytes: number }, [string]>("select length(payload) as bytes from event where type = ?1 order by position").all(type).map((row) => row.bytes)
+  } finally {
+    db.close()
+  }
+}
 
 function appendOutput(sessionId: string, toolUseId: string, output: unknown, contentRows?: ToolContentRow[]): void {
   store.append({
