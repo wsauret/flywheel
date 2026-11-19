@@ -104,31 +104,28 @@ export const RELEASE_LOGIN_VOLUME = "flywheel-readiness-claude";
 /** Where a container mounts the release login volume, as its HOME. */
 const RELEASE_LOGIN_CONTAINER_HOME = "/home/readiness";
 
-/** The Docker invocation that tells, in seconds, whether the release login volume holds a usable Claude login in the
- *  auth profile `liveAuthProfile`. It mounts the volume and the repository read-only and has no network. The status
- *  mode reads only each login folder's account file and whether a token file exists, never a token. */
-export function releaseLoginStatusContainerCommand(options: { readonly dockerPlatform: string; readonly root: string; readonly bunVersion: string; readonly liveAuthProfile: string }): readonly string[] {
-  return [
-    "docker", "run", "--rm", `--platform=${options.dockerPlatform}`, "--network=none",
-    "--mount", `type=volume,source=${RELEASE_LOGIN_VOLUME},target=${RELEASE_LOGIN_CONTAINER_HOME},readonly`,
-    "--mount", `type=bind,source=${options.root},target=/repo,readonly`,
-    "--env", "BUN_RUNTIME_TRANSPILER_CACHE_PATH=0", "--env", `${LIVE_AUTH_PROFILE_SETTING}=${options.liveAuthProfile}`,
-    `oven/bun:${options.bunVersion}`, "bun", "run", "/repo/scripts/readiness-login.ts", "--status", RELEASE_LOGIN_CONTAINER_HOME,
-  ];
-}
+/** What a container on the release login volume runs after it installs the candidate. */
+const CONTAINER_STEPS = {
+  login: `bun run scripts/readiness-login.ts --in-home ${RELEASE_LOGIN_CONTAINER_HOME}`,
+  status: `bun run scripts/readiness-login.ts --status ${RELEASE_LOGIN_CONTAINER_HOME}`,
+  live: "bun run test:integration:claude-engine",
+} as const;
 
-/** One container on the release login volume that installs the candidate for Linux and runs one step there: the
- *  person's Claude login (`login`, interactive), or the live Claude engine tier (`live`), both in the auth profile
- *  `liveAuthProfile`. `candidate` is a tar of the candidate's tracked files, mounted read-only, and the image is the
- *  exact Bun that runs readiness. Bun's package cache stays in the container, so the volume holds only the login and
- *  what a run on it records. */
-export function releaseLoginContainerCommand(options: { readonly dockerPlatform: string; readonly bunVersion: string; readonly candidate: string; readonly liveAuthProfile: string; readonly step: "login" | "live" }): readonly string[] {
-  const step = options.step === "login" ? `bun run scripts/readiness-login.ts --in-home ${RELEASE_LOGIN_CONTAINER_HOME}` : "bun run test:integration:claude-engine";
+/** One container on the release login volume that installs the candidate for Linux and runs one step there, in the
+ *  auth profile `liveAuthProfile`: the person's Claude login (`login`, interactive), the login's status line
+ *  (`status`), or the live Claude engine tier (`live`). The status step asks the Linux engine of the candidate for the
+ *  login's sign-in, so it needs the install too. It only reads the volume, so it mounts it read-only and keeps the
+ *  container's own home, where its debug log goes. `candidate` is a tar of the candidate's tracked files, mounted
+ *  read-only, and the image is the exact Bun that runs readiness. Bun's package cache stays in the container, so the
+ *  volume holds only the login and what a run on it records. */
+export function releaseLoginContainerCommand(options: { readonly dockerPlatform: string; readonly bunVersion: string; readonly candidate: string; readonly liveAuthProfile: string; readonly step: keyof typeof CONTAINER_STEPS }): readonly string[] {
+  const step = CONTAINER_STEPS[options.step];
+  const readOnly = options.step === "status";
   return [
     "docker", "run", "--rm", ...(options.step === "login" ? ["-it"] : []), `--platform=${options.dockerPlatform}`,
-    "--mount", `type=volume,source=${RELEASE_LOGIN_VOLUME},target=${RELEASE_LOGIN_CONTAINER_HOME}`,
+    "--mount", `type=volume,source=${RELEASE_LOGIN_VOLUME},target=${RELEASE_LOGIN_CONTAINER_HOME}${readOnly ? ",readonly" : ""}`,
     "--mount", `type=bind,source=${options.candidate},target=/input/candidate.tar,readonly`,
-    "--env", `HOME=${RELEASE_LOGIN_CONTAINER_HOME}`, "--env", "BUN_INSTALL_CACHE_DIR=/tmp/bun-install-cache",
+    ...(readOnly ? [] : ["--env", `HOME=${RELEASE_LOGIN_CONTAINER_HOME}`]), "--env", "BUN_INSTALL_CACHE_DIR=/tmp/bun-install-cache",
     "--env", `${LIVE_AUTH_PROFILE_SETTING}=${options.liveAuthProfile}`,
     `oven/bun:${options.bunVersion}`, "sh", "-c",
     `mkdir /work && tar -xf /input/candidate.tar -C /work && cd /work && bun install --frozen-lockfile && ${step}`,
