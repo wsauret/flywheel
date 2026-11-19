@@ -1,0 +1,110 @@
+bench/ab-persona/bench.ts
+  h_4b47e9e4a8b456 215
+bench/ab-persona/chat-routing-bench.ts
+  h_4b47e9e4a8b456 240,276,282-283
+bench/ab-persona/strategy-bench.ts
+  h_4b47e9e4a8b456 366
+bench/shared/native-persona-worker.ts
+  h_4b47e9e4a8b456 99
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 23
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 167,365
+src/infra/error-presentation.ts
+  h_4b47e9e4a8b456 5-7
+src/infra/events.ts
+  h_4b47e9e4a8b456 5-6
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 79-80
+src/infra/session-notice.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 134-149
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 39,56,190,192,454-467,488-495,498-499,506-509,511
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 24,127,132
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 19,26,60-70,260-262,274-275
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 53-54,126,329,336
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 62,85,161-163,535
+src/orchestration/app-service/capacity-wait-rechecks.ts
+  h_4b47e9e4a8b456 1-32
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 9,60,167-168,188-189,192-193,195,211
+src/orchestration/modules/development/benchmark/admission.ts
+  h_4b47e9e4a8b456 10-16,26,76-77,134-136,143-144,148,150-152,154-155,158-174,176,201,209
+src/orchestration/modules/development/benchmark/judge.ts
+  h_4b47e9e4a8b456 10,74,76,92-102,122,124-127,132-133,138,146,168,175
+src/orchestration/modules/development/benchmark/native-persona-invocation.ts
+  h_4b47e9e4a8b456 108,121-122
+src/orchestration/modules/development/benchmark/persona-run.ts
+  h_4b47e9e4a8b456 28,48,195,240-241,246-250,261
+src/orchestration/modules/learning/learning-review-runner.ts
+  h_4b47e9e4a8b456 127-131,134,136-154,156-161,175
+src/orchestration/session/capacity-wait.ts
+  h_4b47e9e4a8b456 116
+src/orchestration/session/conversation-role-pick.ts
+  h_4b47e9e4a8b456 1-73
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/session/session-fact-registry.ts
+  h_4b47e9e4a8b456 11,15
+src/orchestration/session/session-fact-writer.ts
+  h_4b47e9e4a8b456 14,17
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 6,441-456,542-543,674-681,734-735
+src/orchestration/workflow-host/agent-inputs.ts
+  h_4b47e9e4a8b456 38-39,139,232,235-238,376-388,464
+src/orchestration/workflow-host/turn-interruptions.ts
+  h_4b47e9e4a8b456 2,6,34-40,65-70,86-97
+src/protocol/session-catalog-protocol-schemas.ts
+  h_4b47e9e4a8b456 3
+tests/unit/bench/chat-routing-cli.test.ts
+  h_4b47e9e4a8b456 65-66
+tests/unit/bench/judge-factory.test.ts
+  h_4b47e9e4a8b456 13,36
+tests/unit/bench/standalone-admission.test.ts
+  h_4b47e9e4a8b456 4,151,156,159,163-164,204
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 23-25,190,192-204,218,221,261-268
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 12,429,435,546-577
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 195,449-460
+tests/unit/orchestration/app-service/capacity-wait-continuation.test.ts
+  h_4b47e9e4a8b456 74-94
+tests/unit/orchestration/app-service/session-detail-projection.test.ts
+  h_4b47e9e4a8b456 526,540,543-548
+tests/unit/orchestration/config/role-model-defaults.test.ts
+  h_4b47e9e4a8b456 8,11,149-163
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 165
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 13,203,206,209-213,226-239,327,368,370,375-376
+tests/unit/orchestration/modules/development/claude-sdk/setup.test.ts
+  h_4b47e9e4a8b456 53,60
+tests/unit/orchestration/modules/learning/learning-review-runner.test.ts
+  h_4b47e9e4a8b456 33,161-163,172-176
+tests/unit/orchestration/modules/side-question/request.test.ts
+  h_4b47e9e4a8b456 129
+tests/unit/orchestration/modules/workflows/models.test.ts
+  h_4b47e9e4a8b456 88
+tests/unit/orchestration/workflow-host/worker-recovery.test.ts
+  h_4b47e9e4a8b456 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "61c702bef4cb236714d28e8d64a181540853c5ce",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
