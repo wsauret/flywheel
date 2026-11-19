@@ -1,0 +1,18 @@
+src/infra/llm/models-document.ts
+  h_4b47e9e4a8b456 16-22,26,90-106,190-191
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 36,356-359,363-368
+tests/unit/infra/llm/models-fetch.test.ts
+  h_4b47e9e4a8b456 102,110-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9fdcef74a2e32b57658b71a05526e212f1fd67e2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
