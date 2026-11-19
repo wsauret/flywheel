@@ -1,0 +1,18 @@
+src/orchestration/agent-runtime/tools/bash-command-policy.ts
+  h_4b47e9e4a8b456 469-476,480-483,489,497,501,503
+tests/integration/local/_replacement-provider.ts
+  h_4b47e9e4a8b456 282
+tests/unit/orchestration/agent-runtime/tools/bash-command-policy.test.ts
+  h_4b47e9e4a8b456 364-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bd4664b36b19280c09e5d1ac060d3bd5cc14020c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
