@@ -464,7 +464,7 @@ Flywheel reviews a chat in the background for learning worth saving. It does not
 
 ## PI-AGENT-126: Review effort follows recorded yield
 
-Review effort follows recorded yield. An agent's own code change of at most 600 changed lines gets no reviewer, also when a risk trigger matches: its author checks it against the intent with fresh verification. A larger change gets one review, never skipped, in a chat and an unattended run alike, and risk triggers add specialists only to it. A review that a person asks for always runs. The author fixes and verifies each valid finding, with no second review. A correction that replaces the reviewed design is a new change; a fix for a finding never is.
+Review effort follows recorded yield. An agent's own code change of at most 1,500 changed lines gets no reviewer, also when a risk trigger matches: its author checks it against the intent with fresh verification. A larger change gets one review, never skipped, in a chat and an unattended run alike, and risk triggers add specialists only to it. A review that a person asks for always runs. The author fixes and verifies each valid finding, with no second review. A correction that replaces the reviewed design is a new change; a fix for a finding never is.
 
 ## PI-AGENT-040: Learned skills never duplicate or change built-in skills
 

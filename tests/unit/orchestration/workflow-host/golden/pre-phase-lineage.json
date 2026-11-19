@@ -729,7 +729,7 @@
         "definition": {
           "id": "code-review",
           "name": "Code Review",
-          "trigger": "Review completed code over 600 changed lines, or a plan, with right-sized specialist agents.",
+          "trigger": "Review completed code over 1,500 changed lines, or a plan, with right-sized specialist agents.",
           "dependencies": [
             "elegance-review-principles"
           ],

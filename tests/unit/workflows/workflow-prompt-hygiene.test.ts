@@ -99,10 +99,10 @@ describe("workflow prompt hygiene", () => {
     });
 
     it("sizes both reviewer families from one roster with named triggers", () => {
-      expect(body).toMatch(/No-reviewer tier:\*\* your own code diff of 600 changed lines or fewer, even when a trigger matches\. Dispatch no reviewer/);
+      expect(body).toMatch(/No-reviewer tier:\*\* your own code diff of 1,500 changed lines or fewer, even when a trigger matches\. Dispatch no reviewer/);
       expect(body).toMatch(/Single tier:\*\* a plan with one milestone[\s\S]{0,200}`reviewer-plan-quality` alone/);
-      expect(body).toMatch(/Standard tier:\*\* a code diff of more than 600 changed lines or one that a person asks you to review, and every other plan[\s\S]{0,200}Add each optional reviewer whose named trigger matches, and no other:/);
-      expect(body).toContain("the one review of a diff above 600 changed lines is never skipped");
+      expect(body).toMatch(/Standard tier:\*\* a code diff of more than 1,500 changed lines or one that a person asks you to review, and every other plan[\s\S]{0,200}Add each optional reviewer whose named trigger matches, and no other:/);
+      expect(body).toContain("the one review of a diff above 1,500 changed lines is never skipped");
       expect(body).toContain("A change gets one review. Verify the fixes instead of reviewing the change again");
       expect(body).toContain("A fix for a review finding is never such a correction.");
       expect(body).not.toContain("newly triggered one");

@@ -64,7 +64,7 @@ describe("Claude plugin export", () => {
 
   test("a skill carries its composed skills and shared references, and names the plugin agents it dispatches", () => {
     const { frontmatter, body } = document("skills/code-review/SKILL.md");
-    expect(frontmatter).toEqual({ name: "code-review", description: "Review completed code over 600 changed lines, or a plan, with right-sized specialist agents." });
+    expect(frontmatter).toEqual({ name: "code-review", description: "Review completed code over 1,500 changed lines, or a plan, with right-sized specialist agents." });
     expect(body).toContain("# Skill: elegance-review-principles");
     expect(body).toContain("multiple `Agent` calls in one parent turn");
     expect(body).toContain("`flywheel:reviewer-code-quality`");
