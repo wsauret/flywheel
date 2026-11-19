@@ -1,0 +1,66 @@
+oxlint-partial.jsonc
+  h_4b47e9e4a8b456 21-23
+oxlint.config.ts
+  h_4b47e9e4a8b456 266-273
+scripts/oxlint-plugin-flywheel.js
+  h_4b47e9e4a8b456 3,19
+scripts/oxlint-plugin-flywheel/rules/no-expect-promise-modifier.js
+  h_4b47e9e4a8b456 1-28
+tests/integration/bench/benchmark-role-requests.test.ts
+  h_4b47e9e4a8b456 88
+tests/integration/bench/harbor-runner.test.ts
+  h_4b47e9e4a8b456 103,107,112,116,120,144,147
+tests/integration/bench/implement-task-capture.test.ts
+  h_4b47e9e4a8b456 95
+tests/integration/local/account-service-socket-runtime.test.ts
+  h_4b47e9e4a8b456 128
+tests/integration/local/account-service-web.test.ts
+  h_4b47e9e4a8b456 141,161,165
+tests/integration/local/binary-installer-layout.test.ts
+  h_4b47e9e4a8b456 168,228,235,261,364,373,397,408,427,435,463
+tests/integration/local/owned-subprocess-guardian.test.ts
+  h_4b47e9e4a8b456 156,234,473,553
+tests/integration/local/project-executor-runtime.test.ts
+  h_4b47e9e4a8b456 335,553
+tests/integration/local/project-lane-failure-recovery.test.ts
+  h_4b47e9e4a8b456 414
+tests/integration/local/replacement-edges.test.ts
+  h_4b47e9e4a8b456 262
+tests/integration/local/runtime-generation-ownership.test.ts
+  h_4b47e9e4a8b456 106-107
+tests/integration/local/runtime-state-generation-release.test.ts
+  h_4b47e9e4a8b456 195,270
+tests/integration/mcp-bun-stdio-transport.test.ts
+  h_4b47e9e4a8b456 138,209,332
+tests/integration/mcp-claude-engine.test.ts
+  h_4b47e9e4a8b456 149,152,155
+tests/integration/mcp-oauth.test.ts
+  h_4b47e9e4a8b456 173
+tests/integration/mcp-stdio.test.ts
+  h_4b47e9e4a8b456 278,286
+tests/integration/orchestration/modules/experiments/git-operations.test.ts
+  h_4b47e9e4a8b456 105,112
+tests/integration/orchestration/update/update-concurrency.test.ts
+  h_4b47e9e4a8b456 172,192,219,236,300
+tests/integration/orchestration/update/update-worker-installer.test.ts
+  h_4b47e9e4a8b456 263
+tests/integration/oxlint-plugin-flywheel.test.ts
+  h_4b47e9e4a8b456 75-81
+tests/integration/scripts/uat/harness.test.ts
+  h_4b47e9e4a8b456 89,99,114,116,128,130,133
+tests/integration/scripts/uat/lifecycle.test.ts
+  h_4b47e9e4a8b456 70,103,144,163-164,172,175,194,292-293
+tests/unit/infra/owned-subprocess-handover-platform.test.ts
+  h_4b47e9e4a8b456 184,210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "126481e3ca57d966a738e446bd51829784406101",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
