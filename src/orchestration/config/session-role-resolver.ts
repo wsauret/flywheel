@@ -154,7 +154,7 @@ export async function resolveSessionRoles(snapshot: RoleAssignmentSnapshot, capt
   }, userDataRoot)
   return resolveSessionSettings(snapshot, capture.runtimeConfig.profileRoles, async (roleId, setting) => {
     const result = await resolve(roleId, setting)
-    return result.kind === "selected" ? result.role : undefined
+    return result.kind === "selected" || result.kind === "unserved" ? result.role : undefined
   }, additionalRoleIds, undefined, inherited, personas)
 }
 

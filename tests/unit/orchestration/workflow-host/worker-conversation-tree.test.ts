@@ -118,7 +118,7 @@ function makeWorker(createAgent: AgentFactory, workerSessionId = sessionId, even
     executionCwd: baseDir,
     moduleSelection: composeFirstPartyModules(),
     agentInputs: inputs ?? workflowAgentInputs(asAsyncEventReadSurface(store), workerSessionId).agentInputs,
-    deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+    updateLifecycleState: (id, state) => manager.updateLifecycleState(id, state),
     sessionEventWriter: createSessionFactWriter({ sessionId: workflowId, writer: asAsyncEventWriter(store) }),
     recall: noConversationRecall,
     eventStore: asAsyncEventReadSurface(store),

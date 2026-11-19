@@ -3,7 +3,7 @@ import { RUNTIME_EVENT_DEFINITIONS, RUNTIME_EVENT_TYPES, type RuntimeEvent } fro
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "./review-notice.js";
 import { MessageSenderSchema } from "./output-blocks.js";
 import { SESSION_NOTICE_PRESENTATION_IDS } from "./error-presentation.js";
-import type { SessionNoticeOperation } from "./session-notice.js";
+import { CAPACITY_WAIT_REASONS, type SessionNoticeOperation } from "./session-notice.js";
 
 type EventActor = "agent" | "flywheel" | "provider" | "user" | "workflow";
 
@@ -55,6 +55,8 @@ const SessionNoticeOperationSchema = Schema.Union([
       wait: Schema.optionalKey(Schema.Struct({
         agentName: Schema.String,
         continuesAt: Schema.Number,
+        model: Schema.optionalKey(Schema.String),
+        reason: Schema.optionalKey(Schema.Literals(CAPACITY_WAIT_REASONS)),
       })),
       action: Schema.optionalKey(Schema.Struct({
         label: Schema.String,

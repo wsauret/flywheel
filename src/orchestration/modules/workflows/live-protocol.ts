@@ -10,6 +10,8 @@ import type { SessionEntry, SessionStore } from "../../session-store/types.js"
 import { entryActivity } from "../../session-store/activity.js"
 import { workflowMembershipReader, type WorkflowMember } from "../../session/workflow-membership.js"
 import { workflowRunReader } from "../../module-catalog.js"
+import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
+import { readAttemptStarts, servedAttempts } from "../../../workflows/vm/attempt-conversations.js"
 import { readStartedAgentsLive, type ConversationLive, type StartedAgentsChange, type StartedAgentStates, type StartedAgentsLive } from "../../workflow-host/started-agent-states.js"
 import { readWorkflowMemberDurations } from "../../workflow-host/member-totals.js"
 import { agentLive } from "./compact-activity.js"
@@ -87,6 +89,10 @@ interface HeldWorkflow {
   /** The conversation of each started agent, by attempt, and its attempt, by conversation. */
   readonly conversationOf: Map<string, string>
   readonly attemptOf: Map<string, string>
+  /** The attempt that each member session serves, by the session's
+   *  conversation (refer to `servedAttempts`), which a start in the
+   *  conversation advances. */
+  readonly currentOf: Map<string, string>
   /** The durable state of each started agent, by attempt. */
   readonly durable: Map<string, ConversationLive>
   /** The active time that each member's session recorded, which the held
@@ -95,23 +101,40 @@ interface HeldWorkflow {
   agents: Map<string, WorkflowAgentLive>
 }
 
-/** The members of a membership list in member order. */
-function attemptMembers(memberships: readonly WorkflowMember[]): Member[] {
-  return memberships.flatMap(({ sessionId, membership }) => membership.kind === "attempt" ? [{ sessionId, attemptId: membership.attemptId }] : [])
+/** The members of a membership list in member order, each with the attempt that it serves. */
+function attemptMembers(workflow: Pick<HeldWorkflow, "currentOf">, memberships: readonly WorkflowMember[]): Member[] {
+  return memberships.flatMap(({ sessionId, conversationId, membership }) => membership.kind === "attempt" ? [{ sessionId, attemptId: workflow.currentOf.get(conversationId) ?? membership.attemptId }] : [])
 }
 
-function indexMembers(workflow: Pick<HeldWorkflow, "members" | "byAttempt">, memberships: readonly WorkflowMember[]): void {
+function indexMembers(workflow: Pick<HeldWorkflow, "members" | "byAttempt" | "currentOf">, memberships: readonly WorkflowMember[]): void {
   workflow.members.clear()
   workflow.byAttempt.clear()
-  for (const member of attemptMembers(memberships)) {
+  for (const member of attemptMembers(workflow, memberships)) {
     workflow.members.set(member.sessionId, member)
     workflow.byAttempt.set(member.attemptId, member)
   }
 }
 
-/** Holds the members and the started agents with no durable state read and no agent composed. */
-function heldWorkflow(memberships: readonly WorkflowMember[], started: readonly StartedAgent[]): HeldWorkflow {
-  const workflow: HeldWorkflow = { memberships, started, members: new Map(), byAttempt: new Map(), conversationOf: new Map(), attemptOf: new Map(), durable: new Map(), recorded: new Map(), agents: new Map() }
+/** Records that `attemptId` started in `conversationId`, and binds the
+ *  member that serves an earlier attempt of the conversation to it. */
+function startIn(workflow: Pick<HeldWorkflow, "members" | "byAttempt" | "currentOf">, attemptId: string, conversationId: string): void {
+  const previous = workflow.currentOf.get(conversationId)
+  workflow.currentOf.set(conversationId, attemptId)
+  if (previous === undefined || previous === attemptId) return
+  const member = workflow.byAttempt.get(previous)
+  if (member === undefined) return
+  const bound = { ...member, attemptId }
+  workflow.byAttempt.delete(previous)
+  workflow.byAttempt.set(attemptId, bound)
+  workflow.members.set(member.sessionId, bound)
+}
+
+/** Holds the members and the started agents with no durable state read and
+ *  no agent composed. `served` names the attempt that each member session
+ *  serves, by its conversation. */
+function heldWorkflow(memberships: readonly WorkflowMember[], started: readonly StartedAgent[], served: Map<string, string>): HeldWorkflow {
+  const workflow: HeldWorkflow = { memberships, started, members: new Map(), byAttempt: new Map(), conversationOf: new Map(), attemptOf: new Map(), currentOf: served, durable: new Map(), recorded: new Map(), agents: new Map() }
+  for (const { attemptId, conversationId } of started) workflow.currentOf.set(conversationId, attemptId)
   indexMembers(workflow, memberships)
   for (const { attemptId, conversationId } of started) {
     workflow.conversationOf.set(attemptId, conversationId)
@@ -143,8 +166,8 @@ async function readDurable(agents: Pick<StartedAgentsLive, "conversations">, wor
 /** Reads a workflow whole, with every agent composed, or nothing for a run that does not exist. */
 async function loadWorkflow(reader: AsyncEventStateReadSurface, workflowId: string, agents: Pick<StartedAgentsLive, "started" | "conversations">, sessions: LiveEntries | undefined): Promise<HeldWorkflow | null> {
   if (!await workflowRunReader(reader).read(workflowId)) return null
-  const [memberships, started] = await Promise.all([workflowMembershipReader(reader).list(workflowId), agents.started(workflowId)])
-  const workflow = heldWorkflow(memberships, started)
+  const [memberships, started, queue, starts] = await Promise.all([workflowMembershipReader(reader).list(workflowId), agents.started(workflowId), loadQueueSnapshotFromReader(reader, workflowId), readAttemptStarts(reader, workflowId)])
+  const workflow = heldWorkflow(memberships, started, servedAttempts(starts, queue?.attempts ?? []))
   await readDurable(agents, workflowId, workflow, started.map(({ conversationId }) => conversationId), sessions)
   if (readsRecorded(workflow, workflow.members.keys(), sessions)) workflow.recorded = await readWorkflowMemberDurations(reader, workflowId)
   for (const member of workflow.members.values()) workflow.agents.set(member.sessionId, composeAgent(workflow, member, sessions))
@@ -268,6 +291,7 @@ export function createWorkflowLiveProtocolProjection(deps: WorkflowLiveProtocolP
       touch(attemptId)
     }
     for (const { attemptId, conversationId } of change.started) {
+      startIn(workflow, attemptId, conversationId)
       workflow.conversationOf.set(attemptId, conversationId)
       workflow.attemptOf.set(conversationId, attemptId)
       workflow.durable.delete(attemptId)

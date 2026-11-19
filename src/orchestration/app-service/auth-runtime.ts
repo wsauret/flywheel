@@ -59,6 +59,7 @@ import { resolveHeadlessAuth, type HeadlessAuthSelection } from "../headless/hea
 import { connectionEligibilitySources } from "../headless/snapshot-eligibility.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
+import type { CapacityWaitLedger } from "../session/capacity-wait.js"
 import { isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/llm/access-provider.js"
 import type { RuntimeChatDefault } from "../../protocol/app-service-types.js"
 import type { RuntimeModelCatalogRefreshScope } from "../../protocol/provider-model-preference-protocol-types.js"
@@ -80,6 +81,8 @@ export interface AuthRuntimeOptions {
   readonly interactive: boolean
   readonly sessionStore: Pick<SessionStore, "get" | "refreshDeps">
   readonly workflowHosts: Pick<WorkflowHosts, "refreshDeps">
+  /** The executor's capacity waits, which every authentication, model admission, or model setting change rechecks. */
+  readonly capacityWaits: Pick<CapacityWaitLedger, "recheck">
   readonly eventReader: AsyncEventStateReadSurface
   readonly eventWriter: AsyncEventWriter
   /** The store's post-commit broadcast. */
@@ -153,9 +156,19 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
       await publishAuthStatus()
     },
   })
-  const refreshAllDeps = async (): Promise<void> => {
-    await Promise.all([options.sessionStore.refreshDeps(), options.workflowHosts.refreshDeps()])
-  }
+  // Once the runtimes hold an authentication or admission change, every waiting agent whose model can serve now asks
+  // it again; the rest keep waiting (PI-MODEL-039).
+  const recheckCapacityWaits = (): void => { options.capacityWaits.recheck((sessionId, model) => admittedModelAssignments.servesNow(sessionId, model)) }
+  const refreshAllDeps = async (): Promise<void> => { await Promise.all([options.sessionStore.refreshDeps(), options.workflowHosts.refreshDeps()]); recheckCapacityWaits() }
+  // A change of a profile's role settings ends every wait, so each agent resolves its role again; any other change of
+  // a profile, such as its training routes, can only change what serves.
+  let profileRoles = JSON.stringify(Object.entries(options.runtimeConfig.snapshot().config.profiles).map(([id, profile]) => [id, profile.roles]))
+  options.own("capacity-waits-profile-recheck", options.runtimeConfig.subscribe("profiles", (snapshot) => {
+    const roles = JSON.stringify(Object.entries(snapshot.config.profiles).map(([id, profile]) => [id, profile.roles]))
+    if (roles === profileRoles) recheckCapacityWaits()
+    else options.capacityWaits.recheck()
+    profileRoles = roles
+  }), (unsubscribe) => unsubscribe())
   const resolveScopedProfile = (scope: RuntimeAuthStatusScope, defaults: AuthProfileResolution) =>
     resolveAuthProfileScope(scope, defaults, options.manager, workflowRuns, options.userDataRoot)
   const resolveOwnedProfile = (profileId: string) => resolveOwnedAuthProfile(profileId, currentProfile, options.userDataRoot)
@@ -489,7 +502,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     await subscriptionUsagePool.refresh().catch((err: unknown) => {
       log.warn("subscription usage generation refresh failed", { providerId: account.providerId, error: errorMessage(err) })
     })
-    await options.sessionStore.refreshDeps()
+    await refreshAllDeps()
     await publishAuthStatus(await scopesForProfile(profile))
   }
   const mutateSubscriptionSpendConsent = async (mutation: SubscriptionSpendConsentMutation): Promise<SubscriptionSpendConsentMutationResult> => {
@@ -529,7 +542,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     setCurrent: (profile) => { currentProfile = profile },
     refreshResidentDefaults: () => reconcileResidentScope({ kind: "defaults" }),
     refreshUsage: () => subscriptionUsagePool.refresh(),
-    admission: sessionAuthAdmission, sessions: options.sessionStore, workflows: options.workflowHosts, publish: publishAuthStatus,
+    admission: sessionAuthAdmission, sessions: options.sessionStore, workflows: options.workflowHosts, capacityWaits: { recheck: recheckCapacityWaits }, publish: publishAuthStatus,
   })
   async function materializeSessionProfile(sessionId: string, profileId: string, expectedAuthProfileId: string | undefined): Promise<void> {
     const target = await prepareSessionTarget(profileId)

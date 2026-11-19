@@ -61,8 +61,6 @@ function policy(clock: ReturnType<typeof fakeClock>, overrides: Partial<Deps> = 
 const signal = new AbortController().signal
 const result = (terminal: AgentRunResult["terminal"], servedRequests = 0): AgentRunResult => ({ durationMs: 1, servedRequests, terminal })
 const exhausted = (atMs: number, servedRequests = 0) => result({ kind: "api_error", message: "No access provider can run the model", recovery: { kind: "at", atMs, hold: { kind: "usage_limit", stated: true } } }, servedRequests)
-/** A failure of an agent's request boundary that found no role preference serving before `atMs`. */
-const roleSpent = (atMs: number) => result({ kind: "api_error", message: "No access provider can run the model", recovery: { kind: "at", atMs, hold: { kind: "usage_limit", stated: true } }, noPreferenceServes: true })
 const disconnect: AgentFailureReason = { kind: "transient_disconnect", message: "socket closed" }
 const completed = result({ kind: "completed" })
 
@@ -76,7 +74,7 @@ afterEach(() => { recordSpy?.mockRestore(); recordSpy = undefined })
 const recoveryRecords = () => records.filter(({ type }) => type === "agent.unattended.recovery").map(({ payload }) => payload)
 /** The decision fields of one `agent.unattended.recovery` record. */
 interface RecoveryDecision {
-  readonly decision: "wait" | "interrupted" | "restart" | "fail" | "continue"
+  readonly decision: "wait" | "interrupted" | "recheck" | "restart" | "fail"
   readonly failure: AgentFailureReason["kind"]
   readonly streak: number
   readonly delayMs?: number
@@ -157,6 +155,7 @@ describe("unattended recovery", () => {
       arm: async (atMs) => { steps.push(`arm ${atMs - NOW}`) },
       withdraw: async (reason) => { steps.push(`withdraw ${reason}`) },
       settle: async (reason) => { steps.push(`settle ${reason}`) },
+      whileWaiting: () => () => {},
     }
     const usageLimit = { kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 60_000, hold: { kind: "usage_limit", stated: true } } } satisfies AgentFailureReason
     const clock = fakeClock()
@@ -182,7 +181,7 @@ describe("unattended recovery", () => {
 
     // An arm whose answer from the account never comes, such as one a lost
     // transport carried, delays neither the wait's time nor any other end.
-    const unanswered: CapacityWaitAuthority = { arm: () => new Promise(() => {}), withdraw: async () => {}, settle: async () => {} }
+    const unanswered: CapacityWaitAuthority = { arm: () => new Promise(() => {}), withdraw: async () => {}, settle: async () => {}, whileWaiting: () => () => {} }
     for (const end of ["time", "cut", "message", "cancel"] as const) {
       const controller = new AbortController()
       const waitClock = fakeClock()
@@ -217,7 +216,7 @@ describe("unattended recovery", () => {
     const withdrawn: string[] = []
     const clock = fakeClock()
     clock.holdNextSleep()
-    const recovery = policy(clock, { capacity: { arm: async () => {}, withdraw: async (reason) => { withdrawn.push(reason) }, settle: async () => {} } })
+    const recovery = policy(clock, { capacity: { arm: async () => {}, withdraw: async (reason) => { withdrawn.push(reason) }, settle: async () => {}, whileWaiting: () => () => {} } })
     const held: DeliveryOutcome = { status: "held", reason: "no_reader" }
     const deliver = endingCapacityWaitOnPersonMessage(recovery, async (_message: { readonly producer?: { readonly kind: string } }, _decide: undefined) => held)
     const waiting = recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + HOUR, hold: { kind: "usage_limit", stated: true } } }, 0, signal)
@@ -230,26 +229,34 @@ describe("unattended recovery", () => {
   })
 
   for (const caller of ["workflow-agent", "subagent"] as const) {
-    it(`continues a ${caller} whose model spent its quota at once and uncounted each time, so its next request resolves the role on a preference that serves, and waits until the role's earliest reset only when its request boundary finds that none serves (ARCH-RUNTIME-082)`, async () => {
+    it(`waits for a ${caller}'s own spent model, uncounted, names the model and why it cannot serve, and asks it again at once when the executor rechecks its waits (ARCH-RUNTIME-082, PI-MODEL-063, PI-MODEL-039)`, async () => {
       captureRecords()
       const clock = fakeClock()
+      clock.holdNextSleep()
       const arms: number[] = []
-      const capacity: CapacityWaitAuthority = { arm: async (atMs) => { arms.push(atMs - NOW) }, withdraw: async () => {}, settle: async () => {} }
-      const recovery = policy(clock, { caller, capacity })
-      // The first model and then the preference that served next spend their quota in their requests; the third
-      // request boundary finds no preference that serves before the role's earliest reset, half an hour away.
-      const runs = [exhausted(NOW + 2 * HOUR), exhausted(NOW + 3 * HOUR), roleSpent(NOW + HOUR / 2), completed]
-      const settled = await runWithResilience(async () => runs.shift()!, { recover: recovery.recover })
-      expect(settled.terminal.kind).toBe("completed")
-      expect(arms).toEqual([HOUR / 2])
-      expect(clock.slept).toEqual(chunks(HOUR / 2))
-      const fields = { caller, runId: "attempt", failure: "api_error", hold: "usage_limit", streak: 0, served: 0 }
-      expect(recoveryRecords()).toEqual([
-        { ...fields, decision: "continue", resetsAtMs: NOW + 2 * HOUR },
-        { ...fields, decision: "continue", resetsAtMs: NOW + 3 * HOUR },
-        { ...fields, decision: "wait", delayMs: HOUR / 2, resetsAtMs: NOW + HOUR / 2 },
-      ])
-      // Neither the continuations nor the wait counted an attempt: the next fault is the first.
+      let recheck: (() => void) | undefined
+      const capacity: CapacityWaitAuthority = {
+        arm: async (atMs) => { arms.push(atMs - NOW) }, withdraw: async () => {}, settle: async () => {},
+        whileWaiting: (waiter) => {
+          // The ledger asks whether the wait's own model serves before it ends the wait.
+          expect(waiter.model).toBe("claude-opus-5.5")
+          recheck = waiter.recheck
+          return () => { recheck = undefined }
+        },
+      }
+      const notices: SessionNoticeOperation[] = []
+      const recovery = policy(clock, { caller, capacity, onNotice: (operation) => { notices.push(operation) } })
+      const waiting = recovery.recover({ kind: "api_error", message: "usage limit", recovery: { kind: "at", atMs: NOW + 2 * HOUR, hold: { kind: "usage_limit", stated: true } }, unserved: { model: "claude-opus-5.5", reason: "spent" } }, 0, signal)
+      await Bun.sleep(0)
+      expect(notices[0]).toMatchObject({ type: "upsert", notice: { wait: { agentName: "Work", continuesAt: NOW + 2 * HOUR, model: "claude-opus-5.5", reason: "spent" } } })
+      expect(notices[0]?.type === "upsert" ? notices[0].notice.message : "").toStartWith(`claude-opus-5.5 cannot serve agent "Work" now: its usage limit is spent. The agent continues at `)
+      recheck?.()
+      expect(await waiting).toEqual({})
+      expect(recheck).toBeUndefined()
+      expect(arms).toEqual([2 * HOUR])
+      const fields = { caller, runId: "attempt", failure: "api_error", hold: "usage_limit", resetsAtMs: NOW + 2 * HOUR, streak: 0, served: 0 }
+      expect(recoveryRecords()).toEqual([{ ...fields, decision: "wait", delayMs: 2 * HOUR }, { ...fields, decision: "recheck" }])
+      // Neither the wait nor the recheck counted an attempt: the next fault is the first.
       clock.slept.length = 0
       await recovery.recover(disconnect, 0, signal)
       expect(clock.slept).toEqual([5_000])

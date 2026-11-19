@@ -4,7 +4,7 @@
  * The inputs of the run's requests (tool exposure, system prompt, history
  * source) come from request-inputs.ts, which a pre-start reads too; this
  * file adds the resources of the run's turns: usage, the provider request
- * audit, the model-fallback notice, event mapping, and lifecycle hooks.
+ * audit, event mapping, and lifecycle hooks.
  */
 
 import { accountAuthDir } from "../../infra/paths.js";
@@ -21,7 +21,6 @@ import { createRuntimeRequestAudit, type RuntimeConversation } from "./runtime-c
 import { composeAttributionAudit, createRequestAttribution } from "./request-attribution.js";
 import { createRuntimeStreamEvents } from "./runtime-stream-events.js";
 import { workflowPromptPrefixHold } from "./prompt-prefix-hold.js";
-import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { openRequestInputs, type RequestInputsSource } from "./request-inputs.js";
 import { isChatFacing } from "./request-system-prompt.js";
 
@@ -75,8 +74,8 @@ function loopUsageSettlement(input: {
 }
 
 /** Assembles the loop of one run: its request inputs (`openRequestInputs`) and the resources of its turns, which
- *  are the usage tracker and settlement, the request audit, the model-fallback notice, the checkpoint notes' legacy
- *  import, and the lifecycle hooks. */
+ *  are the usage tracker and settlement, the request audit, the checkpoint notes' legacy import, and the lifecycle
+ *  hooks. */
 export async function assembleRuntimeForTurn(input: AssembleInput): Promise<AgentLoopOptions> {
   const { options, signal, conversation } = input;
   const parentId = resolveParentToolUseId(options);
@@ -86,7 +85,6 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
   const inputs = await (await openRequestInputs(input, { kind: "send", turn: {
     usage,
     auxiliaryRequestAudit: createRuntimeRequestAudit(options, conversation),
-    recordServingSelection: createModelFallbackNotice(conversation, options.onSystemMessage),
   } })).build();
   await inputs.importLegacyNotes();
   const { request, moduleRuntimes, checkpoint, scratchDir } = inputs;

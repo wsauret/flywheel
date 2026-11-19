@@ -1,18 +1,12 @@
-import { isDeepStrictEqual } from "node:util"
-
 import type { AsyncEventStateReadSurface, GuardedAppendResult, GuardedEventStoreAppend } from "../../infra/event-store-types.js"
 import { parseWorkflowSessionFact } from "../../workflows/vm/session-facts.js"
 import { workflowRunOwner } from "../module-catalog.js"
-import { workflowMembershipReader } from "./workflow-membership.js"
+import { workflowMembershipReader, type WorkflowMember } from "./workflow-membership.js"
 import type { ReplayedSession, RoleSettings, Session } from "./schemas.js"
 import { prepareChildExecutionOwner } from "./child-execution-resources.js"
 import { buildSessionChildLinkedFact, buildSessionChildUnlinkedFact, buildSessionCreatedFact, buildSessionOwnershipAdoptedFact, buildSessionRolesSnapshottedFact } from "./session-metadata-facts.js"
 import { buildSessionMetadataAppend } from "./session-metadata-store.js"
 import { ConversationTreeStorage } from "./conversation/conversation-tree-storage.js"
-import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
-import { createConversationMessageEntries } from "./conversation/conversation-tree.js"
-import { persistedToConversationMessage } from "./conversation/conversation-tree-context.js"
-import { briefEntryId } from "./conversation/brief-entry.js"
 
 export interface WorkflowCommitPublication {
   readonly workflowId: string
@@ -40,6 +34,17 @@ export function createWorkflowPublication(ports: WorkflowPublicationPorts) {
   const runOwner = workflowRunOwner()
   const runs = runOwner.create(ports.reader)
   const members = workflowMembershipReader(ports.reader)
+  /** The member of an attempt: its own session, or for a reopened attempt
+   *  that continues in its failed attempt's session, that session. */
+  async function agentMember(workflowId: string, attemptId: string): Promise<WorkflowMember | null> {
+    for (let id: string | null = attemptId; id !== null;) {
+      const member = await members.attempt(workflowId, id)
+      if (member) return member
+      const attempt = await runs.readAttempt(workflowId, id)
+      id = attempt?.provenance._tag === "continuation" && attempt.provenance.reason === "reopen" ? attempt.parentAttemptId : null
+    }
+    return null
+  }
   async function commit(input: WorkflowCommitPublication): Promise<GuardedAppendResult> {
     const aggregateId = `workflow:${input.workflowId}`
     const facts = input.events.map((event) => {
@@ -60,14 +65,12 @@ export function createWorkflowPublication(ports: WorkflowPublicationPorts) {
       throw new Error("Workflow attempt requires its current launching chat conversation")
     }
     if (!start) return ports.append(input.events)
-    const currentMember = await members.attempt(input.workflowId, start.attemptId)
-    if (currentMember) {
-      if (currentMember.conversationId !== start.conversationId) throw new Error("A started attempt cannot change its member conversation")
-      return ports.append(input.events)
-    }
+    // A restarted attempt, and a reopened agent, which continues in its
+    // failed attempt's conversation, run in the session that holds it.
+    if (await members.conversation(input.workflowId, start.conversationId)) return ports.append(input.events)
+    if (await members.attempt(input.workflowId, start.attemptId)) throw new Error("A started attempt cannot change its member conversation")
     const attempt = await runs.readAttempt(input.workflowId, start.attemptId)
-    const predecessorAttemptId = attempt?.provenance._tag === "continuation" ? attempt.parentAttemptId : null
-    const predecessor = predecessorAttemptId === null ? null : await members.attempt(input.workflowId, predecessorAttemptId)
+    const predecessor = attempt?.provenance._tag === "continuation" && attempt.parentAttemptId !== null ? await agentMember(input.workflowId, attempt.parentAttemptId) : null
     const previous = predecessor ? await ports.read(predecessor.sessionId) : null
     const localRoles = previous?.roleAssignments?.overrides ?? input.localRoles
     const sessionId = ports.allocateId()
@@ -79,30 +82,7 @@ export function createWorkflowPublication(ports: WorkflowPublicationPorts) {
       launchedFrom: run.launchedFrom,
       workflowMembership: { kind: "attempt", workflowId: input.workflowId, attemptId: start.attemptId },
     }
-    const source = attempt?.provenance._tag === "continuation" ? attempt.provenance.sourceConversationId : null
-    const tree = source && predecessor ? await tryOpenConversationTree({
-      conversationId: source, sessionId: predecessor.sessionId, store: ports.reader,
-    }) : null
-    let entries: Awaited<ReturnType<typeof createConversationMessageEntries>> = []
-    if (tree && predecessorAttemptId !== null) {
-      try {
-        const context = await tree.buildContext({ allowAssistantTail: true })
-        // The copy keeps the brief under the successor's brief entry id, so
-        // the successor holds its brief once and the agent view shows it.
-        // Context messages carry no entry id: the brief is the message equal
-        // to the predecessor's brief entry. A predecessor whose compaction
-        // dropped its brief copies none, and the successor restates it.
-        const brief = await tree.getEntry(briefEntryId(predecessorAttemptId))
-        const briefMessage = brief?.kind === "message" ? persistedToConversationMessage(brief.message) : undefined
-        const briefIndex = briefMessage === undefined ? -1 : context.messages.findIndex((message) => isDeepStrictEqual(message, briefMessage))
-        let index = 0
-        entries = await createConversationMessageEntries(context.messages, null,
-          () => index++ === briefIndex ? briefEntryId(start.attemptId) : crypto.randomUUID(), () => now)
-      } finally { tree.getStorage().dispose() }
-    }
-    const conversation = entries.length > 0
-      ? ConversationTreeStorage.prepareCreateWithEntries({ conversationId: start.conversationId, sessionId, createdAt: now, entries })
-      : ConversationTreeStorage.prepareCreate({ conversationId: start.conversationId, sessionId, createdAt: now })
+    const conversation = ConversationTreeStorage.prepareCreate({ conversationId: start.conversationId, sessionId, createdAt: now })
     const companions: GuardedEventStoreAppend[] = [
       { ...buildSessionMetadataAppend(sessionId, buildSessionCreatedFact(session), Date.parse(now)), expectedSeq: 0 },
       ...conversation,

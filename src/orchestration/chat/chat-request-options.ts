@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { resolveSessionDir } from "../../infra/paths.js"
 import type { StoredFact } from "../../infra/event-store-types.js"
 import type { AgentHostContextOptions } from "../runner/types.js"
-import type { AgentOptions, RunnerToolSurfaces } from "../agent-runtime/types.js"
+import type { AgentOptions, RoleHold, RunnerToolSurfaces } from "../agent-runtime/types.js"
 import type { ProviderSession } from "../agent-runtime/provider-runtime-cache.js"
 import type { ResolvedRole } from "../config/roles.js"
 import { SESSION_TITLE_PURPOSE } from "../session/session-title.js"
@@ -24,6 +24,8 @@ interface ChatRequestOptionsInput {
 export function createChatRequestOptions(input: ChatRequestOptionsInput) {
   const { deps, surfaces, applyNestedStoredFact } = input
   const { sessionId, projectRoot, executionCwd, userDataRoot, accountHome } = deps
+  // The chat role's pair that the chat resolved first, which every later send and pre-start keeps (ARCH-RUNTIME-082).
+  const roleHold: RoleHold = {}
 
   function send(selectedModel: ResolvedRole | undefined, provider: ProviderSession) {
     return {
@@ -31,6 +33,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
       model: selectedModel?.model,
       effort: selectedModel?.effort,
       requestSelection: (currentRoles: Awaited<ReturnType<typeof deps.resolveRoles>>) => ({ roleId: "chat", ...currentRoles.get("chat") }),
+      roleHold,
       providerOptions: selectedModel?.providerOptions,
       proactiveCompactionThreshold: deps.proactiveCompactionThreshold,
       availableModels: deps.availableModels,

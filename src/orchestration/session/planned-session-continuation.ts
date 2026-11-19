@@ -1,6 +1,7 @@
 import { Result, Schema } from "effect"
 import { isSessionHistoryFailure, type AsyncEventStateReadSurface, type AsyncEventWriter, type EventStoreAppend, type InFlightRecord } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
+import { CAPACITY_WAIT_REASONS, type CapacityWaitReason } from "../../infra/session-notice.js"
 import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
 import { startedAgents } from "../../workflows/vm/host-commit-controller.js"
 import { addressReachesAgent } from "../../workflows/context-bundle/context-facts.js"
@@ -46,7 +47,11 @@ type PlannedContinuationKind = "chat" | "workflow" | "subagent"
  *    epoch-millisecond time. It names no handoff; the executor that serves
  *    the project next continues the session (`capacity-wait.ts`). An agent
  *    of a workflow holds its own row, as a `workflow-agent` target, so a
- *    continuation resumes only the agents that waited. */
+ *    continuation resumes only the agents that waited.
+ *  - `unserved` names the model that a capacity wait waits for and why it
+ *    cannot serve, which the wait's notice states after a restart
+ *    (PI-MODEL-063). A row that a build before 2026-11-19 wrote has none, and
+ *    its notice names no model. */
 export interface PlannedSessionContinuation {
   readonly version: 3
   readonly target: PlannedContinuationTarget
@@ -54,6 +59,7 @@ export interface PlannedSessionContinuation {
   readonly runId?: string
   readonly operations?: readonly RetainedOperationContinuation[]
   readonly continuesAt?: number
+  readonly unserved?: { readonly model: string; readonly reason: CapacityWaitReason }
 }
 
 /** The work a row continues: a replacement's target, or the one agent of a
@@ -821,6 +827,7 @@ const PlannedContinuationSchema = Schema.Struct({
   runId: Schema.optionalKey(Schema.NonEmptyString),
   operations: Schema.optionalKey(Schema.Array(RetainedOperationContinuationSchema)),
   continuesAt: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))),
+  unserved: Schema.optionalKey(Schema.Struct({ model: Schema.NonEmptyString, reason: Schema.Literals(CAPACITY_WAIT_REASONS) })),
 })
 
 function decodeRetainedOperationContinuation(value: unknown): RetainedOperationContinuation | undefined {

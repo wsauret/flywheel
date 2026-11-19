@@ -6,7 +6,7 @@ const diagnosticModule: FirstPartyModule = {
   id: "development", dependencies: [],
   contributions: [],
   retainedDiagnostics: {
-    attempts: () => ({ attempts: [{ id: "step", name: "Task", definitionId: "task", workflowDefinitionId: "flow", status: "completed", startedAt: 10, completedAt: 20 }], conversationToAttempt: new Map([["conversation", "step"]]) }),
+    attempts: () => ({ attempts: [{ id: "step", name: "Task", definitionId: "task", workflowDefinitionId: "flow", status: "completed", startedAt: 10, completedAt: 20 }], conversationAttempts: new Map([["conversation", [{ attemptId: "step", startedAt: 10 }]]]) }),
     children: () => [{ runId: "child", status: "completed", modelRequestId: "parent", totalCostUsd: 0.03, completedAt: 18 }],
   },
 }
@@ -16,7 +16,7 @@ test("reads installed step and child measurements after selection withdraws the 
   expect(composeFirstPartyModules(installed, ["development"]).enabledModuleIds).not.toContain("development")
   const history = retainedExecutionDiagnostics([], installed)
   expect(history.attempts?.attempts[0]).toMatchObject({ startedAt: 10, completedAt: 20 })
-  expect(history.attempts?.conversationToAttempt.get("conversation")).toBe("step")
+  expect(history.attempts?.conversationAttempts.get("conversation")).toEqual([{ attemptId: "step", startedAt: 10 }])
   expect(history.children).toEqual([{ runId: "child", status: "completed", modelRequestId: "parent", totalCostUsd: 0.03, completedAt: 18 }])
   expect(retainedExecutionDiagnostics([], [])).toEqual({ attempts: undefined, children: [] })
 })

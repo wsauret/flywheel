@@ -11,13 +11,15 @@ export function liveWorkflowConversations(queue: WorkflowView): readonly string[
     (status === "pending" || status === "running") && lastConversationId !== undefined ? [lastConversationId] : [])
 }
 
-/** The conversations that a Resume prepares before it runs: those of
- *  {@link liveWorkflowConversations}, and in a failed run the conversation
- *  of each failed attempt, because the Resume runs a failed attempt again in
- *  the conversation that it recorded, as it continued a paused attempt. */
+/** The conversations that a Resume prepares before it runs, each once:
+ *  those of {@link liveWorkflowConversations}, and in a failed run the
+ *  conversation of each failed attempt, because the Resume runs a failed
+ *  attempt again in the conversation that it recorded, as it continued a
+ *  paused attempt. A reopened attempt that failed again failed in the same
+ *  conversation as the attempt that it reopened. */
 export function resumedWorkflowConversations(queue: WorkflowView): readonly string[] {
   const failed = queue.status === "failed"
     ? queue.attempts.flatMap(({ status, lastConversationId }) => status === "failed" && lastConversationId !== undefined ? [lastConversationId] : [])
     : []
-  return [...liveWorkflowConversations(queue), ...failed]
+  return [...new Set([...liveWorkflowConversations(queue), ...failed])]
 }

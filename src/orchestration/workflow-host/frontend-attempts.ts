@@ -9,21 +9,26 @@ import type { AttemptRow, WorkflowView } from "../../workflows/view/types.js"
 import { workflowRunReader } from "../module-catalog.js"
 import type { WorkflowMember } from "../session/workflow-membership.js"
 import { attemptNodeIdOf } from "../../workflows/vm/graph-types.js"
+import { startedConversation, type AttemptStarts } from "../../workflows/vm/attempt-conversations.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 
 /** The persona of each agent record of a run, by record id. */
 export type AgentPersonas = ReadonlyMap<string, WorkflowAgentPersona>
 
-function frontendAttempt(row: AttemptRow, personas: AgentPersonas | undefined, members: readonly WorkflowMember[]): FrontendAttempt {
+function frontendAttempt(row: AttemptRow, personas: AgentPersonas | undefined, members: readonly WorkflowMember[], starts: AttemptStarts): FrontendAttempt {
   const persona = personas?.get(row.definitionId)
-  const generations = members.filter(({ membership }) => membership.kind !== "historical-follow-up" && membership.attemptId === row.id)
-  const current = generations.find(({ membership }) => membership.kind === "attempt")
+  // A reopened agent continues in its failed attempt's session, so the
+  // session of an attempt is the one that holds the conversation it started in.
+  const started = startedConversation(starts, row)
+  const current = members.find(({ membership, conversationId }) => membership.kind === "attempt" && conversationId === started)
+    ?? members.find(({ membership }) => membership.kind === "attempt" && membership.attemptId === row.id)
+  const history = members.filter(({ membership }) => membership.kind === "historical-generation" && membership.attemptId === row.id)
   const agentNodeId = attemptNodeIdOf(row.id)
   return {
     id: row.id, definitionId: row.definitionId, briefId: row.briefId, name: row.name,
     ...(agentNodeId === null ? {} : { agentNodeId }),
     ...(current ? { sessionId: current.sessionId, conversationId: current.conversationId } : {}),
-    history: generations.filter((member) => member !== current).map(({ sessionId, conversationId }) => ({ sessionId, conversationId })),
+    history: history.map(({ sessionId, conversationId }) => ({ sessionId, conversationId })),
     status: row.status,
     ...(persona === undefined ? {} : { persona }),
     ...(row.toolUses === undefined ? {} : { toolUses: row.toolUses }),
@@ -33,9 +38,11 @@ function frontendAttempt(row: AttemptRow, personas: AgentPersonas | undefined, m
 }
 
 /** One row per committed attempt, in view order, each with the persona that
- *  its agent record names. Unrun work belongs to the tree. */
-export function frontendAttempts(view: Pick<WorkflowView, "attempts">, personas?: AgentPersonas, members: readonly WorkflowMember[] = []): FrontendAttempt[] {
-  return view.attempts.map((row) => frontendAttempt(row, personas, members))
+ *  its agent record names and the session of its agent among `members`,
+ *  which `starts` (refer to `readAttemptStarts`) finds. Unrun work belongs
+ *  to the tree. */
+export function frontendAttempts(view: Pick<WorkflowView, "attempts">, personas?: AgentPersonas, members: readonly WorkflowMember[] = [], starts: AttemptStarts = new Map()): FrontendAttempt[] {
+  return view.attempts.map((row) => frontendAttempt(row, personas, members, starts))
 }
 
 /** The persona that each agent record of a run names, from the records

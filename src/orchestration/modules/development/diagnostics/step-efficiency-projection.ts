@@ -1,4 +1,4 @@
-import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory } from "../../../module-diagnostics.js"
+import { retainedExecutionDiagnostics, type ChildExecutionMetrics, type AttemptExecutionHistory, type ConversationAttemptStart } from "../../../module-diagnostics.js"
 import { installedModules } from "../../../module-catalog.js"
 import type { AttemptStatus } from "../../../../workflows/view/types.js"
 import type { StoredFact } from "../../../../infra/event-store-types.js"
@@ -64,7 +64,6 @@ export function loadStepEfficiencyFromEvents(
 
   const entries = new Map(execution.attempts.map((attempt) => [attempt.id, initialEntry(attempt)]))
 
-  const conversationToAttempt = execution.conversationToAttempt
   const providerRequests = loadProviderRequestAuditFromEvents(events)
   const requestById = new Map(providerRequests.map((request) => [request.requestId, request]))
   const tools = loadToolExecutionTimelineFromEvents(events)
@@ -72,7 +71,7 @@ export function loadStepEfficiencyFromEvents(
   const subagents = history.children
   const childRunByToolUseId = subagentByToolUseId(subagents)
   const subagentUsageCovered = new Set<string>()
-  const attemptForRequest = createAttemptRequestResolver(requestById, conversationToAttempt, toolById, childRunByToolUseId)
+  const attemptForRequest = createAttemptRequestResolver(requestById, execution.conversationAttempts, toolById, childRunByToolUseId)
 
   applyProviderResponses(entries, providerRequests, interval, attemptForRequest, childRunByToolUseId)
   applyProviderUsage(entries, providerRequests, interval, attemptForRequest, childRunByToolUseId, subagentUsageCovered)
@@ -83,11 +82,17 @@ export function loadStepEfficiencyFromEvents(
   return execution.attempts.map((attempt) => finalizeEntry(entries.get(attempt.id) ?? initialEntry(attempt)))
 }
 
+/** The attempt that ran a request of a conversation: the latest attempt
+ *  that started in the conversation before the request. */
+function attemptAt(starts: readonly ConversationAttemptStart[] | undefined, at: number | undefined): string | undefined {
+  return (at === undefined ? starts?.at(-1) : starts?.findLast(({ startedAt }) => startedAt <= at) ?? starts?.[0])?.attemptId
+}
+
 type AttemptRequestResolver = (requestId: string, seen?: Set<string>) => string | undefined
 
 function createAttemptRequestResolver(
   requestById: ReadonlyMap<string, ProviderRequestAuditEntry>,
-  conversationToAttempt: ReadonlyMap<string, string>,
+  conversationAttempts: ReadonlyMap<string, readonly ConversationAttemptStart[]>,
   toolById: ReadonlyMap<string, ToolExecutionEntry>,
   childRunByToolUseId: ReadonlyMap<string, ChildExecutionMetrics>,
 ): AttemptRequestResolver {
@@ -97,7 +102,7 @@ function createAttemptRequestResolver(
     const request = requestById.get(requestId)
     if (!request) return undefined
     const direct = request.usage?.workflowAttemptId
-      ?? (request.identity.conversationId ? conversationToAttempt.get(request.identity.conversationId) : undefined)
+      ?? (request.identity.conversationId ? attemptAt(conversationAttempts.get(request.identity.conversationId), request.preparedAt ?? request.requestedAt) : undefined)
     if (direct) return direct
     const parentToolUseId = request.usage?.parentToolUseId ?? request.prompt?.parentToolUseId
     if (!parentToolUseId) return undefined

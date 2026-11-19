@@ -340,7 +340,7 @@ export function appendParentSubagentScenario(store: LocalSqliteEventStore, sessi
   appendStepStatus(store, sessionId, "completed", 2_000)
 }
 
-function queueCreated(): WorkflowQueueFact {
+export function queueCreated(stepIds: readonly string[] = ["step-1"]): WorkflowQueueFact {
   return {
     type: "queue.created",
     version: 9,
@@ -350,8 +350,8 @@ function queueCreated(): WorkflowQueueFact {
         status: "running",
         cursor: 0,
         mutationLog: [],
-        steps: [{
-          id: "step-1",
+        steps: stepIds.map((id) => ({
+          id,
           definitionId: "implement",
           contentId: "implement",
           workflowDefinitionId: "plan-implement",
@@ -359,7 +359,7 @@ function queueCreated(): WorkflowQueueFact {
           status: "pending",
           writes: [],
           resumeRevertCount: 0,
-        }],
+        })),
       },
     },
   }

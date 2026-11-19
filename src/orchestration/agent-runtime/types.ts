@@ -5,6 +5,7 @@ import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-s
 import type { AccessProviderId, ModelUnavailableMissing } from "../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import type { ProviderErrorCopy, ProviderRecovery } from "../../infra/llm/provider-error-copy.js";
+import type { UnservedModel } from "./llm/errors.js";
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
 import type { UsageEntry } from "../../infra/llm/usage-entry.js";
 import type { RuntimeEvent } from "../../infra/runtime-event-types.js";
@@ -241,6 +242,13 @@ export interface AgentToolInput {
   [field: string]: unknown;
 }
 
+/** The model and effort that an agent resolved once for a role setting that names no concrete model, such as a role
+ *  with no saved model or a saved tier. Every request of the agent keeps the pair until the person changes the
+ *  setting, so the agent never changes its model by itself (ARCH-RUNTIME-082). Its owner creates one per agent. */
+export interface RoleHold {
+  held?: { readonly setting: string; readonly model: string; readonly effort: string };
+}
+
 interface AgentBaseOptions {
   model?: string;
   /** Model context for the current logical turn. Sent to providers but never appended to conversation history. */
@@ -250,6 +258,9 @@ interface AgentBaseOptions {
   effort?: string | (() => Promise<string | undefined>);
   /** Live role for request admission. Absent for intentionally fixed model calls. */
   requestSelection?: (roles: Awaited<ReturnType<RoleResolver>>) => { roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions } | Promise<{ roleId?: string; model?: string; effort?: string; providerOptions?: ProviderRequestOptions }>;
+  /** The role pair that this agent resolved at its start for a setting that names no concrete model, held across
+   *  its runs. Absent: each run holds its own. */
+  roleHold?: RoleHold;
   providerOptions?: ProviderRequestOptions;
   /** The recorded brief of an unattended agent, which every reset opening restates. */
   standingBrief?: () => Promise<string | undefined>;
@@ -465,9 +476,8 @@ export type AgentFailureReason =
   /** `candidatesExhausted` marks a request that no access provider candidate could serve, which an optional side
    *  call, such as a failure summary, answers with its fallback. `contentRefused` marks the provider's refusal of
    *  the conversation content that no repair cleared. Every other api_error is a fault of the request.
-   *  `noPreferenceServes` marks an agent's request that no preference of its role could serve, whose `recovery`
-   *  states the earliest moment one serves again (PI-MODEL-039). */
-  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; candidatesExhausted?: true; noPreferenceServes?: true; contentRefused?: true }
+   *  `unserved` names the model that could not serve and why, which a wait for it states (PI-MODEL-063). */
+  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; candidatesExhausted?: true; unserved?: UnservedModel; contentRefused?: true }
   | { kind: "model_unavailable"; message: string; missing: ModelUnavailableMissing }
   | { kind: "transient_disconnect"; message: string }
   | { kind: "stream_stalled"; message: string; attribution: StallAttribution }

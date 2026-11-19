@@ -19,6 +19,7 @@ import { createWorkflowDurationReader } from "../duration.js"
 import { readHeldWorkflowMemberTotals, readWorkflowMemberTotals, type WorkflowMemberTotals } from "../../../workflow-host/member-totals.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { workflowMembershipReader, type WorkflowMember } from "../../../session/workflow-membership.js"
+import { readAttemptStarts, servedAttempts, type AttemptStarts } from "../../../../workflows/vm/attempt-conversations.js"
 import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../../session/planned-session-continuation.js"
 import { readSessionMetadata } from "../../../session/session-metadata-store.js"
 
@@ -134,8 +135,9 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
       const stop = stoppedBy ?? "none"
       const known = sequences.get(childId)
       if (known?.members === memberships && known.key === `${workflowSeq}:${knownConversationSeq}:${stop}`) return { toolUseId, changed: false as const }
-      const [queueRead, cut] = await Promise.all([
+      const [queueRead, starts, cut] = await Promise.all([
         queueReads.read(childId, () => loadQueueSnapshotFromReader(reader, childId), UNREADABLE_QUEUE),
+        queueReads.read(childId, () => readAttemptStarts(reader, childId), NO_STARTS),
         runs.readCut(childId),
       ])
       const queue = queueRead === UNREADABLE_QUEUE ? null : queueRead
@@ -161,9 +163,11 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
         ownsSettlement: false,
         ...(run === undefined ? {} : { label: run.name }),
       }
+      const served = queue === null ? undefined : servedAttempts(starts, queue.attempts)
       const plan: CardPlan | undefined = queue === null ? undefined : {
         view: { attempts: frontendAttempts(queue, run?.personas), tree: queue.tree },
         status: cardState.status,
+        agents: memberships.flatMap((member) => member.membership.kind === "attempt" ? [{ sessionId: member.sessionId, attemptId: served?.get(member.conversationId) ?? member.membership.attemptId }] : []),
       }
       return { toolUseId, childId, current, key, memberships, summary, plan, changed: true as const }
     }
@@ -185,7 +189,7 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
         // A card is read again only when its own evidence moved, never on a
         // member's work.
         restated.add(toolUseId)
-        cards.set(childId, { summary, plan, members: memberships })
+        cards.set(childId, { summary, plan })
       }
     }
     // The totals of every member and descendant come from one held fold,
@@ -256,7 +260,7 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
    *  card that a client does not fold itself is one whose run does not run,
    *  so its phases read the run's intervals with no open one. */
   async function totalled(childId: string, card: CardEntry, totals: WorkflowMemberTotals): Promise<ToolHistorySummary> {
-    const folded = card.plan === undefined ? undefined : foldCard(card.plan, card.members, totals.durations.bySession, await durationOf(childId, false))
+    const folded = card.plan === undefined ? undefined : foldCard(card.plan, totals.durations.bySession, await durationOf(childId, false))
     return { ...card.summary, ...(folded === undefined ? {} : { card: folded }), ...figuresOf(totals) }
   }
 
@@ -269,10 +273,11 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
 const log = Log.create({ service: "workflow-tool-summary" })
 
 /** The plan of a card that the summary reader folds: the run's attempts and
- *  tree, and the card's state. */
+ *  tree, the card's state, and the attempt that each member session serves. */
 interface CardPlan {
   readonly view: Parameters<typeof workflowOutline>[0]
   readonly status: ToolHistorySummary["status"]
+  readonly agents: readonly { readonly sessionId: string; readonly attemptId: string }[]
 }
 
 /** A card as its own evidence states it, before its members' totals and
@@ -280,14 +285,13 @@ interface CardPlan {
 interface CardEntry {
   readonly summary: UntotalledSummary
   readonly plan: CardPlan | undefined
-  readonly members: readonly WorkflowMember[]
 }
 
 /** The bounded fold of a card's plan, with each started agent timed by the
  *  active time that its session recorded, and its phases by when the run was
  *  active. */
-function foldCard(plan: CardPlan, members: readonly WorkflowMember[], durations: ReadonlyMap<string, number>, activity: WorkflowRunActivity) {
-  const live = members.flatMap(({ sessionId, membership }) => membership.kind === "attempt" ? [{ attemptId: membership.attemptId, sessionId, duration: durations.get(sessionId) ?? 0, revision: 0 }] : [])
+function foldCard(plan: CardPlan, durations: ReadonlyMap<string, number>, activity: WorkflowRunActivity) {
+  const live = plan.agents.map(({ attemptId, sessionId }) => ({ attemptId, sessionId, duration: durations.get(sessionId) ?? 0, revision: 0 }))
   return workflowCard(workflowOutline(plan.view, workflowCardCut(plan.status), live, activity), { settled: workflowCardSettled(plan.status) })
 }
 
@@ -306,6 +310,7 @@ type UntotalledSummary = ToolHistorySummary extends infer Summary ? Summary exte
 /** What the queue read answers when this build cannot read the workflow's
  *  saved progress, which differs from a queue that does not exist yet. */
 const UNREADABLE_QUEUE = "unreadable" as const
+const NO_STARTS: AttemptStarts = new Map()
 
 /** Saved progress that this build cannot read cannot run either, so its card
  *  reads as interrupted by the runtime, with no spinner and no ticking time.

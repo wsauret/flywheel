@@ -15,6 +15,7 @@ import { EARLIER_AGENT_SESSION_REFUSAL, resolveWorkflowDeliveryAddress } from ".
 import { errorMessage } from "../../../infra/error-message.js"
 import { composeWorkflowDetail, createWorkflowDetailPartsReader, createWorkflowDetailReader, WORKFLOW_DETAIL_INPUTS, type WorkflowDetailInput, type WorkflowDetailParts } from "./detail.js"
 import { createStartedAgentStates } from "../../workflow-host/started-agent-states.js"
+import { createWorkflowRunReader } from "./run-record.js"
 import { advanceWorkflowMemberTotals } from "../../workflow-host/member-totals.js"
 import { onPlannedContinuationRetired } from "../../session/planned-session-continuation.js"
 import { BUDGET_FACT_TYPES } from "../../session/budget-projection.js"
@@ -254,9 +255,12 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
       kind: "workflow-agent",
       async send(sessionId, input) {
         const session = await services.manager.read(sessionId)
-        const membership = session?.kind === "workflow-agent" ? session.workflowMembership : undefined
-        if (membership?.kind !== "attempt") return { ok: false, error: EARLIER_AGENT_SESSION_REFUSAL }
-        return sent(await port.controller.sendWorkflow(membership.workflowId, input, { attemptId: membership.attemptId }))
+        if (session?.kind !== "workflow-agent" || session.workflowMembership.kind !== "attempt") return { ok: false, error: EARLIER_AGENT_SESSION_REFUSAL }
+        const membership = session.workflowMembership
+        // A reopened agent continues in the session of its failed attempt,
+        // so the session's current attempt names its address.
+        const attempt = await createWorkflowRunReader(services.projectionReader).readMemberAttempt(membership.workflowId, { attemptId: membership.attemptId, conversationId: session.conversationId })
+        return sent(await port.controller.sendWorkflow(membership.workflowId, input, { attemptId: attempt?.id ?? membership.attemptId }))
       },
     },
     dispose() { disposed = true; offFacts(); offAgents(); offRetired(); offAuth(); offHosts(); held.clear(); heldByParent.clear(); viewProjection.dispose(); liveProjection.dispose(); agents.dispose() },

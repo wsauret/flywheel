@@ -1,4 +1,4 @@
-import { authoredContinuation, continuationAttempt, followUpForAttempt, forBodyRemainder } from "./attempt-continuation.js";
+import { authoredContinuation, continuationAttempt, followUpForAttempt, forBodyRemainder, reopenedConversation } from "./attempt-continuation.js";
 import { blockedWork } from "./blocked-work.js";
 import { isNonEmpty, normalizedSignal, whileOutcome } from "./loop-signal.js";
 import type { AttemptExecutionInput } from "./commands.js";
@@ -222,7 +222,7 @@ export function executionInput(attempt: Attempt, control: CommittedWorkflowContr
     logicalNodeId: attempt.logicalNodeId,
     definitionId: attempt.definitionId,
     workflowDefinitionId: attempt.workflowDefinitionId,
-    conversationId: attempt.conversationId,
+    conversationId: attempt.conversationId ?? reopenedConversation(attempt),
     iteration: attempt.iteration,
     provenance: attempt.provenance,
     priorRetryFeedback: attempt.priorRetryFeedback,

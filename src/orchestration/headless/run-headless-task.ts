@@ -1,4 +1,4 @@
-import { failureTerminal, type AgentRunTerminal } from "../agent-runtime/types.js"
+import { failureTerminal, type AgentRunTerminal, type RoleHold } from "../agent-runtime/types.js"
 import { blockedFailureRecord, describeAgentFailure } from "../agent-runtime/failure-message.js"
 import { createEmit, EventBus } from "../../infra/event-bus.js"
 import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js"
@@ -304,6 +304,8 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
             onNotice: progress.notice,
             awaitAccessSettled: wfDeps.awaitModelAccessSettled,
           })
+          // Every attempt keeps the chat role's pair that the first one resolved.
+          const roleHold: RoleHold = {}
           const running = runnerHost.runTurn({
             createContextOptions: async ({ providerSessionKey }) => {
               // A deadline that fired in setup that nothing races ends the turn
@@ -321,6 +323,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
                 model,
                 effort,
                 providerOptions: persistedChat?.providerOptions,
+                roleHold,
                 requestSelection: (currentRoles) => {
                   const current = currentRoles.get("chat")
                   model = current?.model

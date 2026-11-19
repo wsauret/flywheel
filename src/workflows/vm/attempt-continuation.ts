@@ -17,10 +17,10 @@ export function retriableFailedNodes(control: CommittedWorkflowControl, encoding
 }
 
 /** Replaces an execution without buying another retry or structural
- *  allocation. A failed execution continues in a copy of its conversation,
- *  or in a fresh one when its conversation overflowed. A `rerun` runs a
- *  finished execution again in a fresh conversation, because what it read
- *  changed. */
+ *  allocation. A failed execution continues in its own conversation
+ *  (`reopenedConversation`), or in a fresh one when its conversation
+ *  overflowed. A `rerun` runs a finished execution again in a fresh
+ *  conversation, because what it read changed. */
 export function continuationAttempt(control: CommittedWorkflowControl, attempt: Attempt, rerun = false): Attempt {
   const sequence = control.attempts.reduce((max, candidate) => candidate.logicalNodeId === attempt.logicalNodeId ? Math.max(max, candidate.sequence) : max, 0) + 1;
   const { handoffIssues: _handoffIssues, ...source } = attempt;
@@ -34,6 +34,14 @@ export function continuationAttempt(control: CommittedWorkflowControl, attempt: 
       chargeAttemptId: attempt.provenance._tag === "continuation" ? attempt.provenance.chargeAttemptId : attempt.id,
     },
   };
+}
+
+/** The conversation that a reopened agent continues in: its failed
+ *  attempt's own, so the agent keeps one session and one conversation. A
+ *  start commits it, so control stays the same for the replay of a Resume
+ *  that an earlier build continued in a copy. */
+export function reopenedConversation(attempt: Attempt): string | null {
+  return attempt.provenance._tag === "continuation" && attempt.provenance.reason === "reopen" ? attempt.provenance.sourceConversationId : null;
 }
 
 type ForNode = Extract<LogicalNode, { kind: "for" }>;

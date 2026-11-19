@@ -25,7 +25,7 @@ test("captures empty authored settings once without materializing defaults", asy
   } finally { store.close() }
 })
 
-test("replays a saved pair on resume, skips it whole when lost, and follows current profile policy without writes", async () => {
+test("replays a saved pair on resume, keeps it when lost (PI-MODEL-087), and follows current profile policy without writes", async () => {
   const root = temporaryDirectory("role-resume-")
   const store = createSqliteEventStore(resolveEventStoreDbFile(root))
   try {
@@ -36,7 +36,7 @@ test("replays a saved pair on resume, skips it whole when lost, and follows curr
     const before = store.countByAggregate(`session:${sessionId}`)
     expect((await resolve()).get("chat")).toMatchObject({ model: "saved-model", effort: "low" })
     capture = roleCapture(["gpt-6.1-sol"], { chat: { model: "profile-model", effort: "high" } })
-    expect((await resolve()).get("chat")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
+    expect((await resolve()).get("chat")).toMatchObject({ model: "saved-model", effort: "low" })
     await manager.removeRoleAssignment(sessionId, "chat")
     capture = roleCapture(["profile-model"], { chat: { model: "profile-model", effort: "high" } })
     expect((await resolve()).get("chat")).toMatchObject({ model: "profile-model", effort: "high" })
@@ -70,17 +70,17 @@ test("ignores profile brief settings but resolves authored record settings at ea
   for (const slot of slots) expect(roles.get(slot)).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
   const saved = { defaults: {}, overrides: { "brief.plan.at.worker": { model: "saved-model", effort: "high" } } }
   expect((await resolveSessionRoles(saved, roleCapture(["saved-model"], profile), "/scratch", slots)).get("brief.plan.at.worker")).toMatchObject({ model: "saved-model", effort: "high" })
-  expect((await resolveSessionRoles(saved, roleCapture(["claude-opus-5.5"], profile), "/scratch", slots)).get("brief.plan.at.worker")).toMatchObject({ model: "claude-opus-5.5", effort: "medium" })
+  expect((await resolveSessionRoles(saved, roleCapture(["claude-opus-5.5"], profile), "/scratch", slots)).get("brief.plan.at.worker")).toMatchObject({ model: "saved-model", effort: "high" })
 })
 
-test("keeps a default effort independent of an unreachable model, and resolves unset fields live", async () => {
+test("keeps a default effort and an unreachable saved model, and resolves unset fields live", async () => {
   const snapshot = { defaults: {
     "brief.review.at.worker.effort": { effort: "max" },
     "brief.review.at.other.model": { model: "lost-model" },
   }, overrides: {} }
   const first = await resolveSessionRoles(snapshot, roleCapture(["gpt-6.1-sol"], { "workflow-agent": { model: "lost-model", effort: "low" } }), "/scratch")
-  expect(first.get("brief.review.at.worker")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" })
-  expect(first.get("brief.review.at.other")).toMatchObject({ model: "gpt-6.1-sol", effort: "medium" })
+  expect(first.get("brief.review.at.worker")).toMatchObject({ model: "lost-model", effort: "high" })
+  expect(first.get("brief.review.at.other")).toMatchObject({ model: "lost-model" })
   const next = await resolveSessionRoles(snapshot, roleCapture(["claude-opus-5.5"]), "/scratch")
   expect(next.get("brief.review.at.worker")).toMatchObject({ model: "claude-opus-5.5", effort: "high" })
   expect(snapshot.defaults["brief.review.at.worker.effort"]).toEqual({ effort: "max" })
@@ -130,8 +130,10 @@ test("ranks a person's setting for the agent or its workflow above the workflow'
   expect(profiled("third")).toMatchObject({ model: "gpt-6-luna", effort: "high" })
 })
 
-test("returns no roles for a ready empty profile without inventing models or changing settings", async () => {
-  expect(await resolveSessionRoles({ defaults: {}, overrides: { chat: { model: "lost", effort: "low" } } }, roleCapture([]), "/scratch")).toEqual(new Map())
+test("returns only the saved seat for a ready empty profile, without inventing models or changing settings", async () => {
+  const roles = await resolveSessionRoles({ defaults: {}, overrides: { chat: { model: "lost", effort: "low" } } }, roleCapture([]), "/scratch")
+  expect([...roles.keys()]).toEqual(["chat"])
+  expect(roles.get("chat")).toMatchObject({ model: "lost", effort: "low" })
 })
 
 test("a request's session roles and its serving role share one catalog of the capture, which plans each model once", async () => {

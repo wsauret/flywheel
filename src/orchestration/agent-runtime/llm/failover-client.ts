@@ -795,10 +795,12 @@ function exhaustedChainError(model: string, skipped: readonly SkippedCandidate[]
       bankedReset: bankedResetFor?.(entry.candidate) === true,
     };
   });
+  const recovery = exhaustedProvidersRecovery(candidates);
   return new AllCandidatesExhaustedError({
     message,
     copy: exhaustedProvidersCopy(candidates),
-    recovery: exhaustedProvidersRecovery(candidates),
+    recovery,
+    unserved: { model, reason: recovery.kind !== "at" ? "unavailable" : recovery.hold.kind === "usage_limit" ? "spent" : recovery.hold.kind === "rate_limit" ? "rate_limited" : "unavailable" },
     ...(detail === undefined ? {} : { detail }),
   });
 }

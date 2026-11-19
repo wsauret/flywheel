@@ -41,7 +41,7 @@ Not: Silently truncating a checkpoint to fit its limit.
 
 ## ARCH-SESSIONS-009: Every started child has a durable child session before it runs
 
-Every new subagent and every started workflow attempt receives its own durable child session, conversation, and run binding before it acquires a slot or a runner. An agent that never starts creates no session. A subagent's publication binds it to the parent tool call atomically and records its task and complete instructions first. A workflow attempt's session publishes directly under the launching chat, in the same commit as the attempt start. Its workflow and attempt membership is immutable. Workflow scheduling stays in the workflow host, outside subagent admission.
+Every new subagent and every started workflow attempt receives its own durable child session, conversation, and run binding before it acquires a slot or a runner. An agent that never starts creates no session. A subagent's publication binds it to the parent tool call atomically and records its task and complete instructions first. A workflow attempt's session publishes under the launching chat, in the same commit as the attempt start. Its workflow membership is immutable, and a failed-run reopen binds its new attempt to that session (ARCH-SESSIONS-012). Workflow scheduling stays in the workflow host, outside subagent admission.
 Not: Ephemeral or inline child conversations, or conversation persistence as a runtime mode.
 
 ## ARCH-SESSIONS-010: A child owns its own state, and the parent owns only the call
@@ -55,9 +55,9 @@ Not: Rebuilding a child's context from the parent transcript's card output.
 A workflow agent's membership is immutable and binds it to its run, from which it reads its auth profile and execution directory. The agent owns only its explicit local model overrides.
 Not: A synchronized copy of the run's choices in each member session.
 
-## ARCH-SESSIONS-012: A new workflow attempt is a new session; a subagent's later run is not
+## ARCH-SESSIONS-012: A reopened workflow agent keeps its session; other new attempts get new sessions
 
-Each workflow retry, overflow continuation, or failed-run reopen runs in a new attempt session, and earlier attempt sessions stay immutable history, not resumable workers. Each subagent run binds to one parent session, conversation, and tool call before it executes. A Resume after a non-completed outcome starts a new run in the same child session under the original binding. That run never rewrites an earlier run or a settled parent result. Interrupt, planned replacement, crash recovery, and in-run provider recovery keep the current run, and a completed workflow admits no new conversation.
+Each workflow retry and overflow continuation runs in a new attempt session, and earlier attempt sessions stay immutable history, not resumable workers. A failed-run reopen continues in the failed attempt's session and conversation. Each subagent run binds to one parent session, conversation, and tool call before it executes. A Resume after a non-completed outcome starts a new run in the same child session under the original binding. It never rewrites an earlier run or a settled parent result. Interrupt, planned replacement, crash recovery, and in-run provider recovery keep the current run, and a completed workflow admits no new conversation.
 
 ## ARCH-SESSIONS-013: Live ownership is distinct from immutable ancestry
 

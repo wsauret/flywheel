@@ -163,7 +163,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
   const getWorkerCallback = (): ReturnType<typeof createWorkerCallback> => {
     if (workerCallback) return workerCallback
     const created = createWorkerCallback({
-      deactivateSession: (id) => input.manager.updateLifecycleState(id, "inactive"),
+      updateLifecycleState: (id, state) => input.manager.updateLifecycleState(id, state),
       createAgent: deps.createAgent,
       planCapabilities: deps.planCapabilities,
       createLLMClient: deps.createLLMClient,

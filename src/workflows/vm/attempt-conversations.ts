@@ -40,11 +40,45 @@ function startedConversations(reader: AsyncEventStateReadSurface, sessionId: str
   }))
 }
 
+/** The conversations that each attempt of a workflow started in, by attempt
+ *  id, oldest first. A context overflow clears an attempt's conversation
+ *  from control, and this record keeps it. */
+export type AttemptStarts = ReadonlyMap<string, readonly string[]>
+
+export async function readAttemptStarts(reader: AsyncEventStateReadSurface, workflowId: string): Promise<AttemptStarts> {
+  return (await startedConversations(reader, workflowId).replay()).byAttempt
+}
+
+/** One attempt as control or the view holds it: `lastConversationId` is its
+ *  current conversation, which names a start that precedes a recovery root. */
+interface HeldAttempt { readonly id: string; readonly lastConversationId?: string }
+
+/** The conversation that an attempt started in last, whose session runs it. */
+export function startedConversation(starts: AttemptStarts, attempt: HeldAttempt): string | undefined {
+  return starts.get(attempt.id)?.at(-1) ?? attempt.lastConversationId
+}
+
+/** The attempt that each agent session serves, by the session's
+ *  conversation: the latest attempt, in run order, that started in it. A
+ *  reopened agent continues in its failed attempt's conversation, so one
+ *  session serves each of its attempts in turn, also after an overflow moved
+ *  the reopened attempt to a new conversation. */
+export function servedAttempts(starts: AttemptStarts, attempts: readonly HeldAttempt[]): Map<string, string> {
+  const served = new Map<string, string>()
+  for (const attempt of attempts) {
+    const conversationId = startedConversation(starts, attempt)
+    if (conversationId !== undefined) served.set(conversationId, attempt.id)
+  }
+  return served
+}
+
 /** Every conversation in which the tool calls of one attempt ran, oldest
- *  first: each conversation that a start of the attempt committed, and before
- *  them those of each earlier attempt that a retry of it replaced, whose edits
- *  stay on disk. An attempt that control does not hold has none. Store read
- *  failures and unreadable commits propagate. */
+ *  first and each once: each conversation that a start of the attempt
+ *  committed, and before them those of each earlier attempt that a retry or
+ *  a continuation of it replaced, whose edits stay on disk. A reopened
+ *  attempt runs in the conversation of the attempt that it reopened. An
+ *  attempt that control does not hold has none. Store read failures and
+ *  unreadable commits propagate. */
 export async function attemptConversations(
   reader: AsyncEventStateReadSurface,
   sessionId: string,
@@ -63,5 +97,5 @@ export async function attemptConversations(
     chain.unshift(...own)
     attempt = (attempt.provenance._tag === "retry" || attempt.provenance._tag === "continuation") && attempt.parentAttemptId !== null ? byId.get(attempt.parentAttemptId) : undefined
   }
-  return chain
+  return [...new Set(chain)]
 }

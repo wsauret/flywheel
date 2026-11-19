@@ -453,7 +453,7 @@ describe("a step's persona grant", () => {
 
 describe("a step's recovery between failed runs", () => {
   /** A worker whose real runner serves the scripted responses in order, one per model request. */
-  function scriptedWorker(dir: string, authority: CommandHandoverAuthority, responses: readonly (() => ProviderStreamEvent[])[], onRequest: () => void = () => {}, overrides: Parameters<typeof handoverWorker>[9] = {}) {
+  function scriptedWorker(dir: string, authority: CommandHandoverAuthority, responses: readonly (() => ProviderStreamEvent[])[], onRequest: () => void = () => {}, overrides: Parameters<typeof handoverWorker>[9] = {}, emit?: EmitFn) {
     let request = 0
     return handoverWorker(dir, (options) => newTestRunner({ ...options, runtimeSurfaces: { ...options.runtimeSurfaces, launcher: refusingLauncher }, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined }, async () => asModelClient({
       accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, 
@@ -464,14 +464,16 @@ describe("a step's recovery between failed runs", () => {
         request += 1
         yield* respond()
       },
-    })), authority, undefined, undefined, undefined, undefined, undefined, undefined, overrides)
+    })), authority, emit, undefined, undefined, undefined, undefined, undefined, overrides)
   }
   // A walk that found no candidate whose capacity returns at once: the policy waits 0 ms, uncounted.
   const noCapacity = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: 0, hold: { kind: "usage_limit", stated: true } } }) }
+  // The step's model serves again only in an hour.
+  const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } } }) }
   const readCall = (id: string) => (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id, name: "read", input: { file_path: "missing.txt" } } }, { kind: "done", stopReason: "tool_use" }]
   const handoff = (): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id: "handoff-1", name: "handoff", input: { summary: "done" } } }, { kind: "done", stopReason: "tool_use" }]
 
-  it("reports the requests a failed run served to the recovery, and continues the step at once on a spent model, uncounted and with no wait (ARCH-RUNTIME-082)", async () => {
+  it("reports the requests a failed run served to the recovery, and waits for the step's own spent model, uncounted (ARCH-RUNTIME-082)", async () => {
     const dir = temporary("step-served-recovery-")
     const store = await agentStore(dir)
     const recoveries: unknown[] = []
@@ -480,7 +482,7 @@ describe("a step's recovery between failed runs", () => {
       const worker = scriptedWorker(dir, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), [readCall("read-1"), readCall("read-2"), noCapacity, handoff])
       const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
       expect(result.output).toBe("completed")
-      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "continue", failure: "api_error", streak: 0, hold: "usage_limit", resetsAtMs: 0, served: 2 }])
+      expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "wait", failure: "api_error", streak: 0, delayMs: 0, hold: "usage_limit", resetsAtMs: 0, served: 2 }])
     } finally {
       diagnostic.mockRestore()
       store.close()
@@ -504,39 +506,68 @@ describe("a step's recovery between failed runs", () => {
     }
   })
 
-  it("ends a capacity wait at once for a person's message, withdraws the wait for the message, and the turn that reads the message starts at once", async () => {
-    const dir = temporary("step-capacity-message-")
+  /** A step whose model serves again only in an hour, started and waiting with its durable wait armed: only the test
+   *  can end the wait. `events` holds the wait's authority records and `decisions` the recovery's decisions. */
+  async function waitingStep(name: string, options: { readonly emit?: EmitFn; readonly onRequest?: () => void } = {}) {
+    const dir = temporary(`step-capacity-${name}-`)
     const store = await agentStore(dir)
     const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
     const ledger = registerCapacityWaits(authority.reader, { reader: authority.projectionReader, writer: authority.writer })
     const events: unknown[] = []
+    const decisions: unknown[] = []
     const armed = Promise.withResolvers<void>()
     const diagnostic = spyOn(DebugLog, "record").mockImplementation((entry) => {
-      if (entry.type !== "agent.capacity_wait") return
-      events.push(entry.payload)
       const { payload } = entry
-      if (typeof payload === "object" && payload !== null && "event" in payload && payload.event === "armed") armed.resolve()
+      if (typeof payload !== "object" || payload === null) return
+      if (entry.type === "agent.unattended.recovery" && "decision" in payload) decisions.push(payload.decision)
+      if (entry.type !== "agent.capacity_wait") return
+      events.push(payload)
+      if ("event" in payload && payload.event === "armed") armed.resolve()
     })
+    const stop = new AbortController()
+    const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff], options.onRequest, {}, options.emit)(STEP, attemptBrief("work"), stop.signal, CONVERSATION)
+    await armed.promise
+    return { run, ledger, events, decisions, stop, control: liveSessionControl(authority.reader, sessionId), dispose: () => { diagnostic.mockRestore(); ledger.dispose(); store.close() } }
+  }
+
+  it("ends a capacity wait at once for a person's message, withdraws the wait for the message, and the turn that reads the message starts at once", async () => {
+    const step = await waitingStep("message")
     try {
-      // The request boundary finds no role preference that serves before a time an hour away, so the step waits and
-      // only the message can end the wait inside the test.
-      const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000, hold: { kind: "usage_limit", stated: true } }, noPreferenceServes: true }) }
-      const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, attemptBrief("work"), undefined, CONVERSATION)
-      await armed.promise
-      const control = liveSessionControl(authority.reader, sessionId)
-      if (!control) throw new Error("a waiting step is live")
-      const outcome = await control.deliver({ text: "Continue with what you have.", dispatchIds: ["person-1"] }, (state) => messageDisposition({ state, origin: "human", hop: 0, self: false }))
+      if (!step.control) throw new Error("a waiting step is live")
+      const outcome = await step.control.deliver({ text: "Continue with what you have.", dispatchIds: ["person-1"] }, (state) => messageDisposition({ state, origin: "human", hop: 0, self: false }))
       expect(outcome).toEqual({ status: "delivered", startsTurn: true })
-      expect((await run).output).toBe("completed")
-      expect(events).toEqual([
+      expect((await step.run).output).toBe("completed")
+      expect(step.events).toEqual([
         expect.objectContaining({ event: "armed", sessionId }),
         expect.objectContaining({ event: "withdrawn", sessionId, reason: "message" }),
       ])
-    } finally {
-      diagnostic.mockRestore()
-      ledger.dispose()
-      store.close()
+    } finally { step.dispose() }
+  })
+
+  it("ends a capacity wait at once when the executor rechecks its waits, and the step continues on its own model (PI-MODEL-039)", async () => {
+    const step = await waitingStep("recheck")
+    try {
+      // A sign-in, a key, an account, or a model setting changed.
+      step.ledger.recheck()
+      expect((await step.run).output).toBe("completed")
+      expect(step.decisions).toEqual(["wait", "recheck"])
+    } finally { step.dispose() }
+  })
+
+  it("leaves a step that a person interrupts during its capacity wait idle, with no new request, until a Resume (ARCH-RUNTIME-082)", async () => {
+    const parked = Promise.withResolvers<"parked">()
+    const emit: EmitFn = (type, input) => {
+      if (type === "agent.turn.parked" && typeof input.data === "object" && input.data !== null && "park" in input.data && input.data.park === "interrupted") parked.resolve("parked")
     }
+    let requests = 0
+    const step = await waitingStep("interrupt", { emit, onRequest: () => { requests += 1 } })
+    try {
+      expect(step.control?.member?.interrupt("person")).toBe(true)
+      expect(await Promise.race([parked.promise, step.run.then(() => "ended" as const)])).toBe("parked")
+      expect(requests).toBe(1)
+      step.stop.abort()
+      await step.run
+    } finally { step.dispose() }
   })
 
   it("costs the same state requests for each recovery decision whatever the count of failed runs", async () => {

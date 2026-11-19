@@ -27,6 +27,8 @@ import { attemptIdOf, attemptNodeIdOf } from "../../../../src/workflows/vm/graph
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/duration"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts"
+import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/live-protocol"
+import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline"
 import { activeTimeMs } from "../../../../src/protocol/client/session-time"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
@@ -34,6 +36,8 @@ import { readCapturedFacts } from "../../../../src/infra/event-store-types"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold"
 import { createWorkflowDetailReader } from "../../../../src/orchestration/modules/workflows/detail"
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages"
+import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations"
+import { chatSessionActions } from "../../../../src/orchestration/session/chat-session-run-evidence"
 
 /** `failFirst`: the first agent that opens answers and ends without a
  *  handoff, which fails its attempt while its sibling runs. */
@@ -598,6 +602,20 @@ test("a person's Resume of an agent that failed while its sibling runs continues
       await new Promise((resolve) => setTimeout(resolve, 5))
     }
     expect((await control()).status).toBe("executing")
+    // Each reader that maps the agent's attempts to sessions finds its one
+    // session, which serves the reopened attempt: its rows, its agent view,
+    // its live line, and a person's message to it.
+    const reopenedAttempt = (await control()).attempts.findLast(({ logicalNodeId }) => logicalNodeId === nodeOf)!
+    const member = (await workflowMembershipReader(f.store).conversation("session", reopenedAttempt.conversationId!))!
+    const queue = (await loadQueueSnapshotFromReader(f.store, "session"))!
+    const rows = frontendAttempts(queue, undefined, await workflowMembershipReader(f.store).list("session"), await readAttemptStarts(f.store, "session"))
+    expect(rows.filter(({ agentNodeId }) => agentNodeId === nodeOf).map(({ sessionId }) => sessionId)).toEqual([member.sessionId, member.sessionId])
+    // Its session is active again while it runs, so a person can interrupt it.
+    const lifecycle = (await createSessionManager({ projectRoot: f.root, executionCwd: f.root, projectionReader: f.store, writer: f.store }).read(member.sessionId))!.lifecycleState
+    expect(chatSessionActions("workflow-agent", lifecycle)).toContain("chat.interrupt")
+    expect(workflowAgentModel({ attempts: rows, tree: queue.tree }, { agentNodeId: nodeOf!, follow: false })).toMatchObject({ sessionId: member.sessionId, attemptId: reopenedAttempt.id, history: [] })
+    expect((await readWorkflowLiveView(f.store, "session"))?.agents.find(({ sessionId }) => sessionId === member.sessionId)?.attemptId).toBe(reopenedAttempt.id)
+    expect(await f.message(member.sessionId)).toMatchObject({ status: "delivered" })
     for (const finish of f.finishes.values()) finish.resolve()
     expect(await f.running).toMatchObject({ completed: true })
     const attempts = (await control()).attempts.filter(({ logicalNodeId }) => logicalNodeId === nodeOf)
@@ -607,10 +625,19 @@ test("a person's Resume of an agent that failed while its sibling runs continues
     // continues from, and no process exit, because none happened.
     const failure = attempts[0]!.state._tag === "failed" ? attempts[0]!.state.reason : ""
     expect(failure).not.toBe("")
-    const reopened = f.opened.get(attempts[1]!.id)
-    expect(reopened).toContain("Your previous attempt at this work failed")
+    const reopened = f.opened.get(attempts[1]!.id) ?? ""
+    const occurrences = (text: string) => reopened.split(text).length - 1
+    expect(occurrences("Your previous attempt at this work failed")).toBe(1)
     expect(reopened).toContain(JSON.stringify(failure).slice(1, -1))
     expect(reopened).not.toContain(CONTINUATION_MESSAGES.unexpected_exit)
+    // The agent continues in its own session and conversation, which hold
+    // its earlier turns once, and the Resume opens no session of its own.
+    expect(attempts[1]!.conversationId).toBe(attempts[0]!.conversationId)
+    const members = await workflowMembershipReader(f.store).list("session")
+    const conversations = new Set((await control()).attempts.flatMap(({ conversationId }) => conversationId === null ? [] : [conversationId]))
+    expect(members.map(({ conversationId }) => conversationId).toSorted()).toEqual([...conversations].toSorted())
+    expect(occurrences("I stopped before the handoff.")).toBe(1)
+    expect(occurrences("Do the work.")).toBe(1)
   } finally {
     await f.dispose()
     cleanupProjectRoots()

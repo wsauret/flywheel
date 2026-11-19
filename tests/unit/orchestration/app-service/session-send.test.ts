@@ -9,6 +9,8 @@ import { EARLIER_AGENT_SESSION_REFUSAL, type WorkflowTargets } from "../../../..
 import type { ReplayedSession } from "../../../../src/orchestration/session/schemas.js"
 import type { WorkflowMembership } from "../../../../src/infra/session-workflow-membership.js"
 import { runtimeDispatchResultSchema } from "../../../../src/protocol/runtime-dispatch-result-schemas.js"
+import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixtures.js"
+import { createMemoryStore } from "../../workflows/vm/host-test-support.js"
 
 type SessionKind = "chat" | "subagent" | "workflow-agent"
 
@@ -117,18 +119,22 @@ describe("session.send", () => {
 
   // PI-AGENT-027: an agent view's message is direction for that agent's
   // item or named agent, so the workflow resolves it from the session's
-  // attempt, and a session that its agent no longer runs takes none.
+  // attempt, and a session that its agent no longer runs takes none. The
+  // session's current attempt comes from the run's committed control, which
+  // every launched workflow holds.
   test.each(["delivered", "retained"] as const)("a person's %s message to a workflow agent keeps its address and delivery confirmation", async (kind) => {
     const sent: { readonly workflowId: string; readonly input: ChatInputLike; readonly targets: WorkflowTargets | undefined }[] = []
     const member = (workflowMembership: WorkflowMembership): ReplayedSession => ({
       kind: "workflow-agent", command: "workflow-agent", conversationId: "agent-conversation", label: "json", lifecycleState: "active",
       lastUpdated: "2026-10-18T00:00:00.000Z", launchedFrom: { parentSessionId: "chat", toolUseId: "launch" }, workflowMembership,
     })
+    const attemptId = "workflow:node:1:attempt:1"
     const sessions = new Map([
-      ["current", member({ kind: "attempt", workflowId: "flow", attemptId: "phase:check:item:json:attempt:1" })],
-      ["earlier", member({ kind: "historical-generation", workflowId: "flow", attemptId: "phase:check:item:json:attempt:1", generation: 0 })],
+      ["current", member({ kind: "attempt", workflowId: "flow", attemptId })],
+      ["earlier", member({ kind: "historical-generation", workflowId: "flow", attemptId, generation: 0 })],
     ])
     const routes = workflowProtocol({
+      store: createMemoryStore(initializedWorkflowFacts("Check the flags.").map((fact) => ({ ...fact, aggregateId: "workflow:flow", sessionId: "flow", timestamp: 1 }))),
       manager: fakeManager({ read: async (sessionId) => sessions.get(sessionId) ?? null }),
       controller: {
         ...workflowController(fakeSessionStore(new Map()), fakeManager()),
@@ -145,7 +151,7 @@ describe("session.send", () => {
     const codec = runtimeDispatchResultSchema("session.send")
     expect(Schema.decodeUnknownSync(codec)(Schema.encodeSync(codec)(result))).toEqual(result)
     expect(await routes.send("workflow-agent", "earlier", "Keep the old flag names.")).toEqual({ ok: false, error: EARLIER_AGENT_SESSION_REFUSAL })
-    expect(sent).toEqual([{ workflowId: "flow", input: { text: "Keep the old flag names.", submissionIds: ["local-1"] }, targets: { attemptId: "phase:check:item:json:attempt:1" } }])
+    expect(sent).toEqual([{ workflowId: "flow", input: { text: "Keep the old flag names.", submissionIds: ["local-1"] }, targets: { attemptId } }])
   })
 
   test("a subagent's refusal reaches the person in its owner's words", async () => {

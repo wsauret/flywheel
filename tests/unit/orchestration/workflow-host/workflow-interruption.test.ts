@@ -190,7 +190,7 @@ describe("workflow interruption ownership", () => {
         resolveRoles: async () => new Map([["workflow-agent", { roleId: "workflow-agent", model: "test", effort: "high" }]]),
         emit, sessionId: "workflow-worker-interrupt", projectRoot, executionCwd: projectRoot,
         agentInputs: workflowAgentInputs(asAsyncEventReadSurface(store), "workflow-worker-interrupt").agentInputs,
-        deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+        updateLifecycleState: (id, state) => manager.updateLifecycleState(id, state),
         sessionEventWriter: createSessionFactWriter({ sessionId: "workflow-worker-interrupt", writer }),
         recall: noConversationRecall,
         eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store),

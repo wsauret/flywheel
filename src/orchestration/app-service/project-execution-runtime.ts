@@ -438,7 +438,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     own: (name, resource, dispose) => scope.own(name, resource, dispose),
     subscriptionUsageThresholds: () => [],
     interactive: options.interactive === true,
-    sessionStore, workflowHosts, eventReader, eventWriter, onStored: eventStore.onStored, availability, runtimeConfig,
+    sessionStore, workflowHosts, capacityWaits, eventReader, eventWriter, onStored: eventStore.onStored, availability, runtimeConfig,
     chatDefault: options.chatDefault ?? { kind: "pending" },
     persistentProcessesForcedByCli: options.allowPersistentProcesses,
     ...(options.headlessAuth === undefined ? {} : { headlessAuth: options.headlessAuth }),

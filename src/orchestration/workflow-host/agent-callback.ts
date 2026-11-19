@@ -37,7 +37,7 @@ import { createBackgroundWorkRegistry, type BackgroundWorkTracking } from "../ag
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
 import type { FirstPartyModuleComposition } from "../modules.js"
 import type { RetryState } from "../agent-runtime/llm/retry-budget.js"
-import type { Agent, AgentFactory, AgentOptions, CreateChildConversation } from "../agent-runtime/types.js"
+import type { Agent, AgentFactory, AgentOptions, CreateChildConversation, RoleHold } from "../agent-runtime/types.js"
 import type { CaptureProviderConnection, LLMClientFactory } from "../agent-runtime/factory.js"
 import { createRefusedHandoff, handoffToolSchemaFromOutput } from "./handoff-tool-schema.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
@@ -59,6 +59,7 @@ import { createToolUseCounter } from "../../infra/runtime-tool-records.js"
 import { conversationToolUseIds } from "./started-agent-states.js"
 import { openChildExecutionResources, type ChildExecutionResources } from "../session/child-execution-resources.js"
 import { workflowMembershipReader } from "../session/workflow-membership.js"
+import type { SessionLifecycleState } from "../session/types.js"
 import { createSessionRoleResolver } from "../config/session-role-resolver.js"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../chat/tree-writer.js"
 import { registerLiveSessionControl } from "../session/live-session-control.js"
@@ -66,7 +67,9 @@ import { createWorkflowMemberInputs } from "./member-inputs.js"
 import { workflowMemberDelivery } from "./member-delivery.js"
 
 export interface WorkerCallbackDeps {
-  deactivateSession(sessionId: string): Promise<void>
+  /** The session manager's lifecycle authority (ARCH-SESSIONS-003): an
+   *  agent's session is active while the agent runs. */
+  updateLifecycleState(sessionId: string, state: SessionLifecycleState): Promise<void>
   createAgent: AgentFactory
   /** Plans an agent's run before its brief commits, so the brief renders for the agent's check (ARCH-CONTEXT-033). */
   planCapabilities: CapabilityPlanner
@@ -235,15 +238,22 @@ export function createWorkerCallback(
     // surface as every other agent (refer to `agentPersonaRun`).
     const persona = agentPersonaRun({ agent: resolvedAgent, availability: opts.availability(), skills: opts.skills, sessionMessaging: opts.sessionMessaging !== undefined, modules: opts.moduleSelection })
 
-    const member = await workflowMembershipReader(opts.projectionReader).attempt(workflowId, attempt.id)
-    if (!member || member.conversationId !== conversationId) throw new Error(`Workflow attempt ${attempt.id} has no committed session for ${conversationId}`)
+    const member = await workflowMembershipReader(opts.projectionReader).conversation(workflowId, conversationId)
+    if (member?.membership.kind !== "attempt") throw new Error(`Workflow attempt ${attempt.id} has no committed session for ${conversationId}`)
     const sessionId = member.sessionId
+    // The brief entry of the attempt that opened the conversation. A
+    // reopened agent continues in its failed attempt's conversation, which
+    // holds the brief under that attempt's id.
+    const briefEntry = briefEntryId(member.membership.attemptId)
+    // The session of a reopened or restarted attempt went inactive when its
+    // earlier run settled; a new session starts active.
+    await opts.updateLifecycleState(sessionId, "active")
     const resources = await openChildExecutionResources({
       kind: "workflow-agent", workflowId, sessionId, conversationId, description: attempt.name,
       executionCwd: opts.executionCwd, projectRoot, eventStore,
       projectionReader: opts.projectionReader, writer: opts.eventWriter,
       recall: (input) => opts.recall(conversationId, input),
-    }).catch(async (error: unknown) => { await opts.deactivateSession(sessionId); throw error })
+    }).catch(async (error: unknown) => { await opts.updateLifecycleState(sessionId, "inactive"); throw error })
     const resolveRoles = createSessionRoleResolver({
       reader: opts.projectionReader, projectRoot, sessionId, userDataRoot: opts.userDataRoot,
       capture: opts.captureProviderConnection, requiredRoleIds: new Set(persona?.role ? [persona.role] : []),
@@ -299,7 +309,9 @@ export function createWorkerCallback(
     const notifications = createBackgroundNotificationDelivery({
       conversation: treeWriter, queue: injectionQueue, abort: () => slot.runner?.abort(),
     })
-    const privateInputs = createWorkflowMemberInputs({ sessionId, conversationId, reader: opts.projectionReader, writer: opts.eventWriter, tree: treeWriter, deactivate: () => opts.deactivateSession(sessionId), queue: injectionQueue, notifications })
+    // Every run of this attempt keeps the role pair that its first run resolved (ARCH-RUNTIME-082).
+    const roleHold: RoleHold = {}
+    const privateInputs = createWorkflowMemberInputs({ sessionId, conversationId, reader: opts.projectionReader, writer: opts.eventWriter, tree: treeWriter, deactivate: () => opts.updateLifecycleState(sessionId, "inactive"), queue: injectionQueue, notifications })
     const background = createBackgroundExecutionOwner(createBackgroundWorkRegistry({
       kind: "workflow",
       enqueueNotification: notifications.enqueue,
@@ -390,10 +402,10 @@ export function createWorkerCallback(
             `workflow-task-recovery:${rootId}:${attempt.id}`,
           )
         }
-        // A reopened agent continues the copy of its failed attempt's
-        // conversation, which can end on its answer. The continuation says
-        // why it continues, before the context builder can add an
-        // unexpected-exit nudge, and its entry id commits it once per attempt.
+        // A reopened agent continues its failed attempt's conversation,
+        // which can end on its answer. The continuation says why it
+        // continues, before the context builder can add an unexpected-exit
+        // nudge, and its entry id commits it once per reopened attempt.
         if (reopenedFailure !== undefined) await treeWriter.commitSystemTurn(reopenedContinuation(reopenedFailure), `workflow-reopen:${attempt.id}`)
       }
       let priorContext = await buildContextCommittingContinuation(treeWriter, restoringWait)
@@ -404,7 +416,7 @@ export function createWorkerCallback(
           // once. A tree that has the entry commits nothing. Remove after
           // 2027-04-13.
           if (task) {
-            await treeWriter.commitSystemTurn(`${RESTATED_BRIEF}\n\n${task}`, briefEntryId(attempt.id))
+            await treeWriter.commitSystemTurn(`${RESTATED_BRIEF}\n\n${task}`, briefEntry)
             priorContext = await treeWriter.buildContext()
           }
           // An agent a person interrupted and a restart then took down resumes
@@ -452,6 +464,7 @@ export function createWorkerCallback(
         agentRegistry: opts.availability().definitionRevision.personas,
         effort: selectedModel?.effort,
         requestSelection: (currentRoles) => selectModel(currentRoles) ?? { roleId: "workflow-agent" },
+        roleHold,
         ...(persona === undefined ? {} : { toolGrant: persona.toolGrant, maxLLMCalls: persona.maxTurns, ...(persona.readOnly ? { readOnly: true } : {}) }),
         executionCwd: opts.executionCwd,
         projectRoot,
@@ -464,7 +477,7 @@ export function createWorkerCallback(
         }),
         memorySnapshot,
         moduleSelection: () => opts.moduleSelection,
-        standingBrief: async () => recordedEntryText(await treeWriter.getState(), briefEntryId(attempt.id)),
+        standingBrief: async () => recordedEntryText(await treeWriter.getState(), briefEntry),
         conversation: {
           kind: "durable-tree",
           sessionId, conversationId,
@@ -586,7 +599,7 @@ export function createWorkerCallback(
     userPrompt = brief.userPrompt
     task = personaTask(persona, brief.task, capabilities)
     reopenedFailure = brief.reopenedFailure
-    if (fresh) await treeWriter.commitSystemTurn([userPrompt, task].filter(Boolean).join("\n\n"), briefEntryId(attempt.id))
+    if (fresh) await treeWriter.commitSystemTurn([userPrompt, task].filter(Boolean).join("\n\n"), briefEntry)
     await resources.attach(opts.attachChildProjection)
     reportToolUses()
     const initialEnd = await readChatTurnEndEvidence(opts.projectionReader, conversationId)
@@ -706,17 +719,19 @@ export function createWorkerCallback(
       }
     }
     } finally {
-      await settleMember(resources, foregroundBashHold, () => opts.deactivateSession(sessionId))
+      await settleMember(resources, foregroundBashHold, () => opts.updateLifecycleState(sessionId, "inactive"))
     }
   }
 
   // An agent that waits for provider capacity runs no generation. The
-  // interrupt ends the wait instead, and the run after it opens interrupted.
+  // interrupt ends the wait instead and keeps the input's opening interrupt,
+  // so the run after the wait opens interrupted and parks until a Resume or a
+  // message (ARCH-RUNTIME-082). A cut generation took the interrupt itself.
   function interruptSlot(slot: WorkerSlot, by: TurnInterruption): boolean {
     if (!slot.input.interrupt(by)) return false
     slot.parkAcknowledgement ??= Promise.withResolvers<void>()
-    const cut = slot.interruptions.interrupt(by, () => slot.recovery.cutWait(by) || (slot.runner?.interruptGeneration?.() ?? false))
-    if (cut) slot.input.takeOpeningInterrupt()
+    if (slot.recovery.cutWait(by)) return true
+    if (slot.interruptions.interrupt(by, () => slot.runner?.interruptGeneration?.() ?? false)) slot.input.takeOpeningInterrupt()
     return true
   }
 

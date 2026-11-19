@@ -12,7 +12,9 @@ const retry = { max: 2, stuck: true }
 const [work, review] = sequentialWorkflow.phases
 
 describe("workflow VM host phases in order", () => {
-  it.each(["context_overflow", "fatal"] as const)("reopens %s in a new conversation without a new charge", async (kind) => {
+  // An overflowed conversation outgrew the context, so its agent continues
+  // in a fresh one; a failed agent continues in its own.
+  it.each([["context_overflow", false], ["fatal", true]] as const)("reopens %s without a new charge, in the same conversation: %p", async (kind, sameConversation) => {
     const store = createMemoryStore(initialFacts(singleWorkflow))
     const starts: Array<{ attemptId: string; conversationId: string }> = []
     const first = testHost(store, { conversationId: (input) => `conversation-${input?.attemptId}`, attemptRunner: {
@@ -33,7 +35,7 @@ describe("workflow VM host phases in order", () => {
       expect((await second.run()).kind).toBe("completed")
       expect(starts).toHaveLength(2)
       expect(starts[1]?.attemptId).not.toBe(starts[0]?.attemptId)
-      expect(starts[1]?.conversationId).not.toBe(starts[0]?.conversationId)
+      expect(starts[1]?.conversationId === starts[0]?.conversationId).toBe(sameConversation)
     } finally { await second.dispose() }
   })
   it.each<{ name: string; repeated: boolean; failures: number[]; expected: string[] }>([

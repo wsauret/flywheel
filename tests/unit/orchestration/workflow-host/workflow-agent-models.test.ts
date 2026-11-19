@@ -61,9 +61,11 @@ test.each(cases)("stores only authored launch fields: $keys", async ({ keys, sto
     userDataRoot: "/scratch", capture: roleCapture(["gpt-6.1-sol"]), personas: new Map(),
   })
   expect(bound.roles).toEqual(stored)
-  expect(bound.models.pairs).toEqual([{ model: "gpt-6.1-sol", effort: keys?.model === "lost-model" ? "medium" : keys?.effort ?? "medium", definitionIds: ["build"] }])
+  // A launch model that cannot serve stays the agent's model, and the agent waits for it (PI-MODEL-087).
+  const lost = keys?.model === "lost-model"
+  expect(bound.models.pairs).toEqual([{ model: lost ? "lost-model" : "gpt-6.1-sol", effort: keys?.effort ?? "medium", definitionIds: ["build"] }])
   const replay = await resolveSessionRoles({ defaults: bound.roles, overrides: {} }, roleCapture(["claude-opus-5.5"]), "/scratch")
-  expect(resolveWorkflowAgentRole(agent, replay)).toMatchObject({ model: "claude-opus-5.5", effort: keys?.effort === "high" ? "high" : "medium" })
+  expect(resolveWorkflowAgentRole(agent, replay)).toMatchObject({ model: lost ? "lost-model" : "claude-opus-5.5", effort: keys?.effort ?? "medium" })
 })
 
 test("resolves profile edits at resume, while an authored effort-only field stays fixed and is normalized", async () => {
@@ -144,7 +146,8 @@ test.each([false, true])("does not refuse a launch with no model, pending=%s", a
     workflow, resolvedAgents, agents: { build: { model: "lost", effort: "low" } },
     userDataRoot: "/scratch", capture: roleCapture([], {}, pending), personas: new Map(),
   })
-  expect(bound.models.pairs).toEqual([])
-  expect(bound.models.unavailable).toEqual([{ definitionId: "build", reason: pending ? "access-pending" : "no-selection" }])
+  // A saved model with no route binds as the agent's model, which waits for it; pending access binds nothing yet.
+  expect(bound.models.pairs).toEqual(pending ? [] : [{ model: "lost", effort: "low", definitionIds: ["build"] }])
+  if (pending) expect(bound.models.unavailable).toEqual([{ definitionId: "build", reason: "access-pending" }])
   expect(bound.roles).toEqual({ "brief.demo.build.at.build": { model: "lost", effort: "low" } })
 })

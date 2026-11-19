@@ -3,6 +3,7 @@ import type { RuntimeAuthProfileWriteScope } from "../../protocol/auth-profile-s
 import type { SessionAuthAdmission } from "../session/session-auth-profile.js"
 import type { SessionStore } from "../session-store/types.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"
+import type { CapacityWaitLedger } from "../session/capacity-wait.js"
 import type { AuthStatusProjection } from "./auth-status-projection.js"
 
 /** Prepares a selected profile and publishes its new request capture without persisting resolved roles. */
@@ -17,6 +18,7 @@ export async function prepareAuthProfileTarget(input: {
   readonly admission: Pick<SessionAuthAdmission<never>, "invalidate">
   readonly sessions: Pick<SessionStore, "refreshDeps">
   readonly workflows: Pick<WorkflowHosts, "refreshDeps">
+  readonly capacityWaits: Pick<CapacityWaitLedger, "recheck">
   readonly publish: () => Promise<void>
 }) {
   await input.prepare()
@@ -27,6 +29,7 @@ export async function prepareAuthProfileTarget(input: {
       if (scope.kind === "session") {
         await input.sessions.refreshDeps([...new Set([scope.sessionId, ...invalidated])])
         await input.workflows.refreshDeps()
+        input.capacityWaits.recheck()
         return
       }
       const resolved = await input.profiles.resolve()
@@ -37,6 +40,7 @@ export async function prepareAuthProfileTarget(input: {
         await input.refreshUsage()
       }
       await Promise.all([input.sessions.refreshDeps(), input.workflows.refreshDeps()])
+      input.capacityWaits.recheck()
       await input.publish()
     },
   }

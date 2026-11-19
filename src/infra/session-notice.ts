@@ -20,11 +20,30 @@ interface SessionNoticeRetry {
   nextAttemptAt?: number;
 }
 
+/** Why an agent's model cannot serve now: its usage limit is spent, it is
+ *  rate limited, its providers cannot serve it, or no signed-in account or
+ *  enabled provider offers it. */
+export const CAPACITY_WAIT_REASONS = ["spent", "rate_limited", "unavailable", "not_offered"] as const;
+export type CapacityWaitReason = typeof CAPACITY_WAIT_REASONS[number];
+
+/** The words that state `reason` after a model's name, such as "its usage limit is spent". */
+export function capacityWaitReasonText(reason: CapacityWaitReason): string {
+  switch (reason) {
+    case "spent": return "its usage limit is spent";
+    case "rate_limited": return "it is rate limited";
+    case "unavailable": return "its providers cannot serve it";
+    case "not_offered": return "no signed-in account or enabled provider offers it";
+  }
+}
+
 /** A wait that ends on its own at a stated time, such as a wait for model
- *  capacity: it is no retry, and it has no count. */
+ *  capacity: it is no retry, and it has no count. A capacity wait of a live
+ *  run also names the model it waits for and why that model cannot serve. */
 interface SessionNoticeWait {
   agentName: string;
   continuesAt: number;
+  model?: string;
+  reason?: CapacityWaitReason;
 }
 
 export interface SessionNotice {

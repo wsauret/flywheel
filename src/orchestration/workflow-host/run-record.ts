@@ -23,6 +23,9 @@ export type WorkflowRunRecord = typeof WorkflowRunSettingsSchema.Type & {
 export interface WorkflowRunReader {
   readCut(workflowId: string): Promise<WorkflowRunCut | null>
   readAttempt(workflowId: string, attemptId: string): Promise<import("../../workflows/vm/graph-types.js").Attempt | null>
+  /** The attempt that a member session serves now (refer to
+   *  `servedAttempts`), else the attempt that opened the session. */
+  readMemberAttempt(workflowId: string, member: { readonly attemptId: string; readonly conversationId: string }): Promise<import("../../workflows/vm/graph-types.js").Attempt | null>
   read(workflowId: string): Promise<WorkflowRunRecord | null>
   /** The run while it can still take a turn: null when it is missing,
    *  deleted, or completed. */

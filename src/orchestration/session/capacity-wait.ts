@@ -28,7 +28,7 @@ import { DebugLog } from "../../infra/debug-log.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
-import type { SessionNotice } from "../../infra/session-notice.js"
+import { capacityWaitReasonText, type CapacityWaitReason, type SessionNotice } from "../../infra/session-notice.js"
 import {
   authorizePlannedSessionContinuation,
   capacityContinuations,
@@ -39,6 +39,12 @@ import {
 } from "./planned-session-continuation.js"
 
 const log = Log.create({ service: "capacity-wait" })
+
+/** The model that a capacity wait waits for, and why it cannot serve now. */
+export interface UnservedWait {
+  readonly model: string
+  readonly reason: CapacityWaitReason
+}
 
 /** Why a capacity wait's authority changed: an agent armed it before it
  *  waited, the account re-armed it after a restart, the account fired it
@@ -59,16 +65,20 @@ export function recordCapacityWait(event: CapacityWaitEvent, fields: { readonly 
  *  while it waits: the live wait raises it, and a detail read derives it
  *  from the durable row while no run of the session waits (PI-MODEL-063).
  *  One id per session, so the two are the same notice. */
-export function capacityWaitNotice(input: { readonly sessionId: string; readonly agentName: string; readonly atMs: number; readonly now: number }): SessionNotice {
+export function capacityWaitNotice(input: { readonly sessionId: string; readonly agentName: string; readonly atMs: number; readonly now: number; readonly unserved?: UnservedWait }): SessionNotice {
   const id = `capacity-wait:${input.sessionId}`
+  const { unserved } = input
+  const cause = unserved === undefined
+    ? `No provider can run the model of agent "${input.agentName}" now.`
+    : `${unserved.model} cannot serve agent "${input.agentName}" now: ${capacityWaitReasonText(unserved.reason)}.`
   return {
     id,
     scope: id,
     presentation: "provider.reconnect_progress",
     severity: "warning",
     title: "Waiting for model capacity",
-    message: `No provider can run the model of agent "${input.agentName}" now. The agent continues at ${new Date(input.atMs).toLocaleString()}.`,
-    wait: { agentName: input.agentName, continuesAt: input.atMs },
+    message: `${cause} The agent continues at ${new Date(input.atMs).toLocaleString()}.`,
+    wait: { agentName: input.agentName, continuesAt: input.atMs, ...(unserved === undefined ? {} : { model: unserved.model, reason: unserved.reason }) },
     startedAt: input.now,
     updatedAt: input.now,
   }
@@ -82,10 +92,11 @@ export type CapacityWaitWithdrawal = "continued" | "message" | "interrupted" | "
 /** The durable authority of one session's capacity wait. */
 export interface CapacityWaitAuthority {
   /** Records that the session owes its continuation at `atMs`, before the
-   *  agent waits: the account's wake first, then the row. Resolves once
+   *  agent waits: the account's wake first, then the row, which names the
+   *  model that the agent waits for and why, when known. Resolves once
    *  both are durable. Rejects when either could not be written, and then
    *  no row exists; the agent waits in memory only. */
-  arm(atMs: number): Promise<void>
+  arm(atMs: number, unserved?: UnservedWait): Promise<void>
   /** Withdraws the session's capacity row, whether this run armed it or an
    *  earlier executor left it. Never rejects. It does nothing once the
    *  executor's stop began, so the wait outlives the stop. */
@@ -95,7 +106,21 @@ export interface CapacityWaitAuthority {
    *  ended. A turn that never continued from the row, such as the park of a
    *  runner that attached after a restart, leaves the wait owed. */
   settle(reason: CapacityWaitWithdrawal): Promise<void>
+  /** Registers the wait that runs now, so that a recheck of the ledger
+   *  can end it. Returns its release, which the wait calls as it ends. */
+  whileWaiting(waiter: CapacityWaiter): () => void
 }
+
+/** A capacity wait that runs now: the model it waits for, when known, and
+ *  the end of the wait, after which the agent asks its model again. */
+export interface CapacityWaiter {
+  readonly model?: string
+  recheck(): void
+}
+
+/** Whether `model` can serve the agent of `sessionId` now, by the readiness
+ *  rule of a request's walk under the session's current capture. */
+export type CapacityServingCheck = (sessionId: string, model: string) => Promise<boolean>
 
 /** What the executor's composition holds of its ledger. */
 export interface CapacityWaitLedger {
@@ -106,6 +131,14 @@ export interface CapacityWaitLedger {
   hold(sessionId: string): void
   /** Withdraws the session's row with no run of it in this process. */
   retire(sessionId: string, reason: CapacityWaitWithdrawal): Promise<void>
+  /** Ends the capacity waits that run in this executor now, so that each
+   *  agent asks its own model again at once (PI-MODEL-039). With no
+   *  `serves`, a model setting changed, so every wait ends and each agent
+   *  resolves its role again. With `serves`, a sign-in, a key, an account,
+   *  or a model admission changed, and only a wait whose model `serves`
+   *  says can serve now ends, or a wait that names no model; every other
+   *  wait keeps waiting with no new record. */
+  recheck(serves?: CapacityServingCheck): void
   /** The earliest continue time of the project's capacity rows, or null. */
   wakeAt(): Promise<number | null>
   /** The executor's stop began: from now on no wait is withdrawn, so every
@@ -123,6 +156,8 @@ interface CapacityLedger {
   readonly held: Set<string>
   /** Row writes of each session, one at a time, in the order they were asked. */
   readonly chains: Map<string, Promise<void>>
+  /** Each wait that runs now, with its session. */
+  readonly waiting: Map<CapacityWaiter, string>
   closed: boolean
 }
 
@@ -146,13 +181,24 @@ export function registerCapacityWaits(store: AsyncEventStateReadSurface, rows: {
       loaded ??= capacityContinuations(rows.reader).then((owed) => new Map(owed.map(({ target, continuesAt }) => [continuationTargetId(target), continuesAt] as const)))
       return loaded
     },
-    held: new Set(), chains: new Map(), closed: false,
+    held: new Set(), chains: new Map(), waiting: new Map(), closed: false,
   }
   ledgers.set(store, ledger)
   return {
     held: (sessionId) => ledger.held.has(sessionId),
     hold: (sessionId) => { ledger.held.add(sessionId) },
     retire: (sessionId, reason) => withdraw(ledger, sessionId, reason),
+    recheck: (serves) => {
+      for (const [waiter, sessionId] of ledger.waiting) {
+        const { model } = waiter
+        if (serves === undefined || model === undefined) {
+          waiter.recheck()
+          continue
+        }
+        // A check that cannot decide ends the wait: the run asks its model, as its time would.
+        void Promise.resolve().then(() => serves(sessionId, model)).catch(() => true).then((now) => { if (now && ledger.waiting.has(waiter)) waiter.recheck() })
+      }
+    },
     wakeAt: async () => earliest(await ledger.rows),
     close: () => { ledger.closed = true },
     dispose: () => { if (ledgers.get(store) === ledger) ledgers.delete(store) },
@@ -170,7 +216,7 @@ export function capacityWaitAuthority(
   if (!ledger) return undefined
   const sessionId = continuationTargetId(input.target)
   return {
-    arm: (atMs) => inChain(ledger, sessionId, async () => {
+    arm: (atMs, unserved) => inChain(ledger, sessionId, async () => {
       const rows = await ledger.rows
       const before = rows.get(sessionId)
       rows.set(sessionId, atMs)
@@ -180,8 +226,10 @@ export function capacityWaitAuthority(
         const current = await readPlannedSessionContinuationAsync(ledger.reader, sessionId)
         // A replacement's row of the session stays: its successor continues
         // the session, which waits again there.
-        if (current?.handoffId === undefined && current?.continuesAt !== atMs) {
-          await authorizePlannedSessionContinuation({ reader: ledger.reader, writer: ledger.writer, continuation: { target: input.target, ...(input.runId === undefined ? {} : { runId: input.runId }), continuesAt: atMs } })
+        if (current?.handoffId === undefined && (current?.continuesAt !== atMs || current.unserved?.model !== unserved?.model || current.unserved?.reason !== unserved?.reason)) {
+          await authorizePlannedSessionContinuation({ reader: ledger.reader, writer: ledger.writer, continuation: {
+            target: input.target, ...(input.runId === undefined ? {} : { runId: input.runId }), continuesAt: atMs, ...(unserved === undefined ? {} : { unserved }),
+          } })
         }
       } catch (error) {
         if (before === undefined) rows.delete(sessionId)
@@ -192,6 +240,10 @@ export function capacityWaitAuthority(
     }),
     withdraw: (reason) => withdraw(ledger, sessionId, reason),
     settle: (reason) => withdraw(ledger, sessionId, reason, { heldOnly: true }),
+    whileWaiting(waiter) {
+      ledger.waiting.set(waiter, sessionId)
+      return () => { ledger.waiting.delete(waiter) }
+    },
   }
 }
 

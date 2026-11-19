@@ -52,6 +52,13 @@ export function workflowMembershipReader(reader: AsyncEventReadSurface) {
     async list(workflowId: string): Promise<readonly WorkflowMember[]> {
       return (await projection.replay()).members.get(workflowId) ?? NO_MEMBERS
     },
+    /** The member whose session holds the conversation. A reopened agent
+     *  continues in the conversation of its failed attempt, so one member
+     *  can serve several attempts of one agent. */
+    async conversation(workflowId: string, conversationId: string): Promise<WorkflowMember | null> {
+      const members = (await projection.replay()).members.get(workflowId) ?? NO_MEMBERS
+      return members.find((member) => member.membership.kind === "attempt" && member.conversationId === conversationId) ?? null
+    },
     /** The first member of the attempt, in creation order. */
     async attempt(workflowId: string, attemptId: string): Promise<WorkflowMember | null> {
       const members = (await projection.replay()).members.get(workflowId) ?? NO_MEMBERS

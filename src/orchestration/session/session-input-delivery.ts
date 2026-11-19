@@ -248,7 +248,7 @@ async function recipientState(
     case "workflow-agent": {
       const membership = recipient.workflowMembership
       if (membership.kind !== "attempt") return "settled"
-      const attempt = await workflowRunReader(deps.projectionReader).readAttempt(membership.workflowId, membership.attemptId)
+      const attempt = await workflowRunReader(deps.projectionReader).readMemberAttempt(membership.workflowId, { attemptId: membership.attemptId, conversationId: recipient.conversationId })
       if (!attempt || attempt.conversationId !== recipient.conversationId || attempt.state._tag !== "running") return "settled"
       if (control) return "live"
       const cut = await readPendingTurnEnd(deps.projectionReader, recipient.conversationId)

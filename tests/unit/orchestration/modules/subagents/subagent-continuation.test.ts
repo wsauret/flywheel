@@ -304,11 +304,13 @@ describe("explicit child Resume", () => {
     } finally { await host.close(); await accounting.settled(); await harness.close() }
   })
 
-  test.each([false, true])("resumes through ordinary provider guidance when access is empty or pending: %s", async (pending) => {
+  // With empty access the child keeps its persona's model and waits for it (PI-MODEL-087), which the request
+  // boundary's own test covers; pending access still fails through the provider guidance.
+  test("resumes through ordinary provider guidance when access is pending", async () => {
     const runner = heldRunner()
     const harness = createHarness(runner.createAgent)
     const { child, root } = await pausedGeneral(harness)
-    const capture = async () => roleCapture([], {}, pending)
+    const capture = async () => roleCapture([], {}, true)
     let clients = 0
     const host = continuationService(harness, (options) => newTestRunner({
       ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
@@ -325,7 +327,7 @@ describe("explicit child Resume", () => {
       const run = runs(harness.store, child).at(-1)!
       expect(run.continuationCount).toBe(1)
       expect(run.status).toBe("failed")
-      expect(run.result).toContain(pending ? "still checking" : "No model provider")
+      expect(run.result).toContain("still checking")
       expect(clients).toBe(0)
     } finally { sleep.mockRestore(); await host.close(); await harness.close() }
   })

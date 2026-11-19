@@ -147,7 +147,7 @@ function worker(createAgent: AgentFactory, eventWriter = writer) {
     emit: createEmit(new EventBus()), sessionId, projectRoot: baseDir, executionCwd: baseDir,
     userDataRoot: baseDir, accountHome: baseDir,
     moduleSelection: composeFirstPartyModules(), agentInputs: workflowAgentInputs(asAsyncEventReadSurface(store), sessionId).agentInputs,
-    deactivateSession: id => createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, projectionReader: asAsyncEventReadSurface(store), writer }).updateLifecycleState(id, "inactive"),
+    updateLifecycleState: (id, state) => createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, projectionReader: asAsyncEventReadSurface(store), writer }).updateLifecycleState(id, state),
     sessionEventWriter: createSessionFactWriter({ sessionId, writer }),
     eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter,
     skills: publishSkillRevision(1, new Map()), availability: () => fixedAvailability(), planCapabilities: planEveryCapability,

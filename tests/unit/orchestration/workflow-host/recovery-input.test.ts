@@ -110,7 +110,7 @@ function worker(createAgent: AgentFactory, eventWriter = writer) {
     userDataRoot: baseDir, accountHome: baseDir,
     moduleSelection: composeFirstPartyModules(),
     agentInputs: createWorkflowAgentInputs({ store: asAsyncEventReadSurface(store), sessionId }),
-    deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+    updateLifecycleState: (id, state) => manager.updateLifecycleState(id, state),
     sessionEventWriter: createSessionFactWriter({ sessionId, writer }),
     eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter,
     skills: publishSkillRevision(1, new Map()), availability: () => fixedAvailability(), planCapabilities: planEveryCapability,

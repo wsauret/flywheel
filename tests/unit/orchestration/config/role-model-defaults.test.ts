@@ -118,20 +118,23 @@ describe("role model defaults", () => {
     });
   });
 
-  it("uses reachable saved models, clamps unsupported effort, and skips an unreachable pair whole", async () => {
+  it("uses reachable saved models, clamps unsupported effort, keeps an unreachable saved pair, and lets only a background role skip one whole (PI-MODEL-087, PI-MODEL-019)", async () => {
     const config = parseSchema(installedConfigSchema(), {
       profiles: { personal: { roles: {
         reviewer: { model: "claude-sonnet-4-6", effort: "max" },
         explorer: { effort: "low" },
         advisor: { model: "lost-model", effort: "low", provider_options: { openai: { text_verbosity: "high" } } },
+        "title-generation": { model: "lost-model", effort: "low" },
       } } },
     });
     const roles = await resolveRoles(config, bothProviders, tierOptions, "personal");
+    const defaults = await resolveRoles(parseSchema(installedConfigSchema(), {}), bothProviders, tierOptions, "personal");
     expect(roles.get("reviewer")).toMatchObject({ model: "claude-sonnet-4.6", effort: "high" });
     expect(roles.get("explorer")).toMatchObject({ model: "gpt-6.1-sol", effort: "low" });
     expect(roles.get("advisor")).toMatchObject({
-      model: "gpt-6-astra", effort: "high", providerOptions: { openai: { text_verbosity: "high" } },
+      model: "lost-model", effort: "low", providerOptions: { openai: { text_verbosity: "high" } },
     });
+    expect(roles.get("title-generation")).toMatchObject({ model: defaults.get("title-generation")?.model, effort: defaults.get("title-generation")?.effort });
   });
 
   it("resolves a persona from a person's parent setting before the persona's shipped default", async () => {

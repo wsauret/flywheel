@@ -55,7 +55,7 @@ export function handoverWorker(dir: string, createAgent: AgentFactory, commandHa
     executionCwd: dir,
     moduleSelection: composeFirstPartyModules(),
     agentInputs: inputs.agentInputs,
-    deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+    updateLifecycleState: (id, state) => manager.updateLifecycleState(id, state),
     sessionEventWriter: createSessionFactWriter({ sessionId: workflowId, writer: commandHandover.writer }),
     attachChildProjection: async input => ({
       onEvent: event => emit(event.type, { sessionId: input.sessionId, data: event.data }),

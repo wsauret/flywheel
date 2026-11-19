@@ -175,7 +175,7 @@ describe("subscription consent serving composition", () => {
     expect(admissionOrder).toEqual(["allowance-start", "allowance-settled", "consent", "allowance-start", "allowance-settled", "consent"])
   })
 
-  test("captures one request's admission once for its role standing and its selected client, and the next request captures again (ARCH-PROVIDERS-080)", async () => {
+  test("captures one request's admission once for every attempt of its capture, and the next request captures again", async () => {
     const directories = testDirectories("/scratch")
     const connection = captureProviderConnection({ auth, authDir: directories.userDataRoot, profileId: "default", subscriptionCredentials: new Map() })
     let captures = 0
@@ -194,13 +194,13 @@ describe("subscription consent serving composition", () => {
     const capture = await runtime.captureProviderConnection()
     const plan = capture.providers.selection.plan("gpt-5.5", capture.connection, capture.eligibility)
     if (plan.kind !== "admitted") throw new Error(plan.reason)
-    // The API key is the model's only route, so it serves on paid spend.
-    expect(await capture.standing(plan, undefined)).toEqual({ kind: "paid" })
     const client = await capture.admit(new Map([["gpt-5.5", plan]])).createLLMClient("gpt-5.5", undefined, undefined, testProviderSessionLifetime())
-    const attempt = await client.plannedAttempt(undefined, { eligibility: capture.eligibility, allowTrainingRoutes: false, requestAdmission: capture.requestAdmission })
-    expect(attempt.accessProvider).toBe("openai_api")
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      expect((await client.plannedAttempt(undefined, { eligibility: capture.eligibility, allowTrainingRoutes: false, requestAdmission: capture.requestAdmission })).accessProvider).toBe("openai_api")
+    }
     expect(captures).toBe(1)
-    await (await runtime.captureProviderConnection()).standing(plan, undefined)
+    const next = await runtime.captureProviderConnection()
+    await client.plannedAttempt(undefined, { eligibility: next.eligibility, allowTrainingRoutes: false, requestAdmission: next.requestAdmission })
     expect(captures).toBe(2)
   })
 })

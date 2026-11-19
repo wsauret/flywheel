@@ -21,9 +21,10 @@ import { planEveryCapability } from "../../../helpers/attempt-brief.js";
 const launcher = { spawnOwned: async () => { throw new Error("unused"); }, adoptOwned: async () => { throw new Error("unused"); }, open() { return this; }, close: async () => ({ settled: true as const }) };
 
 test.each([
-  { model: "lost-model", effort: "high", expectedEffort: "medium" },
-  { effort: "low", expectedEffort: "low" },
-])("headless run settings resolve against captured availability: %j", async ({ expectedEffort, ...setting }) => {
+  // A saved model that cannot serve stays the run's model (PI-MODEL-087).
+  { model: "lost-model", effort: "high", expectedModel: "lost-model", expectedEffort: "high" },
+  { effort: "low", expectedModel: "gpt-6.1-sol", expectedEffort: "low" },
+])("headless run settings resolve against captured availability: %j", async ({ expectedModel, expectedEffort, ...setting }) => {
   const projectRoot = await mkdtemp(join(tmpdir(), "flywheel-headless-role-authority-"));
   const directories = testDirectories(projectRoot);
   const auth = {
@@ -38,8 +39,8 @@ test.each([
     authorityProof = options.resolveRoles!().then(async (roles) => {
       expect(roles.get("reviewer")?.model).toBe("gpt-6.1-sol");
       savedSetting = roles.get("chat")?.setting;
-      expect(await options.requestSelection?.(roles)).toMatchObject({ model: "gpt-6.1-sol", effort: expectedEffort });
-      expect(options.model).toBe("gpt-6.1-sol");
+      expect(await options.requestSelection?.(roles)).toMatchObject({ model: expectedModel, effort: expectedEffort });
+      expect(options.model).toBe(expectedModel);
     });
     return {
       send() {},

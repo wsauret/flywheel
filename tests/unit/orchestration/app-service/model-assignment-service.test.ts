@@ -277,6 +277,7 @@ describe("admitted global default role projection", () => {
     let eligibilityPreparations = 0
     const baseAdmission = testSessionAuthAdmission()
     const service = createAdmittedModelAssignmentService({
+      capacityWaits: { recheck: () => {} },
       userDataRoot: directories.userDataRoot,
       projectRoot: dir,
       manager: managerDouble(),
@@ -411,7 +412,8 @@ describe("defaults-and-session write scope", () => {
       const rows = await service.listModelOptions({ scope, slot: roleSlot("chat") })
       if (eligible) expect(rows.find((row) => row.model === "gpt-5.5")).toMatchObject({ current: true, selectable: true, effort })
       else expect(rows.find((row) => row.model === "gpt-5.5")).toBeUndefined()
-      expect(rows.find((row) => row.model === "gpt-5-mini")?.effort).toBe(eligible ? effort : "medium")
+      // A saved model that cannot serve stays the seat, so every other model takes its effort (PI-MODEL-087).
+      expect(rows.find((row) => row.model === "gpt-5-mini")?.effort).toBe(effort)
     }
   })
 
@@ -450,13 +452,14 @@ describe("defaults-and-session write scope", () => {
     })
   })
 
-  test("a broken saved model stays outside choices and a reachable replacement overwrites it", async () => {
+  test("a broken saved model stays the seat outside choices and a reachable replacement overwrites it", async () => {
     const { service, configPath, configOwner } = await compoundService(managerDouble())
     writeFileSync(configPath, '[profiles.default.roles.chat]\nmodel = "lost-model"\neffort = "high"\n')
     await configOwner.refresh()
     const query = { scope: { kind: "defaults" as const }, slot: roleSlot("chat") }
     const [assignment] = await service.loadAssignments({ scope: query.scope, slots: [query.slot] })
-    expect(assignment).toMatchObject({ model: "gpt-5-mini", effort: "medium", savedModel: "lost-model", modelSource: "default", matchesInheritedPair: true })
+    expect(assignment).toMatchObject({ model: "lost-model", effort: "high" })
+    expect(assignment?.savedModel).toBeUndefined()
     const options = await service.listModelOptions(query)
     expect(options.map((row) => row.model)).not.toContain("lost-model")
     expect(options.every((row) => row.selectable)).toBe(true)

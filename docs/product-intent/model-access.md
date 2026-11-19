@@ -152,7 +152,7 @@ The model picker shows each eligible model with its supported effort levels and 
 
 ## PI-MODEL-045: Confirming a model that cannot serve now keeps the choice
 
-When the person confirms a model that the profile cannot use at that moment, Flywheel keeps the choice. The confirmation names the model and effort that serve until the chosen model is usable, or says that no model can serve now.
+When the person confirms a model that the profile cannot use at that moment, Flywheel keeps the choice. The confirmation names the model and says that each agent that uses it waits until it can serve.
 
 ## PI-MODEL-046: Model choices refresh quietly in the background
 
@@ -160,15 +160,11 @@ Opening model selection or provider model controls shows saved choices at once a
 
 ## PI-MODEL-016: Every agent role has an eligible default
 
-Flywheel resolves each agent role per request against the active auth profile's reachable models. It uses the saved pair, then the coded preferences in benchmark order, then the newest model of the role's fallback tier at its fallback effort. A benchmarked role's fallback is the average price tier, rounded toward cheaper, and the most common effort, ties to higher, of its settings that pass the benchmark filters. Another role uses its first preference's tier and effort. An empty tier yields to the nearest populated tier, then an unranked model. An unsupported effort maps to the nearest supported effort.
+Flywheel resolves each agent role once, when the agent starts. A saved pair always applies. Without one, the role takes its first reachable coded preference in benchmark order, then the newest model of its fallback tier at its fallback effort. A benchmarked role's fallback is the average price tier, rounded toward cheaper, and the most common effort, ties to higher, of its settings that pass the benchmark filters. Another role uses its first preference's tier and effort. An empty tier yields to the nearest populated tier, then an unranked model. An unsupported effort maps to the nearest supported effort.
 
-## PI-MODEL-087: An agent uses its next model while its model's quota is spent
+## PI-MODEL-087: An agent never changes its model on its own
 
-When every included route of an agent's model has spent its quota or credit until a known time, the next request uses the next role preference that serves on included quota, at its effort. The agent takes that preference before a paid route of the spent model. A rate limit, an outage, or a pending recheck never moves the agent. From the first request after the known time, the agent uses its higher preference again. A chat keeps its own model.
-
-## PI-MODEL-056: A skipped model is announced in the transcript
-
-When a role's saved pair is unreachable, or an agent passes over a preference whose quota is spent, the agent's transcript shows one system message. It names the skipped model and the model and effort that serve instead. For a spent quota, it also states the provider and when the quota returns. Another such message appears only when the serving selection changes or the skipped model serves again. The model never reads these messages.
+Every agent, a chat included, runs only on its own model and effort. Flywheel never moves an agent to another model, also when its model's quota is spent, its account is signed out, or its model is turned off. The agent waits until its model can serve, and only the person changes its model.
 
 ## PI-MODEL-057: Role selection waits for model discovery
 
@@ -200,7 +196,7 @@ A new chat, and a workflow run that its launch did not name, shows a quick title
 
 ## PI-MODEL-020: Current subagent model visibility
 
-Linked subagent cards and child viewers show the model and reasoning effort that serve the child now, and update when either changes. A model or effort change in a child viewer applies only to that child, at its next request. An unreachable or unsupported model or effort setting falls back to the defaults and never refuses a subagent dispatch.
+Linked subagent cards and child viewers show the child's model and reasoning effort, and update when either changes. A model or effort change in a child viewer applies only to that child, at its next request. An unsupported effort maps to the nearest supported effort. A model that cannot serve makes the child wait and never refuses a subagent dispatch.
 
 ## PI-MODEL-021: Model selection applies at each request
 
@@ -360,13 +356,13 @@ Only paid subscription accounts rotate, and a free-plan account serves only whil
 
 On every client and in the auth login command, Flywheel refuses a free-plan sign-in when the profile already holds an account of that provider, stores nothing, and says why. When Flywheel cannot read the plan of a new account in that case, it refuses the account the same way and says to try again later. A paid sign-in beside a free-plan account of its provider first asks: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider, and declining stores nothing.
 
-## PI-MODEL-039: Every agent waits out spent capacity and continues
+## PI-MODEL-039: Every agent waits until its model can serve
 
-When no role preference of an agent can serve until a stated time, such as a usage reset, the agent waits until the earliest such time and continues on its own. A chat waits for its own model. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). If everything is still spent then, the agent waits again. A spent candidate with no stated time is checked again soon. A runtime-served wait continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens a closed project.
+When an agent's model cannot serve, the agent waits and continues on its own once the model can serve. It checks again at a stated time, such as a usage reset, at once when a sign-in, a key, an account, or a model setting changes, and soon when no time is stated. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). A runtime-served wait continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens a closed project.
 
 ## PI-MODEL-063: Capacity wait status and end
 
-While an agent waits because none of its models can serve, every client shows "Waiting for model capacity" with the agent's name and the time it continues, also after a restart. An interrupt, a Cancel, or a Stop ends the wait, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
+While an agent waits because its model cannot serve, every client shows "Waiting for model capacity" with the agent's name, its model, why it cannot serve, and any known time it continues, also after a restart. An interrupt, a Cancel, or a Stop ends the wait and leaves the agent idle, and a message from the person starts a turn at once. A headless task waits only while its own process runs, and its own deadline also ends its wait. No agent of an unattended Agent Client Protocol run waits for a spent usage limit, quota, or credit (PI-AGENT-128).
 
 ## PI-MODEL-088: A usage reading corrects a spent account's reset time
 

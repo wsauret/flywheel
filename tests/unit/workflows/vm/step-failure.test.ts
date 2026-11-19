@@ -145,7 +145,8 @@ describe("a failed workflow step", () => {
 
     const resumed = acknowledge(transitionDecodedWorkflow(ended.state, { type: "RESUME", readers: {} }));
     expect(resumed.state.context.committed.graph.nodes.map(({ id, state }) => [id, state._tag])).toEqual([["node", "ready"], ["reader", "pending"], ["independent", "completed"]]);
-    expect(resumed.command).toMatchObject({ kind: "prepare_attempt", attempt: { conversationId: null } });
+    // The failed agent continues in its own conversation.
+    expect(resumed.command).toMatchObject({ kind: "prepare_attempt", attempt: { conversationId: "conversation" } });
     if (resumed.command.kind !== "prepare_attempt") throw new Error("Expected a continuation");
     const continuationId = resumed.command.attempt.attemptId;
     expect(continuationId).not.toBe("attempt");
@@ -252,9 +253,11 @@ describe("a Resume of a run that a failed step ended", () => {
     return store
   }
 
-  it("runs only the failed step again, and the run then completes", async () => {
+  it("runs only the failed step again, in its own conversation, and the run then completes", async () => {
     const store = await failedRun()
-    expect(resumesFailedAgents(store.events, replayWorkflowControl(store.events))).toBe(true)
+    const failedControl = replayWorkflowControl(store.events)
+    expect(resumesFailedAgents(store.events, failedControl)).toBe(true)
+    const failedConversation = failedControl.attempts.find(({ definitionId }) => definitionId === "review")?.conversationId
     const ran: string[] = []
     const resumed = await testHost(store, {
       workflow: sequentialWorkflow,
@@ -268,7 +271,8 @@ describe("a Resume of a run that a failed step ended", () => {
       },
     }).run()
     expect(resumed.kind).toBe("completed")
-    expect(ran).toEqual(["review:new-conversation"])
+    expect(failedConversation).toEqual(expect.any(String))
+    expect(ran).toEqual([`review:${failedConversation}`])
     const control = replayWorkflowControl(store.events)
     expect(control.attempts.map(({ definitionId, state }) => [definitionId, state._tag])).toEqual([["work", "completed"], ["review", "failed"], ["review", "completed"]])
     expect(store.events.filter(({ type }) => type === "attempt.started")).toHaveLength(3)

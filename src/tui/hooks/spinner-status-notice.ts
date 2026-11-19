@@ -1,4 +1,4 @@
-import type { SessionNotice } from "../../infra/session-notice.js"
+import { capacityWaitReasonText, type SessionNotice } from "../../infra/session-notice.js"
 import { formatDateTime } from "../../protocol/client/format.js"
 import type { SpinnerStatus } from "./spinner-status-animation.js"
 
@@ -22,6 +22,8 @@ export function noticeSpinnerStatus(notice: SessionNotice, width: number, nowMs 
       : "Waiting"
   const segments: MetadataSegment[] = [{ text: notice.title, colored: notice.severity !== "info" }]
   if (notice.wait) {
+    const { model, reason } = notice.wait
+    if (model !== undefined && reason !== undefined) segments.push({ text: `${model}: ${capacityWaitReasonText(reason)}`, colored: false })
     segments.push({ text: `${notice.wait.agentName} continues at ${formatDateTime(notice.wait.continuesAt, nowMs)}`, colored: false })
   }
   if (retry) {

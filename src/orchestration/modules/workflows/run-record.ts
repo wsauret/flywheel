@@ -11,6 +11,7 @@ import { parseWorkflowRunFact, WorkflowRunFactSchemas, type WorkflowCapabilityBo
 import { nextRunCut, type WorkflowRunCut, type WorkflowRunReader, type WorkflowRunRecord } from "../../workflow-host/run-record.js"
 import { readWorkflowRecovery } from "../../../workflows/vm/recovery-fold.js"
 import type { Attempt } from "../../../workflows/vm/graph-types.js"
+import { readAttemptStarts, servedAttempts } from "../../../workflows/vm/attempt-conversations.js"
 
 interface RunRegistration {
   /** The position of the registration, which orders the runs as they were registered. */
@@ -33,7 +34,7 @@ const RUN_INDEX_FACT_TYPES = [...factTypes(WorkflowRunFactSchemas), WORKFLOW_COM
 const RUN_INDEX_FACT_TYPE_SET: ReadonlySet<string> = new Set(RUN_INDEX_FACT_TYPES)
 
 /** Reads lifetime run facts across every control epoch. No session metadata or workflow/session alias is consulted. */
-export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omit<WorkflowRunReader, "readRequest" | "readDefinitionLineage" | "readAttempt"> {
+export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omit<WorkflowRunReader, "readRequest" | "readDefinitionLineage" | "readAttempt" | "readMemberAttempt"> {
   function projection(workflowId?: string) {
     return heldProjection(reader, `workflow-runs:${workflowId ?? "all"}`, () => createEventProjection(reader, {
       name: "workflow-runs",
@@ -143,6 +144,12 @@ export function createWorkflowRunReader(reader: AsyncEventStateReadSurface): Wor
     readDefinitionLineage: (id) => readRunDefinitionLineage(reader, id),
     async readAttempt(id, attemptId) {
       return (await validatedAttempts(reader, id)).find((attempt) => attempt.id === attemptId) ?? null
+    },
+    async readMemberAttempt(id, { attemptId, conversationId }) {
+      const [attempts, starts] = await Promise.all([validatedAttempts(reader, id), readAttemptStarts(reader, id)])
+      const held = attempts.map((attempt) => attempt.conversationId === null ? { id: attempt.id } : { id: attempt.id, lastConversationId: attempt.conversationId })
+      const served = servedAttempts(starts, held).get(conversationId) ?? attemptId
+      return attempts.find((attempt) => attempt.id === served) ?? null
     },
   }
 }

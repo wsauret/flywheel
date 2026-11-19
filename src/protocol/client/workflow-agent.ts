@@ -41,6 +41,24 @@ export function workflowAgentOpenTarget(agent: { readonly agentNodeId: string; r
   return { agentNodeId: agent.agentNodeId, follow: agent.state === "running" || agent.state === "parked" }
 }
 
+/** The sessions of an agent before its current one, oldest first. A
+ *  reopened agent continues in its failed attempt's session, so each
+ *  session appears once and never as an earlier session of itself. */
+function earlierSessions(view: View, agentNodeId: string, attempt: View["attempts"][number] | undefined): WorkflowAgentModel["history"] {
+  const seen = new Set(attempt?.sessionId === undefined ? [] : [attempt.sessionId])
+  const sessions: WorkflowAgentModel["history"][number][] = []
+  for (const candidate of view.attempts) {
+    if (candidate.agentNodeId !== agentNodeId && candidate !== attempt) continue
+    const own = candidate !== attempt && candidate.sessionId && candidate.conversationId ? [{ sessionId: candidate.sessionId, conversationId: candidate.conversationId }] : []
+    for (const session of [...candidate.history ?? [], ...own]) {
+      if (seen.has(session.sessionId)) continue
+      seen.add(session.sessionId)
+      sessions.push(session)
+    }
+  }
+  return sessions
+}
+
 /** One agent of a workflow as its agent view shows it, with the time its
  *  session worked. */
 export interface WorkflowAgentModel extends WorkflowActiveTime {
@@ -130,7 +148,7 @@ export function workflowAgentModel(view: View, target: WorkflowAgentTarget, cut?
   return {
     agentNodeId: agent.agentNodeId,
     ...(attempt?.sessionId ? { sessionId: attempt.sessionId } : {}),
-    history: view.attempts.flatMap((candidate) => candidate.agentNodeId !== agent.agentNodeId && candidate !== attempt ? [] : [...candidate.history ?? [], ...(candidate !== attempt && candidate.sessionId && candidate.conversationId ? [{ sessionId: candidate.sessionId, conversationId: candidate.conversationId }] : [])]),
+    history: earlierSessions(view, agent.agentNodeId, attempt),
     follow: target.follow,
     ...(attemptId === undefined ? {} : { attemptId }),
     kind: form,

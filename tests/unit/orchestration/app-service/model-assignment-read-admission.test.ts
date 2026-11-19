@@ -197,6 +197,7 @@ test("reads saved model, assignment, and effort options for defaults and session
     captureSubscriptionAdmission: noSubscriptionAdmission,
   })
   const service = createAdmittedModelAssignmentService({
+    capacityWaits: { recheck: () => {} },
     userDataRoot: directories.userDataRoot,
     projectRoot: dir,
     manager,
@@ -258,7 +259,8 @@ test("reads saved model, assignment, and effort options for defaults and session
     expect((await service.globalDefaultRoles()).chat?.model).toBe(model)
     writeFileSync(configPath, '[profiles.default.roles.chat]\nmodel = "unavailable-saved-model"\neffort = "max"\n')
     await runtimeConfig.refresh()
-    expect((await service.globalDefaultRoles()).chat).toEqual({ model, effort: "medium" })
+    // A saved model that cannot serve stays the chat's default at its nearest supported effort (PI-MODEL-087).
+    expect((await service.globalDefaultRoles()).chat).toEqual({ model: "unavailable-saved-model", effort: "high" })
     expect(order).toEqual(["defaults", "session"])
     manager.seed("chat-new", { chat: { model, effort: "medium" }, "workflow-agent": { model: "gpt-5.4", effort: "medium" }, "title-generation": { model, effort: "low" } })
     const query = { type: "sessionModelPlan", sessionId: "chat-new", slots: [roleSlot("chat"), roleSlot("workflow-agent"), roleSlot("title-generation")] } as const
@@ -310,7 +312,7 @@ test("reads saved model, assignment, and effort options for defaults and session
   expect(order).toEqual(["defaults", "session", "refresh"])
 })
 
-test("a save names what serves when its saved model cannot serve, once for a mirrored save", async () => {
+test("a save says when its saved model cannot serve and that its agents wait, naming no stand-in, once for a mirrored save, and ends the waits of agents so that each resolves its role again (PI-MODEL-045, PI-MODEL-039)", async () => {
   const dir = temporaryDirectory("flywheel-save-serving-")
   const directories = testDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
@@ -334,7 +336,9 @@ test("a save names what serves when its saved model cannot serve, once for a mir
   const manager = managerDouble()
   manager.seed("chat-new", { chat: { model: "gpt-6.1-sol", effort: "medium" } })
   const providers = accessProviderRegistry(composeFirstPartyModules())
+  let rechecks = 0
   const service = createAdmittedModelAssignmentService({
+    capacityWaits: { recheck: (serves) => { if (serves === undefined) rechecks += 1 } },
     userDataRoot: directories.userDataRoot,
     projectRoot: dir,
     manager,
@@ -363,15 +367,20 @@ test("a save names what serves when its saved model cannot serve, once for a mir
     }),
   })
   const session = { kind: "session", sessionId: "chat-new" } as const
-  const unservable = "Saved Chat, but lost-model cannot serve now. gpt-6.1-sol at medium effort serves until it can."
+  const unservable = "Saved Chat, but lost-model cannot serve now. Agents that use it wait until it can."
   try {
     expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low", expected: { kind: "absent" } })).toEqual({ label: "Chat" })
     expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "lost-model", effort: "high", expected: { kind: "absent" } })).toEqual({ label: "Chat", warning: unservable })
     expect(await service.saveEffort({ scope: { kind: "defaults-and-session", sessionId: "chat-new" }, slot: roleSlot("chat"), model: "lost-model", effort: "high", expected: { kind: "absent" } }))
       .toEqual({ label: "Chat", mirrored: true, warning: unservable })
+    expect(rechecks).toBe(3)
+    // A waiting agent's model serves now only through a route that the session's capture offers.
+    expect(await service.servesNow("chat-new", "gpt-5.4")).toBe(true)
+    expect(await service.servesNow("chat-new", "lost-model")).toBe(false)
     auth = testAuthContext({})
+    expect(await service.servesNow("chat-new", "gpt-5.4")).toBe(false)
     expect(await service.saveEffort({ scope: session, slot: roleSlot("chat"), model: "gpt-5.4", effort: "low", expected: { kind: "absent" } }))
-      .toEqual({ label: "Chat", warning: "Saved Chat, but no model can serve now." })
+      .toEqual({ label: "Chat", warning: "Saved Chat, but gpt-5.4 cannot serve now. Agents that use it wait until it can." })
     expect((await manager.read("chat-new"))?.roleAssignments?.overrides.chat).toEqual({ model: "gpt-5.4", effort: "low" })
   } finally {
     await preferences.dispose()
@@ -413,6 +422,7 @@ test("each model row names the provider that would serve now, read afresh from t
   const picker = createProviderAvailability({ authority: authorities[0] })
   const other = createProviderAvailability({ authority: authorities[1] }).forCandidates("default", [keyed, ...accounts])
   const service = createAdmittedModelAssignmentService({
+    capacityWaits: { recheck: () => {} },
     userDataRoot: directories.userDataRoot,
     projectRoot: dir,
     manager: managerDouble(),

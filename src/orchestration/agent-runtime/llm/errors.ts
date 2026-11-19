@@ -3,6 +3,7 @@ import type { QuotaExhaustionObservation } from "./provider-availability-types.j
 import type { ProviderErrorCopy, ProviderRecovery } from "../../../infra/llm/provider-error-copy.js";
 import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
 import type { RefusedPart } from "../../../infra/llm/content-repair.js";
+import type { CapacityWaitReason } from "../../../infra/session-notice.js";
 
 type RetryableErrorKind = "rate_limit" | "overload" | "transient" | "unknown";
 
@@ -128,6 +129,12 @@ export function classifyQuotaError(status: number | undefined, message: string, 
 
 export const SUBSCRIPTION_PAID_REVIEW_DETAIL = "Subscription paid capacity requires review. Open Auth and select the account.";
 
+/** A model that cannot serve now, and why. */
+export interface UnservedModel {
+  readonly model: string;
+  readonly reason: CapacityWaitReason;
+}
+
 /** The walk exhausted its candidates. Copy is request-local presentation;
  * message and detail retain their existing control and legacy contracts. */
 export class AllCandidatesExhaustedError extends Schema.TaggedError<AllCandidatesExhaustedError>()("AllCandidatesExhausted", {
@@ -138,15 +145,14 @@ export class AllCandidatesExhaustedError extends Schema.TaggedError<AllCandidate
   /** What a later request can do, from the same evidence as the copy. An
    *  unattended caller, such as an agent of a workflow, waits or retries by it. */
   readonly recovery: ProviderRecovery;
-  /** Set when an agent's request boundary found that no preference of its role can serve, so `recovery` states the
-   *  earliest moment that one serves again (PI-MODEL-039). */
-  readonly noPreferenceServes?: true;
+  /** The model that could not serve and why, which a wait for it states (PI-MODEL-063). */
+  readonly unserved?: UnservedModel;
 
-  constructor(input: { message: string; detail?: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; noPreferenceServes?: true }) {
+  constructor(input: { message: string; detail?: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; unserved?: UnservedModel }) {
     super({ message: input.message, ...(input.detail === undefined ? {} : { detail: input.detail }) });
     this.copy = input.copy;
     this.recovery = input.recovery;
-    if (input.noPreferenceServes) this.noPreferenceServes = true;
+    if (input.unserved !== undefined) this.unserved = input.unserved;
   }
 }
 

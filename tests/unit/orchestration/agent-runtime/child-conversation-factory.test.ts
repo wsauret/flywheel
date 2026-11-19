@@ -79,7 +79,7 @@ describe("child conversation factory", () => {
       executionCwd: projectRoot,
       moduleSelection: composeFirstPartyModules(),
       agentInputs: workflowAgentInputs(asAsyncEventReadSurface(store), sessionId).agentInputs,
-      deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
+      updateLifecycleState: (id, state) => manager.updateLifecycleState(id, state),
       sessionEventWriter: createSessionFactWriter({ sessionId: member.sessionId, writer: asAsyncEventWriter(store) }),
       eventStore: asAsyncEventReadSurface(store),
       projectionReader: asAsyncEventReadSurface(store),

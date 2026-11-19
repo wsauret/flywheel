@@ -33,6 +33,7 @@ import { candidateReadiness } from "../agent-runtime/llm/failover-client.js"
 import { requestAdmissionFromCaptures } from "../subscription-spend-consent/admission-capture.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
+import type { CapacityServingCheck, CapacityWaitLedger } from "../session/capacity-wait.js"
 
 const log = Log.create({ service: "model-assignment-admission" })
 
@@ -54,6 +55,9 @@ interface ModelAssignmentAdmissionDeps {
   readonly readAdmission: (scope: RuntimeModelAssignmentScope) => Promise<ModelAssignmentReadAdmission>
   /** Overrides the process-wide availability owner. Tests only. */
   readonly providerAvailability?: ProviderAvailabilityOwner
+  /** The executor's capacity waits: a saved or removed setting ends them, so each waiting agent resolves its role
+   *  again on the new setting (PI-MODEL-039). */
+  readonly capacityWaits: Pick<CapacityWaitLedger, "recheck">
 }
 
 interface ModelAssignmentReadAdmission {
@@ -190,7 +194,11 @@ export interface AdmittedModelAssignmentService extends RuntimeModelAssignmentSe
 }
 
 /** Binds model-assignment reads and writes to one admitted auth profile. */
-export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): AdmittedModelAssignmentService {
+export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmissionDeps): AdmittedModelAssignmentService & {
+  /** Whether `model` can serve the agent of `sessionId` now: a route of the session's current capture offers it and
+   *  one of its candidates is ready or waits on a recheck, by the readiness rule of a request's walk. */
+  readonly servesNow: CapacityServingCheck
+} {
   const admissionStorage = new AsyncLocalStorage<ModelAssignmentAdmission>()
   const service = createRuntimeModelAssignmentService({
     roleCaptureStore: deps.manager,
@@ -377,26 +385,44 @@ export function createAdmittedModelAssignmentService(deps: ModelAssignmentAdmiss
     listModelOptions: (query) => withReadAdmission(query.scope, () => service.listModelOptions(query), true),
     listEffortOptions: (query) => withReadAdmission(query.scope, () => service.listEffortOptions(query)),
     // A saved choice is kept even when it cannot serve, so the result says
-    // what serves instead: the seat read again under the same capture that a
-    // request of the serving scope resolves through.
+    // so: the seat read again under the same capture that a request of the
+    // serving scope resolves through (PI-MODEL-045).
     async saveEffort(command) {
       const scope = writeScope(command.scope)
       const saved = await withAdmission(scope, () => service.saveEffort(command))
-      const [row] = await withReadAdmission(scope, () => service.loadAssignments({ scope, slots: [command.slot] }))
-      const warning = [saved.warning, servingWarning(saved.label, row)].filter((text) => text !== undefined).join(" ")
+      deps.capacityWaits.recheck()
+      const serving = await withReadAdmission(scope, async ({ capture }) => {
+        const [row] = await service.loadAssignments({ scope, slots: [command.slot] })
+        return servingWarning(saved.label, row ?? command.model, (model) => capture.providers.selection.plan(model, capture.connection, capture.eligibility, capture.allowTrainingRoutes).kind !== "unavailable")
+      })
+      const warning = [saved.warning, serving].filter((text) => text !== undefined).join(" ")
       return warning === "" ? saved : { ...saved, warning }
     },
-    resetDefaults: (command) => withAdmission(writeScope(command.scope), () => service.resetDefaults(command)),
+    async resetDefaults(command) {
+      const reset = await withAdmission(writeScope(command.scope), () => service.resetDefaults(command))
+      deps.capacityWaits.recheck()
+      return reset
+    },
+    async servesNow(sessionId, model) {
+      const admission = await deps.readAdmission({ kind: "session", sessionId })
+      const { capture } = admission
+      const plan = capture.providers.selection.plan(model, capture.connection, capture.eligibility, capture.allowTrainingRoutes)
+      return plan.kind !== "unavailable" && (await servingProvidersNow(admission, [plan])).has(model)
+    },
     globalDefaultRoles: () => withReadAdmission({ kind: "defaults" }, () => service.globalDefaultRoles()),
     modelRoles: () => service.modelRoles(),
   }
 }
 
-/** Undefined when the seat's saved model serves; otherwise what serves until it can. */
-function servingWarning(label: string, row: ModelAssignmentRow | undefined): string | undefined {
-  if (row === undefined) return `Saved ${label}, but no model can serve now.`
-  if (row.savedModel === undefined) return undefined
-  return `Saved ${label}, but ${row.savedModel} cannot serve now. ${row.model} at ${row.effort} effort serves until it can.`
+/** Undefined when the seat's model has a route that `serves`. Otherwise it names the model and says that each agent
+ *  that uses it waits, or, for a background role that yields its unreachable saved model (PI-MODEL-019), what serves
+ *  until it can. `seat` is the seat read again, else the saved model when no model can serve at all, else null. */
+function servingWarning(label: string, seat: ModelAssignmentRow | string | null, serves: (model: string) => boolean): string | undefined {
+  if (seat === null) return `Saved ${label}, but no model can serve now.`
+  const waits = (model: string) => `Saved ${label}, but ${model} cannot serve now. Agents that use it wait until it can.`
+  if (typeof seat === "string") return waits(seat)
+  if (seat.savedModel !== undefined) return `Saved ${label}, but ${seat.savedModel} cannot serve now. ${seat.model} at ${seat.effort} effort serves until it can.`
+  return serves(canonicalModelId(seat.model)) ? undefined : waits(seat.model)
 }
 
 function sameChatDefault(left: RuntimeChatDefault, right: RuntimeChatDefault): boolean {

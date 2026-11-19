@@ -275,12 +275,12 @@ interface EvidenceReads {
  *  detail read serves it, so only it pays for it. */
 async function sessionActionEvidence({ reader, projectionReader }: EvidenceReads, sessionId: string, kind: ReplayedSession["kind"], conversationId: string | undefined, continuationOwed: boolean, metadata: ReplayedSession, running = false): Promise<SessionActionEvidence> {
   const [wait] = running ? [] : await capacityContinuations(projectionReader, [sessionId])
-  const capacityNotice = wait === undefined ? undefined : capacityWaitNotice({ sessionId, agentName: kind === "chat" ? "Chat" : metadata.label || metadata.name || sessionId, atMs: wait.continuesAt, now: Date.now() })
+  const capacityNotice = wait === undefined ? undefined : capacityWaitNotice({ sessionId, agentName: kind === "chat" ? "Chat" : metadata.label || metadata.name || sessionId, atMs: wait.continuesAt, now: Date.now(), ...(wait.unserved === undefined ? {} : { unserved: wait.unserved }) })
   const owed = { ...(continuationOwed ? { continuationOwed } : {}), ...(capacityNotice ? { capacityNotice } : {}) }
   if (kind === "subagent") return { childRun: await readChildSessionRunEvidence(projectionReader, sessionId), ...owed }
   if (metadata.kind === "workflow-agent") {
     const member = metadata.workflowMembership
-    const memberActive = member.kind === "attempt" && (await workflowRunReader(reader).readAttempt(member.workflowId, member.attemptId))?.state._tag === "running"
+    const memberActive = member.kind === "attempt" && (await workflowRunReader(reader).readMemberAttempt(member.workflowId, { attemptId: member.attemptId, conversationId: metadata.conversationId }))?.state._tag === "running"
     return { memberActive, ...(conversationId ? { chatTurnEnd: await readChatTurnEnd(projectionReader, conversationId) } : {}), ...owed }
   }
   if (kind === "chat" && conversationId !== undefined) {

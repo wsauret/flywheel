@@ -141,20 +141,21 @@ describe("session assignment settings", () => {
     expect(readFileSync(configPath).equals(before)).toBe(true)
   })
 
+  // A default model that cannot serve stays the seat, so its agent waits for it (PI-MODEL-087).
   it.each(["gpt-6-astra", "lost-model"])("keeps a workflow's default effort over %s until a person saves another pair", async (model) => {
     const { manager, store, configPath } = setup()
     const authored = { "brief.plan.at.worker.effort": { effort: "low" } }
     const { id, inheritedRoles } = await publishMember(manager, store, { name: "default-effort", workflowDefinitionId: "plan", initialRoles: authored })
     const seat = roleSlot("brief.plan.at.worker")
     const api = controller(manager, id, configPath, { "workflow-agent": { model, effort: "high" } }, models, {}, inheritedRoles)
-    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
-    expect((await api.listModelOptions(seat)).find((row) => row.current)?.effort).toBe("low")
+    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model, effort: "low" })
+    expect((await api.listModelOptions(seat)).find((row) => row.current)?.effort).toBe(model === "lost-model" ? undefined : "low")
     await api.saveEffort(seat, "gpt-6-luna", "high", ABSENT)
     expect(readFileSync(configPath, "utf8")).toBe("")
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: { "brief.plan.at.worker": { model: "gpt-6-luna", effort: "high" } } })
     expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: "gpt-6-luna", effort: "high" })
     await api.resetDefaults([seat], () => true, {})
-    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model: model === "lost-model" ? "gpt-6.1-sol" : model, effort: "low" })
+    expect((await api.loadAssignments([seat]))[0]).toMatchObject({ model, effort: "low" })
     expect((await manager.read(id))?.roleAssignments).toEqual({ defaults: {}, overrides: {} })
   })
 
@@ -229,14 +230,14 @@ describe("session assignment settings", () => {
       userDataRoot: "/scratch",
     })
     const serving = async () => sessionServingSelection(await reading(id) ?? undefined)
-    const reachable = model === "lost-model" ? "gpt-6.1-sol" : model
-    // A default pair whose model is unreachable serves the fallback at its own effort.
-    const authoredPair = { model: reachable, effort: fields === "both" && model === reachable ? "high" : "medium" }
+    // A default pair whose model is unreachable stays the seat, and no offered row is current (PI-MODEL-087).
+    const authoredPair = { model, effort: fields === "both" ? "high" : "medium" }
     const options = await api.listModelOptions(seat)
     expect(options.map((row) => row.model)).not.toContain("lost-model")
     expect(options.filter((row) => row.model !== null).map((row) => row.model).toSorted()).toEqual(models.toSorted())
     expect(options.every((row) => row.selectable && row.reason === undefined)).toBe(true)
-    expect(options.find((row) => row.current)).toMatchObject({ model: reachable, effort: authoredPair.effort })
+    if (model === "lost-model") expect(options.find((row) => row.current)).toBeUndefined()
+    else expect(options.find((row) => row.current)).toMatchObject(authoredPair)
     expect((await api.listEffortOptions(seat, "gpt-6-luna")).every((row) => row.selectable)).toBe(true)
     expect(await serving()).toEqual(authoredPair)
     await api.saveEffort(seat, "gpt-6-luna", "low", ABSENT)

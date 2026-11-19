@@ -11,10 +11,8 @@ import { parseBriefRoleId, briefPersonaRoleId } from "../../protocol/brief-role-
 import { beginTierResolutionOperation, modelPriceTier, resolveModelForTierAcrossFamilies, type TierResolutionOptions } from "./model-tiers.js";
 import { modelTierForReference } from "../../protocol/model-tier-reference.js";
 import { ROLE_MODEL_DEFAULTS, reachableRoleModelDefaults, roleModelDefault } from "./role-model-defaults.js";
-import type { CapacityReset } from "../../infra/llm/provider-error-copy.js";
-import type { ModelStanding } from "../agent-runtime/llm/model-standing.js";
 import { canonicalRoleId } from "./retired-config-names.js";
-import { DEFAULT_ROLES, parentRoleId, type RoleId, type ResolvedRole, type ResolvedRoles } from "./roles.js";
+import { DEFAULT_ROLES, parentRoleId, SUBAGENT_SUMMARY_ROLE_ID, TITLE_GENERATION_ROLE_ID, type RoleId, type ResolvedRole, type ResolvedRoles } from "./roles.js";
 import type { FlywheelConfig } from "./schema.js";
 import { profileRoleSettings } from "./env.js";
 
@@ -61,28 +59,17 @@ function configuredRole(
 
 export type RoleSetting = { readonly model?: string; readonly effort?: string; readonly defaultEffort?: string; readonly provider_options?: ResolvedRole["providerOptions"] };
 
-/** A role preference that an agent's request passed over because its included quota is spent until `reset`. */
-export interface PassedPreference {
-  readonly model: string;
-  readonly effort: string;
-  readonly reset: CapacityReset;
-  readonly providers: readonly string[];
-}
+/** The roles of background work that is no agent: an unreachable saved model yields to the role's default, so a
+ *  session title or a failure summary is never held back (PI-MODEL-019). Every other role keeps its saved model and
+ *  its agent waits for it (PI-MODEL-087). */
+const FALLBACK_ROLE_IDS: ReadonlySet<RoleId> = new Set([TITLE_GENERATION_ROLE_ID, SUBAGENT_SUMMARY_ROLE_ID]);
 
 export type CapturedRoleSelection =
-  | {
-      readonly kind: "selected"; readonly role: ResolvedRole; readonly plan: AdmittedFailoverPlan;
-      /** The highest preference, when the selection passed it over for its spent quota (PI-MODEL-056). */
-      readonly passed?: PassedPreference;
-      /** The earliest moment a preference serves again, when none can serve now (PI-MODEL-039). */
-      readonly spentUntil?: CapacityReset;
-    }
+  | { readonly kind: "selected"; readonly role: ResolvedRole; readonly plan: AdmittedFailoverPlan }
+  /** The role's saved model, which no admitted account or enabled provider serves now: its agent waits for it. */
+  | { readonly kind: "unserved"; readonly role: ResolvedRole }
   | { readonly kind: "no-selection" }
   | { readonly kind: "access-pending" };
-
-/** Reads one admitted model's standing from the request's captured availability under the role's effective provider
- *  options (ARCH-PROVIDERS-080). */
-export type ModelStandingReader = (plan: AdmittedFailoverPlan, providerOptions: ResolvedRole["providerOptions"]) => Promise<ModelStanding>;
 
 interface RoleAccessCapture {
   readonly selection: AccessProviderSelection;
@@ -98,9 +85,8 @@ export function resolveCapturedRole(
   setting: RoleSetting,
   capture: RoleAccessCapture,
   userDataRoot: string,
-  standing?: ModelStandingReader,
 ): Promise<CapturedRoleSelection> {
-  return captureRoleCatalog(capture, userDataRoot).resolve(roleId, setting, standing);
+  return captureRoleCatalog(capture, userDataRoot).resolve(roleId, setting);
 }
 
 /** Builds exact-account plans once for all role previews from one immutable capture. */
@@ -115,9 +101,7 @@ export function captureRoleResolver(
  * The resolver and inventory come from the same immutable eligibility capture. */
 interface CapturedRoleCatalog {
   readonly plans: ReadonlyMap<string, AdmittedFailoverPlan>;
-  /** With `standing`, an agent's request passes over a preference that cannot serve now (PI-MODEL-087): the first
-   *  preference that serves on included quota wins, then the first that serves on a paid route, then the first. */
-  readonly resolve: (roleId: RoleId, setting: RoleSetting, standing?: ModelStandingReader) => Promise<CapturedRoleSelection>;
+  readonly resolve: (roleId: RoleId, setting: RoleSetting) => Promise<CapturedRoleSelection>;
 }
 
 /** The catalogs already built, by the capture's selection, connection, and eligibility objects, then by the
@@ -175,48 +159,16 @@ function buildRoleCatalog(
     if (metadata) modelInfos.set(plan.model, metadata);
   }
   const options = beginTierResolutionOperation({ userDataRoot, modelInfos });
-  const planOf = (model: string): AdmittedFailoverPlan => {
-    const plan = plans.get(model);
-    if (!plan) throw new Error(`Selected role has no captured plan: ${model}`);
-    return plan;
-  };
-  const resolve = async (roleId: RoleId, setting: RoleSetting, standing?: ModelStandingReader): Promise<CapturedRoleSelection> => {
-    if (!hasModels(available)) return { kind: capture.eligibility?.accessPending(capture.allowTrainingRoutes) ? "access-pending" : "no-selection" };
-    const preferences = rolePreferences(roleId, setting, available, options);
-    if (standing === undefined) {
-      const first = await firstOf(preferences);
-      return { kind: "selected", role: finalizedRole(roleId, setting, first, options), plan: planOf(first.model) };
+  const resolve = async (roleId: RoleId, setting: RoleSetting): Promise<CapturedRoleSelection> => {
+    if (!hasModels(available)) {
+      if (capture.eligibility?.accessPending(capture.allowTrainingRoutes)) return { kind: "access-pending" };
+      const saved = savedPreference(roleId, setting, () => false);
+      return saved === undefined ? { kind: "no-selection" } : { kind: "unserved", role: finalizedRole(roleId, setting, saved, options) };
     }
-    const providerOptions = mergeProviderOptions(setting.provider_options);
-    let first: { readonly preference: RolePreference; readonly standing: ModelStanding } | undefined;
-    let paid: RolePreference | undefined;
-    let served: RolePreference | undefined;
-    let earliest: CapacityReset | undefined;
-    const judged = new Set<string>();
-    for await (const preference of preferences) {
-      if (judged.has(preference.model)) continue;
-      judged.add(preference.model);
-      const current = await standing(planOf(preference.model), providerOptions);
-      first ??= { preference, standing: current };
-      if (current.kind === "serves") {
-        served = preference;
-        break;
-      }
-      if (current.kind === "paid") paid ??= preference;
-      else if (current.kind === "spent" && (earliest === undefined || current.spent.reset.atMs < earliest.atMs)) earliest = current.spent.reset;
-    }
-    if (first === undefined) throw new Error(`Role has no preference: ${roleId}`);
-    const selected = served ?? paid ?? first.preference;
-    const spentQuota = first.standing.kind === "spent" || first.standing.kind === "paid" ? first.standing.spent : undefined;
-    const passed = selected !== first.preference && spentQuota !== undefined
-      ? { model: first.preference.model, effort: first.preference.effort, ...spentQuota }
-      : undefined;
-    const spentUntil = served === undefined && paid === undefined ? earliest : undefined;
-    return {
-      kind: "selected", role: finalizedRole(roleId, setting, selected, options), plan: planOf(selected.model),
-      ...(passed === undefined ? {} : { passed }),
-      ...(spentUntil === undefined ? {} : { spentUntil }),
-    };
+    const preference = await rolePreference(roleId, setting, available, options);
+    const role = finalizedRole(roleId, setting, preference, options);
+    const plan = plans.get(preference.model);
+    return plan === undefined ? { kind: "unserved", role } : { kind: "selected", role, plan };
   };
   return { plans, resolve };
 }
@@ -230,28 +182,35 @@ function hasModels(available: ReadonlyMap<ModelFamily, ReadonlySet<string>> | un
   return available !== undefined && [...available.values()].some((models) => models.size > 0);
 }
 
-/** The role's reachable preferences in PI-MODEL-016 order: the saved tier or the saved model, the coded preferences in
- *  the role's order, and the role's tier fallback: its benchmark fallback, else the price tier of its first coded
- *  preference at that preference's effort. Lazy, so a request whose first preference serves resolves no tier.
- *  @yields {RolePreference} Each preference with its own effort; the tier preference always comes last. */
-async function* rolePreferences(
+/** The role's saved concrete model with its effort, when it applies: always, also when it cannot serve
+ *  (PI-MODEL-016, PI-MODEL-087), and for a role of `FALLBACK_ROLE_IDS` only when it is `reachable`. */
+function savedPreference(roleId: RoleId, configured: RoleSetting, reachable: (model: string) => boolean): RolePreference | undefined {
+  const model = configured.model ? canonicalModelId(configured.model) : undefined;
+  if (model === undefined || modelTierForReference(model) !== undefined) return undefined;
+  if (FALLBACK_ROLE_IDS.has(roleId) && !reachable(model)) return undefined;
+  const { preferences } = roleModelDefault(roleId);
+  return { model, effort: configured.effort ?? preferences.find((preference) => preference.model === model)?.effort ?? preferences[0].effort };
+}
+
+/** The role's selection in PI-MODEL-016 order: the saved tier or the saved model (`savedPreference`), then the first
+ *  reachable coded preference in the role's order, then the role's tier fallback: its benchmark fallback, else the
+ *  price tier of its first coded preference at that preference's effort. */
+async function rolePreference(
   roleId: RoleId,
   configured: RoleSetting,
   available: ReadonlyMap<ModelFamily, ReadonlySet<string>>,
   options: TierResolutionOptions,
-): AsyncGenerator<RolePreference> {
+): Promise<RolePreference> {
   const { preferences, fallback } = roleModelDefault(roleId);
   const [first] = preferences;
-  const savedModel = configured.model ? canonicalModelId(configured.model) : undefined;
-  const savedTier = modelTierForReference(savedModel);
-  const reachable = (model: string) => [...available.values()].some((models) => [...models].some((listed) => canonicalModelId(listed) === model));
-  if (savedTier) yield { model: (await resolveModelForTierAcrossFamilies(savedTier, available, options)).model, effort: configured.effort ?? first.effort };
-  else if (savedModel !== undefined && reachable(savedModel)) {
-    yield { model: savedModel, effort: configured.effort ?? preferences.find((preference) => preference.model === savedModel)?.effort ?? first.effort };
-  }
-  yield* reachableRoleModelDefaults(preferences, available);
+  const savedTier = modelTierForReference(configured.model ? canonicalModelId(configured.model) : undefined);
+  if (savedTier) return { model: (await resolveModelForTierAcrossFamilies(savedTier, available, options)).model, effort: configured.effort ?? first.effort };
+  const saved = savedPreference(roleId, configured, (model) => [...available.values()].some((models) => [...models].some((listed) => canonicalModelId(listed) === model)));
+  if (saved !== undefined) return saved;
+  const coded = reachableRoleModelDefaults(preferences, available)[0];
+  if (coded !== undefined) return { model: coded.model, effort: coded.effort };
   const { tier, effort } = fallback ?? { tier: modelPriceTier(first.model, first.family, options), effort: first.effort };
-  yield { model: (await resolveModelForTierAcrossFamilies(tier, available, options)).model, effort };
+  return { model: (await resolveModelForTierAcrossFamilies(tier, available, options)).model, effort };
 }
 
 /** The resolved role of `selected`: a workflow's default effort wins, an authored effort applies when no model is saved, and the
@@ -272,13 +231,7 @@ export async function resolveRoleFromModels(
   options: TierResolutionOptions,
 ): Promise<ResolvedRole | undefined> {
   if (!hasModels(available)) return undefined;
-  return finalizedRole(roleId, configured, await firstOf(rolePreferences(roleId, configured, available, options)), options);
-}
-
-async function firstOf(preferences: AsyncIterator<RolePreference>): Promise<RolePreference> {
-  const first = await preferences.next();
-  if (first.done === true) throw new Error("A role always yields its tier preference");
-  return first.value;
+  return finalizedRole(roleId, configured, await rolePreference(roleId, configured, available, options), options);
 }
 
 /** Resolves the selected profile's role settings against the supplied model catalog.

@@ -11,6 +11,7 @@ import { workflowViewCursor } from "../../../protocol/modules/workflows.js"
 import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
 import { workflowMembershipReader } from "../../session/workflow-membership.js"
 import { workflowRunReader } from "../../module-catalog.js"
+import { readAttemptStarts } from "../../../workflows/vm/attempt-conversations.js"
 
 export interface WorkflowViewProtocolProjection {
   snapshot(workflowId: string): Promise<FrontendWorkflowView | null>
@@ -61,10 +62,10 @@ export function createWorkflowViewProtocolProjection(deps: WorkflowViewProtocolP
 }
 
 async function loadedView(reader: AsyncEventStateReadSurface, workflowId: string, queue: WorkflowView, records: Awaited<ReturnType<typeof readWorkflowRunRecords>>): Promise<FrontendWorkflowView> {
-  const members = await workflowMembershipReader(reader).list(workflowId)
+  const [members, starts] = await Promise.all([workflowMembershipReader(reader).list(workflowId), readAttemptStarts(reader, workflowId)])
   const followUp = members.find(({ membership }) => membership.kind === "historical-follow-up")
   return {
-    attempts: frontendAttempts(queue, records?.personas, members),
+    attempts: frontendAttempts(queue, records?.personas, members, starts),
     attemptsStatus: "loaded", state: queue.status, tree: queue.tree,
     ...(followUp ? { followUp: true, followUpSessionId: followUp.sessionId } : {}),
     ...(records ? { name: records.name } : {}),

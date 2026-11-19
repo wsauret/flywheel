@@ -12,6 +12,7 @@ import {
   appendSubagentCompleted,
   appendSubagentTool,
   appendUsage,
+  queueCreated,
   withEfficiencyStore,
 } from "./_step-efficiency-fixtures"
 
@@ -252,6 +253,28 @@ describe("step efficiency projection", () => {
         outputTokens: 0,
         costUsd: 0,
       })
+    })
+  })
+
+  // A reopened agent continues in its failed attempt's conversation, so the
+  // failed attempt's request that recorded no usage stays its own.
+  test("counts each request of a reopened conversation on the attempt that made it", () => {
+    const sessionId = "session-efficiency-reopened"
+    withEfficiencyStore(sessionId, (store) => {
+      appendFact(store, sessionId, queueCreated(["step-1", "step-2"]), 1_000)
+      const start = (stepId: string, timestamp: number) => {
+        appendFact(store, sessionId, { type: "step.resume_state.recorded", version: 1, actor: "flywheel", payload: { stepId, conversationId: "conv-worker" } }, timestamp)
+        appendFact(store, sessionId, { type: "step.status.changed", version: 1, actor: "flywheel", payload: { stepId, status: "running" } }, timestamp + 1)
+      }
+      start("step-1", 1_100)
+      appendPrompt(store, sessionId, "req-failed", "conv-worker", 1, 1_300)
+      appendResponse(store, sessionId, "req-failed", "conv-worker", 1, 1_450, { durationMs: 150, outcome: "stream_error" })
+      start("step-2", 2_000)
+      appendPrompt(store, sessionId, "req-reopened", "conv-worker", 2, 2_100)
+      appendResponse(store, sessionId, "req-reopened", "conv-worker", 2, 2_200, { durationMs: 100 })
+
+      const entries = entriesFor(store, sessionId)
+      expect(entries.map(({ modelRequests, failedModelRequests }) => [modelRequests, failedModelRequests])).toEqual([[1, 1], [1, 0]])
     })
   })
 

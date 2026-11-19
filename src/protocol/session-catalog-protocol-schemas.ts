@@ -1,6 +1,7 @@
 import { Schema } from "effect"
 import { WorkflowMembershipSchema } from "../infra/session-workflow-membership.js"
 import { SESSION_NOTICE_PRESENTATION_IDS } from "../infra/error-presentation.js"
+import { CAPACITY_WAIT_REASONS } from "../infra/session-notice.js"
 import type { SessionCatalogError, SessionRow } from "./app-service-types.js"
 
 const SessionNoticeSchema = Schema.Struct({
@@ -13,7 +14,7 @@ const SessionNoticeSchema = Schema.Struct({
   startedAt: Schema.Number,
   updatedAt: Schema.Number,
   retry: Schema.optionalKey(Schema.Struct({ count: Schema.Number, maxRetries: Schema.optionalKey(Schema.Number), delayMs: Schema.optionalKey(Schema.Number), nextAttemptAt: Schema.optionalKey(Schema.Number) })),
-  wait: Schema.optionalKey(Schema.Struct({ agentName: Schema.String, continuesAt: Schema.Number })),
+  wait: Schema.optionalKey(Schema.Struct({ agentName: Schema.String, continuesAt: Schema.Number, model: Schema.optionalKey(Schema.String), reason: Schema.optionalKey(Schema.Literals(CAPACITY_WAIT_REASONS)) })),
   action: Schema.optionalKey(Schema.Struct({ label: Schema.String, command: Schema.optionalKey(Schema.String) })),
 })
 

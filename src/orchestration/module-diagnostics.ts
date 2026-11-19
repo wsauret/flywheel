@@ -5,7 +5,15 @@ import type { FirstPartyModule } from "./modules.js"
 /** Retained attempt identity, timing, and request attribution. No execution authority. */
 export interface AttemptExecutionHistory {
   readonly attempts: readonly Pick<AttemptRow, "id" | "name" | "definitionId" | "workflowDefinitionId" | "status" | "startedAt" | "completedAt">[]
-  readonly conversationToAttempt: ReadonlyMap<string, string>
+  /** The attempts that started in each conversation, in start order, with
+   *  the time of each start. A reopened agent continues in its failed
+   *  attempt's conversation, so one conversation can hold several attempts. */
+  readonly conversationAttempts: ReadonlyMap<string, readonly ConversationAttemptStart[]>
+}
+
+export interface ConversationAttemptStart {
+  readonly attemptId: string
+  readonly startedAt: number
 }
 
 /** The measured child totals needed to attribute parent request efficiency. */

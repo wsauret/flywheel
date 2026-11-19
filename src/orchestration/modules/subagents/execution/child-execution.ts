@@ -316,6 +316,8 @@ export function createChildExecution(options: {
   const runnerOptions: OmitAgentOptions<RunnableAgentOptions, "conversation" | "model"> = {
     effort: typeof effortForRunner === "string" ? effortForRunner : undefined,
     requestSelection: (currentRoles) => resolveChildRole(agent, currentRoles, deps.briefScope) ?? { roleId: agent.kind === "persona" ? agent.role : "chat" },
+    // One hold for every attempt of the child, so a recovered run keeps the pair that its first run resolved.
+    roleHold: {},
     proactiveCompactionThreshold: deps.proactiveCompactionThreshold,
     purpose: { kind: "subagent", renderAs: promptKindForRunner, parentToolUseId: toolUseId },
     executionCwd,

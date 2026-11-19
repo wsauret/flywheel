@@ -47,10 +47,10 @@ describe("role resolution through captured ChatGPT auth", () => {
     expect(await resolveCapturedRole("chat", {}, { selection: captured.providers.selection, ...captured, allowTrainingRoutes: false }, "/scratch")).toEqual({ kind: "no-selection" });
   });
 
-  it("skips an unavailable saved Anthropic model and uses the subscription preference", async () => {
+  it("keeps an unavailable saved Anthropic model as the role's unserved seat, whose agent waits for it (PI-MODEL-087)", async () => {
     const subscriptions = new Map([["chatgpt", [{ instanceId: "chatgpt-test", credential: { type: "oauth" as const, access: Redacted.make("access"), refresh: Redacted.make("refresh"), expires: Date.now() + 60_000 } }]]]);
     const captured = capture(auth({ providers: authProviders({ oauth: ["chatgpt"] }) }), subscriptions, "chatgpt");
     const result = await resolveCapturedRole("chat", { model: "claude-opus-5.5", effort: "low" }, { selection: captured.providers.selection, ...captured, allowTrainingRoutes: false }, "/scratch");
-    expect(result).toMatchObject({ kind: "selected", role: { model: "gpt-6.1-sol", effort: "medium" } });
+    expect(result).toMatchObject({ kind: "unserved", role: { model: "claude-opus-5.5", effort: "low" } });
   });
 });

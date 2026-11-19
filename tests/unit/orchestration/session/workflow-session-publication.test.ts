@@ -12,6 +12,12 @@ import { briefEntryId, isBriefEntry } from "../../../../src/orchestration/sessio
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership";
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery";
 import { commitWorkflowEvent, publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures";
+import { workflowRunReader } from "../../../../src/orchestration/module-catalog";
+import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store";
+import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts";
+import { workflowAgentModel } from "../../../../src/protocol/client/workflow-agent";
+import { readWorkflowLiveView } from "../../../../src/orchestration/modules/workflows/live-protocol";
+import { readAttemptStarts } from "../../../../src/workflows/vm/attempt-conversations";
 
 const tempDir = temporaryDirectories();
 
@@ -236,11 +242,9 @@ describe("runtime invocation publication", () => {
 });
 
 describe("workflow attempt continuation publication", () => {
-  // A person resumes a failed run: its failed agent continues in a new
-  // session that holds a copy of its predecessor's context. The copy keeps
-  // the brief under the successor's brief entry id, so the worker does not
-  // restate the brief and the successor holds it once.
-  it("keeps the predecessor's brief as the successor's one brief", async () => {
+  // A person resumes a failed run: its failed agent continues in its own
+  // session and conversation, which keep its brief and its earlier turns once.
+  it("continues a reopened attempt in its failed attempt's session", async () => {
     const baseDir = tempDir("workflow-continuation-");
     const { deps, store } = makeDepsWithStore(baseDir);
     const reader = deps.projectionReader;
@@ -257,13 +261,75 @@ describe("workflow attempt continuation publication", () => {
     if (!recovered.executable) throw new Error("Expected executable control");
     const successorAttemptId = recovered.control.attempts.at(-1)!.id;
     expect(successorAttemptId).not.toBe("first");
-    await commit({ type: "ATTEMPT_STARTED", attemptId: successorAttemptId, conversationId: "second-conversation" });
+    await commit({ type: "ATTEMPT_STARTED", attemptId: successorAttemptId, conversationId: "first-conversation" });
 
-    const successor = await workflowMembershipReader(reader).attempt("run", successorAttemptId);
-    const tree = await tryOpenConversationTree({ conversationId: "second-conversation", sessionId: successor!.sessionId, store: reader });
+    const members = workflowMembershipReader(reader);
+    expect((await members.list("run")).map(({ sessionId }) => sessionId)).toEqual([member.sessionId]);
+    expect((await members.conversation("run", "first-conversation"))?.sessionId).toBe(member.sessionId);
+    const tree = await tryOpenConversationTree({ conversationId: "first-conversation", sessionId: member.sessionId, store: reader });
     const branch = await tree!.getBranch();
     tree!.getStorage().dispose();
-    expect(branch.filter((entry) => isBriefEntry(entry.id)).map((entry) => entry.id)).toEqual([briefEntryId(successorAttemptId)]);
+    expect(branch.filter((entry) => isBriefEntry(entry.id)).map((entry) => entry.id)).toEqual([briefEntryId("first")]);
     expect(branch.map((entry) => entry.kind === "message" ? entry.message.content : entry.kind)).toEqual(["Do the work.", "Started."]);
+
+    // The reopened attempt outgrows its context and continues in a new
+    // session, which keeps the person's role choice from the agent's
+    // session. Every reader still finds the reopened attempt in the first
+    // session, though control no longer names its conversation.
+    const overrides = { "workflow-agent": { model: "gpt-5.4-mini", effort: "low" as const } };
+    expect(await manager.replaceRoleSnapshot(member.sessionId, { "workflow-agent": { model: "gpt-5.4", effort: "medium" } }, overrides)).toBe(true);
+    await commit({ type: "ATTEMPT_FAILED", failure: { attemptId: successorAttemptId, kind: "context_overflow", reason: "context full", conversationId: "first-conversation", toolUses: 2 } });
+    const overflowed = recoverWorkflowControl((await reader.readSlice({ aggregateId: "workflow:run" }, true)).facts);
+    if (!overflowed.executable) throw new Error("Expected executable control");
+    const overflowAttemptId = overflowed.control.attempts.at(-1)!.id;
+    expect(overflowed.control.attempts.at(-1)).toMatchObject({ parentAttemptId: successorAttemptId, provenance: { reason: "overflow" } });
+    await commit({ type: "ATTEMPT_STARTED", attemptId: overflowAttemptId, conversationId: "overflow-conversation" });
+    const continuation = (await members.conversation("run", "overflow-conversation"))!;
+    expect((await manager.read(continuation.sessionId))?.roleAssignments?.overrides).toEqual(overrides);
+    const runs = workflowRunReader(reader);
+    expect((await runs.readMemberAttempt("run", { attemptId: "first", conversationId: "first-conversation" }))?.id).toBe(successorAttemptId);
+    const queue = (await loadQueueSnapshotFromReader(reader, "run"))!;
+    const rows = frontendAttempts(queue, undefined, await members.list("run"), await readAttemptStarts(reader, "run"));
+    expect(rows.map(({ id, sessionId }) => [id, sessionId])).toEqual([["first", member.sessionId], [successorAttemptId, member.sessionId], [overflowAttemptId, continuation.sessionId]]);
+    expect((await readWorkflowLiveView(reader, "run"))?.agents.map(({ sessionId, attemptId }) => [sessionId, attemptId]))
+      .toEqual([[member.sessionId, successorAttemptId], [continuation.sessionId, overflowAttemptId]]);
+  });
+
+  // A build before 2026-11-19 continued a reopened agent in a new session
+  // that held a copy of its failed attempt's conversation. Such a run keeps
+  // reading as two sessions of one agent, each serving its own attempt.
+  it("keeps reading a reopened attempt that an earlier build continued in a copy as its own session", async () => {
+    const FIRST = "worker-fixture:node:1:attempt:1";
+    const baseDir = tempDir("workflow-continuation-");
+    const { deps, store } = makeDepsWithStore(baseDir);
+    const reader = deps.projectionReader;
+    const writer = asAsyncEventWriter(store);
+    const { manager, member: first, workflow } = await publishWorkerAttempt({ projectRoot: baseDir, reader, writer, workflowId: "run", attemptId: FIRST, conversationId: "first-conversation" });
+    const commit = (event: Parameters<typeof commitWorkflowEvent>[3]) => commitWorkflowEvent({ manager, projectionReader: reader }, "run", workflow, event);
+    await commit({ type: "ATTEMPT_FAILED", failure: { attemptId: FIRST, kind: "fatal", reason: "provider failed", conversationId: "first-conversation" } });
+    await commit({ type: "RESUME", readers: {} });
+    const recovered = recoverWorkflowControl((await reader.readSlice({ aggregateId: "workflow:run" }, true)).facts);
+    if (!recovered.executable) throw new Error("Expected executable control");
+    const successorAttemptId = recovered.control.attempts.at(-1)!.id;
+    await commit({ type: "ATTEMPT_STARTED", attemptId: successorAttemptId, conversationId: "copy-conversation" });
+    const members = workflowMembershipReader(reader);
+    const copy = (await members.conversation("run", "copy-conversation"))!;
+    const tree = await tryOpenConversationTree({ conversationId: "copy-conversation", sessionId: copy.sessionId, store: reader, writer });
+    await tree!.appendMessage({ kind: "user", content: "Do the work.", origin: "system" }, briefEntryId(successorAttemptId));
+    await tree!.appendMessage({ kind: "assistant", content: "Started." });
+    tree!.getStorage().dispose();
+
+    expect((await members.list("run")).map(({ sessionId }) => sessionId)).toEqual([first.sessionId, copy.sessionId]);
+    expect(copy.membership).toMatchObject({ kind: "attempt", attemptId: successorAttemptId });
+    const runs = workflowRunReader(reader);
+    expect((await runs.readMemberAttempt("run", { attemptId: FIRST, conversationId: "first-conversation" }))?.id).toBe(FIRST);
+    expect((await runs.readMemberAttempt("run", { attemptId: successorAttemptId, conversationId: "copy-conversation" }))?.id).toBe(successorAttemptId);
+    const queue = (await loadQueueSnapshotFromReader(reader, "run"))!;
+    const rows = frontendAttempts(queue, undefined, await members.list("run"), await readAttemptStarts(reader, "run"));
+    expect(rows.map(({ id, sessionId }) => [id, sessionId])).toEqual([[FIRST, first.sessionId], [successorAttemptId, copy.sessionId]]);
+    expect(workflowAgentModel({ attempts: rows, tree: queue.tree }, { agentNodeId: rows[1]!.agentNodeId!, follow: false }))
+      .toMatchObject({ sessionId: copy.sessionId, attemptId: successorAttemptId, history: [{ sessionId: first.sessionId, conversationId: "first-conversation" }] });
+    expect((await readWorkflowLiveView(reader, "run"))?.agents.map(({ sessionId, attemptId }) => [sessionId, attemptId]))
+      .toEqual([[first.sessionId, FIRST], [copy.sessionId, successorAttemptId]]);
   });
 });

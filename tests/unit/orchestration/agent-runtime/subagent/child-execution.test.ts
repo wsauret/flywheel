@@ -526,8 +526,8 @@ describe("child execution recovery", () => {
     const clock = spyOn(Date, "now").mockImplementation(() => realNow() + passed);
     const waits = recoveryWaits(async () => { entered.resolve(); await release.promise; passed = 120_000; });
     try {
-      // The child's request boundary finds no role preference that serves before the stated time, so it waits.
-      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000, hold: { kind: "usage_limit", stated: true } }, noPreferenceServes: true }, "complete"]);
+      // The child's own model serves again only at the stated time, so it waits.
+      const run = scriptedDispatch([{ kind: "api_error", message: "no capacity", recovery: { kind: "at", atMs: Date.now() + 60_000, hold: { kind: "usage_limit", stated: true } } }, "complete"]);
       await createSubagentDispatch(run.deps).execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext());
       await entered.promise;
       const before = run.bumps();

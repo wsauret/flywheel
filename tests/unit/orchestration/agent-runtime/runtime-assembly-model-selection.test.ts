@@ -15,11 +15,10 @@ import { testAuthContext } from "../../../helpers/auth-context.js"
 import { fakeModelsClient, modelInfo } from "../../../helpers/model-tier-fixtures.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { attemptHistoryTarget } from "./_model-client.js"
-import { AllCandidatesExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import { createAdmittedClient, type AccessProviderBuild } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js"
-import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type ConversationMessage, type LLMClient, type ServingAttempt } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import { FUNCTION_TOOL_PRESENTATION, type AdapterAdmission, type LLMClient, type ServingAttempt } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { resolveSessionRoles } from "../../../../src/orchestration/config/session-role-resolver.js"
-import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js"
+import type { RoleHold } from "../../../../src/orchestration/agent-runtime/types.js"
 import { capabilityAccessHolding } from "./tools/_fixtures.js"
 import { dispatchedToolContext } from "../../../helpers/dispatched-tool-context.js"
 
@@ -34,7 +33,7 @@ function freshBenchmarkCacheRoot(): string {
   return userDataRoot
 }
 
-test("skips an unavailable saved pair, captures each next model, and keeps tool calls on their request selection", async () => {
+test("captures each model that a person saves next, and keeps tool calls on their request selection", async () => {
   const providers = accessProviderRegistry(testCapabilityModules())
   const outgoing: Array<{ model: string; wire: string; effort?: string }> = []
   /** Each request's attempt on a provider adapter that records the wire of the attribution that the request's own
@@ -52,6 +51,7 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
           outgoing.push({ model: build.model, wire: attribution.wireModelId, effort: options.reasoningEffort })
           if (outgoing.length === 1) {
             eligibility = access("claude-haiku-4.5", "anthropic")
+            saved = { model: "claude-haiku-4.5", effort: "high" }
             yield { kind: "tool_use", toolCall: { id: "tc", name: "missing-tool", input: {} } }
             yield { kind: "done", stopReason: "tool_use" }
           } else {
@@ -92,17 +92,17 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
     }).worker
   }
   let eligibility = access("gpt-6-luna", "openai")
+  let saved = { model: "gpt-6-luna", effort: "high" }
   const toolModels: string[] = []
   const plans: string[] = []
-  const notices: ConversationMessage[] = []
   const signal = new AbortController().signal
   const assembled = await assembleRuntimeForTurn({
     providerSessionLifetime: testProviderSessionLifetime(),
     options: {
-      ...testDirectories(process.cwd()), userDataRoot: freshBenchmarkCacheRoot(), model: "lost-model", effort: "low",
+      ...testDirectories(process.cwd()), userDataRoot: freshBenchmarkCacheRoot(), model: "gpt-6-luna", effort: "high",
       resolveRoles: (capture) => {
         if (!capture) throw new Error("The role resolver must share the request capture")
-        return resolveSessionRoles({ defaults: {}, overrides: { ship: { model: "lost-model", effort: "low" } } }, capture, "/scratch")
+        return resolveSessionRoles({ defaults: {}, overrides: { ship: saved } }, capture, "/scratch")
       },
       requestSelection: (roles) => roles.get("ship") ?? { roleId: "ship" },
       purpose: { kind: "interactive-chat" }, agentsMd: "", onEvent(event) {
@@ -115,7 +115,7 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
     conversation: resolveRuntimeConversation({
       kind: "durable-tree", sessionId: "selection-session", conversationId: "selection-conversation",
       priorMessages: [{ kind: "user", content: "work" }],
-      append: (message) => { if (message.kind === "system") notices.push(message) },
+      append: () => {},
       reserveMessageId: async () => crypto.randomUUID(),
       captureCommittedForkMessages: async () => [],
       resolveLeafId: async () => null,
@@ -130,7 +130,7 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
       createLLMClient: async () => { throw new Error("uncaptured client path") },
       captureProviderConnection: async () => ({
         connection, providers, eligibility, runtimeConfig: testRuntimeConfigCapture(),
-        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async () => ({ kind: "serves" as const }), admit(admitted) {
+        requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), admit(admitted) {
           return {
             createAgent: () => { throw new Error("unused") },
             createLLMClient: async (model, _modules, runtimeConfig, providerSessionLifetime) => {
@@ -162,10 +162,6 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
   expect(initialSurface.providerRuntime?.role?.model).toBe("gpt-6-luna")
   expect(initialSurface.providerRuntime?.interactionProfile.fileEditContract).not.toBe(assembled.tools.current().providerRuntime?.interactionProfile.fileEditContract)
   expect(toolModels).toEqual(["gpt-6-luna"])
-  expect(notices).toEqual(["gpt-6-luna", "claude-haiku-4.5"].map((model) => ({
-    kind: "system", displayOnly: true,
-    content: `The saved model, lost-model, cannot serve now. ${model} at high effort serves this agent until it can.`,
-  })))
   const models = initialSurface.tools.get("models")
   if (!models) throw new Error("The assembled runtime must expose live model inspection")
   const catalog = await models.execute({}, dispatchedToolContext({ executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", artifactScopeId: "selection-test", retrievalSessionId: "selection-test" }))
@@ -173,75 +169,77 @@ test("skips an unavailable saved pair, captures each next model, and keeps tool 
   expect(JSON.parse(catalog.content).models.rows.map((row: unknown[]) => row[0])).toEqual(["claude-haiku-4.5"])
 })
 
-test("only an agent that is not unattended asks its role's preferences whether they serve, once per request for its own role, and its request boundary fails as the role's when none serves (PI-MODEL-087, ARCH-RUNTIME-082)", async () => {
-  const auth = testAuthContext({ apiKeys: { openai_api: "test-key" } })
+test("keeps an agent on its own model: an unreachable saved model or the pair an unsaved role resolved at the start fails its request as a wait for that model, and an unattended run's fails at once (PI-MODEL-087, ARCH-RUNTIME-082)", async () => {
+  const auth = testAuthContext({ apiKeys: { openai_api: "test-key", anthropic_api: "test-key" } })
   const connection = captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth })
-  const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
-  const models = new Set(["gpt-6-luna"])
-  const eligibility = providerModelEligibilityDecision({
-    profileId: "default", revision: 1, catalogs: new Map([["openai_api", { effective: models, enabled: models }]]),
-    enabledCandidates: new Map<string, ProviderModelEnabledCandidate>([[accessProviderAccountKey(candidate), {
-      candidate, configured: true, currentConnection: true, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
-      enabledOfferings: new Map([["gpt-6-luna", [{ wireModelId: "gpt-6-luna", dataUse: "standard" as const, metadata: null, transport: "openai-responses" as const, resolvedMetadata: modelInfo("openai", "gpt-6-luna", "fixture", 2, 10, "2026-10-01") }]]]),
-    }]]),
-  }).worker
-  // Every preference spent its quota, the role's earliest until `RESET`; the selected model's walk states a later time.
-  const RESET = Date.now() + 60_000
-  const spent = { kind: "spent" as const, spent: { reset: { atMs: RESET, hold: { kind: "usage_limit" as const, stated: true } }, providers: ["OpenAI"] } }
-  const walkFailure = new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: RESET + 3_600_000, hold: { kind: "usage_limit", stated: true } } })
-  const judgedFor = async (purpose: AgentPurpose, unattended = false, noneServes = false): Promise<string[]> => {
-    const judged: string[] = []
+  const providers = accessProviderRegistry(testCapabilityModules())
+  const access = (model: string, family: "openai" | "anthropic") => {
+    const candidate = { kind: "singleton", providerId: `${family}_api`, spendMode: "direct_api" } as const
+    const models = new Set([model])
+    return providerModelEligibilityDecision({
+      profileId: "default", revision: 1, catalogs: new Map([[candidate.providerId, { effective: models, enabled: models }]]),
+      enabledCandidates: new Map<string, ProviderModelEnabledCandidate>([[accessProviderAccountKey(candidate), {
+        candidate, configured: true, currentConnection: true, catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
+        enabledOfferings: new Map([[model, [{ wireModelId: model, dataUse: "standard" as const, metadata: null, transport: family === "openai" ? "openai-responses" as const : "anthropic-messages" as const, resolvedMetadata: modelInfo(family, model, "fixture", 2, 10, "2026-10-01") }]]]),
+      }]]),
+    }).worker
+  }
+  const assemble = async (input: { readonly eligibility: ReturnType<typeof access>; readonly saved?: { readonly model: string; readonly effort: string }; readonly roleHold?: RoleHold; readonly unattended?: true }) => {
     const signal = new AbortController().signal
-    const providers = accessProviderRegistry(testCapabilityModules())
-    await assembleRuntimeForTurn({
+    const assembled = await assembleRuntimeForTurn({
       providerSessionLifetime: testProviderSessionLifetime(),
       options: {
-        ...testDirectories(process.cwd()), userDataRoot: freshBenchmarkCacheRoot(), model: "gpt-6-luna",
+        ...testDirectories(process.cwd()), userDataRoot: freshBenchmarkCacheRoot(),
         resolveRoles: (capture) => {
           if (!capture) throw new Error("The role resolver must share the request capture")
-          return resolveSessionRoles({ defaults: {}, overrides: {} }, capture, "/scratch")
+          return resolveSessionRoles({ defaults: {}, overrides: input.saved === undefined ? {} : { explorer: input.saved } }, capture, "/scratch")
         },
         requestSelection: (roles) => roles.get("explorer") ?? { roleId: "explorer" },
-        purpose, agentsMd: "", onEvent: () => {}, ...(unattended ? { capabilityAccess: { ...capabilityAccessHolding([]), unattended: true } } : {}),
+        ...(input.roleHold === undefined ? {} : { roleHold: input.roleHold }),
+        purpose: { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" }, agentsMd: "", onEvent: () => {},
+        ...(input.unattended ? { capabilityAccess: { ...capabilityAccessHolding([]), unattended: true } } : {}),
         moduleSelection: testCapabilityModules, awaitModelAccessSettled: async () => {}, captureRuntimeConfig: testRuntimeConfigCapture,
         runtimeSurfaces: {}, conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
       },
       definitions: repoDefinitions(),
-      conversation: resolveRuntimeConversation({ kind: "stateless" }, { providerSessionKey: "standing-test", artifactScopeId: "standing-test", retrievalSessionId: "standing-test" }),
+      conversation: resolveRuntimeConversation({ kind: "stateless" }, { providerSessionKey: "own-model-test", artifactScopeId: "own-model-test", retrievalSessionId: "own-model-test" }),
       signal, disposalSignal: signal, instruction: "work", currentTurn: undefined,
       personas: new Map(), createRunner: () => { throw new Error("unused") },
       captureModelRuntime: async () => ({
         generation: connection,
         createLLMClient: async () => { throw new Error("uncaptured client path") },
         captureProviderConnection: async () => ({
-          connection, providers, eligibility, runtimeConfig: testRuntimeConfigCapture(),
-          requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }), standing: async (plan) => { judged.push(plan.model); return noneServes ? spent : { kind: "serves" as const } },
+          connection, providers, eligibility: input.eligibility, runtimeConfig: testRuntimeConfigCapture(),
+          requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }),
           admit: (admitted) => ({
             createAgent: () => { throw new Error("unused") },
             createLLMClient: async (model, _modules, runtimeConfig, providerSessionLifetime) => {
               const plan = admitted.get(model)
               if (plan?.kind !== "admitted") throw new Error("missing selected plan")
-              const client = await createAdmittedClient(plan, fakeModelsClient, connection, {
+              return createAdmittedClient(plan, fakeModelsClient, connection, {
                 providers, providerSessionLifetime: providerSessionLifetime ?? testProviderSessionLifetime(), projectRoot: process.cwd(),
-                allowTrainingRoutes: runtimeConfig?.allowTrainingRoutes ?? false, eligibility, notify: () => {},
+                allowTrainingRoutes: runtimeConfig?.allowTrainingRoutes ?? false, eligibility: input.eligibility, notify: () => {},
                 requestAdmission: async () => ({ subscriptionSpendAuthorizationFor: () => undefined }),
               })
-              if (!noneServes) return client
-              return { model: client.model, modelFamily: client.modelFamily, plannedAttempt: async () => { throw walkFailure },
-                admitRequest: async (capture) => ({ ...await client.admitRequest(capture), plannedAttempt: async () => { throw walkFailure } }) }
             },
           }),
         }),
       }),
     })
-    return judged
+    return assembled.tools.current().providerRuntime?.role
   }
-  expect(await judgedFor({ kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" })).toEqual(["gpt-6-luna"])
-  expect(await judgedFor({ kind: "workflow-follow-up" })).toEqual(["gpt-6-luna"])
-  expect(await judgedFor({ kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" }, true)).toEqual([])
-  expect(await judgedFor({ kind: "interactive-chat" })).toEqual([])
-  const subagent = { kind: "subagent", renderAs: "subagent", parentToolUseId: "call-1" } as const
-  await expect(judgedFor(subagent, false, true)).rejects.toMatchObject({ noPreferenceServes: true, recovery: { kind: "at", atMs: RESET } })
-  const unmarked = await judgedFor(subagent, true, true).catch((error: unknown) => error)
-  expect(unmarked).toBe(walkFailure)
+  const luna = access("gpt-6-luna", "openai")
+  const haiku = access("claude-haiku-4.5", "anthropic")
+  const waitsFor = (model: string) => ({ unserved: { model, reason: "not_offered" }, recovery: { kind: "at", hold: { kind: "recheck" } } })
+  // A saved model that no account offers stays the agent's model, and its request waits for it.
+  await expect(assemble({ eligibility: luna, saved: { model: "lost-model", effort: "low" } })).rejects.toMatchObject(waitsFor("lost-model"))
+  await expect(assemble({ eligibility: luna, saved: { model: "lost-model", effort: "low" }, unattended: true })).rejects.toMatchObject({ missing: "provider" })
+  // An unsaved role resolves its default once, and the agent keeps that pair when it can no longer serve.
+  const roleHold: RoleHold = {}
+  const started = await assemble({ eligibility: luna, roleHold })
+  expect(started?.model).toBe("gpt-6-luna")
+  await expect(assemble({ eligibility: haiku, roleHold })).rejects.toMatchObject(waitsFor("gpt-6-luna"))
+  expect((await assemble({ eligibility: haiku }))?.model).toBe("claude-haiku-4.5")
+  // A saved pair replaces the held one at once.
+  expect((await assemble({ eligibility: haiku, saved: { model: "claude-haiku-4.5", effort: "low" }, roleHold }))?.model).toBe("claude-haiku-4.5")
 })
