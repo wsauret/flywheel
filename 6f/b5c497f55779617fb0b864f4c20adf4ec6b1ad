@@ -1,0 +1,14 @@
+webview/package.json
+  h_4b47e9e4a8b456 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6fb5c497f55779617fb0b864f4c20adf4ec6b1ad",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
