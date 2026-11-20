@@ -1,0 +1,28 @@
+src/orchestration/agent-runtime/llm/conversions/openai-responses.ts
+  h_4b47e9e4a8b456 174-179,183
+src/orchestration/agent-runtime/llm/heal-messages.ts
+  h_4b47e9e4a8b456 42-43
+src/orchestration/agent-runtime/llm/openai-completions-messages.ts
+  h_4b47e9e4a8b456 55,75,78,86-105,113,125,165,183
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 172,174-176,312,319,325-329,448,508,560,567
+tests/unit/orchestration/agent-runtime/llm/llm-converters.test.ts
+  h_4b47e9e4a8b456 341-355
+tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
+  h_4b47e9e4a8b456 118-119,433-434,437,440,445,448,456-486,507
+tests/unit/orchestration/agent-runtime/llm/openrouter-reasoning-details.test.ts
+  h_4b47e9e4a8b456 73
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 486,532,551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "48f6b2558cd4175d4972a09c2d6f361692baf12d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
