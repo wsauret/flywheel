@@ -1,5 +1,6 @@
 import { Schema } from "effect"
 import { defineFact } from "../../../infra/event-registry.js"
+import { REASONING_EFFORTS } from "../../../infra/llm/models.js"
 import { ConversationEntrySchema, HistoricalConversationEntrySchema, HistoricalStoredConversationEntrySchema, StoredConversationEntryV3Schema, StoredConversationEntryV4Schema, StoredConversationEntryV5Schema, StoredConversationEntryV6Schema, StoredConversationEntryV7Schema, StoredConversationEntryV8Schema, type StoredConversationEntry } from "./conversation-entry-schemas.js"
 
 const DateTimeStringSchema = Schema.String.check(
@@ -141,6 +142,25 @@ const ChatReasoningReportedFactSchema = defineFact({
   }),
 })
 
+// The reasoning efforts that the requests of assistant messages asked for,
+// written in the batch of the entries fact that stores the messages. A later
+// OpenAI Responses request reads them to send a change of effort where the
+// earlier request sent it (ARCH-CONTEXT-041). It is its own fact for the
+// reason that `chat.reasoning.reported` is: an earlier build's fold selects
+// only the fact types it knows, so it still reads every entries fact.
+const ChatReasoningEffortRecordedFactSchema = defineFact({
+  type: "chat.reasoning_effort.recorded",
+  version: 1,
+  actor: Schema.Literal("flywheel"),
+  payload: Schema.Struct({
+    conversationId: Schema.NonEmptyString,
+    efforts: Schema.mutable(Schema.Array(Schema.Struct({
+      entryId: Schema.NonEmptyString,
+      reasoningEffort: Schema.Literals(REASONING_EFFORTS),
+    }))).check(Schema.isNonEmpty()),
+  }),
+})
+
 export const ConversationTreeFactSchemas = [
   ConversationTreeCreatedFactSchema,
   ChatEntriesAppendedFactSchema,
@@ -153,6 +173,7 @@ export const ConversationTreeFactSchemas = [
   ChatEntriesAppendedV8FactSchema,
   ChatFollowUpTurnCompletedFactSchema,
   ChatReasoningReportedFactSchema,
+  ChatReasoningEffortRecordedFactSchema,
 ] as const
 
 const ConversationTreeFactSchema = Schema.Union(ConversationTreeFactSchemas)
@@ -171,20 +192,24 @@ export type InlineConversationTreeFact = Exclude<ConversationTreeFact, { type: "
 }
 
 /** The facts a current writer records `entries` with, in this order: the
- *  entries, then the reasoning counts their assistant messages carry, which
- *  no entries fact stores. */
+ *  entries, then the reasoning counts and the reasoning efforts that their
+ *  assistant messages carry, which no entries fact stores. */
 export function chatEntriesFacts(conversationId: string, entries: readonly (typeof ConversationEntrySchema.Type)[]): readonly [ConversationTreeFact, ...ConversationTreeFact[]] {
   const counts: { entryId: string; reasoningTokens: number }[] = []
+  const efforts: { entryId: string; reasoningEffort: (typeof REASONING_EFFORTS)[number] }[] = []
   const stored = entries.map((entry): StoredConversationEntry => {
-    if (entry.kind !== "message" || entry.message.kind !== "assistant" || entry.message.reasoningTokens === undefined) return entry
-    const { reasoningTokens, ...message } = entry.message
-    counts.push({ entryId: entry.id, reasoningTokens })
+    if (entry.kind !== "message" || entry.message.kind !== "assistant") return entry
+    const { reasoningTokens, reasoningEffort, ...message } = entry.message
+    if (reasoningTokens !== undefined) counts.push({ entryId: entry.id, reasoningTokens })
+    if (reasoningEffort !== undefined) efforts.push({ entryId: entry.id, reasoningEffort })
     return { ...entry, message }
   })
   const appended = parseConversationTreeFact({ type: "chat.entries.appended", version: chatEntriesAppendedVersion(stored), actor: "flywheel", payload: { conversationId, entries: stored } })
-  return counts.length === 0
-    ? [appended]
-    : [appended, { type: "chat.reasoning.reported", version: 1, actor: "flywheel", payload: { conversationId, counts } }]
+  return [
+    appended,
+    ...(counts.length === 0 ? [] : [{ type: "chat.reasoning.reported", version: 1, actor: "flywheel", payload: { conversationId, counts } } as const]),
+    ...(efforts.length === 0 ? [] : [{ type: "chat.reasoning_effort.recorded", version: 1, actor: "flywheel", payload: { conversationId, efforts } } as const]),
+  ]
 }
 
 /** The version a current writer gives a batch of entries: the lowest version

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { prepareAnthropicRequest } from "../../../../../src/orchestration/agent-runtime/llm/anthropic.js";
 import { prepareOpenAIResponsesRequest } from "../../../../../src/orchestration/agent-runtime/llm/openai-responses.js";
-import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { chatCompletionsRequestBody } from "./_wire-fixtures.js";
 
 const info: ModelInfo = {
@@ -107,12 +107,11 @@ describe("immutable prepared provider requests", () => {
         { kind: "user", origin: "system", framing: "reminder", content: "<system-reminder>\nCurrent local date: 2026-11-01.\n</system-reminder>\n" },
         { kind: "assistant", content: [{ type: "tool_use", id: "toolu_a", name: "read", input: {} }], provider: "anthropic", api: "anthropic-messages", model: sonnet.id, timestamp: 1 },
         { kind: "toolResult", toolUseId: "toolu_a", content: [{ type: "text", text: "a" }] },
-        { kind: "user", content: "Continue smaller.", requestOnly: true },
       ] },
     });
 
     expect(prepared.params.messages.map((message) => message.role)).toEqual(["user", "system", "assistant", "user"]);
-    expect(prepared.origins).toEqual([["person", "runtime-reminder"], [], ["assistant"], ["tool-result", "request-context"]]);
+    expect(prepared.origins).toEqual([["person", "runtime-reminder"], [], ["assistant"], ["tool-result"]]);
   });
 
   test("Anthropic request telemetry names the tool choice type it sent", () => {
@@ -214,6 +213,103 @@ describe("immutable prepared provider requests", () => {
     expect(openrouter.params.max_output_tokens).toBe(1_500);
     expect(ordinaryChatgpt.params.max_output_tokens).toBeUndefined();
     expect(Object.isFrozen(openai.params.input)).toBe(true);
+  });
+
+  // ARCH-PROVIDERS-084: the system prompt opens the input, so a later change of the history never moves it.
+  test.each(["openai_api", "chatgpt", "github_copilot"] as const)("Responses on %s sends the system prompt as the first developer item and no instructions", (accessProvider) => {
+    const prepared = prepareOpenAIResponsesRequest({ accessProvider, model: "gpt-test", info, isChatGPT: accessProvider === "chatgpt", options });
+
+    expect(prepared.params).not.toHaveProperty("instructions");
+    expect(prepared.params.input).toEqual([
+      { role: "developer", content: [{ type: "input_text", text: "system" }] },
+      { role: "user", content: [{ type: "input_text", text: "hello" }] },
+    ]);
+    expect(prepared.systemPrompt).toBe("system");
+    expect(prepared.messages).toEqual([{ role: "user", content: [{ type: "input_text", text: "hello" }] }]);
+  });
+});
+
+describe("a change of effort inside a Responses conversation (ARCH-CONTEXT-041)", () => {
+  const sol: ModelInfo = { ...info, id: "gpt-6.2-sol", reasoning: true, reasoningEfforts: ["none", "low", "medium", "high", "xhigh"] };
+  const answer = (text: string, reasoningEffort: StreamOptions["reasoningEffort"], model = sol.id): Extract<ConversationMessage, { kind: "assistant" }> => ({
+    kind: "assistant", content: [{ type: "text", text }], accessProvider: "chatgpt", provider: "openai", api: "openai-responses", model, timestamp: 1, stopReason: "end_turn", ...(reasoningEffort ? { reasoningEffort } : {}),
+  });
+  const ask = (text: string): ConversationMessage => ({ kind: "user", content: text });
+  const prepare = (messages: ConversationMessage[], reasoningEffort: StreamOptions["reasoningEffort"], accessProvider: "chatgpt" | "openai_api" | "github_copilot" = "chatgpt", model = sol.id) =>
+    prepareOpenAIResponsesRequest({ accessProvider, model, info: { ...sol, id: model }, isChatGPT: accessProvider === "chatgpt", options: { ...directOptions, messages, reasoningEffort } });
+  const update = (effort: "low" | "high") => ({ type: "configuration_update" as const, reasoning: { effort } });
+  const inputOf = (prepared: ReturnType<typeof prepare>) => Array.isArray(prepared.params.input) ? prepared.params.input : [];
+  const updates = (prepared: ReturnType<typeof prepare>) => inputOf(prepared).filter((item) => item.type === "configuration_update");
+
+  test("keeps the opening effort on the request and appends the change after the history, at the same place on later requests", () => {
+    const changed = prepare([ask("q1"), answer("a1", "high"), ask("q2")], "low");
+    const later = prepare([ask("q1"), answer("a1", "high"), ask("q2"), answer("a2", "low"), ask("q3")], "low");
+
+    expect(changed.params.reasoning).toMatchObject({ effort: "high" });
+    expect(inputOf(changed).at(-1)).toEqual(update("low"));
+    expect(later.params.reasoning).toMatchObject({ effort: "high" });
+    expect(inputOf(later).slice(0, inputOf(changed).length)).toEqual(inputOf(changed));
+    expect(updates(later)).toEqual([update("low")]);
+  });
+
+  test("keeps a change in place when its response was interrupted and the turn resumes", () => {
+    const changed = prepare([ask("q1"), answer("a1", "high"), ask("q2")], "low");
+    const partial: ConversationMessage = { ...answer("part", "low"), incomplete: true, stopReason: "aborted" };
+    const resumed = prepare([ask("q1"), answer("a1", "high"), ask("q2"), partial], "low");
+    const joined = prepare([ask("q1"), answer("a1", "high"), ask("q2"), partial, answer("rest", "low"), ask("q3")], "low");
+
+    for (const prepared of [resumed, joined]) {
+      expect(prepared.params.reasoning).toMatchObject({ effort: "high" });
+      expect(inputOf(prepared).slice(0, inputOf(changed).length)).toEqual(inputOf(changed));
+      expect(updates(prepared)).toEqual([update("low")]);
+    }
+  });
+
+  test("opens the baseline at the first effort that the model takes on the wire", () => {
+    const noOff: ModelInfo = { ...sol, reasoningEfforts: ["low", "medium", "high"] };
+    const prepared = prepareOpenAIResponsesRequest({
+      accessProvider: "chatgpt", model: sol.id, info: noOff, isChatGPT: true,
+      options: { ...directOptions, reasoningEffort: "low", messages: [ask("q1"), answer("a1", "off"), ask("q2"), answer("a2", "high"), ask("q3")] },
+    });
+
+    expect(prepared.params.reasoning).toMatchObject({ effort: "high" });
+    expect(inputOf(prepared).at(-1)).toEqual(update("low"));
+  });
+
+  test("asks for replayable reasoning when an update raises the effort of a conversation that opened without reasoning", () => {
+    const raised = prepare([ask("q1"), answer("a1", "off"), ask("q2")], "high", "openai_api");
+
+    expect(raised.params.reasoning).toEqual({ effort: "none", summary: "auto" });
+    expect(raised.params.include).toEqual(["reasoning.encrypted_content"]);
+    expect(inputOf(raised).at(-1)).toEqual(update("high"));
+  });
+
+  test("sends no update while the effort stays the opening one", () => {
+    const steady = prepare([ask("q1"), answer("a1", "high"), ask("q2")], "high", "openai_api");
+
+    expect(steady.params.reasoning).toMatchObject({ effort: "high" });
+    expect(updates(steady)).toEqual([]);
+  });
+
+  test("opens a new baseline after a compaction and after a model switch", () => {
+    const compacted = prepare([ask("q1"), answer("a1", "high"), { kind: "compactionSummary", content: "summary" }, ask("q2"), answer("a2", "low"), ask("q3")], "low");
+    const switched = prepare([ask("q1"), answer("a1", "high", "gpt-6.1-sol"), ask("q2")], "low");
+
+    for (const prepared of [compacted, switched]) {
+      expect(prepared.params.reasoning).toMatchObject({ effort: "low" });
+      expect(updates(prepared)).toEqual([]);
+    }
+  });
+
+  test("changes the request effort on a model or a route that takes no appended update", () => {
+    const history = [ask("q1"), answer("a1", "high", "gpt-6-luna"), ask("q2")];
+    const luna = prepare(history, "low", "chatgpt", "gpt-6-luna");
+    const copilot = prepare([ask("q1"), answer("a1", "high"), ask("q2")], "low", "github_copilot");
+
+    for (const prepared of [luna, copilot]) {
+      expect(prepared.params.reasoning).toMatchObject({ effort: "low" });
+      expect(updates(prepared)).toEqual([]);
+    }
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

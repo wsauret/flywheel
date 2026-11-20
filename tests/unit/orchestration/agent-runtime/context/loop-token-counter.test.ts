@@ -106,6 +106,8 @@ describe("token estimation", () => {
     expect(alternateFamily.identity).toBe(copilot.identity);
     expect(alternateFamily.imageTokens).toBe(imageTokensForModel("openai"));
     expect(copilot.imageTokens).toBe(imageTokensForModel("anthropic"));
+    // Chat Completions keeps the image estimate that it had as part of the openai family.
+    expect(tokenCountingPolicy("claude-fable-5.1", "chat-completions", "ClaudeV5").imageTokens).toBe(imageTokensForModel("openai"));
   });
 
   test("counts replayed thinking text locally while excluding opaque reasoning", () => {
@@ -177,6 +179,17 @@ describe("token estimation", () => {
     const cache = createTokenEstimationCache();
     expect(estimateConversationTokens([reported], replaying, cache)).toBe(visibleTokens + 4_716);
     expect(estimateConversationTokens([reported], tokenCountingPolicy("claude-sonnet-5-5", "anthropic", "ClaudeV5Sonnet", { accessProvider: "github_copilot", model: "claude-sonnet-5-5" }), cache)).toBe(visibleTokens);
+  });
+
+  // Remove with the conversion of Chat Completions turns stamped as OpenAI Responses turns after 2027-05-20.
+  test("counts the reported reasoning of a Chat Completions turn that an earlier build stamped as an OpenAI Responses turn only when it names its access provider", () => {
+    const policy = tokenCountingPolicy("deepseek-v4", "chat-completions", undefined, { accessProvider: "deepseek", model: "deepseek-v4" });
+    const toolUse = { type: "tool_use", id: "tool", name: "record_answer", input: { answer: "42" } } as const;
+    const visible: ConversationMessage = { kind: "assistant", accessProvider: "deepseek", provider: "openai", api: "openai-responses", model: "deepseek-v4", content: [{ type: "thinking", thinking: "", signature: "reasoning_content" }, toolUse] };
+    const { accessProvider: _accessProvider, ...unattributed } = visible;
+
+    expect(estimateConversationTokens([{ ...visible, reasoningTokens: 1_000 }], policy)).toBe(estimateConversationTokens([visible], policy) + 1_000);
+    expect(estimateConversationTokens([{ ...unattributed, reasoningTokens: 1_000 }], policy)).toBe(estimateConversationTokens([unattributed], policy));
   });
 
   test("counts reported reasoning in the current turn always and in earlier turns only for a model that keeps them", () => {

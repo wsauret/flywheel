@@ -7,7 +7,7 @@ import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 // on (`supported_endpoints`): `claude-*` over Anthropic's `/v1/messages`,
 // most OpenAI models over `/responses`, the rest over `/chat/completions`.
 
-type CopilotEndpoint = "anthropic-messages" | "openai-responses" | "openai-completions";
+type CopilotEndpoint = "anthropic-messages" | "openai-responses" | "chat-completions";
 
 /** Wire endpoints in preference order: the native Anthropic protocol first,
  *  the Responses API next, plain chat completions last. Unknown endpoint
@@ -15,7 +15,7 @@ type CopilotEndpoint = "anthropic-messages" | "openai-responses" | "openai-compl
 const ENDPOINT_PREFERENCE: readonly (readonly [string, CopilotEndpoint])[] = [
   ["/v1/messages", "anthropic-messages"],
   ["/responses", "openai-responses"],
-  ["/chat/completions", "openai-completions"],
+  ["/chat/completions", "chat-completions"],
 ];
 
 interface UnknownFields {

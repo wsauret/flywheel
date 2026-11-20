@@ -213,7 +213,7 @@ export interface ModelsClient {
 export function customProviderModelInfo(owner: CustomProviderDefinition, modelId: string): ModelInfo {
   return {
     provider: owner.id,
-    family: "openai",
+    family: "chat-completions",
     id: modelId,
     name: modelId,
     openWeights: false,

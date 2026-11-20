@@ -49,7 +49,7 @@ export function loginWaitingRequest(response?: string) {
       messages: [{ kind: "user", content: "continue this request" }],
       tools: [], systemPrompt: stableSystemPrompt("test"),
       reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
-      providerOptions: undefined, requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+      providerOptions: undefined, requestAudit: undefined, staleMasking: undefined,
       turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
     }),
   };

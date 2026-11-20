@@ -60,7 +60,7 @@ test("child request spend reaches parent before tool completion and attempt clos
         messages: [], interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
         reasoningEffort: undefined, signal: undefined, cacheRetention: undefined,
         providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: undefined,
-        staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 0,
+        staleMasking: undefined, turn: 1, messageCount: 0,
         estimatedContextTokens: 1, onEvent() {},
         usageSettlement: {
           profileId: "profile", budgetStreamId: sessionId, parentToolUseId: "child-a",

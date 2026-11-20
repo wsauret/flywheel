@@ -225,7 +225,7 @@ export async function resetOpening(input: {
     messages: () => messages, surface,
     requestContext: createActiveRequestContext({ messages: () => messages, attempt: () => attempt, onEvent: () => {} }),
     initialInteractionProfile: resolveModelInteractionProfile(attempt.model, attempt.modelFamily),
-    prepareCurrentPrompt: unused, selectAttempt: unused, attempt: () => attempt, logicalRequestContext: () => undefined,
+    prepareCurrentPrompt: unused, selectAttempt: unused, attempt: () => attempt, turnContext: () => undefined,
     admitSurface: unused, compactionAllowedTools: () => undefined, carryTurnEnd: () => false, setMessages: unused,
     onEvent: () => {}, pushUser: unused, pushMessage: unused, checkpoint, recallAvailable: () => input.recallAvailable,
   });

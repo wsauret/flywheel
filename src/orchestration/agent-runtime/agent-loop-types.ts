@@ -226,7 +226,8 @@ export interface AgentLoopOptions {
   /** `null` is a respawn wake: valid only with a `resume` seed, where the
    *  mailbox holds the input this life exists to drain. */
   instruction: string | null;
-  /** Request-only context seeded by recovery. Applied throughout this logical turn. */
+  /** Standing context of the first logical turn. The first request records it once, as a system-origin entry after
+   *  the turn reminders, and a reset records it again after its opening (ARCH-CONTEXT-042). A person turn ends it. */
   initialRequestContext?: string;
   /** Directory this loop's tools execute in. */
   executionCwd: string;

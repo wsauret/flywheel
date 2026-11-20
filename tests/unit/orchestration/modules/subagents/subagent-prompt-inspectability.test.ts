@@ -47,6 +47,7 @@ const EXPLORER: AgentDefinition = {
 };
 
 const createHarness = subagentChildHarnesses();
+const TURN_CONTEXT = "TURN-CONTEXT-MARKER";
 
 /** Single-candidate chain over a fake adapter that hands off on its first call
  *  and records every system prompt it was sent. */
@@ -80,7 +81,7 @@ describe("dispatched subagent prompt inspectability", () => {
   for (const boundary of ["direct", "state-worker"] as const)
   for (const mode of ["approved", "draft", "fork", "absent"] as const) test(`records the child prompt and ${mode} checkpoint inheritance through ${boundary} publication`, async () => {
     const observedSystemPrompts: string[] = [];
-    const harness = createHarness((options) => newTestRunner(options, async () => fakeClient(observedSystemPrompts)), boundary === "direct" ? undefined : (manager) => {
+    const harness = createHarness((options) => newTestRunner({ ...options, requestContext: TURN_CONTEXT }, async () => fakeClient(observedSystemPrompts)), boundary === "direct" ? undefined : (manager) => {
       const service = createProjectStateSessionsService(manager);
       return createProjectStateSessionManager({
         request: async (command) => structuredClone(await service.request(structuredClone(command))),
@@ -160,6 +161,10 @@ describe("dispatched subagent prompt inspectability", () => {
       expect(result.computedSha256).toBe(entry!.prompt!.promptSha256);
       expect(result.verified).toBe(true);
       expect(result.tools.map((t) => t.name)).toContain("read");
+      // The run's turn context is a recorded entry of the child's conversation, so the refold holds it and the audit
+      // records no request-only text beside it (ARCH-CONTEXT-042).
+      expect(result.messages.filter((message) => JSON.stringify(message).includes(TURN_CONTEXT))).toHaveLength(1);
+      expect(entry!.prompt!.requestContext).toBeUndefined();
       // The inherited intent is standing context in the session tier, so every
       // request, including the first after a reset, carries it; no message does.
       expect(JSON.stringify(result.messages)).not.toContain("# Inherited design intent");

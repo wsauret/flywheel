@@ -31,7 +31,6 @@ for (const localFailure of [false, true]) {
       providerOptions: undefined,
       requestAudit: undefined,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 1,
       estimatedContextTokens: 1,

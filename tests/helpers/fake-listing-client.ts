@@ -5,6 +5,7 @@ import type { AccessProviderId } from "../../src/infra/llm/access-provider.js";
 const FAMILY_TO_PROVIDER = {
   anthropic: "anthropic_api",
   openai: "openai_api",
+  "chat-completions": "openrouter",
   google: "google_api",
 } satisfies { [family in ModelFamily]: AccessProviderId };
 

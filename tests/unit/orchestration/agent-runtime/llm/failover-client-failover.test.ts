@@ -125,7 +125,7 @@ describe("streamed failover", () => {
       ...streamOptions,
       interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
       reasoningEffort: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
-      requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+      requestAudit: undefined, staleMasking: undefined,
       turn: 1, messageCount: 0, estimatedContextTokens: 200, onEvent: () => {},
       estimatedInputTokenClasses: (attempt) => attempt.accessProvider === "openai_api"
         ? { uncachedInputTokens: 120, cacheTokens: 80 }

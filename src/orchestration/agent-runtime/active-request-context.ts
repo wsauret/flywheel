@@ -122,9 +122,8 @@ export function createActiveRequestContext(input: {
   const masker = createStaleToolResultMasker(input.initialStaleMasking);
   let restoration = input.initialStaleMasking ? { history: input.messages(), prepared: false } : undefined;
   let selected: { surface: Surface; attempt: ServingAttempt; prepared: PreparedRequestAttempt } | undefined;
-  let requestContext: string | undefined;
   let removedTokens = 0;
-  let cached: { history: ConversationMessage[]; length: number; mask: TurnStaleMasking; toolHistoryProjection: ToolHistoryProjection | undefined; snapshot: OutgoingContextSnapshot; messages: ConversationMessage[]; requestContext: string | undefined } | undefined;
+  let cached: { history: ConversationMessage[]; length: number; mask: TurnStaleMasking; toolHistoryProjection: ToolHistoryProjection | undefined; snapshot: OutgoingContextSnapshot; messages: ConversationMessage[] } | undefined;
   const estimationCache = createTokenEstimationCache();
   // Canonical appends clone content; masking and contract changes replace entries.
   // Only this history owner can safely retain provider views by source identity.
@@ -151,10 +150,7 @@ export function createActiveRequestContext(input: {
       activeRegistrationIds: activeRegistrationIds(prepared),
       historicalRegistrationId: (message, block) => selected?.surface.historicalRegistrationId(block.name, message.model, message.provider),
     });
-    const activeMessages = projected.messages;
-    const messages = requestContext === undefined
-      ? activeMessages
-      : [...activeMessages, { kind: "user" as const, content: requestContext, requestOnly: true as const }];
+    const messages = projected.messages;
     const presentation = selected.attempt.toolPresentation;
     const messageTokens = estimateConversationTokens(messages.map((message) => {
       let variants = presentedMessages.get(message);
@@ -168,7 +164,7 @@ export function createActiveRequestContext(input: {
       return presented;
     }), policy, estimationCache);
     return {
-      history, length: history.length, mask, toolHistoryProjection: projected.projection, messages, requestContext,
+      history, length: history.length, mask, toolHistoryProjection: projected.projection, messages,
       snapshot: {
         messageTokens,
         staticTokens: prepared.attemptStaticTokens,
@@ -228,26 +224,19 @@ export function createActiveRequestContext(input: {
     removedTokens += before.snapshot.messageTokens - cached.snapshot.messageTokens;
   }
 
-  function select(surface: Surface, attempt: ServingAttempt, context: string | undefined, newCycle = false): void {
+  function select(surface: Surface, attempt: ServingAttempt, newCycle = false): void {
     if (newCycle) removedTokens = 0;
-    if (requestContext !== context) { requestContext = context; cached = undefined; }
     if (selected?.surface !== surface) {
       materialize(surface, attempt);
     } else prepare(attempt);
   }
 
-  function appendRequestContext(context: string): void {
-    requestContext = requestContext === undefined ? context : `${requestContext}\n\n${context}`;
-    cached = undefined;
-  }
-
   return {
     anchor,
-    appendRequestContext,
     prepare,
-    prepareCycle(surface: Surface, attempt: ServingAttempt, context: string | undefined): number {
+    prepareCycle(surface: Surface, attempt: ServingAttempt): number {
       if (restoration?.prepared) restoration = undefined;
-      select(surface, attempt, context, true);
+      select(surface, attempt, true);
       advance();
       return anchor.estimate();
     },
@@ -258,8 +247,7 @@ export function createActiveRequestContext(input: {
       return rebuild(active().mask, prepared);
     },
     beforeCompaction: () => anchor.estimate() + removedTokens,
-    prefixTokens: () => (selected?.prepared.attemptStaticTokens ?? 0)
-      + (requestContext === undefined ? 0 : estimateConversationTokens([{ kind: "user", content: requestContext }], policy, estimationCache)),
+    prefixTokens: () => selected?.prepared.attemptStaticTokens ?? 0,
     tokenPolicy: (): TokenCountingPolicy => policy,
   };
 }

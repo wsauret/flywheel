@@ -51,7 +51,7 @@ export function dumpFailedChatGptRequest(projectRoot: string | undefined, status
 }
 
 const diagnosticKeys = new Set([
-  "model", "input", "instructions", "tools", "tool_choice", "parallel_tool_calls",
+  "model", "input", "tools", "tool_choice", "parallel_tool_calls",
   "temperature", "reasoning", "service_tier", "text", "include", "prompt_cache_key",
   "store", "stream", "previous_response_id", "type", "role", "content", "id",
   "status", "name", "arguments", "call_id", "output", "format", "effort",

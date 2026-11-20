@@ -395,7 +395,6 @@ describe("model interaction profile provider boundary", () => {
       providerOptions: undefined,
       requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 1,
       estimatedContextTokens: 1,

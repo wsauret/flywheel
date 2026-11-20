@@ -70,6 +70,18 @@ describe("ConversationTree.appendMessage", () => {
     expect((await tree.buildContext()).messages.slice(-2)).toEqual([{ kind: "user", content: reminder, origin: "system", framing: "claude" }, { kind: "user", content: ENGINE_INSTRUCTIONS, origin: "system", framing: "agent-host" }]);
   });
 
+  it("keeps the turn-context label, and reads an unlabeled system entry of an earlier build unchanged", async () => {
+    const tree = await openTree();
+    await tree.appendMessage({ kind: "user", content: "start", origin: "human" });
+    // The shape that builds before 2026-11-20 wrote for every system-origin entry: no framing.
+    await tree.appendMessage({ kind: "user", content: "Earlier guidance.", origin: "system" });
+    await tree.appendMessage({ kind: "user", content: "Turn guidance.", origin: "system", framing: "turn-context" });
+    expect((await tree.buildContext()).messages.slice(-2)).toEqual([
+      { kind: "user", content: "Earlier guidance.", origin: "system" },
+      { kind: "user", content: "Turn guidance.", origin: "system", framing: "turn-context" },
+    ]);
+  });
+
   it("keeps the reminder label of an environment or date reminder, and gives it to one that a build before 2026-11-01 wrote without it", async () => {
     const tree = await openTree();
     const date = "<system-reminder>\nCurrent local date: 2026-10-30.\n</system-reminder>\n";
@@ -108,6 +120,7 @@ describe("ConversationTree.appendMessage", () => {
       timestamp: 1_787_206_337_949,
       stopReason: "tool_use",
       responseId: "resp_123",
+      reasoningEffort: "high",
     });
 
     const context = await tree.buildContext({ allowAssistantTail: true });
@@ -121,6 +134,7 @@ describe("ConversationTree.appendMessage", () => {
       timestamp: 1_787_206_337_949,
       stopReason: "tool_use",
       responseId: "resp_123",
+      reasoningEffort: "high",
     }]);
   });
 

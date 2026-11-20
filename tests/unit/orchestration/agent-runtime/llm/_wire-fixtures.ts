@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 interface WireFrame { [key: string]: unknown }
@@ -45,7 +45,7 @@ export async function chatCompletionsRequestBody(input: {
 }): Promise<WireFrame> {
   const bodies: WireFrame[] = [];
   const finish = { id: "chatcmpl_1", choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1 } };
-  const adapter = await createOpenAIChatCompletionsAdapter(wireClient([finish], (body) => { bodies.push(body); }), input.model, input.info, {
+  const adapter = await createChatCompletionsAdapter(wireClient([finish], (body) => { bodies.push(body); }), input.model, input.info, {
     accessProvider: input.accessProvider, ...(input.wireModelId === undefined ? {} : { wireModelId: input.wireModelId }),
   });
   for await (const _event of adapter.streamWithTools(input.options)) { /* drain */ }

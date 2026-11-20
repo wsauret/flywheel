@@ -16,11 +16,14 @@ describe("model interaction profile resolution", () => {
   test("selects one immutable file-edit contract from the canonical serving identity and family", () => {
     for (const model of ["gpt-5", "o3", "codex-mini", "chatgpt-4o"]) {
       expect(resolveModelInteractionProfile(model, "openai").fileEditContract).toBe("apply_patch")
+      // A model trained on the apply_patch grammar keeps it when a Chat Completions route serves it.
+      expect(resolveModelInteractionProfile(model, "chat-completions").fileEditContract).toBe("apply_patch")
       expect(resolveModelInteractionProfile(model, "anthropic").fileEditContract).toBe("edit")
       expect(resolveModelInteractionProfile(model, "google").fileEditContract).toBe("edit")
     }
     for (const model of ["claude-sonnet-4", "gemini-2.5-pro", "openai/gpt-5", "o3fake", "other-model"]) {
       expect(resolveModelInteractionProfile(model, "openai").fileEditContract).toBe("edit")
+      expect(resolveModelInteractionProfile(model, "chat-completions").fileEditContract).toBe("edit")
     }
     expect(resolveModelInteractionProfile("gpt-5", "openai")).toBe(resolveModelInteractionProfile("gpt-5", "openai"))
   })

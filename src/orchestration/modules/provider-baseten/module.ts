@@ -18,7 +18,7 @@ const definition = {
   id: "baseten",
   displayName: "Baseten API Key",
   shortName: "Baseten",
-  defaultChatTransport: "openai-completions",
+  defaultChatTransport: "chat-completions",
   apiHosts: ["inference.baseten.co"],
   configHints: ["flywheel auth login --baseten"],
   cli: { flag: "baseten", name: "Baseten" },
@@ -42,13 +42,13 @@ const definition = {
 
 const createClient: AccessProviderFactory = async (build) => {
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: definition.id, resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "chat-completions", providerHint: definition.id, resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No Baseten API key in the active auth profile. Run: flywheel auth login --baseten", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: BASE_URL, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
-      accessProvider: definition.id, providerHint: definition.id, candidate: build.candidate,
+    return createChatCompletionsAdapter(client, build.wireModelId, info, {
+      accessProvider: definition.id, candidate: build.candidate,
       extraHeaders: (options): RequestHeaders => options.providerSessionKey === undefined ? {} : { "x-session-affinity": options.providerSessionKey },
     });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));

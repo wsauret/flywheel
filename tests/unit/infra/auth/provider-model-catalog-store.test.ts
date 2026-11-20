@@ -176,7 +176,7 @@ describe("provider model catalog store", () => {
     await normalizeAuthProfile(access.authDirectory, classifySlot, installedCredentialProviderIds(), definitions);
     expect(readProviderModelCatalog(access, { account, lineage }, TEST_CATALOG_LIMITS)).toEqual([row]);
     expect(readProviderModelAudit(access, { account: auditAccount, lineage }, TEST_CATALOG_LIMITS)).toEqual(audit);
-    expect(JSON.parse(access.readFile("provider-model-catalogs.json", 4096)?.toString("utf8") ?? "{}")).toMatchObject({ version: 5 });
+    expect(JSON.parse(access.readFile("provider-model-catalogs.json", 4096)?.toString("utf8") ?? "{}")).toMatchObject({ version: 6 });
     expect(await adoptPreviousProviderModelCatalogs(access, TEST_CATALOG_LIMITS)).toBe(false);
     access.close();
   });
@@ -215,15 +215,37 @@ describe("provider model catalog store", () => {
   });
 
   // Remove with the version 4 conversion after 2027-04-08.
-  test("converts a v4 document to v5 and keeps its rows and audit evidence", async () => {
+  test("converts a v4 document to v6 and keeps its rows and audit evidence", async () => {
     const access = await profile();
     const superGrok = { kind: "subscription", providerId: "supergrok", instanceId: "primary" } as const;
     const audit = { candidateIds: ["done", "pending"], dueIds: ["pending"], outcomes: { done: "completed" }, generation: 7 } as const;
     access.writeFile("provider-model-catalogs.json", JSON.stringify({ version: 4, accounts: [{ account, lineage, rows: [row] }, { account: superGrok, lineage, rows: [], audit }] }));
     expect(await adoptPreviousProviderModelCatalogs(access, TEST_CATALOG_LIMITS)).toBe(true);
-    expect(JSON.parse(access.readFile("provider-model-catalogs.json", 4096)?.toString("utf8") ?? "{}")).toMatchObject({ version: 5 });
+    expect(JSON.parse(access.readFile("provider-model-catalogs.json", 4096)?.toString("utf8") ?? "{}")).toMatchObject({ version: 6 });
     expect(readSavedProviderModels(access, { account, lineage }, TEST_CATALOG_LIMITS)).toEqual({ rows: [row], audit: undefined, refusals: {} });
     expect(readProviderModelAudit(access, { account: superGrok, lineage }, TEST_CATALOG_LIMITS)).toEqual(audit);
+    expect(await adoptPreviousProviderModelCatalogs(access, TEST_CATALOG_LIMITS)).toBe(false);
+    access.close();
+  });
+
+  // Remove with the version 5 conversion after 2027-05-20.
+  test("converts a v5 document to v6, names its Chat Completions offerings chat-completions and its xAI offerings openai-responses, and keeps its audit and refusals", async () => {
+    const access = await profile();
+    const openRouter = { kind: "singleton", providerId: "openrouter" } as const;
+    const superGrok = { kind: "subscription", providerId: "supergrok", instanceId: "primary" } as const;
+    const audit = { candidateIds: ["deepseek-v4"], dueIds: [], outcomes: { "deepseek-v4": "completed" }, generation: 3 } as const;
+    const refusals = { "deepseek/deepseek-v4-pro": { kind: "model", at: 1_700_000_000_000 } } as const;
+    const chatRow: CatalogCanonicalRow = { modelId: "deepseek-v4", offerings: [{ wireModelId: "deepseek/deepseek-v4", metadata: null, dataUse: "standard", transport: "chat-completions" }] };
+    const savedChatRow = { ...chatRow, offerings: chatRow.offerings.map((offering) => ({ ...offering, transport: "openai-completions" })) };
+    // Earlier builds named the models.dev xAI rows, which the subscription serves over the Responses API, as Chat Completions rows.
+    const xaiRow: CatalogCanonicalRow = { modelId: "grok-ok", offerings: [{ wireModelId: "grok-ok", metadata: { transport: { npm: "@ai-sdk/xai" } }, dataUse: "standard", transport: "openai-responses" }] };
+    const savedXaiRow = { ...xaiRow, offerings: xaiRow.offerings.map((offering) => ({ ...offering, transport: "openai-completions" })) };
+    access.writeFile("provider-model-catalogs.json", JSON.stringify({ version: 5, accounts: [{ account, lineage, rows: [row] }, { account: openRouter, lineage, rows: [savedChatRow], audit, refusals }, { account: superGrok, lineage, rows: [savedXaiRow] }] }));
+    expect(await adoptPreviousProviderModelCatalogs(access, TEST_CATALOG_LIMITS)).toBe(true);
+    expect(JSON.parse(access.readFile("provider-model-catalogs.json", 8192)?.toString("utf8") ?? "{}")).toMatchObject({ version: 6 });
+    expect(readSavedProviderModels(access, { account: openRouter, lineage }, TEST_CATALOG_LIMITS)).toEqual({ rows: [chatRow], audit, refusals });
+    expect(readSavedProviderModels(access, { account: superGrok, lineage }, TEST_CATALOG_LIMITS)?.rows).toEqual([xaiRow]);
+    expect(readProviderModelCatalog(access, { account, lineage }, TEST_CATALOG_LIMITS)).toEqual([row]);
     expect(await adoptPreviousProviderModelCatalogs(access, TEST_CATALOG_LIMITS)).toBe(false);
     access.close();
   });

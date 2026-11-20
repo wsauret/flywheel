@@ -11,7 +11,7 @@ export type PapercutDrain =
   | { readonly kind: "no-live"; readonly message: string }
   | { readonly kind: "over-capacity"; readonly message: string }
 
-/** Reads a captured complete project backlog and builds one request-only survey. It never truncates records.
+/** Reads a captured complete project backlog and builds one survey, which the drain's turn records as hidden turn context. It never truncates records.
  *  `agentCheck` answers for the chat that reads the survey, which is offered delegation only when it can delegate
  *  (ARCH-CONTEXT-033); an empty backlog never asks it. */
 export async function buildPapercutDrain(reader: AsyncEventReadSurface, sessionId: string, agentCheck: () => Promise<CapabilityCheck>): Promise<PapercutDrain> {

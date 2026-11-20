@@ -66,7 +66,6 @@ export interface ProviderRequestAuditWriter {
     staleMasking: PromptStaleMasking | undefined;
     toolHistoryProjection?: PromptToolHistoryProjection;
     historyLowering?: PromptHistoryLowering;
-    requestContext: string | undefined;
     /** The durable conversation-tree leaf that `messages` were assembled from (`captureTreeLeaf`). Absent for a
      *  conversation that has no durable tree. */
     treeLeafEntryId?: string | null;
@@ -167,7 +166,6 @@ export function createProviderRequestAuditWriter(
       ...(input.staleMasking ? { staleMasking: input.staleMasking } : {}),
       ...(input.toolHistoryProjection ? { toolHistoryProjection: input.toolHistoryProjection } : {}),
       ...(input.historyLowering ? { historyLowering: input.historyLowering } : {}),
-      ...(input.requestContext ? { requestContext: input.requestContext } : {}),
       ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
       ...(deps.parentToolUseId ? { parentToolUseId: deps.parentToolUseId } : {}),
     }, dedup);

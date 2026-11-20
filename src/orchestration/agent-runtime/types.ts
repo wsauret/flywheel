@@ -266,7 +266,8 @@ export interface RoleHold {
 
 interface AgentBaseOptions {
   model?: string;
-  /** Model context for the current logical turn. Sent to providers but never appended to conversation history. */
+  /** Model context for the current logical turn. The turn's first request records it once in the conversation
+   *  history, as a system-origin entry, and a reset records it again (ARCH-CONTEXT-042). */
   requestContext?: string;
   /** Fixed effort for a call without live roles, or an accessor for a fixed
    *  runner whose effort is resolved at each request boundary. */

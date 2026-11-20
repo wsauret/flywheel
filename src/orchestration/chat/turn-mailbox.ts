@@ -129,7 +129,7 @@ export class ChatTurnMailbox implements InputSource, HumanInputQueue {
     }));
   }
 
-  /** Atomically pairs the durable invocation boundary with private request-only context. */
+  /** Atomically pairs the durable invocation boundary with the hidden turn context that its first request records. */
   enqueueRequestWithContext(input: ChatInputLike, text: string): void {
     this.enqueue(requestContextInput(input, text));
   }

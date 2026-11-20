@@ -27,7 +27,7 @@ const definition = {
   shortName: "Copilot",
   billingUrl: "https://github.com/settings/billing",
  
-  defaultChatTransport: "openai-completions",
+  defaultChatTransport: "chat-completions",
   configHints: ["flywheel auth login --copilot"],
   cli: { flag: "copilot", name: "GitHub Copilot" },
   billing: "subscription",
@@ -64,13 +64,13 @@ const createClient: AccessProviderFactory = async (build) => {
   const capturedEndpoint = build.attribution.transport;
   if (capturedEndpoint === undefined) throw new ApiError({ message: `Copilot did not advertise a supported endpoint for "${model}".`, recovery: { kind: "none" } });
   const endpoint = capturedEndpoint;
-  const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-completions" ? "openai-completions" : "openai-responses";
+  const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "chat-completions" ? "chat-completions" : "openai-responses";
   const info = requireModelMetadata(model, build.attribution.resolvedModelMetadata);
   return providerAdapter(build, (attribution) => describeProvider(model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: requireModelMetadata(model, attribution.resolvedModelMetadata) }), async () => {
     const cred = credentialForCandidate(connection, build.candidate);
     if (cred?.type !== "oauth") throw new ApiError({ message: "No GitHub Copilot tokens found. Run: flywheel auth login --copilot", recovery: { kind: "none" } });
-    const [{ buildCopilotClients }, { createAnthropicAdapter, operationsFromAnthropicClient }, { createOpenAIAdapter }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([
-      import("./clients.js"), import("../../agent-runtime/llm/anthropic.js"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/openai-completions.js"),
+    const [{ buildCopilotClients }, { createAnthropicAdapter, operationsFromAnthropicClient }, { createOpenAIAdapter }, { createChatCompletionsAdapter }] = await Promise.all([
+      import("./clients.js"), import("../../agent-runtime/llm/anthropic.js"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/chat-completions.js"),
     ]);
     const { anthropic, openai } = buildCopilotClients(
       cred, connection, candidate,
@@ -87,8 +87,8 @@ const createClient: AccessProviderFactory = async (build) => {
       operations: operationsFromAnthropicClient(anthropic), accessProvider: definition.id, catalogId: definition.catalogId, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       availability, candidate,
     });
-    if (endpoint === "openai-completions") return createOpenAIChatCompletionsAdapter(openai, wireModelId, info, {
-      accessProvider: definition.id, providerHint: "github-copilot", extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
+    if (endpoint === "chat-completions") return createChatCompletionsAdapter(openai, wireModelId, info, {
+      accessProvider: definition.id, extraHeaders: (options) => buildCopilotDynamicHeaders(options.messages),
       availability, candidate,
     });
     return createOpenAIAdapter({ kind: "apiKey", apiKey: Redacted.make("copilot") }, wireModelId, info, {

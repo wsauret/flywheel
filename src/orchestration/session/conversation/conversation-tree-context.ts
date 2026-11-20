@@ -51,6 +51,7 @@ export function persistedToConversationMessage(message: PersistedMessage): Conve
         ...(message.timestamp !== undefined ? { timestamp: message.timestamp } : {}),
         ...(message.stopReason ? { stopReason: message.stopReason } : {}),
         ...(message.responseId ? { responseId: message.responseId } : {}),
+        ...(message.reasoningEffort ? { reasoningEffort: message.reasoningEffort } : {}),
         ...(message.reasoningTokens !== undefined ? { reasoningTokens: message.reasoningTokens } : {}),
       };
     case "toolResult":

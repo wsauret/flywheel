@@ -103,18 +103,29 @@ function readsFraming(message: Extract<ConversationMessage, { kind: "user" }>, t
     case "model": return namesTargetModel();
     case "agent-host": return target.sharedHost;
     case "tool-notice":
-    case "reminder": return true;
+    case "reminder":
+    case "turn-context": return true;
   }
 }
 
 /** Which native deliberation of `message` the target replays: all of it when the exact access provider, API, and
- *  model produced it, none otherwise. Builds before 2026-10-27 stamped a chat-completions turn with no access provider
- *  (`openai-completions.ts`), so such a turn whose API, provider, and model match keeps the reasoning text and tool-call
- *  reasoning that the chat conversion replays, as those builds replayed it. Remove that conversion after 2027-04-27. */
+ *  model produced it, none otherwise. Builds before 2026-10-27 stamped a chat-completions turn with no access provider,
+ *  so such a turn whose API, provider, and model match keeps the reasoning text and tool-call reasoning that the chat
+ *  conversion replays, as those builds replayed it. Remove that conversion after 2027-04-27. */
 function replayOf(message: AssistantMessage, target: ReplayIdentity): DeliberationReplay {
   if (isSameProviderReplay(message, target)) return "all";
   if (message.accessProvider === undefined && message.api === "openai-responses" && isSameProviderReplay({ ...message, accessProvider: target.accessProvider }, target)) return "chat-completions";
+  if (isLegacyChatCompletionsTurn(message, target)) return message.accessProvider === undefined ? "chat-completions" : "all";
   return "none";
+}
+
+/** Builds before 2026-11-20 stamped a Chat Completions turn with the OpenAI Responses family and API, so a request to
+ *  the same model on Chat Completions reads such a turn from its own access provider, or from none, as its own: it
+ *  replays all of a turn that names its access provider, as those builds did, and of an unattributed turn what they
+ *  replayed of one. Remove this conversion after 2027-05-20. */
+function isLegacyChatCompletionsTurn(message: AssistantMessage, target: ReplayIdentity): boolean {
+  return target.api === "chat-completions" && message.api === "openai-responses" && message.provider === "openai"
+    && message.model === target.model && (message.accessProvider === undefined || message.accessProvider === target.accessProvider);
 }
 
 /** Which native deliberation a request replays of one assistant turn: all of it, the reasoning text and tool-call
@@ -253,10 +264,14 @@ export function lowerProviderHistory(history: readonly ConversationMessage[], ta
 
     const previous = lowered.at(-1);
     if (message.kind === "assistant" && previous?.kind === "assistant" && previous.incomplete) {
+      // The joined turn keeps the effort of its first fragment, whose request placed any change of effort before it
+      // (ARCH-CONTEXT-041).
+      const reasoningEffort = previous.reasoningEffort ?? message.reasoningEffort;
       lowered[lowered.length - 1] = {
         kind: "assistant",
         content: [...contentBlocks(previous.content), ...contentBlocks(message.content)],
         ...(message.incomplete ? { incomplete: true } : {}),
+        ...(reasoningEffort ? { reasoningEffort } : {}),
       };
       continue;
     }

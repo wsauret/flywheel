@@ -7,7 +7,7 @@ import { createAnthropicAdapter, operationsFromAnthropicClient, type AnthropicOp
 import { engineBlockLocation } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine-additions.js";
 import { createGoogleAdapter } from "../../../../../src/orchestration/agent-runtime/llm/google.js";
 import { createOpenAIAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import { ContentFilteredError, ContentRefusedError, LlmStreamError, OutputLengthExceededError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
@@ -70,7 +70,7 @@ describe("adapter provider boundaries", () => {
         ? new Response(`data: ${JSON.stringify({ error: payload })}\n\n`, { headers: { "content-type": "text/event-stream" } })
         : Response.json({ error: payload }, { status }),
     });
-    const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", GPT_4O);
+    const client = await createChatCompletionsAdapter(sdk, "gpt-4o", GPT_4O);
     const failure = await failureOf(client);
     expect(failure).toBeInstanceOf(ProviderAttemptFailure);
     if (!(failure instanceof ProviderAttemptFailure)) throw new Error("Missing provider outcome");

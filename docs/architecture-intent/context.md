@@ -184,3 +184,18 @@ Not: A client that computes the trigger from the configured count.
 Flywheel meets each design goal with the fewest tools and the least prompting that achieve it. A new behavior first reuses an existing tool, and a tool's contract can differ by the kind of agent that calls it. A new tool or prompt rule exists only for a goal that no existing one can meet.
 Because: each added tool or rule competes for the model's attention, and agents confuse tools whose uses overlap.
 Not: a new single-purpose tool for each new behavior.
+
+## ARCH-CONTEXT-041: An effort change inside a conversation is appended
+
+On a model whose route accepts an appended configuration update, a change of reasoning effort inside a conversation is sent as that update after the history. The request-level effort stays the one that opened the conversation, until compaction or a model switch opens a new baseline.
+Because: Changing the request-level effort rewrites the cached prefix and drops earlier reasoning.
+
+## ARCH-CONTEXT-042: Turn context is recorded once where it first applies
+
+Context that the runtime adds for a turn is recorded once, as a system-origin entry where it first applies. No request adds context at the tail and removes it again.
+Because: Context that moves on each request leaves no cached prefix to reuse and edits the history that follows it.
+
+## ARCH-CONTEXT-043: Context that a provider discards is recorded
+
+When a provider reports that it discarded part of a request's context, such as replayed reasoning, the runtime records the kind, the reason, and the count, without content.
+Because: A discarded prefix costs cache and reasoning silently, and only the provider's report shows it.

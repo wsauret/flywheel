@@ -68,7 +68,10 @@ interface FamilyTierCatalog {
 }
 
 const MODEL_TIER_ORDER: readonly RankedModelTier[] = ["powerful", "mid", "cheap"];
-const MODEL_FAMILY_ORDER: readonly ModelFamily[] = ["anthropic", "openai", "google"];
+// Chat Completions ranks with OpenAI: it was part of the openai family until 2026-11-20, so a tie between the two
+// falls through to price and name, as it did then, and a saved selection resolves to the same model.
+const MODEL_FAMILY_RANK = { anthropic: 0, openai: 1, "chat-completions": 1, google: 2 } as const satisfies { readonly [family in ModelFamily]: number };
+const MODEL_FAMILY_ORDER: readonly ModelFamily[] = ["anthropic", "openai", "chat-completions", "google"];
 const CHEAP_INPUT_COST_THRESHOLD = 1;
 const POWERFUL_INPUT_COST_THRESHOLD = 4;
 
@@ -296,7 +299,7 @@ function compareTierCandidates(
 ): number {
   return (
     b.rank.releaseMs - a.rank.releaseMs ||
-    MODEL_FAMILY_ORDER.indexOf(a.family) - MODEL_FAMILY_ORDER.indexOf(b.family) ||
+    MODEL_FAMILY_RANK[a.family] - MODEL_FAMILY_RANK[b.family] ||
     (a.rank.cost?.input ?? Number.POSITIVE_INFINITY) - (b.rank.cost?.input ?? Number.POSITIVE_INFINITY) ||
     a.model.localeCompare(b.model)
   );

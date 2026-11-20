@@ -22,7 +22,7 @@ import { canonicalModelId } from "../../../infra/llm/model-id.js";
 
 const FIRST_ADAPTIVE_ANTHROPIC_RELEASE_DATE = "2026-02-01";
 
-/** `thinkingOff` and `perTurnEffort` resolve by model family (`familySettings`): a version without its own entry
+/** `thinkingOff`, `perTurnEffort`, and `reasoningEffortUpdates` resolve by model family (`familySettings`): a version without its own entry
  *  takes the entry of the newest earlier version of its family. Every other field applies to its exact model only. */
 interface ModelCompat {
   /** Adaptive-thinking wire shape. Explicit false entries preserve legacy
@@ -46,6 +46,10 @@ interface ModelCompat {
   /** Whether the Claude engine sends the model's effort inside the conversation too: the `per_turn_effort` capability of
    *  its model catalog (CLI 2.1.296). */
   perTurnEffort?: boolean;
+  /** Whether an OpenAI Responses request may change the model's effort inside a conversation with an appended
+   *  `configuration_update` input item, so that the request-level effort and the cached prefix stay unchanged
+   *  (ARCH-CONTEXT-041). */
+  reasoningEffortUpdates?: boolean;
   /** The most images one provider request may carry, counted over all
    *  messages, tool results included. Absent means no limit. */
   maxImagesPerRequest?: number;
@@ -82,6 +86,14 @@ const MODEL_COMPAT: ModelCompatById = {
   "qwen3.7-plus": { adaptiveThinking: true },
   "qwen3.7-max": { adaptiveThinking: true },
   "qwen3.8-max": { adaptiveThinking: true },
+
+  // OpenAI: the models whose Responses requests take an appended effort update. The ChatGPT backend accepted one on
+  // gpt-6.2-sol on 2026-11-20 and kept the cached prefix that a change of `reasoning.effort` discarded.
+  "gpt-6-astra": { reasoningEffortUpdates: true },
+  "gpt-6.1-sol": { reasoningEffortUpdates: true },
+  "gpt-6.1-terra": { reasoningEffortUpdates: true },
+  "gpt-6.2-sol": { reasoningEffortUpdates: true },
+  "gpt-6.2-astra": { reasoningEffortUpdates: true },
 
   // OpenAI: o-series reject parallel_tool_calls
   "o1": { parallelToolCalls: false },
@@ -193,6 +205,7 @@ function compatSetting<K extends keyof ModelCompat>(field: K): (model: string) =
 
 const perTurnEffort = compatSetting("perTurnEffort");
 const thinkingOff = compatSetting("thinkingOff");
+const reasoningEffortUpdates = compatSetting("reasoningEffortUpdates");
 
 /** Anthropic models that take the `{type: "adaptive"}` thinking shape. */
 export function supportsAdaptiveThinking(model: string, info: ModelInfo): boolean {
@@ -229,6 +242,11 @@ export function keepsEarlierTurnReasoning(model: string): boolean {
 /** Anthropic models whose effort the Claude engine also sends inside the conversation (`withPerTurnEffort`). */
 export function supportsPerTurnEffort(model: string): boolean {
   return perTurnEffort(model)?.value === true;
+}
+
+/** OpenAI models that take a change of effort as an appended `configuration_update` input item. */
+export function supportsReasoningEffortUpdates(model: string): boolean {
+  return reasoningEffortUpdates(model)?.value === true;
 }
 
 /** Whether `model` has per-turn effort only through an earlier version of its family. Flywheel then has no entry of

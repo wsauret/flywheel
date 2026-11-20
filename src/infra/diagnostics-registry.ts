@@ -55,6 +55,11 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // reasoning repeated itself: the model, the provider, the attempt, the
   // compression ratio, and the char counts. No content.
   ["model.reasoning.repetition_detected", { tier: "info" }],
+  // One record per Responses response: what the service states that it
+  // changed in the request's input, such as removed reasoning counted by
+  // reason, or that the response states nothing. It reaches the default level
+  // only when the service changed something. No content.
+  ["model.input_transformations.reported", { tier: "notable" }],
   ["model.catalog.canonical_collision", { tier: "debug" }],
   ["model.catalog.relationship_unresolved", { tier: "info" }],
   // One record per published definition revision of a project: its number,

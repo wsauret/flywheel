@@ -228,7 +228,7 @@ export interface RuntimeSupervisor {
   compactChat(sessionId: string): Promise<boolean>
   /** Runs the durable-learning review of the session's conversation now; false when current policy refuses it. */
   reviewChat(sessionId: string): Promise<boolean>
-  /** Delivers `input` as the session's next turn with request-only `context` the model reads once. */
+  /** Delivers `input` as the session's next turn with `context`, which the turn records once as hidden turn context (ARCH-CONTEXT-042). */
   requestChatContext(sessionId: string, input: ChatInputLike, context: string): Promise<boolean>
   recallQueuedMessage(sessionId: string): Promise<ChatInputLike | null>
   /** Fire the chat runner's cold-start warm-up. Reached through the app

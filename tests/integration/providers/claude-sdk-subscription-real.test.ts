@@ -96,7 +96,7 @@ async function onLiveRoute(label: string, use: (open: () => Promise<Conversation
             interactionProfile: resolveModelInteractionProfile(client.model, client.modelFamily),
             messages, tools: extra.tools ?? [READ_TOOL], systemPrompt: extra.systemPrompt ?? SYSTEM, reasoningEffort: extra.reasoningEffort,
             signal: undefined, cacheRetention: undefined, providerSessionKey, promptCacheKey: providerSessionKey, providerOptions: undefined,
-            staleMasking: undefined, requestContext: undefined, requestAudit: undefined,
+            staleMasking: undefined, requestAudit: undefined,
             turn: 0, messageCount: messages.length,
             estimatedContextTokens: messages.reduce((total, message) => total + estimateMessageTokens(message, 0), 0),
             onEvent: () => {},

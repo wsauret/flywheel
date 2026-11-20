@@ -22,7 +22,7 @@ const definition = {
   displayName: "OpenRouter API Key",
   shortName: "OpenRouter",
  
-  defaultChatTransport: "openai-completions",
+  defaultChatTransport: "chat-completions",
   configHints: ["flywheel auth login --openrouter"],
   cli: { flag: "openrouter", name: "OpenRouter" },
   billing: "metered",
@@ -57,15 +57,15 @@ const createClient: AccessProviderFactory = async (build) => {
   return providerAdapter(build, async (attribution) => {
     const requested = requireModelMetadata(build.model, attribution.resolvedModelMetadata);
     const requestedCap = outputCapOf(attribution);
-    const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "openrouter", resolvedModelMetadata: requested, ...(requestedCap === undefined ? {} : { providerOutputCap: requestedCap }) });
+    const described = await describeProvider(build.model, { accessProvider: definition.id, protocol: "chat-completions", providerHint: "openrouter", resolvedModelMetadata: requested, ...(requestedCap === undefined ? {} : { providerOutputCap: requestedCap }) });
     return { ...described, messagesToAppend: createModelReminders(build.model, described.totalContextLimit ?? described.contextLimit, requested) };
   }, async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENROUTER_API_BASE, defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
-    return createOpenAIChatCompletionsAdapter(client, build.model, info, {
-      accessProvider: definition.id, providerHint: "openrouter", candidate: build.candidate, wireModelId: build.wireModelId,
+    return createChatCompletionsAdapter(client, build.model, info, {
+      accessProvider: definition.id, candidate: build.candidate, wireModelId: build.wireModelId,
       reportedChargeUsd: openRouterReportedChargeUsd,
       ...(outputCap === undefined ? {} : { providerOutputCap: outputCap }),
     });

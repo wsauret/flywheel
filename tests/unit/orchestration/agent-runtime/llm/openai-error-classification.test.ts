@@ -4,7 +4,7 @@ import { ChatGptAdapterApiError, mapChatGptAdapterEvents } from "../../../../../
 import { parseChatGptAdapterErrorResponse } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter-error.js";
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ApiError, fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
@@ -325,7 +325,7 @@ async function chatCompletionsFailure(status: number | undefined, error: Unknown
       ? new Response(`data: ${JSON.stringify({ error })}\n\n`, { headers: { "content-type": "text/event-stream" } })
       : Response.json({ error }, { status }),
   });
-  const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", request.info);
+  const client = await createChatCompletionsAdapter(sdk, "gpt-4o", request.info);
   try {
     for await (const _event of client.streamWithTools({ messages: request.messages, tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort: "off" })) {
       // exhaust

@@ -6,6 +6,7 @@ import { AccessProviderIdSchema } from "../../../infra/llm/access-provider.js";
 import { ContentRepairSchema } from "../../../infra/llm/content-repair.js";
 import { SessionRelationSchema } from "../../../infra/chat-input-schema.js";
 import { LLM_APIS, LLM_STOP_REASONS, MODEL_FAMILIES } from "../../agent-runtime/llm/messages.js";
+import { REASONING_EFFORTS } from "../../../infra/llm/models.js";
 
 const DateTimeStringSchema = Schema.String.check(
   Schema.makeFilter((value) => !Number.isNaN(Date.parse(value)) || "Expected ISO datetime string"),
@@ -108,17 +109,20 @@ const assistantAgentMessageFields = {
 };
 
 /** The assistant message that `chat.entries.appended` stores. It never holds
- *  the reported reasoning count: a `chat.reasoning.reported` fact beside it
- *  holds that count, so every build reads every entries fact in full. */
+ *  the reported reasoning count or the request's reasoning effort: a
+ *  `chat.reasoning.reported` and a `chat.reasoning_effort.recorded` fact
+ *  beside it hold them, so every build reads every entries fact in full. */
 const StoredAssistantAgentMessageSchema = Schema.Struct(assistantAgentMessageFields);
 
 /** The assistant message as the fold hands it on. It also holds the
  *  reasoning tokens the provider reported for the response, folded in from
  *  `chat.reasoning.reported`, so a rebuilt context counts the thinking that
- *  the same model re-sends (see `estimateConversationTokens`). */
+ *  the same model re-sends (see `estimateConversationTokens`), and the effort
+ *  that its request asked for, folded in from `chat.reasoning_effort.recorded`. */
 const AssistantAgentMessageSchema = Schema.Struct({
   ...assistantAgentMessageFields,
   reasoningTokens: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))),
+  reasoningEffort: Schema.optionalKey(Schema.Literals(REASONING_EFFORTS)),
 });
 
 const HumanProducerSchema = Schema.Struct({ kind: Schema.Literal("human") });
@@ -290,7 +294,7 @@ function entrySchemas<P extends Schema.Codec<typeof CurrentProducerSchema.Type, 
     runtimeNotice: Schema.optionalKey(Schema.Literal(true)),
     // `conversation-tier` is the label that builds before 2026-10-27 wrote on a hosted agent's tier entries and tool
     // notice. The reader converts it (`persistedToConversationMessage`); remove it after 2027-04-27.
-    framing: Schema.optionalKey(Schema.Literals(["claude", "model", "agent-host", "tool-notice", "reminder", "conversation-tier"])),
+    framing: Schema.optionalKey(Schema.Literals(["claude", "model", "agent-host", "tool-notice", "reminder", "turn-context", "conversation-tier"])),
   });
 
   const PersistedAgentMessageSchema = Schema.Union([

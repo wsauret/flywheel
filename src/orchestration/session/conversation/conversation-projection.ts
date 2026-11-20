@@ -145,7 +145,7 @@ export function* branchVisibleTranscriptWork(
 // the whole compatibility story: the fold selects by type, so an unlisted type
 // is never read and an old conversation opens as the committed turns it
 // always was.
-export const CHAT_TREE_FACT_TYPES = ["chat.tree.created", "chat.entries.appended", "chat.reasoning.reported"] as const
+export const CHAT_TREE_FACT_TYPES = ["chat.tree.created", "chat.entries.appended", "chat.reasoning.reported", "chat.reasoning_effort.recorded"] as const
 
 function conversationTreeKey(conversationId: string): string {
   return `conversation-tree:${conversationId}`
@@ -289,6 +289,17 @@ function reduceConversationTreeEvent(
       }
       // In place, as `appendEntries` commits: the fold owns this index.
       Object.assign(state.entriesById, counted)
+      return { ...state }
+    }
+    case "chat.reasoning_effort.recorded": {
+      const recorded: StringMap<ConversationEntry> = {}
+      for (const { entryId, reasoningEffort } of fact.payload.efforts) {
+        const entry = state.entriesById[entryId]
+        // As for a reasoning count: a message that did not decode has nothing to annotate.
+        if (entry?.kind !== "message" || entry.message.kind !== "assistant") continue
+        recorded[entryId] = { ...entry, message: { ...entry.message, reasoningEffort } }
+      }
+      Object.assign(state.entriesById, recorded)
       return { ...state }
     }
   }

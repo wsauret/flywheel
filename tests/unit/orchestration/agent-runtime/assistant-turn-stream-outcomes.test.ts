@@ -20,11 +20,10 @@ import { ownHistoryTarget } from "./_model-client.js";
 type TurnInput = Parameters<typeof createAssistantAttempt>[1];
 type TurnResult = AssistantTurnResult;
 
-async function runTurn(client: LLMClient, input: Omit<TurnInput, "interactionProfile" | "staleMasking" | "requestContext"> & Partial<Pick<TurnInput, "interactionProfile" | "staleMasking" | "requestContext">>): Promise<TurnResult> {
+async function runTurn(client: LLMClient, input: Omit<TurnInput, "interactionProfile" | "staleMasking"> & Partial<Pick<TurnInput, "interactionProfile" | "staleMasking">>): Promise<TurnResult> {
   const actual = {
     interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
     staleMasking: undefined,
-    requestContext: undefined,
     ...input,
   };
   const attempt = createAssistantAttempt({
@@ -155,6 +154,22 @@ describe("streamAssistantTurn outcome tagging", () => {
       { kind: "assistant", content: result.assistantContent, incomplete: true, ...result.assistantMetadata },
     ];
     expect(planHistoryLowering(history, { ...served, accessProvider: "custom-b" })).toEqual([{ at: 1, block: 0, reason: "foreign-deliberation" }]);
+  });
+
+  // ARCH-CONTEXT-041: a later Responses request places a change of effort where the request of each turn placed it,
+  // so the turn records its request's effort also when the response did not complete.
+  test("a completed and a failed turn both record the effort that their request asked for", async () => {
+    const completed = await runTurn(fakeClient(async function* (): AsyncGenerator<ProviderStreamEvent> {
+      yield { kind: "text_delta", text: "hi", blockKey: "text" };
+      yield { kind: "done", stopReason: "end_turn", metadata: { api: "openai-responses", provider: "openai", model: "test-model", timestamp: 1 } };
+    }), { ...baseInput(), reasoningEffort: "high" });
+    const failed = await runTurn(fakeClient(async function* (): AsyncGenerator<ProviderStreamEvent> {
+      yield { kind: "text_delta", text: "partial", blockKey: "text" };
+      throw normalizeProviderAttemptFailure(fromStreamError(new LlmStreamError("drop", "transient")));
+    }), { ...baseInput(), reasoningEffort: "low" });
+
+    expect(completed.assistantMetadata).toMatchObject({ model: "test-model", reasoningEffort: "high" });
+    expect(failed.assistantMetadata).toMatchObject({ model: "test-model", stopReason: "error", reasoningEffort: "low" });
   });
 
   test("OutputOverflow returns output_overflow outcome", async () => {

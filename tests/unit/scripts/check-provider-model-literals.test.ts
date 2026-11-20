@@ -46,7 +46,7 @@ describe("provider model literal policy", () => {
     expect(await check({
       "src/orchestration/modules/provider-example/module.ts": [
         "const modelsDevCatalogIds = ['example']",
-        "const endpoint = metadata.supportedEndpoints.includes('/responses') ? 'openai-responses' : 'openai-completions'",
+        "const endpoint = metadata.supportedEndpoints.includes('/responses') ? 'openai-responses' : 'chat-completions'",
         "const payload = modelId === 'o3' ? { reasoning_effort: 'high' } : {} // provider-model-literal-allow: payload -- provider payload compatibility",
         "const identity = wireModelId.endsWith(':free') ? 'free' : 'default' // provider-model-literal-allow: identity -- provider catalog grammar",
       ].join("\n"),

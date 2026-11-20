@@ -121,6 +121,21 @@ describe("dynamic tier catalog", () => {
       .toEqual({ family: "anthropic", model: "paid-newest-cheap" });
   });
 
+  test("picks the same model after Chat Completions models left the openai family", async () => {
+    const client = makeModelsClient({
+      "responses-mid": modelInfo("openai", "responses-mid", "fixture", 2, 8, "2026-09-01"),
+      "vendor-mid": modelInfo("chat-completions", "vendor-mid", "fixture", 1.5, 6, "2026-09-01"),
+    });
+    const options = { ...tierOptions, modelInfos: client.modelInfos };
+    const before = new Map([["openai", new Set(["responses-mid", "vendor-mid"])]] as const);
+    const after = new Map([["openai", new Set(["responses-mid"])], ["chat-completions", new Set(["vendor-mid"])]] as const);
+    for (const includedModels of [new Set<string>(), new Set(["responses-mid"])]) {
+      const expected = (await resolveModelForTierAcrossFamilies("mid", before, { ...options, includedModels })).model;
+      expect((await resolveModelForTierAcrossFamilies("mid", after, { ...options, includedModels })).model).toBe(expected);
+    }
+    expect((await resolveModelForTierAcrossFamilies("mid", after, options)).model).toBe("vendor-mid");
+  });
+
   test("uses cheap before powerful only when mid is empty, even across families", async () => {
     const client = makeModelsClient({
       "cheap": modelInfo("openai", "cheap", "fixture", 1, 5, "2026-05-01"),

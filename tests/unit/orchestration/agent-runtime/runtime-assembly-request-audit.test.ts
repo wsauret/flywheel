@@ -100,7 +100,6 @@ async function recordedFacts(extraOptions: AgentOptionsOverride): Promise<Provid
     cacheKey: undefined,
     providerOptions: undefined,
     staleMasking: undefined,
-    requestContext: undefined,
     treeLeafEntryId: await assembled.requestAudit?.captureTreeLeaf?.(),
   })
   return facts
@@ -267,7 +266,7 @@ describe("runtime request audit context application", () => {
       messages: [{ kind: "user", content: "hello" }],
       tools: [], omittedTools: [], messageCount: 1, estimatedContextTokens: 1, attemptStaticTokens: 1,
       interactionProfileId: "default", reasoningEffort: undefined, cacheRetention: undefined, cacheKey: undefined,
-      providerOptions: undefined, staleMasking: undefined, requestContext: undefined,
+      providerOptions: undefined, staleMasking: undefined,
     })
     expect(handle).toBeDefined()
     expect(registrations).toEqual([expect.objectContaining({ requestId: handle?.requestId, model: "served-model", conversationId: "conversation-1" })])

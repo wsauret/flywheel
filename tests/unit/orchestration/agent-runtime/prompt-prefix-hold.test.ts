@@ -194,7 +194,7 @@ function siblingTurn(provider: ReturnType<typeof gatedProvider>, sibling: string
     client: provider.client, executionCwd: "/scratch", interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
     messages: [{ kind: "user", content: `item ${sibling}` }], tools, systemPrompt,
     reasoningEffort: undefined, signal: undefined, cacheRetention, providerSessionKey: sibling, promptCacheKey, providerOptions: undefined,
-    requestAudit: undefined, staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 1,
+    requestAudit: undefined, staleMasking: undefined, turn: 1, messageCount: 1,
     estimatedContextTokens: 10, onEvent: () => {}, prefixHold: hold,
   })
 }

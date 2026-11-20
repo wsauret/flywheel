@@ -90,7 +90,7 @@ describe("replayed images past the model's image limit", () => {
     const messages = screenshots(40);
     const stored = structuredClone(messages);
     const info: ModelInfo = {
-      provider: "openrouter", family: "openai", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash",
+      provider: "openrouter", family: "chat-completions", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash",
       reasoning: false, toolCall: true, attachment: true, temperature: true, openWeights: true,
       cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" },
       modalities: { input: ["text", "image"], output: ["text"] }, contextLimit: 1_000_000, outputLimit: 4_000,
@@ -120,7 +120,7 @@ describe("replayed images past the model's image limit", () => {
         messages, tools: [], systemPrompt: stableSystemPrompt("system"),
         reasoningEffort: undefined, signal: undefined, cacheRetention: undefined,
         providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: undefined,
-        staleMasking: undefined, requestContext: undefined, turn: 1, imageLimitCut, messageCount: messages.length,
+        staleMasking: undefined, turn: 1, imageLimitCut, messageCount: messages.length,
         estimatedContextTokens: 0, onEvent: () => {},
       });
       // A retry sends the same history again; a later request keeps the cut steady.

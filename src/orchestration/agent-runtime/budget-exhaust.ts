@@ -245,7 +245,6 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
         staleMasking: outgoing.staleMasking,
         toolHistoryProjection: outgoing.toolHistoryProjection,
         waitForEventCapacity: input.waitForEventCapacity,
-        requestContext: undefined,
         turn: input.turnOrdinal,
         messageCount: outgoing.messageCount,
         estimatedContextTokens: outgoing.estimatedContextTokens,

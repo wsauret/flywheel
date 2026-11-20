@@ -9,7 +9,7 @@ import { authProviders } from "../../../helpers/auth-context.js";
 // Access provider — family chains and model compatibility
 // ---------------------------------------------------------------------------
 
-type ExactOffering = { readonly wireModelId: string; readonly transport: "anthropic-messages" | "openai-responses" | "openai-completions" | "google" };
+type ExactOffering = { readonly wireModelId: string; readonly transport: "anthropic-messages" | "openai-responses" | "chat-completions" | "google" };
 function exactEligibility(offerings: ReadonlyMap<string, ReadonlyMap<string, ExactOffering>>): AccessProviderModelEligibility {
   return testEligibility({
     modelUnavailableReason: (provider, model) => offerings.get(provider)?.has(model) ? undefined : `${provider} does not offer "${model}"`,
@@ -37,7 +37,7 @@ describe("access provider family chains", () => {
     const connection = captureProviderConnection({ authDir: AUTH_DIR, auth });
     const eligibility = exactEligibility(new Map([
       ["openai_api", new Map<string, ExactOffering>([["gpt-5.4", { wireModelId: "gpt-5.4-2026-03-01", transport: "openai-responses" }]])],
-      ["openrouter", new Map<string, ExactOffering>([["gpt-5.4", { wireModelId: "openai/gpt-5.4", transport: "openai-completions" }]])],
+      ["openrouter", new Map<string, ExactOffering>([["gpt-5.4", { wireModelId: "openai/gpt-5.4", transport: "chat-completions" }]])],
     ]));
     const plan = testProviderSelection().plan("gpt-5.4", connection, eligibility);
     expect(plan.kind).toBe("admitted");
@@ -45,7 +45,7 @@ describe("access provider family chains", () => {
     expect(plan.candidates.map((candidate) => candidate.providerId)).toEqual(["openai_api", "openrouter"]);
     expect(plan.candidateAttributions.map(({ wireModelId, transport }) => ({ wireModelId, transport }))).toEqual([
       { wireModelId: "gpt-5.4-2026-03-01", transport: "openai-responses" },
-      { wireModelId: "openai/gpt-5.4", transport: "openai-completions" },
+      { wireModelId: "openai/gpt-5.4", transport: "chat-completions" },
     ]);
   });
 });

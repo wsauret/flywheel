@@ -1,5 +1,5 @@
-import type { CatalogCanonicalRow, CatalogLimits } from "../llm/model-catalog-resolution.js";
-import { validateCanonicalRows } from "../llm/model-catalog-resolution.js";
+import type { CatalogCanonicalRow, CatalogLimits, NormalizedCatalog } from "../llm/model-catalog-resolution.js";
+import { offeringTransport, validateCanonicalRows } from "../llm/model-catalog-resolution.js";
 import { accessProviderAccountKey, type AccessProviderAccountIdentity } from "../llm/access-provider.js";
 import type { AuthProfileAccess } from "./auth-profile-store.js";
 import { ContainedFileTooLargeError } from "../descriptor-directory-contract.js";
@@ -23,7 +23,7 @@ interface SavedProviderModelCatalog extends AccountLineage {
   readonly refusals?: SavedModelRefusals;
 }
 
-const VERSION = 5;
+const VERSION = 6;
 
 interface CatalogDocument {
   readonly version: typeof VERSION;
@@ -219,9 +219,10 @@ export async function deleteProviderModelCatalog(
   });
 }
 
-/** Converts versions 1, 2, and 4 before eligibility readers start, preserving rows and audit evidence. Version 5 only
- *  adds the optional refusals of each entry, so a version 4 document reads unchanged. Remove the version 1 and 2
- *  conversions after 2027-03-01 and the version 4 conversion after 2027-04-08. */
+/** Converts versions 1, 2, 4, and 5 before eligibility readers start, preserving rows and audit evidence. Version 5 only
+ *  adds the optional refusals of each entry, so a version 4 document reads unchanged. Version 6 names the Chat
+ *  Completions transport `chat-completions` (`renamedChatCompletionsTransport`). Remove the version 1 and 2 conversions
+ *  after 2027-03-01, the version 4 conversion after 2027-04-08, and the version 5 conversion after 2027-05-20. */
 export async function adoptPreviousProviderModelCatalogs(access: AuthProfileAccess, limits: CatalogLimits): Promise<boolean> {
   return access.withLock(() => {
     let bytes: Buffer | undefined;
@@ -240,7 +241,7 @@ export async function adoptPreviousProviderModelCatalogs(access: AuthProfileAcce
     } catch {
       return false;
     }
-    if (version !== 1 && version !== 2 && version !== 4) return false;
+    if (version !== 1 && version !== 2 && version !== 4 && version !== 5) return false;
     const document = decode(bytes, limits);
     return document === undefined ? false : writeDocument(access, document, limits);
   });
@@ -250,17 +251,17 @@ function decode(bytes: Buffer | undefined, limits: CatalogLimits): CatalogDocume
   if (!bytes) return { version: VERSION, accounts: [] };
   try {
     const value: unknown = JSON.parse(bytes.toString("utf8"));
-    if (!isObject(value) || Object.keys(value).some((key) => key !== "version" && key !== "accounts") || (value.version !== 1 && value.version !== 2 && value.version !== 4 && value.version !== VERSION) || !Array.isArray(value.accounts) || value.accounts.length > MAX_ACCOUNTS) return undefined;
+    if (!isObject(value) || Object.keys(value).some((key) => key !== "version" && key !== "accounts") || (value.version !== 1 && value.version !== 2 && value.version !== 4 && value.version !== 5 && value.version !== VERSION) || !Array.isArray(value.accounts) || value.accounts.length > MAX_ACCOUNTS) return undefined;
     const accounts: SavedProviderModelCatalog[] = [];
     const identities = new Set<string>();
     for (const raw of value.accounts) {
       // Remove the published v2 field conversion after 2027-03-01.
       const auditKey = value.version === 2 ? "superGrok" : "audit";
-      const fields = value.version === 1 ? [] : value.version === VERSION ? [auditKey, "refusals"] : [auditKey];
+      const fields = value.version === 1 ? [] : value.version === 2 || value.version === 4 ? [auditKey] : [auditKey, "refusals"];
       if (!isObject(raw) || Object.keys(raw).some((key) => key !== "account" && key !== "lineage" && key !== "rows" && !fields.includes(key)) || !boundedIdentity(raw.lineage) || !Array.isArray(raw.rows)) return undefined;
       const account = decodeAccount(raw.account);
       if (!account) return undefined;
-      const validated = validateCanonicalRows(raw.rows, limits);
+      const validated = validateSavedRows(raw.rows, value.version, limits);
       const rawAudit = raw[auditKey];
       if (validated.kind !== "valid" || (validated.rows.length === 0 && rawAudit === undefined && raw.refusals === undefined)) return undefined;
       const audit = rawAudit === undefined ? undefined : decodeAudit(rawAudit);
@@ -276,6 +277,19 @@ function decode(bytes: Buffer | undefined, limits: CatalogLimits): CatalogDocume
   } catch {
     return undefined;
   }
+}
+
+/** Validates the rows of one saved account. Before version 6 a row named the Chat Completions transport of its offerings
+ *  `openai-completions`, and named it also for the xAI rows that the subscription serves over the Responses API. Such an
+ *  offering reads as the transport that its models.dev metadata names, else as `chat-completions`; a row of another
+ *  shape stays as written, for the row check to judge. Remove the conversion after 2027-05-20. */
+function validateSavedRows(rows: readonly unknown[], version: unknown, limits: CatalogLimits): NormalizedCatalog {
+  if (version === VERSION) return validateCanonicalRows(rows, limits);
+  return validateCanonicalRows(rows.map((row) => {
+    if (!isObject(row) || !Array.isArray(row.offerings)) return row;
+    const offerings: unknown[] = row.offerings;
+    return { ...row, offerings: offerings.map((offering) => isObject(offering) && offering.transport === "openai-completions" ? { ...offering, transport: offeringTransport(offering.metadata) ?? "chat-completions" } : offering) };
+  }), limits);
 }
 
 function decodeAudit(value: unknown): ProviderModelAudit | undefined {

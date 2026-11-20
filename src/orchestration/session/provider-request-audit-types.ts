@@ -385,8 +385,6 @@ export interface ProviderRequestAuditRequestInput {
   staleMasking?: PromptStaleMasking
   toolHistoryProjection?: PromptToolHistoryProjection
   historyLowering?: PromptHistoryLowering
-  /** Request-only user context, stored only in the audit fact for exact reconstruction. */
-  requestContext?: string
 }
 
 export interface ProviderRequestAuditResponseInput {

@@ -30,13 +30,13 @@ import { consumeAgentLoopMessageInput, consumeAgentLoopResumeInput } from "./age
 import { consumeAgentLoopInput, createAgentLoopInputWaiter } from "./agent-loop-input-consumer.js";
 import type { AgentLoopOptions, AgentLoopTerminal } from "./agent-loop-types.js";
 import { createReplyNudge, SILENT_REPLY_NUDGE } from "./reply-nudge.js";
+import { createTurnContext } from "./agent-loop-turn-context.js";
 import { createRunEndProcessNotice } from "./run-end-process-notice.js";
 import { createContextAdmission } from "./compaction/compaction-policy.js";
 import type { ConversationMessage, LlmStopReason, ToolCall } from "./llm/types.js";
 import { repairContentRefusal } from "./llm/content-repair.js";
 import { createStreamedEditTurn } from "./streamed-edit-turn.js";
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
-import { CONTINUATION_MESSAGES } from "./continuation-messages.js";
 import { trackTurnHop } from "./turn-hop.js";
 
 const log = Log.create({ service: "agent-loop" });
@@ -90,7 +90,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // A maintenance start whose last turn waits for the person starts in that wait.
   const seededPersonWait = lifecycle?.maintenance?.personWait;
   let state: typeof initialLoopState = { ...initialLoopState, llmCalls: priorLLMCalls, ...(seededPersonWait ? { personWait: seededPersonWait } : {}) };
-  let logicalTurnRequestContext = options.initialRequestContext;
+  const turnContext = createTurnContext(options.initialRequestContext, preparation.messages);
   // The surface a manual compaction admitted. The request that follows at
   // once reuses it. A park or a person turn discards it, so the request after
   // either admits again and reads what changed before the person's turn.
@@ -111,11 +111,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const compactionState = createAgentLoopCompactionState({
     options, messages: () => preparation.messages, surface, requestContext, initialInteractionProfile, prepareCurrentPrompt,
     selectAttempt: (attempt) => { preparation.planned = attempt; }, attempt: () => preparation.planned,
-    logicalRequestContext: () => replyNudge.previewRequestContext(logicalTurnRequestContext),
     admitSurface: (next) => { admittedRequest = next; },
     compactionAllowedTools: (requestsAhead) => budgetNudge.closureWhitelist(state.llmCalls + requestsAhead)?.tools,
     carryTurnEnd: () => state.personWait?.turnEnd === "recorded",
-    setMessages: (next) => { preparation.messages = next; },
+    setMessages: (next) => { preparation.messages = next; turnContext.reset(); },
+    turnContext: turnContext.standing,
     onEvent,
     pushUser, pushMessage, onUserMessage: options.onUserMessage,
     checkpoint: options.checkpoint,
@@ -124,7 +124,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const { prepareCompactedHistory, canCompact, canPlan } = compactionState;
 
   const messageInputEffects: Parameters<typeof consumeAgentLoopMessageInput>[3] = {
-    clearRequestContext: () => { logicalTurnRequestContext = undefined; },
+    clearRequestContext: turnContext.end,
     logicalTurnStarted: (origin) => {
       lifecycle?.onLogicalTurnStarted?.({ origin, reason: "queued_input" });
       if (origin === "user") { admittedRequest = undefined; pendingWorkNudge.reset(); batchObservation.reset(); }
@@ -140,7 +140,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     canCompact: canPlan,
     refuseCompaction: () => options.onSystemMessage?.("Compaction is unavailable: this execution requires scoped checkpoint_read, checkpoint_replace, and checkpoint_decide tools and enough of its turn budget to save. Context has been kept.", "error"),
     consumeMessage: async (message, start, preserve) => {
-      if (input?.kind === "request-context") logicalTurnRequestContext = input.text;
+      if (input?.kind === "request-context") turnContext.start(input.text);
       const consumed = await consumeAgentLoopMessageInput(message, start, preserve, messageInputEffects);
       // Input that starts the turn before the Resume does supersedes the cut.
       if (start) continuedWait = undefined;
@@ -331,8 +331,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     return finishTurn(turnSignal);
   };
 
-  const takeRequestContext = (): string | undefined => replyNudge.consumeRequestContext(logicalTurnRequestContext);
-
   let terminal: AgentLoopTerminal;
   execution: try {
   const initialInput = options.inputSource?.drainPending();
@@ -385,8 +383,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       requestRoute, requestClient, interactionProfile, providerRequest,
       toolExecutionGate, turnEffort, contextTokens,
     } = await preparation.openCycle({
-      surface: requestSurface, signal,
-      context: { preview: replyNudge.previewRequestContext(logicalTurnRequestContext), consume: takeRequestContext },
+      surface: requestSurface, signal, context: () => replyNudge.consumeRequestContext(turnContext.take()),
     });
     if (!handoffTracker.isHandingOff && canPlan() && !compactionState.hasPlanned() && !state.overflowRecoveryAttempted && preparation.messages.length > 0
       && await compactionState.automaticResetDue(contextTokens, preparation.planned.contextLimit, requestSurface.runtimeConfig.proactiveCompactionThreshold)) {
@@ -417,7 +414,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               ? { requestClient, providerRequest, interactionProfile, requestRoute, toolExecutionGate }
               : await preparation.prepareVariant(capturedSurface, signal);
             if (summaryAttempt > 1) {
-              requestContext.prepareCycle(capturedSurface, preparation.planned, logicalTurnRequestContext);
+              requestContext.prepareCycle(capturedSurface, preparation.planned);
             }
             return {
               client: captured.requestClient,
@@ -520,6 +517,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       appendEntries: appendRequestEntries,
       // oxlint-disable-next-line no-loop-func -- boundary: admitted.run serializes preparation and execution before advancing the loop.
       prepare: async (candidateAttempt) => {
+      await appendRequestEntries(turnContext.takeStallNotices());
       const { input: attemptInput, snapshot: sentRequestSnapshot } = await prepareTurnInput(candidateAttempt);
       return {
         input: attemptInput,
@@ -578,7 +576,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       const { toolCalls, usageAnchor } = attemptSettled.turn;
       state = loopTransition.responseSettled(state, attemptSettled.turn.outcome);
       if (attemptSettled.turn.outcome.kind === "ok") tally.served += 1;
-      if (attemptSettled.turn.outcome.kind === "stream_error" && attemptSettled.turn.outcome.error._tag === "StreamStalled") requestContext.appendRequestContext(CONTINUATION_MESSAGES.stream_stalled);
+      if (attemptSettled.turn.outcome.kind === "stream_error" && attemptSettled.turn.outcome.error._tag === "StreamStalled") turnContext.stalled();
       if (usageAnchor) contextAnchor.observeApiUsage(usageAnchor, sentRequestSnapshot);
       if (attemptSettled.turn.outcome.kind === "ok" && !turnSignal.aborted) compactionState.observeCache(usageAnchor, sentRequestSnapshot, candidate.attempt, servingStartedAt, candidate.prepared.cacheRetention);
       const batch = attemptSettled.batch;

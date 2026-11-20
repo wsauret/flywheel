@@ -83,7 +83,7 @@ test.each(["renewed", "declined", "stopped"] as const)("keeps the failed revisio
               recover: async () => {},
             },
           },
-          staleMasking: undefined, requestContext: undefined,
+          staleMasking: undefined,
           turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
           onStreamAbandoned: (reason) => { abandoned.push(reason) },
         } satisfies AssistantAttemptInput,

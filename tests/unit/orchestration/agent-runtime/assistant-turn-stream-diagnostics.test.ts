@@ -69,7 +69,6 @@ describe("streamAssistantTurn provider failure diagnostics", () => {
       providerOptions: undefined,
       requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 0,
       estimatedContextTokens: 0,

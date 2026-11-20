@@ -42,8 +42,8 @@ describe("publishCustomProvidersFromConfig", () => {
 
     expect(isCustomProviderModel("vendor/model")).toBe(true);
     expect(customProviderModelUnavailableReason("hosted", "vendor/model")).toBeUndefined();
-    expect(staticOfferingMap(entry?.modelIds ?? [], "openai-completions", [])).toEqual(new Map([
-      ["vendor/model", [{ wireModelId: "Vendor/Model-Contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" }]],
+    expect(staticOfferingMap(entry?.modelIds ?? [], "chat-completions", [])).toEqual(new Map([
+      ["vendor/model", [{ wireModelId: "Vendor/Model-Contributor", metadata: null, dataUse: "contributor", transport: "chat-completions" }]],
     ]));
   });
 

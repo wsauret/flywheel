@@ -161,7 +161,7 @@ describe("model catalog resolution", () => {
       modelId: "paired",
       offerings: [
         { wireModelId: "paired", metadata: { source: "provider" }, dataUse: "standard" as const, transport: "openai-responses" as const },
-        { wireModelId: "paired-contributor", metadata: { source: "provider" }, dataUse: "contributor" as const, transport: "openai-completions" as const },
+        { wireModelId: "paired-contributor", metadata: { source: "provider" }, dataUse: "contributor" as const, transport: "chat-completions" as const },
       ],
     }];
     const outcome = resolveModelCatalog({
@@ -180,7 +180,7 @@ describe("model catalog resolution", () => {
         modelId: "paired",
         offerings: [
           { wireModelId: "paired", dataUse: "standard", transport: "openai-responses" },
-          { wireModelId: "paired-contributor", dataUse: "contributor", transport: "openai-completions" },
+          { wireModelId: "paired-contributor", dataUse: "contributor", transport: "chat-completions" },
         ],
       }],
     });

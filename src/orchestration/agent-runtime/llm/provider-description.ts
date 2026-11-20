@@ -1,5 +1,6 @@
 import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
+import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { ModelInfo } from "../../../infra/llm/models.js";
 import { FUNCTION_TOOL_PRESENTATION, type ServingAttempt, type ToolDef, type ToolPresentation } from "./types.js";
 
@@ -13,6 +14,10 @@ export const GOOGLE_CACHE_RATES = { cacheReadRatio: 0.25, cacheWriteRatio: 1.0 }
 
 export const OPENAI_CACHE_RATES = { cacheReadRatio: 0.5, cacheWriteRatio: 1.0 } as const;
 
+// Chat Completions is no one vendor's price list, so a catalog row that states no cache price bills a cached token at the
+// input rate: no discount on a read, and no surcharge on a write.
+export const CHAT_COMPLETIONS_CACHE_RATES = { cacheReadRatio: 1.0, cacheWriteRatio: 1.0 } as const;
+
 export const OPENAI_RESPONSES_TOOL_PRESENTATION: ToolPresentation = Object.freeze({
   format: "openai-responses",
   present: (tool: ToolDef) => tool.wire?.kind === "custom"
@@ -20,7 +25,15 @@ export const OPENAI_RESPONSES_TOOL_PRESENTATION: ToolPresentation = Object.freez
     : FUNCTION_TOOL_PRESENTATION.present(tool),
 });
 
-type Protocol = "anthropic" | "openai-responses" | "openai-completions" | "google";
+type Protocol = "anthropic" | "openai-responses" | "chat-completions" | "google";
+
+/** The wire family that each protocol serves as, and the cache rates it bills when the catalog states none. */
+const PROTOCOL_FAMILIES = {
+  anthropic: { modelFamily: "anthropic", cacheRates: ANTHROPIC_CACHE_RATES },
+  "openai-responses": { modelFamily: "openai", cacheRates: OPENAI_CACHE_RATES },
+  "chat-completions": { modelFamily: "chat-completions", cacheRates: CHAT_COMPLETIONS_CACHE_RATES },
+  google: { modelFamily: "google", cacheRates: GOOGLE_CACHE_RATES },
+} as const satisfies { readonly [protocol in Protocol]: { readonly modelFamily: ModelFamily; readonly cacheRates: Parameters<typeof computeUsagePrice>[2] } };
 
 export interface ProviderDescriptionOptions {
   readonly accessProvider: AccessProviderId;
@@ -44,7 +57,7 @@ export async function describeProvider(model: string, options: ProviderDescripti
   const protocol = options.protocol;
   return Object.freeze({
     accessProvider: options.accessProvider,
-    modelFamily: protocol === "anthropic" ? "anthropic" : protocol === "google" ? "google" : "openai",
+    modelFamily: PROTOCOL_FAMILIES[protocol].modelFamily,
     model,
     toolPresentation: protocol === "openai-responses" ? OPENAI_RESPONSES_TOOL_PRESENTATION : FUNCTION_TOOL_PRESENTATION,
     // The Responses routes group their prompt cache by the request's prompt-cache
@@ -56,10 +69,6 @@ export async function describeProvider(model: string, options: ProviderDescripti
     ...(info.totalContextLimit === undefined ? {} : { totalContextLimit: info.totalContextLimit }),
     outputLimit: Math.min(info.outputLimit, options.providerOutputCap ?? Number.POSITIVE_INFINITY),
     supportsReasoning: info.reasoning,
-    priceFor: (tokens: Parameters<ServingAttempt["priceFor"]>[0]) => computeUsagePrice(
-      tokens,
-      info.pricing,
-      protocol === "anthropic" ? ANTHROPIC_CACHE_RATES : protocol === "google" ? GOOGLE_CACHE_RATES : OPENAI_CACHE_RATES,
-    ),
+    priceFor: (tokens: Parameters<ServingAttempt["priceFor"]>[0]) => computeUsagePrice(tokens, info.pricing, PROTOCOL_FAMILIES[protocol].cacheRates),
   });
 }

@@ -1,10 +1,10 @@
 import { applyHistoryLowering, lowerProviderHistory, planHistoryLowering } from "../../../../../src/orchestration/agent-runtime/llm/provider-history.js";
 import { describe, expect, test } from "bun:test";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
+import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { toAnthropicMessagesRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
+import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
 import { ProviderIdConversionError } from "../../../../../src/orchestration/agent-runtime/llm/conversions/provider-id.js";
 import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 
@@ -27,7 +27,7 @@ describe("canonical shell replay", () => {
     const plain: ConversationMessage[] = [{ kind: "user", content: "hello", origin: "human" }];
     const correlated: ConversationMessage[] = [{ kind: "user", content: "hello", origin: "human", submissionIds: ["client-only-1"] }];
     expect(toAnthropicMessagesRequest(anthropic, correlated)).toEqual(toAnthropicMessagesRequest(anthropic, plain));
-    expect(toOpenAIResponsesInput(openai, correlated)).toEqual(toOpenAIResponsesInput(openai, plain));
+    expect(toOpenAIResponsesRequestInput(openai, correlated).input).toEqual(toOpenAIResponsesRequestInput(openai, plain).input);
     expect(toChatCompletionsMessages(correlated, true, openAIResponsesTarget("openrouter", "test-model"))).toEqual(toChatCompletionsMessages(plain, true, openAIResponsesTarget("openrouter", "test-model")));
     expect(toGoogleGenerativeAiRequest(google, correlated)).toEqual(toGoogleGenerativeAiRequest(google, plain));
   });
@@ -49,7 +49,7 @@ describe("canonical shell replay", () => {
     ].join("\n");
     const plain: ConversationMessage[] = [{ kind: "user", content: expected }];
     expect(toAnthropicMessagesRequest(anthropic, enveloped)).toEqual(toAnthropicMessagesRequest(anthropic, plain));
-    expect(toOpenAIResponsesInput(openai, enveloped)).toEqual(toOpenAIResponsesInput(openai, plain));
+    expect(toOpenAIResponsesRequestInput(openai, enveloped).input).toEqual(toOpenAIResponsesRequestInput(openai, plain).input);
     expect(toChatCompletionsMessages(enveloped, true, openAIResponsesTarget("openrouter", "test-model"))).toEqual(toChatCompletionsMessages(plain, true, openAIResponsesTarget("openrouter", "test-model")));
     expect(toGoogleGenerativeAiRequest(google, enveloped)).toEqual(toGoogleGenerativeAiRequest(google, plain));
     // The closing line follows the relation of the sender and its wait, so
@@ -78,7 +78,7 @@ describe("canonical shell replay", () => {
     const launched: ConversationMessage[] = [{ kind: "user", content: "Inspect the parser", producer: { kind: "launch", sessionId: "parent-1", toolUseId: "call-1", name: "Root" } }];
     const plain: ConversationMessage[] = [{ kind: "user", content: "Inspect the parser" }];
     expect(toAnthropicMessagesRequest(anthropic, launched)).toEqual(toAnthropicMessagesRequest(anthropic, plain));
-    expect(toOpenAIResponsesInput(openai, launched)).toEqual(toOpenAIResponsesInput(openai, plain));
+    expect(toOpenAIResponsesRequestInput(openai, launched).input).toEqual(toOpenAIResponsesRequestInput(openai, plain).input);
     expect(toChatCompletionsMessages(launched, true, openAIResponsesTarget("openrouter", "test-model"))).toEqual(toChatCompletionsMessages(plain, true, openAIResponsesTarget("openrouter", "test-model")));
     expect(toGoogleGenerativeAiRequest(google, launched)).toEqual(toGoogleGenerativeAiRequest(google, plain));
   });
@@ -96,7 +96,7 @@ describe("canonical shell replay", () => {
     ];
 
     const anthropicWire = JSON.stringify(toAnthropicMessagesRequest({ ...anthropic, model: targetModel }, history));
-    const responsesWire = toOpenAIResponsesInput({ ...openai, model: targetModel }, history);
+    const responsesWire = toOpenAIResponsesRequestInput({ ...openai, model: targetModel }, history).input;
     const chatWire = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
     const googleWire = JSON.stringify(toGoogleGenerativeAiRequest({ ...google, model: targetModel }, history));
 
@@ -116,7 +116,7 @@ describe("canonical shell replay", () => {
     const wires = [
       toAnthropicMessagesRequest({ ...anthropic, model: "other-claude" }, history),
       toAnthropicMessagesRequest({ ...anthropic, accessProvider: "github_copilot" }, history),
-      toOpenAIResponsesInput(openai, history),
+      toOpenAIResponsesRequestInput(openai, history).input,
       toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model")),
       toGoogleGenerativeAiRequest(google, history),
     ];
@@ -163,7 +163,7 @@ describe("provider continuation history", () => {
     expect(googleRequest.map((message) => message.role)).toEqual(["user", "model", "user"]);
     expect(googleRequest[1]?.parts).toEqual([{ text: "retained " }, { text: "continuation" }]);
 
-    const responsesRequest = toOpenAIResponsesInput(openai, history);
+    const responsesRequest = toOpenAIResponsesRequestInput(openai, history).input;
     expect(responsesRequest.filter((item) => item.type === "message" && item.role === "assistant")).toHaveLength(2);
     expect(JSON.stringify(responsesRequest)).not.toContain("native_partial");
     expect(JSON.stringify(responsesRequest)).not.toContain("response_partial");
@@ -176,16 +176,16 @@ describe("OpenAI Responses converter", () => {
     const signature = JSON.stringify({ v: 1, id: "msg_1", phase: "final_answer" });
     const history: ConversationMessage[] = [assistant([{ type: "text", text: "hello", signature }])];
     // Phase rides on the message item; the ChatGPT backend rejects it inside a content part.
-    expect(toOpenAIResponsesInput(openai, history)[0]).toEqual({
+    expect(toOpenAIResponsesRequestInput(openai, history).input[0]).toEqual({
       type: "message", id: "msg_1", role: "assistant", status: "completed", phase: "final_answer",
       content: [{ type: "output_text", text: "hello", annotations: [] }],
     });
-    expect(JSON.stringify(toOpenAIResponsesInput({ ...openai, model: "other" }, history))).not.toContain("msg_1");
+    expect(JSON.stringify(toOpenAIResponsesRequestInput({ ...openai, model: "other" }, history).input)).not.toContain("msg_1");
   });
 
   test("malformed text signature throws (writer drift, not tolerated)", () => {
     const history: ConversationMessage[] = [assistant([{ type: "text", text: "hello", signature: "sig" }])];
-    expect(() => toOpenAIResponsesInput(openai, history)).toThrow();
+    expect(() => toOpenAIResponsesRequestInput(openai, history).input).toThrow();
   });
 
   test("reasoning encrypted content replays only for same model", () => {
@@ -196,8 +196,8 @@ describe("OpenAI Responses converter", () => {
       { type: "reasoning", id: "rs", encrypted_content: "enc", summary: [{ type: "summary_text", text: "summary" }] },
       { type: "text", text: "answer" },
     ])];
-    expect(toOpenAIResponsesInput(openai, history)[0]).toMatchObject({ type: "reasoning", encrypted_content: "enc" });
-    expect(JSON.stringify(toOpenAIResponsesInput({ ...openai, model: "other" }, history))).not.toContain("enc");
+    expect(toOpenAIResponsesRequestInput(openai, history).input[0]).toMatchObject({ type: "reasoning", encrypted_content: "enc" });
+    expect(JSON.stringify(toOpenAIResponsesRequestInput({ ...openai, model: "other" }, history).input)).not.toContain("enc");
   });
 
   test("assistant message without provider metadata never replays encrypted reasoning", () => {
@@ -207,7 +207,7 @@ describe("OpenAI Responses converter", () => {
         { type: "text", text: "answer" },
       ] },
     ];
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     expect(JSON.stringify(converted)).not.toContain("enc");
     expect(JSON.stringify(converted)).not.toContain("summary");
   });
@@ -220,7 +220,7 @@ describe("OpenAI Responses converter", () => {
       ]),
       textResult("call_1", "ok"),
     ];
-    const converted = toOpenAIResponsesInput({ ...openai, model: "other" }, history);
+    const converted = toOpenAIResponsesRequestInput({ ...openai, model: "other" }, history).input;
     expect(JSON.stringify(converted)).not.toContain("why");
     expect(JSON.stringify(converted)).not.toContain("enc");
     expect(converted.some((i) => i.type === "function_call_output" && i.call_id === "call_1")).toBe(true);
@@ -231,7 +231,7 @@ describe("OpenAI Responses converter", () => {
       assistant([{ type: "tool_use", id: "internal", providerCallId: "call_real", providerItemId: "item_123", name: "x", input: {} }]),
       textResult("internal", "done"),
     ];
-    const output = toOpenAIResponsesInput(openai, history).find((item) => item.type === "function_call_output");
+    const output = toOpenAIResponsesRequestInput(openai, history).input.find((item) => item.type === "function_call_output");
     if (output?.type !== "function_call_output" && output?.type !== "custom_tool_call_output") throw new Error("expected tool call output");
     expect(output.call_id).toBe("call_real");
     expect(output.output).toBe("done");
@@ -242,7 +242,7 @@ describe("OpenAI Responses converter", () => {
       assistant([{ type: "tool_use", id: "call_missing", name: "x", input: {} }]),
       textResult("orphan", "bad"),
     ];
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     expect(converted.some((i) => i.type === "function_call_output" && i.call_id === "orphan")).toBe(false);
     expect(converted.some((i) => i.type === "function_call_output" && i.call_id === "call_missing" && i.output === "No result provided")).toBe(true);
   });
@@ -259,7 +259,7 @@ describe("OpenAI Responses converter", () => {
         ],
       },
     ];
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     const fnOut = converted.find((item) => item.type === "function_call_output");
     if ((fnOut?.type !== "function_call_output" && fnOut?.type !== "custom_tool_call_output") || !Array.isArray(fnOut.output)) throw new Error("expected multimodal tool output");
     expect(fnOut.output).toEqual([
@@ -280,7 +280,7 @@ describe("OpenAI Responses converter", () => {
         ],
       },
     ];
-    const converted = toOpenAIResponsesInput({ ...openai, supportsImages: false }, history);
+    const converted = toOpenAIResponsesRequestInput({ ...openai, supportsImages: false }, history).input;
     expect(converted.some((i) => i.type === "message" && i.role === "user")).toBe(false);
     const fnOut = converted.find((i) => i.type === "function_call_output");
     if (fnOut?.type !== "function_call_output" && fnOut?.type !== "custom_tool_call_output") throw new Error("expected tool call output");
@@ -299,7 +299,7 @@ describe("OpenAI Responses converter", () => {
       },
       { kind: "user", content: [{ type: "text", text: "fresh prompt" }] },
     ];
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     expect(converted.some((i) => i.type === "function_call_output")).toBe(false);
     expect(converted.some((i) => i.type === "message" && i.role === "user")).toBe(false);
   });
@@ -316,7 +316,7 @@ describe("OpenAI Responses canonical identities", () => {
       { kind: "toolResult", toolUseId: `${prefix}a`, content: [{ type: "image", mediaType: "image/png", data: "AAAA" }] },
       textResult(`${prefix}b`, "ok"),
     ];
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     const calls = converted.filter((item) => item.type === "function_call");
     expect(calls[0]?.call_id).not.toBe(calls[1]?.call_id);
     expect(calls.every((item) => item.id?.startsWith("fc_") && item.id.length <= 64)).toBe(true);
@@ -326,7 +326,7 @@ describe("OpenAI Responses canonical identities", () => {
   });
 
   test("assistant text without a replay signature gets a deterministic bounded message ID", () => {
-    const converted = toOpenAIResponsesInput(openai, [assistant([{ type: "text", text: "hello" }])]);
+    const converted = toOpenAIResponsesRequestInput(openai, [assistant([{ type: "text", text: "hello" }])]).input;
     expect(converted[0]).toMatchObject({ type: "message", id: expect.stringMatching(/^msg_/) });
   });
 
@@ -335,7 +335,7 @@ describe("OpenAI Responses canonical identities", () => {
       { type: "tool_use", id: "canonical-a", providerCallId: "call-a", providerItemId: "fc-shared", name: "a", input: {} },
       { type: "tool_use", id: "canonical-b", providerCallId: "call-b", providerItemId: "fc-shared", name: "b", input: {} },
     ])];
-    expect(() => toOpenAIResponsesInput(openai, history)).toThrow(ProviderIdConversionError);
+    expect(() => toOpenAIResponsesRequestInput(openai, history).input).toThrow(ProviderIdConversionError);
   });
 
   test("a provider call id that a Chat Completions model of the same access provider repeated replays once natively, then canonically", () => {
@@ -344,7 +344,7 @@ describe("OpenAI Responses canonical identities", () => {
       { kind: "assistant", ...openai, model: "kimi", timestamp: 1, content: [{ type: "tool_use", id, providerCallId: "bash_0", name: "bash", input: {} }] },
       textResult(id, "ok"),
     ];
-    const converted = toOpenAIResponsesInput(openai, [...completionsTurn("run1_0"), ...completionsTurn("run2_0")]);
+    const converted = toOpenAIResponsesRequestInput(openai, [...completionsTurn("run1_0"), ...completionsTurn("run2_0")]).input;
     const callIds = converted.flatMap((item) => item.type === "function_call" ? [item.call_id] : []);
     const outputIds = converted.flatMap((item) => item.type === "function_call_output" ? [item.call_id] : []);
     expect(callIds[0]).toBe("bash_0");
@@ -363,8 +363,8 @@ describe("OpenAI Responses canonical identities", () => {
       textResult("function", "function result"),
     ];
 
-    const recordedCustom = toOpenAIResponsesInput(openai, customHistory);
-    const recordedFunction = toOpenAIResponsesInput({ ...openai, customToolNames: new Set(["now_custom"]) }, functionHistory);
+    const recordedCustom = toOpenAIResponsesRequestInput(openai, customHistory).input;
+    const recordedFunction = toOpenAIResponsesRequestInput({ ...openai, customToolNames: new Set(["now_custom"]) }, functionHistory).input;
 
     expect(recordedCustom).toContainEqual({ type: "custom_tool_call", id: "ctc_custom", call_id: "call_custom", name: "was_custom", input: "raw" });
     expect(recordedCustom).toContainEqual({ type: "custom_tool_call_output", call_id: "call_custom", output: "custom result" });
@@ -380,7 +380,7 @@ describe("OpenAI Responses canonical identities", () => {
       textResult("foreign/custom", "done"),
     ];
 
-    const converted = toOpenAIResponsesInput({ ...openai, customToolNames: new Set(["apply_patch"]) }, history);
+    const converted = toOpenAIResponsesRequestInput({ ...openai, customToolNames: new Set(["apply_patch"]) }, history).input;
     const call = converted.find((item) => item.type === "custom_tool_call");
     const output = converted.find((item) => item.type === "custom_tool_call_output");
 
@@ -485,7 +485,7 @@ describe("provider history after a model switch", () => {
   ];
   const foreign = {
     "another Anthropic model": () => JSON.stringify(toAnthropicMessagesRequest({ ...anthropic, model: "other" }, history)),
-    "OpenAI Responses": () => JSON.stringify(toOpenAIResponsesInput(openai, history)),
+    "OpenAI Responses": () => JSON.stringify(toOpenAIResponsesRequestInput(openai, history).input),
     "chat completions": () => JSON.stringify(toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"))),
     Google: () => JSON.stringify(toGoogleGenerativeAiRequest(google, history)),
   };

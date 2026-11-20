@@ -72,6 +72,7 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "chat.entries.appended": HISTORY,
     "chat.follow_up_turn.completed": HISTORY,
     "chat.reasoning.reported": HISTORY,
+    "chat.reasoning_effort.recorded": HISTORY,
     // Earlier intent and decisions remain inspectable after every revision.
     "conversation.checkpoint.updated": HISTORY,
     // Written once at a subagent's publication.

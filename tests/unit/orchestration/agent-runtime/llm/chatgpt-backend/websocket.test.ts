@@ -10,6 +10,9 @@ import { ChatGptAdapterTransportError } from "../../../../../../src/orchestratio
 import { createStaleToolResultMasker } from "../../../../../../src/orchestration/agent-runtime/compaction/stale-tool-result-masker.js";
 import { buildOpenAIResponseInput } from "../../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import type { ConversationMessage } from "../../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ModelInfo } from "../../../../../../src/infra/llm/models.js";
+import { prepareOpenAIResponsesRequest } from "../../../../../../src/orchestration/agent-runtime/llm/openai-responses.js";
+import { stableSystemPrompt } from "../../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { Log } from "../../../../../../src/infra/log.js";
 import * as windowsAcl from "../../../../../../src/infra/windows-private-directory-acl.js";
 
@@ -250,9 +253,7 @@ describe("the input of a continued WebSocket request", () => {
       { kind: "user", content: "continue" },
     ];
     const convert = (messages: ConversationMessage[]) => {
-      const input = buildOpenAIResponseInput({ messages, accessProvider: "chatgpt", model: "gpt-5.5", supportsImages: false, tools: [] });
-      if (typeof input === "string" || !input) throw new Error("Expected Responses input items");
-      return input;
+      return buildOpenAIResponseInput({ systemPrompt: "", messages, accessProvider: "chatgpt", model: "gpt-5.5", supportsImages: false, tools: [] }).input;
     };
     const original = convert(history);
     const masked = createStaleToolResultMasker().mask(history, 0.3);
@@ -332,14 +333,14 @@ describe("the input of a continued WebSocket request", () => {
       type: "message", id: "a1", role: "assistant", status: "completed", phase,
       content: [{ type: "output_text", text: "answer", annotations: [] }],
     } satisfies ResponseOutputMessage;
-    const replay = buildOpenAIResponseInput({
+    const { input: replay } = buildOpenAIResponseInput({
+      systemPrompt: "",
       messages: [{
         kind: "assistant", api: "openai-responses", provider: "openai", accessProvider: "chatgpt", model: "gpt-5.5", timestamp: 1, stopReason: "end_turn",
         content: [{ type: "text", text: "answer", signature: JSON.stringify({ v: 1, id: response.id, ...(phase ? { phase } : {}) }) }],
       }],
       accessProvider: "chatgpt", model: "gpt-5.5", supportsImages: false, tools: [],
     });
-    if (typeof replay === "string" || !replay) throw new Error("Expected Responses input items");
     const continuation = answered([], [response]);
     expect(await continuedInput(baseRequestBody(replay), continuation)).toEqual([]);
     const next = userMessage("next");
@@ -356,6 +357,36 @@ describe("the input of a continued WebSocket request", () => {
 
     const delta = await continuedInput(body, continuation);
     expect(delta).toEqual([followUp]);
+  });
+
+  // ARCH-PROVIDERS-084 and ARCH-CONTEXT-041: the developer item and the request-level effort stay fixed, so a change
+  // of effort continues the connection with only the new turn and its update.
+  it("continues across a change of effort with the developer item in the compared prefix", async () => {
+    const sol: ModelInfo = {
+      provider: "openai", family: "openai", id: "gpt-6.2-sol", name: "GPT", reasoning: true, toolCall: true, attachment: false, temperature: true, openWeights: false,
+      cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" }, modalities: { input: ["text"], output: ["text"] },
+      contextLimit: 200_000, outputLimit: 4_000, reasoningEfforts: ["none", "low", "medium", "high"],
+    };
+    const prepare = (messages: ConversationMessage[], reasoningEffort: "high" | "low") => {
+      const { params } = prepareOpenAIResponsesRequest({
+        accessProvider: "chatgpt", model: sol.id, info: sol, isChatGPT: true,
+        options: { messages, tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort },
+      });
+      return { reasoning: params.reasoning, input: Array.isArray(params.input) ? params.input : [] };
+    };
+    const response = { type: "message", id: "a1", role: "assistant", status: "completed", content: [{ type: "output_text", text: "answer", annotations: [] }] } satisfies ResponseOutputMessage;
+    const first = prepare([{ kind: "user", content: "q1" }], "high");
+    const second = prepare([
+      { kind: "user", content: "q1" },
+      { kind: "assistant", api: "openai-responses", provider: "openai", accessProvider: "chatgpt", model: sol.id, timestamp: 1, stopReason: "end_turn", reasoningEffort: "high", content: [{ type: "text", text: "answer", signature: JSON.stringify({ v: 1, id: "a1" }) }] },
+      { kind: "user", content: "q2" },
+    ], "low");
+
+    expect(second.reasoning).toEqual(first.reasoning);
+    expect(await continuedInput(baseRequestBody(second.input), answered(first.input, [response]))).toEqual([
+      { role: "user", content: [{ type: "input_text", text: "q2" }] },
+      { type: "configuration_update", reasoning: { effort: "low" } },
+    ]);
   });
 
   it("returns an empty delta when the new input exactly equals the baseline (no appended items)", async () => {

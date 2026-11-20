@@ -3,10 +3,9 @@ import { describe, expect, test } from "bun:test";
 import { projectToolHistory } from "../../../../../src/orchestration/agent-runtime/llm/tool-history-projection.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { toAnthropicMessagesRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages.js";
-import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
+import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
+import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
 import { toGoogleGenerativeAiRequest } from "../../../../../src/orchestration/agent-runtime/llm/conversions/google-generative-ai.js";
-import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 
 type AssistantMessage = Extract<ConversationMessage, { kind: "assistant" }>;
 type ToolUseBlock = Extract<Exclude<AssistantMessage["content"], string>[number], { type: "tool_use" }>;
@@ -161,8 +160,8 @@ describe("tool history projection", () => {
     const projected = project(messages, new Map([["bash", "bash"]])).messages;
     const wires = [
       toAnthropicMessagesRequest({ sharedHost: false, accessProvider: "anthropic_api", provider: "anthropic", api: "anthropic-messages", model: "claude" }, projected),
-      toOpenAIResponsesInput({ sharedHost: false, accessProvider: "openai_api", provider: "openai", api: "openai-responses", model: "gpt-5" }, projected),
-      toChatCompletionsMessages(projected, true, openAIResponsesTarget("openrouter", "test-model")),
+      toOpenAIResponsesRequestInput({ sharedHost: false, accessProvider: "openai_api", provider: "openai", api: "openai-responses", model: "gpt-5" }, projected).input,
+      toChatCompletionsMessages(projected, true, chatCompletionsTarget("openrouter", "test-model")),
       toGoogleGenerativeAiRequest({ accessProvider: "google_api", provider: "google", model: "gemini", supportsImages: true }, projected),
     ];
 

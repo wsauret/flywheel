@@ -384,7 +384,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     if (price.status === "priced") expect(price.amountUsd).toBeCloseTo((1200 * 2.5 + 300 * 15) / 1_000_000, 10);
   });
 
-  it("sends top-level instructions for ChatGPT backend streaming requests", async () => {
+  it("sends the system prompt as the first developer item for ChatGPT backend streaming requests", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = {
       kind: "chatgpt",
@@ -396,12 +396,10 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
 
     await collectStreamEvents(client, { systemPrompt: stableSystemPrompt("Follow Flywheel QA instructions.") });
 
-    expect(state.lastResponsesCreateParams).toMatchObject({
-      instructions: "Follow Flywheel QA instructions.",
-      store: false,
-    });
+    expect(state.lastResponsesCreateParams).toMatchObject({ store: false });
+    expect(state.lastResponsesCreateParams).not.toHaveProperty("instructions");
     const input = state.lastResponsesCreateParams?.input;
-    expect(Array.isArray(input) && input.some((item) => "role" in item && (item.role === "system" || item.role === "developer"))).toBe(false);
+    expect(Array.isArray(input) ? input[0] : undefined).toEqual({ role: "developer", content: [{ type: "input_text", text: "Follow Flywheel QA instructions." }] });
   });
 
   it("preflights ChatGPT auth once with the turn's signal and no notice before streaming", async () => {
@@ -464,19 +462,17 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
     if (cost.status === "priced") expect(cost.amountUsd).toBeCloseTo((160_000 * 5 + 200 * 22.5 + 60_000 * 0.5) / 1_000_000, 10);
   });
 
-  it("sends top-level instructions for OpenAI API streaming requests", async () => {
+  it("sends the system prompt as the first developer item for OpenAI API streaming requests", async () => {
     setMockResponseUsage();
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("test-openai-key") };
     const client = await createOpenAIAdapter(auth, "gpt-5.4", COST_INFO);
 
     await collectStreamEvents(client, { systemPrompt: stableSystemPrompt("Follow Flywheel QA instructions.") });
 
-    expect(state.lastResponsesCreateParams).toMatchObject({
-      instructions: "Follow Flywheel QA instructions.",
-      store: false,
-    });
+    expect(state.lastResponsesCreateParams).toMatchObject({ store: false });
+    expect(state.lastResponsesCreateParams).not.toHaveProperty("instructions");
     const input = state.lastResponsesCreateParams?.input;
-    expect(Array.isArray(input) && input.some((item) => "role" in item && (item.role === "system" || item.role === "developer"))).toBe(false);
+    expect(Array.isArray(input) ? input[0] : undefined).toEqual({ role: "developer", content: [{ type: "input_text", text: "Follow Flywheel QA instructions." }] });
   });
 
   it("passes 24h prompt cache retention when requested", async () => {

@@ -32,7 +32,9 @@ const guidedProfiles = familySettings(MODEL_GUIDANCE.map(([model, modelGuidance]
 
 export function resolveModelInteractionProfile(model: string, modelFamily: ModelFamily): ModelInteractionProfile {
   // A guidance entry keeps the edit contract that the model's family and id select. The guidance follows the
-  // canonical model, not its transport: OpenRouter serves Claude over an OpenAI-compatible family.
-  const contract = modelFamily === "openai" && isApplyPatchModel(model) ? "apply_patch" : "edit"
+  // canonical model, not its transport: OpenRouter serves Claude over Chat Completions. A model trained on the
+  // apply_patch grammar keeps it over Chat Completions too, where the tool goes as a JSON function
+  // (`ToolWirePresentation.functionDescription`), and turns stamped with either family resolve the same contract.
+  const contract = (modelFamily === "openai" || modelFamily === "chat-completions") && isApplyPatchModel(model) ? "apply_patch" : "edit"
   return (guidedProfiles(model)?.value ?? DEFAULT_PROFILES)[contract]
 }

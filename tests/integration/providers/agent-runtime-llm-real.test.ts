@@ -38,7 +38,6 @@ async function streamGreeting(client: ModelClient) {
     providerSessionKey: `live-${crypto.randomUUID()}`, promptCacheKey: `live-${crypto.randomUUID()}`,
     providerOptions: undefined,
     staleMasking: undefined,
-    requestContext: undefined,
     requestAudit: undefined,
     turn: 0,
     messageCount: 1,

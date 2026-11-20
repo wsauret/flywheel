@@ -335,7 +335,6 @@ describe("provider request audit recorder", () => {
         google: { temperature: 0.4, thinking_budgets: { low: 128 }, extra_body: { bearer: "private-google-token", address: "1 Private Lane" } },
       },
       staleMasking: undefined,
-      requestContext: undefined,
     })
 
     const events = store.read({ aggregateId: `session:${sessionId}` })

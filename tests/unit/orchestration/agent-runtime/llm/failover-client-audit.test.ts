@@ -46,7 +46,6 @@ function runTurn(client: ModelClient, requestAudit: ProviderRequestAuditWriter):
     cacheRetention: "1h",
     providerSessionKey: undefined, promptCacheKey: undefined,
     providerOptions: undefined,
-    requestContext: "main",
     requestAudit,
     staleMasking: undefined,
     turn: 1,

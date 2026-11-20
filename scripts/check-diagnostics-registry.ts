@@ -63,6 +63,11 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
+    file: "src/orchestration/agent-runtime/llm/openai-helpers.ts",
+    what: "input transformations that an OpenAI Responses service reports for one response",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
+  {
     file: "src/orchestration/agent-runtime/agent-loop-compaction-state.ts",
     what: "automatic compaction deferrals of one fresh context",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,

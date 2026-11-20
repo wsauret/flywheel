@@ -1,14 +1,13 @@
 /**
- * OpenAI chat-completions streaming adapter.
- *
- * Used for Copilot models that are served via `/chat/completions` (gpt-4o,
- * gpt-4.1, gemini-*, grok-*) rather than the Responses API (`/responses`;
- * gpt-5*, o-series). The wire format differs:
+ * Chat Completions streaming adapter: the vendor-neutral `/chat/completions`
+ * wire that OpenRouter, DeepSeek, OpenCode Go, Baseten, custom providers, and
+ * Copilot's chat-only models speak. No OpenAI route uses it; OpenAI models go
+ * over the Responses API (`/responses`). The wire format differs:
  *
  *   Responses API:        `output_item.added`, `function_call_arguments.delta`
  *   Chat-completions API: `choices[].delta`, `tool_calls[].function.arguments`
  *
- * Faithful to pi's `openai-completions.ts` streaming/tool-call/error
+ * Faithful to the upstream adapter's streaming, tool-call, and error
  * handling. This adapter serves both Copilot chat-completions models and
  * OpenRouter, so OpenRouter-specific wire behaviors (encrypted
  * `reasoning_details` round-trip) live here gated on the access provider.
@@ -29,8 +28,8 @@ import { parseToolArguments } from "../../../infra/llm/json-parse.js";
 import { httpStatusOf, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "./provider-attempt-boundary.js";
 import { withStreamAttempt } from "./stream-attempt.js";
-import { OPENAI_CACHE_RATES } from "./provider-description.js";
-import { CHAT_COMPLETIONS_REASONING_FIELDS, applyAnthropicCacheControl, mapChatCompletionsToolChoice, toChatCompletionsMessages } from "./openai-completions-messages.js";
+import { CHAT_COMPLETIONS_CACHE_RATES } from "./provider-description.js";
+import { CHAT_COMPLETIONS_REASONING_FIELDS, applyAnthropicCacheControl, chatCompletionsTarget, mapChatCompletionsToolChoice, toChatCompletionsMessages } from "./chat-completions-messages.js";
 import { isOpenAIContextLengthMessage } from "./openai-helpers.js";
 import { cacheWriteTokens } from "./openai-usage-normalization.js";
 import { cacheControlFor } from "./anthropic-adapter-helpers.js";
@@ -40,14 +39,13 @@ import { throwIfLivenessFailure } from "./stream-liveness.js";
 import { observeProviderTelemetry } from "./stream-observe.js";
 import { FUNCTION_TOOL_PRESENTATION, immutablePreparedRequest, type ConnectedClient, type LLMClient, type PreparedProviderRequest, type ProviderStreamEvent, type StreamOptions } from "./types.js";
 import { renderSystemPrompt } from "./system-prompt-tiers.js";
-import type { ProviderHistoryTarget } from "./provider-history.js";
 
-const log = Log.create({ service: "llm-openai-completions" });
+const log = Log.create({ service: "llm-chat-completions" });
 
 interface UnknownFields { [key: string]: unknown }
 interface StringFields { [key: string]: string }
 
-type PreparedOpenAICompletionsRequest = PreparedProviderRequest<"openai-completions", ChatCompletionCreateParamsStreaming>;
+type PreparedChatCompletionsRequest = PreparedProviderRequest<"chat-completions", ChatCompletionCreateParamsStreaming>;
 
 function readReasoningDelta(delta: UnknownFields): { field: string; text: string } | undefined {
   for (const field of CHAT_COMPLETIONS_REASONING_FIELDS) {
@@ -61,7 +59,7 @@ function readReasoningDelta(delta: UnknownFields): { field: string; text: string
  *  through OpenRouter (Claude, Gemini mirrors) bind encrypted reasoning to
  *  tool calls via `delta.reasoning_details`; the continuation request must
  *  replay the detail on the assistant message or the provider rejects the
- *  tool-result turn with a 400. pi `openai-completions.ts:127-139`. */
+ *  tool-result turn with a 400. */
 interface EncryptedReasoningDetail {
   type: "reasoning.encrypted";
   id: string;
@@ -191,7 +189,7 @@ function mapChatCompletionsStopReason(finishReason: string): CompletedStopReason
     default:
       // "error", "network_error", and future values: silently mapping them to
       // end_turn would finalize a broken response as a successful turn and
-      // skip retry (pi `openai-completions.ts:1364-1388,:577-579`
+      // skip retry (the upstream adapter
       // fixed this class deliberately). Consistent with the existing
       // missing-finish_reason throw above.
       throw new LlmStreamError(`stream finished with unexpected finish_reason: ${finishReason}`, "transient");
@@ -201,7 +199,7 @@ function mapChatCompletionsStopReason(finishReason: string): CompletedStopReason
 /** Builds the per-attempt reasoning request fields. OpenRouter normalizes
  *  reasoning across vendors via a nested `reasoning` object and needs an
  *  explicit off because several mirrors (gemini, gpt) default reasoning on
- *  (pi `openai-completions.ts:784-793`); always-thinking models
+ *  as the upstream adapter found; always-thinking models
  *  that reject off get the param omitted. Other endpoints take the flat
  *  OpenAI `reasoning_effort`, omitted when off. Copilot's chat-completions
  *  models reject the param entirely. DeepSeek thinks by default, so off needs
@@ -234,26 +232,19 @@ function chatCompletionsReasoningParams(
 
 /** Anthropic served through proxies requires the `tools` param whenever the
  *  conversation carries tool traffic, even when no tools are offered this turn
- *  (pi `openai-completions.ts:730-733`). */
+ *  (an upstream adapter finding). */
 function hasToolHistory(messages: ChatCompletionMessageParam[]): boolean {
   return messages.some((m) => m.role === "tool" || (m.role === "assistant" && m.tool_calls !== undefined));
 }
 
-/** The replay identity that this adapter stamps on its turns and lowers history for. Chat completions shares the
- *  Responses API's identity: an access provider serves each model through one endpoint, so the access provider and the
- *  model tell the two apart. */
-function chatCompletionsTarget(accessProvider: AccessProviderId, model: string): ProviderHistoryTarget {
-  return { accessProvider, provider: "openai", api: "openai-responses", model, sharedHost: false };
-}
-
-function prepareOpenAICompletionsRequest(input: {
+function prepareChatCompletionsRequest(input: {
   accessProvider: AccessProviderId;
   model: string;
   wireModel: string;
   info: ModelInfo;
   options: StreamOptions;
   providerOutputCap?: number;
-}): PreparedOpenAICompletionsRequest {
+}): PreparedChatCompletionsRequest {
   const { accessProvider, model, wireModel, info, options, providerOutputCap } = input;
   const messages = toChatCompletionsMessages(options.messages, info.modalities.input.includes("image"), chatCompletionsTarget(accessProvider, model), info.interleavedReasoningField);
   const systemPrompt = renderSystemPrompt(options.systemPrompt);
@@ -283,7 +274,7 @@ function prepareOpenAICompletionsRequest(input: {
     ...chatCompletionsReasoningParams(accessProvider, model, info, options.reasoningEffort, toolChoice),
   };
   return immutablePreparedRequest({
-    endpoint: "openai-completions",
+    endpoint: "chat-completions",
     params,
     systemPrompt: systemPrompt || undefined,
     messages: params.messages,
@@ -345,7 +336,7 @@ function* handleToolCallDelta(
   }
 }
 
-export async function createOpenAIChatCompletionsAdapter(
+export async function createChatCompletionsAdapter(
   client: OpenAI,
   defaultModel: string,
   openingInfo: ModelInfo,
@@ -354,8 +345,6 @@ export async function createOpenAIChatCompletionsAdapter(
     candidate?: AccessProviderCandidate;
     /** Exact catalog transport ID, distinct from canonical model metadata. */
     wireModelId?: string;
-    /** models.dev provider key for cost/limit lookup (defaults to "openai"). */
-    providerHint?: string;
     /** Provider-owned cap already used for pre-dispatch admission. */
     providerOutputCap?: number;
     /** The availability owner bound to the account this adapter spends from.
@@ -376,8 +365,8 @@ export async function createOpenAIChatCompletionsAdapter(
     const adapter = {
       accessProvider,
       // Wire family, not catalog family: a Claude or Gemini model served over
-      // this endpoint replays as an OpenAI-family turn (`chatCompletionsTarget`).
-      modelFamily: "openai",
+      // this endpoint replays as a Chat Completions turn (`chatCompletionsTarget`).
+      modelFamily: "chat-completions",
       model: defaultModel,
       toolPresentation: FUNCTION_TOOL_PRESENTATION,
       contextLimit: info.contextLimit,
@@ -385,7 +374,7 @@ export async function createOpenAIChatCompletionsAdapter(
       supportsReasoning: info.reasoning,
 
       priceFor(tokens) {
-        return computeUsagePrice(tokens, info.pricing, OPENAI_CACHE_RATES);
+        return computeUsagePrice(tokens, info.pricing, CHAT_COMPLETIONS_CACHE_RATES);
       },
 
       historyTarget: (options: StreamOptions) => chatCompletionsTarget(accessProvider, options.model ?? defaultModel),
@@ -397,7 +386,7 @@ export async function createOpenAIChatCompletionsAdapter(
         // so adapter identity and metadata stay canonical.
         const wireModel = overrides?.wireModelId ?? modelId;
 
-        const descriptor = prepareOpenAICompletionsRequest({
+        const descriptor = prepareChatCompletionsRequest({
           accessProvider, model: modelId, wireModel, info, options,
           ...(providerOutputCap === undefined ? {} : { providerOutputCap }),
         });
@@ -416,10 +405,10 @@ export async function createOpenAIChatCompletionsAdapter(
           const params = descriptor.params;
           const requestOpts = headers ? { signal: attempt.signal, headers } : { signal: attempt.signal };
           const streamLiveness = attempt.armLiveness({
-            label: "llm-openai-completions",
-            provider: "OpenAI chat-completions",
+            label: "llm-chat-completions",
+            provider: "Chat Completions",
             telemetry: options.telemetry,
-            timeoutMessage: (event) => `OpenAI chat-completions stream ${event.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
+            timeoutMessage: (event) => `Chat Completions stream ${event.phase === "pre-stream" ? "pre-stream timeout" : "idle timeout"}`,
           });
           let usage: { input: number; output: number; cacheRead: number | null; cacheWrite: number; reasoning: number; reportedChargeUsd: number | undefined } | undefined;
           // The usage chunk is the stream's terminal report, so any usage seen is final.
@@ -541,7 +530,7 @@ export async function createOpenAIChatCompletionsAdapter(
             // Flush accumulated reasoning as a thinking block. The signature is
             // the reasoning field name the endpoint streamed it on; the converter
             // replays same-API thinking on that field and degrades anything else
-            // to text (pi `openai-completions.ts:502-506,:1120-1127`).
+            // to text, as the upstream adapter does.
             if (thinkingBuf) {
               streamLiveness.complete(`${runId}:thinking:${thinkingRunOrdinal}`);
               yield { kind: "thinking_complete", thinking: thinkingBuf, blockKey: `${runId}:thinking:${thinkingRunOrdinal}`, ...(thinkingField ? { signature: thinkingField } : {}) } as const;
@@ -574,7 +563,7 @@ export async function createOpenAIChatCompletionsAdapter(
             const finalUsage = usageEvent();
             if (finalUsage) yield finalUsage;
 
-            // pi `openai-completions.ts:400-402`: throw on stream close without
+            // As the upstream adapter does, throw on stream close without
             // a finish_reason; proxies (Copilot in particular) drop connections
             // mid-stream non-trivially; silently mapping to `end_turn` would
             // treat a truncated response as a successful turn.
@@ -595,7 +584,7 @@ export async function createOpenAIChatCompletionsAdapter(
             const finalUsage = usageEvent();
             if (finalUsage) yield finalUsage;
             throwIfLivenessFailure(err, attempt, options.signal);
-            log.warn("OpenAI chat-completions stream error", { err: String(err) });
+            log.warn("Chat Completions stream error", { err: String(err) });
             throw err;
           } }, options);
       },

@@ -83,8 +83,7 @@ export function historicalEngineFraming(content: string, next: ConversationMessa
  * the request that the bridge serves next never differs from the one that the entries were read from, apart from the
  * entries themselves. A dispatch adds the entry of each system tier that the conversation carries
  * (`openingMessageTiers`) and the engine's system text when the context does not hold them yet, and one dispatch wrapper unless the newest
- * entry of history is one, which a retried attempt of the same request finds. The request's request-only text
- * (`StreamOptions.requestContext`) ends the request after that entry, and history never holds it.
+ * entry of history is one, which a retried attempt of the same request finds.
  */
 export function createHostedAgentEntries(dispatches: (request: StreamOptions) => boolean): NonNullable<ServingAttempt["requestEntries"]> {
   const isInstructions = isEntry(ENGINE_INSTRUCTIONS);
@@ -93,14 +92,13 @@ export function createHostedAgentEntries(dispatches: (request: StreamOptions) =>
     const { messages } = request;
     const tail = messages.at(-1);
     if (tail === undefined || tail.kind === "assistant" || !dispatches(request)) return [];
-    const newestEntry = messages.at(request.requestContext === undefined ? -1 : -2);
     const tiers = openingMessageTiers(request.systemPrompt).map(conversationTierEntry).filter((tier) => !messages.some(isEntry(tier)));
     // Any entry, also a system-origin one such as a workflow task or a steer, can be the input that a dispatch
     // answers, and the engine ends that input with its wrapper.
     return [
       ...tiers.map(hostEntry),
       ...(messages.some(isInstructions) ? [] : [hostEntry(ENGINE_INSTRUCTIONS)]),
-      ...(newestEntry !== undefined && isDispatch(newestEntry) ? [] : [hostEntry(DISPATCH_TEXT)]),
+      ...(isDispatch(tail) ? [] : [hostEntry(DISPATCH_TEXT)]),
     ];
   };
 }
@@ -115,11 +113,6 @@ export interface HostedView extends CliView {
   readonly definitionPrompt: string;
   /** The index of each system block that moved into the conversation, and of the message that holds its entry. */
   readonly movedTiers: readonly { readonly block: number; readonly at: number }[];
-  /** Whether the newest message ends with the request's request-only text, which the engine's wrapper follows. */
-  readonly endsWithRequestContext: boolean;
-  /** The index of the message at whose dispatch the engine received the request's request-only text, when the view
-   *  left that text out of the newest message because the engine holds it already (`HeldRequestContext`). */
-  readonly heldRequestContextAt: number | undefined;
 }
 
 /** A tool result that the engine rewrote by its fixed rule (`ResultRewrite`) in the agent's running conversation: the
@@ -130,46 +123,28 @@ export interface HeldRewrite {
   readonly rewrite: ResultRewrite;
 }
 
-/** Request-only text that a dispatch gave the engine: the engine holds it at the end of the message `at` of its
- *  conversation, and a later step of the same agent does not repeat it. */
-export interface HeldRequestContext {
-  readonly text: string;
-  readonly at: number;
-}
-
 /** Takes the engine's text out of `view`: the system text entry, which the engine sends in its system blocks, and
  *  each dispatch wrapper, which the engine adds at a dispatch and the agent file holds as the engine's own row. The
  *  shared projection joins every run of user messages into one message whose blocks are whole entries, so a block
  *  of host framing (`BlockOrigin`) that equals one of these texts is the appends' entry wherever it stands, and a
  *  person's text with the same bytes stays: a dispatch that no answer followed leaves
  *  both before the next input. A user message records a dispatch only when the wrapper is its last block of history,
- *  where the engine places its own: the request-only text (`StreamOptions.requestContext`), the block of origin
- *  `request-context` that ends the newest message and that history never holds, stays in the agent's message, and the engine's wrapper
- *  follows it. A text that only quotes the wrapper, and every assistant message, stay unchanged. The
+ *  where the engine places its own. A text that only quotes the wrapper, and every assistant message, stay unchanged. The
  *  entry of each tier that the conversation carries stays, and its system block leaves the definition's prompt. The effort stays part of the
  *  identity, so a changed effort starts the agent again: the engine (CLI 2.1.321, `Xat`) places no effort message
  *  after a user message that holds only tool results, so the effort that the gate states for a step
- *  (`HostGate.admit`) cannot reach a turn that already runs. When the
- *  request-only text equals the text that the engine holds from an earlier dispatch (`held`), the view leaves it out
- *  of the newest message, so a later step's tail holds only that step's own input. */
-export function hostedView(view: CliView, held?: HeldRequestContext): HostedView {
+ *  (`HostGate.admit`) cannot reach a turn that already runs. */
+export function hostedView(view: CliView): HostedView {
   const dispatches: number[] = [];
-  const newest = view.messages.length - 1;
-  const tail = view.messages.at(-1)?.content.at(-1);
-  const tailIsRequestContext = tail?.type === "text" && view.origins[newest]?.at(-1) === "request-context";
-  const holdsRequestContext = tailIsRequestContext && held?.text === tail.text;
-  const endsWithRequestContext = tailIsRequestContext && !holdsRequestContext;
   const framed = (message: number, block: number) => view.origins[message]?.[block] === "host-framing";
   const isEngineText = (message: number) => (block: CliMessage["content"][number], at: number) =>
     framed(message, at) && block.type === "text" && (block.text === ENGINE_INSTRUCTIONS || block.text === DISPATCH_TEXT);
-  const requestMessages = holdsRequestContext ? view.messages.map((message, index): CliMessage => index === newest ? { role: message.role, content: message.content.slice(0, -1) } : message) : view.messages;
-  const requestOrigins = holdsRequestContext ? view.origins.map((origins, index) => index === newest ? origins.slice(0, -1) : origins) : view.origins;
-  const kept = requestMessages.map((message, index) => {
+  const kept = view.messages.map((message, index) => {
     const engineText = isEngineText(index);
     const keeps = message.content.map((block, at) => !engineText(block, at));
-    const origins = requestOrigins[index] ?? [];
+    const origins = view.origins[index] ?? [];
     if (keeps.every(Boolean)) return { message, origins };
-    const lastAt = message.content.length - (endsWithRequestContext && index === newest ? 2 : 1);
+    const lastAt = message.content.length - 1;
     const last = message.content[lastAt];
     if (last?.type === "text" && last.text === DISPATCH_TEXT && framed(index, lastAt)) dispatches.push(index);
     return {
@@ -178,15 +153,14 @@ export function hostedView(view: CliView, held?: HeldRequestContext): HostedView
     };
   });
   const messages = kept.map(({ message }) => message);
-  const holder = (text: string) => requestMessages.findIndex((message, index) => message.role === "user" && message.content.some((block, at) => framed(index, at) && block.type === "text" && block.text === text));
+  const holder = (text: string) => view.messages.findIndex((message, index) => message.role === "user" && message.content.some((block, at) => framed(index, at) && block.type === "text" && block.text === text));
   const movedTiers = view.identity.systemPrompt.flatMap((tier, block) => {
     const at = holder(conversationTierEntry(tier));
     return at < 0 ? [] : [{ block, at }];
   });
   const definition = view.identity.systemPrompt.filter((_, block) => !movedTiers.some((moved) => moved.block === block));
   return {
-    ...view, messages, origins: kept.map(({ origins }) => origins), dispatches, endsWithRequestContext,
-    heldRequestContextAt: holdsRequestContext ? held?.at : undefined, definitionPrompt: definition.join(SYSTEM_PROMPT_SEPARATOR), movedTiers,
+    ...view, messages, origins: kept.map(({ origins }) => origins), dispatches, definitionPrompt: definition.join(SYSTEM_PROMPT_SEPARATOR), movedTiers,
   };
 }
 
@@ -197,10 +171,7 @@ export function hostedView(view: CliView, held?: HeldRequestContext): HostedView
  * in the model's layout, and a `session_context` reminder for a login with an email. Each tier that the
  * conversation carries leaves the system prompt for its entry (`conversationTierEntry`): its `system-tier:conversation`
  * addition names the message of the entry, and its value the index of the system block. A dispatch adds the coordinator wrapper as the last block
- * of its message: its `after-request-context` value states that the wrapper follows the request's request-only
- * text there, while history holds the wrapper's entry before that text. A later step of the same agent whose request
- * ends with the same request-only text does not repeat it: its `request-context` addition, `held-from-dispatch`,
- * names the message at whose dispatch the engine received that text and still holds it. Each tool result that the engine rewrote in the agent's running
+ * of its message. Each tool result that the engine rewrote in the agent's running
  * conversation (`rewrites`) is a `tool-result:<rewrite>` addition at its message, whose value is its tool use id: the
  * engine sends a blank success as `(<tool> completed with no output)` with the tool's MCP name (`no-output`), and an
  * error as its text blocks joined by newlines and trimmed (`error-joined`). The bridge folds the runtime notices that
@@ -219,9 +190,8 @@ export function hostedTransportContext(view: HostedView, dispatched: boolean, lo
     ...(loginEmail ? [{ part: "message", kind: "reminder:session-context", at: 0 } as const] : []),
     ...view.reminders.map(({ message, reminder }) => ({ part: "message", kind: `reminder:${reminder.kind}`, at: message } as const)),
     ...(dispatched && view.dispatches.length > 0 ? [{
-      part: "message", kind: "coordinator", at: view.dispatches.at(-1) ?? 0, ...(view.endsWithRequestContext ? { value: "after-request-context" } : {}),
+      part: "message", kind: "coordinator", at: view.dispatches.at(-1) ?? 0,
     } as const] : []),
-    ...(view.heldRequestContextAt === undefined ? [] : [{ part: "message", kind: "request-context", at: view.heldRequestContextAt, value: "held-from-dispatch" } as const]),
     ...rewrites.map(({ at, toolUseId, rewrite }) => ({ part: "message", kind: `tool-result:${rewrite}`, at, value: toolUseId } as const)),
     ...(view.identity.promptCaching ? [{ part: "body", kind: "cache_control", value: "engine-placed" } as const] : []),
   ];

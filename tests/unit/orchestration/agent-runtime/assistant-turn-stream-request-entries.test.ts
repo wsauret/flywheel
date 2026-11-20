@@ -43,7 +43,7 @@ describe("streamAssistantTurn route request entries", () => {
             interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
             messages, tools: [{ name: "read", description: "read", input_schema: {} }], systemPrompt: stableSystemPrompt("system"), reasoningEffort: undefined,
             signal: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined,
-            requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+            requestAudit: undefined, staleMasking: undefined,
             turn: 1, messageCount: messages.length, estimatedContextTokens: 20, onEvent: () => {},
           } satisfies AssistantAttemptInput,
           execute: (_candidate, fold) => fold({}, async (attempt) => {

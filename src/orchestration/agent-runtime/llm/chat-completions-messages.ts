@@ -13,6 +13,12 @@ import type { ContentBlock, ConversationMessage, ToolChoice } from "./types.js";
 
 interface UnknownFields { [key: string]: unknown }
 
+/** The replay identity that the Chat Completions adapter stamps on its turns and lowers history for: the Chat
+ *  Completions family and API, whichever vendor trained the model. */
+export function chatCompletionsTarget(accessProvider: AccessProviderId, model: string): ProviderHistoryTarget {
+  return { accessProvider, provider: "chat-completions", api: "chat-completions", model, sharedHost: false };
+}
+
 export function mapChatCompletionsToolChoice(
   choice: ToolChoice | undefined,
 ): ChatCompletionCreateParamsStreaming["tool_choice"] | undefined {
@@ -61,7 +67,7 @@ export function toChatCompletionsMessages(
     if (current.kind === "system") {
       // Transcript-only notice: skipped from the wire, matching the Anthropic
       // and Responses conversions. The system prompt travels separately in
-      // options.systemPrompt (openai-completions.ts).
+      // options.systemPrompt (chat-completions.ts).
       index += 1;
       continue;
     }
@@ -70,7 +76,7 @@ export function toChatCompletionsMessages(
     } else if (current.kind === "toolResult") {
       // Consume the whole run of consecutive tool results, then attach their
       // images as one labeled user message so the contiguous tool-message
-      // block stays intact (pi `openai-completions.ts:1195-1263`;
+      // block stays intact (the upstream adapter does the same;
       // providers reject interleaved user messages between tool results).
       index = appendToolResultRun(out, history, index, supportsImages, wireIds);
       continue;
@@ -119,8 +125,8 @@ function appendToolResultRun(
     if (message?.kind !== "toolResult") break;
     const split = splitToolOutputParts(message.content, supportsImages);
     const text = sanitizeSurrogates([split.text, ...split.omittedImagePlaceholders].filter(Boolean).join("\n"));
-    // Some providers reject empty tool content; mirror pi's
-    // placeholders (`openai-completions.ts:1210-1212`).
+    // Some providers reject empty tool content; mirror the upstream
+    // adapter's placeholders.
     const content = text.length > 0 ? text : split.images.length > 0 ? "(see attached image)" : "(no tool output)";
     out.push({ role: "tool", tool_call_id: wireToolCallId(wireIds, message.toolUseId), content });
     for (const part of split.images) {
@@ -158,8 +164,8 @@ function convertUserMessage(
 
 /** Returns undefined for an assistant message with nothing to send: several
  *  providers reject assistant messages that carry neither content nor
- *  tool_calls (aborted turns produce them; pi
- *  `openai-completions.ts:1182-1193`). */
+ *  tool_calls (aborted turns produce them, as the
+ *  upstream adapter found). */
 function convertAssistantMessage(
   message: Extract<ConversationMessage, { kind: "assistant" }>,
   wireIds: ReadonlyMap<string, string>,
@@ -173,8 +179,8 @@ function convertAssistantMessage(
     if (block.type === "text") textBlocks.push(sanitizeSurrogates(block.text));
     else if (block.type === "thinking" && block.thinking && !block.redacted && isReasoningFieldSignature(block.signature)) {
       // Lowering left thinking only on this target's own turns (`lowerProviderHistory`). Thinking captured on this
-      // API carries its reasoning field name as the signature and replays on that field (pi
-      // `openai-completions.ts:1120-1127`); any other thinking cannot replay here and stays out.
+      // API carries its reasoning field name as the signature and replays on that field, as in the
+      // upstream adapter; any other thinking cannot replay here and stays out.
       const bucket = reasoningReplay.get(block.signature) ?? [];
       bucket.push(sanitizeSurrogates(block.thinking));
       reasoningReplay.set(block.signature, bucket);
@@ -198,7 +204,7 @@ function convertAssistantMessage(
     ...Object.fromEntries([...reasoningReplay].map(([field, chunks]) => [field, chunks.join("\n")])),
     // OpenRouter rejects a tool-result continuation for a reasoning turn unless
     // the assistant message replays the encrypted reasoning bound to its tool
-    // calls (pi `openai-completions.ts:1161-1173`). The SDK's
+    // calls, as the upstream adapter replays it. The SDK's
     // assistant param does not declare this OpenRouter extension field.
     ...(reasoningDetails.length ? { reasoning_details: reasoningDetails } : {}),
   };
@@ -236,7 +242,7 @@ interface ChatCompletionsCacheControl {
  *  for anthropic/ models served through OpenRouter: system prompt, last tool,
  *  and last conversation message, mirroring the native Anthropic adapter's
  *  breakpoints. Without the markers no cache is ever created or read.
- *  Adapted from pi `openai-completions.ts:894-996`. */
+ *  Adapted from the upstream Chat Completions adapter. */
 export function applyAnthropicCacheControl(
   messages: ChatCompletionMessageParam[],
   tools: ChatCompletionTool[] | undefined,

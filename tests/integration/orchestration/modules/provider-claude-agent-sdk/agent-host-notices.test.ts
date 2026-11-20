@@ -8,7 +8,7 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { formatChildInterruptedNotification, formatSubagentNotificationBatch } from "../../../../../src/orchestration/agent-runtime/background-work-notifications.js";
 import { formatRuntimeNotification } from "../../../../../src/orchestration/agent-runtime/runtime-notifications.js";
 import { captureForkMessages } from "../../../../../src/orchestration/agent-runtime/agent-loop-history.js";
-import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
+import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 import { openAIResponsesTarget, resolveOpenAISystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.js";
 import { conversationTierEntry, ENGINE_INSTRUCTIONS } from "../../../../helpers/hosted-engine-text.js";
@@ -116,16 +116,16 @@ describe("a runtime notice after a parked batch", () => {
 
       // A fork or a failover of this history to another provider reads none of the engine's text and none of the
       // host's conversation-tier entry, while durable history keeps all of them. The failover reads the conversation
-      // tier once, in its instructions.
+      // tier once, in its system prompt.
       const history = [...agent.history];
       const model = history.flatMap((message) => parseRuntimeReminder(textOf(message) ?? "")?.kind === "model" ? [textOf(message) ?? ""] : []);
       expect(model).toHaveLength(1);
       const hostText = [ENGINE_INSTRUCTIONS, DISPATCH_TEXT, ...model, conversationTierEntry(tier)];
       for (const text of hostText) expect(history.some((message) => textOf(message) === text)).toBe(true);
       const openai = openAIResponsesTarget("openai_api", "o4");
-      const failover = JSON.stringify(toOpenAIResponsesInput(openai, history));
-      const instructions = resolveOpenAISystemPrompt({ messages: history, systemPrompt: { ...SYSTEM, conversation: tier }, isChatGPT: false });
-      const fork = JSON.stringify(toOpenAIResponsesInput(openai, await captureForkMessages(history)));
+      const failover = JSON.stringify(toOpenAIResponsesRequestInput(openai, history).input);
+      const instructions = resolveOpenAISystemPrompt({ messages: history, systemPrompt: { ...SYSTEM, conversation: tier } });
+      const fork = JSON.stringify(toOpenAIResponsesRequestInput(openai, await captureForkMessages(history)).input);
       const encoded = (text: string) => JSON.stringify(text).slice(1, -1);
       for (const text of hostText) {
         expect(failover).not.toContain(encoded(text));

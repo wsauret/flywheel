@@ -129,8 +129,6 @@ export async function createOpenAIAdapter(
           const runId = crypto.randomUUID();
           const streamLiveness = attempt.armLiveness({ label: "llm-openai", provider: "OpenAI", telemetry: options.telemetry });
 
-          // Keep OpenAI Responses aligned across transports: instructions travel in
-          // the top-level `instructions` field, not as a system/developer input item.
           const params = descriptor.params;
 
           streamLiveness.preStream();

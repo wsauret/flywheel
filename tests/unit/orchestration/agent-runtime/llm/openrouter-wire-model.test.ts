@@ -3,11 +3,11 @@ import type OpenAI from "openai";
 import { z } from "zod";
 import { wireClient } from "./_wire-fixtures.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 
 
 function modelInfo(id: string, reasoning = false): ModelInfo {
-  return { provider: "openrouter", family: "openai", id, name: id, reasoning, toolCall: true, attachment: false, temperature: true, contextLimit: 1000, outputLimit: 100, openWeights: false, cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" }, modalities: { input: ["text"], output: ["text"] } };
+  return { provider: "openrouter", family: "chat-completions", id, name: id, reasoning, toolCall: true, attachment: false, temperature: true, contextLimit: 1000, outputLimit: 100, openWeights: false, cost: { input: 0, output: 0 }, pricing: { status: "unavailable", reason: "missing-rate-card" }, modalities: { input: ["text"], output: ["text"] } };
 }
 
 const finishChunk = {
@@ -29,9 +29,8 @@ describe("OpenRouter outbound wire model", () => {
     ["kimi-k3", "moonshotai/kimi-k3"],
   ])("streams %s as wire id %s", async (internal, wire) => {
     const models: string[] = [];
-    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(models), internal, modelInfo(internal), {
+    const adapter = await createChatCompletionsAdapter(capturingClient(models), internal, modelInfo(internal), {
       accessProvider: "openrouter",
-      providerHint: "openrouter",
       wireModelId: wire,
     });
     for await (const _event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) { /* drain */ }
@@ -49,8 +48,8 @@ describe("OpenRouter outbound wire model", () => {
       messages.push(z.array(z.object({ role: z.string() })).parse(params.messages));
     });
     const wireModelId = model === "o3-mini" ? "openai/o3-mini" : "anthropic/claude-opus-4.8";
-    const adapter = await createOpenAIChatCompletionsAdapter(client, model, modelInfo(model, reasoning), {
-      accessProvider: "openrouter", providerHint: "openrouter", wireModelId,
+    const adapter = await createChatCompletionsAdapter(client, model, modelInfo(model, reasoning), {
+      accessProvider: "openrouter", wireModelId,
     });
 
     for await (const _event of adapter.streamWithTools({ messages: [], tools: [], systemPrompt: stableSystemPrompt("instructions") })) { /* drain */ }
@@ -60,7 +59,7 @@ describe("OpenRouter outbound wire model", () => {
 
   test("non-OpenRouter access providers send the model unchanged", async () => {
     const models: string[] = [];
-    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(models), "gpt-5.5", modelInfo("gpt-5.5"), {
+    const adapter = await createChatCompletionsAdapter(capturingClient(models), "gpt-5.5", modelInfo("gpt-5.5"), {
       accessProvider: "github_copilot",
     });
     for await (const _event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) { /* drain */ }

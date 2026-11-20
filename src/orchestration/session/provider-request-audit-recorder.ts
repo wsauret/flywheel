@@ -90,7 +90,6 @@ function buildProviderRequestFacts(
       ...(input.staleMasking ? { staleMasking: input.staleMasking } : {}),
       ...(input.toolHistoryProjection ? { toolHistoryProjection: input.toolHistoryProjection } : {}),
       ...(input.historyLowering ? { historyLowering: input.historyLowering } : {}),
-      ...(input.requestContext ? { requestContext: input.requestContext } : {}),
     },
   }
 

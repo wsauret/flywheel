@@ -57,7 +57,6 @@ test("passes a planned shell tool to the provider unchanged", async () => {
     cacheRetention: "1h",
     providerSessionKey: undefined, promptCacheKey: undefined,
     providerOptions: undefined,
-    requestContext: "main",
     requestAudit: undefined,
     staleMasking: undefined,
     turn: 1,

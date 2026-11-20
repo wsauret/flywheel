@@ -6,15 +6,15 @@
  * the tool call's `thoughtSignature`, and the converter must replay it as
  * `reasoning_details` on the assistant message, or the tool-result
  * continuation is rejected with a 400.
- * Port source: pi `openai-completions.ts:547-560,:1161-1173`.
+ * Port source: the upstream Chat Completions adapter.
  */
 
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
 import { wireClient } from "./_wire-fixtures.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
+import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
 
 interface UnknownRecord { [key: string]: unknown }
 
@@ -57,11 +57,11 @@ describe("OpenRouter reasoning_details capture", () => {
   test.each(["before", "after"] as const)(
     "binds an encrypted detail arriving %s the tool-call delta as thoughtSignature",
     async (position) => {
-      const adapter = await createOpenAIChatCompletionsAdapter(
+      const adapter = await createChatCompletionsAdapter(
         clientWithChunks(toolCallChunks(position)),
         "claude-opus-4-8",
         MODEL_INFO,
-        { accessProvider: "openrouter", providerHint: "openrouter" },
+        { accessProvider: "openrouter" },
       );
       const events = [];
       for await (const event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) {
@@ -84,11 +84,11 @@ describe("OpenRouter reasoning_details capture", () => {
       id: "chatcmpl_1",
       choices: [{ index: 0, delta: { reasoning_details: [{ type: "reasoning.text", text: "visible" }, "junk", null] }, finish_reason: null }],
     });
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       clientWithChunks(chunks),
       "claude-opus-4-8",
       MODEL_INFO,
-      { accessProvider: "openrouter", providerHint: "openrouter" },
+      { accessProvider: "openrouter" },
     );
     const events = [];
     for await (const event of adapter.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("") })) {
@@ -106,8 +106,7 @@ describe("OpenRouter reasoning_details replay", () => {
         { kind: "user", content: "do it" },
         {
           kind: "assistant",
-          // A turn that builds before 2026-10-27 stored with no access provider (`replayOf` in provider-history.ts).
-          api: "openai-responses", provider: "openai", model: "test-model",
+          accessProvider: "openrouter", api: "chat-completions", provider: "chat-completions", model: "test-model",
           content: [
             { type: "text", text: "working" },
             { type: "tool_use", id: "call_abc", name: "read", input: { path: "a" }, thoughtSignature: JSON.stringify(ENCRYPTED_DETAIL) },
@@ -116,7 +115,7 @@ describe("OpenRouter reasoning_details replay", () => {
         { kind: "toolResult", toolUseId: "call_abc", content: [{ type: "text", text: "ok" }] },
       ],
       false,
-      openAIResponsesTarget("openrouter", "test-model"),
+      chatCompletionsTarget("openrouter", "test-model"),
     );
     const assistant = messages.find((m) => m.role === "assistant");
     expect(assistant).toMatchObject({
@@ -136,7 +135,7 @@ describe("OpenRouter reasoning_details replay", () => {
         { kind: "toolResult", toolUseId: "call_abc", content: [{ type: "text", text: "ok" }] },
       ],
       false,
-      openAIResponsesTarget("openrouter", "test-model"),
+      chatCompletionsTarget("openrouter", "test-model"),
     );
     const assistant = messages.find((m) => m.role === "assistant");
     expect(assistant).toBeDefined();
@@ -144,4 +143,3 @@ describe("OpenRouter reasoning_details replay", () => {
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";

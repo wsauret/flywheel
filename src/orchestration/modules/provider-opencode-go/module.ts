@@ -16,7 +16,7 @@ const definition = {
   shortName: "OpenCode Go",
   billingUrl: OPENCODE_GO_BILLING_URL,
  
-  defaultChatTransport: "openai-completions",
+  defaultChatTransport: "chat-completions",
   configHints: ["flywheel auth login --opencode-go"],
   cli: { flag: "opencode-go", name: "OpenCode Go" },
   billing: "subscription",
@@ -51,7 +51,7 @@ const definition = {
 const createClient: AccessProviderFactory = async (build) => {
   const endpoint = build.attribution.transport;
   if (endpoint === undefined || endpoint === "google") throw new ApiError({ message: `OpenCode Go has no supported transport for "${build.model}".`, recovery: { kind: "none" } });
-  const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-responses" ? "openai-responses" : "openai-completions";
+  const protocol = endpoint === "anthropic-messages" ? "anthropic" : endpoint === "openai-responses" ? "openai-responses" : "chat-completions";
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
   return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol, providerHint: definition.catalogId, resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const credential = credentialForCandidate(build.connection, build.candidate);
@@ -67,8 +67,8 @@ const createClient: AccessProviderFactory = async (build) => {
         extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
       });
     }
-    const [{ default: OpenAI }, { createOpenAIAdapter }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([
-      import("openai"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/openai-completions.js"),
+    const [{ default: OpenAI }, { createOpenAIAdapter }, { createChatCompletionsAdapter }] = await Promise.all([
+      import("openai"), import("../../agent-runtime/llm/openai.js"), import("../../agent-runtime/llm/chat-completions.js"),
     ]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENCODE_GO_V1_BASE, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
     if (endpoint === "openai-responses") return createOpenAIAdapter({ kind: "apiKey", apiKey: key }, build.wireModelId, info, {
@@ -78,9 +78,8 @@ const createClient: AccessProviderFactory = async (build) => {
       candidate: build.candidate,
       extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
     });
-    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
+    return createChatCompletionsAdapter(client, build.wireModelId, info, {
       accessProvider: definition.id,
-      providerHint: definition.catalogId,
       candidate: build.candidate,
       extraHeaders: (options) => openCodeGoRequestHeaders(options.providerSessionKey),
     });

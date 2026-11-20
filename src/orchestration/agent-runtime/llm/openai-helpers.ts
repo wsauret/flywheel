@@ -6,6 +6,8 @@ import type {
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
 import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";
+import { Option, Schema } from "effect";
+import { DebugLog } from "../../../infra/debug-log.js";
 import { ChatGptAdapterApiError } from "./chatgpt-adapter/sse.js";
 import { ChatGptAdapterTransportError } from "./chatgpt-adapter/types.js";
 import { classifyQuotaError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError, ProviderRequestValidationError, QUOTA_CODES, QuotaCoordinationError, QuotaExhaustedError } from "./errors.js";
@@ -39,7 +41,8 @@ type OpenAIResponseParamsWithCacheOptions = ResponseCreateParamsStreaming & {
 };
 
 /** Whether the route takes `prompt_cache_options`: the OpenAI API, for a model whose
- *  rate card prices cache writes (`cost.cacheWrite` above zero). */
+ *  rate card prices cache writes (`cost.cacheWrite` above zero). Such a model takes
+ *  its lifetime there, and the older `prompt_cache_retention` field is not sent. */
 function openAIAcceptsPromptCacheOptions(accessProvider: AccessProviderId, info: ModelInfo): boolean {
   return accessProvider === "openai_api" && (info.cost.cacheWrite ?? 0) > 0;
 }
@@ -139,8 +142,7 @@ function openAIStopReason(
   if (status !== "completed") return "unknown";
   // K6: OpenAI returns status="completed" even when the response output
   // contains function_call items. Override so the agent loop knows to
-  // continue iterating instead of finalizing the turn as `end_turn`. pi
-  // `openai-responses-shared.ts:514-516`.
+  // continue iterating instead of finalizing the turn as `end_turn`.
   const hasToolCall = output?.some((item) => item.type === "function_call") ?? false;
   return hasToolCall ? "tool_use" : "end_turn";
 }
@@ -154,28 +156,31 @@ interface ReasoningParams {
  *  most gpt-5.X / o-series accept up to xhigh. */
 const OPENAI_EFFORT_FALLBACK = ["low", "medium", "high", "xhigh"] as const satisfies readonly ReasoningEffortTier[];
 
+/** The Responses wire effort of `effort` on the model of `info`, or undefined when the request sends no `reasoning`.
+ *  K1: "off" means the user disabled reasoning. Models that declare "none" in their models.dev `reasoning_options`
+ *  get `effort: "none"` sent explicitly so gpt-5.1+ don't fall through to their default reasoning level; everything
+ *  else omits the `reasoning` param. Every other effort is clamped to the model's declared tiers: gpt-5.1 declares no
+ *  xhigh and gets "high"; newer tiers can declare "max". */
+export function openAIWireReasoningEffort(effort: ReasoningEffort, info: ModelInfo): NonNullable<OpenAIReasoningEffort> | undefined {
+  if (effort === "off") return supportsReasoningOff(info) ? "none" : undefined;
+  // SAFETY: models.dev declares provider wire tiers that can lead the SDK union.
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: models.dev provider tiers lead the narrower SDK wire union
+  return (openAIReasoningEffort(effort, info) ?? clampReasoningEffort(effort, info, OPENAI_EFFORT_FALLBACK)) as NonNullable<OpenAIReasoningEffort>;
+}
+
+/** The reasoning fields of a request at the request-level `effort` whose input runs at `current`. An appended update
+ *  can make a request reason whose conversation opened without reasoning, so the request asks for the encrypted
+ *  reasoning that later requests replay, and for its summary, when either effort reasons. */
 function buildReasoningParams(
   effort: ReasoningEffort,
+  current: ReasoningEffort,
   info: ModelInfo,
   providerOptions: StreamOptions["providerOptions"],
 ): ReasoningParams {
-  // K1: "off" means the user disabled reasoning. Models that declare "none" in
-  // their models.dev `reasoning_options` get `effort: "none"` sent explicitly
-  // so gpt-5.1+ don't fall through to their default reasoning level; everything
-  // else omits the `reasoning` param.
-  if (effort === "off") {
-    if (supportsReasoningOff(info)) {
-      const reasoning: ReasoningParams["reasoning"] = { effort: "none" };
-      return { reasoning };
-    }
-    return {};
-  }
-  // Clamp to the model's declared tiers (pi `models.ts:clampThinkingLevel`):
-  // gpt-5.1 declares no xhigh and gets "high"; newer tiers can declare "max".
-  const clamped = openAIReasoningEffort(effort, info) ?? clampReasoningEffort(effort, info, OPENAI_EFFORT_FALLBACK);
-  // SAFETY: models.dev declares provider wire tiers that can lead the SDK union.
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: models.dev provider tiers lead the narrower SDK wire union
-  const wireEffort = clamped as NonNullable<OpenAIReasoningEffort>;
+  const wireEffort = openAIWireReasoningEffort(effort, info);
+  if (wireEffort === undefined) return {};
+  const reasons = (requested: ReasoningEffort) => (openAIWireReasoningEffort(requested, info) ?? "none") !== "none";
+  if (!reasons(effort) && !reasons(current)) return { reasoning: { effort: wireEffort } };
   const summary = openAIReasoningSummary(providerOptions);
   return {
     reasoning: {
@@ -186,10 +191,11 @@ function buildReasoningParams(
   };
 }
 
+/** The Responses request body. `input` carries the system prompt as its first item (ARCH-PROVIDERS-084), so the
+ *  body has no top-level `instructions`. */
 export function buildOpenAIParams(
   model: string,
   input: ResponseCreateParamsStreaming["input"],
-  instructions: string | undefined,
   tools: ResponseCreateParamsStreaming["tools"],
   isChatGPT: boolean,
   effort: ReasoningEffort,
@@ -198,22 +204,21 @@ export function buildOpenAIParams(
   accessProvider: AccessProviderId,
 ): OpenAIResponseParamsWithCacheOptions {
   const isCopilot = accessProvider === "github_copilot";
-  // pi `openai-responses.ts:249-251`: only send max_output_tokens when the
-  // caller explicitly requests it. Forcing the model's outputLimit silently
+  // Only send max_output_tokens when the caller explicitly requests it. Forcing the model's outputLimit silently
   // truncates responses when models.dev metadata is stale (especially common
   // on Copilot's variable model lineup). API-key path keeps the behavior
   // because we control the model metadata there.
   const sendMaxOutputTokens = options.outputTokenLimit !== undefined || (!isChatGPT && !isCopilot);
   const toolChoice = mapOpenAIResponsesToolChoice(options.toolChoice);
   const params: OpenAIResponseParamsWithCacheOptions & UnknownFields = {
-    model, input, instructions, tools,
+    model, input, tools,
     store: false,
     ...(sendMaxOutputTokens ? { max_output_tokens: options.outputTokenLimit ?? info.outputLimit } : {}),
     ...(toolChoice ? { tool_choice: toolChoice } : {}),
     stream: true,
   };
   if (info.reasoning) {
-    const reasoning = buildReasoningParams(effort, info, options.providerOptions);
+    const reasoning = buildReasoningParams(effort, options.reasoningEffort ?? effort, info, options.providerOptions);
     if (reasoning.reasoning) params.reasoning = reasoning.reasoning;
     if (reasoning.include) params.include = reasoning.include;
     if (isChatGPT) params.include = ["reasoning.encrypted_content"];
@@ -225,14 +230,14 @@ export function buildOpenAIParams(
   } else {
     const clampedCacheKey = clampOpenAIPromptCacheKey(options.promptCacheKey);
     if (clampedCacheKey) params.prompt_cache_key = clampedCacheKey;
-    // ChatGPT requests may reject `prompt_cache_retention`; only send it on the
-    // plain OpenAI API path.
-    if ((options.cacheRetention === "24h" || options.cacheRetention === "in_memory") && !isChatGPT && !isCopilot) {
-      params.prompt_cache_retention = options.cacheRetention;
-    }
     // The provider default lifetime, sent so that the response states it as
     // the evidence of the idle deadline (ARCH-CONTEXT-012).
     if (acceptsCacheOptions) params.prompt_cache_options = { ttl: "30m" };
+    // The ChatGPT backend rejects `prompt_cache_retention`, so only an older
+    // model on the plain OpenAI API path gets it.
+    else if ((options.cacheRetention === "24h" || options.cacheRetention === "in_memory") && !isChatGPT && !isCopilot) {
+      params.prompt_cache_retention = options.cacheRetention;
+    }
   }
   applyOpenAIResponsesOptions(params, {
     model,
@@ -296,6 +301,44 @@ export function* handleOpenAIUsage(response: Pick<OpenAIResponseWithUsage, "usag
   } as const;
 }
 
+/** The reasons for which a Responses service states that it removed reasoning from a request's input. Any other
+ *  reason counts as `other`, so the record stays bounded. */
+const REASONING_REMOVAL_REASONS: ReadonlySet<string> = new Set(["organization_mismatch", "end_user_mismatch", "model_mismatch", "prefix_mismatch", "turn_boundary"]);
+
+/** One item of a response's `input_transformations` that states a removal of reasoning; the other fields of the
+ *  external item are ignored. */
+const decodeReasoningRemoval = Schema.decodeUnknownOption(Schema.StructWithRest(
+  Schema.Struct({ type: Schema.Literal("reasoning"), action: Schema.Literal("removed"), reason: Schema.optionalKey(Schema.String) }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
+));
+
+/** Records once per response what the service reports that it changed in the request's input (ARCH-CONTEXT-043):
+ *  the removed reasoning items counted by reason, a count of the other changes, or that the response states nothing.
+ *  The record holds no content. It is debug unless the service removed something. */
+function recordInputTransformations(response: { id?: string; input_transformations?: unknown }, model: string): void {
+  const transformations = response.input_transformations;
+  if (!Array.isArray(transformations)) {
+    DebugLog.record({ type: "model.input_transformations.reported", payload: { responseId: response.id, model, state: "unavailable" } });
+    return;
+  }
+  const removedReasoning: { [reason: string]: number } = {};
+  let otherTransformations = 0;
+  for (const transformation of transformations) {
+    const removal = Option.getOrUndefined(decodeReasoningRemoval(transformation));
+    if (!removal) {
+      otherTransformations += 1;
+      continue;
+    }
+    const key = removal.reason !== undefined && REASONING_REMOVAL_REASONS.has(removal.reason) ? removal.reason : "other";
+    removedReasoning[key] = (removedReasoning[key] ?? 0) + 1;
+  }
+  DebugLog.record({
+    type: "model.input_transformations.reported",
+    notable: Object.keys(removedReasoning).length > 0,
+    payload: { responseId: response.id, model, state: transformations.length > 0 ? "reported" : "none", removedReasoning, otherTransformations },
+  });
+}
+
 export function* handleOpenAICompleted(
   event: Extract<ResponseStreamEvent, { type: "response.completed" | "response.incomplete" }>,
   yieldReasoningItem: (item: { type?: string }, outputIndex: number) => Generator<ProviderStreamEvent>,
@@ -309,6 +352,7 @@ export function* handleOpenAICompleted(
   const tier = response?.service_tier;
   onServiceTier?.(typeof tier === "string" ? tier : undefined);
   yield* handleOpenAIUsage(response);
+  recordInputTransformations(response, model);
 
   for (const [outputIndex, item] of (response?.output ?? []).entries()) yield* yieldReasoningItem(item, outputIndex);
 

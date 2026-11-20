@@ -35,8 +35,6 @@ describe("the hosted agent's request entries", () => {
     expect(first.map((message) => message.framing)).toEqual(["agent-host", "agent-host", "agent-host"]);
     // A retried attempt of the same request finds them all and adds none.
     expect(entries(request([brief, ...first]))).toEqual([]);
-    // So does one that ends with request-only text, such as the continuation after a stall.
-    expect(entries({ ...request([brief, ...first, { kind: "user", content: "Continue smaller." }]), requestContext: "Continue smaller." })).toEqual([]);
     const steer: ConversationMessage[] = [brief, ...first, { kind: "assistant", content: [{ type: "text", text: "Done." }] }, { kind: "user", origin: "human", content: "Again." }];
     expect(engineEntries(entries(request(steer)))).toEqual([DISPATCH_TEXT]);
   });
@@ -134,13 +132,13 @@ describe("the hosted view", () => {
     expect(view.definitionPrompt).toBe("Stable.\n\n---\n\nSession.");
   });
 
-  test("a wrapper that only the request's request-only text follows records a dispatch, and one that later input follows does not", () => {
+  test("a wrapper that ends its message records a dispatch, and one that later input follows does not", () => {
     const text = (value: string) => ({ type: "text" as const, text: value });
-    const origin = (value: string) => value === DISPATCH_TEXT ? "host-framing" as const : value === "Continue smaller." ? "request-context" as const : "person" as const;
+    const origin = (value: string) => value === DISPATCH_TEXT ? "host-framing" as const : "person" as const;
     const view = (...content: string[]) => hostedView({ messages: [{ role: "user", content: content.map(text) }], reminders: [], identity: identity([]), origins: [content.map(origin)] });
-    const continued = view("Do the work.", DISPATCH_TEXT, "Continue smaller.");
-    expect(continued.dispatches).toEqual([0]);
-    expect(continued.messages[0]?.content).toEqual([text("Do the work."), text("Continue smaller.")]);
-    expect(view("Do the work.", DISPATCH_TEXT, "Steer.", "Continue smaller.").dispatches).toEqual([]);
+    const dispatched = view("Do the work.", DISPATCH_TEXT);
+    expect(dispatched.dispatches).toEqual([0]);
+    expect(dispatched.messages[0]?.content).toEqual([text("Do the work.")]);
+    expect(view("Do the work.", DISPATCH_TEXT, "Steer.").dispatches).toEqual([]);
   });
 });

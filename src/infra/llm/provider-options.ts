@@ -229,13 +229,14 @@ export function resolveOpenAIServiceTier(
  *  when it can. Service tiers and fast mode are direct-API request parameters:
  *  subscription and aggregator paths ignore or reject them, so a request that
  *  names one must route to the family's metered API even when a subscription
- *  is available. */
+ *  is available. `family` is the wire of the chain's first route, so a chain
+ *  that opens on Chat Completions can still hold the OpenAI API route. */
 export function providerOptionsUnservableReason(
   provider: AccessProviderId,
   family: ModelFamily,
   options: ProviderRequestOptions | undefined,
 ): string | undefined {
-  if (family === "openai" && provider !== "openai_api") {
+  if ((family === "openai" || family === "chat-completions") && provider !== "openai_api") {
     const tier = resolveOpenAIServiceTier(options);
     if (tier !== undefined) return `service tier "${tier}" is served by the OpenAI API only`;
   }

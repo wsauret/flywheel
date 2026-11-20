@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
 import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import type { ConversationMessage, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { toOpenAIResponsesInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
+import { toOpenAIResponsesRequestInput } from "../../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses.js";
 
 const openai = { sharedHost: false, accessProvider: "github_copilot" as const, provider: "openai" as const, api: "openai-responses" as const, model: "gpt-5.5" };
 
@@ -53,7 +53,7 @@ describe("OpenAI Responses Copilot compatibility", () => {
       { kind: "toolResult", toolUseId: "call_1", content: [{ type: "text", text: "package.json" }] },
     ];
 
-    const converted = toOpenAIResponsesInput(openai, history);
+    const converted = toOpenAIResponsesRequestInput(openai, history).input;
     const wire = JSON.stringify(converted);
 
     expect(wire).toContain("opaque-encrypted-content");
@@ -73,16 +73,16 @@ describe("OpenAI Responses Copilot compatibility", () => {
       ...openai,
       timestamp: 1,
     };
-    const copilotItems = toOpenAIResponsesInput(openai, [turn]);
-    const directItems = toOpenAIResponsesInput({ ...openai, accessProvider: "openai_api" }, [{ ...turn, accessProvider: "openai_api" }]);
+    const copilotItems = toOpenAIResponsesRequestInput(openai, [turn]).input;
+    const directItems = toOpenAIResponsesRequestInput({ ...openai, accessProvider: "openai_api" }, [{ ...turn, accessProvider: "openai_api" }]).input;
     expect(copilotItems).toEqual(directItems);
     expect(JSON.stringify(copilotItems)).toContain("copilot-encrypted");
   });
 
   test("gates Copilot reasoning-off on model metadata alone", () => {
     const declaresNone = { ...GPT_INFO, reasoningEfforts: ["none", "low", "medium"] as const };
-    const offCapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, "off", declaresNone, streamOptions(), "github_copilot");
-    const offIncapable = buildOpenAIParams("gpt-5.5", [], undefined, [], false, "off", GPT_INFO, streamOptions(), "github_copilot");
+    const offCapable = buildOpenAIParams("gpt-5.5", [], [], false, "off", declaresNone, streamOptions(), "github_copilot");
+    const offIncapable = buildOpenAIParams("gpt-5.5", [], [], false, "off", GPT_INFO, streamOptions(), "github_copilot");
     expect(offCapable.reasoning).toMatchObject({ effort: "none" });
     expect(offIncapable).not.toHaveProperty("reasoning");
   });
@@ -103,7 +103,7 @@ describe("OpenAI Responses Copilot compatibility", () => {
       { kind: "toolResult", toolUseId: "canonical-call", content: [{ type: "text", text: "package.json" }] },
     ];
 
-    const converted = toOpenAIResponsesInput({ ...openai, accessProvider: "openai_api" }, history);
+    const converted = toOpenAIResponsesRequestInput({ ...openai, accessProvider: "openai_api" }, history).input;
     const wire = JSON.stringify(converted);
 
     expect(wire).not.toContain(foreignId);
@@ -129,7 +129,7 @@ describe("OpenAI Responses Copilot compatibility", () => {
       { kind: "toolResult", toolUseId: "canonical-call", content: [{ type: "text", text: "package.json" }] },
     ];
 
-    const converted = toOpenAIResponsesInput({ ...openai, accessProvider: "github_copilot" }, history);
+    const converted = toOpenAIResponsesRequestInput({ ...openai, accessProvider: "github_copilot" }, history).input;
 
     expect(converted).toContainEqual({ type: "function_call", id: "item_copilot", call_id: "copilot-call", name: "list", arguments: "{}" });
     expect(converted).toContainEqual({ type: "function_call_output", call_id: "copilot-call", output: "package.json" });
@@ -140,7 +140,6 @@ describe("OpenAI Responses Copilot compatibility", () => {
     const params = buildOpenAIParams(
       "gpt-5.5",
       [],
-      undefined,
       [],
       false,
       "low",
@@ -164,7 +163,6 @@ describe("OpenAI Responses Copilot compatibility", () => {
     const params = buildOpenAIParams(
       "gpt-5.5",
       [],
-      undefined,
       [],
       false,
       "low",

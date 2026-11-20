@@ -18,7 +18,7 @@ const definition = {
   displayName: "DeepSeek API Key",
   shortName: "DeepSeek",
   billingUrl: "https://platform.deepseek.com",
-  defaultChatTransport: "openai-completions",
+  defaultChatTransport: "chat-completions",
   configHints: ["flywheel auth login --deepseek"],
   cli: { flag: "deepseek", name: "DeepSeek" },
   billing: "metered",
@@ -45,13 +45,13 @@ const definition = {
 
 const createClient: AccessProviderFactory = async (build) => {
   const info = requireModelMetadata(build.model, build.attribution.resolvedModelMetadata);
-  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "openai-completions", providerHint: "deepseek", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
+  return providerAdapter(build, (attribution) => describeProvider(build.model, { accessProvider: definition.id, protocol: "chat-completions", providerHint: "deepseek", resolvedModelMetadata: requireModelMetadata(build.model, attribution.resolvedModelMetadata) }), async () => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No DeepSeek API key in the active auth profile. Run: flywheel auth login --deepseek", recovery: { kind: "none" } });
-    const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
+    const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/chat-completions.js")]);
     const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: BASE_URL, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-    return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
-      accessProvider: definition.id, providerHint: "deepseek", candidate: build.candidate,
+    return createChatCompletionsAdapter(client, build.wireModelId, info, {
+      accessProvider: definition.id, candidate: build.candidate,
     });
   }, (client, { attribution }) => client.withModelInfo(requireModelMetadata(build.model, attribution.resolvedModelMetadata)));
 };

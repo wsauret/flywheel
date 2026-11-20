@@ -150,8 +150,8 @@ describe("providers without cache breakpoints receive the tiers joined in order"
     expect(body.messages).toEqual([{ role: "system", content: joined }, expect.objectContaining({ role: "user" })]);
   });
 
-  test("responses instructions carry the joined text", () => {
-    expect(resolveOpenAISystemPrompt({ messages: [], systemPrompt: tiers, isChatGPT: false })).toBe(joined);
+  test("the responses system prompt carries the joined text", () => {
+    expect(resolveOpenAISystemPrompt({ messages: [], systemPrompt: tiers })).toBe(joined);
   });
 });
 

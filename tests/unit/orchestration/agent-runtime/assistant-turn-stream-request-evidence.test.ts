@@ -43,7 +43,6 @@ describe("streamAssistantTurn durable request evidence", () => {
       providerOptions: undefined,
       requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 1,
       estimatedContextTokens: 1,
@@ -92,7 +91,7 @@ describe("streamAssistantTurn durable request evidence", () => {
         omittedTools: [{ name: "hidden", reason: "not admitted" }],
       }),
       reasoningEffort: undefined, signal: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
-      providerOptions: undefined, requestAudit, staleMasking: undefined, requestContext: undefined,
+      providerOptions: undefined, requestAudit, staleMasking: undefined,
       turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
       usageSettlement: {
         profileId: "test-profile", budgetStreamId: "test-budget", identity: { providerSessionKey: "stable" },
@@ -144,7 +143,7 @@ describe("streamAssistantTurn durable request evidence", () => {
       client, executionCwd: "/scratch", messages: [{ kind: "user", content: "hello" }], tools: [], systemPrompt: stableSystemPrompt("system"),
       interactionProfile: resolveModelInteractionProfile("gpt-6-luna", "openai"),
       reasoningEffort: undefined, signal: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
-      providerOptions: undefined, requestAudit, staleMasking: undefined, requestContext: undefined,
+      providerOptions: undefined, requestAudit, staleMasking: undefined,
       turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
       usageSettlement: {
         profileId: "test-profile", budgetStreamId: "test-budget", identity: { providerSessionKey: "stable" },
@@ -180,7 +179,7 @@ describe("streamAssistantTurn durable request evidence", () => {
       interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
       reasoningEffort: undefined, signal: undefined, cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined,
       providerOptions: undefined, requestAudit, turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
-      staleMasking: undefined, requestContext: undefined,
+      staleMasking: undefined,
     })
 
     expect(dispatchObservedAfterIo).toBe(true)

@@ -689,7 +689,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       const persistence = { ...conversation.persistence, history: recordingNarrowings(conversation.persistence.history, sessionId) };
       // A tree-hosted agent learns from its first plan which advertised tools it
       // may not call: committed once into a durable conversation's opening turn,
-      // or request context for a conversation that keeps no history. A committed
+      // or turn context that the first request records for a conversation that keeps no durable tree. A committed
       // notice also states the modules that the first plan turned off.
       const notice = treeHosted ? toolNotice(toolSurface.current(), options.readOnly === true) : undefined;
       // The narrowing reads the modules that the current request's plan refuses

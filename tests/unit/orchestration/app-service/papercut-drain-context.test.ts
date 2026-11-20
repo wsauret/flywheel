@@ -33,12 +33,15 @@ function captureClient(requests: ConversationMessage[][], failure?: Error, abort
   })
 }
 
-async function run(mailbox: ChatTurnMailbox, client: ReturnType<typeof captureClient>, history: ConversationMessage[], signal?: AbortSignal): Promise<void> {
+/** A rebuilt runner of the same turn: it resumes the recorded history with the turn's context. */
+type NextLife = { readonly priorMessages: ConversationMessage[]; readonly context: string }
+
+async function run(mailbox: ChatTurnMailbox, client: ReturnType<typeof captureClient>, history: ConversationMessage[], signal?: AbortSignal, life?: NextLife): Promise<void> {
   await runAgentLoop({
     client,
     tools: new RequestToolMap(),
     systemPrompt: stableSystemPrompt("test"),
-    instruction: "survey the backlog",
+    instruction: life ? null : "survey the backlog",
     executionCwd: "/scratch",
     userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
     providerSessionKey: "papercut-drain-context", promptCacheKey: "papercut-drain-context",
@@ -48,13 +51,18 @@ async function run(mailbox: ChatTurnMailbox, client: ReturnType<typeof captureCl
     completeOnIdle: {},
     signal,
     persistence: { history: { append: (message) => { history.push(JSON.parse(JSON.stringify(message))) } } },
-    seed: { kind: "fresh" },
+    seed: life ? { kind: "resume", priorMessages: life.priorMessages } : { kind: "fresh" },
+    ...(life ? { initialRequestContext: life.context } : {}),
     onEvent: () => {},
   })
 }
 
+function copiesOf(messages: readonly ConversationMessage[], text: string): ConversationMessage[] {
+  return messages.filter((message) => message.kind === "user" && message.content === text)
+}
+
 function requestContains(messages: readonly ConversationMessage[], text: string): boolean {
-  return messages.some((message) => message.kind === "user" && message.content === text)
+  return copiesOf(messages, text).length > 0
 }
 
 describe("papercut drain request context", () => {
@@ -110,7 +118,7 @@ describe("papercut drain request context", () => {
     })
   })
 
-  test("is sent once without a durable copy or rebuilt-runner leakage", async () => {
+  test("is recorded once as hidden turn context, sent in place, and neither copied by a rebuilt runner nor leaked to a later one", async () => {
     const mailbox = new ChatTurnMailbox()
     const history: ConversationMessage[] = []
     const firstRequests: ConversationMessage[][] = []
@@ -118,13 +126,23 @@ describe("papercut drain request context", () => {
 
     await run(mailbox, captureClient(firstRequests), history)
 
+    const recorded: ConversationMessage = { kind: "user", content: drainContext, origin: "system", framing: "turn-context" }
     expect(firstRequests).toHaveLength(1)
-    expect(requestContains(firstRequests[0] ?? [], drainContext)).toBe(true)
-    expect(requestContains(history, drainContext)).toBe(false)
+    expect(copiesOf(history, drainContext)).toEqual([recorded])
+    expect(copiesOf(firstRequests[0] ?? [], drainContext)).toEqual([recorded])
     expect(requestContains(history, "Run the project papercut campaign.")).toBe(true)
 
+    // A rebuilt runner of the same turn resumes the recorded history with the same context and records no second copy.
+    const rebuiltHistory: ConversationMessage[] = []
+    const rebuiltRequests: ConversationMessage[][] = []
+    await run(new ChatTurnMailbox(), captureClient(rebuiltRequests), rebuiltHistory, undefined, { priorMessages: [...history], context: drainContext })
+    expect(rebuiltRequests.length).toBeGreaterThan(0)
+    for (const request of rebuiltRequests) expect(copiesOf(request, drainContext)).toEqual([recorded])
+    expect(copiesOf(rebuiltHistory, drainContext)).toEqual([])
+
+    // A later runner of the drained mailbox starts without the context.
     const laterRequests: ConversationMessage[][] = []
-    await run(mailbox, captureClient(laterRequests), history)
+    await run(mailbox, captureClient(laterRequests), [])
     expect(requestContains(laterRequests[0] ?? [], drainContext)).toBe(false)
   })
 

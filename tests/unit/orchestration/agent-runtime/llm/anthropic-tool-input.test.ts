@@ -54,14 +54,14 @@ async function streamedToolCall(raw: string, blockName = "handoff", toolPresenta
 // live API streamed for that call on 2026-10-09 (claude-sonnet-5-5), shortened.
 describe("Anthropic tool input with a repeated list parameter", () => {
   it("keeps every item when eager input streaming sends the items as unquoted text", async () => {
-    const raw = '{"summary": "Cut calls run.", "hypothesis": "The flush loop ignores \\"length\\".", "evidence": src/llm/openai-completions.ts:145: `case "length": return "max_tokens";` maps the cut late., "evidence": Test run printed "1 fail: expected inputParseError, received undefined".}';
+    const raw = '{"summary": "Cut calls run.", "hypothesis": "The flush loop ignores \\"length\\".", "evidence": src/llm/chat-completions.ts:145: `case "length": return "max_tokens";` maps the cut late., "evidence": Test run printed "1 fail: expected inputParseError, received undefined".}';
     const call = await streamedToolCall(raw);
     expect(call.inputParseError).toBeUndefined();
     expect(call.input).toEqual({
       summary: "Cut calls run.",
       hypothesis: 'The flush loop ignores "length".',
       evidence: [
-        'src/llm/openai-completions.ts:145: `case "length": return "max_tokens";` maps the cut late.',
+        'src/llm/chat-completions.ts:145: `case "length": return "max_tokens";` maps the cut late.',
         'Test run printed "1 fail: expected inputParseError, received undefined".',
       ],
     });

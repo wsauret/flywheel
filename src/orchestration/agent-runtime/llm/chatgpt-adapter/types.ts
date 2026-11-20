@@ -43,7 +43,6 @@ export interface RequestBody {
 	model: string;
 	store?: boolean;
 	stream?: boolean;
-	instructions?: string;
 	previous_response_id?: string;
 	input?: ResponseInput;
 	tools?: OpenAITool[];

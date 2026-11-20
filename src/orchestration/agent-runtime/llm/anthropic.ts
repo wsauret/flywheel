@@ -228,8 +228,7 @@ export interface AnthropicOperations {
   createStream: (
     params: AnthropicStreamRequest,
     /** `origins` holds the origin of each block of `params.messages` (`PreparedAnthropicRequest.origins`).
-     *  `requestContext` is the request's request-only text (`StreamOptions.requestContext`), which ends the last
-     *  message of `params`. `runtimeNotices` is the text of the request's trailing runtime notices
+     *  `runtimeNotices` is the text of the request's trailing runtime notices
      *  (`trailingRuntimeNotices`), present only when the tail holds one. `sharedHost` says whether the client's shared
      *  engine host serves the request (`PreparedAnthropicRequest.historyTarget`). A request whose `signal` is aborted
      *  at admission or after the transport's awaited preparation starts nothing. The adapter aborts `data.controller`
@@ -237,7 +236,7 @@ export interface AnthropicOperations {
      *  after it the abort only releases the request. `onProgress` hears each piece of the response that the transport
      *  read but holds back from `data` for now, which the adapter counts as the stream's progress; a transport that
      *  yields each piece as it reads it never calls it. */
-    options: { signal: AbortSignal; headers: StringHeaders; origins: BlockOrigins; requestContext?: string; runtimeNotices?: readonly string[]; sharedHost: boolean; onProgress?: () => void },
+    options: { signal: AbortSignal; headers: StringHeaders; origins: BlockOrigins; runtimeNotices?: readonly string[]; sharedHost: boolean; onProgress?: () => void },
   ) => Promise<{
     data: AsyncIterable<Anthropic.RawMessageStreamEvent | AnthropicErrorFrame | TransportContextFrame> & { controller: AbortController };
     response: Response;
@@ -405,7 +404,7 @@ export async function createAnthropicAdapter(
             const sent = await sendStreamingRequest(
               async () => {
                 try {
-                  return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, onProgress: () => { streamLiveness.frame(); }, ...(options.requestContext === undefined ? {} : { requestContext: options.requestContext }), ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
+                  return await operations.createStream(params, { signal: attempt.signal, headers: requestHeaders, origins: descriptor.origins, sharedHost: descriptor.historyTarget.sharedHost, onProgress: () => { streamLiveness.frame(); }, ...(runtimeNotices.length === 0 ? {} : { runtimeNotices }) });
                 } catch (error) {
                   throw thrownFailure(error);
                 }

@@ -5,7 +5,7 @@ describe("normalizeCopilotCatalogRow", () => {
   test("keeps only chat endpoints, prefers Responses over chat completions, and omits a model with no chat endpoint", () => {
     expect(normalizeCopilotCatalogRow({ id: "gpt-6.1-sol", supported_endpoints: ["ws:/responses", "/chat/completions", "/responses"] }))
       .toMatchObject({ transport: "openai-responses", metadata: { supportedEndpoints: ["/chat/completions", "/responses"] } });
-    expect(normalizeCopilotCatalogRow({ id: "gemini-3.5-flash", supported_endpoints: ["/chat/completions"] })?.transport).toBe("openai-completions");
+    expect(normalizeCopilotCatalogRow({ id: "gemini-3.5-flash", supported_endpoints: ["/chat/completions"] })?.transport).toBe("chat-completions");
     expect(normalizeCopilotCatalogRow({ id: "text-embedding-3-small", supported_endpoints: ["/embeddings"] })).toBeUndefined();
   });
 

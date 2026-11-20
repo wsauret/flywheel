@@ -14,7 +14,7 @@ import type { FirstPartyModule } from "./modules.js";
  * installed registry. Each module is shaped exactly like a first-party
  * provider module, so composition, planning, listing, and client
  * construction need no custom-provider special case. Entries are declarative
- * config, not code: every custom provider speaks the OpenAI chat-completions
+ * config, not code: every custom provider speaks the Chat Completions
  * wire against its configured base URL.
  */
 export function customProviderModules(): FirstPartyModule[] {
@@ -26,7 +26,7 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
     id: entry.id,
     displayName: entry.displayName,
     shortName: entry.displayName,
-    defaultChatTransport: "openai-completions",
+    defaultChatTransport: "chat-completions",
     configHints: [`flywheel auth login --provider ${entry.id}`],
     cli: { name: entry.displayName },
     billing: "metered",
@@ -43,18 +43,17 @@ function customProviderModule(entry: CustomProviderDefinition): FirstPartyModule
     const info = metadataOf(build.attribution);
     return providerAdapter(build, (attribution) => describeProvider(build.model, {
       accessProvider: entry.id,
-      protocol: "openai-completions",
+      protocol: "chat-completions",
       providerHint: entry.catalogId ?? entry.id,
       resolvedModelMetadata: metadataOf(attribution),
     }), async () => {
       const key = apiKey(build.connection.auth, entry.id);
       if (!key) throw new ApiError({ message: `No ${entry.displayName} API key in the active auth profile. Run: flywheel auth login --provider ${entry.id}`, recovery: { kind: "none" } });
-      const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/openai-completions.js")]);
+      const [{ default: OpenAI }, { createChatCompletionsAdapter }] = await Promise.all([import("openai"), import("./agent-runtime/llm/chat-completions.js")]);
       const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: entry.baseUrl, defaultHeaders: await providerRequestHeaders(), maxRetries: 0 });
-      return createOpenAIChatCompletionsAdapter(client, build.wireModelId, info, {
+      return createChatCompletionsAdapter(client, build.wireModelId, info, {
         accessProvider: entry.id,
         candidate: build.candidate,
-        providerHint: entry.catalogId ?? "openai",
       });
     }, (client, { attribution }) => client.withModelInfo(metadataOf(attribution)));
   };

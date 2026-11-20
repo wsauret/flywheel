@@ -20,7 +20,7 @@ import { type RoleModelCandidate, selectRoleModelDefault } from "./role-model-de
 import { defaultRoleSlots, isBriefSlot, resolveSlotRole, slotLabel, roleSlot } from "./role-selection.js";
 import { parentRoleId, type ResolvedRole } from "./roles.js";
 import { canonicalRoleId } from "./retired-config-names.js";
-import { effectiveRoleAssignments, previewSessionRoles } from "./session-role-resolver.js";
+import { effectiveRoleAssignments, enabledModelsFromEligibility, previewSessionRoles } from "./session-role-resolver.js";
 import { profileRoleSettings } from "./env.js";
 import type { RoleResolutionOptions } from "./role-resolution.js";
 import { parseBriefRoleId, briefPersonaRoleId, briefRoleId } from "../../protocol/brief-role-id.js";
@@ -340,11 +340,13 @@ async function resolveModelCatalogs(
   readonly availableModels: ReadonlyMap<ModelFamily, ReadonlySet<string>>;
   readonly modelInfos: TierResolutionOptions["modelInfos"];
 }> {
+  // Every available-model map groups a model by the wire family of the route that serves it, as the picker and the
+  // provider plan do, never by the provider namespace that its catalog metadata came from.
   const injectedCatalogs = deps.providerModelCatalogs?.();
   if (injectedCatalogs !== undefined) {
     return {
       providerCatalogs: injectedCatalogs,
-      availableModels: deps.availableModels ?? availableModelsFromCatalogs(injectedCatalogs, deps.modelInfos),
+      availableModels: deps.availableModels ?? enabledModelsFromEligibility(deps.providerModelEligibility?.() ?? new Map()),
       modelInfos: deps.modelInfos,
     };
   }
@@ -352,24 +354,7 @@ async function resolveModelCatalogs(
     return { providerCatalogs: new Map(), availableModels: deps.availableModels, modelInfos: deps.modelInfos };
   }
   const resolved = await resolveEnabledProviderModelCatalog(deps);
-  return { providerCatalogs: resolved.providers, availableModels: availableModelsFromCatalogs(resolved.providers, resolved.modelInfos), modelInfos: resolved.modelInfos };
-}
-
-function availableModelsFromCatalogs(
-  catalogs: ReadonlyMap<string, ResolvedProviderModels>,
-  modelInfos: TierResolutionOptions["modelInfos"],
-): ReadonlyMap<ModelFamily, ReadonlySet<string>> {
-  const byFamily = new Map<ModelFamily, Set<string>>();
-  for (const models of catalogs.values()) {
-    for (const model of models.catalog) {
-      const family = modelInfos?.get(model)?.family;
-      if (!family) continue;
-      const familyModels = byFamily.get(family) ?? new Set<string>();
-      familyModels.add(model);
-      byFamily.set(family, familyModels);
-    }
-  }
-  return byFamily;
+  return { providerCatalogs: resolved.providers, availableModels: resolved.enabledModels, modelInfos: resolved.modelInfos };
 }
 
 interface RawSlotConfig {
@@ -388,7 +373,8 @@ function rawConfigForSlot(
 function familySort(family: ModelFamily | undefined): number {
   if (!family) return 99;
   if (family === "anthropic") return 1;
-  if (family === "openai") return 2;
+  // Chat Completions rows keep the place they held as part of the openai family.
+  if (family === "openai" || family === "chat-completions") return 2;
   return 3;
 }
 

@@ -96,7 +96,7 @@ export type ContentBlock =
   | { type: "thinking"; thinking: string; signature?: string; redacted?: boolean; presentation?: "progress" }
   | { type: "reasoning"; id: string; encrypted_content: string; summary?: Array<{ type: "summary_text"; text: string }> };
 
-type MessageFraming = "claude" | "model" | "agent-host" | "tool-notice" | "reminder";
+type MessageFraming = "claude" | "model" | "agent-host" | "tool-notice" | "reminder" | "turn-context";
 
 export type ConversationMessage =
   | {
@@ -136,12 +136,10 @@ export type ConversationMessage =
        *  framing: its engine text and each system tier that a hosted agent's conversation carries, which only a request
        *  that the shared host serves reads. `tool-notice` is a tree-hosted agent's tool notice, which every request
        *  reads. `reminder` is an environment or date reminder (`runtime-reminders.ts`), which every request reads.
-       *  A fork copies neither `agent-host` nor `tool-notice` framing, because each names the source session or its
-       *  grants. */
+       *  `turn-context` is the context that the runtime adds for a turn (ARCH-CONTEXT-042), which every request reads
+       *  and which is not the input of a turn. A fork copies neither `agent-host` nor `tool-notice` framing, because
+       *  each names the source session or its grants. */
       framing?: MessageFraming;
-      /** The request's request-only text (`StreamOptions.requestContext`), which history never holds. Only the request
-       *  context marks it, in memory, so the lowering of a request knows the origin of its blocks. */
-      requestOnly?: true;
     }
   | {
       kind: "system";
@@ -184,6 +182,11 @@ export type ConversationMessage =
        *  reported none, for a partial response, and on messages stored
        *  before 2026-10-08. */
       reasoningTokens?: number;
+      /** The reasoning effort that the request of the response asked for, also for a partial response. A Responses
+       *  request reads the efforts of earlier turns to send a later change as an appended update where the earlier
+       *  request sent it (ARCH-CONTEXT-041). The fold reads it from `chat.reasoning_effort.recorded`, never from the
+       *  stored entry. Absent for a request that names no effort and on messages stored before 2026-11-20. */
+      reasoningEffort?: ReasoningEffort;
     }
   | { kind: "toolResult"; toolUseId: string; content: LlmToolOutputPart[]; isError?: boolean; interrupted?: boolean; blocked?: boolean };
 
@@ -289,6 +292,7 @@ export interface AssistantMetadata {
   timestamp: number;
   stopReason?: LlmStopReason;
   responseId?: string;
+  reasoningEffort?: ReasoningEffort;
 }
 
 /** Events emitted by the provider stream: text/thinking/reasoning chunks,
@@ -451,9 +455,6 @@ export type SystemOriginMessage = Extract<ConversationMessage, { kind: "user" }>
 
 export interface StreamOptions {
   messages: ConversationMessage[];
-  /** Request-only user text that history does not hold, such as the continuation after a stall: present when the
-   *  last message of `messages` holds it (`AssistantAttemptInput.requestContext`). */
-  requestContext?: string;
   tools: ReadonlyArray<ToolDef>;
   systemPrompt: SystemPromptTiers;
   model?: string;
@@ -510,7 +511,7 @@ export function resolveCacheRetention(provider: string, options: Pick<StreamOpti
   return policy === "provider" ? undefined : policy ?? options.cacheRetention;
 }
 
-export type PreparedProviderEndpoint = "anthropic-messages" | "openai-completions" | "openai-responses";
+export type PreparedProviderEndpoint = "anthropic-messages" | "chat-completions" | "openai-responses";
 
 /** Exact immutable provider request prepared before transport construction.
  * `params` is the sole wire-body authority consumed by dispatch. */

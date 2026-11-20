@@ -28,7 +28,7 @@ import type { QuotaMark } from "../sdk-events.js";
 import type { SilentVersions } from "../stderr-signals.js";
 import { agentFilePath, agentRows, removeAgentFile, writeAgentFile, type AgentRows } from "./agent-file.js";
 import { hostedStreamEvents, type StepEvent } from "./agent-stream.js";
-import { hostedTransportContext, hostedView, type HeldRequestContext, type HeldRewrite } from "./engine-text.js";
+import { hostedTransportContext, hostedView, type HeldRewrite } from "./engine-text.js";
 import type { HostStepItem } from "./host-gate.js";
 import { coordinatorCandidates, hostKey, hostValues, type HostLease, type HostPlace, type HostRegistry } from "./host-registry.js";
 import { openAgentHost, type AgentHost, type StopCause, type TaskEnd } from "./host.js";
@@ -73,11 +73,9 @@ export interface HostedAgentConfig {
   readonly dispatcherStepDeadlineMs?: number;
 }
 
-/** The input of one request beyond its prepared body: its request-only text (`StreamOptions.requestContext`) and the
- *  text of its trailing runtime notices (`trailingRuntimeNotices`). The forecast and the served request read the same
- *  value, so both make the same plan. */
+/** The input of one request beyond its prepared body: the text of its trailing runtime notices
+ *  (`trailingRuntimeNotices`). The forecast and the served request read the same value, so both make the same plan. */
 interface HostedRequestInput {
-  readonly requestContext?: string;
   readonly runtimeNotices?: readonly string[];
 }
 
@@ -129,8 +127,6 @@ interface Agent {
   readonly rows: AgentRows;
   phase: Phase;
   copy: CliCopy | undefined;
-  /** The request-only text that the agent's dispatch gave the engine, which its later steps do not repeat. */
-  readonly requestContext: HeldRequestContext | undefined;
   /** The results that the engine rewrote since the agent's dispatch, which every later step's record states. */
   readonly rewrites: HeldRewrite[];
   /** The open request's step, which the first end of the request decides. `end` ends the request with `error` and
@@ -276,7 +272,6 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
 
   const stream = async (view: CliView, signal: AbortSignal, input: HostedRequestInput, onProgress: () => void, binding: HostedBinding): Promise<AsyncIterable<Anthropic.RawMessageStreamEvent | TransportContextFrame>> => {
     const { place, key, cwd, stepEffort } = placement(view, binding.contextLimit);
-    const { requestContext } = input;
     if (held?.key !== key) {
       void release();
       held = leaseHost(key, place, cwd, binding);
@@ -285,12 +280,9 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     // An agent of another host moves here; a host that closed while the bridge held no lease took its agent with it.
     const moved = agent !== undefined && agent.host !== host;
     if (moved) endAgent(agent, agent?.key === key ? "host-ended" : "moved-host");
-    const delivery = hostedView(view, agent?.requestContext);
-    const plan = planRequest(delivery, queryState(agent), hostedDelivery(input));
+    const hosted = hostedView(view);
+    const plan = planRequest(hosted, queryState(agent), hostedDelivery(input));
     if (plan.kind === "refuse") throw new ProviderRequestValidationError(CLAUDE_AGENT_SDK_LABEL, plan.issue);
-    // A dispatch writes the whole conversation to the agent file, so request-only text that the engine holds from an
-    // earlier dispatch moves to this dispatch's message.
-    const hosted = plan.kind === "deliver" ? delivery : hostedView(view);
     const effort = stepEffort === undefined ? {} : { effort: stepEffort };
     const events = Effect.runSync(Queue.unbounded<StepEvent, Error | Cause.Done>());
     const sink = {
@@ -344,7 +336,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       current = agent;
       opened = await openStep(current);
       from = current.rows.read().length;
-      for (const { toolUseId, rewrite } of plan.results) if (rewrite !== undefined) current.rewrites.push({ at: delivery.messages.length - 1, toolUseId, rewrite });
+      for (const { toolUseId, rewrite } of plan.results) if (rewrite !== undefined) current.rewrites.push({ at: hosted.messages.length - 1, toolUseId, rewrite });
       host.toolGate.deliver(plan.results);
     } else {
       const model = definitionModel(binding.contextLimit);
@@ -360,7 +352,6 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       });
       current = {
         id, model, host, key, rows: agentRows(agentFilePath(host.folder, id), offset), phase: { kind: "running" }, copy: undefined, rewrites: [], step: undefined,
-        requestContext: hosted.endsWithRequestContext && requestContext !== undefined ? { text: requestContext, at: hosted.messages.length - 1 } : undefined,
       };
       agent = current;
       DebugLog.record({ type: "provider.claude_sdk.host.agent_dispatched", payload: {
@@ -394,13 +385,10 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
       }
     }
     const { step } = opened;
-    // History never holds request-only text, so the copy that later requests are compared with leaves out what the
-    // engine holds.
-    const copied = hostedView(view, current.requestContext).messages;
     const answered = hostedStreamEvents(queueIterable(events), current.rows, from, config.wireModelId, () => host.requestFailure(current.id), (answer) => {
       if (current.step === step) current.step = undefined;
       opened.admission.close();
-      current.copy = { identity: hosted.identity, messages: [...copied, answer.message] };
+      current.copy = { identity: hosted.identity, messages: [...hosted.messages, answer.message] };
       const toolUseIds = answer.message.content.flatMap((block) => block.type === "tool_use" ? [block.id] : []);
       if (current.phase.kind === "running") current.phase = answer.stopReason === "tool_use" ? { kind: "parked", toolUseIds } : { kind: "idle" };
       config.recordOutcome("served");
@@ -477,7 +465,7 @@ export function createHostedAgent(config: HostedAgentConfig): HostedAgent {
     dispatches(view, input, contextLimit) {
       const current = agent;
       if (current === undefined || held?.key !== placement(view, contextLimit).key || current.host !== held.lease.host) return true;
-      return planRequest(hostedView(view, current.requestContext), queryState(current), hostedDelivery(input)).kind !== "deliver";
+      return planRequest(hostedView(view), queryState(current), hostedDelivery(input)).kind !== "deliver";
     },
     async close(cause) {
       if (closed) return;

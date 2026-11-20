@@ -60,7 +60,7 @@ describe("provider model catalog resolution", () => {
       wireModelId: "openai/gpt-6.1-sol",
       metadata: null,
       dataUse: "standard" as const,
-      transport: "openai-completions" as const,
+      transport: "chat-completions" as const,
       resolvedMetadata: modelInfo("openai", "gpt-6.1-sol", "gpt-sol", 1, 2, "2025-01-01"),
     }]]])
     const resolved = await resolveProviderModelCatalog({
@@ -95,7 +95,7 @@ describe("provider model catalog resolution", () => {
       wireModelId: id,
       metadata: null,
       dataUse: "standard",
-      transport: "openai-completions",
+      transport: "chat-completions",
       resolvedMetadata: modelInfo("openai", id, id, 1, 2, "2025-01-01"),
     }]
     const verified = new Map([["grok-verified", offering("grok-verified")]])
@@ -130,7 +130,7 @@ describe("provider model catalog resolution", () => {
   test("lists only routes that are priced and call tools on text", async () => {
     const candidate = { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" } as const
     const route = (modelId: string, resolvedMetadata?: ReturnType<typeof modelInfo>): readonly [string, readonly CatalogModelOffering[]] =>
-      [modelId, [{ wireModelId: `vendor/${modelId}`, metadata: null, dataUse: "standard", transport: "openai-completions", ...(resolvedMetadata === undefined ? {} : { resolvedMetadata }) }]]
+      [modelId, [{ wireModelId: `vendor/${modelId}`, metadata: null, dataUse: "standard", transport: "chat-completions", ...(resolvedMetadata === undefined ? {} : { resolvedMetadata }) }]]
     const unpriced = modelInfo("openai", "unpriced", "unpriced", 1, 2, "2025-01-01")
     const offerings = new Map([
       route("coder", modelInfo("openai", "coder", "coder", 1, 2, "2025-01-01")),

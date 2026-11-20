@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { describe, expect, it } from "bun:test"
 
 import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
-import { messageInput, type AgentLoopInput } from "../../../../src/infra/agent-loop-events.js"
+import { messageInput, requestContextInput, type AgentLoopInput } from "../../../../src/infra/agent-loop-events.js"
 import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../helpers/request-tool-surface.js"
 import type { RuntimeTool, ToolResult } from "../../../../src/orchestration/agent-runtime/tools/types.js"
@@ -75,6 +75,13 @@ async function runLoop(input: {
 const nudgeCount = (history: ConversationMessage[]): number =>
   history.filter((message) => message.kind === "user" && message.content === SILENT_REPLY_NUDGE).length
 
+/** Each request's input starts with the full input of the request before it. */
+const expectAppendOnly = (requests: readonly ConversationMessage[][]): void => {
+  for (let index = 1; index < requests.length; index += 1) {
+    expect(requests[index]!.slice(0, requests[index - 1]!.length)).toEqual(requests[index - 1]!)
+  }
+}
+
 const silentTurn = { events: [{ kind: "done", stopReason: "end_turn" }] } satisfies { events: ProviderStreamEvent[] }
 
 const probe: RuntimeTool = {
@@ -97,8 +104,8 @@ const terminalTurn = {
   events: [{ kind: "text_delta", text: "finished", blockKey: "terminal" }, { kind: "done", stopReason: "end_turn" }],
 } satisfies { events: ProviderStreamEvent[] }
 
-const progressReminderCount = (requests: ConversationMessage[][]): number =>
-  requests.flat().filter((message) =>
+const progressReminderCount = (history: readonly ConversationMessage[]): number =>
+  history.filter((message) =>
     message.kind === "user"
     && typeof message.content === "string"
     && message.content.includes("The user hasn't heard from you in a while"),
@@ -283,7 +290,7 @@ describe("silent-reply nudge", () => {
     expect(nudgeCount(history)).toBe(0)
   })
 
-  it("adds a request-only progress reminder after five silent tool turns", async () => {
+  it("records a progress reminder once after five silent tool turns", async () => {
     const history: ConversationMessage[] = []
     const requests: ConversationMessage[][] = []
     await runLoop({
@@ -291,35 +298,42 @@ describe("silent-reply nudge", () => {
       requests,
       humanFacing: true,
       tools: new RequestToolMap([["probe", probe]]),
-      responses: [toolTurn(1), toolTurn(2), toolTurn(3), toolTurn(4), toolTurn(5), terminalTurn],
+      responses: [toolTurn(1), toolTurn(2), toolTurn(3), toolTurn(4), toolTurn(5), toolTurn(6), terminalTurn],
     })
 
-    expect(progressReminderCount(requests)).toBe(1)
-    const requestContext = requests[5]?.at(-1)
-    expect(requestContext?.kind).toBe("user")
-    expect(requestContext?.content).toContain("Do not mention or acknowledge this reminder")
-    expect(requestContext?.content).toContain("Do not apologize")
-    expect(history.some((message) =>
-      message.kind === "user"
-      && typeof message.content === "string"
-      && message.content.includes("The user hasn't heard from you in a while"),
-    )).toBe(false)
+    expect(progressReminderCount(history)).toBe(1)
+    const reminder = requests[5]?.at(-1)
+    expect(reminder).toMatchObject({ kind: "user", origin: "system", framing: "turn-context" })
+    expect(reminder?.content).toContain("Do not mention or acknowledge this reminder")
+    expect(reminder?.content).toContain("Do not apologize")
+    // The request after the reminder carries it in place.
+    expect(requests).toHaveLength(7)
+    expect(progressReminderCount(requests[6]!)).toBe(1)
+    expectAppendOnly(requests)
   })
 
-  it("keeps request context within one logical turn", async () => {
-    const recoveryContext = "split only the operation that stalled"
+  it.each([
+    { source: "the run's options", queued: false },
+    { source: "a command's request-context input", queued: true },
+  ])("records turn context from $source once where it first applies", async ({ queued }) => {
+    const turnContext = "split only the operation that stalled"
     const history: ConversationMessage[] = []
     const requests: ConversationMessage[][] = []
     let backgroundSent = false
+    let commandSent = false
     let waitCalls = 0
 
     const result = await runLoop({
       history,
       requests,
-      requestContext: recoveryContext,
+      ...(queued ? { seed: { kind: "resume" as const, priorMessages: [{ kind: "user" as const, content: "earlier", origin: "human" as const }, { kind: "assistant" as const, content: "done" }] } } : { requestContext: turnContext }),
       tools: new RequestToolMap([["probe", probe]]),
       responses: [toolTurn(1), terminalTurn, terminalTurn],
       pending: () => {
+        if (queued && !commandSent) {
+          commandSent = true
+          return requestContextInput("/command", turnContext)
+        }
         if (backgroundSent || requests.length !== 1) return null
         backgroundSent = true
         return messageInput("background result", { origin: "silent-system" })
@@ -332,9 +346,32 @@ describe("silent-reply nudge", () => {
 
     expect(result.kind).toBe("input_closed")
     expect(requests).toHaveLength(3)
-    expect(requests[0]?.at(-1)).toEqual({ kind: "user", content: recoveryContext, requestOnly: true })
-    expect(requests[1]?.at(-1)).toEqual({ kind: "user", content: recoveryContext, requestOnly: true })
-    expect(requests[2]).not.toContainEqual({ kind: "user", content: recoveryContext, requestOnly: true })
+    const recorded: ConversationMessage = { kind: "user", content: turnContext, origin: "system", framing: "turn-context" }
+    expect(requests[0]?.at(-1)).toEqual(recorded)
+    expect(history.filter((message) => message.kind === "user" && message.content === turnContext)).toEqual([recorded])
+    for (const request of requests) expect(request.filter((message) => message.kind === "user" && message.content === turnContext)).toHaveLength(1)
+    expectAppendOnly(requests)
+  })
+
+  it("records turn context once across lives of one turn, redacted, and still owes the person's reply", async () => {
+    // A credential-shaped observation, as a /papercuts drain can copy one; built in parts so no literal secret is in source.
+    const turnContext = `Survey this observation: token ${"ghp_"}${"a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"} leaked`
+    const recorded: ConversationMessage = { kind: "user", content: "Survey this observation: token [redacted secret] leaked", origin: "system", framing: "turn-context" }
+    const goal: ConversationMessage = { kind: "user", content: "what is the status?", origin: "human" }
+    const firstLife: ConversationMessage[] = []
+    const firstRequests: ConversationMessage[][] = []
+    await runLoop({ history: firstLife, requests: firstRequests, humanFacing: true, requestContext: turnContext, seed: { kind: "resume", priorMessages: [goal] }, responses: [silentTurn, silentTurn] })
+    expect(firstRequests[0]).toEqual([goal, recorded])
+
+    // A recovery starts a new life of the same turn over the recorded history, with the same context.
+    const secondLife: ConversationMessage[] = []
+    const secondRequests: ConversationMessage[][] = []
+    await runLoop({ history: secondLife, requests: secondRequests, humanFacing: true, requestContext: turnContext, seed: { kind: "resume", priorMessages: [goal, recorded] }, responses: [silentTurn, silentTurn] })
+    expect(secondRequests[0]).toEqual([goal, recorded])
+    for (const request of secondRequests) expect(request.filter((message) => message.kind === "user" && message.framing === "turn-context")).toHaveLength(1)
+    // The context is not the turn's input, so the silent answer is still owed and nudged.
+    expect(nudgeCount(secondLife)).toBe(1)
+    expectAppendOnly(secondRequests)
   })
 
   it("resets the progress-reminder stretch when visible text is delivered", async () => {
@@ -352,7 +389,7 @@ describe("silent-reply nudge", () => {
       ],
     })
 
-    expect(progressReminderCount(requests)).toBe(0)
+    expect(progressReminderCount(history)).toBe(0)
   })
 
   it("does not reset the progress stretch when ask_user is cancelled", async () => {
@@ -374,7 +411,7 @@ describe("silent-reply nudge", () => {
       responses: [toolTurn(1), toolTurn(2), toolTurn(3), toolTurn(4), toolTurn(5, undefined, "ask_user"), terminalTurn],
     })
 
-    expect(progressReminderCount(requests)).toBe(1)
+    expect(progressReminderCount(history)).toBe(1)
   })
 
   it("starts a new progress stretch when queued human input arrives", async () => {
@@ -397,7 +434,7 @@ describe("silent-reply nudge", () => {
       ],
     })
 
-    expect(progressReminderCount(requests)).toBe(0)
+    expect(progressReminderCount(history)).toBe(0)
   })
 
   it("caps progress reminders at three during one silent stretch", async () => {
@@ -411,6 +448,6 @@ describe("silent-reply nudge", () => {
       responses: [...Array.from({ length: 20 }, (_, index) => toolTurn(index)), terminalTurn],
     })
 
-    expect(progressReminderCount(requests)).toBe(3)
+    expect(progressReminderCount(history)).toBe(3)
   })
 })

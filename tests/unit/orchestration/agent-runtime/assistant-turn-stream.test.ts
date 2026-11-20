@@ -19,11 +19,10 @@ import { withDebugTier } from "../../../helpers/debug-tier.js";
 
 type TurnInput = Parameters<typeof streamAssistantTurn>[0];
 
-const runTurn = (input: Omit<TurnInput, "executionCwd" | "interactionProfile" | "staleMasking" | "requestContext"> & Partial<Pick<TurnInput, "interactionProfile" | "staleMasking" | "requestContext">>) => streamAssistantTurn({
+const runTurn = (input: Omit<TurnInput, "executionCwd" | "interactionProfile" | "staleMasking"> & Partial<Pick<TurnInput, "interactionProfile" | "staleMasking">>) => streamAssistantTurn({
   executionCwd: "/scratch",
   interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
   staleMasking: undefined,
-  requestContext: undefined,
   ...input,
 });
 
@@ -138,7 +137,7 @@ describe("streamAssistantTurn usage attribution stamping", () => {
           yield usage;
           if (provider === "anthropic_api") throw normalizeProviderAttemptFailure(new QuotaExhaustedError("spent"));
           yield { kind: "text_delta", text: "fallback answer", blockKey: "provider-text" };
-          // A chat-completions adapter names no access provider on its turn (`openai-completions.ts`).
+          // A chat-completions adapter names no access provider on its turn (`chat-completions.ts`).
           yield { kind: "done", stopReason: "end_turn", metadata: { api: "openai-responses", provider: "openai", model: "fallback-model", timestamp: 1 } };
         },
       }),
@@ -329,7 +328,6 @@ describe("streamAssistantTurn provider request audit", () => {
     });
 
     expect(requests).toEqual([{
-      requestContext: undefined,
       requestId: requests[0]!.requestId,
       turn: 3,
       interactionProfileId: "default",

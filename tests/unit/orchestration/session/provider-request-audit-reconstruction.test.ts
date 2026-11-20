@@ -38,7 +38,8 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
     const tree = await createConversationTree({ conversationId, sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
     await tree.appendMessage({ kind: "user", content: "q1" })
-    await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "a.ts" } }] })
+    // The effort that a response recorded is part of the history that a later request reads (ARCH-CONTEXT-041).
+    await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "toolu_read", name: "read", input: { path: "a.ts" } }], reasoningEffort: "high" })
     await tree.appendMessage({ kind: "toolResult", toolUseId: "toolu_read", content: [{ type: "text", text: "result" }] })
     await tree.appendMessage({ kind: "user", content: "q2" })
     const recordedLeaf = await tree.getLeafId()

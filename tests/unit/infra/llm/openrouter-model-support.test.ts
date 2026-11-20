@@ -16,8 +16,8 @@ const normalizedMetadata = (fields: { readonly [key: string]: unknown }) => cano
 
 describe("OpenRouter catalog resolution", () => {
   it("recognizes slash ids by shape", () => {
-    expect(detectModelFamily("anthropic/claude-sonnet-4.5")).toBe("openai");
-    expect(detectModelFamily("openai/gpt-4o:free")).toBe("openai");
+    expect(detectModelFamily("anthropic/claude-sonnet-4.5")).toBe("chat-completions");
+    expect(detectModelFamily("openai/gpt-4o:free")).toBe("chat-completions");
     expect(detectModelFamily("mystery-model")).toBeNull();
   });
 

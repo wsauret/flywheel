@@ -109,9 +109,85 @@ describe("logical tool authorization", () => {
       expect(dispatched[index]?.filter((message) => message.kind === "user" && message.content === reminder.content)).toHaveLength(appendRequired ? 1 : 0)
     }
     if (!budget) {
-      expect(dispatched[1]).toContainEqual({ kind: "user", content: CONTINUATION_MESSAGES.stream_stalled, requestOnly: true })
-      expect(dispatched[1]?.some((message) => message.kind === "assistant" && JSON.stringify(message.content).includes("partial"))).toBe(true)
+      // The stall notice is recorded once after the partial answer, and the retry's input extends the stalled one.
+      const stallNotice: ConversationMessage = { kind: "user", content: CONTINUATION_MESSAGES.stream_stalled, origin: "system" }
+      expect(dispatched[1]?.slice(0, dispatched[0]!.length)).toEqual([...dispatched[0]!])
+      expect(dispatched[1]?.slice(dispatched[0]!.length)).toMatchObject([{ kind: "assistant", content: [{ type: "text", text: "partial" }] }, stallNotice])
+      expect(persisted.filter((message) => message.kind === "user" && message.content === CONTINUATION_MESSAGES.stream_stalled)).toEqual([stallNotice])
     }
+  })
+})
+
+/** Runs one loop over a single candidate whose streams stall when `stalls` says so, and records what each request
+ *  sent, the history, and how many save points preceded each send. */
+async function runSingleCandidate(input: { stalls: (request: number) => boolean; turnContext?: string; prior?: ConversationMessage[] }) {
+  const dispatched: ReadonlyArray<ConversationMessage>[] = []
+  const persisted: ConversationMessage[] = []
+  const flushesBeforeSend: number[] = []
+  let flushes = 0
+  const attempt = fakeClient("openai_api", textStream("unused"))
+  const client = chain({
+    candidateAttributions: () => [{ candidate: singletonCandidate("openai_api"), wireModelId: attempt.model, dataUse: "standard" }],
+    availability: fakeAvailability({}).availability,
+    requestAdmission: { subscriptionSpendAuthorizationFor: () => undefined },
+    affordability: new Map([["openai_api", { evaluate: async () => ({ kind: "eligible" as const }) }]]),
+    build: async () => ({
+      ...attempt,
+      async *streamWithTools(options: StreamOptions) {
+        dispatched.push(options.messages)
+        flushesBeforeSend.push(flushes)
+        yield { kind: "text_delta" as const, text: "partial", blockKey: "text" }
+        if (input.stalls(dispatched.length)) throw normalizeProviderAttemptFailure(new StreamIdleTimeoutError("stalled", "idle"))
+        yield { kind: "done" as const, stopReason: "end_turn" as const }
+      },
+    }),
+  })
+  const surface = await createRequestToolSurface(
+    () => ({ eligibleTools: new RequestToolMap(), tools: new RequestToolMap(), omitted: [], usable: new Set(), turnedOff: [], registrationIds: new Map(), registrationIdentities: new Map(), kernel: testKernelToolDeps() }), testCapabilityModules, testRuntimeConfigCapture,
+  )
+  const run = runAgentLoop({
+    client, initialPlannedAttempt: attempt, tools: surface,
+    systemPrompt: () => stableSystemPrompt("literal"), instruction: input.prior ? null : "work",
+    ...(input.turnContext === undefined ? {} : { initialRequestContext: input.turnContext }),
+    executionCwd: tmpdir(), userDataRoot: `${tmpdir()}/.test-account`, projectRoot: tmpdir(),
+    persistence: { history: { append: (message) => { persisted.push(message) } } },
+    seed: input.prior ? { kind: "resume", priorMessages: input.prior } : { kind: "fresh" },
+    flushCanonicalMessages: async () => { flushes += 1 },
+    onEvent: () => {}, providerSessionKey: "provider-session", promptCacheKey: "provider-session", artifactScopeId: "artifact-scope", retrievalSessionId: "retrieval-session",
+  })
+  const failure = await run.then(() => undefined, (error: unknown) => error)
+  return { dispatched, persisted, flushesBeforeSend, failure }
+}
+
+const isStallNotice = (message: ConversationMessage): boolean => message.kind === "user" && message.content === CONTINUATION_MESSAGES.stream_stalled
+
+describe("stall recovery", () => {
+  it("records a stall notice only for a request that recovers from the stall", async () => {
+    const { dispatched, persisted, failure } = await runSingleCandidate({ stalls: () => true })
+    expect(failure).toBeDefined()
+    expect(dispatched.length).toBeGreaterThan(1)
+    for (let index = 0; index < dispatched.length; index += 1) {
+      expect(dispatched[index]!.filter(isStallNotice)).toHaveLength(index)
+      if (index > 0) expect(dispatched[index]!.slice(0, dispatched[index - 1]!.length)).toEqual([...dispatched[index - 1]!])
+    }
+    // The walk gave up after the last stall, so no notice follows the last sent request.
+    expect(persisted.filter(isStallNotice)).toHaveLength(dispatched.length - 1)
+    expect(persisted.slice(dispatched.at(-1)!.length).some(isStallNotice)).toBe(false)
+  })
+})
+
+describe("turn context save points", () => {
+  it("records turn context with no save point beyond the request's own, at any history length", async () => {
+    const history = (turns: number): ConversationMessage[] => Array.from({ length: turns }, (_, index): ConversationMessage[] => [
+      { kind: "user", content: `question ${index}`, origin: "human" },
+      { kind: "assistant", content: [{ type: "text", text: `answer ${index}` }] },
+    ]).flat().concat([{ kind: "user", content: "next", origin: "human" }])
+    const counts = await Promise.all([1, 200].flatMap((turns) => [undefined, "Turn guidance."].map(async (turnContext) => {
+      const { dispatched, flushesBeforeSend } = await runSingleCandidate({ stalls: () => false, prior: history(turns), ...(turnContext === undefined ? {} : { turnContext }) })
+      expect(dispatched[0]!.filter((message) => message.kind === "user" && message.content === "Turn guidance.")).toHaveLength(turnContext === undefined ? 0 : 1)
+      return flushesBeforeSend[0]
+    })))
+    expect(new Set(counts).size).toBe(1)
   })
 })
 

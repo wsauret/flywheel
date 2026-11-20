@@ -127,7 +127,7 @@ export const ROLE_MODEL_DEFAULTS = {
     { family: "anthropic", model: "claude-opus-5.5", effort: "high" },
   ] },
   advisor: { preferences: [
-    { family: "openai", model: "gpt-6-astra", effort: "high" },
+    { family: "openai", model: "gpt-6.2-astra", effort: "high" },
     { family: "anthropic", model: "claude-fable-5.2", effort: "high" },
   ] },
 } satisfies RoleModelDefaults;

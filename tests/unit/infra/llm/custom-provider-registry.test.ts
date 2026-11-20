@@ -60,9 +60,9 @@ describe("custom provider registry", () => {
 });
 
 describe("family detection for custom models", () => {
-  it("maps declared custom models to the openai family", () => {
+  it("maps declared custom models to the Chat Completions family", () => {
     installCustomProviders([LOCAL_LLAMA]);
-    expect(detectModelFamily("llama-3.3-70b")).toBe("openai");
+    expect(detectModelFamily("llama-3.3-70b")).toBe("chat-completions");
   });
 
   it("leaves undeclared unknown ids without a family", () => {

@@ -197,7 +197,6 @@ describe("terminal quota across two owners", () => {
       providerOptions: undefined,
       requestAudit: audit.requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
       turn: 1,
       messageCount: 0,
@@ -259,7 +258,6 @@ describe("terminal quota across two owners", () => {
       reasoningEffort: undefined, signal: undefined, cacheRetention: "1h",
       providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: audit.requestAudit,
       staleMasking: undefined, interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
-      requestContext: undefined,
       turn: 1, messageCount: 0, estimatedContextTokens: 0, onEvent: () => {},
     });
     const rejected = pending.then(() => undefined, (error: unknown) => error);

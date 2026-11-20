@@ -81,7 +81,6 @@ export function agentLoop(client: StagedSdkClient, projectRoot: string, brief: s
   const firstTools: readonly ToolDef[] = [LOOKUP];
   // A function return keeps the field's declared union; a constant would narrow it to "medium".
   const firstEffort = (): StreamOptions["reasoningEffort"] => "medium";
-  const noRequestContext = (): string | undefined => undefined;
   const noPause = (): (() => Promise<void>) | undefined => undefined;
   const noProviderOptions = (): StreamOptions["providerOptions"] => undefined;
   const loop = {
@@ -92,19 +91,17 @@ export function agentLoop(client: StagedSdkClient, projectRoot: string, brief: s
     providerOptions: noProviderOptions(),
     /** The loop's outbound preparation of its history, such as the stale tool-result mask. */
     outbound: (messages: readonly ConversationMessage[]): ConversationMessage[] => [...messages],
-    /** The request-only text of the next request, such as the continuation after a stall, which history never holds. */
-    requestContext: noRequestContext(),
     /** Runs after the route's entries read the request and before the client receives it, where the request waits on
      *  its records. */
     beforeStream: noPause(),
     async request(signal?: AbortSignal, onEvent?: Parameters<Awaited<ReturnType<StagedSdkClient["connect"]>>["stream"]>[1]): Promise<StreamResult> {
-      const { tools, effort, requestContext, providerOptions } = loop;
+      const { tools, effort, providerOptions } = loop;
       const { attempt } = client.staged;
       history.push(...attempt.messagesToAppend?.(history, projectRoot, SHELL_CAPABILITIES) ?? []);
       connected ??= await client.connect();
       const prepared = (): StreamOptions => ({
-        messages: [...projected(loop.outbound(history), tools), ...(requestContext === undefined ? [] : [{ kind: "user" as const, content: requestContext, requestOnly: true as const }])],
-        tools, systemPrompt, reasoningEffort: effort, ...(signal === undefined ? {} : { signal }), ...(requestContext === undefined ? {} : { requestContext }),
+        messages: projected(loop.outbound(history), tools),
+        tools, systemPrompt, reasoningEffort: effort, ...(signal === undefined ? {} : { signal }),
         ...(providerOptions === undefined ? {} : { providerOptions }),
       });
       // The route's entries read the request as prepared, and the request is prepared again with them.

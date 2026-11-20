@@ -55,7 +55,7 @@ describe("streamAssistantTurn request identity forwarding", () => {
         recordRequest(input) { audit = input; return { requestId: input.requestId, turn: input.turn } },
         recordResponse() {}, recordUsage() {}, recordStreamStarted() {}, recordStreamEvent() {}, recordStreamCompleted() {},
       },
-      staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 1,
+      staleMasking: undefined, turn: 1, messageCount: 1,
       estimatedContextTokens: 42, onEvent: () => {},
     })
     expect(messages).toEqual([{ kind: "user", content: "hello" }])
@@ -98,7 +98,6 @@ describe("streamAssistantTurn request identity forwarding", () => {
       providerOptions,
       requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 1,
       estimatedContextTokens: 42,
@@ -132,7 +131,7 @@ describe("streamAssistantTurn request identity forwarding", () => {
         client, executionCwd: "/scratch", interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
         messages: [], tools: [], systemPrompt: stableSystemPrompt(""), reasoningEffort: undefined, signal: undefined,
         cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined,
-        requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+        requestAudit: undefined, staleMasking: undefined,
         turn: 1, messageCount: 0, estimatedContextTokens, onEvent: () => {},
       })
     }
@@ -160,7 +159,7 @@ describe("streamAssistantTurn request identity forwarding", () => {
       client, executionCwd: "/scratch", interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
       messages: [], tools: [], systemPrompt: stableSystemPrompt(""), reasoningEffort: undefined, signal: undefined,
       cacheRetention: undefined, providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined,
-      requestAudit: undefined, staleMasking: undefined, requestContext: undefined,
+      requestAudit: undefined, staleMasking: undefined,
       turn: 1, messageCount: 0, estimatedContextTokens: 105_245, onEvent: () => {},
     })).rejects.toBeInstanceOf(ContextLengthExceededError)
     expect(adapterCalled).toBe(false)
@@ -192,7 +191,6 @@ describe("streamAssistantTurn request identity forwarding", () => {
       providerOptions: undefined,
       requestAudit,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 0,
       estimatedContextTokens: 0,
@@ -255,7 +253,7 @@ describe("streamAssistantTurn admitted request", () => {
               },
               recordResponse() {}, recordUsage() {}, recordStreamStarted() {}, recordStreamEvent() {}, recordStreamCompleted() {},
             },
-            staleMasking: undefined, requestContext: undefined,
+            staleMasking: undefined,
             turn: 1, messageCount: messages.length, estimatedContextTokens: 20, onEvent: () => {},
           } satisfies AssistantAttemptInput,
           execute: (_candidate, fold) => fold({}, async (attempt) => {
@@ -368,7 +366,7 @@ describe("streamAssistantTurn admitted request", () => {
               recordResponse() { order.push(`closed:${revision}`) },
               recordUsage() {}, recordStreamStarted() {}, recordStreamEvent() {}, recordStreamCompleted() {},
             },
-            staleMasking: undefined, requestContext: undefined,
+            staleMasking: undefined,
             turn: 1, messageCount: messages.length, estimatedContextTokens: 190 + revision, onEvent: () => {},
           },
           execute: (_candidate, fold) => fold({}, async (wireAttempt) => {
@@ -418,7 +416,7 @@ describe("streamAssistantTurn admitted request", () => {
             messages: [{ kind: "user", content: "hello" }], tools: [], systemPrompt: stableSystemPrompt("system"),
             reasoningEffort: undefined, signal: undefined, cacheRetention: undefined,
             providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: undefined,
-            staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
+            staleMasking: undefined, turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
           },
           execute: (_candidate, fold) => fold({}, async (attempt) => {
             const value = await attempt.stream()
@@ -471,7 +469,6 @@ describe("streamAssistantTurn admitted request", () => {
       providerOptions: undefined,
       requestAudit: undefined,
       staleMasking: undefined,
-      requestContext: undefined,
       turn: 1,
       messageCount: 1,
       estimatedContextTokens: 1,

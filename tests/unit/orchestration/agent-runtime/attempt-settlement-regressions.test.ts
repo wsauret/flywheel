@@ -20,7 +20,7 @@ function attemptInput(overrides: Partial<AssistantAttemptInput> = {}): Assistant
     messages: [], interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
     reasoningEffort: undefined, signal: undefined, cacheRetention: undefined,
     providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: undefined,
-    staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 0,
+    staleMasking: undefined, turn: 1, messageCount: 0,
     estimatedContextTokens: 1, onEvent() {}, ...overrides,
   };
 }

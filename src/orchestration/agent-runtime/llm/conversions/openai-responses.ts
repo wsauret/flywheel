@@ -1,4 +1,5 @@
 import { imageOmittedPlaceholder, splitToolOutputParts } from "../../../../infra/llm/tool-output-part-schema.js";
+import type { ReasoningEffort } from "../../../../infra/llm/models.js";
 import { healConversation } from "../heal-messages.js";
 import { lowerProviderHistory, type ProviderHistoryTarget } from "../provider-history.js";
 import { isSameAccessProviderReplay, isSameProviderReplay } from "../messages.js"
@@ -11,9 +12,18 @@ interface OpenAIResponsesConversionOptions extends ProviderHistoryTarget {
   customToolNames?: ReadonlySet<string>;
 }
 
+/** How a request whose route and model take an appended configuration update sends a change of effort
+ *  (ARCH-CONTEXT-041). */
+export interface ReasoningEffortUpdates {
+  /** The effort that this request runs at. */
+  readonly current: ReasoningEffort;
+  /** The wire effort of `effort` on the request's model, or undefined when the model cannot take it. */
+  readonly wireEffort: (effort: ReasoningEffort) => string | undefined;
+}
 
 type OpenAIResponseInputItem =
-  | { type?: undefined; role: "system" | "developer" | "user"; content: OpenAIResponseContent[] }
+  | { type?: undefined; role: "developer" | "user"; content: OpenAIResponseContent[] }
+  | { type: "configuration_update"; reasoning: { effort: string } }
   | { type: "message"; role: "user"; content: OpenAIResponseContent[] }
   | { type: "message"; id?: string; role: "assistant"; content: OpenAIResponseContent[]; status: "completed"; phase?: "commentary" | "final_answer" }
   | { type: "reasoning"; id?: string; summary: Array<{ type: "summary_text"; text: string }>; encrypted_content: string }
@@ -195,13 +205,75 @@ function assertUniqueInputItemIds(input: readonly OpenAIResponseInputItem[]): vo
   }
 }
 
-export function toOpenAIResponsesInput(options: OpenAIResponsesConversionOptions, rawHistory: ConversationMessage[]): OpenAIResponseInputItem[] {
+/** Where the effort changes inside the history of a request, and the request-level effort that stays fixed. */
+interface ReasoningEffortPlan {
+  /** The effort that opened the conversation's current baseline. */
+  readonly requestEffort: ReasoningEffort;
+  /** The wire effort of each update, by the history index that it precedes; the history length is the tail. */
+  readonly updates: ReadonlyMap<number, string>;
+}
+
+/**
+ * Plans the configuration updates of a request from the efforts that the requests of its earlier responses ran at.
+ * The baseline opens after the last compaction summary and after the last response of another model or endpoint: it
+ * is the effort of the first response after that point whose effort the model takes on the wire, or the current effort
+ * when none does. Each later response whose effort differs from the one in force gets an update right before it, where
+ * its request appended one after the history, and a current effort that differs gets one at the tail. A response that
+ * records no effort, or one that the model cannot take, such as off on a model without a none tier, changes nothing.
+ * A request whose effort the model cannot take on the wire runs as before.
+ */
+function planReasoningEffortUpdates(history: readonly ConversationMessage[], model: string, policy: ReasoningEffortUpdates): ReasoningEffortPlan {
+  const unplanned = { requestEffort: policy.current, updates: new Map<number, string>() };
+  const current = policy.wireEffort(policy.current);
+  if (current === undefined) return unplanned;
+  let start = 0;
+  for (const [index, message] of history.entries()) {
+    const otherModel = message.kind === "assistant" && message.model !== undefined && (message.model !== model || message.api !== "openai-responses");
+    if (message.kind === "compactionSummary" || otherModel) start = index + 1;
+  }
+  const recorded = history.flatMap((message, index) => {
+    if (index < start || message.kind !== "assistant" || message.reasoningEffort === undefined) return [];
+    const wire = policy.wireEffort(message.reasoningEffort);
+    return wire === undefined ? [] : [{ index, effort: message.reasoningEffort, wire }];
+  });
+  const opening = recorded[0];
+  let inForce = opening?.wire ?? current;
+  const updates = new Map<number, string>();
+  for (const { index, wire } of recorded) {
+    if (wire === inForce) continue;
+    updates.set(index, wire);
+    inForce = wire;
+  }
+  if (current !== inForce) updates.set(history.length, current);
+  return { requestEffort: opening?.effort ?? policy.current, updates };
+}
+
+/** The input items of a Responses request and the request-level effort that it runs at. */
+export interface OpenAIResponsesRequestInput {
+  readonly input: OpenAIResponseInputItem[];
+  /** The baseline effort when effort updates were planned; otherwise undefined, and the request runs at the current effort. */
+  readonly reasoningEffort: ReasoningEffort | undefined;
+}
+
+/** The input items of `rawHistory` and the request-level effort. System messages are not history: the request carries
+ *  the system prompt as its own first item (`buildOpenAIResponseInput`). With `effortUpdates`, a change of effort
+ *  inside the conversation is an appended `configuration_update` item and the request-level effort stays the baseline
+ *  (`planReasoningEffortUpdates`); without it the request runs at the current effort. */
+export function toOpenAIResponsesRequestInput(
+  options: OpenAIResponsesConversionOptions,
+  rawHistory: ConversationMessage[],
+  effortUpdates?: ReasoningEffortUpdates,
+): OpenAIResponsesRequestInput {
   const history = lowerProviderHistory(healConversation(rawHistory), options);
   const wireCallIds = collectWireCallIds(history, options);
-  // Instructions travel in the top-level `instructions` request field, never
-  // as a system/developer input item; system messages are skipped below.
+  const plan = effortUpdates ? planReasoningEffortUpdates(history, options.model, effortUpdates) : undefined;
   const input: OpenAIResponseInputItem[] = [];
+  const pushUpdate = (index: number): void => {
+    const effort = plan?.updates.get(index);
+    if (effort !== undefined) input.push({ type: "configuration_update", reasoning: { effort } });
+  };
   for (let messageIndex = 0; messageIndex < history.length; messageIndex++) {
+    pushUpdate(messageIndex);
     const message = history[messageIndex];
     if (!message || message.kind === "system") continue;
     if (message.kind === "user" || message.kind === "compactionSummary") {
@@ -215,9 +287,10 @@ export function toOpenAIResponsesInput(options: OpenAIResponsesConversionOptions
     }
     input.push(...convertOpenAIAssistantBlocks(message, options, wireCallIds, messageIndex));
   }
+  pushUpdate(history.length);
 
   assertUniqueInputItemIds(input);
-  return input;
+  return { input, reasoningEffort: plan?.requestEffort };
 }
 
 function appendOpenAIToolResult(

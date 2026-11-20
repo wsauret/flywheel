@@ -12,7 +12,7 @@ import { turnEndEntryId } from "../../../../src/orchestration/session/conversati
 import { removeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";
-import { toOpenAIResponsesInput } from "../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses";
+import { toOpenAIResponsesRequestInput } from "../../../../src/orchestration/agent-runtime/llm/conversions/openai-responses";
 import { toAnthropicMessagesRequest } from "../../../../src/orchestration/agent-runtime/llm/conversions/anthropic-messages";
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types";
 
@@ -344,7 +344,7 @@ describe("model deliberation persistence", () => {
 
     // Wire-level proof: the rebuilt history passes the same-provider gate and
     // replays the verbatim provider reasoning item.
-    const wire = JSON.stringify(toOpenAIResponsesInput({ ...openaiAttribution, sharedHost: false }, context.messages));
+    const wire = JSON.stringify(toOpenAIResponsesRequestInput({ ...openaiAttribution, sharedHost: false }, context.messages).input);
     expect(wire).toContain("ciphertext");
     await reopened.getStorage().dispose();
   });
@@ -377,27 +377,29 @@ describe("model deliberation persistence", () => {
     await reopened.getStorage().dispose();
   });
 
-  it("keeps a response's reported reasoning tokens through a rebuild while every entries fact keeps the shape an earlier build reads", async () => {
+  it("keeps a response's reported reasoning tokens and request effort through a rebuild while every entries fact keeps the shape an earlier build reads", async () => {
     const anthropicAttribution = { accessProvider: "anthropic_api", provider: "anthropic", api: "anthropic-messages", model: "claude-sonnet-5-5" } as const;
     const mgr = createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, store });
     const id = await mgr.createChat({ name: "Reasoning Count Chat" });
     const conversationId = await conversationIdOf(mgr, id);
     const tree = await openExistingTree({ conversationId, sessionId: id, store, writer: immediateWriter(store) });
     await tree.appendMessage({ kind: "user", content: "think it through" });
-    const counted: ConversationMessage = { kind: "assistant", ...anthropicAttribution, reasoningTokens: 4_716, content: [{ type: "thinking", thinking: "", signature: "sig-1" }, { type: "text", text: "first" }] };
+    const counted: ConversationMessage = { kind: "assistant", ...anthropicAttribution, reasoningTokens: 4_716, reasoningEffort: "high", content: [{ type: "thinking", thinking: "", signature: "sig-1" }, { type: "text", text: "first" }] };
     await tree.appendMessages([counted, { kind: "user", content: "again" }]);
     const leaf = await tree.getLeafId();
     await tree.getStorage().dispose();
-    const [entriesFact, countsFact] = store.read({ aggregateId: `conversation:${conversationId}` }).slice(-2);
+    const [entriesFact, countsFact, effortsFact] = store.read({ aggregateId: `conversation:${conversationId}` }).slice(-3);
     if (!entriesFact) throw new Error("expected the counted batch");
-    // The entries keep version 3, which every earlier build reads in full; the count travels in its own fact,
-    // which an earlier build's fold never selects.
+    // The entries keep version 3, which every earlier build reads in full; the count and the effort travel in their
+    // own facts, which an earlier build's fold never selects.
     expect(entriesFact.type).toBe("chat.entries.appended");
     expect(entriesFact.version).toBe(3);
     expect(JSON.stringify(entriesFact.payload)).not.toContain("reasoningTokens");
+    expect(JSON.stringify(entriesFact.payload)).not.toContain("reasoningEffort");
     const earlierBuildRead = parseConversationTreeFact({ type: entriesFact.type, version: 3, actor: entriesFact.actor, payload: entriesFact.payload });
     const countedEntryId = earlierBuildRead.type === "chat.entries.appended" ? earlierBuildRead.payload.entries[0]?.id : undefined;
     expect(countsFact).toMatchObject({ type: "chat.reasoning.reported", version: 1, payload: { conversationId, counts: [{ entryId: countedEntryId, reasoningTokens: 4_716 }] } });
+    expect(effortsFact).toMatchObject({ type: "chat.reasoning_effort.recorded", version: 1, payload: { conversationId, efforts: [{ entryId: countedEntryId, reasoningEffort: "high" }] } });
 
     // The shape a build before 2026-10-08 wrote: an assistant message with no count.
     store.append({

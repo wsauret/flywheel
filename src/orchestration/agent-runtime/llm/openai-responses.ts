@@ -2,14 +2,16 @@ import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import type { ModelInfo } from "../../../infra/llm/models.js";
 import { buildOpenAIResponseInput, createOpenAITools, resolveOpenAISystemPrompt } from "./openai-adapter-helpers.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "./provider-description.js";
-import { buildOpenAIParams } from "./openai-helpers.js";
+import { buildOpenAIParams, openAIWireReasoningEffort } from "./openai-helpers.js";
+import { supportsReasoningEffortUpdates } from "./model-compat.js";
 import { immutablePreparedRequest, resolveCacheRetention, type PreparedProviderRequest, type StreamOptions } from "./types.js";
 
 type OpenAIResponseParams = ReturnType<typeof buildOpenAIParams>;
 
 export type PreparedOpenAIResponsesRequest = PreparedProviderRequest<"openai-responses", OpenAIResponseParams>;
 
-/** Prepares the complete Responses request without constructing a transport client. */
+/** Prepares the complete Responses request without constructing a transport client. `messages` holds the input
+ *  without the system prompt, which `systemPrompt` holds and the input carries as its first item. */
 export function prepareOpenAIResponsesRequest(input: {
   accessProvider: AccessProviderId;
   model: string;
@@ -18,27 +20,28 @@ export function prepareOpenAIResponsesRequest(input: {
   options: StreamOptions;
 }): PreparedOpenAIResponsesRequest {
   const { accessProvider, model, info, isChatGPT } = input;
-  const options = { ...input.options, cacheRetention: resolveCacheRetention(accessProvider, input.options) };
-  const systemPrompt = resolveOpenAISystemPrompt({
-    messages: options.messages,
-    systemPrompt: options.systemPrompt,
-    isChatGPT,
-  });
-  const messages = buildOpenAIResponseInput({
+  const effort = input.options.reasoningEffort ?? "medium";
+  const options = { ...input.options, reasoningEffort: effort, cacheRetention: resolveCacheRetention(accessProvider, input.options) };
+  const systemPrompt = resolveOpenAISystemPrompt({ messages: options.messages, systemPrompt: options.systemPrompt });
+  // Only OpenAI's own routes take an appended effort update; another route that serves the same model runs at the
+  // request's effort.
+  const takesEffortUpdates = info.reasoning && (accessProvider === "openai_api" || accessProvider === "chatgpt") && supportsReasoningEffortUpdates(model);
+  const prepared = buildOpenAIResponseInput({
+    systemPrompt,
     messages: options.messages,
     accessProvider,
     model,
     supportsImages: info.modalities.input.includes("image"),
     tools: options.tools,
+    ...(takesEffortUpdates ? { effortUpdates: { current: effort, wireEffort: (requested) => openAIWireReasoningEffort(requested, info) } } : {}),
   });
   const tools = createOpenAITools(options.tools, OPENAI_RESPONSES_TOOL_PRESENTATION);
   const params = buildOpenAIParams(
     model,
-    messages,
-    systemPrompt,
+    prepared.input,
     tools,
     isChatGPT,
-    options.reasoningEffort ?? "medium",
+    prepared.reasoningEffort ?? effort,
     info,
     options,
     accessProvider,
@@ -47,7 +50,7 @@ export function prepareOpenAIResponsesRequest(input: {
     endpoint: "openai-responses",
     params,
     systemPrompt,
-    messages: params.input,
+    messages: prepared.history,
     tools: params.tools,
     providerOptions: options.providerOptions,
     cacheRetention: options.cacheRetention,

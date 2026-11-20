@@ -102,7 +102,7 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
             options: request, presentation: bridgePresentation, hosted: true,
           });
           if (!prepared.historyTarget.sharedHost) return false;
-          return hosted === undefined || hosted.dispatches(cliView(prepared.params, prepared.origins, build.projectRoot), { requestContext: request.requestContext, runtimeNotices: trailingRuntimeNotices(request.messages) }, requested.totalContextLimit ?? requested.contextLimit);
+          return hosted === undefined || hosted.dispatches(cliView(prepared.params, prepared.origins, build.projectRoot), { runtimeNotices: trailingRuntimeNotices(request.messages) }, requested.totalContextLimit ?? requested.contextLimit);
         }),
       }),
     };

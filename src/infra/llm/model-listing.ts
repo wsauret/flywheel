@@ -596,7 +596,7 @@ export function createModelListingClient(options: ModelListingClientOptions): Mo
         const candidate: AccessProviderCandidate = { kind: "singleton", providerId, spendMode: options.providers.spendMode(providerId) };
         const catalogId = options.providers.catalogId(providerId);
         const catalog = catalogId === undefined || options.modelsClient === undefined ? [] : options.modelsClient.getProviderCatalog([catalogId], DEFAULT_DYNAMIC_CATALOG_LIMITS.canonicalRows);
-        const models = staticOfferingMap(custom.modelIds, "openai-completions", catalog);
+        const models = staticOfferingMap(custom.modelIds, "chat-completions", catalog);
         tasks.push(async () => ({ providerId, candidate, result: { models } }));
         continue;
       }

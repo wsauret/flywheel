@@ -195,7 +195,7 @@ Not: Deriving session identity from the prompt-cache key.
 
 ## ARCH-PROVIDERS-027: Prompt-prefix holds belong to request admission
 
-Request admission decides when a workflow attempt's first model request reaches the provider, not the workflow host. The hold key is the prompt prefix that the serving route states it can share between conversations, so a route that cannot share a prefix never holds a request. Chats and subagents never take the hold.
+Request admission decides when a workflow attempt's first model request reaches the provider, not the workflow host. The hold key is the prompt prefix that the serving route states it can share between conversations, so a route that cannot share a prefix never holds a request. On a Responses route that prefix starts with the developer item that carries the system prompt. Chats and subagents never take the hold.
 
 Because: Only request admission knows the serving route and the exact prompt that decide whether two requests share a cached prefix.
 Not: Staggering attempt starts in workflow admission.
@@ -419,3 +419,14 @@ Usage records how many cache-write tokens the provider created at each lifetime,
 Because: A one-hour write costs more than a five-minute write, and one rate for both understates the cost of a chat.
 Not: One cache-write rate for every lifetime.
 
+## ARCH-PROVIDERS-084: A Responses request carries the system prompt as its first input item
+
+A Responses request carries the rendered system prompt as its first input item, with the developer role, and sends no top-level instructions.
+Because: Newer models place top-level instructions after the input and never read them from the prompt cache.
+Not: Top-level instructions for some model versions and a developer item for others.
+
+## ARCH-PROVIDERS-085: A wire family names the protocol shape, not the vendor
+
+A model's wire family names the protocol shape that serves it: Anthropic messages, Google, OpenAI Responses, or Chat Completions. A vendor that copies a protocol shares its family. The Chat Completions family takes no rate, tool contract, or default of a vendor; where a rate is unknown, a cached token costs the input rate.
+Because: Many vendors speak Chat Completions, and an OpenAI default applied to them misprices and misroutes their models.
+Not: Treating every OpenAI-shaped wire as the OpenAI family.

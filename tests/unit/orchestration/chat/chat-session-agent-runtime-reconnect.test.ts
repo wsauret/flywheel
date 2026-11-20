@@ -13,7 +13,7 @@ import type { LiveAgent } from "../../../../src/orchestration/agent-runtime/runn
 import { newTestRunner } from "../../../helpers/agent-runner.js"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
 import type { BackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner"
-import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
+import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
 import { chain, fakeAvailability } from "../agent-runtime/llm/_provider-chain-harness"
 import { LlmStreamError, StreamIdleTimeoutError } from "../../../../src/orchestration/agent-runtime/llm/errors"
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure"
@@ -72,7 +72,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
     }
   })
 
-  it("commits a fork's command goal once before its first request and keeps request context private after reconnect", async () => {
+  it("commits a fork's command goal and its turn context once before its first request and keeps both after reconnect", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-chat-fork-command-"))
     const database = resolveEventStoreDbFile(tmpDir)
     let store = createSqliteEventStore(database)
@@ -80,6 +80,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
       projectRoot: tmpDir, sessionId: "source", conversationId: "source", store: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store),
     })
     const privateContext = "Private loop instructions for this request only."
+    const recordedContext: ConversationMessage = { kind: "user", content: privateContext, origin: "system", framing: "turn-context" }
     const goal = { text: "Start the experiment loop.", invocation: { label: "/experiment start" } }
     const requests: Array<{ messages: StreamOptions["messages"]; durable: StreamOptions["messages"] }> = []
     const firstRequest = Promise.withResolvers<void>()
@@ -143,13 +144,14 @@ describe("chat session with agent runtime request-owned recovery", () => {
       expect(requests).toHaveLength(1)
       await session.awaitLogicalTurnDurability()
       expect(requests[0]?.messages.slice(0, 2)).toEqual(prefix)
+      // The turn context is a hidden entry of the history, recorded once after the goal (ARCH-CONTEXT-042).
       expect(requests[0]?.durable).toEqual([
         ...prefix,
         { kind: "user", content: goal.text, invocation: goal.invocation, origin: "human" },
+        recordedContext,
       ])
       expect(requests[0]?.messages.filter((message) => message.kind === "user" && message.invocation)).toHaveLength(1)
-      expect(JSON.stringify(requests[0]?.messages)).toContain(privateContext)
-      expect(JSON.stringify(requests[0]?.durable)).not.toContain(privateContext)
+      expect(requests[0]?.messages.at(-1)).toEqual(recordedContext)
       await session.dispose()
       session = null
       await reader.dispose()
@@ -166,8 +168,9 @@ describe("chat session with agent runtime request-owned recovery", () => {
       expect(requests[1]?.durable.filter((message) => message.kind === "user" && message.invocation)).toEqual([
         { kind: "user", content: goal.text, invocation: goal.invocation, origin: "human" },
       ])
-      expect(JSON.stringify(requests[1]?.messages)).not.toContain(privateContext)
-      expect(JSON.stringify(requests[1]?.durable)).not.toContain(privateContext)
+      expect(requests[1]?.messages.slice(0, requests[0]!.messages.length)).toEqual(requests[0]!.messages)
+      expect(requests[1]?.messages.filter((message) => JSON.stringify(message).includes(privateContext))).toEqual([recordedContext])
+      expect(requests[1]?.durable.filter((message) => JSON.stringify(message).includes(privateContext))).toEqual([recordedContext])
     } finally {
       await session?.dispose()
       session = null
@@ -356,7 +359,7 @@ describe("chat session with agent runtime request-owned recovery", () => {
     }
   })
 
-  it("guides only the retry generation after a request-owned stall", async () => {
+  it("records the stall guidance once after each stalled generation of a request-owned stall", async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-chat-stall-recovery-"))
     const store = createSqliteEventStore(resolveEventStoreDbFile(tmpDir))
     const requestMessages: StreamOptions["messages"][] = []
@@ -431,15 +434,16 @@ describe("chat session with agent runtime request-owned recovery", () => {
       await recoveryRendered.promise
 
       expect(requestMessages).toHaveLength(4)
-      expect(JSON.stringify(requestMessages[0])).not.toContain(recoveryDirective)
-      expect(JSON.stringify(requestMessages[1])).toContain(recoveryDirective)
-      expect(JSON.stringify(requestMessages[2])).toContain(recoveryDirective)
-      expect(JSON.stringify(requestMessages[2])).toContain("Produce one small sequential batch in this response")
-      expect(JSON.stringify(requestMessages[3])).not.toContain(recoveryDirective)
+      // Each stalled generation is followed by one recorded notice, and every request extends the one before it.
+      const stallNotices = (messages: StreamOptions["messages"] | undefined) => messages?.filter((message) => message.kind === "user" && message.content === recoveryDirective).length
+      expect(requestMessages.map(stallNotices)).toEqual([0, 1, 2, 2])
+      for (let index = 1; index < requestMessages.length; index += 1) {
+        expect(requestMessages[index]?.slice(0, requestMessages[index - 1]!.length)).toEqual(requestMessages[index - 1]!)
+      }
       expect(notices).toEqual([])
       expect(connectionStates).not.toContain("reconnecting")
       const durableContext = await treeWriter.buildContext({ allowAssistantTail: true })
-      expect(JSON.stringify(durableContext.messages)).not.toContain(recoveryDirective)
+      expect(stallNotices(durableContext.messages)).toBe(2)
 
     } finally {
       await session?.dispose()

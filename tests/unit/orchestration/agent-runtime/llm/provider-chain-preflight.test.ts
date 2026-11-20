@@ -55,7 +55,7 @@ function admitted(plan: FailoverPlan): AdmittedFailoverPlan {
 
 interface ExactEligibilityRoutes {
   readonly [providerId: string]: {
-    readonly transport: "anthropic-messages" | "openai-responses" | "openai-completions" | "google";
+    readonly transport: "anthropic-messages" | "openai-responses" | "chat-completions" | "google";
     readonly wireModelId?: string;
   };
 }
@@ -111,10 +111,10 @@ describe("provider chain preflight", () => {
     const model = "deepseek-v4.1-flash-1017";
     const connection = connect({ providers: authProviders({ apiKeys: { opencode_go: SECRET, deepseek: SECRET, baseten: SECRET, openrouter: SECRET } }) });
     const routes = admitted(PROVIDERS.selection.plan(model, connection, exactEligibility({
-      opencode_go: { transport: "openai-completions" },
-      deepseek: { transport: "openai-completions", wireModelId: "deepseek-flash" },
-      baseten: { transport: "openai-completions", wireModelId: "deepseek-ai/DeepSeek-V4.1-Flash-1017" },
-      openrouter: { transport: "openai-completions" },
+      opencode_go: { transport: "chat-completions" },
+      deepseek: { transport: "chat-completions", wireModelId: "deepseek-flash" },
+      baseten: { transport: "chat-completions", wireModelId: "deepseek-ai/DeepSeek-V4.1-Flash-1017" },
+      openrouter: { transport: "chat-completions" },
     }))).candidates;
     expect(routes.map(({ providerId, spendMode }) => ({ providerId, spendMode }))).toEqual([
       { providerId: "opencode_go", spendMode: "included" },
@@ -134,7 +134,7 @@ describe("provider chain preflight", () => {
       claude_agent_sdk: { transport: "anthropic-messages" },
       github_copilot: { transport: "anthropic-messages" },
       anthropic_api: { transport: "anthropic-messages" },
-      openrouter: { transport: "openai-completions" },
+      openrouter: { transport: "chat-completions" },
     });
     const routes = admitted(PROVIDERS.selection.plan(model, connection, eligibility)).candidates;
     expect(routes.slice(0, 2).map(({ providerId, spendMode }) => ({ providerId, spendMode }))).toEqual([
@@ -233,8 +233,8 @@ describe("provider chain preflight", () => {
     const connection = connect({ providers: authProviders({ apiKeys: { openrouter: SECRET } }) });
     const eligibility = testEligibility({
       candidateOfferings: (candidate: AccessProviderCandidate, model: string) => [
-        { candidate, wireModelId: `${model}:free`, dataUse: "standard" as const, routeKind: "free" as const, transport: "openai-completions" as const },
-        { candidate, wireModelId: model, dataUse: "standard" as const, transport: "openai-completions" as const },
+        { candidate, wireModelId: `${model}:free`, dataUse: "standard" as const, routeKind: "free" as const, transport: "chat-completions" as const },
+        { candidate, wireModelId: model, dataUse: "standard" as const, transport: "chat-completions" as const },
       ],
     });
 

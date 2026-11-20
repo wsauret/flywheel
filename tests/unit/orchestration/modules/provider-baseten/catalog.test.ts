@@ -60,7 +60,7 @@ test.each([false, true])("Baseten joins exact live wires, keeps Fast separate, a
     expect(listings).toEqual([{ url: "https://inference.baseten.co/v1/models", authorization: "Bearer baseten-test-key" }]);
     expect(candidate?.models?.get(MODEL)?.map((offering) => offering.wireModelId)).toEqual([WIRE]);
     expect(candidate?.models?.get(MODEL)?.[0]?.resolvedMetadata).toMatchObject({
-      family: "openai", reasoning: true,
+      family: "chat-completions", reasoning: true,
       reasoningEfforts: ["none", "low", "medium", "high", "max"],
       interleavedReasoningField: "reasoning_content",
       contextLimit: fails ? 500_000 : 1_048_576,

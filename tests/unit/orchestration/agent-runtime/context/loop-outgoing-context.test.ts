@@ -36,11 +36,11 @@ test("the first restored request cycle retains its recorded mask through provide
   });
   const surface = await new RequestToolMap().resolve();
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
-  context.prepareCycle(surface, attempt, undefined);
+  context.prepareCycle(surface, attempt);
   context.prepare(attempt);
   context.advance();
   expect(context.active().mask.staleMasking?.cutoffIndex).toBe(8);
-  context.prepareCycle(surface, attempt, undefined);
+  context.prepareCycle(surface, attempt);
   expect(context.active().mask.staleMasking!.cutoffIndex).toBeGreaterThan(8);
 });
 
@@ -53,7 +53,7 @@ test("appending unmasked history preserves sent snapshots without duplicating me
   });
   const surface = await new RequestToolMap().resolve();
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   const sent = context.active().messages;
   history.push({ kind: "assistant", content: "second" });
   const next = context.active();
@@ -91,7 +91,7 @@ test("projects history from a different tool contract before token accounting", 
   }]]).resolve();
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   const outbound = context.active();
 
   expect(JSON.stringify(outbound.messages)).not.toContain("apply_patch");
@@ -157,7 +157,7 @@ test("provider variants and appends do not recount unchanged presented history",
   }]]).resolve();
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
   const context = createActiveRequestContext({ messages: () => history, attempt: () => attempt, onEvent: () => {} });
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   // A prepare that changes the presentation builds a new policy object, so each
   // count reads the countText calls of the policy that is current at that time.
   const counted = (step: () => void): number => {
@@ -197,17 +197,17 @@ test("candidate model switches select their own prepared token policy", async ()
   const surface = await new RequestToolMap().resolve();
   await surface.prepareStablePrompt(() => stableSystemPrompt("test"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   expect(context.tokenPolicy().identity).toBe("local:ClaudeV3");
   expect(context.active().snapshot.messageTokens).toBe(estimateConversationTokens(history, tokenCountingPolicy(attempt.model, attempt.modelFamily, attempt.tokenizerIdentity)));
 
   attempt = { ...base, model: "claude-opus-5", tokenizerIdentity: "ClaudeV5" };
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   expect(context.tokenPolicy().identity).toBe("local:ClaudeV5");
   expect(context.active().snapshot.messageTokens).toBe(estimateConversationTokens(history, tokenCountingPolicy(attempt.model, attempt.modelFamily, attempt.tokenizerIdentity)));
 
   attempt = { ...base, model: "unmapped-model" };
-  context.select(surface, attempt, undefined);
+  context.select(surface, attempt);
   expect(context.tokenPolicy().identity).toBe("heuristic:anthropic");
   expect(context.active().snapshot.messageTokens).toBe(estimateConversationTokens(history, tokenCountingPolicy(attempt.model, attempt.modelFamily)));
 });
@@ -261,12 +261,11 @@ for (const priorMasked of [false, true]) for (const measurement of ["before", "a
     expect(report?.kind).toBe("compaction_done");
     if (report?.kind !== "compaction_done") throw new Error("missing compaction report");
     const checkpointRequest = requests[priorMasked ? 1 : 0]!;
-    const requestOnly = checkpointRequest.messages.at(-1)!;
     const projectedBeforeHistory = lowerToolHistoryById(beforeHistory, ["old"]);
     const expectedHistory = priorMasked
-      ? [...requests[0]!.messages.slice(0, -1), ...projectedBeforeHistory.slice(requests[0]!.messages.length - 1)]
+      ? [...requests[0]!.messages, ...projectedBeforeHistory.slice(requests[0]!.messages.length)]
       : projectedBeforeHistory;
-    if (measurement === "before") expect(report.tokensBefore).toBe(prefix(checkpointRequest) + tokens([...expectedHistory, requestOnly]));
+    if (measurement === "before") expect(report.tokensBefore).toBe(prefix(checkpointRequest) + tokens(expectedHistory));
     const afterRequest = requests.at(-1)!;
     expect(report.tokensAfter).toBe(prefix(afterRequest) + tokens(afterRequest.messages));
     const reportIndex = events.indexOf(report);

@@ -12,6 +12,7 @@ import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
 import type { AgentLoopOptions, HistorySink } from "./agent-loop-types.js";
 import { appendEntries, appendProviderHistory, createLoopMessageWriters } from "./agent-loop-history.js";
+import { turnContextEntry } from "./agent-loop-turn-context.js";
 import { createActiveRequestContext, prepareActiveRequestVariant, readStaleMaskSeed } from "./active-request-context.js";
 import type { OutgoingContextSnapshot } from "./context-token-anchor.js";
 import { prepareAssistantTurn, type PreparedRequest } from "./assistant-turn-stream.js";
@@ -61,7 +62,7 @@ export interface RequestPreparationSinks {
 
 /** What a request's attempt input carries that its candidate and history do not decide. */
 type AttemptValues = Omit<AssistantAttemptInput,
-  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "requestContext" | "messageCount" | "estimatedContextTokens" | "imageLimitCut">;
+  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "messageCount" | "estimatedContextTokens" | "imageLimitCut">;
 
 /**
  * The one preparation of a run's requests (R5): the only code that builds request bytes. A send's loop and a
@@ -119,14 +120,15 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
     prepareVariant,
     /**
      * Opens one request cycle on `surface`: plans the request's provider variant, reads the cycle's effort, appends the
-     * route's messages and the turn reminders to the history, and selects the request context. Returns the variant
-     * with the effort and the cycle's estimated context tokens.
+     * route's messages, the turn reminders, and the turn context that `context` takes to the history, and selects the
+     * request context. Returns the variant with the effort and the cycle's estimated context tokens.
      */
     async openCycle(cycle: {
       readonly surface: ResolvedSurface;
       readonly signal: AbortSignal | undefined;
-      /** The cycle's request context before the request takes it, and the take. */
-      readonly context: { readonly preview: string | undefined; readonly consume: () => string | undefined };
+      /** Takes the turn context that this request records first, after the turn reminders, as a system-origin entry
+       *  (ARCH-CONTEXT-042), or nothing. Later requests carry the entry in place. */
+      readonly context: () => string | undefined;
     }) {
       const variant = await prepareVariant(cycle.surface, cycle.signal);
       // The effort is read once per cycle: the appends read it, and so does each attempt of the cycle's request.
@@ -136,8 +138,11 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
         : inputs.reasoningEffort ? await inputs.reasoningEffort() : undefined;
       await appendProviderMessages(variant.plannedAttempt);
       appendedAttempt = variant.plannedAttempt;
-      requestContext.select(cycle.surface, variant.plannedAttempt, cycle.context.preview);
-      const contextTokens = requestContext.prepareCycle(cycle.surface, variant.plannedAttempt, cycle.context.consume());
+      const turnContext = cycle.context();
+      // The request's pre-send save point commits the entry, so recording it costs the request no flush of its own.
+      if (turnContext !== undefined) await appendEntries({ ...entryWriter, flush: undefined }, [turnContextEntry(turnContext)]);
+      requestContext.select(cycle.surface, variant.plannedAttempt);
+      const contextTokens = requestContext.prepareCycle(cycle.surface, variant.plannedAttempt);
       return { ...variant, turnEffort, contextTokens };
     },
     /**
@@ -159,7 +164,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
             ...values,
             messages: outbound.messages, prepareAttempt: requestContext.prepare,
             staleMasking: outbound.mask.staleMasking, toolHistoryProjection: outbound.toolHistoryProjection,
-            requestContext: outbound.requestContext, imageLimitCut: preparation.imageLimitCut,
+            imageLimitCut: preparation.imageLimitCut,
             messageCount: outbound.messages.length, estimatedContextTokens: requestContext.anchor.estimate(),
           },
         };
@@ -182,7 +187,7 @@ interface RequestPreparation {
 /**
  * Prepares the first request that a send of `inputs` would make after `nextMessage`, through the send's setup, its
  * prepare closure, and the walk's `prepares` mode, and returns the candidate with that request. The history, the
- * route's messages, the turn reminders, and the request context are written to an in-memory draft only: it sends no
+ * route's messages, the turn reminders, and the turn context are written to an in-memory draft only: it sends no
  * model request, claims no recheck lease, records no routing choice, and writes no durable fact. Without a
  * `nextMessage` the draft ends with a placeholder and the result is marked `nextMessage: "unknown"`. Rejects when
  * `signal` aborts and when no candidate can be prepared.
@@ -199,7 +204,7 @@ async function prepareRequest(inputs: RequestInputs, preparation: RequestPrepara
   );
   const surface = await inputs.tools.resolve();
   const cycle = await draft.openCycle({
-    surface, signal, context: { preview: inputs.initialRequestContext, consume: () => inputs.initialRequestContext },
+    surface, signal, context: () => inputs.initialRequestContext,
   });
   const prepareInput = draft.attemptInput({
     interactionProfile: cycle.interactionProfile, reasoningEffort: cycle.turnEffort, signal,

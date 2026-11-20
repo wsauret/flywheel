@@ -20,11 +20,11 @@ describe("detectModelFamily", () => {
     expect(detectModelFamily("kimi-k2.7-code")).toBe("openai");
   });
 
-  test("maps every OpenRouter slash id to its OpenAI-compatible transport", () => {
-    expect(detectModelFamily("anthropic/claude-sonnet-4.5")).toBe("openai");
-    expect(detectModelFamily("openai/gpt-6-luna")).toBe("openai");
-    expect(detectModelFamily("meta-llama/llama-3.1-70b-instruct:free")).toBe("openai");
-    expect(detectModelFamily("qwen/qwen3.7-max")).toBe("openai");
+  test("maps every OpenRouter slash id to its Chat Completions transport", () => {
+    expect(detectModelFamily("anthropic/claude-sonnet-4.5")).toBe("chat-completions");
+    expect(detectModelFamily("openai/gpt-6-luna")).toBe("chat-completions");
+    expect(detectModelFamily("meta-llama/llama-3.1-70b-instruct:free")).toBe("chat-completions");
+    expect(detectModelFamily("qwen/qwen3.7-max")).toBe("chat-completions");
   });
 
 });

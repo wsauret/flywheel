@@ -21,7 +21,7 @@ export interface CommandHost {
 }
 
 /** The prompt a command delivers into its session as the next turn. `context`
- *  is request-only: the model reads it once and the transcript shows `label`. */
+ *  is hidden turn context that the turn records once (ARCH-CONTEXT-042); the transcript shows `label`. */
 export interface CommandPrompt {
   readonly text: string
   readonly label: string

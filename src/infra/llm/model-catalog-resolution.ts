@@ -1,6 +1,7 @@
 
 import { DebugLog } from "../debug-log.js";
 import { canonicalCatalogModelId, canonicalModelId, preferredWireModelId, type CatalogDataUse } from "./model-id.js";
+import type { ModelFamily } from "./model-family.js";
 import type { ModelInfo } from "./models.js";
 import { enrichProviderModelInfo, providerModelInfo } from "./provider-model-info.js";
 export interface CatalogModelOffering {
@@ -57,7 +58,7 @@ export interface CatalogWireIdentity {
 
 export type CatalogJsonValue = string | number | boolean | null | readonly CatalogJsonValue[] | { readonly [key: string]: CatalogJsonValue };
 
-export type OfferingTransport = "anthropic-messages" | "openai-responses" | "openai-completions" | "google";
+export type OfferingTransport = "anthropic-messages" | "openai-responses" | "chat-completions" | "google";
 
 const UNRESOLVED_RELATIONSHIP_IDS_BYTES = 1024;
 const CANONICAL_COLLISIONS_BYTES = 1024;
@@ -90,29 +91,33 @@ export function recordUnresolvedModelRelationships(
   });
 }
 
-/** Returns the chat transport declared by models.dev npm metadata. */
-export function offeringTransport(metadata: CatalogJsonValue): OfferingTransport | undefined {
+/** Returns the chat transport declared by models.dev npm metadata. The xAI package sends the Responses API by default,
+ *  which is the wire that the xAI subscription speaks. */
+export function offeringTransport(metadata: unknown): OfferingTransport | undefined {
   if (!isObject(metadata)) return undefined;
   const transport = metadata.transport;
   if (!isObject(transport) || typeof transport.npm !== "string") return undefined;
   if (transport.npm === "@ai-sdk/anthropic") return "anthropic-messages";
-  if (transport.npm === "@ai-sdk/openai") return "openai-responses";
+  if (transport.npm === "@ai-sdk/openai" || transport.npm === "@ai-sdk/xai") return "openai-responses";
   if (transport.npm === "@ai-sdk/google" || transport.npm === "@ai-sdk/google-vertex") return "google";
   if (
     transport.npm === "@ai-sdk/openai-compatible"
     || transport.npm === "@openrouter/ai-sdk-provider"
-    || transport.npm === "@ai-sdk/xai"
-  ) return "openai-completions";
+  ) return "chat-completions";
   return undefined;
 }
 
-export function offeringTransportFamily(transport: OfferingTransport): "anthropic" | "openai" | "google" {
-  if (transport === "anthropic-messages") return "anthropic";
-  return transport === "google" ? "google" : "openai";
+export function offeringTransportFamily(transport: OfferingTransport): ModelFamily {
+  switch (transport) {
+    case "anthropic-messages": return "anthropic";
+    case "openai-responses": return "openai";
+    case "chat-completions": return "chat-completions";
+    case "google": return "google";
+  }
 }
 
 function isOfferingTransport(value: unknown): value is OfferingTransport {
-  return value === "anthropic-messages" || value === "openai-responses" || value === "openai-completions" || value === "google";
+  return value === "anthropic-messages" || value === "openai-responses" || value === "chat-completions" || value === "google";
 }
 
 export interface CatalogLimits {
@@ -485,7 +490,7 @@ function isCanonicalRow(value: unknown): value is CatalogCanonicalRow {
 function isModelInfo(value: unknown): value is ModelInfo {
   if (!isObject(value)
     || typeof value.provider !== "string"
-    || (value.family !== "anthropic" && value.family !== "openai" && value.family !== "google")
+    || (value.family !== "anthropic" && value.family !== "openai" && value.family !== "chat-completions" && value.family !== "google")
     || typeof value.id !== "string"
     || typeof value.name !== "string"
     || typeof value.openWeights !== "boolean"

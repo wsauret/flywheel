@@ -21,11 +21,11 @@ interface AnthropicMessagesConversionOptions extends ProviderHistoryTarget {
  * Who wrote one wire block, read from the canonical entry that it came from while lowering still knows it
  * (ARCH-PROVIDERS-067): the person (also an entry of unknown origin, which no transport may rewrite), other runtime
  * input, an environment or date reminder, the Claude model reminder, another route's model reminder, the shared host's framing, a tool notice,
- * the request-only text, a tool result, or the assistant.
+ * a tool result, or the assistant.
  */
 export type BlockOrigin =
   | "person" | "system-input" | "runtime-reminder" | "claude-framing" | "model-framing" | "host-framing" | "tool-notice"
-  | "request-context" | "tool-result" | "assistant";
+  | "tool-result" | "assistant";
 
 /** One origin for each block of a request's messages, aligned by message and block index. */
 export type BlockOrigins = readonly (readonly BlockOrigin[])[];
@@ -37,13 +37,13 @@ function originOf(message: Exclude<ConversationMessage, { kind: "system" }>): Bl
     case "compactionSummary": return "system-input";
     case "user": break;
   }
-  if (message.requestOnly === true) return "request-context";
   switch (message.framing) {
     case "reminder": return "runtime-reminder";
     case "claude": return "claude-framing";
     case "model": return "model-framing";
     case "agent-host": return "host-framing";
     case "tool-notice": return "tool-notice";
+    case "turn-context": return "system-input";
     case undefined: return message.origin === "system" ? "system-input" : "person";
   }
 }

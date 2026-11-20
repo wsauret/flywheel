@@ -210,9 +210,9 @@ function redactOutputPart(part: LlmToolOutputPart): LlmToolOutputPart {
 }
 
 /** The input that the trailing turn answers: the trailing alternating message (`trailingAlternatingMessage`), past
- *  the request framing that follows it (a tool notice, a moved system tier, the engine's text). Framing is part of the
- *  request, not an input, so it is never echoed and never owes a reply. An environment or date reminder counts as the
- *  input here, as it did before its `reminder` label. */
+ *  the request framing that follows it (a tool notice, a moved system tier, the engine's text, the turn context).
+ *  Framing is part of the request, not an input, so it is never echoed and never owes a reply. An environment or date
+ *  reminder counts as the input here, as it did before its `reminder` label. */
 function trailingTurnInput(messages: readonly ConversationMessage[]): ConversationMessage | undefined {
   return messages.findLast((message) => message.kind !== "system" && (message.kind !== "user" || message.framing === undefined || message.framing === "reminder"));
 }

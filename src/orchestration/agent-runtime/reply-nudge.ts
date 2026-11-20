@@ -26,10 +26,9 @@ export interface ReplyNudge {
   assistantContentCommitted(visibleText: boolean): void;
   /** True when the current assistant turn committed visible text. */
   turnHasVisibleText(): boolean;
-  /** Adds a due progress reminder to one request's non-durable context. */
+  /** Adds a due progress reminder to the turn context that the next request records, and advances the reminder
+   *  cadence when it does. */
   consumeRequestContext(requestContext: string | undefined): string | undefined;
-  /** Preview the next request without advancing the reminder cadence. */
-  previewRequestContext(requestContext: string | undefined): string | undefined;
   /** The loop is about to park. True exactly once per owed reply: the caller
    *  must inject SILENT_REPLY_NUDGE and re-drive the loop instead of parking. */
   consumeNudge(): boolean;
@@ -71,22 +70,16 @@ export function createReplyNudge(enabled: boolean): ReplyNudge {
     turnHasVisibleText(): boolean {
       return turnVisibleText;
     },
-    previewRequestContext(requestContext: string | undefined): string | undefined {
+    consumeRequestContext(requestContext: string | undefined): string | undefined {
       if (
         silentTurns < SILENT_TURNS_BETWEEN_REMINDERS
         || progressReminders >= MAX_PROGRESS_REMINDERS_PER_STRETCH
       ) return requestContext;
+      silentTurns = 0;
+      progressReminders += 1;
       return requestContext === undefined
         ? SILENT_PROGRESS_REMINDER
         : `${requestContext}\n\n${SILENT_PROGRESS_REMINDER}`;
-    },
-    consumeRequestContext(requestContext: string | undefined): string | undefined {
-      const next = this.previewRequestContext(requestContext);
-      if (next !== requestContext) {
-        silentTurns = 0;
-        progressReminders += 1;
-      }
-      return next;
     },
     consumeNudge(): boolean {
       if (!owed || nudged) return false;

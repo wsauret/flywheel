@@ -25,7 +25,7 @@ export interface ProviderErrorDiagnostic {
   headers?: DiagnosticHeaders;
   /** OpenRouter's verbatim upstream-provider error (`error.metadata.raw`);
    *  without it a mirrored Anthropic/Google failure reads as a bare
-   *  "Provider returned error" (pi `openai-completions.ts:600-603`). */
+   *  "Provider returned error", as the upstream adapter found. */
   upstream?: string;
   cause?: ProviderErrorDiagnostic;
   errors?: ProviderErrorDiagnostic[];

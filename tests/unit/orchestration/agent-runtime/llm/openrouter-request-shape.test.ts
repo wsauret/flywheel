@@ -2,7 +2,7 @@
  * Chat-completions request assembly for OpenRouter and Copilot.
  *
  * OpenRouter needs the Anthropic cache_control markers for anthropic/ models
- * (pi `openai-completions.ts:894-996,:1443`), a nested reasoning
+ * (as the upstream adapter sends them), a nested reasoning
  * object with an explicit off (`:784-793`), and `tools: []` when the history
  * carries tool traffic (`:730-733`). Usage reads the cache-write and
  * reasoning-token fields (`:1326-1362`), and an unexpected finish_reason
@@ -12,12 +12,12 @@
 import { describe, expect, test } from "bun:test";
 import type OpenAI from "openai";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import { openRouterReportedChargeUsd } from "../../../../../src/orchestration/modules/provider-openrouter/usage-charge.js";
 
 /** The provider module passes the wire id it resolved from its catalog; the
  *  adapter never folds one itself. */
-const OPENROUTER = { accessProvider: "openrouter", providerHint: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
+const OPENROUTER = { accessProvider: "openrouter", wireModelId: "anthropic/claude-opus-4.8", reportedChargeUsd: openRouterReportedChargeUsd } as const;
 import type { ConversationMessage, LLMClient, ProviderStreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
@@ -86,7 +86,7 @@ async function drain(
 
 test("OpenAI Completions settles dispatch before SDK invocation and rejection prevents invocation", async () => {
   const capture: Capture = { invocationOrder: [] };
-  const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO, OPENROUTER);
+  const adapter = await createChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO, OPENROUTER);
 
   await drain(adapter, { onDispatch: async () => { capture.invocationOrder?.push("settled"); } });
   expect(capture.invocationOrder).toEqual(["settled", "sdk"]);
@@ -97,16 +97,13 @@ test("OpenAI Completions settles dispatch before SDK invocation and rejection pr
   expect(capture.invocationOrder).toEqual([]);
 });
 
-test.each([
-  ["openrouter" as const, "openrouter"],
-  ["github_copilot" as const, "github-copilot"],
-])("%s projects apply_patch through its function presenter and wire serializer", async (accessProvider, providerHint) => {
+test.each(["openrouter", "github_copilot"] as const)("%s projects apply_patch through its function presenter and wire serializer", async (accessProvider) => {
   const capture: Capture = {};
-  const adapter = await createOpenAIChatCompletionsAdapter(
+  const adapter = await createChatCompletionsAdapter(
     capturingClient(capture, [FINISH_CHUNK]),
     "claude-opus-4-8",
     REASONING_INFO,
-    { accessProvider, providerHint },
+    { accessProvider },
   );
   const applyPatch = {
     name: "apply_patch",
@@ -126,7 +123,7 @@ test.each([
 describe("OpenRouter anthropic cache_control", () => {
   test.each([["1h", 3], ["5m", 0]] as const)("marks the system prompt, last tool, and last message for anthropic/ models with lifetime %s", async (cacheRetention, oneHourMarks) => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -145,7 +142,7 @@ describe("OpenRouter anthropic cache_control", () => {
 
   test("sends no markers for a non-anthropic OpenRouter model", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "gemini-3.5-flash",
       { ...REASONING_INFO, id: "gemini-3.5-flash" },
@@ -159,7 +156,7 @@ describe("OpenRouter anthropic cache_control", () => {
 
   test("sends no markers when caching is disabled", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -175,7 +172,7 @@ describe("OpenRouter anthropic cache_control", () => {
 describe("OpenRouter reasoning params", () => {
   test("sends a nested reasoning object when reasoning is on", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -190,7 +187,7 @@ describe("OpenRouter reasoning params", () => {
 
   test("sends an explicit off so default-on mirrors actually disable reasoning", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -204,7 +201,7 @@ describe("OpenRouter reasoning params", () => {
 
   test("omits reasoning entirely for an always-thinking model", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-fable-5",
       { ...REASONING_INFO, id: "claude-fable-5" },
@@ -218,7 +215,7 @@ describe("OpenRouter reasoning params", () => {
 
   test("non-OpenRouter endpoints keep the flat reasoning_effort field", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "gpt-5.5",
       { ...REASONING_INFO, provider: "openai", id: "gpt-5.5" },
@@ -235,7 +232,7 @@ describe("OpenRouter reasoning params", () => {
     const deepseek = { ...REASONING_INFO, provider: "opencode-go", id: "deepseek-v4.1-flash", reasoningEfforts: ["low", "high", "max"] } as const;
     const sent = async (reasoningEffort: "max" | "ultra" | "xhigh") => {
       const capture: Capture = {};
-      const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4.1-flash", deepseek, { accessProvider: "opencode_go" });
+      const adapter = await createChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4.1-flash", deepseek, { accessProvider: "opencode_go" });
       await drain(adapter, { reasoningEffort });
       return capture.params?.reasoning_effort;
     };
@@ -251,7 +248,7 @@ describe("DeepSeek thinking params", () => {
   const deepseek = { ...REASONING_INFO, provider: "deepseek", id: "deepseek-v4-pro", reasoningEfforts: ["low", "high", "max"] } as const;
   const sent = async (overrides: Partial<StreamOptions>) => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4-pro", deepseek, { accessProvider: "deepseek" });
+    const adapter = await createChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), "deepseek-v4-pro", deepseek, { accessProvider: "deepseek" });
     await drain(adapter, overrides);
     return capture.params;
   };
@@ -300,7 +297,7 @@ describe("Baseten reasoning params", () => {
   ] as const)("sends effort %s from declared tiers %j as %s, also with a forced tool", async (reasoningEffort, reasoningEfforts, expected) => {
     const capture: Capture = {};
     const info = { ...REASONING_INFO, provider: "baseten", id: "deepseek-v4.1-flash-1017", reasoningEfforts };
-    const adapter = await createOpenAIChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), info.id, info, { accessProvider: "baseten" });
+    const adapter = await createChatCompletionsAdapter(capturingClient(capture, [FINISH_CHUNK]), info.id, info, { accessProvider: "baseten" });
     const { error } = await drain(adapter, { reasoningEffort, tools: [{ name: "read", description: "read", input_schema: { type: "object" } }], toolChoice: "any" });
     expect(error).toBeUndefined();
     expect(capture.params?.reasoning_effort).toBe(expected);
@@ -322,7 +319,7 @@ describe("OpenRouter provider routing", () => {
 
   test("maps the routing shape unchanged to the top-level provider field", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO,
       OPENROUTER,
     );
@@ -334,7 +331,7 @@ describe("OpenRouter provider routing", () => {
 
   test("does not map OpenRouter routing for another access provider", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]), "gpt-5.5",
       { ...REASONING_INFO, provider: "openai", id: "gpt-5.5" },
       { accessProvider: "openai_api" },
@@ -347,7 +344,7 @@ describe("OpenRouter provider routing", () => {
 
   test("transmits the provider-owned output cap used by admission", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]), "claude-opus-4-8", REASONING_INFO,
       { ...OPENROUTER, providerOutputCap: 12_345 },
     );
@@ -361,7 +358,7 @@ describe("OpenRouter provider routing", () => {
 describe("chat-completions request invariants", () => {
   test("sends tools:[] when history carries tool traffic but no tools are offered", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -380,7 +377,7 @@ describe("chat-completions request invariants", () => {
 
   test("omits tools when the history has no tool traffic", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [FINISH_CHUNK]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -396,7 +393,7 @@ describe("chat-completions request invariants", () => {
 describe("chat-completions usage and finish reasons", () => {
   test("normalizes an iterator failure at the provider attempt boundary", async () => {
     const capture: Capture = { iteratorError: new Error("socket hang up") };
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, []),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -413,7 +410,7 @@ describe("chat-completions usage and finish reasons", () => {
 
   test("reads cache-write and reasoning token fields", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [{
         id: "chatcmpl_1",
         choices: [{ index: 0, delta: { content: "hi" }, finish_reason: "stop" }],
@@ -447,7 +444,7 @@ describe("chat-completions usage and finish reasons", () => {
     { label: "no charge when the response reports none", usage: {}, reportedChargeUsd: undefined },
   ])("the usage event carries $label", async ({ usage, reportedChargeUsd }) => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [{ ...FINISH_CHUNK, usage: { ...FINISH_CHUNK.usage, ...usage } }]),
       "claude-opus-4-8",
       REASONING_INFO,
@@ -465,7 +462,7 @@ describe("chat-completions usage and finish reasons", () => {
 
   test("finish_reason length is an output overflow, not a completed max_tokens turn", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [
         { id: "c", choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_cut", function: { name: "write", arguments: "{\"path\":\"a.ts\",\"content\":\"cut" } }] }, finish_reason: null }] },
         { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "length" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
@@ -490,7 +487,7 @@ describe("chat-completions usage and finish reasons", () => {
 
   test("an unexpected finish_reason throws instead of finalizing as end_turn", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [{
         id: "chatcmpl_1",
         choices: [{ index: 0, delta: {}, finish_reason: "error" }],
@@ -514,7 +511,7 @@ describe("chat-completions usage and finish reasons", () => {
 describe("chat-completions tool-call delta assembly", () => {
   test("assembles a tool call whose id and name arrive in later deltas", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [
         { id: "c", choices: [{ index: 0, delta: { tool_calls: [{ index: 0, function: { arguments: "{\"pa" } }] }, finish_reason: null }] },
         { id: "c", choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_late", function: { name: "read", arguments: "th\":\"a\"}" } }] }, finish_reason: null }] },
@@ -534,7 +531,7 @@ describe("chat-completions tool-call delta assembly", () => {
 
   test("assembles a tool call from deltas that carry no index", async () => {
     const capture: Capture = {};
-    const adapter = await createOpenAIChatCompletionsAdapter(
+    const adapter = await createChatCompletionsAdapter(
       capturingClient(capture, [
         { id: "c", choices: [{ index: 0, delta: { tool_calls: [{ id: "call_x", function: { name: "read", arguments: "{}" } }] }, finish_reason: null }] },
         { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
@@ -560,7 +557,7 @@ test("the OpenRouter module sends each request with the output cap of that reque
   const build: AccessProviderBuild = {
     notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
     candidate, providerIdentity: { name: "OpenRouter API Key", credential: "api_key" },
-    model: metadata.id, wireModelId: `openai/${metadata.id}`, family: "openai",
+    model: metadata.id, wireModelId: `openai/${metadata.id}`, family: "chat-completions",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
       id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",
@@ -601,7 +598,7 @@ test("the Baseten module sends its exact wire, max effort, and session affinity 
   const build: AccessProviderBuild = {
     notify: () => {}, providerSessionLifetime: testProviderSessionLifetime(),
     candidate, providerIdentity: { name: "Baseten API Key", credential: "api_key" },
-    model: metadata.id, wireModelId: attribution.wireModelId, family: "openai",
+    model: metadata.id, wireModelId: attribution.wireModelId, family: "chat-completions",
     modelsClient: { async refresh() {}, getProviderCatalog: () => [], getTokenizerIdentity: () => undefined },
     connection: {
       id: "connection", authDir: "/scratch/auth", oauthPersistence: "memory-only",

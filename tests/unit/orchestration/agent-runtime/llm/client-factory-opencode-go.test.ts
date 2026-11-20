@@ -55,7 +55,7 @@ async function capturedRequests(model: string): Promise<Array<{ url: string; hea
     ? "anthropic-messages" as const
     : model === "grok-4.5"
       ? "openai-responses" as const
-      : "openai-completions" as const;
+      : "chat-completions" as const;
   const eligibility = testEligibility({
     candidateOfferings: (candidate: import("../../../../../src/infra/llm/access-provider.js").AccessProviderCandidate) => [{
       candidate,

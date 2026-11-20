@@ -2,12 +2,12 @@ import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 
 // Each array is the single source of its union type, so schema mirrors
 // (Schema.Literals) stay total when a member is added.
-export const LLM_APIS = ["openai-responses", "anthropic-messages", "google-generative-ai"] as const;
+export const LLM_APIS = ["openai-responses", "chat-completions", "anthropic-messages", "google-generative-ai"] as const;
 export type LlmApi = (typeof LLM_APIS)[number];
 
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 // The model-family vocabulary; the type lives in infra/llm/model-family.ts.
-export const MODEL_FAMILIES = ["openai", "anthropic", "google"] as const;
+export const MODEL_FAMILIES = ["openai", "chat-completions", "anthropic", "google"] as const satisfies readonly ModelFamily[];
 
 export const LLM_STOP_REASONS = [
   "end_turn",
@@ -28,9 +28,12 @@ export type CompletedStopReason = Exclude<LlmStopReason, "max_tokens" | "error" 
 
 /** The one provider API each model family speaks. */
 export function modelFamilyApi(family: ModelFamily): LlmApi {
-  if (family === "anthropic") return "anthropic-messages";
-  if (family === "google") return "google-generative-ai";
-  return "openai-responses";
+  switch (family) {
+    case "anthropic": return "anthropic-messages";
+    case "google": return "google-generative-ai";
+    case "chat-completions": return "chat-completions";
+    case "openai": return "openai-responses";
+  }
 }
 
 /** True when an assistant message was produced by the exact access provider,

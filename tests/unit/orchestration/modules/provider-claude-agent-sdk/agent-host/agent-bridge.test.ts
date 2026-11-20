@@ -614,7 +614,7 @@ describe("a hosted agent across admitted windows", () => {
     // The client's entries: a request that the live agent cannot take as a delivery on its window is a dispatch.
     const entries = createHostedAgentEntries((options) => {
       const { params, origins } = prepared(options);
-      return agent.dispatches(cliView(params, origins, projectRoot), { requestContext: options.requestContext, runtimeNotices: trailingRuntimeNotices(options.messages) }, window);
+      return agent.dispatches(cliView(params, origins, projectRoot), { runtimeNotices: trailingRuntimeNotices(options.messages) }, window);
     });
     const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Find the value." }];
     const reply = (text: string): ConversationMessage => ({ kind: "assistant", accessProvider: "claude_agent_sdk", provider: "anthropic", api: "anthropic-messages", model: MODEL, content: [{ type: "text", text }] });

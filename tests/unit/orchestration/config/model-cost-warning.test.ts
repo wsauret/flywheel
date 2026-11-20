@@ -134,7 +134,7 @@ describe("model input costs", () => {
       availableModels: new Map([["openai", new Set(["gpt-5.5", "gpt-5.5-pro"])]]),
       providerModelEligibility: () => new Map([["gpt-5.5", {
         explicitlyEnabled: false,
-        transport: "openai-completions",
+        transport: "chat-completions",
         catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
         offering: {
           candidate: { kind: "subscription", providerId: "opencode_go", instanceId: "account", spendMode: "included" },
@@ -143,7 +143,7 @@ describe("model input costs", () => {
         },
       }], ["gpt-5.5-pro", {
         explicitlyEnabled: false,
-        transport: "openai-completions",
+        transport: "chat-completions",
         catalog: { kind: "available", provenance: "first-party", liveOutcome: "valid" },
         offering: {
           candidate: { kind: "singleton", providerId: "openrouter", spendMode: "aggregator" },

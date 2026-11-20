@@ -21,7 +21,7 @@ interface ChatControls {
    *  saved, which leaves the chat open. */
   send(input: ChatInputLike): Promise<ChatSendResult>
   deliverCommitted(input: ChatInputLike): boolean
-  /** A command's turn: hands the request and its request-only context to
+  /** A command's turn: hands the request and its hidden turn context to
    *  the runner and shows its invocation as a person's message is shown.
    *  False when the chat or its one-shot invocation has ended. */
   requestWithContext(input: ChatInputLike, context: string): boolean

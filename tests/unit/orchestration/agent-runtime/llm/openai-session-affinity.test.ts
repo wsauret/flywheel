@@ -47,7 +47,7 @@ describe("openAISessionAffinityHeaders", () => {
 describe("prompt-cache key and session identity", () => {
   it("sends the request's cache group as the prompt-cache key and the runner's identity in the headers", () => {
     const options = streamOptions({ providerSessionKey: "subagent-conversation", promptCacheKey: "tree-root", cacheRetention: "1h" });
-    const params = buildOpenAIParams("gpt-5.4", [], "", [], false, "medium", { ...REASONING_INFO, reasoning: false }, options, "openai_api");
+    const params = buildOpenAIParams("gpt-5.4", [], [], false, "medium", { ...REASONING_INFO, reasoning: false }, options, "openai_api");
     expect(params.prompt_cache_key).toBe("tree-root");
     expect(openAISessionAffinityHeaders(options, false)).toEqual({ session_id: "subagent-conversation", "x-client-request-id": "subagent-conversation" });
   });
@@ -56,7 +56,7 @@ describe("prompt-cache key and session identity", () => {
   // header carries the tree's cache group; the request id keeps the conversation identity.
   it("sends the cache group in the ChatGPT session headers and the identity as the request id", () => {
     const options = streamOptions({ providerSessionKey: "subagent-conversation", promptCacheKey: "tree-root", cacheRetention: "1h" });
-    const params = buildOpenAIParams("gpt-5.4", [], "", [], true, "medium", { ...REASONING_INFO, reasoning: false }, options, "chatgpt");
+    const params = buildOpenAIParams("gpt-5.4", [], [], true, "medium", { ...REASONING_INFO, reasoning: false }, options, "chatgpt");
     expect(params.prompt_cache_key).toBe("tree-root");
     expect(openAISessionAffinityHeaders(options, true)).toEqual({ "session-id": "tree-root", session_id: "tree-root", "x-client-request-id": "subagent-conversation" });
   });
@@ -66,7 +66,7 @@ describe("cache-disabled session-backed requests", () => {
   it("omits prompt-cache keys and retention without dropping identity", () => {
     for (const isChatGPT of [false, true]) {
       const options = streamOptions({ providerSessionKey: "compaction-session", promptCacheKey: "tree-root", cacheRetention: "none", reasoningEffort: "max" });
-      const params = buildOpenAIParams("gpt-5.4", [], "", [], isChatGPT, "max", { ...REASONING_INFO, reasoning: false }, options, isChatGPT ? "chatgpt" : "openai_api");
+      const params = buildOpenAIParams("gpt-5.4", [], [], isChatGPT, "max", { ...REASONING_INFO, reasoning: false }, options, isChatGPT ? "chatgpt" : "openai_api");
       expect(params).not.toHaveProperty("prompt_cache_key");
       expect(params).not.toHaveProperty("prompt_cache_retention");
       expect(params).not.toHaveProperty("previous_response_id");

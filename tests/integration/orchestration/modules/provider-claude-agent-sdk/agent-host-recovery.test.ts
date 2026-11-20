@@ -11,6 +11,7 @@ import { processLoginObservations, type LoginKey, type RequestOutcome } from "..
 import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
+import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/agent-loop-turn-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, SYSTEM, textOf, TREE, wireMessages } from "./_agent-host.js";
 import type { NotificationEpisodeInput } from "../../../../../src/infra/notification-episode.js";
@@ -73,7 +74,7 @@ describe("the shared agent host's recovery", () => {
     }, { seams: { createHostLauncher: (config) => { const launch = createHostLauncher(config); return (input) => { const host = launch(input); launched.push(host); return host; }; } } });
   }, 120_000);
 
-  test("a stalled agent's continuation dispatches once, the engine's wrapper follows the request-only text, and its later tool rounds extend its turn", async () => {
+  test("a stalled agent's continuation dispatches once, the engine's wrapper follows its turn-context entry, and its later tool rounds extend its turn", async () => {
     let stalled = false;
     const lookups = (request: RecordedRequest): FakeReply => {
       const results = wireMessages(request).flatMap((message) => typeof message.content === "string" ? [] : message.content.filter((block) => block.type === "tool_result")).length;
@@ -86,21 +87,21 @@ describe("the shared agent host's recovery", () => {
     }), async ({ host, stage, projectRoot }) => {
       const agent = agentLoop(await stage({ sharedHost: TREE }), projectRoot, "Find the value.");
       expect((await agent.request()).error).toBeDefined();
-      agent.requestContext = CONTINUATION_MESSAGES.stream_stalled;
+      // The runtime records the continuation once in history as turn context (ARCH-CONTEXT-042).
+      agent.history.push(turnContextEntry(CONTINUATION_MESSAGES.stream_stalled));
       const continued = await agent.request();
       expect(continued.error).toBeUndefined();
       expect(streamedToolCalls(continued)[0]?.name).toBe("lookup");
-      // The failed request's wrapper is the one wrapper of the continuation, which the engine sends after the text.
-      expect(agent.history.filter((message) => textOf(message) === DISPATCH_TEXT)).toHaveLength(1);
       const sent = host.requests.filter((request) => !isDispatcher(request)).at(-1);
       if (sent === undefined) throw new Error("no agent request");
-      // The engine ends the text before its wrapper with a line break.
+      // The continuation's dispatch ends with its own wrapper after the entry; the engine ends the text before it with a line break.
       expect(lastUserTexts(sent).slice(-2).map((text) => text.trimEnd())).toEqual([CONTINUATION_MESSAGES.stream_stalled, DISPATCH_TEXT]);
+      expect(lastUserTexts(sent).filter((text) => text.trimEnd() === DISPATCH_TEXT)).toHaveLength(1);
       const coordinator = continued.events.flatMap((event) => event.kind === "transport_context" ? event.context.additions.filter(({ kind }) => kind === "coordinator") : []);
-      expect(coordinator).toEqual([{ part: "message", kind: "coordinator", at: 0, value: "after-request-context" }]);
+      expect(coordinator).toEqual([{ part: "message", kind: "coordinator", at: 0 }]);
 
-      // Each later request of the logical turn still ends with the same request-only text, and each one delivers its
-      // results to the parked agent, whose engine holds the text once at its dispatch.
+      // Each later request of the logical turn delivers its results to the parked agent, and the continuation reaches
+      // the engine once.
       const dispatches = diagnostics.payloads("provider.claude_sdk.host.agent_dispatched").length;
       const stops = diagnostics.payloads("provider.claude_sdk.host.task_stopped").length;
       const dispatcherRequests = host.requests.filter(isDispatcher).length;
@@ -119,10 +120,6 @@ describe("the shared agent host's recovery", () => {
       for (const request of delivered) {
         expect(lastUserTexts(request)).not.toContain(DISPATCH_TEXT);
         expect(JSON.stringify(wireMessages(request)).split(JSON.stringify(CONTINUATION_MESSAGES.stream_stalled).slice(1, -1))).toHaveLength(2);
-      }
-      for (const result of [second, third]) {
-        const held = result.events.flatMap((event) => event.kind === "transport_context" ? event.context.additions.filter(({ kind }) => kind === "request-context") : []);
-        expect(held).toEqual([{ part: "message", kind: "request-context", at: 0, value: "held-from-dispatch" }]);
       }
     });
   }, 120_000);

@@ -175,6 +175,8 @@ test("SuperGrok lists models.dev candidates as pending, then admits only complet
   responses.length = 0;
   expect(await listed("cached-first")).toEqual({ eligible: ["grok-ok"], visible: ["grok-flaky", "grok-ok"] });
   expect(responses).toEqual([]);
+  // The admitted route names the Responses wire that the audit probed and the adapter sends.
+  expect((await client.getModelCatalogs(AUTH_NONE)).candidates.get(key)?.models?.get("grok-ok")?.map((offering) => offering.transport)).toEqual(["openai-responses"]);
 
   modelsStatus = 503;
   expect(await listed("fresh")).toEqual({ eligible: [], visible: ["grok-flaky", "grok-ok"] });

@@ -7,6 +7,7 @@ import { createTokenEstimationCache, estimateConversationTokens } from "./compac
 import type { PlannedCompactionOperation } from "./compaction/triggers.js";
 import type { CacheRetention, ConversationMessage, StreamEvent, ServingAttempt } from "./llm/types.js";
 import { redactMessage } from "./agent-loop-history.js";
+import { turnContextEntry } from "./agent-loop-turn-context.js";
 import { modelRequestRoute, type createActiveRequestContext } from "./active-request-context.js";
 import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
@@ -80,7 +81,8 @@ interface CompactionStateInput {
   prepareCurrentPrompt(profile: ModelInteractionProfile): Promise<void>;
   selectAttempt(attempt: ServingAttempt): void;
   attempt(): ServingAttempt;
-  logicalRequestContext(): string | undefined;
+  /** The standing context of the logical turn, which the fresh context records after its opening (ARCH-CONTEXT-042). */
+  turnContext(): string | undefined;
   admitSurface(surface: Awaited<ReturnType<RequestToolSurfaceOwner["resolve"]>>): void;
   /** The tools that the budget closure leaves to the request `requestsAhead` from now, or undefined outside the closure. */
   compactionAllowedTools(requestsAhead: number): ReadonlySet<string> | undefined;
@@ -125,8 +127,10 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
   const prepareCompactedHistory = async ({ saved }: { saved: boolean }): Promise<CompactionInstallation> => {
     const checkpoint = await input.checkpoint?.read();
     const brief = await input.options.standingBrief?.();
+    const turnContext = input.turnContext();
     const additions = [
       redactMessage({ kind: "user", content: renderCompactionOpening({ checkpoint, brief, saved, recallAvailable: input.recallAvailable(), capabilities: input.surface.current().capabilities }) }, false),
+      ...turnContext === undefined ? [] : [redactMessage(turnContextEntry(turnContext), false)],
     ];
     const tokenPolicy = input.requestContext.tokenPolicy();
     let measured: number | undefined;
@@ -170,7 +174,7 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
     const attempt = runtime?.plannedAttempt ?? await request.plannedAttempt(route.providerOptions);
     input.selectAttempt(attempt);
     await input.prepareCurrentPrompt(runtime?.interactionProfile ?? input.initialInteractionProfile);
-    input.requestContext.select(surface, attempt, input.logicalRequestContext());
+    input.requestContext.select(surface, attempt);
     input.admitSurface(surface);
     if (operation.kind === "idle") {
       if (!signal.aborted) await applyCompaction({ ...resetInput(settled), signal });

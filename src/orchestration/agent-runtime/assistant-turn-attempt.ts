@@ -15,6 +15,7 @@ import { type AgentRuntimeError, ApiError, fromStreamError, ProviderAuditSettlem
 import { ProviderAttemptFailure, type ProviderFailure } from "./llm/provider-failure.js";
 import {
   type ConversationMessage,
+  type AssistantMetadata,
   type LLMClient,
   type LlmStopReason,
   type ProviderRequestAttribution,
@@ -81,8 +82,6 @@ export interface AssistantAttemptInput {
   staleMasking: PromptStaleMasking | undefined;
   /** Historical tool contracts lowered for this request. */
   toolHistoryProjection?: import("../session/provider-request-audit-types.js").PromptToolHistoryProjection;
-  /** Request-only user context appended after stale masking. */
-  requestContext: string | undefined;
   turn: number;
   /** The image-limit cut that the request's owner last recorded at INFO (`recordImageLimitCut`). Absent for a
    *  request whose owner keeps no record, such as compaction: its bounded requests record at DEBUG only. */
@@ -149,7 +148,6 @@ export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; pr
   const outputTokenLimit = candidate.prepared.outputTokenLimit ?? candidate.attempt.outputLimit;
   return {
     messages: input.messages,
-    ...(input.requestContext === undefined ? {} : { requestContext: input.requestContext }),
     tools: candidate.prepared.tools,
     systemPrompt: candidate.prepared.systemPrompt,
     reasoningEffort: candidate.repetitionGuard === "reasoning_off" ? "off" : input.reasoningEffort,
@@ -183,6 +181,9 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
   // The identity that the turn's metadata names when the stream ends before the provider's own `done`: the replay
   // identity that the serving adapter lowers history for, once the request has one.
   let replayIdentity: TurnIdentity = { accessProvider: serving.accessProvider, provider: serving.modelFamily, api: modelFamilyApi(serving.modelFamily), model: serving.model };
+  // The effort that the request asked for, which the turn's message records whether or not the response completes: a
+  // later Responses request places a change of effort where this request placed it (ARCH-CONTEXT-041).
+  let requestEffort: Pick<AssistantMetadata, "reasoningEffort"> = {};
   let failure: ProviderFailure | undefined;
   let localFailure: { error: unknown } | undefined;
   let diagnostic: ProviderErrorDiagnostic | undefined;
@@ -242,6 +243,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
         const attemptStaticTokens = prepared?.attemptStaticTokens
           ?? Math.ceil((renderedPrompt.length + JSON.stringify(wireTools).length) / 4);
         const request = attemptRequest(candidate, input, signal);
+        requestEffort = request.reasoningEffort === undefined ? {} : { reasoningEffort: request.reasoningEffort };
         const target = await candidate.client.historyTarget(request);
         replayIdentity = { accessProvider: target.accessProvider, provider: target.provider, api: target.api, model: target.model };
         const edits = planHistoryLowering(request.messages, target);
@@ -268,7 +270,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
       // rethrowing a local failure. Drain that closure without admitting work.
       if (signal?.aborted && event.kind !== "usage" && event.kind !== "done") continue;
       const attributed = event.kind === "done" && event.metadata && serving
-        ? { ...event, metadata: { ...event.metadata, accessProvider: serving.accessProvider } }
+        ? { ...event, metadata: { ...event.metadata, accessProvider: serving.accessProvider, ...requestEffort } }
         : event.kind === "usage" && serving
           ? {
               ...event,
@@ -299,13 +301,13 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
     }
     if (signal?.aborted) {
       endedUnanswered = true;
-      finalizeOutcome(result, { kind: "aborted" }, replayIdentity);
+      finalizeOutcome(result, { kind: "aborted" }, { ...replayIdentity, ...requestEffort });
     }
     return result;
   } catch (err) {
     if (signal?.aborted && err === signal.reason) {
       endedUnanswered = true;
-      finalizeOutcome(result, { kind: "aborted" }, replayIdentity);
+      finalizeOutcome(result, { kind: "aborted" }, { ...replayIdentity, ...requestEffort });
       return result;
     }
     diagnostic = summarizeProviderError(err);
@@ -348,7 +350,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
         toolCalls: result.toolCalls.length,
         durationMs: durationMs(start),
       });
-      finalizeOutcome(result, recoverable, replayIdentity);
+      finalizeOutcome(result, recoverable, { ...replayIdentity, ...requestEffort });
       return result;
     }
     log.error("assistant turn stream failed (fatal)", {
@@ -359,7 +361,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
       toolCalls: result.toolCalls.length,
       durationMs: durationMs(start),
     });
-    finalizeOutcome(result, { kind: "stream_error", error: typed }, replayIdentity);
+    finalizeOutcome(result, { kind: "stream_error", error: typed }, { ...replayIdentity, ...requestEffort });
     return result;
   } finally {
     await settleUsage();
@@ -425,7 +427,6 @@ function recordAuditRequest(
     staleMasking: input.staleMasking,
     toolHistoryProjection: input.toolHistoryProjection,
     ...(historyLowering === undefined ? {} : { historyLowering }),
-    requestContext: input.requestContext,
     ...(input.treeLeafEntryId === undefined ? {} : { treeLeafEntryId: input.treeLeafEntryId }),
   });
 }
@@ -515,11 +516,12 @@ type TurnIdentity = Omit<ProviderHistoryTarget, "sharedHost">;
  *  heal-messages can filter the persisted turn by stopReason on replay.
  *  A turn that ended without the provider's metadata takes `identity`, the
  *  exact replay identity of the adapter that served it, so a later request
- *  replays its deliberation only where that adapter would. */
+ *  replays its deliberation only where that adapter would, and the effort
+ *  that its request asked for. */
 function finalizeOutcome(
   result: AssistantTurnResult,
   outcome: TurnOutcome,
-  identity: TurnIdentity,
+  identity: TurnIdentity & Pick<AssistantMetadata, "reasoningEffort">,
 ): void {
   result.outcome = outcome;
   const stopReason = outcomeStopReason(outcome);

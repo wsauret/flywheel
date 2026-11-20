@@ -36,9 +36,9 @@ function authWith(overrides: Partial<AuthContext>): AuthContext {
 
 const eligibility = testEligibility({
   candidateOfferings: (candidate, model) => model === "llama-3.3-70b" && candidate.providerId === "local_llama"
-    ? [{ candidate, wireModelId: model, dataUse: "standard", transport: "openai-completions" }]
+    ? [{ candidate, wireModelId: model, dataUse: "standard", transport: "chat-completions" }]
     : model === "gpt-4o"
-      ? [{ candidate, wireModelId: model, dataUse: "standard", transport: candidate.providerId === "local_llama" ? "openai-completions" : "openai-responses" }]
+      ? [{ candidate, wireModelId: model, dataUse: "standard", transport: candidate.providerId === "local_llama" ? "chat-completions" : "openai-responses" }]
       : [],
 });
 
@@ -60,7 +60,7 @@ describe("custom provider composition", () => {
       displayName: LOCAL_LLAMA.displayName,
       billing: "metered",
       spendMode: "direct_api",
-      defaultChatTransport: "openai-completions",
+      defaultChatTransport: "chat-completions",
       rank: 90,
     });
     expect(bound.value.definition.staticModelUnavailableReason?.("unknown-model")).toBeDefined();
@@ -94,7 +94,7 @@ describe("custom provider composition", () => {
     const plan = registry.selection.plan("llama-3.3-70b", connection, eligibility, false);
     expect(plan.kind).toBe("admitted");
     if (plan.kind === "admitted") {
-      expect(plan.family).toBe("openai");
+      expect(plan.family).toBe("chat-completions");
       expect(plan.candidates).toEqual([{ kind: "singleton", providerId: "local_llama", spendMode: "direct_api" }]);
     }
   });

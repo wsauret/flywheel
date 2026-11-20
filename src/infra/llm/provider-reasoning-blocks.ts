@@ -13,8 +13,8 @@ interface ProviderAttributedMessage {
   kind: "user" | "assistant" | "system" | "toolResult" | "compactionSummary";
   content: string | ConversationContentBlock[];
   toolUseId?: string;
-  api?: "openai-responses" | "anthropic-messages" | "google-generative-ai";
-  provider?: "openai" | "anthropic" | "google";
+  api?: "openai-responses" | "chat-completions" | "anthropic-messages" | "google-generative-ai";
+  provider?: "openai" | "chat-completions" | "anthropic" | "google";
   model?: string;
   responseId?: string;
   stopReason?: string;

@@ -21,7 +21,7 @@ test("preserves pending selections through policy changes and audit publications
   const key = accessProviderAccountKey(candidate)
   const target = { kind: "subscription", providerId: "supergrok", accountCorrelationId: subscriptionSpendAccountCorrelationId("work", "supergrok", "primary") } as const
   const offering = (id: string) => [{
-    wireModelId: id, metadata: null, dataUse: "standard" as const, transport: "openai-completions" as const,
+    wireModelId: id, metadata: null, dataUse: "standard" as const, transport: "chat-completions" as const,
     resolvedMetadata: modelInfo("openai", id, id, 1, 2, "2025-01-01"),
   }]
   const visible = new Map(["verified", "pending", "unselected"].map((id) => [id, offering(id)]))

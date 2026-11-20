@@ -72,7 +72,9 @@ export interface TokenEstimationCache {
 export function imageTokensForModel(provider: ModelFamily): number {
   switch (provider) {
     case "anthropic": return 1568;
-    case "openai": return 765;
+    // Chat Completions keeps the OpenAI estimate that it had as part of the openai family.
+    case "openai":
+    case "chat-completions": return 765;
     case "google": return 258;
     // Estimator, not a hard invariant: an unknown provider falls back to a sane
     // image-token estimate rather than crash the estimate. The `never` binding

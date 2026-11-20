@@ -66,16 +66,16 @@ test("configured custom providers publish static singleton candidate catalogs de
     expect(catalogs.candidates.get(accessProviderAccountKey(candidate))).toEqual({
       candidate,
       models: new Map([
-        ["llama-3.3-70b", [{ wireModelId: "llama-3.3-70b", metadata: null, dataUse: "standard", transport: "openai-completions" }]],
+        ["llama-3.3-70b", [{ wireModelId: "llama-3.3-70b", metadata: null, dataUse: "standard", transport: "chat-completions" }]],
         ["gpt-4o", [
-          { wireModelId: "gpt-4o", metadata: null, dataUse: "standard", transport: "openai-completions" },
-          { wireModelId: "gpt-4o-contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" },
+          { wireModelId: "gpt-4o", metadata: null, dataUse: "standard", transport: "chat-completions" },
+          { wireModelId: "gpt-4o-contributor", metadata: null, dataUse: "contributor", transport: "chat-completions" },
         ]],
         ["local", [
-          { wireModelId: "local-contributor", metadata: null, dataUse: "contributor", transport: "openai-completions" },
+          { wireModelId: "local-contributor", metadata: null, dataUse: "contributor", transport: "chat-completions" },
         ]],
         ["vendor/hosted-1.5", [
-          { wireModelId: "Vendor/Hosted-1.5", metadata: null, dataUse: "standard", transport: "openai-completions", resolvedMetadata: hosted },
+          { wireModelId: "Vendor/Hosted-1.5", metadata: null, dataUse: "standard", transport: "chat-completions", resolvedMetadata: hosted },
         ]],
       ]),
     });
@@ -90,7 +90,7 @@ test("a declared dated snapshot takes its own catalog row, and an unlisted spell
   const may = modelInfo("openai", "gpt-4o-2024-05-13", "gpt", 5, 15, "2024-05-13", { outputLimit: 4_096 });
   const august = modelInfo("openai", "gpt-4o-2024-08-06", "gpt", 2.5, 10, "2024-08-06", { outputLimit: 16_384 });
   const rows = [{ wireModelId: "gpt-4o-2024-05-13", metadata: may }, { wireModelId: "gpt-4o-2024-08-06", metadata: august }];
-  const described = (declared: string, catalog: typeof rows) => staticOfferingMap([declared], "openai-completions", catalog).get("gpt-4o")?.[0]?.resolvedMetadata;
+  const described = (declared: string, catalog: typeof rows) => staticOfferingMap([declared], "chat-completions", catalog).get("gpt-4o")?.[0]?.resolvedMetadata;
 
   for (const catalog of [rows, rows.toReversed()]) {
     expect(described("GPT-4o-2024-05-13", catalog)).toBe(may);

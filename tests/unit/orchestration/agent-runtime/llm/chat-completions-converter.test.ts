@@ -1,7 +1,7 @@
 /**
  * Chat-completions message conversion invariants.
  *
- * Port sources (pi `openai-completions.ts`): batched tool-result
+ * Port sources (the upstream Chat Completions adapter): batched tool-result
  * images with the contiguous tool block preserved (:1195-1263), skipped empty
  * assistant messages (:1182-1193), non-empty tool content placeholders
  * (:1210-1212), and thinking replayed on its reasoning field (:502-506,
@@ -12,15 +12,17 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { createGenerationMeasurement } from "../../../../../src/orchestration/agent-runtime/generation-measurement.js";
 import OpenAI from "openai";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
-import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
-import { toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions-messages.js";
+import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
+import { chatCompletionsTarget, toChatCompletionsMessages } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions-messages.js";
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const PNG = { type: "image" as const, mediaType: "image/png", data: "AAA" };
 
-/** A chat-completions turn as builds before 2026-10-27 stored it: the API, provider, and model, with no access
- *  provider (`replayOf` in provider-history.ts). */
+/** A Chat Completions turn as builds before 2026-11-20 stored it, with the OpenAI Responses API and provider; builds
+ *  before 2026-10-27 also stored no access provider (`replayOf` in provider-history.ts). */
 const LEGACY_CHAT_TURN = { api: "openai-responses", provider: "openai", model: "test-model" } as const;
+/** A Chat Completions turn as the adapter stamps it now. */
+const CHAT_TURN = { accessProvider: "openrouter", api: "chat-completions", provider: "chat-completions", model: "test-model" } as const;
 
 describe("tool-result runs", () => {
   test("keeps parallel tool results contiguous and appends their images once", () => {
@@ -38,7 +40,7 @@ describe("tool-result runs", () => {
       { kind: "user", content: "thanks" },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const roles = out.map((m) => m.role);
 
     // Both tool messages adjacent, then one image-carrying user message.
@@ -55,7 +57,7 @@ describe("tool-result runs", () => {
       { kind: "toolResult", toolUseId: "c1", content: [PNG] },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const toolMessage = out.find((m) => m.role === "tool");
 
     expect(toolMessage?.content).toBe("(see attached image)");
@@ -68,7 +70,7 @@ describe("tool-result runs", () => {
       { kind: "toolResult", toolUseId: "c1", content: [{ type: "text", text: "" }] },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const toolMessage = out.find((m) => m.role === "tool");
 
     expect(toolMessage?.content).toBe("(no tool output)");
@@ -102,7 +104,7 @@ describe("assistant messages", () => {
     ];
     const canonical = structuredClone(history);
 
-    const out = toChatCompletionsMessages(history, false, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, false, chatCompletionsTarget("openrouter", "test-model"));
 
     expect(out.map((message) => message.role)).toEqual(["user", "assistant", "tool"]);
     // The joined turn keeps no provider identity, so it replays no reasoning.
@@ -130,11 +132,11 @@ describe("assistant messages", () => {
       { kind: "assistant", content: [{ type: "text", text: "done" }] },
     ];
 
-    expect(toChatCompletionsMessages(incomplete, false, openAIResponsesTarget("openrouter", "test-model")).at(-1)).toEqual({
+    expect(toChatCompletionsMessages(incomplete, false, chatCompletionsTarget("openrouter", "test-model")).at(-1)).toEqual({
       role: "user",
       content: "Continue the original request from the retained assistant output without repeating completed work.",
     });
-    expect(toChatCompletionsMessages(complete, false, openAIResponsesTarget("openrouter", "test-model")).map((message) => message.role)).toEqual(["user", "assistant"]);
+    expect(toChatCompletionsMessages(complete, false, chatCompletionsTarget("openrouter", "test-model")).map((message) => message.role)).toEqual(["user", "assistant"]);
     expect(incomplete).toHaveLength(2);
   });
 
@@ -145,7 +147,7 @@ describe("assistant messages", () => {
       { kind: "user", content: "still there?" },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
 
     expect(out.map((m) => m.role)).toEqual(["user", "user"]);
   });
@@ -155,7 +157,7 @@ describe("assistant messages", () => {
       { kind: "user", content: "go" },
       {
         kind: "assistant",
-        ...LEGACY_CHAT_TURN,
+        ...CHAT_TURN,
         content: [
           { type: "thinking", thinking: "step one", signature: "reasoning_content" },
           { type: "text", text: "answer" },
@@ -163,7 +165,7 @@ describe("assistant messages", () => {
       },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const assistantMessage = out.find((m) => m.role === "assistant");
 
     expect(assistantMessage).toMatchObject({ content: "answer", reasoning_content: "step one" });
@@ -181,7 +183,7 @@ describe("assistant messages", () => {
       },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const assistantMessage = out.find((m) => m.role === "assistant");
 
     expect(assistantMessage?.content).toBe("answer");
@@ -204,7 +206,7 @@ describe("assistant messages", () => {
       { kind: "toolResult", toolUseId: "c2", content: [{ type: "text", text: "two" }] },
     ];
 
-    const assistants = (field: string | undefined) => toChatCompletionsMessages(history, true, openAIResponsesTarget("opencode_go", "test-model"), field).filter((m) => m.role === "assistant");
+    const assistants = (field: string | undefined) => toChatCompletionsMessages(history, true, chatCompletionsTarget("opencode_go", "test-model"), field).filter((m) => m.role === "assistant");
 
     expect(assistants("reasoning_content")).toMatchObject([
       { content: "checking", reasoning_content: "" },
@@ -221,7 +223,7 @@ describe("assistant messages", () => {
       { kind: "user", content: "continue" },
     ];
 
-    const out = toChatCompletionsMessages(history, true, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, true, chatCompletionsTarget("openrouter", "test-model"));
     const assistantMessage = out.find((m) => m.role === "assistant");
 
     expect(assistantMessage).toMatchObject({ reasoning: "interrupted thought" });
@@ -234,7 +236,7 @@ describe("user images", () => {
       { kind: "user", content: [{ type: "text", text: "look" }, PNG] },
     ];
 
-    const out = toChatCompletionsMessages(history, false, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, false, chatCompletionsTarget("openrouter", "test-model"));
     const userMessage = out[0];
     if (userMessage?.role !== "user" || typeof userMessage.content === "string") throw new Error("expected a parts array");
 
@@ -253,7 +255,7 @@ describe("transcript-only system notices", () => {
       { kind: "user", content: "next" },
     ];
 
-    const out = toChatCompletionsMessages(history, false, openAIResponsesTarget("openrouter", "test-model"));
+    const out = toChatCompletionsMessages(history, false, chatCompletionsTarget("openrouter", "test-model"));
 
     expect(out.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
   });
@@ -284,7 +286,7 @@ describe("chat-completions stream normalization", () => {
   }
 
   async function collect(client: OpenAI, observe?: (event: ProviderStreamEvent) => void): Promise<{ events: ProviderStreamEvent[]; error?: Error }> {
-    const adapter = await createOpenAIChatCompletionsAdapter(client, "gpt-5", info);
+    const adapter = await createChatCompletionsAdapter(client, "gpt-5", info);
     const events: ProviderStreamEvent[] = [];
     try {
       for await (const event of adapter.streamWithTools({
@@ -323,7 +325,7 @@ describe("chat-completions stream normalization", () => {
       "done",
     ]);
     // The attempt stamps the serving access provider on this identity, which history lowering replays to.
-    expect(result.events.at(-1)).toMatchObject({ kind: "done", metadata: { api: "openai-responses", provider: "openai", model: "gpt-5" } });
+    expect(result.events.at(-1)).toMatchObject({ kind: "done", metadata: { api: "chat-completions", provider: "chat-completions", model: "gpt-5" } });
     const deltas = result.events.filter((event) => event.kind === "text_delta");
     expect(deltas.map((event) => event.text).join("")).toBe(text);
     if (text) {
@@ -474,11 +476,11 @@ describe("chat-completions stream normalization", () => {
     const history: ConversationMessage[] = [{ kind: "user", content: "go" }];
     for (const call of calls) {
       history.push(
-        { kind: "assistant", content: [{ type: "tool_use", ...call }], accessProvider: "openai_api", provider: "openai", model: "gpt-5" },
+        { kind: "assistant", content: [{ type: "tool_use", ...call }], accessProvider: "openai_api", provider: "chat-completions", model: "gpt-5" },
         { kind: "toolResult", toolUseId: call.id, content: [{ type: "text", text: "ok" }] },
       );
     }
-    const out = toChatCompletionsMessages(history, false, openAIResponsesTarget("openai_api", "gpt-5"));
+    const out = toChatCompletionsMessages(history, false, chatCompletionsTarget("openai_api", "gpt-5"));
 
     expect(out.map((message) => message.role === "tool" ? message.tool_call_id : message.role === "assistant" ? message.tool_calls?.map((call) => call.id) : message.role))
       .toEqual(["user", ["bash_0"], "bash_0", ["bash_0"], "bash_0"]);
@@ -514,4 +516,3 @@ describe("chat-completions stream normalization", () => {
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";

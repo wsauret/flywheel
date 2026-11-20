@@ -17,6 +17,19 @@ describe("provider description", () => {
     expect(description.outputLimit).toBe(12_345);
   });
 
+  it("prices a Chat Completions cache read and write at the input rate when the catalog states no cache price, and an OpenAI Responses read at half", async () => {
+    const tokens = { input: 0, output: 0, cacheRead: 1_000_000, cacheWrite: 1_000_000, reasoning: 0 };
+    const price = async (protocol: "chat-completions" | "openai-responses") => (await describeProvider("vendor-model", {
+      accessProvider: "openrouter",
+      protocol,
+      providerHint: "openrouter",
+      resolvedModelMetadata: modelInfo("chat-completions", "vendor-model", "vendor", 4, 8, "2026-08-01"),
+    })).priceFor(tokens);
+
+    expect(await price("chat-completions")).toMatchObject({ status: "priced", amountUsd: 8 });
+    expect(await price("openai-responses")).toMatchObject({ status: "priced", amountUsd: 6 });
+  });
+
   it("does not borrow metadata from another provider when the exact route has none", () => {
     expect(() => requireModelMetadata("shared-model", undefined)).toThrow("Model info unavailable for shared-model");
   });

@@ -9,7 +9,7 @@ function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex")
 }
 
-const USER_ROUTING_KEYS = new Set(["dispatchIds", "backgroundNotificationIds", "framing", "runtimeNotice", "requestOnly"])
+const USER_ROUTING_KEYS = new Set(["dispatchIds", "backgroundNotificationIds", "framing", "runtimeNotice"])
 
 function canonicalJson(value: unknown, messageRoot = false): string {
   if (value === null) return "null"
@@ -25,8 +25,8 @@ function canonicalJson(value: unknown, messageRoot = false): string {
   if (prototype !== Object.prototype && prototype !== null) throw new TypeError("unsupported JSON value: non-ordinary object")
 
   const entries = Object.entries(value)
-  // Queue retirement keys are neither provider content nor durable conversation data. Request framing, the
-  // runtime-notice label, and the request-only mark decide how a route sends a message, not what it sends, and the
+  // Queue retirement keys are neither provider content nor durable conversation data. Request framing and the
+  // runtime-notice label decide how a route sends a message, not what it sends, and the
   // reader labels entries that earlier builds wrote without them, so an audit that those builds recorded still verifies.
   const fields = messageRoot && "kind" in value && value.kind === "user"
     ? entries.filter(([key]) => !USER_ROUTING_KEYS.has(key))

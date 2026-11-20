@@ -9,7 +9,8 @@
  * "stream closed before response.completed" transient error.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, spyOn } from "bun:test";
+import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { Redacted } from "effect";
 import type { OpenAIAuth } from "../../../../../src/infra/auth/openai-auth-types.js";
 import type { LLMClient, StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -93,6 +94,34 @@ describe("OpenAI Responses terminal frames", () => {
     const usage = events.find((event) => event.kind === "usage");
     expect(usage?.kind === "usage" ? usage.cacheRetentionMs : undefined).toBe(retentionMs);
     expect(usage).toMatchObject({ final: true, inputTokens: 800, cacheReadTokens: 100 });
+  });
+
+  // ARCH-CONTEXT-043: what the service reports that it discarded is recorded by kind, reason, and count, never content.
+  it.each([
+    ["removed reasoning", [{ type: "reasoning", action: "removed", reason: "prefix_mismatch", id: "rs_1" }, { type: "reasoning", action: "removed", reason: "prefix_mismatch" }, { type: "reasoning", action: "removed", reason: "new_reason" }],
+      { state: "reported", removedReasoning: { prefix_mismatch: 2, other: 1 }, otherTransformations: 0 }, true],
+    // A list without a removal is reported, but stays below the default level.
+    ["only other changes", [{ type: "message", action: "rewritten" }], { state: "reported", removedReasoning: {}, otherTransformations: 1 }, false],
+    ["an empty list", [], { state: "none", removedReasoning: {}, otherTransformations: 0 }, false],
+    ["no field", undefined, { state: "unavailable" }, undefined],
+  ] as const)("records the input transformations of a response with %s once", async (_name, transformations, payload, notable) => {
+    state.streamEvents = [{
+      type: "response.completed",
+      response: { id: "resp_transformed", status: "completed", usage: USAGE, output: [], ...(transformations === undefined ? {} : { input_transformations: transformations }) },
+    }];
+    const record = spyOn(DebugLog, "record").mockImplementation(() => {});
+    try {
+      const client = await createOpenAIAdapter(CHATGPT_AUTH, "gpt-5.4", REASONING_INFO);
+      await collectStreamEvents(client);
+      const records = record.mock.calls.flatMap(([input]) => input.type === "model.input_transformations.reported" ? [input] : []);
+      expect(records).toEqual([{
+        type: "model.input_transformations.reported",
+        ...(notable === undefined ? {} : { notable }),
+        payload: { responseId: "resp_transformed", model: "gpt-5.4", ...payload },
+      }]);
+    } finally {
+      record.mockRestore();
+    }
   });
 
   it("reports cache reads that a gateway omitted as null inside the input count, never as zero", async () => {

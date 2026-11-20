@@ -15,7 +15,7 @@ import { createAssistantAttempt, type AssistantAttemptInput } from "../../../../
 type TurnInput = Parameters<typeof streamAssistantTurn>[0]
 type TurnResult = Awaited<ReturnType<typeof streamAssistantTurn>>
 
-const runTurn = (input: Omit<TurnInput, "executionCwd" | "staleMasking" | "requestContext"> & Partial<Pick<TurnInput, "staleMasking" | "requestContext">>) => streamAssistantTurn({ executionCwd: "/scratch", staleMasking: undefined, requestContext: undefined, ...input })
+const runTurn = (input: Omit<TurnInput, "executionCwd" | "staleMasking"> & Partial<Pick<TurnInput, "staleMasking">>) => streamAssistantTurn({ executionCwd: "/scratch", staleMasking: undefined, ...input })
 
 function assertCompleted(result: TurnResult): asserts result is AssistantTurnResult {
   if ("kind" in result && result.kind === "deferred_hard_cap") throw new Error("expected a completed assistant turn")
@@ -532,7 +532,7 @@ async function makeAttempt(writer: ProviderRequestAuditWriter, stream: () => Asy
     tools: [], systemPrompt: stableSystemPrompt("system"),
     reasoningEffort: undefined, signal: undefined, cacheRetention: "1h",
     providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: writer,
-    staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 1,
+    staleMasking: undefined, turn: 1, messageCount: 1,
     estimatedContextTokens: 0, onEvent: () => {}, ...overrides,
   }
   return createAssistantAttempt({
