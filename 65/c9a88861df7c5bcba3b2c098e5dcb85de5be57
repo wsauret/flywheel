@@ -1,0 +1,14 @@
+bench/chat-ab/masking/proof.json
+  h_4b47e9e4a8b456 17,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "65c9a88861df7c5bcba3b2c098e5dcb85de5be57",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
