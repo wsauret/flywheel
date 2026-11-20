@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { confirmedTrials, readAnswerKey, recordVerdicts, writeAnswerKey } from "../../../bench/harbor/analysis/answer-key.js";
+import { confirmedTrials, readAnswerKey, recordVerdicts, scanAnswerKeys, writeAnswerKey } from "../../../bench/harbor/analysis/answer-key.js";
 import { rerunCommands, rerunNeeds } from "../../../bench/harbor/analysis/reruns.js";
 import { roundCost, scoreRound } from "../../../bench/harbor/analysis/round-score.js";
 import { measuredSplits, roundTrialDirectories, roundTrials } from "../../../bench/harbor/analysis/round-trials.js";
@@ -163,6 +163,22 @@ describe("round scoring", () => {
     const score = scoreRound(BENCHMARK, trials, confirmedTrials(await readAnswerKey(path)), await measuredSplits(BENCHMARK, round));
     expect(score.tasks.get("solid")).toEqual([1, 2]);
     expect(score.answerKeyFails).toBe(1);
+  });
+
+  it("flags a passing trial whose tool result shows the benchmark's own task page, never a generic URL in a result", async () => {
+    const { round } = await fixtureRound();
+    const benchmark = { ...BENCHMARK, answerKeySources: ["terminal-bench"] };
+    const trials = await roundTrials(benchmark, round);
+    const directory = (id: string) => trials.find((trial) => trial.id === id)!.directory!;
+    const searchResult = (text: string) => JSON.stringify({ event_type: "session_update", payload: { update: { sessionUpdate: "tool_call_update", toolCallId: "t1", status: "completed", rawInput: { tool: "web_search" }, content: [{ type: "content", content: { type: "text", text } }] } } });
+    writeFileSync(join(directory("solid-1"), "agent", "acp-events.jsonl"), `${searchResult("Result: https://www.tbench.ai/registry/terminal-bench/2.0/solid")}\n{"cut off`);
+    writeFileSync(join(directory("solid-1"), "agent", "trajectory.json"), JSON.stringify({ steps: [{ message: "task" }, { tool_calls: [{ arguments: { query: "solid" } }], observation: { results: [{ content: "see https://github.com/laude-institute/terminal-bench/tree/main/tasks/solid" }] } }] }));
+    writeFileSync(join(directory("solid-2"), "agent", "acp-events.jsonl"), `${searchResult("Result: https://github.com/someone/unrelated")}\n`);
+    writeFileSync(join(directory("solid-2"), "agent", "trajectory.json"), JSON.stringify({ steps: [{ message: "task" }, { observation: { results: [{ content: "https://github.com/someone/else" }] } }] }));
+    const candidates = await scanAnswerKeys(benchmark, trials);
+    expect(candidates.map(({ trial, high, urls }) => ({ trial, high, urls }))).toEqual([
+      { trial: "solid-1", high: true, urls: ["https://github.com/laude-institute/terminal-bench/tree/main/tasks/solid", "https://www.tbench.ai/registry/terminal-bench/2.0/solid"] },
+    ]);
   });
 });
 

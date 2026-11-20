@@ -91,11 +91,14 @@ const SUSPECT_HOST = /(github|githubusercontent|codeload|huggingface|hf\.co|gitl
 const URL_LIMIT = 200;
 const URLS_PER_TRIAL = 40;
 
-/** The text of every tool call of a trial: titles and raw inputs of its ACP
- *  tool-call updates, and the arguments of its trajectory's tool calls after
- *  the first step, which is the task instruction. */
-async function toolCallTexts(directory: string): Promise<string[]> {
-  const texts: string[] = [];
+/** The text of a trial's tool calls, read apart by side. Inputs are the
+ *  titles and raw inputs of its ACP tool-call updates and the arguments of
+ *  its trajectory's tool calls; results are the content of those updates and
+ *  the trajectory's observation results. Trajectory steps start after the
+ *  first, which is the task instruction. */
+async function toolTexts(directory: string): Promise<{ inputs: string[]; results: string[] }> {
+  const inputs: string[] = [];
+  const results: string[] = [];
   const events = await readFile(join(directory, "agent", "acp-events.jsonl"), "utf8").catch(() => "");
   for (const line of events.split("\n")) {
     if (line.trim().length === 0) continue;
@@ -108,30 +111,42 @@ async function toolCallTexts(directory: string): Promise<string[]> {
     }
     const payload = isJsonMap(event) && isJsonMap(event.payload) ? event.payload : undefined;
     const update = payload !== undefined && isJsonMap(payload.update) ? payload.update : undefined;
-    if (update?.sessionUpdate === "tool_call" || update?.sessionUpdate === "tool_call_update") texts.push(`${typeof update.title === "string" ? update.title : ""} ${JSON.stringify(update.rawInput ?? {})}`);
+    if (update?.sessionUpdate !== "tool_call" && update?.sessionUpdate !== "tool_call_update") continue;
+    inputs.push(`${typeof update.title === "string" ? update.title : ""} ${JSON.stringify(update.rawInput ?? {})}`);
+    if (update.content !== undefined) results.push(JSON.stringify(update.content));
   }
   const trajectory = await readFile(join(directory, "agent", "trajectory.json"), "utf8").catch(() => undefined);
   if (trajectory !== undefined) {
     const parsed: unknown = JSON.parse(trajectory);
     const steps = isJsonMap(parsed) && Array.isArray(parsed.steps) ? parsed.steps : [];
     for (const step of steps.slice(1)) {
-      if (isJsonMap(step) && Array.isArray(step.tool_calls)) for (const call of step.tool_calls) texts.push(JSON.stringify(call));
+      if (!isJsonMap(step)) continue;
+      if (Array.isArray(step.tool_calls)) for (const call of step.tool_calls) inputs.push(JSON.stringify(call));
+      if (isJsonMap(step.observation) && step.observation.results !== undefined) results.push(JSON.stringify(step.observation.results));
     }
   }
-  return texts;
+  return { inputs, results };
 }
 
-/** The answer-key candidates of a round: each passing trial whose tool calls
- *  reach a suspect host. A candidate is high when one of its URLs also names
- *  one of the benchmark's `answerKeySources`. A candidate is for review, not a verdict. */
+/** The answer-key candidates of a round: each passing trial whose tool inputs
+ *  reach a suspect host, or whose tool results show a URL that names one of
+ *  the benchmark's `answerKeySources`, such as a search result that lists the
+ *  benchmark's own task page. Other URLs in results are search noise and never
+ *  count. A candidate is high when one of its URLs names a source. A candidate
+ *  is for review, not a verdict. */
 export async function scanAnswerKeys(benchmark: HarborBenchmark, trials: readonly RoundTrial[]): Promise<AnswerKeyCandidate[]> {
   const sources = benchmark.answerKeySources.map((source) => source.toLowerCase());
+  const namesSource = (url: string) => sources.some((source) => url.toLowerCase().includes(source));
   const candidates: AnswerKeyCandidate[] = [];
   for (const trial of trials) {
     if (trial.standing !== "scored" || (trial.reward ?? 0) < 1 || trial.directory === undefined) continue;
     const urls = new Map<string, string>();
-    for (const text of await toolCallTexts(trial.directory)) {
+    const { inputs, results } = await toolTexts(trial.directory);
+    for (const text of inputs) {
       for (const match of text.matchAll(URL_PATTERN)) if (SUSPECT_HOST.test(match[1]!)) urls.set(match[0].slice(0, URL_LIMIT), match[1]!);
+    }
+    for (const text of results) {
+      for (const match of text.matchAll(URL_PATTERN)) if (namesSource(match[0])) urls.set(match[0].slice(0, URL_LIMIT), match[1]!);
     }
     if (urls.size === 0) continue;
     const sorted = [...urls.keys()].sort();
@@ -139,7 +154,7 @@ export async function scanAnswerKeys(benchmark: HarborBenchmark, trials: readonl
       trial: trial.id,
       task: trial.task,
       directory: trial.directory,
-      high: sorted.some((url) => sources.some((source) => url.toLowerCase().includes(source))),
+      high: sorted.some(namesSource),
       hosts: [...new Set(urls.values())].sort(),
       urls: sorted.slice(0, URLS_PER_TRIAL),
     });
