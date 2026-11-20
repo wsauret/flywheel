@@ -39,8 +39,8 @@ type ToolResultMessage = Extract<ConversationMessage, { kind: "toolResult" }>;
 
 /** A tool_use awaiting its result. Matching, synthesis, and the durable
  *  session-tree repair all key on the canonical `block.id`; wire-specific
- *  call ids (`providerCallId`) are mapped inside the one converter that
- *  needs them (OpenAI Responses). */
+ *  call ids (`providerCallId`) are mapped inside the converters that
+ *  need them (OpenAI Responses and chat completions). */
 interface PendingToolUse {
   id: string;
   name: string;

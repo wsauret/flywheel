@@ -169,7 +169,11 @@ function upstreamDetail(err: InstanceType<typeof OpenAI.APIError>): string | und
 }
 
 interface StreamingToolCall {
+  /** Flywheel's canonical id, unique across responses. */
   id: string;
+  /** The id the provider streamed, absent when it sent none. Some providers number calls per response (`bash_0`)
+   *  and repeat ids across responses, so it is never the canonical id; the next request replays it on the wire. */
+  providerCallId?: string;
   name: string;
   argumentsBuffer: string;
   generationTiming?: { first: number; last: number; chunks: number };
@@ -305,22 +309,23 @@ function* handleToolCallDelta(
   toolDelta: { index?: number; id?: string | null; function?: { name?: string | null; arguments?: string | null } },
   registry: StreamingToolCallRegistry,
   at: number,
+  runId: string,
 ): Generator<ProviderStreamEvent> {
   const idx = typeof toolDelta.index === "number" ? toolDelta.index : undefined;
   let entry = idx !== undefined ? registry.byIndex.get(idx) : undefined;
   if (!entry && toolDelta.id) entry = registry.byId.get(toolDelta.id);
   const previousName = entry?.name ?? "";
   if (!entry) {
-    entry = {
-      id: toolDelta.id ?? `call_${Date.now()}_${idx ?? registry.ordered.length}`,
-      name: toolDelta.function?.name ?? "",
-      argumentsBuffer: "",
-    };
+    entry = { id: `${runId}_${registry.ordered.length}`, name: toolDelta.function?.name ?? "", argumentsBuffer: "" };
     if (idx !== undefined) registry.byIndex.set(idx, entry);
-    if (toolDelta.id) registry.byId.set(toolDelta.id, entry);
     registry.ordered.push(entry);
   } else if (!entry.name && toolDelta.function?.name) {
     entry.name = toolDelta.function.name;
+  }
+  // The provider id can arrive on a later delta than the call's first one.
+  if (entry.providerCallId === undefined && toolDelta.id) {
+    entry.providerCallId = toolDelta.id;
+    registry.byId.set(toolDelta.id, entry);
   }
   const argumentDelta = toolDelta.function?.arguments;
   if (argumentDelta) {
@@ -440,7 +445,7 @@ export async function createOpenAIChatCompletionsAdapter(
             let thinkingBuf = "";
             let thinkingField: string | undefined;
             const toolCalls: StreamingToolCallRegistry = { byIndex: new Map(), byId: new Map(), ordered: [] };
-            // Encrypted reasoning keyed by the tool-call id it is bound to. Tool
+            // Encrypted reasoning keyed by the provider's tool-call id it is bound to. Tool
             // calls flush at stream end, so a detail arriving before or after its
             // tool-call delta resolves the same way.
             const reasoningDetailsByToolCallId = new Map<string, string>();
@@ -500,7 +505,7 @@ export async function createOpenAIChatCompletionsAdapter(
                   textRunOrdinal += 1;
                 }
                 for (const toolDelta of delta.tool_calls) {
-                  yield* handleToolCallDelta(toolDelta, toolCalls, receivedAt);
+                  yield* handleToolCallDelta(toolDelta, toolCalls, receivedAt, runId);
                 }
               }
 
@@ -552,14 +557,14 @@ export async function createOpenAIChatCompletionsAdapter(
 
             for (const tc of toolCalls.ordered) {
               const { input, parseError } = parseToolArguments(tc.argumentsBuffer);
-              const thoughtSignature = reasoningDetailsByToolCallId.get(tc.id);
+              const thoughtSignature = tc.providerCallId === undefined ? undefined : reasoningDetailsByToolCallId.get(tc.providerCallId);
               yield {
                 kind: "tool_use",
                 toolCall: {
                   id: tc.id,
                   name: tc.name,
                   input,
-                  providerCallId: tc.id,
+                  ...(tc.providerCallId === undefined ? {} : { providerCallId: tc.providerCallId }),
                   ...(thoughtSignature ? { thoughtSignature } : {}),
                   ...(parseError ? { inputParseError: parseError } : {}),
                 },

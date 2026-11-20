@@ -70,7 +70,7 @@ describe("OpenRouter reasoning_details capture", () => {
       const toolUse = events.find((event) => event.kind === "tool_use");
       expect(toolUse).toMatchObject({
         toolCall: {
-          id: "call_abc",
+          providerCallId: "call_abc",
           name: "read",
           thoughtSignature: JSON.stringify(ENCRYPTED_DETAIL),
         },

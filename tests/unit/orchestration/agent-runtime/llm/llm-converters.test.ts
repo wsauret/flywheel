@@ -338,6 +338,21 @@ describe("OpenAI Responses canonical identities", () => {
     expect(() => toOpenAIResponsesInput(openai, history)).toThrow(ProviderIdConversionError);
   });
 
+  test("a provider call id that a Chat Completions model of the same access provider repeated replays once natively, then canonically", () => {
+    // Chat Completions turns carry the Responses replay identity of their access provider, with another model.
+    const completionsTurn = (id: string): ConversationMessage[] => [
+      { kind: "assistant", ...openai, model: "kimi", timestamp: 1, content: [{ type: "tool_use", id, providerCallId: "bash_0", name: "bash", input: {} }] },
+      textResult(id, "ok"),
+    ];
+    const converted = toOpenAIResponsesInput(openai, [...completionsTurn("run1_0"), ...completionsTurn("run2_0")]);
+    const callIds = converted.flatMap((item) => item.type === "function_call" ? [item.call_id] : []);
+    const outputIds = converted.flatMap((item) => item.type === "function_call_output" ? [item.call_id] : []);
+    expect(callIds[0]).toBe("bash_0");
+    expect(callIds[1]).not.toBe("bash_0");
+    expect(callIds).toHaveLength(2);
+    expect(outputIds).toEqual(callIds);
+  });
+
   test("native item IDs preserve their recorded wire kind across tool presentation changes", () => {
     const customHistory: ConversationMessage[] = [
       assistant([{ type: "tool_use", id: "custom", providerCallId: "call_custom", providerItemId: "ctc_custom", name: "was_custom", input: { input: "raw" } }]),

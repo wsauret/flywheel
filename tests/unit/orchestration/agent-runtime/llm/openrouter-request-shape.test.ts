@@ -483,7 +483,7 @@ describe("chat-completions usage and finish reasons", () => {
     // The cut call is still observed, but refused: its input is empty and
     // carries the parse error the dispatcher answers with.
     const toolUse = events.find((event) => event.kind === "tool_use");
-    expect(toolUse).toMatchObject({ toolCall: { id: "call_cut", input: {} } });
+    expect(toolUse).toMatchObject({ toolCall: { providerCallId: "call_cut", input: {} } });
     expect(toolUse && "toolCall" in toolUse ? toolUse.toolCall.inputParseError : undefined).toContain("incomplete JSON");
     expect(events.some((event) => event.kind === "done")).toBe(false);
   });
@@ -529,7 +529,7 @@ describe("chat-completions tool-call delta assembly", () => {
 
     expect(error).toBeUndefined();
     const toolUse = events.find((event) => event.kind === "tool_use");
-    expect(toolUse).toMatchObject({ toolCall: { name: "read", input: { path: "a" } } });
+    expect(toolUse).toMatchObject({ toolCall: { name: "read", input: { path: "a" }, providerCallId: "call_late" } });
   });
 
   test("assembles a tool call from deltas that carry no index", async () => {
@@ -548,7 +548,7 @@ describe("chat-completions tool-call delta assembly", () => {
 
     expect(error).toBeUndefined();
     expect(events.filter((event) => event.kind === "tool_use")).toHaveLength(1);
-    expect(events.find((event) => event.kind === "tool_use")).toMatchObject({ toolCall: { id: "call_x", name: "read" } });
+    expect(events.find((event) => event.kind === "tool_use")).toMatchObject({ toolCall: { providerCallId: "call_x", name: "read" } });
   });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

@@ -171,11 +171,16 @@ function collectWireCallIds(
       if (block.type !== "tool_use") continue;
       if (canonicalToolIds.has(block.id)) throw new ProviderIdConversionError(`duplicate canonical tool call ID: ${block.id}`);
       canonicalToolIds.add(block.id);
-      const rawCallId = replayNativeIds ? block.providerCallId ?? block.id : block.id;
+      // The Responses API never repeats a call id, but a Chat Completions model of the same access provider records its
+      // turns under the same identity and can number calls per response (`bash_0`). A repeated provider id therefore came
+      // from that endpoint, and the call takes its unique canonical id instead.
+      const nativeCallId = replayNativeIds ? block.providerCallId ?? block.id : undefined;
+      const native = nativeCallId !== undefined && !rawProviderCallIds.has(nativeCallId);
+      const rawCallId = native ? nativeCallId : block.id;
       if (rawProviderCallIds.has(rawCallId)) throw new ProviderIdConversionError(`duplicate provider call ID: ${rawCallId}`);
       rawProviderCallIds.add(rawCallId);
       const presentedWireKind = options.customToolNames?.has(block.name) ? "custom" : "function";
-      wireIds.set(block.id, normalizer.normalize(rawCallId, block.providerItemId, replayNativeIds, presentedWireKind));
+      wireIds.set(block.id, normalizer.normalize(rawCallId, block.providerItemId, native, presentedWireKind));
     }
   }
   return wireIds;

@@ -52,6 +52,7 @@ export function toChatCompletionsMessages(
   // pass, matching the other three provider converters.
   const history = lowerProviderHistory(healConversation(rawHistory), target);
   const requiredReasoningField = isReasoningFieldSignature(interleavedReasoningField) ? interleavedReasoningField : undefined;
+  const wireIds = collectWireToolCallIds(history, accessProvider);
   const out: ChatCompletionMessageParam[] = [];
   let index = 0;
   while (index < history.length) {
@@ -71,15 +72,35 @@ export function toChatCompletionsMessages(
       // images as one labeled user message so the contiguous tool-message
       // block stays intact (pi `openai-completions.ts:1195-1263`;
       // providers reject interleaved user messages between tool results).
-      index = appendToolResultRun(out, history, index, supportsImages, accessProvider);
+      index = appendToolResultRun(out, history, index, supportsImages, wireIds);
       continue;
     } else {
-      const assistant = convertAssistantMessage(current, accessProvider, requiredReasoningField);
+      const assistant = convertAssistantMessage(current, wireIds, requiredReasoningField);
       if (assistant) out.push(assistant);
     }
     index += 1;
   }
   return out;
+}
+
+/** Maps each canonical tool call id to the id that the call and its result carry on the wire: the provider's own
+ *  call id when one was recorded, else the canonical id. A provider can repeat its ids across responses, so two
+ *  assistant messages may send the same wire id, as the provider itself produced them. */
+function collectWireToolCallIds(history: readonly ConversationMessage[], accessProvider: AccessProviderId): Map<string, string> {
+  const wireIds = new Map<string, string>();
+  for (const message of history) {
+    if (message.kind !== "assistant") continue;
+    for (const block of contentBlocks(message.content)) {
+      if (block.type === "tool_use") wireIds.set(block.id, normalizeToolCallId(block.providerCallId ?? block.id, accessProvider));
+    }
+  }
+  return wireIds;
+}
+
+function wireToolCallId(wireIds: ReadonlyMap<string, string>, canonicalId: string): string {
+  const wireId = wireIds.get(canonicalId);
+  if (wireId === undefined) throw new Error(`missing wire ID mapping for tool call: ${canonicalId}`);
+  return wireId;
 }
 
 /** Converts history[start..] tool results until the run ends. Returns the
@@ -89,7 +110,7 @@ function appendToolResultRun(
   history: ConversationMessage[],
   start: number,
   supportsImages: boolean,
-  accessProvider: AccessProviderId,
+  wireIds: ReadonlyMap<string, string>,
 ): number {
   const images: ChatCompletionContentPartImage[] = [];
   let index = start;
@@ -101,7 +122,7 @@ function appendToolResultRun(
     // Some providers reject empty tool content; mirror pi's
     // placeholders (`openai-completions.ts:1210-1212`).
     const content = text.length > 0 ? text : split.images.length > 0 ? "(see attached image)" : "(no tool output)";
-    out.push({ role: "tool", tool_call_id: normalizeToolCallId(message.toolUseId, accessProvider), content });
+    out.push({ role: "tool", tool_call_id: wireToolCallId(wireIds, message.toolUseId), content });
     for (const part of split.images) {
       images.push({ type: "image_url", image_url: { url: `data:${part.mediaType};base64,${part.data}` } });
     }
@@ -141,7 +162,7 @@ function convertUserMessage(
  *  `openai-completions.ts:1182-1193`). */
 function convertAssistantMessage(
   message: Extract<ConversationMessage, { kind: "assistant" }>,
-  accessProvider: AccessProviderId,
+  wireIds: ReadonlyMap<string, string>,
   requiredReasoningField: (typeof CHAT_COMPLETIONS_REASONING_FIELDS)[number] | undefined,
 ): ChatCompletionMessageParam | undefined {
   const textBlocks: string[] = [];
@@ -159,7 +180,7 @@ function convertAssistantMessage(
       reasoningReplay.set(block.signature, bucket);
     } else if (block.type === "tool_use") {
       toolCalls.push({
-        id: normalizeToolCallId(block.providerCallId ?? block.id, accessProvider),
+        id: wireToolCallId(wireIds, block.id),
         type: "function",
         function: { name: block.name, arguments: JSON.stringify(block.input) },
       });

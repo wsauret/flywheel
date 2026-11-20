@@ -115,7 +115,8 @@ describe("assistant messages", () => {
         function: { name: "read", arguments: JSON.stringify({ path: "a.ts" }) },
       }],
     });
-    expect(out[2]).toMatchObject({ role: "tool", tool_call_id: "canonical_call", content: "done" });
+    // The result pairs with its call on the wire, so it carries the provider's call id too.
+    expect(out[2]).toMatchObject({ role: "tool", tool_call_id: "provider_call", content: "done" });
     expect(history).toEqual(canonical);
   });
 
@@ -429,24 +430,58 @@ describe("chat-completions stream normalization", () => {
     const streamedToolInput = result.events.filter(
       (event) => event.kind === "tool_input_start" || event.kind === "tool_input_delta",
     );
+    const toolUse = result.events.find((event) => event.kind === "tool_use");
+    if (toolUse?.kind !== "tool_use") throw new Error("expected a tool_use event");
     expect(streamedToolInput[0]).toEqual({
       kind: "tool_input_start",
-      toolUseId: "call_1",
+      toolUseId: toolUse.toolCall.id,
       name: expectedName,
     });
+    expect(streamedToolInput.every((event) => event.toolUseId === toolUse.toolCall.id)).toBeTrue();
     expect(streamedToolInput.filter((event) => event.kind === "tool_input_start")).toHaveLength(1);
     expect(streamedToolInput.filter((event) => event.kind === "tool_input_delta").map((event) => event.partialJson).join("")).toBe(
       "{\"path\":\"a.ts\"}",
     );
-    expect(result.events.find((event) => event.kind === "tool_use")).toEqual({
+    expect(toolUse).toEqual({
       kind: "tool_use",
       toolCall: {
-        id: "call_1",
+        id: expect.any(String),
         name: expectedName,
         input: { path: "a.ts" },
         providerCallId: "call_1",
       },
     });
+  });
+
+  test("gives repeated per-response provider ids distinct canonical ids and replays the provider id on each call and result", async () => {
+    // Some providers number tool calls per response, so every response's first call is `bash_0`.
+    const response = () => clientWithStream([
+      { choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "bash_0", function: { name: "bash", arguments: "{}" } }] }, finish_reason: null }] },
+      { choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] },
+    ]);
+    const calls = [];
+    for (const client of [response(), response()]) {
+      const toolUse = (await collect(client)).events.find((event) => event.kind === "tool_use");
+      if (toolUse?.kind !== "tool_use") throw new Error("expected a tool_use event");
+      calls.push(toolUse.toolCall);
+    }
+    const [first, second] = calls;
+    if (!first || !second) throw new Error("expected two tool calls");
+    expect(first.providerCallId).toBe("bash_0");
+    expect(second.providerCallId).toBe("bash_0");
+    expect(first.id).not.toBe(second.id);
+
+    const history: ConversationMessage[] = [{ kind: "user", content: "go" }];
+    for (const call of calls) {
+      history.push(
+        { kind: "assistant", content: [{ type: "tool_use", ...call }], accessProvider: "openai_api", provider: "openai", model: "gpt-5" },
+        { kind: "toolResult", toolUseId: call.id, content: [{ type: "text", text: "ok" }] },
+      );
+    }
+    const out = toChatCompletionsMessages(history, false, openAIResponsesTarget("openai_api", "gpt-5"));
+
+    expect(out.map((message) => message.role === "tool" ? message.tool_call_id : message.role === "assistant" ? message.tool_calls?.map((call) => call.id) : message.role))
+      .toEqual(["user", ["bash_0"], "bash_0", ["bash_0"], "bash_0"]);
   });
 
   test("retains an unnamed malformed final tool call without emitting a stream start", async () => {
@@ -469,7 +504,7 @@ describe("chat-completions stream normalization", () => {
     expect(result.events.find((event) => event.kind === "tool_use")).toEqual({
       kind: "tool_use",
       toolCall: {
-        id: "call_unnamed",
+        id: expect.any(String),
         name: "",
         input: {},
         providerCallId: "call_unnamed",
