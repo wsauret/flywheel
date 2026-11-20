@@ -1,0 +1,20 @@
+bench/chat-ab/masking/patches/masking-late.patch
+  h_4b47e9e4a8b456 1-18
+bench/chat-ab/masking/patches/masking-off.patch
+  h_4b47e9e4a8b456 1-18
+bench/chat-ab/masking/patches/masking-proof.patch
+  h_4b47e9e4a8b456 1-14
+bench/chat-ab/masking/proof.json
+  h_4b47e9e4a8b456 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5ac6a33dc7a2ab0eb53d36cc6e5d384c0de6003c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
