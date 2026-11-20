@@ -1,0 +1,42 @@
+src/infra/conversation-fts.ts
+  h_4b47e9e4a8b456 20-24,26,36-39,76,98-99,101-115,125,130-134,138,162-163,177,179-183,185-187,202-203,206,216
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 15,90
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 14,260
+src/orchestration/module-catalog.ts
+  h_4b47e9e4a8b456 111-117
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 255-259
+src/orchestration/modules/workflows.ts
+  h_4b47e9e4a8b456 54,260-261
+tests/fixtures/conversation-fts-concurrent-owner.ts
+  h_4b47e9e4a8b456 49
+tests/integration/infra/conversation-fts-concurrency.test.ts
+  h_4b47e9e4a8b456 26
+tests/unit/infra/conversation-recall-search.test.ts
+  h_4b47e9e4a8b456 37-63,78,110-111,116,118,156,184,200,209,219-270,274,293
+tests/unit/infra/conversation-recall-tool-content.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts
+  h_4b47e9e4a8b456 37
+tests/unit/orchestration/migrations/tool-content-dedup.test.ts
+  h_4b47e9e4a8b456 177
+tests/unit/orchestration/session/conversation-recall.test.ts
+  h_4b47e9e4a8b456 58
+tests/unit/orchestration/session/conversation-tree-storage-fts.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 54,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5b0affa8bb2cc251854c5413e4bdbb49f7258cbe",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
