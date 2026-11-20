@@ -5,8 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun run build.ts",
-    "test": "bun --conditions=browser test src phone local"
+    "build": "bun run build.ts"
   },
   "dependencies": {
     "@solid-primitives/keyed": "^1.5.3",
