@@ -1,0 +1,16 @@
+bench/harbor/analysis/answer-key.ts
+  h_4b47e9e4a8b456 94-101,114-116,123-125,128,131-136,139,144-145,148-150,157
+tests/unit/bench/harbor-round-score.test.ts
+  h_4b47e9e4a8b456 4,167-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0764b18ee809ef43d84eceb51b0a7b065d98835a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
