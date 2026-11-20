@@ -1,0 +1,18 @@
+bench/chat-ab/masking/patches/compaction-100k.patch
+  h_4b47e9e4a8b456 1-14
+bench/chat-ab/masking/patches/masking-current-scaled.patch
+  h_4b47e9e4a8b456 1-14
+bench/chat-ab/masking/patches/masking-late-scaled.patch
+  h_4b47e9e4a8b456 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5a91b959af99451879c53b8b117cfcc34166e75d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
