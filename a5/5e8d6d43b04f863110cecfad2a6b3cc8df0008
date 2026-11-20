@@ -1,0 +1,26 @@
+bench/chat-ab/masking/calibration-claude.json
+  h_4b47e9e4a8b456 1-86
+bench/chat-ab/masking/calibration-deepseek.json
+  h_4b47e9e4a8b456 1-86
+bench/chat-ab/masking/calibration-openai.json
+  h_4b47e9e4a8b456 1-86
+bench/chat-ab/masking/matrix-claude.json
+  h_4b47e9e4a8b456 80,89,98,104
+bench/chat-ab/masking/matrix-deepseek.json
+  h_4b47e9e4a8b456 80,89,98,104
+bench/chat-ab/masking/matrix-openai.json
+  h_4b47e9e4a8b456 80,89,98,104
+bench/chat-ab/masking/patches/no-advisor.patch
+  h_4b47e9e4a8b456 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a55e8d6d43b04f863110cecfad2a6b3cc8df0008",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
