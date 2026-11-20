@@ -385,6 +385,34 @@ describe("implementation sandbox", () => {
     }
   });
 
+  it("reads acceptance counts from the bun summary lines, not from test titles", async () => {
+    const tasksDir = await writeSyntheticTaskDir();
+    const [task] = await loadImplementTasks(tasksDir);
+    if (!task) throw new Error("expected one synthetic task");
+    const sandbox = await provisionTaskSandbox(process.cwd(), task, fakeCommandRunner);
+    const stderr = [
+      "acceptance/value.test.ts:",
+      "(pass) value is two",
+      "(pass) 3 passes are recorded",
+      "(fail) HTTP status 504 fails",
+      "",
+      " 2 pass",
+      " 1 fail",
+      " 3 expect() calls",
+      "Ran 3 tests across 1 file. [12.00ms]",
+      "",
+    ].join("\n");
+    const runner: OwnedCommandRunner = async (command, options) => command[0] === "bun"
+      ? { exitCode: 1, timedOut: false, stdoutBytes: new Uint8Array(), stdout: "", stderr }
+      : fakeCommandRunner(command, options);
+    try {
+      expect((await captureImplementation(task, sandbox, runner)).acceptance).toEqual({ passed: 2, failed: 1, total: 3 });
+    } finally {
+      await rm(sandbox, { recursive: true, force: true });
+      await rm(tasksDir, { recursive: true, force: true });
+    }
+  });
+
   it("materializes the plan for direct reading and keeps it out of the captured diff", async () => {
     const tasksDir = await writeSyntheticTaskDir();
     const [task] = await loadImplementTasks(tasksDir);

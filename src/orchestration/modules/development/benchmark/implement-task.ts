@@ -344,9 +344,11 @@ function parseNumstat(output: string): DiffStats {
   return { linesAdded, linesRemoved, filesTouched };
 }
 
+/** Reads only Bun's summary lines (` 2 pass`, ` 1 fail`), which hold nothing but the count and the word,
+ * so a test title such as "HTTP status 504 fails" cannot change the counts. */
 function parseAcceptance(output: string, exitCode: number): AcceptanceResult {
-  const passed = Number(output.match(/(\d+)\s+pass/)?.[1] ?? 0);
-  const reportedFailed = Number(output.match(/(\d+)\s+fail/)?.[1] ?? 0);
+  const passed = Number(output.match(/^\s*(\d+) pass$/m)?.[1] ?? 0);
+  const reportedFailed = Number(output.match(/^\s*(\d+) fail$/m)?.[1] ?? 0);
   const failed = reportedFailed || (exitCode === 0 ? 0 : 1);
   return { passed, failed, total: passed + failed };
 }
