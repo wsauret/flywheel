@@ -1,0 +1,296 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 46
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 187-201
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 198,422-432
+docs/architecture.md
+  h_4b47e9e4a8b456 145,274
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 65-69
+src/infra/auth/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 1-2,26,222-225,244,254,260,264,282-294
+src/infra/diagnostics-registry.ts
+  h_4b47e9e4a8b456 58-62
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 75
+src/infra/llm/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 4,61,94-96,101,106,110-116,120,493
+src/infra/llm/model-family.ts
+  h_4b47e9e4a8b456 5-7,12-14,47-55,63-68
+src/infra/llm/model-listing.ts
+  h_4b47e9e4a8b456 599
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 216
+src/infra/llm/provider-error-diagnostic.ts
+  h_4b47e9e4a8b456 28
+src/infra/llm/provider-options.ts
+  h_4b47e9e4a8b456 232-233,239
+src/infra/llm/provider-reasoning-blocks.ts
+  h_4b47e9e4a8b456 16-17
+src/orchestration/agent-runtime/active-request-context.ts
+  h_4b47e9e4a8b456 126,153,167,227,237,239,250
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 10,84-85,130,133,177
+src/orchestration/agent-runtime/agent-loop-history.ts
+  h_4b47e9e4a8b456 213-215
+src/orchestration/agent-runtime/agent-loop-turn-context.ts
+  h_4b47e9e4a8b456 1-69
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 229-230
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 33,93,117-118,127,143,386,417,520,579
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 18,184-186,246,273,304,310,353,364,519-520,524
+src/orchestration/agent-runtime/compaction/token-counter.ts
+  h_4b47e9e4a8b456 75-77
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 231,239,407
+src/orchestration/agent-runtime/llm/chat-completions-messages.ts
+  h_4b47e9e4a8b456 16-21,70,79,128-129,167-168,182-183,207,245
+src/orchestration/agent-runtime/llm/chat-completions.ts
+  h_4b47e9e4a8b456 2-5,10,31-32,43,48,62,192,202,235,240,247,277,339,368-369,377,389,408-409,411,533,566,587
+src/orchestration/agent-runtime/llm/conversions/anthropic-messages.ts
+  h_4b47e9e4a8b456 24,28,46
+src/orchestration/agent-runtime/llm/conversions/openai-responses.ts
+  h_4b47e9e4a8b456 2,15-22,25-26,208-266,269,271-274,276,290,293
+src/orchestration/agent-runtime/llm/messages.ts
+  h_4b47e9e4a8b456 5,10,31-36
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 25,49-52,90-97,208,247-251
+src/orchestration/agent-runtime/llm/openai-adapter-helpers.ts
+  h_4b47e9e4a8b456 1,3-4,66-67,72,80-92,94,100-102,109-119
+src/orchestration/agent-runtime/llm/openai-chatgpt.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 9-10,44-45,145,159-173,176,180-183,194-195,207,214,221,236-240,304-341,355
+src/orchestration/agent-runtime/llm/openai-options.ts
+  h_4b47e9e4a8b456 34-37,47
+src/orchestration/agent-runtime/llm/openai-responses.ts
+  h_4b47e9e4a8b456 5-6,13-14,23-30,36,41,44,53
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 3,17-20,28-36,60,72
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 106-107,112-114,118,122-130,267-269,274
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 99,139-141,185-189,295,514
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 113
+src/orchestration/agent-runtime/model-interaction-profile.ts
+  h_4b47e9e4a8b456 35-38
+src/orchestration/agent-runtime/reply-nudge.ts
+  h_4b47e9e4a8b456 29-30,73,78-79
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 692
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 15,65,123-124,129-131,141-145,167,190,207
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 269-270
+src/orchestration/app-service/command-host.ts
+  h_4b47e9e4a8b456 24
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 231
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 24
+src/orchestration/chat/turn-mailbox.ts
+  h_4b47e9e4a8b456 132
+src/orchestration/config/model-assignments.ts
+  h_4b47e9e4a8b456 23,343-344,349,357,376-377
+src/orchestration/config/model-tiers.ts
+  h_4b47e9e4a8b456 71-74,302
+src/orchestration/config/role-model-defaults.ts
+  h_4b47e9e4a8b456 130
+src/orchestration/custom-provider-modules.ts
+  h_4b47e9e4a8b456 17,29,46,52,54
+src/orchestration/modules/papercuts/drain.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/modules/provider-baseten/module.ts
+  h_4b47e9e4a8b456 21,45,48,50-51
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.ts
+  h_4b47e9e4a8b456 31,76-77,283-284,339,391,468
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.ts
+  h_4b47e9e4a8b456 86,101,132,136-137,142,145,147,156,163,174,193
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 105
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 21,48,51,53-54
+src/orchestration/modules/provider-github-copilot/model-support.ts
+  h_4b47e9e4a8b456 10,18
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 30,67,72-73,90-91
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 19,54,70-71,81
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 25,60,65,67-68
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 9,112-114,120-121,125,297
+src/orchestration/session/conversation/conversation-facts.ts
+  h_4b47e9e4a8b456 3,145-163,176,195-196,199,201-204,208-212
+src/orchestration/session/conversation/conversation-projection.ts
+  h_4b47e9e4a8b456 148,294-304
+src/orchestration/session/conversation/conversation-tree-context.ts
+  h_4b47e9e4a8b456 54
+src/orchestration/session/conversation/conversation-tree.ts
+  h_4b47e9e4a8b456 52
+src/orchestration/session/provider-request-audit-hash.ts
+  h_4b47e9e4a8b456 12,28-29
+tests/helpers/eager-tool-visibility-provider.ts
+  h_4b47e9e4a8b456 8,108
+tests/helpers/fake-listing-client.ts
+  h_4b47e9e4a8b456 8
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_agent-host.ts
+  h_4b47e9e4a8b456 98,103-104
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-notices.test.ts
+  h_4b47e9e4a8b456 11,119,126-128
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host-recovery.test.ts
+  h_4b47e9e4a8b456 14,77,90-91,97,99,101,103-104
+tests/integration/providers/claude-sdk-subscription-real.test.ts
+  h_4b47e9e4a8b456 99
+tests/unit/infra/auth/provider-model-catalog-store.test.ts
+  h_4b47e9e4a8b456 179,218,224,231-252
+tests/unit/infra/llm/copilot-model-support.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/llm/custom-provider-registry.test.ts
+  h_4b47e9e4a8b456 63,65
+tests/unit/infra/llm/model-catalog-resolution.test.ts
+  h_4b47e9e4a8b456 164,183
+tests/unit/infra/llm/model-listing-custom-provider.test.ts
+  h_4b47e9e4a8b456 69,71-72,75,78,93
+tests/unit/infra/llm/model-listing-supergrok.test.ts
+  h_4b47e9e4a8b456 178-179
+tests/unit/infra/llm/openrouter-model-support.test.ts
+  h_4b47e9e4a8b456 19-20
+tests/unit/orchestration/agent-runtime/_login-wait-fixture.ts
+  h_4b47e9e4a8b456 52
+tests/unit/orchestration/agent-runtime/agent-loop-reply-nudge.test.ts
+  h_4b47e9e4a8b456 6,78-84,107-108,293,301,304-312,315-319,323,329,333-336,349-374,392,414,437,451
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 112-116,121-193
+tests/unit/orchestration/agent-runtime/assistant-turn-login-recovery.test.ts
+  h_4b47e9e4a8b456 86
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-outcomes.test.ts
+  h_4b47e9e4a8b456 23,159-174
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-request-entries.test.ts
+  h_4b47e9e4a8b456 46
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-request-evidence.test.ts
+  h_4b47e9e4a8b456 94,146,182
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-request.test.ts
+  h_4b47e9e4a8b456 58,134,162,256,369,419
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-telemetry.test.ts
+  h_4b47e9e4a8b456 18,535
+tests/unit/orchestration/agent-runtime/assistant-turn-stream.test.ts
+  h_4b47e9e4a8b456 22,140
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 23
+tests/unit/orchestration/agent-runtime/context/_loop-fixtures.ts
+  h_4b47e9e4a8b456 228
+tests/unit/orchestration/agent-runtime/context/loop-outgoing-context.test.ts
+  h_4b47e9e4a8b456 39,43,56,94,160,200,205,210,266,268
+tests/unit/orchestration/agent-runtime/context/loop-token-counter.test.ts
+  h_4b47e9e4a8b456 109-110,184-194
+tests/unit/orchestration/agent-runtime/llm/_wire-fixtures.ts
+  h_4b47e9e4a8b456 5,48
+tests/unit/orchestration/agent-runtime/llm/adapter-boundary-regressions.test.ts
+  h_4b47e9e4a8b456 10,73
+tests/unit/orchestration/agent-runtime/llm/anthropic-tool-input.test.ts
+  h_4b47e9e4a8b456 57,64
+tests/unit/orchestration/agent-runtime/llm/chat-completions-converter.test.ts
+  h_4b47e9e4a8b456 4,15-16,21-22,24-25,43,60,73,107,135,139,150,160,168,186,209,226,239,258,289,328,479,483
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/websocket.test.ts
+  h_4b47e9e4a8b456 13-15,256,336-337,362-391
+tests/unit/orchestration/agent-runtime/llm/client-factory-opencode-go.test.ts
+  h_4b47e9e4a8b456 58
+tests/unit/orchestration/agent-runtime/llm/conversions/openai-normalize-input.test.ts
+  h_4b47e9e4a8b456 2,7,14,26,35,41,52,73,98,118
+tests/unit/orchestration/agent-runtime/llm/failover-client-failover.test.ts
+  h_4b47e9e4a8b456 128
+tests/unit/orchestration/agent-runtime/llm/image-limit.test.ts
+  h_4b47e9e4a8b456 93,123
+tests/unit/orchestration/agent-runtime/llm/llm-client-routing.test.ts
+  h_4b47e9e4a8b456 23-27
+tests/unit/orchestration/agent-runtime/llm/llm-converters.test.ts
+  h_4b47e9e4a8b456 4,7,30,52,81,99,119,166,179,183,188,199-200,210,223,234,245,262,283,302,319,329,338,347,366-367,383,488
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts
+  h_4b47e9e4a8b456 387,399-400,402,465,472-473,475
+tests/unit/orchestration/agent-runtime/llm/openai-copilot-responses.test.ts
+  h_4b47e9e4a8b456 5,56,76-77,84-85,106,132
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 7,328
+tests/unit/orchestration/agent-runtime/llm/openai-responses-terminal.test.ts
+  h_4b47e9e4a8b456 12-13,99-126
+tests/unit/orchestration/agent-runtime/llm/openai-session-affinity.test.ts
+  h_4b47e9e4a8b456 50,59,69
+tests/unit/orchestration/agent-runtime/llm/openrouter-reasoning-details.test.ts
+  h_4b47e9e4a8b456 9,16-17,60,64,87,91,109,118,138
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 5,15,20,89,100,102,106,126,145,159,175,190,204,218,235,251,300,322,334,347,361,380,396,413,447,465,490,514,534,560,601
+tests/unit/orchestration/agent-runtime/llm/openrouter-wire-model.test.ts
+  h_4b47e9e4a8b456 6,10,32,51-52,62
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 58,114-117,137,236-237
+tests/unit/orchestration/agent-runtime/llm/provider-description.test.ts
+  h_4b47e9e4a8b456 20-32
+tests/unit/orchestration/agent-runtime/llm/provider-history.test.ts
+  h_4b47e9e4a8b456 4,7,57-58,85,147-148,151,161
+tests/unit/orchestration/agent-runtime/llm/reasoning-effort-boundaries.test.ts
+  h_4b47e9e4a8b456 29,59-62,64-65,67,69-70,72
+tests/unit/orchestration/agent-runtime/llm/request-descriptor.test.ts
+  h_4b47e9e4a8b456 5,114,217-313
+tests/unit/orchestration/agent-runtime/llm/tool-history-projection.test.ts
+  h_4b47e9e4a8b456 6-7,163-164
+tests/unit/orchestration/agent-runtime/model-interaction-profile.test.ts
+  h_4b47e9e4a8b456 19-20,26
+tests/unit/orchestration/agent-runtime/prompt-prefix-hold.test.ts
+  h_4b47e9e4a8b456 197
+tests/unit/orchestration/agent-runtime/runtime-assembly-request-audit.test.ts
+  h_4b47e9e4a8b456 269
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 153-154
+tests/unit/orchestration/app-service/papercut-drain-context.test.ts
+  h_4b47e9e4a8b456 36-39,44,54-55,60-63,65,121,129,131-132,135-143,145
+tests/unit/orchestration/app-service/provider-model-preference-audit.test.ts
+  h_4b47e9e4a8b456 24
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 16,75,83,147,151,154,171-173,362,437-442,446
+tests/unit/orchestration/config/custom-provider-composition.test.ts
+  h_4b47e9e4a8b456 39,41,63,97
+tests/unit/orchestration/config/custom-providers-config.test.ts
+  h_4b47e9e4a8b456 45-46
+tests/unit/orchestration/config/model-assignment-providers.test.ts
+  h_4b47e9e4a8b456 63,98,133
+tests/unit/orchestration/config/model-cost-warning.test.ts
+  h_4b47e9e4a8b456 137,146
+tests/unit/orchestration/config/model-listing-access-provider.test.ts
+  h_4b47e9e4a8b456 12,40,48
+tests/unit/orchestration/config/model-tiers.test.ts
+  h_4b47e9e4a8b456 124-138
+tests/unit/orchestration/modules/provider-baseten/catalog.test.ts
+  h_4b47e9e4a8b456 63
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 617
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/engine-text.test.ts
+  h_4b47e9e4a8b456 135,137,139-142
+tests/unit/orchestration/modules/subagents/subagent-prompt-inspectability.test.ts
+  h_4b47e9e4a8b456 50,84,164-167
+tests/unit/orchestration/session/conversation-tree-context.test.ts
+  h_4b47e9e4a8b456 73-84,123,137
+tests/unit/orchestration/session/conversation-tree-handle.test.ts
+  h_4b47e9e4a8b456 15,347,380,387,391,393-394,398,402
+tests/unit/orchestration/session/live-usage-settlement.test.ts
+  h_4b47e9e4a8b456 63
+tests/unit/orchestration/session/provider-request-audit-reconstruction.test.ts
+  h_4b47e9e4a8b456 41-42
+tests/unit/scripts/check-provider-model-literals.test.ts
+  h_4b47e9e4a8b456 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "775e43842b44c120626d88e873f8fa7cc0d9c45e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
