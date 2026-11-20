@@ -41,7 +41,7 @@ beforeEach(() => {
   baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-session-tree-"))
   nowCounter = 0
   store = createSqliteEventStore(resolveEventStoreDbFile(baseDir))
-  index = acquireConversationSearchIndex(resolveConversationSearchDbFile(baseDir), asAsyncEventReadSurface(store))
+  index = acquireConversationSearchIndex(resolveConversationSearchDbFile(baseDir), asAsyncEventReadSurface(store), [])
 })
 
 afterEach(async () => {

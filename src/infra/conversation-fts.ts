@@ -17,9 +17,13 @@ import { DebugLog } from "./debug-log.js"
  *  same row without bloating the term index. */
 export const CONVERSATION_FTS_TABLE = "conversation_recall_fts"
 
-function createConversationFtsTable(db: Database): void {
+/** Maps each FTS row to the session whose fact produced it, so a deletion
+ *  tombstone can remove rows indexed before the session was deleted. */
+const SESSION_ROWS_TABLE = "conversation_index_session_rows"
+
+function createConversationIndexTables(db: Database): void {
   db.exec(`
-    create virtual table if not exists ${CONVERSATION_FTS_TABLE} using fts5(
+    create virtual table ${CONVERSATION_FTS_TABLE} using fts5(
       content,
       conversation_id unindexed,
       entry_id unindexed,
@@ -29,6 +33,10 @@ function createConversationFtsTable(db: Database): void {
       tokenize = 'porter unicode61'
     )
   `)
+  db.exec(`create table ${SESSION_ROWS_TABLE} (session_id text not null, row_id integer not null)`)
+  db.exec(`create index ${SESSION_ROWS_TABLE}_session on ${SESSION_ROWS_TABLE} (session_id)`)
+  db.exec("create table conversation_index_position (position integer not null)")
+  db.exec("insert into conversation_index_position values (0)")
 }
 
 interface ConversationFtsRow {
@@ -65,7 +73,7 @@ function indexChatEntriesForFts(db: Database, event: StoredFact, content: Conten
   const resolvePart = referencePartResolver(content, event)
   for (const entry of entries) {
     const row = ftsRowForEntry(event, conversationId, entry, resolvePart)
-    if (row) indexConversationEntry(db, row, event.position)
+    if (row) indexConversationEntry(db, row, event.sessionId, event.position)
   }
 }
 
@@ -87,9 +95,24 @@ function referencePartResolver(content: ContentResolver, event: StoredFact): Ref
 /** Index an entry in the derived page transaction. Conversation
  *  writers reject duplicate entry ids and guard the expected sequence before
  *  insertion; this derived index does not own deduplication. */
-function indexConversationEntry(db: Database, row: ConversationFtsRow, position: number): void {
-  db.query(`insert into ${CONVERSATION_FTS_TABLE} (content, conversation_id, entry_id, entry_kind, role, source_position) values (?, ?, ?, ?, ?, ?)`)
+function indexConversationEntry(db: Database, row: ConversationFtsRow, sessionId: string, position: number): void {
+  const { lastInsertRowid } = db.query(`insert into ${CONVERSATION_FTS_TABLE} (content, conversation_id, entry_id, entry_kind, role, source_position) values (?, ?, ?, ?, ?, ?)`)
     .run(row.content, row.conversationId, row.entryId, row.entryKind, row.role, position)
+  db.query(`insert into ${SESSION_ROWS_TABLE} (session_id, row_id) values (?, ?)`).run(sessionId, lastInsertRowid)
+}
+
+/** Remove every row indexed for the deleted sessions. Idempotent, so a crash
+ *  before the watermark passes the tombstone only repeats it. */
+function removeDeletedSessions(db: Database, sessionIds: ReadonlySet<string>): void {
+  if (sessionIds.size === 0) return
+  const removeRows = db.query(`delete from ${CONVERSATION_FTS_TABLE} where rowid in (select row_id from ${SESSION_ROWS_TABLE} where session_id = ?)`)
+  const removeMap = db.query(`delete from ${SESSION_ROWS_TABLE} where session_id = ?`)
+  db.transaction(() => {
+    for (const sessionId of sessionIds) {
+      removeRows.run(sessionId)
+      removeMap.run(sessionId)
+    }
+  }).immediate()
 }
 
 export interface ConversationSearchIndex {
@@ -99,17 +122,20 @@ export interface ConversationSearchIndex {
   dispose(): Promise<void>
 }
 
-const INDEX_GENERATION = 1
+const INDEX_GENERATION = 2
 const INDEX_WRITE_BUSY_TIMEOUT_MS = 5_000
 const indexOwners = new Map<string, { index: ReturnType<typeof createConversationSearchIndex>; holds: number; readonly replays: OrderedLane }>()
 
 /** Share one lazy derived writer per execution owner. The final consumer closes
- * both handles after queued replay completes. This never opens primary SQLite. */
-export function acquireConversationSearchIndex(dbFile: string, source: AsyncEventReadSurface): ConversationSearchIndex {
+ * both handles after queued replay completes. This never opens primary SQLite.
+ * `deletionFactTypes` names the fact types beyond `session.deleted` that
+ * delete a session's conversation. The installed catalog fixes them per
+ * process, so the first acquire of a file decides them for every holder. */
+export function acquireConversationSearchIndex(dbFile: string, source: AsyncEventReadSurface, deletionFactTypes: readonly string[]): ConversationSearchIndex {
   const key = resolve(dbFile)
   let owner = indexOwners.get(key)
   if (!owner) {
-    owner = { index: createConversationSearchIndex(key, source), holds: 0, replays: createOrderedLane() }
+    owner = { index: createConversationSearchIndex(key, source, deletionFactTypes), holds: 0, replays: createOrderedLane() }
     indexOwners.set(key, owner)
   }
   owner.holds++
@@ -133,7 +159,8 @@ export function acquireConversationSearchIndex(dbFile: string, source: AsyncEven
   }
 }
 
-function createConversationSearchIndex(dbFile: string, source: AsyncEventReadSurface) {
+function createConversationSearchIndex(dbFile: string, source: AsyncEventReadSurface, deletionFactTypes: readonly string[]) {
+  const deletionTypes = ["session.deleted", ...deletionFactTypes]
   let writer: Database | undefined
   let reader: Database | undefined
 
@@ -147,16 +174,17 @@ function createConversationSearchIndex(dbFile: string, source: AsyncEventReadSur
     const db = new Database(dbFile)
     try {
       applySqliteDurabilityPragmas(db, INDEX_WRITE_BUSY_TIMEOUT_MS)
-      db.transaction(() => {
+      const reset = db.transaction(() => {
         const generation = db.query<{ user_version: number }, []>("pragma user_version").get()?.user_version
-        if (generation !== INDEX_GENERATION) {
-          db.exec(`drop table if exists ${CONVERSATION_FTS_TABLE}; drop table if exists conversation_index_position`)
-          createConversationFtsTable(db)
-          db.exec("create table conversation_index_position (position integer not null)")
-          db.exec("insert into conversation_index_position values (0)")
-          db.exec(`pragma user_version = ${INDEX_GENERATION}`)
-        }
+        if (generation === INDEX_GENERATION) return false
+        db.exec(`drop table if exists ${CONVERSATION_FTS_TABLE}; drop table if exists ${SESSION_ROWS_TABLE}; drop table if exists conversation_index_position`)
+        createConversationIndexTables(db)
+        db.exec(`pragma user_version = ${INDEX_GENERATION}`)
+        return true
       }).immediate()
+      // Dropped tables leave free pages in the file. VACUUM returns them, and
+      // under WAL the main file shrinks only once the checkpoint copies back.
+      if (reset) db.exec("vacuum; pragma wal_checkpoint(truncate)")
       reader = new Database(dbFile, { readonly: true })
       writer = db
       return db
@@ -171,10 +199,11 @@ function createConversationSearchIndex(dbFile: string, source: AsyncEventReadSur
     const initialWatermark = db.query<{ position: number }, []>("select position from conversation_index_position").get()
     if (!initialWatermark) throw new Error("Conversation search index watermark is missing")
     const deletedSessionIds = new Set<string>()
-    // Appends cannot follow deletion, so every unindexed deleted session has its tombstone in this range.
+    // Appends cannot follow deletion, so every deleted session that the index
+    // still holds or has yet to index has its tombstone in this range.
     let deletionPosition = initialWatermark.position
     while (deletionPosition < upper) {
-      const page = await source.readPage({ types: ["session.deleted"] }, upper, deletionPosition)
+      const page = await source.readPage({ types: deletionTypes }, upper, deletionPosition)
       for (const fact of page.facts) {
         if (fact instanceof CorruptEventRowError) {
           // oxlint-disable-next-line eslint/no-throw-literal -- boundary: narrowed Error subclass
@@ -184,6 +213,7 @@ function createConversationSearchIndex(dbFile: string, source: AsyncEventReadSur
       }
       deletionPosition = page.continuationPosition ?? upper
     }
+    removeDeletedSessions(db, deletedSessionIds)
     let position = initialWatermark.position
     while (position < upper) {
       const page = await source.readPage({ types: ["chat.entries.appended"] }, upper, position)

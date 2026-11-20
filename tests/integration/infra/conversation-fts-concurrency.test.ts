@@ -23,7 +23,7 @@ test("independent owners replaying the same page commit it once", async () => {
     capturePosition: async () => 0,
     readPage: async (_query, upperPosition, _afterPosition) => ({ facts: [], upperPosition: upperPosition ?? 0, continuationPosition: null, toolContent: { resolve: () => { throw new Error("This fixture has no referenced content") } } }),
   }
-  const initializer = acquireConversationSearchIndex(dbFile, emptySource)
+  const initializer = acquireConversationSearchIndex(dbFile, emptySource, [])
   await initializer.through(0)
   await initializer.dispose()
 

@@ -12,7 +12,7 @@ import { bunWorkerRunnerLayer, type WorkerSelf } from "./bun-worker-rpc.js"
 import { createSessionDetailReader } from "./session-detail-projection.js"
 import { classifyRuntimeProtocolErrorKind, RuntimeBackgroundRpc, RuntimeProtocolError } from "../../protocol/runtime-protocol-schemas.js"
 import { composeModuleBackgroundReaders } from "./module-protocol-host.js"
-import { installedModules } from "../module-catalog.js"
+import { installedConversationDeletionFacts, installedModules } from "../module-catalog.js"
 import { protocolBackgroundSchema } from "../../protocol/modules.js"
 import { createRuntimeBackgroundSnapshotProjector } from "./runtime-background-snapshot.js"
 import type { RuntimeSessionDetailResult } from "../../protocol/session-detail-protocol-types.js"
@@ -87,7 +87,7 @@ function openRuntimeBackgroundProject(projectRoot: string): RuntimeBackgroundPro
   const snapshotProjector = createRuntimeBackgroundSnapshotProjector(projectionReader, summaryReads, projectRoot)
   const sessionMetadata = createSessionMetadataProjection(projectionReader)
   const index = (): ConversationSearchIndex => {
-    conversationIndex ??= acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), projectionReader)
+    conversationIndex ??= acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), projectionReader, installedConversationDeletionFacts())
     return conversationIndex
   }
   const transcriptSearch = createTranscriptSearch({

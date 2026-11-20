@@ -28,7 +28,7 @@ beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-recall-content-"))
   dbPath = path.join(tmpDir, "flywheel.sqlite")
   store = createSqliteEventStore(dbPath)
-  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), [])
 })
 
 afterEach(async () => {

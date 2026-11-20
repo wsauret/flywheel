@@ -174,7 +174,7 @@ function readContentRows(): Array<{ sessionId: string; sha256: string; content: 
  *  a fresh index from the store's current facts, so a hit after the migration
  *  proves the rewritten reference parts still resolve to the indexed text. */
 async function recallHits(conversationId: string, indexName: string): Promise<string[]> {
-  const index = acquireConversationSearchIndex(path.join(tmpDir, indexName, "conversation-search.sqlite"), asAsyncEventReadSurface(store))
+  const index = acquireConversationSearchIndex(path.join(tmpDir, indexName, "conversation-search.sqlite"), asAsyncEventReadSurface(store), [])
   try {
     const upperPosition = store.currentPosition()
     const db = await index.through(upperPosition)

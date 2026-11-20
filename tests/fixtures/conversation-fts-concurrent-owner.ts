@@ -46,7 +46,7 @@ const source: AsyncEventReadSurface = {
   },
 }
 
-const index = acquireConversationSearchIndex(dbFile, source)
+const index = acquireConversationSearchIndex(dbFile, source, [])
 try {
   await index.through(1)
 } finally {

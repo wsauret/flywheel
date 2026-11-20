@@ -252,6 +252,11 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
   /** Installed child-session semantics stay available for durable history even when dispatch is disabled. */
   readonly childSessionHistory?: ModuleChildSessionHistory
   readonly sessionDeletion?: ModuleSessionDeletion
+  /** Fact types that delete a session's conversation without a
+   *  `session.deleted` fact, so a derived transcript index drops that
+   *  session's rows. Installed for durable history even when the module is
+   *  disabled. */
+  readonly conversationDeletionFacts?: readonly string[]
   /** Installed for durable history even when the module is disabled. */
   readonly runtimeInvocationTool?: ModuleRuntimeInvocationTool
   readonly childSession?: ModuleChildSession

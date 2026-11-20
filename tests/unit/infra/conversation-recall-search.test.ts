@@ -34,6 +34,33 @@ function appendEntries(type: "chat.entries.appended", entries: ReadonlyArray<{ [
   })
 }
 
+function appendChat(sessionId: string, entries: ReadonlyArray<{ [key: string]: unknown }>): void {
+  store.append({
+    aggregateId: `conversation:${sessionId}`,
+    type: "chat.entries.appended",
+    version: 1,
+    timestamp: Date.now(),
+    actor: "flywheel",
+    sessionId,
+    payload: { conversationId: sessionId, entries },
+  })
+}
+
+function appendDeletion(sessionId: string): void {
+  store.append({ aggregateId: `session:${sessionId}`, type: "session.deleted", version: 1, timestamp: Date.now(), actor: "flywheel", sessionId, payload: {} })
+}
+
+function appendWorkflowDeletion(workflowId: string): void {
+  store.append({ aggregateId: `workflow:${workflowId}`, type: "workflow.run.deleted", version: 1, timestamp: Date.now(), actor: "flywheel", sessionId: workflowId, payload: { lastUpdated: new Date().toISOString() } })
+}
+
+function indexedRows(db: Database) {
+  return {
+    fts: db.query(`select conversation_id, entry_id from ${CONVERSATION_FTS_TABLE} order by rowid`).all(),
+    sessions: db.query("select distinct session_id from conversation_index_session_rows order by session_id").all(),
+  }
+}
+
 function appendProvisional(entry: { [key: string]: unknown }): void {
   store.append({
     aggregateId: AGGREGATE,
@@ -48,7 +75,7 @@ function appendProvisional(entry: { [key: string]: unknown }): void {
 
 /** Runs `read` against the production search index, caught up through every stored fact. */
 async function withIndexedDb(read: (db: Database) => void): Promise<void> {
-  const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), [])
   try {
     read(await index.through(store.currentPosition()))
   } finally {
@@ -80,15 +107,15 @@ describe("searchConversationRecall", () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "retained")])
     const file = path.join(tmpDir, "search.sqlite")
     const source = asAsyncEventReadSurface(store)
-    const first = acquireConversationSearchIndex(file, source)
-    const second = acquireConversationSearchIndex(file, source)
+    const first = acquireConversationSearchIndex(file, source, [])
+    const second = acquireConversationSearchIndex(file, source, [])
     await first.through(store.currentPosition())
     await Promise.all([first.dispose(), first.dispose()])
     const db = await second.through(store.currentPosition())
     expect(count(db, { upperPosition: store.currentPosition(), conversationId: CONVERSATION_ID, match: "retained", limit: 5 })).toBe(1)
-    const third = acquireConversationSearchIndex(file, source)
+    const third = acquireConversationSearchIndex(file, source, [])
     await Promise.all([second.dispose(), third.dispose()])
-    const reopened = acquireConversationSearchIndex(file, source)
+    const reopened = acquireConversationSearchIndex(file, source, [])
     try {
       expect(await reopened.through(store.currentPosition())).toBeInstanceOf(Database)
     } finally {
@@ -126,7 +153,7 @@ describe("searchConversationRecall", () => {
       diagnostics.push(entry)
     })
     try {
-      const index = acquireConversationSearchIndex(dbFile, source)
+      const index = acquireConversationSearchIndex(dbFile, source, [])
       const catchup = index.through(1)
       await started
       let closed = false
@@ -154,7 +181,7 @@ describe("searchConversationRecall", () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka first")])
     const upperPosition = store.currentPosition()
     appendEntries("chat.entries.appended", [userEntry("b", "a", "kafka later")])
-    const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+    const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), [])
     try {
       const db = await index.through(store.currentPosition())
       const query = { upperPosition, conversationId: CONVERSATION_ID, match: "kafka", limit: 5 }
@@ -170,7 +197,7 @@ describe("searchConversationRecall", () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka retained")])
     const file = path.join(tmpDir, "search.sqlite")
     for (const invalidate of ["missing", "version"] as const) {
-      let index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store))
+      let index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store), [])
       await index.through(store.currentPosition())
       await index.dispose()
       if (invalidate === "missing") fs.unlinkSync(file)
@@ -179,7 +206,7 @@ describe("searchConversationRecall", () => {
         db.exec("pragma user_version = 999")
         db.close()
       }
-      index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store))
+      index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store), [])
       try {
         const db = await index.through(store.currentPosition())
         expect(searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 }).map((hit) => hit.entryId)).toEqual(["a"])
@@ -189,10 +216,62 @@ describe("searchConversationRecall", () => {
     }
   })
 
+  test("a deletion removes the rows that the index already holds for that session", async () => {
+    appendChat("kept", [userEntry("k", null, "kafka kept")])
+    appendChat("gone", [userEntry("g", null, "kafka gone")])
+    const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), ["workflow.run.deleted"])
+    try {
+      let db = await index.through(store.currentPosition())
+      expect(indexedRows(db).fts).toEqual([{ conversation_id: "kept", entry_id: "k" }, { conversation_id: "gone", entry_id: "g" }])
+      appendDeletion("gone")
+      db = await index.through(store.currentPosition())
+      expect(indexedRows(db)).toEqual({ fts: [{ conversation_id: "kept", entry_id: "k" }], sessions: [{ session_id: "kept" }] })
+      expect(db.query(`select count(*) as c from ${CONVERSATION_FTS_TABLE} where ${CONVERSATION_FTS_TABLE} match 'kafka'`).get()).toEqual({ c: 1 })
+      // A deleted workflow loses its tool content but keeps its chat facts, so it leaves the index the same way.
+      appendChat("workflow", [userEntry("w", null, "kafka workflow")])
+      db = await index.through(store.currentPosition())
+      expect(indexedRows(db).sessions).toEqual([{ session_id: "kept" }, { session_id: "workflow" }])
+      appendWorkflowDeletion("workflow")
+      db = await index.through(store.currentPosition())
+      expect(indexedRows(db)).toEqual({ fts: [{ conversation_id: "kept", entry_id: "k" }], sessions: [{ session_id: "kept" }] })
+    } finally {
+      await index.dispose()
+    }
+  })
+
+  test("a generation 1 index rebuilds without deleted sessions and shrinks", async () => {
+    const bulk = Array.from({ length: 2_000 }, (_, index) => `filler${index}`).join(" ")
+    appendChat("kept", [userEntry("k", null, "kafka kept")])
+    appendChat("gone", [userEntry("g", null, bulk)])
+    appendDeletion("gone")
+    const file = path.join(tmpDir, "search.sqlite")
+    const old = new Database(file)
+    old.exec("pragma journal_mode = wal")
+    old.exec(`create virtual table ${CONVERSATION_FTS_TABLE} using fts5(content, conversation_id unindexed, entry_id unindexed, entry_kind unindexed, role unindexed, source_position unindexed, tokenize = 'porter unicode61')`)
+    old.exec("create table conversation_index_position (position integer not null)")
+    old.transaction(() => {
+      for (let row = 0; row < 200; row++) {
+        old.query(`insert into ${CONVERSATION_FTS_TABLE} values (?, 'gone', ?, 'message', 'user', 1)`).run(`${bulk} ${row}`, `g${row}`)
+      }
+      old.query("insert into conversation_index_position values (?)").run(store.currentPosition())
+    })()
+    old.exec("pragma user_version = 1")
+    old.close()
+    const before = fs.statSync(file).size
+    const index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store), [])
+    try {
+      const db = await index.through(store.currentPosition())
+      expect(indexedRows(db)).toEqual({ fts: [{ conversation_id: "kept", entry_id: "k" }], sessions: [{ session_id: "kept" }] })
+      expect(fs.statSync(file).size).toBeLessThan(before / 10)
+    } finally {
+      await index.dispose()
+    }
+  })
+
   test("a failed page commits neither its rows nor its watermark", async () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, "kafka original")])
     const file = path.join(tmpDir, "search.sqlite")
-    const index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store))
+    const index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store), [])
     try {
       const before = store.currentPosition()
       const db = await index.through(before)
@@ -211,7 +290,7 @@ describe("searchConversationRecall", () => {
     for (const suffix of ["", "-wal", "-shm"]) {
       const file = path.join(tmpDir, `index-${suffix || "db"}.sqlite`)
       fs.symlinkSync(target, `${file}${suffix}`)
-      const index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store))
+      const index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store), [])
       try {
         await expect(index.through(0)).rejects.toThrow("symlink")
         expect(fs.readFileSync(target, "utf8")).toBe("do not touch")

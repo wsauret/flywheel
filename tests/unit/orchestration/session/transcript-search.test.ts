@@ -51,7 +51,7 @@ beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "flywheel-transcript-search-"))
   const dbFile = path.join(tmpDir, "flywheel.sqlite")
   store = createSqliteEventStore(dbFile)
-  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), [])
   sessions = [row("s-alpha", "conv-alpha", "Alpha work"), row("s-beta", "conv-beta")]
   search = createTranscriptSearch({ index, source: asAsyncEventReadSurface(store), sessions: async () => sessions })
 })
@@ -67,7 +67,7 @@ describe("transcript search for people", () => {
     await index.dispose()
     append("conv-alpha", [user("a", null, "kafka captured")])
     const source = asAsyncEventReadSurface(store)
-    index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), source)
+    index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), source, [])
     search = createTranscriptSearch({
       index,
       source: {

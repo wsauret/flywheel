@@ -108,6 +108,13 @@ export function installedRuntimeInvocationTool(modules: readonly FirstPartyModul
   return tool
 }
 
+/** The fact types beyond `session.deleted` that delete a session's
+ *  conversation, from every installed module: a disabled module's deletions
+ *  are still history that the transcript index must honor. */
+export function installedConversationDeletionFacts(modules: readonly FirstPartyModule[] = installedModules()): readonly string[] {
+  return modules.flatMap((module) => module.conversationDeletionFacts ?? [])
+}
+
 /** Every definition bundle the installed catalog contributes, whether or not
  *  a project enables the owner: the registry loads them all, and availability
  *  hides a bundle's definitions while its owner is off. */

@@ -11,6 +11,7 @@ import type { BridgedPersistentProcessClient } from "../../infra/persistent-proc
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../infra/auth/resolve-key.js"
 import { resolveConversationSearchDbFile, resolveSessionDir } from "../../infra/paths.js"
 import { acquireConversationSearchIndex } from "../../infra/conversation-fts.js"
+import { installedConversationDeletionFacts } from "../module-catalog.js"
 import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import { prepareWorkflowDeps } from "../workflow-host/deps.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../session/session-fact-writer.js"
@@ -256,7 +257,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
           writer: eventWriter,
           lane: writerLane.lease({ kind: "session", sessionId: activeSessionId }),
         })
-        const recallIndex = acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), eventState)
+        const recallIndex = acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), eventState, installedConversationDeletionFacts())
         const localRecall = (id: string) => createConversationRecall({
           store: eventState,
           index: recallIndex,

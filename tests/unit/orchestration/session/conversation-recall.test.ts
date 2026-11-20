@@ -55,7 +55,7 @@ beforeEach(() => {
   dbPath = path.join(tmpDir, "flywheel.sqlite")
   store = createSqliteEventStore(dbPath)
   db = new Database(dbPath, { readonly: true })
-  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
+  index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store), [])
 })
 
 afterEach(async () => {

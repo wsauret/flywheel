@@ -34,7 +34,7 @@ function createDurableHarness() {
   const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
   const sessionId = "durable-subagent-session"
   const writer = asAsyncEventWriter(store)
-  const index = acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), asAsyncEventReadSurface(store))
+  const index = acquireConversationSearchIndex(resolveConversationSearchDbFile(projectRoot), asAsyncEventReadSurface(store), [])
   const createChildConversation = (childRunId: string): ChildSessionConversation =>
     createConversationTreeWriterController({
       conversationId: childRunId,

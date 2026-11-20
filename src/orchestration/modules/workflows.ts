@@ -51,7 +51,7 @@ import { workflowLaunchRetainedOperation } from "./workflows/launch-operation.js
 import { workflowWorkControl, workflowWorkState } from "./workflows/child-session.js"
 import { parseProjectionFact } from "../../infra/event-projection.js"
 import { parseSessionRuntimeFact } from "../../infra/runtime-fact-parser.js"
-import { WorkflowRunFactSchemas } from "../../workflows/run-facts.js"
+import { WorkflowRunFactSchemas, type WorkflowRunFact } from "../../workflows/run-facts.js"
 import { createWorkflowPlacements, createWorkflowRunReader, createWorkflowSettingsReader } from "./workflows/run-record.js"
 import { createWorkflowRunWriter, workflowRegistration, startedWorkflowAttempt, workflowAdoption, workflowAccounting, workflowDeletion, workflowSettlement, workflowCutAppend, workflowIsDeleted } from "./workflows/run-facts.js"
 import { settleWorkflowDeletion } from "./workflows/deletion.js"
@@ -257,6 +257,8 @@ export const workflowsModule = {
     },
   },
   runtimeInvocationTool: WORKFLOW_RUNTIME_INVOCATION_TOOL,
+  // A deleted workflow keeps its chat facts but loses its tool content, like a deleted session.
+  conversationDeletionFacts: ["workflow.run.deleted"] satisfies readonly WorkflowRunFact["type"][],
   sessionDeletion: {
     kind: "workflow",
     settle: async (input) => {
