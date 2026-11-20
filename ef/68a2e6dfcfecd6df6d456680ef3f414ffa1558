@@ -1,0 +1,18 @@
+bench/chat-ab/masking/matrix-claude.json
+  h_4b47e9e4a8b456 1-105
+bench/chat-ab/masking/matrix-deepseek.json
+  h_4b47e9e4a8b456 1-105
+bench/chat-ab/masking/matrix-openai.json
+  h_4b47e9e4a8b456 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ef68a2e6dfcfecd6df6d456680ef3f414ffa1558",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
