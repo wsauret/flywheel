@@ -1,0 +1,26 @@
+src/infra/env-detection.ts
+  h_4b47e9e4a8b456 228-230,237-239
+src/orchestration/agent-runtime/module-runtime-services.ts
+  h_4b47e9e4a8b456 88-90,195
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 161
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 393
+src/orchestration/modules/subagents/execution/dispatch-deps.ts
+  h_4b47e9e4a8b456 78-79
+tests/unit/infra/env-detection.test.ts
+  h_4b47e9e4a8b456 61,149,158-159
+tests/unit/orchestration/agent-runtime/subagent/execute-construction.test.ts
+  h_4b47e9e4a8b456 14,20-30,89-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c5cc47b790e7726573af5031c125e75a301b8bc9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
