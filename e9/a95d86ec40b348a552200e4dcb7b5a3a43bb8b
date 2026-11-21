@@ -1,0 +1,18 @@
+website/src/components/ProductFrame.astro
+  h_4b47e9e4a8b456 10
+website/src/pages/index.astro
+  h_4b47e9e4a8b456 30,241,243-256,262
+website/src/styles/global.css
+  h_4b47e9e4a8b456 94-95,134,146,168,175,195,242,246,256,259-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e9a95d86ec40b348a552200e4dcb7b5a3a43bb8b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
