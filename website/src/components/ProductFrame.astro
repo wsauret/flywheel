@@ -7,9 +7,6 @@ const { title } = Astro.props;
 ---
 
 <div class="frame">
-  <div class="frame-bar">
-    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-    <span class="title">{title}</span>
-  </div>
+  <div class="frame-bar">{title}</div>
   <slot />
 </div>

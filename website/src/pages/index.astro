@@ -26,9 +26,8 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
       </svg>
       <div class="shell">
         <div class="hero-inner">
-          <p class="kicker">Open-source coding agent &middot; Apache 2.0</p>
           <h1>Every subscription you pay for.<br /><span class="dim">One coding agent.</span></h1>
-          <p class="lede">Flywheel pools your Claude, ChatGPT, GitHub Copilot, SuperGrok, and OpenCode Go subscriptions, with as many accounts of each as you have. When one hits a cap, the next takes over without interrupting your work. Its multi-agent workflows cost 30% less than Claude Code's on the same model, and one live session follows you from terminal to browser to phone.</p>
+          <p class="lede">Flywheel is an open-source coding agent that pools your Claude, ChatGPT, GitHub Copilot, SuperGrok, and OpenCode Go subscriptions, with as many accounts of each as you have. When one hits a cap, the next takes over without interrupting your work. Its multi-agent workflows cost 30% less than Claude Code's on the same model, and one live session follows you from terminal to browser to phone.</p>
           <InstallCommand id="install" />
           <div class="hero-links">
             <a href="https://github.com/wsauret/flywheel#install">Installation guide</a>
@@ -51,7 +50,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="subscriptions">
       <div class="shell chapter-grid">
         <div>
-          <p class="eyebrow">01 / Subscriptions</p>
           <h2>Two subscriptions? Flywheel uses both.</h2>
           <p class="body">Sign in to Claude, ChatGPT, GitHub Copilot, SuperGrok, and OpenCode Go, with as many paid accounts of each as you have. When one account hits a cap, Flywheel moves to the next one without interrupting your work. Add API keys for Anthropic, OpenAI, Google, DeepSeek, Baseten, OpenRouter, or any OpenAI-compatible endpoint as a fallback.</p>
           <Checks items={[
@@ -70,7 +68,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="workflows">
       <div class="shell chapter-grid">
         <div>
-          <p class="eyebrow">02 / Workflows</p>
           <h2>Teams of agents. 30% cheaper.</h2>
           <p class="body">Describe the work in chat. For a big job, the agent launches a team of agents that build, review, repair, and verify, on any model, with independent work running at the same time.</p>
           <Checks items={[
@@ -96,7 +93,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="surfaces">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">03 / Every screen</p>
           <h2>One session. Terminal, browser, or phone.</h2>
           <p class="body">Every client attaches to the same live session. Start a job in the terminal, follow it in the browser, and answer the agent's question from your phone.</p>
         </div>
@@ -121,7 +117,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="scope">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">04 / Scope</p>
           <h2>It does what you asked. Nothing more.</h2>
           <p class="body">Scope creep and over-engineering are two of the biggest problems with today's frontier models. Flywheel is built to fight both.</p>
           <Checks items={[
@@ -137,7 +132,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="models">
       <div class="shell chapter-grid">
         <div>
-          <p class="eyebrow">05 / Models</p>
           <h2>The right model for every job.</h2>
           <p class="body">Instead of one model for everything, set a model and effort for the chat and for each kind of subagent, from any provider.</p>
           <Checks items={[
@@ -162,7 +156,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="profiles">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">06 / Profiles</p>
           <h2>Work and personal, kept apart.</h2>
           <p class="body">Bind each project to a profile. A work repository never spends your personal subscriptions, or the other way around. Make as many profiles as you like, each with its own signed-in accounts and model choices.</p>
         </div>
@@ -172,7 +165,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="blocked">
       <div class="shell chapter-grid">
         <div>
-          <p class="eyebrow">07 / Blocked</p>
           <h2>Know the moment an agent needs you.</h2>
           <p class="body">An agent only stops before completion when it needs your input or approval. Flywheel makes sure you see it.</p>
           <Checks items={[
@@ -198,7 +190,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="durable">
       <div class="shell chapter-grid">
         <div>
-          <p class="eyebrow">08 / Durable</p>
           <h2>Close the terminal. It keeps going.</h2>
           <p class="body">Sessions are durable. They run in the background and continue after crashes, updates, and restarts.</p>
           <Checks items={[
@@ -228,7 +219,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="learning">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">09 / Learning</p>
           <h2>It learns as you work.</h2>
           <p class="body">Flywheel remembers your preferences and turns what you teach it into skills that it uses next time. Every skill is a file that you can read, and <code>flywheel skills why</code> shows where it came from.</p>
         </div>
@@ -238,7 +228,6 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="themes">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">10 / Themes</p>
           <h2>Your terminal, your colors.</h2>
           <p class="body">Flywheel ships about 40 themes, from Catppuccin to Gruvbox, and a new theme applies at once, with no restart. <code>flywheel font install</code> installs Monaspace, the font that Flywheel is designed around.</p>
         </div>
@@ -249,30 +238,28 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
     <section class="chapter" id="more">
       <div class="shell">
         <div class="chapter-head">
-          <p class="eyebrow">11 / And also</p>
-          <h2>Smaller things that matter.</h2>
+          <h2>Also in Flywheel.</h2>
         </div>
-        <div class="cards">
-          <div class="card"><h3>Turn anything off.</h3><p>About 20 capabilities each have one switch. Keep only what you use, and the agent never sees the rest.</p></div>
-          <div class="card"><h3>Many sessions, one window.</h3><p>Run as many sessions as you want in tabs in one terminal. <code>ctrl+n</code> opens a new tab, and <code>ctrl+s</code> finds any earlier session.</p></div>
-          <div class="card"><h3>No account, no analytics.</h3><p>Flywheel collects no usage data.</p></div>
-          <div class="card"><h3>Search every chat.</h3><p><code>/find</code> searches the text of this chat or of every chat in the project.</p></div>
-          <div class="card"><h3>Measured speed.</h3><p><code>/stats</code> compares the measured speed of each model and effort.</p></div>
-          <div class="card"><h3>Streaming diffs.</h3><p>File edits show as diffs while the model's response streams in, so you see each change as it is written, not after.</p></div>
-          <div class="card"><h3>Long chats keep their details.</h3><p>After a long chat is summarized to make room, the agent can still find and reread the exact earlier text: an error, a file path, or the reason for a decision.</p></div>
-          <div class="card"><h3>Your changes to built-in skills stay yours.</h3><p>When a new version ships, Flywheel asks whether to keep yours, take the new one, or merge the two. It never overwrites your work.</p></div>
-          <div class="card"><h3>Chats can talk to each other.</h3><p>An agent in one chat can ask or answer another chat or workflow in the same project. You see each message in both transcripts.</p></div>
-          <div class="card"><h3>Bring your MCP servers.</h3><p><code>flywheel mcp import .mcp.json</code> brings over the MCP servers you set up for Claude Code.</p></div>
-          <div class="card"><h3>Fix it from the lightbulb.</h3><p>In VS Code, click the lightbulb on an error or warning to send that exact problem to Flywheel, or select code and ask Flywheel to explain it.</p></div>
-          <div class="card"><h3>Free routes first, paid as backup.</h3><p>On OpenRouter and OpenCode Go, Flywheel can use the free version of a model first, and move to the paid route of the same model when the free one is not available.</p></div>
-        </div>
+        <ul class="facts pairs">
+          <li><b>Turn anything off.</b> About 20 capabilities each have one switch. Keep only what you use, and the agent never sees the rest.</li>
+          <li><b>Many sessions, one window.</b> Run as many sessions as you want in tabs in one terminal. <code>ctrl+n</code> opens a new tab, and <code>ctrl+s</code> finds any earlier session.</li>
+          <li><b>No account, no analytics.</b> Flywheel collects no usage data.</li>
+          <li><b>Search every chat.</b> <code>/find</code> searches the text of this chat or of every chat in the project.</li>
+          <li><b>Measured speed.</b> <code>/stats</code> compares the measured speed of each model and effort.</li>
+          <li><b>Streaming diffs.</b> File edits show as diffs while the model's response streams in, so you see each change as it is written, not after.</li>
+          <li><b>Long chats keep their details.</b> After a long chat is summarized to make room, the agent can still find and reread the exact earlier text: an error, a file path, or the reason for a decision.</li>
+          <li><b>Your changes to built-in skills stay yours.</b> When a new version ships, Flywheel asks whether to keep yours, take the new one, or merge the two. It never overwrites your work.</li>
+          <li><b>Chats can talk to each other.</b> An agent in one chat can ask or answer another chat or workflow in the same project. You see each message in both transcripts.</li>
+          <li><b>Bring your MCP servers.</b> <code>flywheel mcp import .mcp.json</code> brings over the MCP servers you set up for Claude Code.</li>
+          <li><b>Fix it from the lightbulb.</b> In VS Code, click the lightbulb on an error or warning to send that exact problem to Flywheel, or select code and ask Flywheel to explain it.</li>
+          <li><b>Free routes first, paid as backup.</b> On OpenRouter and OpenCode Go, Flywheel can use the free version of a model first, and move to the paid route of the same model when the free one is not available.</li>
+        </ul>
       </div>
     </section>
 
     <section class="chapter" id="get-started">
       <div class="shell install-final">
-        <p class="eyebrow">12 / Install</p>
-        <h2>Ready when you are.</h2>
+        <h2>Install Flywheel.</h2>
         <p class="body">The installer verifies every download against the published SHA-256 digests. Flywheel then updates itself without interrupting a running session.</p>
         <InstallCommand id="install-footer" />
         <p class="matrix">darwin-arm64 &middot; darwin-x64 &middot; linux-x64 &middot; linux-arm64 &middot; linux-x64-musl &middot; linux-arm64-musl &middot; win32-x64 &middot; win32-arm64</p>
