@@ -487,13 +487,13 @@ describe("planToolExposure", () => {
     const skill = (await plan({ capabilities: ALL_CAPABILITIES, skills: skillRevision([testSkill("pdf-processing")]) }, [], { selected: new Set(["read"]) })).tools.get("skill");
     expect(skill).toBeDefined();
     expect(testBaseTools().has("skill")).toBe(false);
-    expect(skill!.promptGuidelines!.join("\n")).toContain("pdf-processing");
+    expect(skill!.promptCatalog).toContain("pdf-processing");
   });
 
   it("advertises a skill only while the tree's modules make it available", async () => {
     const skills = skillRevision([testSkill("pdf-processing"), testSkill("dispatching", { agents: ["advisor"] })]);
     const roster = async (disabled: readonly ModuleId[]) => (await plan({ capabilities: ALL_CAPABILITIES, skills, moduleSnapshot: composeFirstPartyModules(undefined, disabled) }))
-      .tools.get("skill")?.promptGuidelines?.join("\n") ?? "";
+      .tools.get("skill")?.promptCatalog ?? "";
 
     expect(await roster([])).toContain("- dispatching: ");
     const withoutSubagents = await roster(["subagents"]);
@@ -506,7 +506,7 @@ describe("planToolExposure", () => {
     const planned = await plan({ capabilities: ALL_CAPABILITIES, skills: revision });
 
     expect(planned.skillRegistry).toBe(revision);
-    expect(planned.tools.get("skill")?.promptGuidelines?.join("\n")).toContain("fly.code-review");
+    expect(planned.tools.get("skill")?.promptCatalog).toContain("fly.code-review");
   });
 
   it("exposes only the load and resource actions", async () => {

@@ -132,17 +132,10 @@ export function createSkillTool(deps: SkillToolDeps): RuntimeTool {
   const catalog = deps.revision.modelInvocable.filter((skill) => deps.treeCapabilities(`skill:${skill.id}`));
   return {
     ...SKILL_TOOL_DEFINITION,
-    promptGuidelines: buildPromptGuidelines(catalog),
+    ...(catalog.length > 0 ? { promptCatalog: `Installed skills:\n${catalog.map((skill) => `- ${skill.id}: ${skill.trigger}`).join("\n")}` } : {}),
+    promptGuidelines: [SCAN_THEN_LOAD_GUIDANCE],
     execute: async (input, context) => executeSkill(deps, catalog, input, context),
   };
-}
-
-function buildPromptGuidelines(catalog: readonly SkillDefinition[]): readonly string[] {
-  const lines = catalog.map((skill) => `- ${skill.id}: ${skill.trigger}`);
-  return [
-    `Installed skills:\n${lines.join("\n")}`,
-    SCAN_THEN_LOAD_GUIDANCE,
-  ];
 }
 
 async function executeSkill(deps: SkillToolDeps, catalog: readonly SkillDefinition[], input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {

@@ -87,7 +87,7 @@ export function createAgentLoopToolContext(input: AgentLoopToolContextInput): Ag
     surface,
     toolContext,
     prepareCurrentPrompt: async (profile) => {
-      await prepareRequestPrompt(options, profile, input.attempt())
+      await prepareRequestPrompt(options, profile, input.attempt(), conversationHistory())
     },
   }
 }

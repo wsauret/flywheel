@@ -19,11 +19,12 @@ import { isSessionOwnerGone, writeOwnerPid } from "./pid-lock.js"
 import { createConversationTree } from "./conversation/conversation-tree-handle.js"
 import { ConversationTreeStorage } from "./conversation/conversation-tree-storage.js"
 import { forkConversationTree } from "./conversation/conversation-tree-fork.js"
-import { validateRawForkBranchWork } from "./conversation/conversation-tree-context.js"
+import { reconstructRawSessionMessages, validateRawForkBranchWork } from "./conversation/conversation-tree-context.js"
 import { runInTaskSlices } from "../../infra/task-scheduling.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { prepareChatBranchPublication } from "./session-chat-branch-publication.js"
 import { readConversationCheckpoint } from "./conversation-checkpoint.js"
+import { readConversationPromptBaseline } from "./conversation-prompt-baseline.js"
 import { buildSessionForkedFact } from "./session-fork-facts.js"
 import { contextUtilizationFromProjection, createBudgetProjection } from "./budget-projection.js"
 import { createSessionLifecyclePublication } from "./session-lifecycle-publication.js"
@@ -366,6 +367,10 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const capture = await sourceTree.captureCommittedActiveBranch()
     sourceTree.dispose()
     const checkpoint = await readConversationCheckpoint(projectionReader, { kind: "session", sessionId: sourceSessionId }, source.conversationId)
+    // The fork takes the fixed prompt of the context that it copies, which the source can leave by a compaction after
+    // the capture.
+    const promptBaseline = await readConversationPromptBaseline(projectionReader, { kind: "session", sessionId: sourceSessionId }, source.conversationId,
+      await runInTaskSlices("conversation:fork-prompt", reconstructRawSessionMessages(capture.entries)))
     // The fork sends the same prompt as its source, so the source's last
     // context measurement is also the fork's until the fork's own first turn.
     const context = contextUtilizationFromProjection(await createBudgetProjection(projectionReader, sourceSessionId).replay())
@@ -391,7 +396,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       publishedAt: now,
     })
     const destinationEvents: GuardedEventStoreAppend[] = [
-      ...prepareChatBranchPublication({ sourceSessionId, source, checkpoint, targetSessionId, targetConversationId, projectRoot, now }),
+      ...prepareChatBranchPublication({ sourceSessionId, source, checkpoint, promptBaseline, targetSessionId, targetConversationId, projectRoot, now }),
       {
         aggregateId: `session:${targetSessionId}`,
         type: forkFact.type,
@@ -427,6 +432,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     const source = await metadata.readOrThrow(sourceSessionId)
     if (source.kind !== "chat") throw new SessionForkRefusal("Only chat sessions can supply conversation context")
     const checkpoint = await readConversationCheckpoint(projectionReader, { kind: "session", sessionId: sourceSessionId }, source.conversationId)
+    const promptBaseline = await readConversationPromptBaseline(projectionReader, { kind: "session", sessionId: sourceSessionId }, source.conversationId, messages)
     const targetSessionId = metadata.allocateId()
     const targetConversationId = metadata.allocateId()
     const now = new Date().toISOString()
@@ -449,7 +455,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     await appendChildPublication(
       targetSessionId,
       [sourceSessionId],
-      prepareChatBranchPublication({ sourceSessionId, source, checkpoint, targetSessionId, targetConversationId, projectRoot, now }),
+      prepareChatBranchPublication({ sourceSessionId, source, checkpoint, promptBaseline, targetSessionId, targetConversationId, projectRoot, now }),
       "context publication",
     )
     notifyChanged([targetSessionId, sourceSessionId])

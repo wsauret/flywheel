@@ -33,15 +33,17 @@ type ResolvedSurface = Awaited<ReturnType<RequestToolSurfaceOwner["resolve"]>>;
  *  sent. */
 const NEXT_MESSAGE = "(next message)";
 
-/** Builds the stable system prompt of the request that `surface` plans, for `attempt` and `profile`. */
+/** Builds the stable system prompt of the request that `surface` plans, for `attempt`, `profile`, and the history
+ *  `messages` that the request sends. */
 export function prepareRequestPrompt(
   inputs: Pick<AgentLoopOptions, "tools" | "systemPrompt">,
   profile: ModelInteractionProfile,
   attempt: ServingAttempt,
+  messages: readonly ConversationMessage[],
 ): ReturnType<ReturnType<RequestToolSurfaceOwner["current"]>["prepareStablePrompt"]> {
   const { systemPrompt } = inputs;
   return inputs.tools.current().prepareStablePrompt(
-    () => typeof systemPrompt === "function" ? systemPrompt(attempt, profile) : systemPrompt,
+    () => typeof systemPrompt === "function" ? systemPrompt(attempt, profile, messages) : systemPrompt,
     profile,
   );
 }
@@ -109,7 +111,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
     surface, client, providerOptions: inputs.providerOptions, signal, initialInteractionProfile: preparation.initialInteractionProfile,
     prepareCurrentPrompt: async (profile, attempt) => {
       preparation.planned = attempt;
-      await prepareRequestPrompt(inputs, profile, attempt);
+      await prepareRequestPrompt(inputs, profile, attempt, preparation.messages);
     },
   });
   return Object.assign(preparation, {

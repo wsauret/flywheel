@@ -199,3 +199,9 @@ Because: Context that moves on each request leaves no cached prefix to reuse and
 
 When a provider reports that it discarded part of a request's context, such as replayed reasoning, the runtime records the kind, the reason, and the count, without content.
 Because: A discarded prefix costs cache and reasoning silently, and only the provider's report shows it.
+
+## ARCH-CONTEXT-044: A conversation's system prompt is fixed between context resets
+
+A conversation's system prompt is rendered when its context opens and is held, durably, until its next compaction, model switch, or Flywheel version change. A later change to an input of the prompt, such as memory, instruction files, or the skill catalog, is appended once as a system-origin entry where it takes effect.
+Because: A changed system prompt invalidates the cached history behind it and drops replayed reasoning.
+Not: Rendering the prompt again for each turn and relying on cache breakpoints.

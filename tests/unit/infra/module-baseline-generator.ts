@@ -144,7 +144,7 @@ async function renderCapabilityModuleBaseline(): Promise<string> {
       chatHost: { communication: true },
       agentsMd: "stable agents",
       envBlock: "stable environment",
-      moduleFragments: [learningMemoryPrompt("stable memory")],
+      moduleFragments: [{ id: "learning-memory", text: learningMemoryPrompt("stable memory") }],
     })),
     accessProviders: {
       ids: providerIds,

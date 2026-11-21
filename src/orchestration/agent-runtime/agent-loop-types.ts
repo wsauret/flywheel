@@ -213,12 +213,17 @@ export interface AgentLoopOptions {
   /** One request-composition owner for modules, tools, prompt bytes, provider
    *  clients and planning, execution gates, and billing. */
   tools: RequestToolSurfaceOwner;
-  /** Builds the request-stable prompt from the planned serving attempt and the
-   *  one interaction profile captured for this request. */
-  systemPrompt: SystemPromptTiers | ((attempt: ServingAttempt, profile: ModelInteractionProfile) => SystemPromptTiers | Promise<SystemPromptTiers>);
+  /** Builds the request-stable prompt from the planned serving attempt, the
+   *  one interaction profile captured for this request, and the history that
+   *  the request sends, whose context the prompt is fixed for (ARCH-CONTEXT-044). */
+  systemPrompt: SystemPromptTiers | ((attempt: ServingAttempt, profile: ModelInteractionProfile, messages: readonly ConversationMessage[]) => SystemPromptTiers | Promise<SystemPromptTiers>);
   /** The system-origin messages for the next request, decided from the history: the modules' standing-mode
-   *  reminders (turn-reminders.ts), then the capability narrowing statement when one is due (capability-narrowing.ts). */
+   *  reminders (turn-reminders.ts), then the capability narrowing statement when one is due (capability-narrowing.ts),
+   *  then the updates of the fixed system prompt (prompt-baseline.ts). */
   turnReminders?: (messages: readonly ConversationMessage[]) => Promise<readonly ConversationMessage[]>;
+  /** A compaction replaced the history with a fresh context, whose next request renders its own fixed system prompt
+   *  (ARCH-CONTEXT-044). */
+  onContextReset?: () => void;
   /** Holds the first request of this run behind a sibling that writes the
    *  same cached prompt prefix. Only the runtimes of agents of a workflow carry it
    *  (prompt-prefix-hold.ts). */

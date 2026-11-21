@@ -9,10 +9,12 @@ import { AgentInputFactSchemas } from "./agent-input-facts.js"
 import { ProviderRequestAuditFactSchemas } from "./provider-request-audit-facts.js"
 import { ConversationCheckpointFactSchemas } from "./conversation-checkpoint-facts.js"
 import { ConversationRolePickFactSchemas } from "./conversation-role-pick.js"
+import { ConversationPromptBaselineFactSchemas } from "./conversation-prompt-baseline.js"
 
 const FACT_MODULES = [
   ConversationCheckpointFactSchemas,
   ConversationRolePickFactSchemas,
+  ConversationPromptBaselineFactSchemas,
   AgentInputFactSchemas,
   FileMutationFactSchemas,
   SessionForkFactSchemas,

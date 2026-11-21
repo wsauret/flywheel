@@ -176,6 +176,9 @@ export interface RuntimeTool {
   promptGuidelines?: readonly string[];
   /** Guidelines resolved while each request assembles its system prompt. */
   livePromptGuidelines?: () => readonly string[];
+  /** A catalog of `- id: text` lines under one heading line, which the system prompt renders as a part of its own.
+   *  A conversation whose prompt is fixed learns of a later change as the changed lines only (ARCH-CONTEXT-044). */
+  promptCatalog?: string;
   promptExamples?: string;
   /** Provider-facing JSON schema. The root is always one `type: "object"`
    *  schema: providers reject a union root (`oneOf`, `anyOf`, `allOf`), so

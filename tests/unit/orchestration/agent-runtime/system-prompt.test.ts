@@ -19,7 +19,7 @@ describe("buildSystemPrompt experiment fragment", () => {
       corePrompt: "core",
       tools: [],
       promptKind: "chat",
-      moduleFragments: [activeFragment],
+      moduleFragments: [{ id: "experiments-active", text: activeFragment }],
     }))
 
     expect(renderSystemPrompt(prompt).split("EXPERIMENT_FRAGMENT_MARKER")).toHaveLength(2)
@@ -27,7 +27,7 @@ describe("buildSystemPrompt experiment fragment", () => {
       corePrompt: "core",
       tools: [],
       promptKind: "chat",
-      moduleFragments: [activeFragment],
-    }))).toContainEqual({ label: "module fragment", text: activeFragment, tier: "session" })
+      moduleFragments: [{ id: "experiments-active", text: activeFragment }],
+    }))).toContainEqual({ label: "experiments-active", text: activeFragment, tier: "session", change: "replace" })
   })
 })

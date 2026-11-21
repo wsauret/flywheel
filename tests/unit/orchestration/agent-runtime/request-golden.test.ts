@@ -180,7 +180,7 @@ describe("held request preparation", () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
     let activeTasks = 0
     const activeTaskCount = spyOn(tasks, "activeTaskCount").mockImplementation(() => activeTasks)
-    const builds = spyOn(systemPromptModule, "buildSystemPrompt")
+    const builds = spyOn(systemPromptModule, "buildSystemPromptParts")
     const bodies: z.infer<typeof RequestBody>[] = []
     const transport = scriptedOperations((body) => {
       bodies.push(RequestBody.parse(body))

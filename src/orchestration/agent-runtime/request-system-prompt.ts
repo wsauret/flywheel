@@ -64,10 +64,12 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
   const capabilities = treeCapabilityCheck(moduleSnapshot, facts.kernel.definitionAvailability.tree, [...tools.keys()].map((name) => facts.registrationIdentities.get(name) ?? name));
   const fragmentInput = { kernel: facts.kernel, modules: facts.modules, tools, memorySnapshot, capabilities };
   const fragments = moduleSnapshot.contributions
-    .flatMap((contribution) => contribution.domain === "promptFragments" ? [contribution.value] : [])
-    .toSorted((left, right) => left.order - right.order);
-  const moduleFragments = (await Promise.all(fragments.map((fragment) => fragment.render(fragmentInput))))
-    .filter((fragment): fragment is string => fragment !== undefined);
+    .flatMap((contribution) => contribution.domain === "promptFragments" ? [{ id: contribution.id, fragment: contribution.value }] : [])
+    .toSorted((left, right) => left.fragment.order - right.fragment.order);
+  const moduleFragments = (await Promise.all(fragments.map(async ({ id, fragment }) => {
+    const text = await fragment.render(fragmentInput);
+    return text === undefined ? [] : [{ id, text }];
+  }))).flat();
   return {
     corePrompt: facts.corePrompt ?? "",
     ...(facts.engineeringDoctrine ? { engineeringDoctrine: facts.engineeringDoctrine } : {}),

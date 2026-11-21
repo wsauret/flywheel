@@ -477,6 +477,7 @@ describe("prompt sources take effect at the person's message", () => {
     }
     const mailbox = new ChatTurnMailbox()
     const prompts: string[] = []
+    const histories: string[] = []
     const runner = newTestRunner(
       makeOptions({
         ...testDirectories(project),
@@ -488,6 +489,7 @@ describe("prompt sources take effect at the person's message", () => {
       }),
       streamingClientFactory(async function* (options: StreamOptions) {
         prompts.push(renderSystemPrompt(options.systemPrompt))
+        histories.push(JSON.stringify(options.messages))
         if (prompts.length === 1) {
           // Writes during the person's turn: the turn's next request keeps its prompt.
           writeFileSync(join(project, "AGENTS.md"), "INSTRUCTIONS V2")
@@ -521,21 +523,20 @@ describe("prompt sources take effect at the person's message", () => {
       mailbox.enqueueNextTurn("second person message")
       await parkedAfter(4)
       const sources = (prompt: string) => ["INSTRUCTIONS V1", "MEMORY V1", "INSTRUCTIONS V2", "MEMORY V2", "FIXED INSTRUCTIONS", "FIXED MEMORY"].filter((marker) => prompt.includes(marker))
-      return { sources: prompts.map(sources), readsBeforeSecondMessage, memoryReads }
+      // Each update of the fixed prompt that a request's history holds, by the part that it names.
+      const updates = (history: string) => history.split('prompt-part=\\"').slice(1).map((entry) => `${entry.slice(0, entry.indexOf('\\"'))}: ${sources(entry.slice(0, entry.indexOf("</system-reminder>"))).join(", ")}`)
+      return { sources: prompts.map(sources), fixedPrompts: new Set(prompts).size, updates: histories.map(updates), readsBeforeSecondMessage, memoryReads }
     } finally {
       runner.abort()
       await runner.done
     }
   }
 
-  test.each(["seeded instruction", "queued message"] as const)("after a %s start, one turn keeps one prompt, a background turn keeps it, and the next person message reloads memory and AGENTS.md once", async (start) => {
+  test.each(["seeded instruction", "queued message"] as const)("after a %s start, the system prompt stays fixed, and the next person message states the reloaded memory and AGENTS.md once each", async (start) => {
     expect(await driveTurns(start)).toEqual({
-      sources: [
-        ["INSTRUCTIONS V1", "MEMORY V1"],
-        ["INSTRUCTIONS V1", "MEMORY V1"],
-        ["INSTRUCTIONS V1", "MEMORY V1"],
-        ["INSTRUCTIONS V2", "MEMORY V2"],
-      ],
+      sources: Array.from({ length: 4 }, () => ["INSTRUCTIONS V1", "MEMORY V1"]),
+      fixedPrompts: 1,
+      updates: [[], [], [], ["AGENTS.md instructions: INSTRUCTIONS V2", "learning-memory: MEMORY V2"]],
       readsBeforeSecondMessage: 1,
       memoryReads: 2,
     })
@@ -544,6 +545,6 @@ describe("prompt sources take effect at the person's message", () => {
   test("an override of either source is never reloaded", async () => {
     const fixed = await driveTurns("seeded instruction", { agentsMd: "FIXED INSTRUCTIONS", memorySnapshot: "FIXED MEMORY" })
 
-    expect(fixed).toEqual({ sources: Array.from({ length: 4 }, () => ["FIXED INSTRUCTIONS", "FIXED MEMORY"]), readsBeforeSecondMessage: 0, memoryReads: 0 })
+    expect(fixed).toEqual({ sources: Array.from({ length: 4 }, () => ["FIXED INSTRUCTIONS", "FIXED MEMORY"]), fixedPrompts: 1, updates: [[], [], [], []], readsBeforeSecondMessage: 0, memoryReads: 0 })
   })
 })

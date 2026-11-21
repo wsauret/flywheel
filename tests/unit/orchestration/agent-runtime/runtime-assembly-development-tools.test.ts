@@ -2,7 +2,7 @@ import { describe, expect, it, setSystemTime } from "bun:test"
 import { createEnvCaptureResolver, localDate } from "../../../../src/infra/env-detection.js"
 import { fakeOwnedCommandRunner } from "../../../helpers/owned-command-fake.js"
 import { refusingLauncher } from "../../../helpers/launcher-fake.js"
-import { FUNCTION_TOOL_PRESENTATION, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
+import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderStreamEvent, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { PromptKind } from "../../../../src/orchestration/agent-runtime/system-prompt.js"
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream.js"
 import type { AgentLoopOptions } from "../../../../src/orchestration/agent-runtime/agent-loop-types.js"
@@ -229,22 +229,22 @@ describe("direct headless system prompt override", () => {
     await overridden.tools.resolve()
     if (typeof production.systemPrompt !== "function" || typeof overridden.systemPrompt !== "function") throw new Error("expected request-local system prompts")
 
-    const productionPrompt = renderSystemPrompt(await production.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(production.tools.current()).interactionProfile))
+    const productionPrompt = renderSystemPrompt(await production.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(production.tools.current()).interactionProfile, []))
     expect(productionPrompt).toStartWith("You are a helpful AI Agent.")
     expect(productionPrompt).toContain("Guidelines:")
     expect(productionPrompt).not.toContain("Universal Principles of Elegant Code")
-    expect(renderSystemPrompt(await overridden.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(overridden.tools.current()).interactionProfile))).toBe("literal\nbytes")
+    expect(renderSystemPrompt(await overridden.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(overridden.tools.current()).interactionProfile, []))).toBe("literal\nbytes")
     expect((await preparedTools(overridden.tools.current())).map((tool) => tool.name)).toEqual((await preparedTools(production.tools.current())).map((tool) => tool.name))
   })
 })
 
 describe("environment date", () => {
-  it("keeps the date that a turn's assembly read for every request of the turn, and the next turn states the new date", async () => {
+  it("keeps the date that a turn's assembly read for every request of the turn, and a compaction or the next turn states the new date", async () => {
     const resolveEnvSnapshot = createEnvCaptureResolver(fakeOwnedCommandRunner().run)
-    const turnPrompt = async (assembled: AgentLoopOptions) => {
+    const turnPrompt = async (assembled: AgentLoopOptions, messages: readonly ConversationMessage[] = []) => {
       const surface = await assembled.tools.resolve()
       if (typeof assembled.systemPrompt !== "function") throw new Error("expected request-local system prompt")
-      return renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))
+      return renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile, messages))
     }
     // A day apart, so the two instants name different local dates in every zone.
     const today = new Date("2026-10-09T12:00:00Z")
@@ -256,6 +256,9 @@ describe("environment date", () => {
       setSystemTime(tomorrow)
       expect(await turnPrompt(turn)).toContain(`Date: ${localDate(today)}`)
       expect(await turnPrompt(await assembledRuntime("headless", { resolveEnvSnapshot }))).toContain(`Date: ${localDate(tomorrow)}`)
+      // The fresh context of a compaction states the date on which it opens.
+      turn.onContextReset?.()
+      expect(await turnPrompt(turn, [{ kind: "user", content: "A fresh context window has started." }])).toContain(`Date: ${localDate(tomorrow)}`)
     } finally {
       setSystemTime()
     }
@@ -283,7 +286,7 @@ describe("universal scoped notes assembly", () => {
     for (const name of ["checkpoint_read", "checkpoint_replace", "checkpoint_decide"]) expect(surface.tools.has(name)).toBe(true)
     for (const name of ["read", "write", "edit"]) expect(surface.tools.has(name)).toBe(false)
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected assembled prompt")
-    const prompt = renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))
+    const prompt = renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile, []))
     expect(prompt).toContain("with the checkpoint tools")
     // The skill guidance follows the skill tool: chat and follow-up select no tools here, so they have none.
     expect(prompt.includes('Keep a short "Relevant skills" section')).toBe(surface.tools.has("skill"))
@@ -323,7 +326,7 @@ describe("universal scoped notes assembly", () => {
     }, repoDefinitions(), modelClient("test", (request) => requests.push(request)))
     const surface = await assembled.tools.resolve()
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected literal prompt")
-    expect(renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))).toBe("literal\nbytes\n")
+    expect(renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile, []))).toBe("literal\nbytes\n")
     expect(assembled.initialRequestContext).toStartWith("caller context")
     expect(assembled.initialRequestContext).toContain("with the checkpoint tools")
     let queued = false
@@ -365,7 +368,7 @@ describe("model interaction profile provider boundary", () => {
     const systemPrompt = assembled.systemPrompt
     if (typeof systemPrompt !== "function") throw new Error("expected request-local system prompt")
     await surface.prepareStablePrompt(
-      () => systemPrompt(runtime.plannedAttempt, runtime.interactionProfile),
+      () => systemPrompt(runtime.plannedAttempt, runtime.interactionProfile, []),
       runtime.interactionProfile,
     )
     const requestAudit: ProviderRequestAuditWriter = {
@@ -436,7 +439,7 @@ describe("model interaction profile provider boundary", () => {
     const systemPrompt = assembled.systemPrompt
     if (typeof systemPrompt !== "function") throw new Error("expected request-local system prompt")
     await surface.prepareStablePrompt(
-      () => systemPrompt(runtime.plannedAttempt, runtime.interactionProfile),
+      () => systemPrompt(runtime.plannedAttempt, runtime.interactionProfile, []),
       runtime.interactionProfile,
     )
 
@@ -527,7 +530,7 @@ describe("development tool runtime assembly", () => {
 })
 
 describe("request-local skill revision", () => {
-  it("adds and removes chat review guidance with the next request's advertised roster", async () => {
+  it("adds and removes chat review guidance with the next request's advertised roster, as entries after the fixed prompt", async () => {
     let revision = publishSkillRevision(1, new Map([["other", testSkill("other")]]))
     const definitions = { ...repoDefinitions(), skills: () => revision, captureRevision: () => ({ ...repoDefinitions().captureRevision(), skills: revision }) }
     const assembled = await assembledRuntime("chat", {
@@ -540,24 +543,38 @@ describe("request-local skill revision", () => {
     const systemPrompt = assembled.systemPrompt
     if (typeof systemPrompt !== "function") throw new Error("expected request-local system prompt")
     const attempt = await modelClient().plannedAttempt()
-    const prompt = async () => renderSystemPrompt(await systemPrompt(attempt, providerRuntime(assembled.tools.current()).interactionProfile))
+    const history: ConversationMessage[] = [{ kind: "user", content: "review my change", origin: "human" }]
+    // One request: its system prompt, then the entries that state the prompt's changes, which the history keeps.
+    const request = async () => {
+      const prompt = renderSystemPrompt(await systemPrompt(attempt, providerRuntime(assembled.tools.current()).interactionProfile, history))
+      const entries = (await assembled.turnReminders?.(history) ?? []).flatMap((entry) => typeof entry.content === "string" && entry.content.includes("prompt-part=") ? [entry.content] : [])
+      history.push(...entries.map((content): ConversationMessage => ({ kind: "user", content, origin: "system", framing: "turn-context" })))
+      return { prompt, entries }
+    }
 
     await assembled.tools.resolve()
-    expect(await prompt()).not.toContain("load the `code-review` skill")
-    expect(await prompt()).not.toContain("code-review:")
+    const opening = await request()
+    expect(opening.prompt).not.toContain("load the `code-review` skill")
+    expect(opening.prompt).not.toContain("code-review:")
+    expect(opening.entries).toEqual([])
 
     revision = publishSkillRevision(2, new Map([
       ["code-review", testSkill("code-review")],
       ["other", testSkill("other")],
     ]))
     await assembled.tools.resolve()
-    expect(await prompt()).toContain("load the `code-review` skill")
-    expect(await prompt()).toContain("code-review:")
+    const added = await request()
+    expect(added.prompt).toBe(opening.prompt)
+    expect(added.entries.join("\n")).toContain("load the `code-review` skill")
+    expect(added.entries.join("\n")).toContain("+ code-review:")
 
     revision = publishSkillRevision(3, new Map([["other", testSkill("other")]]))
     await assembled.tools.resolve()
-    expect(await prompt()).not.toContain("load the `code-review` skill")
-    expect(await prompt()).not.toContain("code-review:")
+    const removed = await request()
+    expect(removed.prompt).toBe(opening.prompt)
+    expect(removed.entries.join("\n")).not.toContain("load the `code-review` skill")
+    expect(removed.entries.join("\n")).toContain("is current again")
+    expect(removed.entries.join("\n")).toContain("- code-review")
   })
 })
 

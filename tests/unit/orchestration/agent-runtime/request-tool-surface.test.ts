@@ -494,7 +494,7 @@ describe("request tool surface", () => {
       return stableSystemPrompt("system prompt");
     }, DEFAULT_MODEL_INTERACTION_PROFILE);
 
-    expect(await first.prepareStablePrompt(() => stableSystemPrompt("unused"), DEFAULT_MODEL_INTERACTION_PROFILE)).toBe(stable);
+    expect(await first.prepareStablePrompt(() => stableSystemPrompt("system prompt"), DEFAULT_MODEL_INTERACTION_PROFILE)).toBe(stable);
     expect(builds).toBe(1);
     const prepared = first.prepareAttempt({ model: "model-a", toolPresentation: FUNCTION_TOOL_PRESENTATION });
     expect(schemaSerializations).toBe(1);
@@ -602,13 +602,16 @@ describe("request tool surface", () => {
     }
   });
 
-  test("prepares the stable prompt once per surface and passes each cache tier through unchanged", async () => {
+  test("keeps an equal stable prompt, takes a changed one, and passes each cache tier through unchanged", async () => {
     const owner = await createRequestToolSurface(() => plan([]), fullModules, testRuntimeConfigCapture);
     const pinned = await owner.resolve();
     const tiers = { stable: "STABLE", session: "SESSION", conversation: "CONVERSATION" };
+    const before = await pinned.prepareStablePrompt(() => stableSystemPrompt("before compaction"), DEFAULT_MODEL_INTERACTION_PROFILE);
     const prepared = await pinned.prepareStablePrompt(() => tiers, DEFAULT_MODEL_INTERACTION_PROFILE);
-    const repeated = await pinned.prepareStablePrompt(() => stableSystemPrompt("unused"), DEFAULT_MODEL_INTERACTION_PROFILE);
+    const repeated = await pinned.prepareStablePrompt(() => ({ ...tiers }), DEFAULT_MODEL_INTERACTION_PROFILE);
 
+    // A manual compaction's surface serves the fresh context, whose prompt renders again.
+    expect(prepared).not.toBe(before);
     expect(repeated).toBe(prepared);
     expect(prepared.systemPrompt).toEqual(tiers);
     const attempt = pinned.prepareAttempt({ model: "model-b", toolPresentation: FUNCTION_TOOL_PRESENTATION });

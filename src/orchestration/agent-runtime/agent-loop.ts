@@ -114,7 +114,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     admitSurface: (next) => { admittedRequest = next; },
     compactionAllowedTools: (requestsAhead) => budgetNudge.closureWhitelist(state.llmCalls + requestsAhead)?.tools,
     carryTurnEnd: () => state.personWait?.turnEnd === "recorded",
-    setMessages: (next) => { preparation.messages = next; turnContext.reset(); },
+    setMessages: (next) => { preparation.messages = next; turnContext.reset(); options.onContextReset?.(); },
     turnContext: turnContext.standing,
     onEvent,
     pushUser, pushMessage, onUserMessage: options.onUserMessage,

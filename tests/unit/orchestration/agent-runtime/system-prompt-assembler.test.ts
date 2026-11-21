@@ -3,7 +3,7 @@ import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/to
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildSystemPrompt as buildSystemPromptTiers, buildSystemPromptParts } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
+import { buildSystemPrompt as buildSystemPromptTiers, buildSystemPromptParts, type ModulePromptFragment } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines, type GlobalGuidelineId } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
@@ -196,14 +196,14 @@ describe("buildSystemPrompt -- chat", () => {
 });
 
 describe("buildSystemPrompt -- memory snapshot", () => {
-  async function learningPrompt(writable: boolean): Promise<string> {
+  async function learningPrompt(writable: boolean): Promise<ModulePromptFragment> {
     const contribution = composeFirstPartyModules().contributions.find((entry) => entry.domain === "promptFragments" && entry.id === "learning-memory");
     if (!contribution || contribution.domain !== "promptFragments") throw new Error("Learning prompt contribution is missing");
     const memoryTool: RuntimeTool = { name: "memory", action: "ui_meta", description: "memory", inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true, execute: async () => ({ content: "", outcome: "ok" }) };
     const tools = new Map(writable ? [["memory", memoryTool]] : []);
     const rendered = await contribution.value.render({ kernel: testKernelToolDeps(), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: snapshot, capabilities: promptCapabilities([...tools.values()]) });
     if (rendered === undefined) throw new Error("Learning prompt rendered nothing for a snapshot");
-    return rendered;
+    return { id: contribution.id, text: rendered };
   }
   const snapshot = "PROJECT MEMORY (user preferences and working context for this project) [reach: project | sha256:abc123 | 10% - 20/200 chars]\nUses bun everywhere.";
 
@@ -232,11 +232,11 @@ describe("buildSystemPrompt -- memory snapshot", () => {
       moduleFragments: [await learningPrompt(true)],
     }));
 
-    expect(prompt).toContain("memory tool writes are durable at once and appear here in a later snapshot");
+    expect(prompt).toContain("memory tool writes are durable at once and appear in a later snapshot");
     expect(prompt).not.toContain("This snapshot is read-only.");
     // With the tool present, its description owns the saving policy; the snapshot fragment does not repeat it.
     const fragment = buildSystemPromptParts(promptOptions({ promptKind: "chat", corePrompt, tools: [...TOOLS, spec("memory")], envBlock: undefined, moduleFragments: [await learningPrompt(true)] }))
-      .find((candidate) => candidate.label === "module fragment");
+      .find((candidate) => candidate.label === "learning-memory");
     expect(fragment?.text).not.toContain("Shared repository guidance belongs in AGENTS.md");
   });
 
@@ -249,7 +249,7 @@ describe("buildSystemPrompt -- memory snapshot", () => {
 
   it("names the two reaches and carries each block's identity into the audited part", async () => {
     const part = buildSystemPromptParts(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", moduleFragments: [await learningPrompt(false)] }))
-      .find((candidate) => candidate.label === "module fragment");
+      .find((candidate) => candidate.label === "learning-memory");
 
     expect(part?.text).toContain("Project reach applies to this project only");
     expect(part?.text).toContain("global reach");

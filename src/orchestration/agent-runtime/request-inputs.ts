@@ -39,7 +39,10 @@ import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
 import type { Agent, AgentOptions, RoleHold, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import { createChildSlotRegistry } from "./child-slot-registry.js";
 import { loadAgentInstructions } from "./project-instructions.js";
-import { buildSystemPrompt, type BuildSystemPromptOptions } from "./system-prompt.js";
+import { buildSystemPromptParts, type BuildSystemPromptOptions, type SystemPromptPart } from "./system-prompt.js";
+import { createPromptBaseline } from "./prompt-baseline.js";
+import { conversationPromptBaselines } from "../session/conversation-prompt-baseline.js";
+import { runningDisplayBuildId } from "../app-service/runtime-executable.js";
 import { readModuleMemory, requestSystemPromptOptions } from "./request-system-prompt.js";
 import { isPersonTurn, turnReminders, type TurnReminderState } from "./turn-reminders.js";
 import { budgetStreamIdOf, prepareRuntimeUsage } from "./runtime-usage.js";
@@ -101,7 +104,7 @@ export type RequestInputsUse =
  *  memory, the tool plan, the system prompt, the turn reminders, the request context, and the conversation's seed.
  *  A send's loop reads them (`AgentLoopOptions`), and so does a pre-start (`prepareRequest`). */
 export type RequestInputs = Pick<AgentLoopOptions,
-  | "client" | "initialPlannedAttempt" | "initialInteractionProfile" | "tools" | "systemPrompt" | "turnReminders"
+  | "client" | "initialPlannedAttempt" | "initialInteractionProfile" | "tools" | "systemPrompt" | "turnReminders" | "onContextReset"
   | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
   | "providerOptions" | "cacheRetention" | "providerSessionKey" | "promptCacheKey" | "sessionId" | "conversationId"
   | "sessionEventStore" | "sessionEventReader">;
@@ -249,24 +252,30 @@ function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRu
 }
 
 /** The prompt build of a run's requests. A request whose prompt options equal the previous request's gets the same
- *  tiers object, so the request surface reuses its rendered text and its token count; tools compare by the fields that
- *  the prompt reads, and everything else by value, with functions such as the capability check by identity. Every
- *  input that can change, such as a module fragment or the instructions of a new person turn, is a value of the
- *  options, so a changed input always builds again. */
-function heldPromptBuild(): (options: BuildSystemPromptOptions) => SystemPromptTiers {
-  let held: { readonly key: unknown; readonly tiers: SystemPromptTiers } | undefined;
+ *  parts, so the conversation's fixed prompt compares nothing new; tools compare by the fields that the prompt reads,
+ *  and everything else by value, with functions such as the capability check by identity. Every input that can
+ *  change, such as a module fragment or the instructions of a new person turn, is a value of the options, so a changed
+ *  input always builds again. */
+function heldPromptBuild(): (options: BuildSystemPromptOptions) => readonly SystemPromptPart[] {
+  let held: { readonly key: unknown; readonly parts: readonly SystemPromptPart[] } | undefined;
   return (options) => {
     const key = {
       ...options,
       tools: options.tools.map((tool) => ({
         name: tool.name, action: tool.action, description: tool.description, promptGuidelines: tool.promptGuidelines,
-        livePromptGuidelines: tool.livePromptGuidelines?.(), promptExamples: tool.promptExamples,
+        livePromptGuidelines: tool.livePromptGuidelines?.(), promptCatalog: tool.promptCatalog, promptExamples: tool.promptExamples,
       })),
     };
-    if (held && sameValue(held.key, key)) return held.tiers;
-    held = { key, tiers: buildSystemPrompt(options) };
-    return held.tiers;
+    if (held && sameValue(held.key, key)) return held.parts;
+    held = { key, parts: buildSystemPromptParts(options) };
+    return held.parts;
   };
+}
+
+/** What renders the prompt again when it changes: the code, the serving model, and the tool definitions that the
+ *  request sends (ARCH-CONTEXT-044). */
+function promptIdentity(model: string, surface: { definitionsIdentity(): string }): string {
+  return `${runningDisplayBuildId()}\n${model}\n${surface.definitionsIdentity()}`;
 }
 
 /** Deep equality of plain data, with functions and other leaves compared by identity. */
@@ -599,7 +608,8 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   return {
     planned: initialProviderRuntime.plannedAttempt,
     async build(): Promise<AssembledRequestInputs> {
-      const envSnapshot = use.kind === "send" ? sendEnvSnapshot : await readEnvSnapshot();
+      // A fresh context states the date on which it opens (PI-MODEL-093), so a compaction reads the environment again.
+      let envSnapshot: Promise<Awaited<ReturnType<typeof readEnvSnapshot>>> | undefined = Promise.resolve(use.kind === "send" ? sendEnvSnapshot : await readEnvSnapshot());
       const initialRuntimeConfig = initialProviderRuntime.runtimeConfig ?? options.captureRuntimeConfig();
       const client = initialProviderRuntime.mainRoute.client;
       const planned = initialProviderRuntime.plannedAttempt;
@@ -643,15 +653,24 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       const engineeringDoctrine = headlessPrompt?.kind === "literal" || options.engineeringDoctrine === false ? undefined : loadEngineeringDoctrine(options);
       const buildPrompt = heldPromptBuild();
       const literalPrompt = headlessPrompt?.kind === "literal" ? stableSystemPrompt(headlessPrompt.systemPrompt) : undefined;
-      const systemPrompt = async (_attempt: ServingAttempt, interactionProfile: ReturnType<typeof resolveModelInteractionProfile>): Promise<SystemPromptTiers> => {
+      // A durable conversation keeps its fixed prompt beside it, so every later run of it sends the same bytes. A
+      // pre-start reads it and records nothing.
+      const recordedBaselines = pickOwner && conversationAggregateId && options.sessionEventWriter
+        ? conversationPromptBaselines(options.sessionEventReader, options.sessionEventWriter, pickOwner, conversationAggregateId)
+        : undefined;
+      const promptBaseline = createPromptBaseline(
+        recordedBaselines && (use.kind === "send" ? recordedBaselines : { read: recordedBaselines.read }),
+        { sessionId, conversationId: conversationAggregateId },
+      );
+      const systemPrompt = async (attempt: ServingAttempt, interactionProfile: ReturnType<typeof resolveModelInteractionProfile>, messages: readonly ConversationMessage[]): Promise<SystemPromptTiers> => {
         const request = toolSurface.current();
         if (literalPrompt) return literalPrompt;
-        return buildPrompt(await requestSystemPromptOptions({
+        return promptBaseline.prompt(buildPrompt(await requestSystemPromptOptions({
           purpose: options.purpose,
           corePrompt,
           engineeringDoctrine,
           agentsMd: agentsMd(),
-          envBlock: envSnapshot?.envBlock,
+          envBlock: (await (envSnapshot ??= Promise.resolve(readEnvSnapshot())))?.envBlock,
           scratchDir,
           checkpoint: checkpoint !== undefined,
           selfDebug: Boolean(options.sessionEventStore && conversationAggregateId),
@@ -665,7 +684,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           kernel: request.kernel,
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           memory,
-        }));
+        })), promptIdentity(attempt.model, request), messages);
       };
 
       // A literal headless prompt carries no module guidance, so it carries no
@@ -720,7 +739,12 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           turnReminders: async (messages) => [
             ...isPersonTurn(messages.at(-1)) ? turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities) : [],
             ...narrowingStatements(narrowingOf(messages)),
+            ...promptBaseline.updates(messages),
           ],
+          onContextReset: () => {
+            promptBaseline.reset();
+            envSnapshot = undefined;
+          },
           ...(initialRequestContext !== undefined ? { initialRequestContext } : {}),
           executionCwd: options.executionCwd,
           seed,

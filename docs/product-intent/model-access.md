@@ -278,7 +278,11 @@ The Anthropic Subscription provider keeps Flywheel's tool capabilities, tool exe
 
 ## PI-MODEL-080: Claude routes give the model the same environment facts
 
-At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. On every route, the system prompt states the turn's start date, and the local date matches the Claude engine's, in the TZ setting's zone on macOS and Linux and the system zone on Windows. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
+At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
+
+## PI-MODEL-093: Every route states the date on which the context opened
+
+On every route, the system prompt states the date on which the conversation context opened, and a hidden reminder states each later date. The local date matches the Claude engine's, in the TZ setting's zone on macOS and Linux and the system zone on Windows.
 
 ## PI-MODEL-091: Every route names the model that serves the request
 

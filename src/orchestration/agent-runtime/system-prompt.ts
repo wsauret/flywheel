@@ -23,7 +23,7 @@ import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import type { AgentPurpose } from "./types.js";
 
-type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptGuidelines" | "livePromptGuidelines" | "promptExamples">;
+type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptGuidelines" | "livePromptGuidelines" | "promptCatalog" | "promptExamples">;
 
 export type PromptKind = "chat" | "workflow-agent" | "subagent" | "headless";
 
@@ -177,18 +177,33 @@ export interface BuildSystemPromptOptions {
   /** The tree check of this request (ARCH-CONTEXT-033): every agent of a chat tree gets the same answers, so the
    *  text that renders from it keeps the tree's shared prompt bytes. */
   capabilities: CapabilityCheck;
-  /** Module-owned fragments pinned with one provider request, in contribution order. */
-  moduleFragments?: readonly string[];
+  /** Module-owned fragments pinned with one provider request, in contribution order. Each fragment's contribution id
+   *  labels its part. */
+  moduleFragments?: readonly ModulePromptFragment[];
   /** Who this session is. The section renders while `list_sessions` is planned. */
   sessionIdentity?: SessionIdentity;
 }
 
 
+/** One module's prompt fragment and the id of the contribution that renders it. */
+export interface ModulePromptFragment {
+  readonly id: string;
+  readonly text: string;
+}
+
+/** How a later change of a part reaches a conversation whose system prompt is fixed (ARCH-CONTEXT-044). Only a new
+ *  context, model, code, or tool surface renders the prompt again; every other change is an appended entry:
+ *  - `replace`: the entry states the new text in full, or the removal of the part.
+ *  - `catalog`: the entry states the added, removed, and changed `- id: text` lines.
+ *  - `hold`: no entry. The part keeps the text of the context's opening, and the environment and date reminders state
+ *    its changes. */
+export type SystemPromptPartChange = "replace" | "catalog" | "hold";
+
 /** Labeled prompt part, in assembly order. The tier decides which prompt-cache
  *  block the part joins: every stable part precedes every session part, and
- *  every session part precedes every conversation part.
+ *  every session part precedes every conversation part. The label is unique in one prompt.
  *  Diagnostic surface for prompt-size tooling (scripts/dump-prompt.ts). */
-export type SystemPromptPart = { label: string; text: string; tier: keyof SystemPromptTiers };
+export type SystemPromptPart = { label: string; text: string; tier: keyof SystemPromptTiers; change: SystemPromptPartChange };
 
 /** Assemble the labeled parts of one system prompt. Every agent of a workflow
  *  gets the same stable tier, so sibling agents share one prompt-cache prefix.
@@ -209,9 +224,10 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const toolContext = renderToolContext(tools, guidelines);
 
   const parts: SystemPromptPart[] = [];
-  const stable = (label: string, text: string): void => { parts.push({ label, text, tier: "stable" }); };
-  const session = (label: string, text: string): void => { parts.push({ label, text, tier: "session" }); };
-  const conversation = (label: string, text: string): void => { parts.push({ label, text, tier: "conversation" }); };
+  const inTier = (tier: keyof SystemPromptTiers) => (label: string, text: string, change: SystemPromptPartChange = "replace"): void => { parts.push({ label, text, tier, change }); };
+  const stable = inTier("stable");
+  const session = inTier("session");
+  const conversation = inTier("conversation");
 
   const chat = opts.chatHost?.communication === true;
   const writesFiles = has("edit") || has("write");
@@ -230,6 +246,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
     if (has("subagent") || has("workflow")) stable("proportionality", `PROPORTIONALITY:\n${orchestrationRule(has)}`);
   }
   if (toolContext) stable("tool context", toolContext);
+  for (const tool of tools) if (tool.promptCatalog) stable(`${tool.name} catalog`, tool.promptCatalog, "catalog");
   if (opts.unattended && opts.purpose?.kind === "unattended-chat") stable("working unattended", UNATTENDED_CHAT_GUIDANCE);
   if (agentsMd) stable("AGENTS.md instructions", `# AGENTS.md Instructions\n\n${agentsMd}\n\nThese files are loaded for you and every agent you start: do not read them again or restate them in a dispatch prompt. Before you change files in a directory that no section above names, read the AGENTS.md file that governs it.`);
   else if (hasShell || writesFiles) {
@@ -251,8 +268,8 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   if ((opts.purpose?.kind === "workflow-agent" || opts.purpose?.kind === "subagent") && opts.purpose.inheritedIntent !== undefined) {
     session("inherited design intent", opts.purpose.inheritedIntent);
   }
-  for (const fragment of opts.moduleFragments ?? []) session("module fragment", fragment);
-  if (envBlock) session("env", envBlock);
+  for (const fragment of opts.moduleFragments ?? []) session(fragment.id, fragment.text);
+  if (envBlock) session("env", envBlock, "hold");
   if (workflowAgent) privateContext();
   if (hasCheckpoint) {
     conversation("session checkpoint", renderSessionNotesGuidance({ has }));
@@ -266,8 +283,12 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
     .filter((part) => part.text.length > 0);
 }
 
-export function buildSystemPrompt(opts: BuildSystemPromptOptions): SystemPromptTiers {
-  const parts = buildSystemPromptParts(opts);
+/** The tiers that `parts` join into, in assembly order. */
+export function joinSystemPromptParts(parts: readonly Pick<SystemPromptPart, "text" | "tier">[]): SystemPromptTiers {
   const join = (tier: keyof SystemPromptTiers): string => parts.filter((part) => part.tier === tier).map((part) => part.text).join(SYSTEM_PROMPT_SEPARATOR);
   return { stable: join("stable"), session: join("session"), conversation: join("conversation") };
+}
+
+export function buildSystemPrompt(opts: BuildSystemPromptOptions): SystemPromptTiers {
+  return joinSystemPromptParts(buildSystemPromptParts(opts));
 }

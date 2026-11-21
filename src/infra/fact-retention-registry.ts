@@ -79,6 +79,8 @@ const FACT_FAMILY_GROUPS: readonly FactFamilyGroup[] = [
     "session.intent.inherited": HISTORY,
     // The model that a conversation picked for a setting that names none; only its newest pick applies.
     "conversation.role.picked": { policy: "replace-latest-keyed", key: "$.conversationId" },
+    // The system prompt that a conversation fixed at its latest render; only the newest one applies (ARCH-CONTEXT-044).
+    "conversation.prompt.fixed": { policy: "replace-latest-keyed", key: "$.conversationId" },
 
     // File mutations: publication evidence, read by recovery and diff views.
     "file.changed": HISTORY,

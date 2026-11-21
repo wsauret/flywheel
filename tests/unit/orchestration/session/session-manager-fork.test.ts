@@ -9,6 +9,7 @@ import { parseSessionForkFact } from "../../../../src/orchestration/session/sess
 import { readBudgetSummaryFromReader } from "../../../../src/orchestration/session/budget-summary"
 import { createConversationCheckpointOwner, readConversationCheckpoint } from "../../../../src/orchestration/session/conversation-checkpoint"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { conversationPromptBaselines, promptContextOpening, readConversationPromptBaseline } from "../../../../src/orchestration/session/conversation-prompt-baseline"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestWorkflow, startTestWorkflowMember } from "./_session-manager-fixtures"
 
 function message(id: string, parentId: string | null, kind: "user" | "assistant", content: string) {
@@ -146,7 +147,7 @@ describe("SessionManager.forkChat", () => {
     expect(notices).toEqual([{ kind: "changed", sessionIds: [targetSessionId, sourceSessionId] }])
   })
 
-  it.each(["forkChat", "createChatFromContext"] as const)("%s starts the branch with the source's checkpoint and leaves the source unchanged", async (branch) => {
+  it.each(["forkChat", "createChatFromContext"] as const)("%s starts the branch with the source's checkpoint and fixed system prompt and leaves the source unchanged", async (branch) => {
     const { deps, store } = makeDepsWithStore(makeTmpDir())
     const manager = createSessionManager(deps)
     const { sourceSessionId, source } = await seedChat(manager, store)
@@ -161,12 +162,32 @@ describe("SessionManager.forkChat", () => {
       return readConversationCheckpoint(reader, { kind: "session", sessionId }, session.conversationId)
     }
 
-    expect(await checkpointOf(await publish())).toBeUndefined()
+    const promptOf = async (sessionId: string) => {
+      const session = await manager.read(sessionId)
+      if (session?.kind !== "chat") throw new Error("expected chat")
+      return readConversationPromptBaseline(reader, { kind: "session", sessionId }, session.conversationId)
+    }
+
+    const empty = await publish()
+    expect(await checkpointOf(empty)).toBeUndefined()
+    expect(await promptOf(empty)).toBeUndefined()
 
     const writer = createSessionFactWriter({ sessionId: sourceSessionId, writer: asAsyncEventWriter(store) })
     const saved = await createConversationCheckpointOwner(reader, writer, sourceOwner, source.conversationId).replace("currentState", "source state")
-    expect(await checkpointOf(await publish())).toEqual(saved)
+    const baselines = conversationPromptBaselines(reader, writer, sourceOwner, source.conversationId)
+    // Both branches copy a context that opens with the source's question.
+    const fixed = { opening: promptContextOpening([{ kind: "user", content: "question" }]), identity: "code+model+tools", parts: [{ label: "chat body", tier: "stable" as const, change: "replace" as const, text: "BODY" }] }
+    await baselines.record(fixed)
+    const branched = await publish()
+    expect(await checkpointOf(branched)).toEqual(saved)
+    expect(await promptOf(branched)).toEqual(fixed)
     expect(await readConversationCheckpoint(reader, sourceOwner, source.conversationId)).toEqual(saved)
+    expect(await readConversationPromptBaseline(reader, sourceOwner, source.conversationId)).toEqual(fixed)
+
+    // The source's prompt for a later context, such as one that a compaction opened, is not the prompt of the
+    // history that the branch copies.
+    await baselines.record({ ...fixed, opening: promptContextOpening([{ kind: "user", content: "a fresh context" }]) })
+    expect(await promptOf(await publish())).toBeUndefined()
   })
 
   it("does not publish a captured context with an orphan tool result", async () => {

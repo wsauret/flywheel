@@ -14,6 +14,7 @@
  * equal the previous request's is held across requests (`HeldPreparation`).
  */
 
+import { createHash } from "node:crypto";
 import { errorMessage } from "../../infra/error-message.js";
 import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { agentCapabilityCheck } from "./capability-checks.js";
@@ -183,6 +184,9 @@ interface RequestToolSurface extends RequestCapture {
   readonly providerRegistry: AccessProviderRegistry;
   /** Complete skill revision captured with this request's prompt and executable tools. */
   readonly skillRegistry?: ToolExposurePlan["skillRegistry"];
+  /** The hash of the tool definitions that this surface sends, which a conversation's fixed prompt renders again
+   *  for when it changes (ARCH-CONTEXT-044). Each schema is serialized once for the process. */
+  definitionsIdentity(): string;
   prepareStablePrompt(build: () => SystemPromptTiers | Promise<SystemPromptTiers>, profile: ModelInteractionProfile): Promise<RequestStablePrompt>;
   prepareAttempt(attempt: Pick<ServingAttempt, "model" | "toolPresentation"> & Partial<Pick<ServingAttempt, "modelFamily" | "tokenizerIdentity">>): PreparedRequestAttempt;
   /** Captures the one immutable provider candidate chain this surface plans and dispatches. */
@@ -292,6 +296,10 @@ function staticTokens(held: HeldPreparation, tiers: SystemPromptTiers, definitio
   return tokens;
 }
 
+function sameTiers(left: SystemPromptTiers, right: SystemPromptTiers): boolean {
+  return left.stable === right.stable && left.session === right.session && left.conversation === right.conversation;
+}
+
 function pin(
   plan: PlannedRequest,
   { moduleSnapshot, runtimeConfig, providerRuntime }: RequestCapture,
@@ -302,6 +310,7 @@ function pin(
   const requestRegistry = toolRegistryFromComposition(moduleSnapshot);
   const usableToolNames = usableIdentities(plan);
   let stablePrompt: RequestStablePrompt | undefined;
+  let identity: string | undefined;
   let admittedProviderRequest: Promise<AdmittedModelRequest> | undefined;
   return {
     tools,
@@ -332,9 +341,15 @@ function pin(
         ? { ok: true }
         : { ok: false, refusal: { content: moduleDisabledReason(missing), outcome: "error" } }
     },
+    definitionsIdentity() {
+      identity ??= createHash("sha256").update(JSON.stringify([...tools.values()].map((tool) => [tool.name, tool.description, materializedInputSchema(tool)]))).digest("hex");
+      return identity;
+    },
     async prepareStablePrompt(build, profile) {
-      if (stablePrompt) return stablePrompt;
+      // A surface that a compaction admitted serves the request after the reset, whose fresh context renders its own
+      // fixed prompt (ARCH-CONTEXT-044), so the prompt builds again and an equal prompt keeps what was prepared.
       const systemPrompt = await build();
+      if (stablePrompt && sameTiers(stablePrompt.systemPrompt, systemPrompt)) return stablePrompt;
       const definitions = projectProviderToolDefinitions(tools, held.definitions);
       held.definitions = definitions;
       stablePrompt = {

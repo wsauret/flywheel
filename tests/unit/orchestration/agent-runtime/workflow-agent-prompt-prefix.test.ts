@@ -74,7 +74,7 @@ async function siblingRequest(sessionDir: string, attemptId: string, conversatio
   const surface = await assembled.tools.resolve()
   const build = assembled.systemPrompt
   if (typeof build !== "function") throw new Error("expected a per-attempt system prompt")
-  await surface.prepareStablePrompt(() => build(servingAttempt, DEFAULT_MODEL_INTERACTION_PROFILE), DEFAULT_MODEL_INTERACTION_PROFILE)
+  await surface.prepareStablePrompt(() => build(servingAttempt, DEFAULT_MODEL_INTERACTION_PROFILE, []), DEFAULT_MODEL_INTERACTION_PROFILE)
   const prepared = surface.prepareAttempt(servingAttempt)
   return {
     tools: [...surface.tools.keys()],

@@ -101,8 +101,8 @@ const skillManage = {
  *  request advertises the memory tool. */
 function renderMemoryPromptFragment(snapshot: string, writable: boolean): string {
   const access = writable
-    ? "A snapshot taken when this work started (in a chat, at the person's latest message); memory tool writes are durable at once and appear here in a later snapshot."
-    : "A snapshot taken when this work started (in a chat, at the person's latest message). This snapshot is read-only."
+    ? "A snapshot of memory at the time it was taken; memory tool writes are durable at once and appear in a later snapshot."
+    : "A snapshot of memory at the time it was taken. This snapshot is read-only."
   // A writable snapshot comes with the memory tool, whose description owns what to save and where else it goes.
   const policy = writable
     ? ""

@@ -327,7 +327,7 @@ describe("bundled skill packages", () => {
   // tool call, so the advertisement carries every installed skill's trigger
   // line; a partial roster reads as complete and defeats scan-then-load.
   it("advertises every installed skill's trigger line", () => {
-    const guidelines = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: repoDefinitions().personas() }, revision }).promptGuidelines?.join("\n") ?? "";
+    const guidelines = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map(), availablePersonas: repoDefinitions().personas() }, revision }).promptCatalog ?? "";
 
     for (const skill of revision.modelInvocable) {
       expect(guidelines, skill.id).toContain(`- ${skill.id}: `);

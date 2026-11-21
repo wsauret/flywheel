@@ -37,7 +37,7 @@ const chatOptions = {
   checkpointAvailable: true,
   promptKind: "chat" as const,
   chatHost: { communication: true as const },
-  moduleFragments: ["# Durable Memory\n\nremembered"],
+  moduleFragments: [{ id: "learning-memory", text: "# Durable Memory\n\nremembered" }],
   envBlock: "<env>cwd</env>",
 };
 
@@ -47,7 +47,7 @@ describe("system prompt cache tiers", () => {
     const order = ["stable", "session", "conversation"];
     expect(parts.map((part) => order.indexOf(part.tier))).toEqual(parts.map((part) => order.indexOf(part.tier)).toSorted());
     expect(parts.filter((part) => part.tier === "session").map((part) => part.label)).toEqual([
-      "scratchpad", "module fragment", "env",
+      "scratchpad", "learning-memory", "env",
     ]);
     expect(parts.filter((part) => part.tier === "conversation").map((part) => part.label)).toEqual(["session checkpoint"]);
     expect(parts.find((part) => part.label === "AGENTS.md instructions")?.tier).toBe("stable");

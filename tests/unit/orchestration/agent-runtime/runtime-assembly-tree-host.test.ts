@@ -135,7 +135,7 @@ describe("tree-hosted tool notice", () => {
     expect(seeded(first)).toEqual([task, notice.message])
     // The notice lives in the opening turn only, never in the tools or the system text.
     if (typeof first.systemPrompt !== "function") throw new Error("expected assembled prompt")
-    expect(renderSystemPrompt(await first.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))).not.toContain(text)
+    expect(renderSystemPrompt(await first.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile, []))).not.toContain(text)
     expect(first.initialRequestContext).toBeUndefined()
 
     // The life's echo and reply debt read the task, never the notice that follows it.
