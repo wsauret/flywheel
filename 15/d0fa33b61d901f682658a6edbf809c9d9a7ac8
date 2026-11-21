@@ -1,0 +1,70 @@
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 77,177
+bench/chat-ab/isolation.ts
+  h_4b47e9e4a8b456 20,272
+bench/chat-ab/workflow-authorship-family.ts
+  h_4b47e9e4a8b456 47
+src/orchestration/agent-runtime/tools/skill.ts
+  h_4b47e9e4a8b456 154-156
+src/workflows/definition-registry.ts
+  h_4b47e9e4a8b456 32
+src/workflows/skill-schema.ts
+  h_4b47e9e4a8b456 59-62
+src/workflows/skills.ts
+  h_4b47e9e4a8b456 73-74,186
+tests/helpers/global-skill-operations.ts
+  h_4b47e9e4a8b456 159-160
+tests/helpers/skill-fixtures.ts
+  h_4b47e9e4a8b456 78
+tests/integration/orchestration/modules/learning/global-skill-consent-process.test.ts
+  h_4b47e9e4a8b456 69
+tests/unit/orchestration/agent-runtime/tools/definition-overrides-tool.test.ts
+  h_4b47e9e4a8b456 160,235
+tests/unit/orchestration/agent-runtime/tools/durable-writes-follow-project-root.test.ts
+  h_4b47e9e4a8b456 38-39
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 157-184,217,375,429,463,624-625,642-643
+tests/unit/orchestration/migrations/legacy-step-catalog-migration.test.ts
+  h_4b47e9e4a8b456 114
+tests/unit/orchestration/modules/learning/global-skill-consent.test.ts
+  h_4b47e9e4a8b456 30-31
+tests/unit/orchestration/modules/learning/global-skill-promotion.test.ts
+  h_4b47e9e4a8b456 42-44
+tests/unit/orchestration/modules/learning/learning-review-semantic-audit.test.ts
+  h_4b47e9e4a8b456 41-42
+tests/unit/orchestration/modules/learning/skill-corpus-cleanup-campaign.test.ts
+  h_4b47e9e4a8b456 43
+tests/unit/orchestration/modules/learning/skill-global-recommendation.test.ts
+  h_4b47e9e4a8b456 41-42
+tests/unit/orchestration/modules/learning/skill-maintenance.test.ts
+  h_4b47e9e4a8b456 33-34
+tests/unit/orchestration/modules/learning/skill-prune.test.ts
+  h_4b47e9e4a8b456 53-54
+tests/unit/orchestration/modules/learning/skill-semantic-audit.test.ts
+  h_4b47e9e4a8b456 71
+tests/unit/orchestration/modules/learning/skill-store.test.ts
+  h_4b47e9e4a8b456 32-33
+tests/unit/orchestration/modules/learning/tools/skill-manage-tool.test.ts
+  h_4b47e9e4a8b456 36-37
+tests/unit/workflows/definitions/skill-loader-roots.test.ts
+  h_4b47e9e4a8b456 24
+tests/unit/workflows/definitions/skill-loader.test.ts
+  h_4b47e9e4a8b456 37,56,317
+tests/unit/workflows/skill-context-win32.test.ts
+  h_4b47e9e4a8b456 41,69
+tests/unit/workflows/skill-context.test.ts
+  h_4b47e9e4a8b456 22,83,95,136,362,365-366,531,539
+tests/unit/workflows/skill-health.test.ts
+  h_4b47e9e4a8b456 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "15d0fa33b61d901f682658a6edbf809c9d9a7ac8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
