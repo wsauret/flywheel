@@ -151,7 +151,9 @@ async function executeSkill(deps: SkillToolDeps, catalog: readonly SkillDefiniti
         await deps.onLoad?.(skill);
         return result;
       };
-      return skill.source.kind === "filesystem"
+      // Writers lock only a package that is in an owned store and not linked (resolveWritable). Any other package is
+      // read without the shared hold, which would create a `.locks` folder beside a package that may be read-only.
+      return skill.source.kind === "filesystem" && skill.source.owned && !skill.source.linked
         ? withPackageRead(skill.source.canonicalDir, load)
         : load();
     });

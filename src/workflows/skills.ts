@@ -70,6 +70,8 @@ type SkillPackageRoot =
     readonly authority: "external";
     readonly dir: string;
     readonly reach: LearningScope;
+    /** As `SkillStoreRoot.owned`: Flywheel writes this store. */
+    readonly owned: boolean;
   }
   | {
     readonly authority: "bundled";
@@ -181,6 +183,7 @@ export function loadSkillDefinitions(sources: SkillSources): SkillLoad {
       authority: root.authority,
       reach: root.reach,
       packageDir: join(root.dir, dirName),
+      owned: root.authority === "external" && root.owned,
       ...(root.authority === "bundled" && root.bundle !== undefined ? { bundle: root.bundle } : {}),
       ...binding,
     });

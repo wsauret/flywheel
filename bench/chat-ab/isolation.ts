@@ -17,8 +17,7 @@
 //      Installed builds, the launcher, and account service state stay protected;
 //    - writes to this repository, its main checkout, the package managers'
 //      prefixes, and the operator's tmux sockets, apart from the campaign
-//      results, the compile cache, and, for a Flywheel cell, the lock folders
-//      of the bundled and shared skill roots;
+//      results and the compile cache;
 //    - `launchctl`, LaunchServices (`open`), and Apple events, each of which
 //      starts a process outside the sandbox. The account service's launchd
 //      label is fixed, so an install from any HOME replaces the operator's;
@@ -44,13 +43,11 @@
 // runtime and its agent's shell share one sandbox, so the profile denies the
 // credential file of every profile but the arm's own: a cell still lists the
 // profiles and resolves its own, and never reads another arm's key.
-import { existsSync } from "node:fs";
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../src/infra/container-mark.js";
 import { authDir, globalAgentsFile, sharedAgentsDir } from "../../src/infra/paths.js";
-import { BUNDLED_SKILL_DIR } from "../../src/workflows/skill-source-inventory.js";
 
 const SANDBOX_EXEC = "/usr/bin/sandbox-exec";
 /** The installed and the development hub ports (src/infra/paths.ts). */
@@ -239,14 +236,6 @@ export async function cellIsolation(repoRoot: string, resultsRoot: string, run: 
   // The cell compiles helper chunks into the shared node_modules cache.
   const dependencies = await canonical(join(repository, "node_modules"));
   const compileCache = join(dependencies, ".cache");
-  // A skill load locks its package in a `.locks` folder beside it
-  // (package-directory-lock.ts). A Flywheel cell runs this source tree, so its
-  // bundled packages lie in the repository, and shared packages lie under the
-  // denied home; without these folders every such load fails with EPERM. An
-  // account without shared skills has no shared root to lock.
-  const sharedSkills = join(sharedAgentsDir(accountHome), "skills");
-  const skillRoots = [BUNDLED_SKILL_DIR, ...(existsSync(sharedSkills) ? [sharedSkills] : [])];
-  const skillLocks = agent.kind === "flywheel" ? await Promise.all(skillRoots.map(async (root) => join(await canonical(root), ".locks"))) : [];
   const store = join(accountHome, ".flywheel");
   const serviceState = [join(store, "serve"), join(store, "serve-dev")];
   const tmuxSockets = `/private/tmp/tmux-${process.getuid?.() ?? 0}`;
@@ -280,7 +269,7 @@ export async function cellIsolation(repoRoot: string, resultsRoot: string, run: 
     `(deny file-write* ${subpaths([accountHome])})`,
     ...(agent.kind === "claude-code" ? claudeRules.slice(0, 1) : []),
     `(deny file-write* ${subpaths([repository, mainCheckout, "/opt/homebrew", "/usr/local", tmuxSockets])})`,
-    `(allow file-write* ${subpaths([store, join(accountHome, "Library", "Caches"), results, compileCache, ...skillLocks])})`,
+    `(allow file-write* ${subpaths([store, join(accountHome, "Library", "Caches"), results, compileCache])})`,
     ...sharedCheckoutReads,
     ...(agent.kind === "claude-code" ? claudeRules.slice(2) : []),
     ...confinement,

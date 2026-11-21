@@ -68,7 +68,7 @@ describe("skill semantic audit", () => {
     expect(verifySkillSemanticAudit(candidate, revision, '{"outcome":"conflict","outcome":"independent"}').kind).toBe("uncertain");
     expect(verifySkillSemanticAudit(candidate, revision, JSON.stringify({ outcome: "conflict" })).kind).toBe("uncertain");
 
-    const external: SkillDefinition = { ...definition(canonical), source: { kind: "filesystem", authority: "external", reach: "project", packageDir: "/external/canonical", canonicalDir: "/external/canonical", canonicalId: "external", linked: false } };
+    const external: SkillDefinition = { ...definition(canonical), source: { kind: "filesystem", authority: "external", reach: "project", packageDir: "/external/canonical", owned: true, canonicalDir: "/external/canonical", canonicalId: "external", linked: false } };
     const shadowed = publishSkillRevision(8, new Map([[external.id, external]]), revision.bundledCorpus);
     expect(verifySkillSemanticAudit(candidate, shadowed, JSON.stringify({ outcome: "specialization", canonicalSkillId: "canonical" })).kind).toBe("uncertain");
   });

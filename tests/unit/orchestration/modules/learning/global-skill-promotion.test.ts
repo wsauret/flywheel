@@ -39,9 +39,9 @@ function registry() {
   const dirs = roots();
   const load = loadSkillDefinitions({
     roots: [
-      { authority: "external", dir: dirs.project, reach: "project" },
-      { authority: "external", dir: dirs.user, reach: "global" },
-      { authority: "external", dir: SHARED, reach: "global" },
+      { authority: "external", dir: dirs.project, reach: "project", owned: true },
+      { authority: "external", dir: dirs.user, reach: "global", owned: true },
+      { authority: "external", dir: SHARED, reach: "global", owned: false },
     ],
   });
   return publishSkillRevision(1, load.skills);

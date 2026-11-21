@@ -56,6 +56,10 @@ interface FilesystemSkillSource extends SkillPackageBinding {
    *  local diagnostics and for the package name the context header renders;
    *  never opened, because the binding above is what a read is rooted in. */
   readonly packageDir: string;
+  /** The package is installed in a store Flywheel owns and writes: the
+   *  project or the user store. A bundled root and a shared root are never
+   *  written, so no writer ever locks a package there. */
+  readonly owned: boolean;
   /** The module definition bundle this package came from, by contribution
    *  id. Availability requires that module for the package (ARCH-STRUCTURE-031). Absent
    *  for Flywheel's own bundled roots and every external root. */

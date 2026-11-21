@@ -111,7 +111,7 @@ function selectSkill(roots: readonly string[], bundled: string, id: string): Ski
   installPackage(bundled, "planning", "Planning dependency")
   return loadSkillDefinitions({
     roots: [
-      ...roots.map((dir) => ({ authority: "external" as const, dir: join(dir, "skills"), reach: "project" as const })),
+      ...roots.map((dir) => ({ authority: "external" as const, dir: join(dir, "skills"), reach: "project" as const, owned: true })),
       { authority: "bundled" as const, dir: join(bundled, "skills"), reach: "global" as const, sourceKind: "agent" as const },
     ],
   }).skills.get(id)

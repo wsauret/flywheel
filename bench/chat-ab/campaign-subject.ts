@@ -17,7 +17,6 @@ import { challengeConversationEvidence } from "./challenge-reply.js";
 import { REPO_ROOT } from "./harness-paths.js";
 import { prepareSourceTreatment, resolveSourceTreatment, validatePreparedTreatment } from "./source-treatment.js";
 import type { CellAgent, CellIsolation } from "./isolation.js";
-import { BUNDLED_SKILL_DIR } from "../../src/workflows/skill-source-inventory.js";
 import { captureBenchmarkPipe } from "../../src/orchestration/modules/development/benchmark/artifact-capture.js";
 import { campaignToolExclusionEvidence } from "./campaign-tool-evidence.js";
 
@@ -75,7 +74,7 @@ function claudeCodeModelId(model: string): string {
 }
 
 function controllerWriteDenied(): string[] {
-  return [join(REPO_ROOT, "node_modules", ".cache"), join(BUNDLED_SKILL_DIR, ".locks")];
+  return [join(REPO_ROOT, "node_modules", ".cache")];
 }
 
 /** Stream one public event search into immutable artifacts before returning to cell cleanup. */
@@ -175,7 +174,7 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
         environment: { FLYWHEEL_DISABLE_UPDATE_CHECK: "1", ...(settings.roles ? { FLYWHEEL_ROLES: JSON.stringify(settings.roles) } : {}) },
         confinement: (hiddenTaskDirs) => ({
           hidden: hiddenTaskDirs.map((path) => join(prepared.root, relative(REPO_ROOT, path))),
-          own: [join(prepared.root, "node_modules", ".cache"), join(prepared.root, relative(REPO_ROOT, BUNDLED_SKILL_DIR), ".locks")],
+          own: [join(prepared.root, "node_modules", ".cache")],
           readonly: [prepared.root], writeDenied: controllerWriteDenied(),
         }),
         async preflight(context) {

@@ -34,7 +34,7 @@ function writeSkill(root: string, dirName: string, md: string): void {
 }
 
 function external(...dirs: string[]) {
-  return { roots: dirs.map((dir) => ({ authority: "external" as const, dir, reach: "project" as const })) };
+  return { roots: dirs.map((dir) => ({ authority: "external" as const, dir, reach: "project" as const, owned: true })) };
 }
 
 function loadExternal(...dirs: string[]) {
@@ -53,6 +53,7 @@ function expectedSource(root: string, dirName: string): Extract<SkillSource, { k
     authority: "external",
     reach: "project",
     packageDir,
+    owned: true,
     canonicalDir,
     canonicalId: `${stats.dev}:${stats.ino}`,
     linked: false,
@@ -313,7 +314,7 @@ describe("loadSkillDefinitions", () => {
     let load: ReturnType<typeof loadSkillDefinitions>;
     try {
       load = loadSkillDefinitions({ roots: [
-        { authority: "external", dir: USER_ROOT, reach: "global" },
+        { authority: "external", dir: USER_ROOT, reach: "global", owned: true },
         { authority: "bundled", dir: BUNDLED_ROOT, reach: "global", sourceKind: "agent" },
       ] });
     } finally {

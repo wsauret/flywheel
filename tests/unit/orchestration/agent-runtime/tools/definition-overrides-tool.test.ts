@@ -157,7 +157,7 @@ test.each([
     packages: createManagedPackageWrites({
       origin: { kind: "agent", sessionId: "override-session" },
       store: asAsyncEventReadSurface(store), sessionId: "override-session", userDataRoot,
-      registry: () => publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: skillRoot, reach }] }).skills),
+      registry: () => publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: skillRoot, reach, owned: true }] }).skills),
     }),
   })
   const publicationWriter: typeof writer = auditPending ? { ...writer, record: (fact) => fact.type === "skill.written" ? Promise.resolve(null) : writer.record(fact) } : writer
@@ -232,7 +232,7 @@ test("refuses an unmanaged skill override before it asks and before it spends an
     packages: createManagedPackageWrites({
       origin: { kind: "agent", sessionId: "override-session" },
       store: asAsyncEventReadSurface(store), sessionId: "override-session", userDataRoot: join(root, "account"),
-      registry: () => publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: skillRoot, reach: "project" }] }).skills),
+      registry: () => publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: skillRoot, reach: "project", owned: true }] }).skills),
     }),
   })
   const context = { ...makeContext(), projectRoot, sessionId: "override-session", toolUseId: "override-call", sessionEventWriter: writer }

@@ -156,8 +156,8 @@ export function createGlobalSkillHarness(input: GlobalSkillHarnessInput): Global
   const registry = () => {
     const load = loadSkillDefinitions({
       roots: [
-        { authority: "external", dir: dirs.project, reach: "project" },
-        { authority: "external", dir: dirs.user, reach: "global" },
+        { authority: "external", dir: dirs.project, reach: "project", owned: true },
+        { authority: "external", dir: dirs.user, reach: "global", owned: true },
       ],
     });
     return publishSkillRevision(1, load.skills);

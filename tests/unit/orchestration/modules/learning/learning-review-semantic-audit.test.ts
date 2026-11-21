@@ -38,8 +38,8 @@ const capabilities = capabilityAccessFor({
 function loadRegistry(projectRoot: string, userDataRoot: string, revision = 1): SkillRegistryRevision {
   const dirs = ownedSkillStoreDirs({ projectRoot, userDataRoot });
   const loaded = loadSkillDefinitions({ roots: [
-    { authority: "external", dir: dirs.project, reach: "project" },
-    { authority: "external", dir: dirs.user, reach: "global" },
+    { authority: "external", dir: dirs.project, reach: "project", owned: true },
+    { authority: "external", dir: dirs.user, reach: "global", owned: true },
     { authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const },
   ] });
   return publishSkillRevision(revision, loaded.skills, loaded.bundledCorpus);

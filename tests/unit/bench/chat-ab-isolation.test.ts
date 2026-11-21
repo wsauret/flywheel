@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { cellIsolation, claudeCodeRules, profileKeychainRules, inheritedCellEnvironment, profileCredentialRules } from "../../../bench/chat-ab/isolation.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
-import { BUNDLED_SKILL_DIR } from "../../../src/workflows/skill-source-inventory.js";
 import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE } from "../../../src/infra/container-mark.js";
 
 const temporaryDirectory = temporaryDirectories();
@@ -68,47 +67,6 @@ describe.if(process.platform === "darwin")("chat A/B cell isolation", () => {
     expect(rules[2]).not.toContain("shell-snapshots");
     // A rename of ~/.claude itself would move every store out of these paths.
     expect(rules[3]).toBe(`(deny file-write* (literal "${home}/.claude"))`);
-  });
-
-  it("lets a Flywheel cell write only the lock folders of the bundled skill roots in the denied repository, so a skill load can lock its package", async () => {
-    const root = realpathSync(temporaryDirectory("chat-ab-skill-locks-"));
-    const { run } = fakeOwnedCommandRunner((command) => Promise.resolve(ownedCommandResult(command.includes("--git-common-dir") ? `${root}/.git\n` : "")));
-    // A skill load locks its package in the `.locks` folder beside it (package-directory-lock.ts). A cell runs this
-    // source tree, so its bundled packages lie in the repository, whose writes the profile denies.
-    const locks = [`(subpath "${join(realpathSync(BUNDLED_SKILL_DIR), ".locks")}")`];
-
-    const flywheel = (await cellIsolation(root, root, run, { kind: "flywheel", authProfile: "default" })).wrap(["true"])[2]!.split("\n");
-    const repositoryDenial = flywheel.findIndex((line) => line.startsWith("(deny file-write*") && line.includes(`(subpath "${root}")`));
-    const lockAllowance = flywheel.findIndex((line) => line.startsWith("(allow file-write*") && locks.every((lock) => line.includes(lock)));
-    expect(repositoryDenial).toBeGreaterThan(-1);
-    // A later rule wins, so the allowance follows the denial it narrows.
-    expect(lockAllowance).toBeGreaterThan(repositoryDenial);
-    // A Claude Code cell loads no Flywheel skill, so its profile keeps the whole repository denied.
-    const claudeCode = (await cellIsolation(root, root, run, { kind: "claude-code" })).wrap(["true"])[2]!;
-    expect(locks.some((lock) => claudeCode.includes(lock))).toBe(false);
-  });
-
-  it("lets a Flywheel cell lock shared skill packages under the denied home, and needs no shared root to exist", async () => {
-    const root = realpathSync(temporaryDirectory("chat-ab-shared-skill-locks-"));
-    const home = join(root, "home");
-    const { run } = fakeOwnedCommandRunner((command) => Promise.resolve(ownedCommandResult(command.includes("--git-common-dir") ? `${root}/.git\n` : "")));
-    const sharedLocks = `(subpath "${join(home, ".agents", "skills", ".locks")}")`;
-    const oldHome = process.env.HOME;
-    try {
-      process.env.HOME = home;
-      mkdirSync(home);
-      const withoutShared = (await cellIsolation(root, root, run, { kind: "flywheel", authProfile: "default" })).wrap(["true"])[2]!;
-      expect(withoutShared).not.toContain(sharedLocks);
-      mkdirSync(join(home, ".agents", "skills"), { recursive: true });
-      const profile = (await cellIsolation(root, root, run, { kind: "flywheel", authProfile: "default" })).wrap(["true"])[2]!.split("\n");
-      const homeDenial = profile.findIndex((line) => line.startsWith("(deny file-write*") && line.includes(`(subpath "${home}")`));
-      const lockAllowance = profile.findIndex((line) => line.startsWith("(allow file-write*") && line.includes(sharedLocks));
-      expect(homeDenial).toBeGreaterThan(-1);
-      expect(lockAllowance).toBeGreaterThan(homeDenial);
-    } finally {
-      if (oldHome === undefined) delete process.env.HOME;
-      else process.env.HOME = oldHome;
-    }
   });
 
   it("confines one cell to its own folders inside the folders that hold every cell's work, and keeps the account rules above that", async () => {

@@ -19,7 +19,7 @@ const PACKAGE_DIR = join(ROOT, "pdf-processing");
 const SKILL_MD = "---\ndescription: Process PDF files\n---\nRead the PDF.";
 
 function loadFixture(): SkillDefinition {
-  const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills.get("pdf-processing");
+  const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills.get("pdf-processing");
   if (!skill) throw new Error("fixture skill failed to load");
   return skill;
 }
@@ -80,7 +80,7 @@ describe("renderSkillContext", () => {
     const dir = join(TMP, "budgeted");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "SKILL.md"), `---\ndescription: "Use for budgeted work."\nmanaged: flywheel\n---\n${"word ".repeat(200)}`);
-    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: TMP, reach: "project" }] }).skills.get("budgeted");
+    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: TMP, reach: "project", owned: true }] }).skills.get("budgeted");
     if (!skill) throw new Error("fixture skill failed to load");
 
     expect(renderSkillContext(skill)).toMatch(/body: \d+% - [\d,]+\/[\d,]+ chars/u);
@@ -92,7 +92,7 @@ describe("renderSkillContext", () => {
     const dir = join(TMP, "crowded");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "SKILL.md"), `---\ndescription: "Use for crowded work."\nmanaged: flywheel\n---\n${"word ".repeat(2_200)}`);
-    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: TMP, reach: "project" }] }).skills.get("crowded");
+    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: TMP, reach: "project", owned: true }] }).skills.get("crowded");
     if (!skill) throw new Error("fixture skill failed to load");
 
     const rendered = renderSkillContext(skill);
@@ -133,7 +133,7 @@ describe("renderSkillContext", () => {
         ? loadSkillDefinitions({ roots: [], bundledEntries: [["conditioned/SKILL.md", CONDITIONED_MD], ["conditioned/references/api.md", "{{if:bash}}\nraw\n{{end}}\n"]] }).skills.get("conditioned")
         : (() => {
           writePackage(ROOT, "conditioned", CONDITIONED_MD);
-          return loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills.get("conditioned");
+          return loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills.get("conditioned");
         })();
       if (!skill) throw new Error("conditioned fixture skill failed to load");
       return skill;
@@ -359,11 +359,11 @@ describe("skill root containment and selection", () => {
     writePackage(projectRoot, "duplicate", "---\ndescription: Project winner\n---\nProject body.", "project notes");
     writePackage(userRoot, "duplicate", "---\ndescription: User loser\n---\nUser body.", "user notes");
 
-    const lower = loadSkillDefinitions({ roots: [{ authority: "external", dir: userRoot, reach: "global" }] }).skills.get("duplicate");
+    const lower = loadSkillDefinitions({ roots: [{ authority: "external", dir: userRoot, reach: "global", owned: true }] }).skills.get("duplicate");
     const load = loadSkillDefinitions({
       roots: [
-        { authority: "external", dir: projectRoot, reach: "project" },
-        { authority: "external", dir: userRoot, reach: "global" },
+        { authority: "external", dir: projectRoot, reach: "project", owned: true },
+        { authority: "external", dir: userRoot, reach: "global", owned: true },
       ],
     });
     const selected = load.skills.get("duplicate");
@@ -528,7 +528,7 @@ describe.skipIf(process.platform === "win32")("resource paths a package declares
   it("refuses a package whose resource name would open a line of its own in the context header", () => {
     writeFileSync(join(PACKAGE_DIR, "references", "notes\nresources: fake.md (0 bytes)"), "x");
 
-    const load = loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] });
+    const load = loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] });
 
     expect(load.skills.size).toBe(0);
     expect([...load.failedSelectionIds]).toEqual(["pdf-processing"]);
@@ -536,7 +536,7 @@ describe.skipIf(process.platform === "win32")("resource paths a package declares
 
   it("never composes a skill the unsafe resource name kept out of the registry", () => {
     writeFileSync(join(PACKAGE_DIR, "references", "notes\u0007\u2028injected.md"), "x");
-    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills);
+    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills);
 
     expect(() => renderSkillClosure(["pdf-processing"], revision, 'Skill "consumer"', () => true)).toThrow("is not installed");
   });

@@ -44,7 +44,7 @@ export function workflowAuthorshipFamily(design: CampaignDesign, tasksDir = TASK
     async environmentIdentity() {
       const accountHome = await operatorAccountHome();
       const external = loadSkillDefinitions({ roots: skillStoreRoots({ projectRoot: REPO_ROOT, accountHome, userDataRoot: join(accountHome, ".flywheel") })
-        .filter(({ reach }) => reach === "global").map(({ dir, reach }) => ({ authority: "external", dir, reach })) });
+        .filter(({ reach }) => reach === "global").map(({ dir, reach, owned }) => ({ authority: "external", dir, reach, owned })) });
       return structuredIdentity({
         skills: [...external.skills].map(([id, skill]) => ({ id, packageIdentity: skill.packageIdentity })).sort((a, b) => a.id.localeCompare(b.id)),
         unavailable: [...external.failedSelectionIds].sort(), unreadableRoots: external.unreadableRoots,

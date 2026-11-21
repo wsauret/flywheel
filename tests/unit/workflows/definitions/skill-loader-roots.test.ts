@@ -21,7 +21,7 @@ function writeSkill(root: string, dirName: string, md: string): void {
 }
 
 function external(...dirs: string[]) {
-  return { roots: dirs.map((dir) => ({ authority: "external" as const, dir, reach: "project" as const })) };
+  return { roots: dirs.map((dir) => ({ authority: "external" as const, dir, reach: "project" as const, owned: true })) };
 }
 
 function containedEntries(directory: ContainedDirectory): SkillDirectoryEntry[] {

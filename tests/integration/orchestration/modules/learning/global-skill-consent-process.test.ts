@@ -66,7 +66,7 @@ import { loadSkillDefinitions, ownedSkillStoreDirs } from ${JSON.stringify(pathT
 
 const registry = () => {
   const dirs = ownedSkillStoreDirs(${JSON.stringify(DIRS)});
-  const load = loadSkillDefinitions({ roots: [{ authority: "external", dir: dirs.project, reach: "project" }, { authority: "external", dir: dirs.user, reach: "global" }] });
+  const load = loadSkillDefinitions({ roots: [{ authority: "external", dir: dirs.project, reach: "project", owned: true }, { authority: "external", dir: dirs.user, reach: "global", owned: true }] });
   return publishSkillRevision(1, load.skills);
 };
 const store = createSqliteEventStore(${JSON.stringify(DB)});

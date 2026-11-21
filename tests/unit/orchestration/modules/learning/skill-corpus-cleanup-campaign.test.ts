@@ -40,7 +40,7 @@ function install(root: string, id: string, dependencies: readonly string[] = [],
 
 function revision(): SkillRegistryRevision {
   const loaded = loadSkillDefinitions({ roots: [
-    { authority: "external", dir: PROJECT_SKILLS, reach: "project" },
+    { authority: "external", dir: PROJECT_SKILLS, reach: "project", owned: true },
     { authority: "bundled", dir: BUNDLED_SKILLS, reach: "global", sourceKind: "agent" },
     { authority: "bundled", dir: MODULE_SKILLS, reach: "global", sourceKind: "module" },
   ] });

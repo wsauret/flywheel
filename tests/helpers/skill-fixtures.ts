@@ -75,6 +75,7 @@ export function withTestExternalSkills(
         authority: "external",
         reach: "global",
         packageDir: `/configured/${id}`,
+        owned: true,
         canonicalDir: `/synthetic/${id}`,
         canonicalId: `test:${index}`,
         linked: false,

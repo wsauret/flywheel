@@ -27,8 +27,8 @@ let writer: SessionFactWriter;
 const roots = () => ownedSkillStoreDirs(DIRS);
 function registry() {
   return publishSkillRevision(1, loadSkillDefinitions({ roots: [
-    { authority: "external", dir: roots().project, reach: "project" },
-    { authority: "external", dir: roots().user, reach: "global" },
+    { authority: "external", dir: roots().project, reach: "project", owned: true },
+    { authority: "external", dir: roots().user, reach: "global", owned: true },
   ] }).skills);
 }
 function skillManage(origin: SkillWriteOrigin = AGENT) {

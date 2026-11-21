@@ -154,6 +154,34 @@ describe("skill tool loading", () => {
     expect((await nextRequest.execute({ action: "load", skill_id: "first" }, context)).outcome).toBe("error");
     expect((await nextRequest.execute({ action: "load", skill_id: "second" }, context)).outcome).toBe("ok");
   });
+
+  // A source run reads bundled and module packages from the source tree, the shared root belongs to other harnesses,
+  // and a linked package lives where its link points. No writer locks a package there, so a load writes nothing
+  // beside it and works where it cannot write.
+  it("loads a package that no writer can lock without writing beside it", async () => {
+    const bundled = temporaryDirectory("flywheel-bundled-skill-root-");
+    const shared = temporaryDirectory("flywheel-shared-skill-root-");
+    const linkTargets = temporaryDirectory("flywheel-linked-skill-source-");
+    const owned = temporaryDirectory("flywheel-owned-skill-root-");
+    const unlockable = [[bundled, "module-method"], [shared, "shared-method"], [linkTargets, "linked-method"]] as const;
+    for (const [root, id] of unlockable) {
+      mkdirSync(join(root, id), { recursive: true });
+      writeFileSync(join(root, id, SKILL_FILE), `---\ndescription: The ${id} procedure\n---\nFollow ${id}.`);
+    }
+    symlinkSync(join(linkTargets, "linked-method"), join(owned, "linked-method"));
+    const tool = toolFor(publishSkillRevision(1, loadSkillDefinitions({
+      roots: [
+        { authority: "external", dir: owned, reach: "project", owned: true },
+        { authority: "external", dir: shared, reach: "global", owned: false },
+        { authority: "bundled", dir: bundled, reach: "global", sourceKind: "module", bundle: "fixture" },
+      ],
+    }).skills));
+
+    for (const [root, id] of unlockable) {
+      expect((await tool.execute({ action: "load", skill_id: id }, context)).outcome).toBe("ok");
+      expect(existsSync(join(root, ".locks"))).toBe(false);
+    }
+  });
 });
 
   it("changes worktree execution policy only after a successful load", async () => {
@@ -186,7 +214,7 @@ describe("skill tool loading", () => {
     writeFileSync(join(packageDir, SKILL_FILE), "---\ndescription: External replacement\n---\nUnsafe replacement.");
     const effectiveBundledSkillIds = new Set<string>();
     const revision = publishSkillRevision(1, loadSkillDefinitions({
-      roots: [{ authority: "external", dir: root, reach: "project" }],
+      roots: [{ authority: "external", dir: root, reach: "project", owned: true }],
     }).skills);
     const tool = createSkillTool({
       treeCapabilities: () => true,
@@ -344,7 +372,7 @@ describe("skill tool resource containment", () => {
   const OUTSIDE = join(TMP, "secret.txt");
 
   function installedTool(): ReturnType<typeof createSkillTool> {
-    return toolFor(publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills));
+    return toolFor(publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills));
   }
 
   beforeEach(() => {
@@ -398,7 +426,7 @@ describe("skill tool resource containment", () => {
 
   it("holds the package lock until successful-load recording completes", async () => {
     writeFileSync(join(PACKAGE_DIR, SKILL_FILE), "---\ndescription: Process PDF files\nmanaged: flywheel\n---\nRead the PDF.");
-    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills);
+    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills);
     let releaseLoad: (() => void) | undefined;
     let loadObserved: (() => void) | undefined;
     const observed = new Promise<void>((resolve) => { loadObserved = resolve; });
@@ -432,7 +460,7 @@ describe("skill tool resource containment", () => {
 
   it("records concurrent loads of one package together, not one at a time", async () => {
     writeFileSync(join(PACKAGE_DIR, SKILL_FILE), "---\ndescription: Process PDF files\n---\nRead the PDF.");
-    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills);
+    const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project", owned: true }] }).skills);
     const loads = 5;
     let recording = 0;
     let mostAtOnce = 0;
@@ -593,8 +621,8 @@ describe("skill tool provenance", () => {
     // Project wins precedence, exactly as the registry composes the two stores.
     return toolFor(publishSkillRevision(4, loadSkillDefinitions({
       roots: [
-        { authority: "external", dir: PROJECT_ROOT, reach: "project" },
-        { authority: "external", dir: GLOBAL_ROOT, reach: "global" },
+        { authority: "external", dir: PROJECT_ROOT, reach: "project", owned: true },
+        { authority: "external", dir: GLOBAL_ROOT, reach: "global", owned: true },
       ],
     }).skills));
   }
@@ -611,8 +639,8 @@ describe("skill tool provenance", () => {
   it("loads the selected package and names the package it outranked", async () => {
     const revision = publishSkillRevision(4, loadSkillDefinitions({
       roots: [
-        { authority: "external", dir: PROJECT_ROOT, reach: "project" },
-        { authority: "external", dir: GLOBAL_ROOT, reach: "global" },
+        { authority: "external", dir: PROJECT_ROOT, reach: "project", owned: true },
+        { authority: "external", dir: GLOBAL_ROOT, reach: "global", owned: true },
       ],
     }).skills);
     const selected = revision.skills.get("notes");

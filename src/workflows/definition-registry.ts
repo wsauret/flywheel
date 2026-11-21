@@ -29,7 +29,7 @@ const log = Log.create({ service: "skill-registry" });
 function loadSkills(roots: readonly SkillStoreRoot[], bundles: readonly DefinitionBundle[]): SkillLoad {
   return loadSkillDefinitions({
     roots: [
-      ...roots.map(({ dir, reach }) => ({ authority: "external" as const, dir, reach })),
+      ...roots.map(({ dir, reach, owned }) => ({ authority: "external" as const, dir, reach, owned })),
       { authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const },
       ...bundles.map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id, manifest: Object.entries(moduleSkillDefinitions[id] ?? {}) })),
     ],

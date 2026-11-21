@@ -38,7 +38,7 @@ describe("skill containment on the Windows backend", () => {
   });
 
   it("refuses a resource that becomes a link outside its package", () => {
-    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: root, reach: "project" }] }).skills.get("package");
+    const skill = loadSkillDefinitions({ roots: [{ authority: "external", dir: root, reach: "project", owned: true }] }).skills.get("package");
     if (!skill) throw new Error("fixture skill failed to load");
     const outside = join(workspace, "outside.md");
     writeFileSync(outside, "outside");
@@ -66,7 +66,7 @@ describe("skill containment on the Windows backend", () => {
     expect(() => readSkillResource(testSkill("package", {
       body: "Body",
       resources: [{ path: "references/api.md", bytes: 9 }],
-      source: { kind: "filesystem", authority: "external", reach: "project", packageDir, ...binding },
+      source: { kind: "filesystem", authority: "external", reach: "project", packageDir, owned: true, ...binding },
     }), "references/api.md", 0, 64)).toThrow("escapes its package");
   });
 });
