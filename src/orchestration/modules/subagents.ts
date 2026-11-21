@@ -158,6 +158,7 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
       captureRuntimeConfig: services.captureRuntimeConfig,
       captureProviderConnection: services.captureProviderConnection,
       awaitModelAccessSettled: services.awaitModelAccessSettled,
+      ...(services.resolveEnvSnapshot ? { resolveEnvSnapshot: services.resolveEnvSnapshot } : {}),
       moduleSelection: services.moduleSelection,
       inheritableRuntimeSurfaces: services.inheritableRuntimeSurfaces,
   })

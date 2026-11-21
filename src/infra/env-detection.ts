@@ -225,14 +225,16 @@ async function probeDirectory(run: OwnedCommandRunner, cwd: string): Promise<rea
   ];
 }
 
+/** Up to the repository's first 20 tracked files. The snapshot states no count, not even the sample size: the total
+ *  changes with almost every commit, and the env block must stay byte-stable for the life of a context so that the
+ *  prompt cache holds (ARCH-CONTEXT-044). Fewer than five files still marks a greenfield repository. */
 async function repoSnapshot(run: OwnedCommandRunner, cwd: string): Promise<string> {
   const result = await run(["git", "ls-files"], { cwd });
   if (result.exitCode !== 0) return REPO_SNAPSHOT_UNAVAILABLE;
   const files = result.stdout.trim().split("\n").filter(Boolean);
-  const count = files.length;
   const sample = files.slice(0, REPO_SNAPSHOT_FILE_LIMIT);
 
-  if (count === 0) return "Greenfield repo (0 tracked files)";
-  if (count < 5) return `Greenfield repo (${count} tracked files): ${sample.join(", ")}`;
-  return `${count} tracked files (first ${REPO_SNAPSHOT_FILE_LIMIT}): ${sample.join(", ")}`;
+  if (files.length === 0) return "Greenfield repo (no tracked files)";
+  if (files.length < 5) return `Greenfield repo: ${sample.join(", ")}`;
+  return `Tracked file sample: ${sample.join(", ")}`;
 }

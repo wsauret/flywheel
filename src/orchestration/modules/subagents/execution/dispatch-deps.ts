@@ -75,6 +75,8 @@ export interface SubagentDispatchDeps {
   captureRuntimeConfig: RunnableAgentOptions["captureRuntimeConfig"]
   captureProviderConnection?: import("../../../agent-runtime/factory.js").CaptureProviderConnection
   awaitModelAccessSettled: RunnableAgentOptions["awaitModelAccessSettled"]
+  /** The dispatcher's environment resolver: the child states its own directory with it. */
+  resolveEnvSnapshot?: RunnableAgentOptions["resolveEnvSnapshot"]
   inheritableRuntimeSurfaces: RuntimeToolSurfaces
   moduleSelection: NonNullable<AgentOptions["moduleSelection"]>
   keepAliveIntervalMs?: number

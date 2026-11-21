@@ -390,6 +390,7 @@ export function createChildExecution(options: {
     moduleSelection: deps.moduleSelection,
     captureRuntimeConfig: deps.captureRuntimeConfig,
     awaitModelAccessSettled: deps.awaitModelAccessSettled,
+    ...(deps.resolveEnvSnapshot ? { resolveEnvSnapshot: deps.resolveEnvSnapshot } : {}),
     allowedSubagentTypes: grantedTypes,
     runtimeSurfaces: {
       ...deriveChildRuntimeSurfaces(deps.inheritableRuntimeSurfaces, {

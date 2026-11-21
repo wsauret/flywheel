@@ -58,7 +58,7 @@ describe("environment detection", () => {
 
     expect(snapshot.envBlock).toContain(`Working directory: ${executionCwd}`);
     expect(snapshot.envBlock).toContain("Is directory a git repo: Yes");
-    expect(snapshot.envBlock).toContain("Repo snapshot: 6 tracked files (first 20): a.ts, b.ts, c.ts, d.ts, e.ts, f.ts");
+    expect(snapshot.envBlock).toContain("Repo snapshot: Tracked file sample: a.ts, b.ts, c.ts, d.ts, e.ts, f.ts");
     expect(runner.calls.map((call) => call.options?.cwd)).toEqual([executionCwd]);
   });
 
@@ -146,7 +146,7 @@ describe("environment detection", () => {
     expect(snapshot.envBlock).toContain("Repo snapshot: git ls-files failed");
   });
 
-  test("reports a greenfield repo by its file count", async () => {
+  test("reports a greenfield repo without a file count", async () => {
     const empty = repoDirectory();
     const small = repoDirectory();
     const runner = fakeOwnedCommandRunner(() => Promise.resolve(ownedCommandResult("\n")));
@@ -155,8 +155,8 @@ describe("environment detection", () => {
     const smallRunner = fakeOwnedCommandRunner(gitAnswers(["a.ts", "b.ts"]));
     const smallSnapshot = await createEnvCaptureResolver(smallRunner.run)({ projectRoot: small, executionCwd: small });
 
-    expect(emptySnapshot.envBlock).toContain("Repo snapshot: Greenfield repo (0 tracked files)");
-    expect(smallSnapshot.envBlock).toContain("Repo snapshot: Greenfield repo (2 tracked files): a.ts, b.ts");
+    expect(emptySnapshot.envBlock).toContain("Repo snapshot: Greenfield repo (no tracked files)");
+    expect(smallSnapshot.envBlock).toContain("Repo snapshot: Greenfield repo: a.ts, b.ts");
   });
 
   test("publishes no branch on a detached head", () => {

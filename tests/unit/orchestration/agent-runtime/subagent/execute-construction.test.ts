@@ -11,12 +11,23 @@ import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.
 import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
-import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { makeContext as toolContext } from "../tools/_fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { buildRegistry, createNotificationCapture, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";
+import { Effect, Exit, Scope } from "effect";
+import { openRequestInputs } from "../../../../../src/orchestration/agent-runtime/request-inputs.js";
+import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/runtime-conversation.js";
+import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
+import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/runtime-binding.js";
+import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definition-availability.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { asModelClient } from "../_model-client.js";
+import { makeOptions } from "../_runner-options.js";
+import type { EnvCaptureResolver } from "../../../../../src/infra/env-detection.js";
 
 /** The check of a child whose plan lets it call exactly `tools`. */
 const holding = (tools: readonly string[]) => (term: string): boolean => tools.includes(term);
@@ -73,6 +84,59 @@ describe("subagent tool — execute runner construction", () => {
       expect(opts.runtimeSurfaces?.handoff?.schema).toBeDefined();
 
       rmSync(sessionDir, { recursive: true, force: true });
+    });
+
+    // Every child that a dispatch started rendered no <env> block, and only a later resume through the session host
+    // added one, which rewrote the child's whole system prompt and its prompt cache.
+    it("gives a dispatched child the environment resolver of the agent that dispatches it", async () => {
+      const resolveEnvSnapshot: EnvCaptureResolver = async ({ executionCwd }) => ({ envBlock: `<env>\nWorking directory: ${executionCwd}\n</env>` });
+      const modules = composeFirstPartyModules();
+      const client = async () => asModelClient({
+        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
+        contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+        async *streamWithTools() { yield { kind: "done", stopReason: "end_turn" } },
+      });
+      const parent: RunnableAgentOptions = {
+        ...makeOptions({ purpose: { kind: "interactive-chat" }, agentRegistry: new Map(), agentsMd: "" }),
+        conversation: {
+          kind: "durable-tree", sessionId: "parent", conversationId: "parent-conversation", priorMessages: [], append: () => {},
+          reserveMessageId: async () => crypto.randomUUID(), captureCommittedForkMessages: async () => [], resolveLeafId: async () => null,
+          committedTree: async () => ({ leafId: null, entriesById: {} }),
+        },
+        subagentSessions: makeDeps().subagentSessions,
+        toolGrant: ["read", "subagent"],
+        runtimeSurfaces: { background: createBackgroundExecutionOwner(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })) },
+        moduleSelection: () => modules, captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {},
+        resolveEnvSnapshot,
+      };
+      const definitions = repoDefinitions();
+      const scope = Scope.makeUnsafe("sequential");
+      try {
+        const opened = await openRequestInputs({
+          options: parent, definitions, personas: definitions.personas(),
+          conversation: resolveRuntimeConversation(parent.conversation, { providerSessionKey: "agent", artifactScopeId: "artifact", retrievalSessionId: "retrieval" }),
+          captureModelRuntime: async () => ({ generation: client, createLLMClient: client }),
+          createRunner: () => { throw new Error("the dispatch below takes its own runner") },
+          providerSessionLifetime: { providerSessionKey: "agent", scope },
+        }, { kind: "prestart", signal: new AbortController().signal });
+        const subagents = (await opened.build()).moduleRuntimes.get(subagentsRuntime);
+        if (!subagents) throw new Error("the parent's request planned no subagent dispatch");
+        const { factory, calls } = makeMockRunnerFactory({ finalText: "done" });
+        const dispatch = createSubagentDispatch({
+          ...subagents.toolDeps({ model: "test", modelFamily: "anthropic" }, definitionAvailabilityOf(definitions.captureRevision(), modules.enabledModuleIds, [])),
+          createRunner: factory,
+        });
+
+        await dispatch.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "find config" }, makeContext({ executionCwd: "/child/cwd" }));
+
+        const child = calls[0]?.options;
+        if (!child) throw new Error("the dispatch started no child");
+        expect((await child.resolveEnvSnapshot?.({ projectRoot: child.projectRoot, executionCwd: child.executionCwd }))?.envBlock)
+          .toBe("<env>\nWorking directory: /child/cwd\n</env>");
+      } finally {
+        Effect.runSync(Scope.close(scope, Exit.void));
+      }
     });
 
     it("resolves an explicit cwd against the parent execution directory, where the child loads its own instructions", async () => {

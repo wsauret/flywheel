@@ -85,6 +85,9 @@ export interface ModuleRuntimeServices {
   readonly captureRuntimeConfig: CaptureRuntimeConfig;
   readonly captureProviderConnection?: CaptureProviderConnection;
   readonly awaitModelAccessSettled: RunnableAgentOptions["awaitModelAccessSettled"];
+  /** The environment resolver of this runner's generation, which a child that this runner starts renders its own
+   *  `<env>` block from. */
+  readonly resolveEnvSnapshot?: RunnableAgentOptions["resolveEnvSnapshot"];
   readonly usageProfile?: AgentOptions["usageProfile"];
   readonly activeProfileId?: string;
   readonly usageSettlement?: UsageSettlement;
@@ -189,6 +192,7 @@ export function createModuleRuntimeServices(input: ModuleRuntimeServicesInput): 
     captureRuntimeConfig: options.captureRuntimeConfig,
     ...(options.captureProviderConnection ? { captureProviderConnection: options.captureProviderConnection } : {}),
     awaitModelAccessSettled: options.awaitModelAccessSettled,
+    ...(options.resolveEnvSnapshot ? { resolveEnvSnapshot: options.resolveEnvSnapshot } : {}),
     ...(usageProfile ? { usageProfile } : {}),
     ...(options.activeProfileId ? { activeProfileId: options.activeProfileId } : {}),
     ...(usageSettlement ? { usageSettlement } : {}),
