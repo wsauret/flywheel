@@ -1,0 +1,86 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 202-207
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 281-285
+src/infra/fact-retention-registry.ts
+  h_4b47e9e4a8b456 82-83
+src/orchestration/agent-runtime/agent-loop-tool-context.ts
+  h_4b47e9e4a8b456 90
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 216-219,221-222,224-226
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 117
+src/orchestration/agent-runtime/prompt-baseline.ts
+  h_4b47e9e4a8b456 1-201
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 42-45,107,255-260,266,269-271,275-280,611-612,656-665,668,673,687,742,744-747
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 36-37,42,46,114
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 67-72
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 17,187-189,299-302,313,344-347,349-350,352
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 26,180-182,188-201,204,206,227-230,249,271-272,286-287,291-294
+src/orchestration/agent-runtime/tools/skill.ts
+  h_4b47e9e4a8b456 135-136
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 179-181
+src/orchestration/modules/learning.ts
+  h_4b47e9e4a8b456 104-105
+src/orchestration/session/conversation-prompt-baseline.ts
+  h_4b47e9e4a8b456 1-99
+src/orchestration/session/manager.ts
+  h_4b47e9e4a8b456 22,27,370-373,399,435,458
+src/orchestration/session/session-chat-branch-publication.ts
+  h_4b47e9e4a8b456 13,19-20,25,31,66-71
+src/orchestration/session/session-fact-registry.ts
+  h_4b47e9e4a8b456 12,17
+src/orchestration/session/session-fact-writer.ts
+  h_4b47e9e4a8b456 15,18
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1221-1222,1227-1228,1233-1234,1239-1240,1243-1246,1251-1252
+tests/unit/infra/module-baseline-generator.ts
+  h_4b47e9e4a8b456 147
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 61,117,167-168
+tests/unit/orchestration/agent-runtime/prompt-baseline.test.ts
+  h_4b47e9e4a8b456 1-269
+tests/unit/orchestration/agent-runtime/request-golden.test.ts
+  h_4b47e9e4a8b456 183
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 497,605,609,611,613-614
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 480,492,526-528,535,537-539,548
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 5,232,236,242,244,247,259-261,289,329,371,442,533,546-553,556-559,566-569,573-577
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 138
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 6,199,206,235,239,252
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 40,50
+tests/unit/orchestration/agent-runtime/system-prompt.test.ts
+  h_4b47e9e4a8b456 22,30-31
+tests/unit/orchestration/agent-runtime/tools/skill.test.ts
+  h_4b47e9e4a8b456 218,467,512-513,524
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 490,496,509
+tests/unit/orchestration/agent-runtime/workflow-agent-prompt-prefix.test.ts
+  h_4b47e9e4a8b456 77
+tests/unit/orchestration/session/session-manager-fork.test.ts
+  h_4b47e9e4a8b456 12,150,165-173,177-183,185-190
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bb381cc6db8d887171b61715ab57200e6e1124ee",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
