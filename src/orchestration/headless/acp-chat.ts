@@ -9,8 +9,7 @@ import {
   acpResult, acpToolOpen, acpUpdate, acpUsageUpdate,
   type AcpConfigOption, type AcpElicitationReply, type AcpStopReason, type AcpStreamed, type JsonRpcId,
 } from "../../protocol/acp.js"
-import type { ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
-import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
+import type { ChatSettlementOutcome, ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/app-service-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { isBudgetPayload } from "../../protocol/budget-protocol-types.js"
@@ -58,10 +57,7 @@ export function acpFraming(executionCwd: string): HeadlessChatFraming {
       connection = openAcpConnection(channel, await readAppVersion(), executionCwd)
       return connection
     },
-    final: () => {
-      connection?.dispose()
-      return undefined
-    },
+    close: () => { connection?.dispose() },
   }
 }
 
@@ -69,7 +65,7 @@ export function acpFraming(executionCwd: string): HeadlessChatFraming {
  *  or undefined for a turn that failed, which a JSON-RPC error answers. A failed turn is never `end_turn`, and a
  *  channel that failed after a refusal, such as on its durable write, fails the prompt. A turn that waits on a
  *  question ends its prompt as `end_turn`: the next prompt answers it. */
-function stopReasonOf(outcome: HeadlessChatOutcome, cancelled: boolean, ending: ChatTurnEnding | undefined): AcpStopReason | undefined {
+function stopReasonOf(outcome: ChatSettlementOutcome, cancelled: boolean, ending: ChatTurnEnding | undefined): AcpStopReason | undefined {
   if (outcome === "failed") return undefined
   if (cancelled) return "cancelled"
   if (ending?.kind === "refused") return "refusal"
@@ -504,7 +500,7 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   const follow = async (id: JsonRpcId | undefined, store: TranscriptStore): Promise<void> => {
     // A settled answer names how the turn ended: a chat states how its last
     // turn ended until it accepts input again.
-    let settlement: { readonly outcome: HeadlessChatOutcome; readonly ending?: ChatTurnEnding } | { readonly failure: string }
+    let settlement: { readonly outcome: ChatSettlementOutcome; readonly ending?: ChatTurnEnding } | { readonly failure: string }
     while (true) {
       // A settlement that fails, as when the turn's totals cannot be read,
       // fails this prompt with no usage update; a failed channel also fails on

@@ -4,18 +4,15 @@ const AUTH_FLAGS = "[--auth-profile <profile>] [--auth-snapshot <absolute-path>]
 
 /** The headless invocations. The headless usage and the root help both list them, so the two cannot disagree. */
 export const HEADLESS_FORMS: readonly { readonly syntax: string; readonly note: string }[] = [
-  { syntax: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... ${AUTH_FLAGS} [--jsonl]`, note: "JSONL Chat" },
-  { syntax: `flywheel --headless --acp [--unattended] [--disable-tool <name>]... ${AUTH_FLAGS}`, note: "Agent Client Protocol v1 Chat" },
+  { syntax: `flywheel --headless [--acp] [--unattended] [--disable-tool <name>]... ${AUTH_FLAGS}`, note: "Agent Client Protocol v1 Chat" },
   { syntax: `flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... ${AUTH_FLAGS} [--deadline-seconds <seconds>] [--jsonl]`, note: "Direct Task" },
 ]
 
 export const HEADLESS_USAGE =
   HEADLESS_FORMS.map(({ syntax }, index) => `${index === 0 ? "Usage: " : "       "}${syntax}\n`).join("") + "\n" +
-  "  --headless       Run without TUI (CI/automation)\n" +
-  "  --session        Attach an existing chat without resuming its interrupted turn.\n" +
-  "  --one-shot       Return after durable handoff and owned work settle; plain parking is incomplete.\n" +
-  "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel. The chat runs in the account service, as a terminal's chat does, and keeps running when this process ends. With --unattended, --disable-tool, or --auth-snapshot, this process runs the chat itself and holds the project alone.\n" +
-  "  --unattended     With --acp, run one unattended prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit.\n" +
+  "  --headless       Run without TUI (CI/automation). Without --task, speak Agent Client Protocol version 1 on stdin and stdout. The chat runs in the account service, as a terminal's chat does, and keeps running when this process ends. With --unattended, --disable-tool, or --auth-snapshot, this process runs the chat itself and holds the project alone.\n" +
+  "  --acp            Optional: headless chat always speaks Agent Client Protocol version 1.\n" +
+  "  --unattended     Run one unattended headless chat prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit.\n" +
   "  --task           Run one direct task through the shared production runner.\n" +
   "  --system-prompt  Replace the complete system prompt for a direct headless task; recorded in request-audit history, not secret input.\n" +
   "  --model          Use a model ID or an enabled-model tier (cheap, mid, powerful) instead of the configured chat role.\n" +
@@ -25,7 +22,7 @@ export const HEADLESS_USAGE =
   "  --disable-tool   Disable one active first-party tool for this invocation. Repeatable.\n" +
   "  --deadline-seconds\n" +
   "                   Positive finite deadline for --task.\n" +
-  "  --jsonl         Write the versioned JSONL contract to stdout.\n" +
+  "  --jsonl          With --task, write the versioned JSONL contract to stdout.\n" +
   "  --allow-persistent-processes\n" +
   "                   Allow tools to start processes that survive this invocation.\n"
 
@@ -107,35 +104,23 @@ export function headlessDisabledTools(argv: readonly string[]): readonly string[
   return values
 }
 
-/** Headless chat framed as Agent Client Protocol version 1. An ACP client
- *  opens its own session and ends it by closing input, so root argument
- *  classification refuses the flag with a direct task, an attached session,
- *  or one-shot return. */
-export function hasHeadlessAcpFlag(argv: readonly string[]): boolean {
-  return argv.includes("--acp")
-}
-
 /** Whether a headless chat is a client of the resident account service, as
- *  a terminal is (ARCH-RUNTIME-004): an ACP chat that a person reads, with
+ *  a terminal is (ARCH-RUNTIME-004): a chat that a person reads, with
  *  the account's own tools and credentials. A chat that no person reads, or
  *  one that disables tools or brings its own credentials, hosts its own
  *  runtime and never looks for or starts a service. */
 export function headlessChatAttaches(argv: readonly string[]): boolean {
   const given = (flag: string) => argv.some((arg) => arg === flag || arg.startsWith(`${flag}=`))
-  return isHeadlessChat(argv) && hasHeadlessAcpFlag(argv) && !given("--unattended") && !given("--disable-tool") && !given("--auth-snapshot")
+  return isHeadlessChat(argv) && !given("--unattended") && !given("--disable-tool") && !given("--auth-snapshot")
 }
 
 export function needsHeadlessUsage(argv: readonly string[]): boolean {
   return hasHeadlessFlag(argv) && !isHeadlessChat(argv) && !headlessTask(argv)
 }
 
-/** Headless runs a chat unless it selects a direct task. */
+/** Headless runs an Agent Client Protocol chat unless it selects a direct task. */
 export function isHeadlessChat(argv: readonly string[]): boolean {
   return hasHeadlessFlag(argv) && !argv.some((arg) => arg === "--task" || arg.startsWith("--task="))
-}
-
-export function headlessSession(argv: readonly string[]): string | undefined {
-  return readFlagArg(argv, "--session")
 }
 
 function readFlagArg(argv: readonly string[], flag: string) {

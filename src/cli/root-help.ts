@@ -50,12 +50,10 @@ const ROOT_OPTIONS: readonly RootOption[] = [
   { flags: "--effort <level>", description: "Reasoning effort for --model." },
   { flags: "--disable-tool <name>", description: "Disable one active first-party tool for a headless chat or direct task." },
   { flags: "--auth-profile <profile>", description: "Select the auth profile for a headless chat or direct task." },
-  { flags: "--session <id>", description: "Attach an existing headless chat without automatic Resume." },
-  { flags: "--one-shot", description: "Return after durable handoff and owned work settle; plain parking is incomplete." },
-  { flags: "--acp", description: "Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel." },
-  { flags: "--unattended", description: "With --acp, run one unattended prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit." },
+  { flags: "--acp", description: "Optional: headless chat always speaks Agent Client Protocol version 1 on standard input and output." },
+  { flags: "--unattended", description: "Run one unattended headless chat prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit." },
   { flags: "--auth-snapshot <path>", description: "Consume a matching one-use auth snapshot from a trusted source." },
-  { flags: "--jsonl", description: "Write versioned JSONL progress and terminal records." },
+  { flags: "--jsonl", description: "With --task, write versioned JSONL progress and terminal records." },
   { flags: "--allow-persistent-processes", description: "Allow tools to start processes that survive this invocation." },
 ]
 

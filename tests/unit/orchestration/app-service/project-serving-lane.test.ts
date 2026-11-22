@@ -281,7 +281,7 @@ describe("exclusive headless project execution", () => {
       })
       expect(code).toBe(1)
       expect(assembly).toHaveBeenCalledTimes(1)
-      expect(JSON.parse(records[0] ?? "")).toMatchObject({ type: "outcome", outcome: "failed" })
+      expect(records).toEqual([])
       await expect(claimHeadlessProjectExecution(projectRoot)).rejects.toThrow("is open in headless execution")
       await expect(claimProjectServing(projectRoot, "dev")).rejects.toThrow("is open in headless execution")
     } finally {

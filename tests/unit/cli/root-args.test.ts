@@ -19,23 +19,26 @@ describe("root CLI args", () => {
       })
     }
   })
-  test("accepts headless chat resume without a legacy selector", async () => {
-    expect(await rootCliAction(["--headless", "--session", "saved-chat"])).toEqual({
-      kind: "run", args: ["--headless", "--session", "saved-chat"],
-    })
-    expect((await rootCliAction(["--session", "saved-chat"])).kind).toBe("error")
-    expect(await rootCliAction(["--headless", "--one-shot"])).toEqual({ kind: "run", args: ["--headless", "--one-shot"] })
-    expect(await rootCliAction(["--headless", "--one-shot", "--disable-tool", "subagent"])).toEqual({ kind: "run", args: ["--headless", "--one-shot", "--disable-tool", "subagent"] })
-    expect((await rootCliAction(["--headless", "--task=x", "--one-shot"])).kind).toBe("error")
+  test("runs headless chat over ACP, with or without --acp", async () => {
     for (const flag of ["--deadline-seconds=30", "--model=m", "--effort=low", "--system-prompt=x"]) {
       expect((await rootCliAction(["--headless", flag])).kind).toBe("error")
     }
-    const acp = ["--headless", "--acp", "--auth-profile=benchmark", "--auth-snapshot", "/scratch/auth.json", "--disable-tool", "web"]
-    expect(await rootCliAction([...acp, "--allow-persistent-processes"])).toEqual({ kind: "run", args: acp, allowPersistentProcesses: true })
-    expect(await rootCliAction([...acp, "--unattended"])).toEqual({ kind: "run", args: [...acp, "--unattended"] })
-    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--acp", "--session", "s"], ["--headless", "--acp", "--one-shot"], ["--headless", "--unattended"], ["--headless", "--task", "x", "--unattended"], ["--unattended"]]) {
+    for (const chat of [["--headless"], ["--headless", "--acp"]]) {
+      const args = [...chat, "--auth-profile=benchmark", "--auth-snapshot", "/scratch/auth.json", "--disable-tool", "web"]
+      expect(await rootCliAction([...args, "--allow-persistent-processes"])).toEqual({ kind: "run", args, allowPersistentProcesses: true })
+      expect(await rootCliAction([...args, "--unattended"])).toEqual({ kind: "run", args: [...args, "--unattended"] })
+    }
+    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--task", "x", "--unattended"], ["--unattended"]]) {
       expect((await rootCliAction(refused)).kind).toBe("error")
     }
+  })
+  test("refuses the removed JSONL chat options and names their ACP replacements", async () => {
+    const oneShot = { kind: "error" as const, message: 'Headless chat speaks only the Agent Client Protocol: --one-shot is removed. Run "flywheel --headless --unattended" for one unattended prompt.' }
+    const session = { kind: "error" as const, message: "Headless chat speaks only the Agent Client Protocol: --session is removed. Continue a chat with the ACP request session/load or session/resume." }
+    const jsonl = { kind: "error" as const, message: 'Headless chat speaks only the Agent Client Protocol: --jsonl is removed for chat. Run "flywheel --headless" from an ACP client, or "flywheel --headless --task <text> --jsonl" for the output of one direct task.' }
+    for (const args of [["--headless", "--one-shot"], ["--headless", "--acp", "--one-shot"], ["--headless", "--task=x", "--one-shot"], ["--one-shot"]]) expect(await rootCliAction(args)).toEqual(oneShot)
+    for (const args of [["--headless", "--session", "saved-chat"], ["--headless", "--session=saved-chat"], ["--session", "saved-chat"]]) expect(await rootCliAction(args)).toEqual(session)
+    for (const args of [["--headless", "--jsonl"], ["--headless", "--acp", "--jsonl"]]) expect(await rootCliAction(args)).toEqual(jsonl)
   })
   test("handles informational flags before runtime startup", async () => {
     expect(await rootCliAction(["--version"])).toEqual({ kind: "version" })
@@ -171,12 +174,12 @@ describe("root CLI args", () => {
     expect(await rootCliAction(["--system-prompt", "custom"])).toEqual({ kind: "error", message: "--system-prompt is only valid with --headless --task" })
   })
 
-  test("accepts JSONL only with headless", async () => {
+  test("accepts JSONL only with a direct headless task", async () => {
     expect(await rootCliAction(["--headless", "--task", "ship it", "--jsonl"])).toEqual({
       kind: "run",
       args: ["--headless", "--task", "ship it", "--jsonl"],
     })
-    expect(await rootCliAction(["--jsonl"])).toEqual({ kind: "error", message: "--jsonl is only valid with --headless" })
+    expect(await rootCliAction(["--jsonl"])).toEqual({ kind: "error", message: "--jsonl is only valid with --headless --task" })
   })
 
   test("documents root informational flags", async () => {
@@ -204,7 +207,7 @@ describe("root CLI args", () => {
     expect(usage).toContain("  --deadline-seconds <n>  Positive finite deadline in seconds for --task.")
     expect(usage).toContain("  --disable-tool <name>\n                   Disable one active first-party tool for a headless chat or\n                   direct task.")
     // A headless form wraps between bracketed groups, never inside one.
-    expect(usage).toContain("                   flywheel --headless [--session <id>] [--one-shot]\n                     [--disable-tool <name>]... [--auth-profile <profile>]\n                     [--auth-snapshot <absolute-path>] [--jsonl] (JSONL Chat)")
+    expect(usage).toContain("                   flywheel --headless [--acp] [--unattended]\n                     [--disable-tool <name>]... [--auth-profile <profile>]\n                     [--auth-snapshot <absolute-path>] (Agent Client Protocol v1\n                     Chat)")
     // Module nouns list from the catalog, one row per verb, in the kernel row layout.
     expect(usage).toContain("  skills why <name>         Trace a skill's loads and writes to sessions and\n                            requests.")
     expect(usage).toContain("  workflow verify <file>    Verify a workflow file compiles and is sound. With\n                            --workflow <id>, replay a workflow read-only.")

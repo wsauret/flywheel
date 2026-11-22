@@ -1,6 +1,7 @@
 import type { StartupDirectories } from "../infra/directory-authorities.js"
 import { errorMessage } from "../infra/error-message.js"
 import type { RuntimeStartupStatus } from "../protocol/app-service-types.js"
+import type { ChatSettlementOutcome } from "../protocol/chat-settlement-protocol-types.js"
 import { AuthProfileManager } from "../orchestration/auth/auth-profile-manager.js"
 import { acpFraming } from "../orchestration/headless/acp-chat.js"
 import { runHeadlessChatChannel, type ChatTransport } from "../orchestration/headless/headless-chat-channel.js"
@@ -51,17 +52,16 @@ export async function runAttachedAcpChat(options: AttachedAcpChatOptions): Promi
   }
   const runtime = await launchRuntimeClient({ ...directories, attach })
   const framing = acpFraming(directories.projectRoot)
-  let result: Awaited<ReturnType<typeof runHeadlessChatChannel>> = { sessionId: null, outcome: "failed" }
+  let outcome: ChatSettlementOutcome = "failed"
   try {
-    result = await runHeadlessChatChannel(runtime.client, {
+    outcome = await runHeadlessChatChannel(runtime.client, {
       input: options.input, write: options.write, progressWriter, framing, ...(authProfile === undefined ? {} : { authProfile }),
     })
   } catch (error) {
     progressWriter(`Headless chat failed: ${errorMessage(error)}`)
   } finally {
     await runtime.dispose()
+    framing.close()
   }
-  const final = framing.final(result)
-  if (final !== undefined) await options.write(final)
-  return result.outcome === "complete" ? 0 : result.outcome === "failed" ? 1 : 2
+  return outcome === "complete" ? 0 : outcome === "failed" ? 1 : 2
 }

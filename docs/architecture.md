@@ -74,8 +74,13 @@ Account service (`flywheel serve`)
 
 Headless placement
 
-CLI process: headless chat
-  hosts: full production project runtime with standard input and output as its client
+Account service: attended headless chat
+  serves: the chat as an ordinary interactive client; the CLI process speaks
+          Agent Client Protocol version 1 for it on standard input and output
+
+CLI process: unattended or process-scoped headless chat
+  hosts: full production project runtime with an Agent Client Protocol client
+         on standard input and output
   executes: chat, whose agent launches workflows through its ordinary tool
 
 CLI process: direct task
@@ -93,7 +98,7 @@ Passive history for sessions whose account row reports `activity: absent` is the
 
 Each runtime-background Worker owns its process-local diagnostics stream. The account process initializes its Worker with the account home because that Worker can serve several projects; an executor initializes its Worker with the one project root it serves. Ordered shutdown rejects new project operations, settles accepted reads and FTS work, closes the diagnostics stream, and then releases the Worker runtime.
 
-Headless chat hosts the full production project runtime in the CLI process, without a public listener or resident account service. Its agent launches workflows as an interactive chat does, under that headless chat. An unanswered question, including an Ask-mode workflow approval, produces an input-required outcome, never invented approval. A direct headless task keeps its explicit local composition in the CLI process. It uses shared bootstrap, ordered disposal, a deadline, stderr progress, and optional JSONL output. Its version 4 JSONL contract contains only `chat.*` records and one `chat.terminal` result. Standalone composition keeps control-host notifications available. `SessionManager`, conversation trees, and workflow facts remain their durable authorities.
+Headless chat speaks Agent Client Protocol version 1 on standard input and output (ARCH-RUNTIME-004). An attended chat is an ordinary interactive client of the resident account service, as a terminal is (ARCH-RUNTIME-084). An unattended run, or a run that disables tools or consumes an auth snapshot, hosts the full production project runtime in the CLI process, without a public listener, under the project's exclusive headless claim. Its agent launches workflows as an interactive chat does, under that headless chat. An unanswered question, including an Ask-mode workflow approval, produces an input-required outcome, never invented approval. A direct headless task keeps its explicit local composition in the CLI process. It uses shared bootstrap, ordered disposal, a deadline, stderr progress, and optional JSONL output. Its version 4 JSONL contract contains only `chat.*` records and one `chat.terminal` result. Standalone composition keeps control-host notifications available. `SessionManager`, conversation trees, and workflow facts remain their durable authorities.
 
 Provider streaming stays beside the agent loop in executor and local headless placements. `TOOL_REGISTRY` and one request planner derive every provider-visible tool surface. The account-owned persistent-process manager remains the lifetime owner while the executor borrows its private client. Focused in-process tests use the same composition without process transport; this changes placement or transport, not runtime semantics.
 

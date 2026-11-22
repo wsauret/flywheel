@@ -7,8 +7,7 @@ This file is generated from the command definitions. Run `bun run docs:generate`
 ```text
 flywheel [options]
 flywheel <subcommand> [args]
-flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--jsonl]
-flywheel --headless --acp [--unattended] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]
+flywheel --headless [--acp] [--unattended] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]
 flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]
 ```
 
@@ -23,7 +22,7 @@ Running flywheel with no arguments starts the interactive TUI. An explicit --pro
 | `--project-root <dir>` | Directory that owns durable project state. Overrides FLYWHEEL_PROJECT_ROOT, established .flywheel discovery, and interactive or silent fallback selection. |
 | `--remote` | Choose a project on a machine this terminal is paired with, and open it through the relay. Pair a machine with 'flywheel remote machines add `<link>`'. |
 | `--print-logs` | Mirror structured logs to stderr. While the TUI draws on the terminal, only a redirected stderr gets them. |
-| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--jsonl]` (JSONL Chat) or `flywheel --headless --acp [--unattended] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]` (Agent Client Protocol v1 Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id\|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]` (Direct Task) |
+| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--acp] [--unattended] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]` (Agent Client Protocol v1 Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id\|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]` (Direct Task) |
 | `--task <text>` | Run one direct headless task through the shared production runner. |
 | `--deadline-seconds <n>` | Positive finite deadline in seconds for --task. |
 | `--system-prompt <text>` | Replace the full direct-task system prompt. The override is recorded in session request-audit history and is not secret input. |
@@ -31,12 +30,10 @@ Running flywheel with no arguments starts the interactive TUI. An explicit --pro
 | `--effort <level>` | Reasoning effort for --model. |
 | `--disable-tool <name>` | Disable one active first-party tool for a headless chat or direct task. |
 | `--auth-profile <profile>` | Select the auth profile for a headless chat or direct task. |
-| `--session <id>` | Attach an existing headless chat without automatic Resume. |
-| `--one-shot` | Return after durable handoff and owned work settle; plain parking is incomplete. |
-| `--acp` | Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel. |
-| `--unattended` | With --acp, run one unattended prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit. |
+| `--acp` | Optional: headless chat always speaks Agent Client Protocol version 1 on standard input and output. |
+| `--unattended` | Run one unattended headless chat prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit. |
 | `--auth-snapshot <path>` | Consume a matching one-use auth snapshot from a trusted source. |
-| `--jsonl` | Write versioned JSONL progress and terminal records. |
+| `--jsonl` | With --task, write versioned JSONL progress and terminal records. |
 | `--allow-persistent-processes` | Allow tools to start processes that survive this invocation. |
 
 ## Examples

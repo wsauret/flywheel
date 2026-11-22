@@ -273,6 +273,6 @@ test("pins adapter bytes and decoded protocol contracts in controller infrastruc
   expect(harnessChanged).not.toBe(claudeChanged);
   await writeFile(join(root, "bench/chat-ab/results/result.json"), "new result");
   expect(await benchmarkInfrastructureIdentity(root)).toBe(harnessChanged);
-  await writeFile(join(root, "src/protocol/headless-chat.ts"), "changed protocol bytes");
+  await writeFile(join(root, "src/protocol/acp.ts"), "changed protocol bytes");
   expect(await benchmarkInfrastructureIdentity(root)).not.toBe(harnessChanged);
 });

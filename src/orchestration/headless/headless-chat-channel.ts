@@ -1,17 +1,15 @@
 import { Readable } from "node:stream"
 import { createInterface } from "node:readline"
-import { Cause, Deferred, Effect, Fiber, Queue, Schema, Semaphore, Stream } from "effect"
+import { Cause, Deferred, Effect, Fiber, Queue, Semaphore, Stream } from "effect"
 import { Log } from "../../infra/log.js"
 import { diagnosticDetail, errorMessage } from "../../infra/error-message.js"
-import type { AttachedRuntimeClient, FrontendMutation, RuntimeClient, RuntimeEventFrame } from "../../protocol/app-service-types.js"
-import type { ChatSettlementResult } from "../../protocol/chat-settlement-protocol-types.js"
+import type { AttachedRuntimeClient, RuntimeClient, RuntimeEventFrame } from "../../protocol/app-service-types.js"
+import type { ChatSettlementOutcome, ChatSettlementResult } from "../../protocol/chat-settlement-protocol-types.js"
 import { lostWithLane } from "../../protocol/client/connection-failures.js"
 import { createOpenSessionKeeper, type OpenSessionKeeper } from "../../protocol/client/open-session-keeper.js"
-import { HeadlessChatRecordSchema, HeadlessChatRequestSchema, type HeadlessChatOutcome, type HeadlessChatRecord } from "../../protocol/headless-chat.js"
 import { RUNTIME_LIVENESS_POLICY } from "../../protocol/runtime-liveness.js"
 import { runtimeEventDelivery } from "../app-service/runtime-event-delivery.js"
 import type { AgentToolInput } from "../agent-runtime/types.js"
-import type { createChatInvocationCompletion } from "../chat/runner-completion.js"
 
 const log = Log.create({ service: "headless-chat" })
 
@@ -45,27 +43,19 @@ export interface ChatTransport {
   readonly input: AsyncIterable<string | Uint8Array> | Iterable<string | Uint8Array>
   readonly write: (line: string) => Promise<void>
   readonly progressWriter?: (line: string) => void
-  readonly sessionId?: string
-  readonly oneShot?: boolean
-  /** No person reads the conversation (PI-AGENT-121), so the run is one-shot: its first answered turn ends it. */
-  readonly unattended?: boolean
-  /** The wire framing; the versioned JSONL channel when absent. */
-  readonly framing?: HeadlessChatFraming
+  readonly framing: HeadlessChatFraming
   /** The auth profile id that the attached chat runs on. The channel selects
    *  it for the chat once it attaches, and a refusal fails the attach. A
    *  runtime that this process hosts resolves its profile itself. */
   readonly authProfile?: string
+  /** The one-shot invocation of an unattended run (PI-AGENT-121). The
+   *  channel binds it to the chat it attaches, and returns once the first
+   *  prompt that submits work and the work it owns settle: complete only
+   *  with the invocation's sealed result, otherwise incomplete. */
   readonly completion?: {
-    readonly invocation: ReturnType<typeof createChatInvocationCompletion>
     bind(sessionId: string): void
     result(): AgentToolInput | undefined
   }
-}
-
-interface HeadlessChatResult {
-  readonly sessionId: string | null
-  readonly outcome: HeadlessChatOutcome
-  readonly handoff?: AgentToolInput
 }
 
 /** What the channel gives the framing that speaks for it. */
@@ -97,7 +87,7 @@ export interface HeadlessChatChannel {
   hold(work: Promise<void>): void
 }
 
-/** One attached framing: it turns delivered runtime frames and input lines
+/** The attached framing: it turns delivered runtime frames and input lines
  *  into output lines. `request` answers a malformed line with its own error
  *  lines, and says whether the line submitted work. */
 interface HeadlessChatCodec {
@@ -107,23 +97,22 @@ interface HeadlessChatCodec {
   inputEnded?(): void
 }
 
-/** A wire framing of headless chat: the versioned JSONL channel or Agent
- *  Client Protocol version 1. `open` attaches it before any frame or input
- *  line reaches it, and the framing chooses when to attach the root chat.
- *  `final` is the line written after the channel's host let go of the
- *  runtime, if the framing has one. */
+/** The wire framing of headless chat, Agent Client Protocol version 1
+ *  (acp-chat.ts). `open` attaches it before any frame or input line reaches
+ *  it, and the framing chooses when to attach the root chat. The channel's
+ *  host calls `close` after it let go of the runtime. */
 export interface HeadlessChatFraming {
   open(channel: HeadlessChatChannel): Promise<HeadlessChatCodec>
-  final(result: HeadlessChatResult): string | undefined
+  close(): void
 }
 
 /** Processes ordered input lines while the ordinary runner works in the
  * background. Uses current protocol reads for settlement, never a second
  * question/session projection. Its subscriber lives until all writes settle.
- * The hosting function emits the framing's final line after it let go of the
- * runtime.
+ * Resolves with the outcome of the work the attached chat owns once input
+ * ended, or, for a one-shot run, once its first submitted prompt settled.
  */
-export async function runHeadlessChatChannel(client: HeadlessChatClient, transport: ChatTransport): Promise<HeadlessChatResult> {
+export async function runHeadlessChatChannel(client: HeadlessChatClient, transport: ChatTransport): Promise<ChatSettlementOutcome> {
   let outputFailure: Error | undefined
   let inputFailure: Error | undefined
   let input: ReturnType<typeof createInterface> | undefined
@@ -140,7 +129,7 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
     input?.close()
     changed()
   }
-  const framing = transport.framing ?? jsonlFraming(transport.completion?.invocation, transport.sessionId)
+  const { framing, completion } = transport
   return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
     const writer = yield* Semaphore.make(1)
     const write = (line: string) => writer.withPermit(Effect.tryPromise({
@@ -195,7 +184,7 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
               const selected = await client.dispatch({ type: "auth.profile.select", scope: { kind: "session", sessionId }, id: transport.authProfile })
               if ("ok" in selected && !selected.ok) throw new Error(selected.error)
             }
-            transport.completion?.bind(sessionId)
+            completion?.bind(sessionId)
             keeper = createOpenSessionKeeper({ client, onDiagnostic: (message, detail) => log.warn(message, { detail: diagnosticDetail(detail) }) })
             keeper.open(sessionId)
             attachedSessionId = sessionId
@@ -264,16 +253,15 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
           }
           reading = readInput()
           void reading.catch((error: unknown) => { inputFailure = new Error(errorMessage(error)); changed() })
-          if (transport.oneShot) await Promise.race([submitted.promise, reading])
+          if (completion) await Promise.race([submitted.promise, reading])
           else await reading
           const settled = (await settle()).state
-          const handoff = transport.completion?.result()
-          const outcome = transport.oneShot && settled === "complete" && !handoff ? "incomplete" : settled
+          const outcome = completion && settled === "complete" && !completion.result() ? "incomplete" : settled
           ending = true
           input.close()
           await reading
           await Promise.all(held)
-          return { sessionId: attachedSessionId ?? null, outcome, ...(outcome === "complete" && handoff ? { handoff } : {}) }
+          return outcome
         } finally {
           input?.close()
           if (source !== transport.input) source.destroy()
@@ -295,55 +283,3 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
     return channelResult
   })))
 }
-
-/** The versioned JSONL channel of protocol/headless-chat.ts. A
- *  work-submitting dispatch first takes the one-shot invocation's admission,
- *  so a completed one-shot run refuses more work. */
-export function jsonlFraming(completion?: ReturnType<typeof createChatInvocationCompletion>, savedSessionId?: string): HeadlessChatFraming {
-  return {
-    open: async (channel) => {
-      const attached = await channel.attach(savedSessionId)
-      if (attached === undefined) throw new Error(`Chat session not found: ${savedSessionId}`)
-      await channel.write(encodeRecord({ version: 1, type: "ready", sessionId: attached }))
-      return {
-        frame: (event) => [encodeRecord({ version: 1, type: "event", event })],
-        request: async (line) => {
-          let id: string | null = null
-          try {
-            let raw: unknown
-            try { raw = JSON.parse(line) } catch { throw new Error("Invalid headless chat JSON") }
-            if (typeof raw === "object" && raw !== null && "id" in raw && typeof raw.id === "string") id = raw.id
-            const decoded = Schema.decodeUnknownOption(HeadlessChatRequestSchema, { onExcessProperty: "error" })(raw)
-            if (decoded._tag === "None") throw new Error("Invalid headless chat request")
-            const request = decoded.value
-            const submitted = request.type === "dispatch" && submitsWork(request.command)
-            const releaseAdmission = submitted ? completion?.admitInput() : undefined
-            if (submitted && completion && !releaseAdmission) throw new Error("The one-shot Chat invocation has already completed")
-            let result
-            try {
-              result = request.type === "dispatch"
-                ? await channel.client.dispatch(request.command)
-                : await channel.client.query(request.query)
-            } finally { releaseAdmission?.() }
-            return { lines: [encodeRecord({ version: 1, type: "result", id: request.id, result: result ?? null })], submitted }
-          } catch (error) {
-            return { lines: [encodeRecord({ version: 1, type: "error", id, error: errorMessage(error) })], submitted: false }
-          }
-        },
-      }
-    },
-    final: ({ sessionId, outcome, handoff }) => encodeRecord({ version: 1, type: "outcome", sessionId, outcome, ...(outcome === "complete" && handoff ? { handoff } : {}) }),
-  }
-}
-
-const encodeRecord = (record: HeadlessChatRecord): string =>
-  `${JSON.stringify(Schema.encodeSync(HeadlessChatRecordSchema)(record))}\n`
-
-function submitsWork(command: FrontendMutation): boolean {
-  return command.type === "session.send" || command.type === "chat.resume"
-    || command.type === "chat.open" && command.initialMessage !== undefined
-    || command.type === "workflow.resume" || command.type === "workflow.restart"
-    || command.type === "question.answer" || command.type === "question.cancel"
-    || command.type === "chat.compact" || command.type === "subagent.resume"
-}
-

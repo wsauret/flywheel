@@ -1,5 +1,4 @@
 import { Schema } from "effect"
-import type { HeadlessChatOutcome } from "./headless-chat.js"
 import { workspaceDomainCursor } from "./runtime-ui-protocol-types.js"
 
 /** Asks whether the work that a chat owns has ended: the chat's turn and
@@ -24,7 +23,13 @@ const ChatTurnEndingSchema = Schema.Union([
 ])
 export type ChatTurnEnding = typeof ChatTurnEndingSchema.Type
 
-const HeadlessChatOutcomeSchema: Schema.Codec<HeadlessChatOutcome> = Schema.Literals(["complete", "input_required", "incomplete", "failed"])
+/** How the work that a chat owns ended. Complete means that no work or
+ *  question remains, not that a model's task succeeded. Input required means
+ *  that the remaining work waits only on an open question. Incomplete means
+ *  that interrupted work remains, which only an explicit request continues.
+ *  Failed means that the work or the client's channel failed. */
+const ChatSettlementOutcomeSchema = Schema.Literals(["complete", "input_required", "incomplete", "failed"])
+export type ChatSettlementOutcome = typeof ChatSettlementOutcomeSchema.Type
 
 /** `busy` while work that the chat owns runs. A settled answer names the
  *  outcome, and `turnEnding` names how the chat's last turn ended when a turn
@@ -33,7 +38,7 @@ const HeadlessChatOutcomeSchema: Schema.Codec<HeadlessChatOutcome> = Schema.Lite
  *  (ARCH-RUNTIME-080). */
 export const ChatSettlementResultSchema = Schema.Union([
   Schema.Struct({ state: Schema.Literal("busy") }),
-  Schema.Struct({ state: HeadlessChatOutcomeSchema, turnEnding: Schema.optionalKey(ChatTurnEndingSchema) }),
+  Schema.Struct({ state: ChatSettlementOutcomeSchema, turnEnding: Schema.optionalKey(ChatTurnEndingSchema) }),
 ])
 export type ChatSettlementResult = typeof ChatSettlementResultSchema.Type
 

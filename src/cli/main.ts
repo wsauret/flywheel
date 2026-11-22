@@ -7,7 +7,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
 import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/persistent-process-manager.js"
 import { startupTrace } from "../infra/startup-trace.js"
 import type { createStartupTimeline } from "../infra/startup-timeline.js"
-import { HEADLESS_USAGE, hasHeadlessAcpFlag, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSession, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
+import { HEADLESS_USAGE, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
 import { createCliLauncher } from "./runtime-launch.js"
 import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./runtime-launch.js"
 import type { TerminalHandoff } from "./terminal-handoff.js"
@@ -133,7 +133,6 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
 }
 
 async function runHeadless(args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, persistentProcessManager: PersistentProcessManager, allowPersistentProcesses: boolean, disabledTools: readonly string[], output?: HeadlessOutputObserver): Promise<MutationResult> {
-  const acp = hasHeadlessAcpFlag(args)
   const write = (record: string) => new Promise<void>((resolve, reject) => {
     process.stdout.write(record, (error) => {
       if (error) reject(error)
@@ -148,13 +147,11 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
   if (isHeadlessChat(args)) {
     const { runHeadlessChat } = await import("../orchestration/headless/run-headless-chat.js")
     const { runtimeWorkerUrl } = await import("./runtime-launch.js")
-    const framing = acp ? (await import("../orchestration/headless/acp-chat.js")).acpFraming(directories.executionCwd) : undefined
     return await runHeadlessChat({
-      ...(framing ? { framing } : {}),
       headlessAuth: { profile: headlessAuthProfile(args), snapshotPath: headlessAuthSnapshot(args) },
       ...directories, launcher: launcher.scope,
       persistentProcesses: persistentProcessManager.client(), allowPersistentProcesses,
-      workerUrl: runtimeWorkerUrl(), sessionId: headlessSession(args), oneShot: args.includes("--one-shot"), unattended: args.includes("--unattended"), disabledTools,
+      workerUrl: runtimeWorkerUrl(), unattended: args.includes("--unattended"), disabledTools,
       input: process.stdin, write, progressWriter,
     })
   }

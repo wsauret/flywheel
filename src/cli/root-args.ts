@@ -17,8 +17,8 @@ export type RootCliAction =
 const PROJECT_ROOT_FLAG = "--project-root"
 const ALLOW_PERSISTENT_PROCESSES_FLAG = "--allow-persistent-processes"
 const REMOTE_FLAG = "--remote"
-const BOOLEAN_LAUNCH_FLAGS = new Set(["--print-logs", "--headless", "--jsonl", "--one-shot", "--acp", "--unattended"])
-const VALUE_LAUNCH_FLAGS = new Set(["--task", "--system-prompt", "--model", "--effort", "--deadline-seconds", "--disable-tool", "--auth-profile", "--auth-snapshot", "--session"])
+const BOOLEAN_LAUNCH_FLAGS = new Set(["--print-logs", "--headless", "--jsonl", "--acp", "--unattended"])
+const VALUE_LAUNCH_FLAGS = new Set(["--task", "--system-prompt", "--model", "--effort", "--deadline-seconds", "--disable-tool", "--auth-profile", "--auth-snapshot"])
 const HELP_FLAGS = new Set(["--help", "-h"])
 const VERSION_FLAGS = new Set(["--version", "-v"])
 
@@ -56,16 +56,17 @@ export async function rootCliAction(args: readonly string[]): Promise<RootCliAct
   if (isHeadlessLaunch && rest.some((arg) => ["--description", "--workflow"].some((flag) => arg === flag || arg.startsWith(`${flag}=`)))) {
     return { kind: "error", message: 'Headless workflow mode is retired: --description and --workflow no longer start a workflow. Run "flywheel --headless" for a headless chat, whose agent writes and launches workflows, or "flywheel --headless --task <text>" for one direct task.' }
   }
+  const hasDirectTask = rest.some((arg) => arg === "--task" || arg.startsWith("--task="))
+  // Remove these refusals of the JSONL chat options after 2027-05-31.
+  if (rest.includes("--one-shot")) return { kind: "error", message: 'Headless chat speaks only the Agent Client Protocol: --one-shot is removed. Run "flywheel --headless --unattended" for one unattended prompt.' }
+  if (rest.some((arg) => arg === "--session" || arg.startsWith("--session="))) return { kind: "error", message: "Headless chat speaks only the Agent Client Protocol: --session is removed. Continue a chat with the ACP request session/load or session/resume." }
+  if (isHeadlessLaunch && !hasDirectTask && rest.includes("--jsonl")) return { kind: "error", message: 'Headless chat speaks only the Agent Client Protocol: --jsonl is removed for chat. Run "flywheel --headless" from an ACP client, or "flywheel --headless --task <text> --jsonl" for the output of one direct task.' }
   const hasDeadline = rest.some((arg) => arg === "--deadline-seconds" || arg.startsWith("--deadline-seconds="))
   if (hasDeadline && !isHeadlessLaunch) return { kind: "error", message: "Unknown option: --deadline-seconds" }
-  if (rest.includes("--jsonl") && !isHeadlessLaunch) return { kind: "error", message: "--jsonl is only valid with --headless" }
+  if (rest.includes("--jsonl") && !isHeadlessLaunch) return { kind: "error", message: "--jsonl is only valid with --headless --task" }
   const hasSystemPrompt = rest.some((arg) => arg === "--system-prompt" || arg.startsWith("--system-prompt="))
-  const hasDirectTask = rest.some((arg) => arg === "--task" || arg.startsWith("--task="))
-  const hasSession = rest.some((arg) => arg === "--session" || arg.startsWith("--session="))
-  if (hasSession && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--session is only valid with headless chat" }
-  if (rest.includes("--one-shot") && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--one-shot is only valid with headless chat" }
-  if (rest.includes("--acp") && (!isHeadlessLaunch || hasDirectTask || hasSession || rest.includes("--one-shot"))) return { kind: "error", message: "--acp is only valid with headless chat, without --session or --one-shot" }
-  if (rest.includes("--unattended") && !rest.includes("--acp")) return { kind: "error", message: "--unattended is only valid with --headless --acp" }
+  if (rest.includes("--acp") && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--acp is only valid with headless chat" }
+  if (rest.includes("--unattended") && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--unattended is only valid with headless chat" }
   if (isHeadlessLaunch && !hasDirectTask && hasDeadline) return { kind: "error", message: "--deadline-seconds is only valid with --task; chat settings use protocol mutations" }
   if (hasSystemPrompt && (!isHeadlessLaunch || !hasDirectTask)) return { kind: "error", message: "--system-prompt is only valid with --headless --task" }
   const hasModel = rest.some((arg) => arg === "--model" || arg.startsWith("--model="))

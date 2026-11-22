@@ -1,6 +1,5 @@
 import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeClient, type RuntimeQuery, type RuntimeQueryOptions, type RuntimeQueryResult } from "../../protocol/app-service-types.js"
-import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
-import { settlementCursor, type ChatSettlementResult, type ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
+import { settlementCursor, type ChatSettlementOutcome, type ChatSettlementResult, type ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
 import type { RuntimeUiBus } from "./runtime-ui-bus.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
@@ -83,7 +82,7 @@ export function createSettledRuntimeDispatch(
 export interface RuntimeWorkSettlement {
   /** Join the admission tails of the root's launch tree, then read the
    *  current owners of that tree. Never interrupts work. */
-  read(rootSessionId: string): Promise<HeadlessChatOutcome | "busy">
+  read(rootSessionId: string): Promise<ChatSettlementOutcome | "busy">
   /** Ownership changes only. Content and accounting patches do not wake readers. */
   onChange(listener: () => void): () => void
 }

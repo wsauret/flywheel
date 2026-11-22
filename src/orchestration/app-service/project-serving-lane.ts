@@ -74,9 +74,9 @@ async function claimProjectExecution(projectRoot: string, acquire: (flywheel: Co
 
 /** Claims exclusive headless project execution before opening project state.
  * Only a headless chat that hosts its own runtime claims it: an unattended
- * chat, a chat whose tools or credentials differ from the account's, or a
- * JSONL chat. An attended ACP chat is a client of the account
- * service, as a terminal is, and claims nothing. Refuses every live or
+ * chat, or a chat whose tools or credentials differ from the account's. An
+ * attended chat is a client of the account service, as a terminal is, and
+ * claims nothing. Refuses every live or
  * unreadable served or headless holder, including this process's other
  * hosts. The caller releases only after runtime settlement. */
 export function claimHeadlessProjectExecution(projectRoot: string): Promise<() => void> {

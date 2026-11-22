@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
-import type { HeadlessChatOutcome } from "../../../../src/protocol/headless-chat.js"
+import type { ChatSettlementOutcome } from "../../../../src/protocol/chat-settlement-protocol-types.js"
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { AgentToolInput } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion.js"
@@ -38,7 +38,7 @@ describe("headless chat over ACP", () => {
       usage: { totalTokens: 1040, inputTokens: 1000, outputTokens: 40, thoughtTokens: 10, cachedReadTokens: 900, cachedWriteTokens: 0 },
     })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
 
     expect(fixture.calls).toContainEqual({ type: "session.send", sessionId: "root", input: "list files" })
     const updates = fixture.updates()
@@ -101,7 +101,7 @@ describe("headless chat over ACP", () => {
     ])
     expect(fixture.messages[answered - 1]?.params?.update).toMatchObject({ sessionUpdate: "agent_message_chunk" })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("streams the whole result of a tool whose body the live row leaves out", async () => {
@@ -118,7 +118,7 @@ describe("headless chat over ACP", () => {
       { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: LARGE_RESULT } }] },
     )
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("ends an unattended one-shot run after it answers the first prompt, while stdin stays open", async () => {
@@ -130,10 +130,10 @@ describe("headless chat over ACP", () => {
       invocation.seal?.("42")
       await invocation.finish({ kind: "completed" }, async () => {})
       await settle("complete")
-    }, { oneShot: true, completion: { invocation, bind: () => {}, result: () => handoff } })
+    }, { completion: { bind: () => {}, result: () => handoff } })
     await fixture.open()
     fixture.send(prompt(2, "compute"))
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete", handoff: { summary: "42" } })
+    expect(await fixture.channel).toBe("complete")
     expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
   })
 
@@ -153,11 +153,11 @@ describe("headless chat over ACP", () => {
     await finish()
     expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("answers a cancelled prompt with stopReason cancelled after it interrupts the turn", async () => {
-    let end = (_outcome: HeadlessChatOutcome) => {}
+    let end = (_outcome: ChatSettlementOutcome) => {}
     const fixture = acpFixture(({ publish, settle }) => {
       // A subscription run bills nothing: its equivalent value is not a cost.
       publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: { totalsLoading: false, tokens: 1040, cost: 0.5, billedCost: 0, priceUnavailable: false, contextPercent: 10, contextPromptTokens: 1000 } } })
@@ -172,7 +172,7 @@ describe("headless chat over ACP", () => {
     expect(fixture.calls).toContainEqual({ type: "chat.interrupt", sessionId: "root" })
     expect(fixture.updates()).toContainEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000 })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "incomplete" })
+    expect(await fixture.channel).toBe("incomplete")
   })
 
   it("answers a failed prompt with the turn's error notice, which it also streams as the agent's message", async () => {
@@ -193,7 +193,7 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(3, "again"))
     expect((await fixture.response(3)).error?.message).toBe("The turn ended before it completed")
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "failed" })
+    expect(await fixture.channel).toBe("failed")
   })
 
   it("answers a turn that the run's failure ended with an error that names the failure kind, also when the chat's work settles complete", async () => {
@@ -218,7 +218,7 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(4, "once more"))
     expect((await fixture.response(4)).result).toMatchObject({ stopReason: "end_turn" })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("answers a turn that the provider's refusal of the content ended with stopReason refusal, unless the channel then failed", async () => {
@@ -235,7 +235,7 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(3, "again"))
     expect((await fixture.response(3)).error).toMatchObject({ code: -32603 })
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "failed" })
+    expect(await fixture.channel).toBe("failed")
   })
 
   it("ends the prompt on an open question without answering it, and answers it with the next prompt", async () => {
@@ -257,7 +257,7 @@ describe("headless chat over ACP", () => {
     // A client that advertised no forms is never asked for one.
     expect(fixture.messages.some((message) => message.method === "elicitation/create")).toBe(false)
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("loads a saved chat by replaying its history, the person's messages included, before it answers, and starts no work", async () => {
@@ -279,7 +279,7 @@ describe("headless chat over ACP", () => {
       { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "One file." } },
     ])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
     expect(fixture.calls).toEqual([{ type: "session.activate", sessionId: "root" }])
   })
 
@@ -298,7 +298,7 @@ describe("headless chat over ACP", () => {
     expect((await fixture.response(4)).result).toMatchObject({ stopReason: "end_turn" })
     expect(fixture.updates().filter((update) => update.sessionUpdate === "agent_message_chunk")).toEqual([])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
     expect(fixture.calls).toEqual([{ type: "session.activate", sessionId: "root" }, { type: "session.send", sessionId: "root", input: "go on" }])
   })
 
@@ -336,7 +336,7 @@ describe("headless chat over ACP", () => {
     expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
     expect(fixture.watching("root")).toBe(true)
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
     expect(fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content] : [])).toEqual([
       { type: "text", text: "Before." }, { type: "text", text: "After." },
     ])
@@ -445,7 +445,7 @@ describe("headless chat over ACP", () => {
     // The question reaches a form client as the form, never as the agent's text.
     expect(fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content.text] : [])).toEqual(["Started."])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("declines a question when the form is declined, and leaves it open, ending the prompt, when the form is cancelled", async () => {
@@ -468,7 +468,7 @@ describe("headless chat over ACP", () => {
     const answers = fixture.calls.filter((command) => command.type === "question.answer" || command.type === "question.cancel")
     expect(answers).toHaveLength(1)
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "input_required" })
+    expect(await fixture.channel).toBe("input_required")
   })
 
   it("asks a resumed chat's open question again: as a form, or as the agent's message to a client without forms", async () => {
@@ -481,7 +481,7 @@ describe("headless chat over ACP", () => {
     expect(formClient.messages.indexOf(formClient.messages.find((message) => message.id === 1)!)).toBeLessThan(formClient.messages.findIndex((message) => message.method === "elicitation/create"))
     formClient.reply(asked.id, { action: "accept", content: { q1_other: "9090" } })
     formClient.end()
-    expect(await formClient.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await formClient.channel).toBe("complete")
     expect(formClient.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
 
     const textClient = acpFixture(({ settle }) => settle("complete"), {}, { waiting: true, history: [question] })
@@ -495,7 +495,7 @@ describe("headless chat over ACP", () => {
     ])
     expect(textClient.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
     textClient.end()
-    expect(await textClient.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await textClient.channel).toBe("complete")
   })
 
   it("streams a thought once when its finalized block replaces the streamed draft under another identity", async () => {
@@ -520,7 +520,7 @@ describe("headless chat over ACP", () => {
     const thoughts = fixture.updates().flatMap((update) => update.sessionUpdate === "agent_thought_chunk" ? [update.content.text] : [])
     expect(thoughts).toEqual(["Let me", " check the tests.", "Let me check again."])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("streams the output whose live deltas were lost, in order, once the turn settles", async () => {
@@ -548,7 +548,7 @@ describe("headless chat over ACP", () => {
       { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
     ])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("streams the lost result of a running tool that the recovered window starts after", async () => {
@@ -571,7 +571,7 @@ describe("headless chat over ACP", () => {
       { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: LARGE_RESULT } }] },
     ])
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
   })
 
   it("refuses another working directory, a second session, model selection, and malformed input with JSON-RPC errors", async () => {
@@ -586,7 +586,7 @@ describe("headless chat over ACP", () => {
     expect((await fixture.response(3)).error?.code).toBe(-32601)
     expect((await fixture.response(4)).error?.code).toBe(-32602)
     fixture.end()
-    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(await fixture.channel).toBe("complete")
     expect(fixture.calls.some((command) => command.type === "session.send")).toBe(false)
   })
 })

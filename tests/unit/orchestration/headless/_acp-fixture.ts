@@ -4,13 +4,12 @@ import { PassThrough } from "node:stream"
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
-import type { HeadlessChatOutcome } from "../../../../src/protocol/headless-chat.js"
 import type { AcpElicitationReply, AcpResult, AcpSessionUpdate } from "../../../../src/protocol/acp.js"
 import type { ModelSelectionEffort } from "../../../../src/protocol/model-assignment-protocol-types.js"
 import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import type { ChatTurnEnding } from "../../../../src/protocol/chat-settlement-protocol-types.js"
+import type { ChatSettlementOutcome, ChatTurnEnding } from "../../../../src/protocol/chat-settlement-protocol-types.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
@@ -82,7 +81,7 @@ interface FixtureOptions {
  *  or answer and owns the settlement state it ends in. The client reaches it
  *  as a client of the account service does: over a lane that a test can
  *  break, and with live output only for a session that it watches. */
-export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; settleUnseen(outcome: HeadlessChatOutcome): void; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion" | "authProfile"> = {}, options: FixtureOptions = {}) {
+export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: ChatSettlementOutcome): Promise<void>; settleUnseen(outcome: ChatSettlementOutcome): void; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "completion" | "authProfile"> = {}, options: FixtureOptions = {}) {
   const bus = createRuntimeUiBus()
   const asks = options.asks ?? question
   const framing = acpFraming(realpathSync(CWD))
@@ -104,16 +103,16 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
   }
   for (const block of options.history ?? []) resident(block)
   const listeners = new Set<() => void>()
-  let state: HeadlessChatOutcome | "busy" = options.waiting ? "input_required" : "complete"
+  let state: ChatSettlementOutcome | "busy" = options.waiting ? "input_required" : "complete"
   let interrupt = () => {}
   let budget: BudgetView | null = null
-  const settle = async (outcome: HeadlessChatOutcome) => {
+  const settle = async (outcome: ChatSettlementOutcome) => {
     await bus.drain()
     state = outcome
     for (const listener of listeners) listener()
   }
   /** Settles with no wake reaching the client, as when its lane broke. */
-  const settleUnseen = (outcome: HeadlessChatOutcome) => { state = outcome }
+  const settleUnseen = (outcome: ChatSettlementOutcome) => { state = outcome }
   // The settlement reads the next lane loses, as a broken lane loses its calls.
   let lostReads = 0
   let position = 0
