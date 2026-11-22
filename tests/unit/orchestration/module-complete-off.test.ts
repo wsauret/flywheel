@@ -89,6 +89,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   "provider-claude-agent-sdk": { contributions: { providers: ["claude_agent_sdk"], settings: ["provider-claude-agent-sdk"] } },
   "provider-deepseek": { contributions: { providers: ["deepseek"] } },
   "provider-github-copilot": { contributions: { providers: ["github_copilot"] } },
+  "provider-google-antigravity": { contributions: {} },
   "provider-google-api": { contributions: { providers: ["google_api"] } },
   "provider-google-vertex": { contributions: { providers: ["google_vertex"], settings: ["provider-google-vertex"] } },
   "provider-openai-api": { contributions: { providers: ["openai_api"] } },
@@ -229,7 +230,9 @@ describe("catalog-exhaustive complete-off behavior", () => {
   });
 
   test("every installed module offers a switch that turns it off", () => {
-    const withoutSwitch = moduleProtocolRows(MODULE_IDS, CATALOG).filter((row) => row.installed && row.setting === undefined).map((row) => row.id);
+    // A module that contributes nothing offers no capability to turn off.
+    const contributing = CATALOG.filter((module) => module.contributions.length > 0);
+    const withoutSwitch = moduleProtocolRows(MODULE_IDS, contributing).filter((row) => row.installed && row.setting === undefined).map((row) => row.id);
     expect(withoutSwitch).toEqual([]);
   });
 

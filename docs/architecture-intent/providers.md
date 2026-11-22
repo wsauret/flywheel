@@ -139,7 +139,7 @@ Not: Answering a login question against the foreground or default profile.
 
 ## ARCH-PROVIDERS-066: A refused login parks the request, not the walk
 
-An interactive request whose external login is refused waits in its provider walk after its execution settles, outside stream deadlines, and the wait never counts as child inactivity. A successful same-account login renews the exact saved request on the same candidate without advancing failover. A headless run fails at once instead of waiting. The one exception is a provider whose accounts never rotate (PI-MODEL-094): when its login is declined, or a headless run cannot wait for it, the walk records the candidate as spent until a person logs in again and advances to the next candidate, which is another provider.
+An interactive request whose external login is refused waits in its provider walk after its execution settles, outside stream deadlines, and the wait never counts as child inactivity. A successful same-account login renews the exact saved request on the same candidate without advancing failover. A headless run fails at once instead of waiting. For a provider whose accounts never rotate (PI-MODEL-094), a declined login or a headless refusal marks the candidate spent until a person logs in again, and the walk advances to another provider.
 
 ## ARCH-PROVIDERS-015: Auth, usage, and provider-model views are scoped and secret-free
 
@@ -246,7 +246,7 @@ Not: Retry loops inside provider adapters.
 
 ## ARCH-PROVIDERS-033: Only the named failover class advances after work starts
 
-Before provider work starts, captured authentication, compatibility, authorization, availability, quota, proven unaffordability, or a route this machine cannot run can skip a candidate. After work starts, only the named failover class advances the walk: spent quota, throttling, overload, a provider-stated outage, or an account's refusal of a model or its extended window. Authentication rejection, provider rejection, malformed requests, and unknown failures end under their own classification, except that a declined login of a provider whose accounts never rotate advances to another provider (ARCH-PROVIDERS-066, PI-MODEL-094), and no classification invents a quota or service observation. The walk scans the whole remaining order and waits only when no candidate can serve now and a relevant recheck is pending.
+Before provider work starts, captured authentication, compatibility, authorization, availability, quota, proven unaffordability, or a route this machine cannot run can skip a candidate. After work starts, only the named failover class advances the walk: spent quota, throttling, overload, a provider-stated outage, or an account's refusal of a model or its extended window. Authentication rejection, provider rejection, malformed requests, and unknown failures end under their own classification, except as ARCH-PROVIDERS-066 states. No classification invents a quota or service observation. The walk scans the whole remaining order and waits only when no candidate can serve now and a relevant recheck is pending.
 
 ## ARCH-PROVIDERS-034: Candidate rejection has no side effects
 

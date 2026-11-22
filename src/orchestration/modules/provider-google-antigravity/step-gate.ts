@@ -7,7 +7,7 @@ import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
 /** The one hold of the gate for one engine session: one admitted model step
  *  (`step`), or the expected fixed primer, which the gate refuses as the proof
  *  that the hook runs (`canary`). */
-export interface Admission {
+interface Admission {
   readonly sessionId: string
   readonly kind: "step" | "canary"
 }

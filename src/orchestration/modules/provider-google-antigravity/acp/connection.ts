@@ -47,7 +47,7 @@ export type AcpCloseReason =
   | { readonly kind: "failed"; readonly detail: string }
 
 /** Counts of the inbound frames that a connection did not pass on. */
-export interface AcpUnservedCounts {
+interface AcpUnservedCounts {
   /** `session/update` notifications of a kind this agy version was not qualified with. */
   readonly unknownUpdates: number
   /** Notifications of a method other than `session/update`. */
@@ -58,7 +58,7 @@ export interface AcpUnservedCounts {
   readonly unmatchedResponses: number
 }
 
-export interface AcpClose {
+interface AcpClose {
   readonly reason: AcpCloseReason
   readonly unserved: AcpUnservedCounts
 }

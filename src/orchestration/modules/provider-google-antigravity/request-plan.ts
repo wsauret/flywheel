@@ -39,10 +39,10 @@ export interface PlanLimits {
   readonly promptByteCap: number;
 }
 
-export type RotationReason = "new-session" | "cancelled" | "process" | "system-prompt" | "history" | "selection" | "occupancy" | "prompt-size";
+type RotationReason = "new-session" | "cancelled" | "process" | "system-prompt" | "history" | "selection" | "occupancy" | "prompt-size";
 
 /** The model and effort that a session changes to between prompts (`session/set_config_option`). */
-export interface SelectionChange {
+interface SelectionChange {
   readonly model: string;
   readonly effort: ReasoningEffort | undefined;
 }
@@ -67,7 +67,7 @@ export type RequestPlan =
   | { readonly kind: "overflow"; readonly reason: "tokens" | "bytes" };
 
 /** The new input of the request as rendered text, or a fixed prompt when the append holds the whole request. */
-export type RotationPrompt =
+type RotationPrompt =
   | { readonly kind: "input"; readonly text: string }
   | { readonly kind: "continuation"; readonly text: typeof CONTINUATION_PROMPT | typeof REPLY_PROMPT };
 

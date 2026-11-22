@@ -105,7 +105,8 @@ describe("planRequest", () => {
     history.push(...createModelReminders("gemini-3.1-pro", 1_048_576)(history, "/scratch", SHELL_CAPABILITIES));
     const view = settledView(lowerProviderHistory(history, target("gemini-3.1-pro")), revealed("c1"));
     history.push(call("c1"), result("c1"));
-    history.push(...createModelReminders("gemini-4-neon", 1_048_576)(history, "/scratch", SHELL_CAPABILITIES));
+    const reminders = createModelReminders("gemini-4-neon", 1_048_576)(history, "/scratch", SHELL_CAPABILITIES);
+    history.push(...reminders);
     const lowered = lowerProviderHistory(history, target("gemini-4-neon"));
     expect(lowered.at(-1)).toMatchObject({ kind: "user", framing: "model" });
 

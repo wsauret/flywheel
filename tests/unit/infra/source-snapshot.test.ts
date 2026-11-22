@@ -8,7 +8,8 @@ import { openContainedDirectory } from "../../../src/infra/descriptor-directory.
 import { Log } from "../../../src/infra/log.js"
 import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { encodeHolderText, processHolders } from "../../../src/infra/process-holder.js"
-import { enterSourceSnapshot, recordSnapshotProved, refuseSourceSnapshot, SOURCE_FILE_SET, sweepSourceSnapshots, type ServiceSource, type SourceEntry } from "../../../src/infra/source-snapshot.js"
+import { SOURCE_FILE_SET } from "../../../src/infra/source-snapshot-content.js"
+import { enterSourceSnapshot, recordSnapshotProved, refuseSourceSnapshot, sweepSourceSnapshots, type ServiceSource, type SourceEntry } from "../../../src/infra/source-snapshot.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { SNAPSHOT_SOURCE_FILES as SOURCE, snapshotFixture } from "../../helpers/source-snapshot-fixture.js"
 

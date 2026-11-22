@@ -19,6 +19,18 @@ import { createLauncherScope, createProcessSupervisor, guardianCommand } from ".
 import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation } from "../../../../../src/orchestration/modules/provider-google-antigravity/token-store.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
+/** The two requests the test sends the engine: the handshake, then a session that a fresh login refuses. */
+interface InitializeParams {
+  readonly protocolVersion: number
+  readonly clientCapabilities: { readonly [capability: string]: never }
+  readonly clientInfo: { readonly name: string; readonly version: string }
+}
+interface NewSessionParams {
+  readonly cwd: string
+  readonly mcpServers: readonly []
+}
+type JsonRpcParams = InitializeParams | NewSessionParams
+
 const temporary = temporaryDirectories()
 const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
 const launcher = createLauncherScope(supervisor)
@@ -58,7 +70,7 @@ async function launchWithoutLogin(loginDir: string, prefix: readonly string[]): 
       }
     }
   })()
-  const request = async (id: number, method: string, params: unknown) => {
+  const request = async (id: number, method: string, params: JsonRpcParams) => {
     engine.stdin?.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`)
     await engine.stdin?.flush()
     const deadline = Date.now() + REPLY_DEADLINE_MS
@@ -131,7 +143,7 @@ function sandboxProfile(library: string): string {
 
 /** The system keychain and its folder, which every `security` process reads from its dynamic search list. Reading
  *  them shows no dialog: they are always present, and they hold no item of the engine. */
-const SYSTEM_KEYCHAIN_PATHS = ["/Library/Keychains", "/Library/Keychains/System.keychain"]
+const SYSTEM_KEYCHAIN_PATHS = new Set(["/Library/Keychains", "/Library/Keychains/System.keychain"])
 
 /** Every report of `reports` that names a keychain, a keychain folder, or a keychain settings file, or a file beside
  *  one (such as a temporary copy), other than the login's private keychain, its settings, and its folder with the
@@ -147,7 +159,7 @@ function foreignKeychainAccess(reports: Iterable<readonly [string, readonly stri
       const path = words.join(" ")
       const keychainPath = /[.]keychain|\/Keychains(\/|$)|com[.]apple[.]security[.]plist/u.test(path)
       const ownPath = path === ownFolder || own.some((file) => path.startsWith(file)) || (dirname(path) === ownFolder && !basename(path).includes(".keychain"))
-      const allowed = action === "allow" && (!keychainPath || ownPath || (SYSTEM_KEYCHAIN_PATHS.includes(path) && operation.startsWith("file-read")))
+      const allowed = action === "allow" && (!keychainPath || ownPath || (SYSTEM_KEYCHAIN_PATHS.has(path) && operation.startsWith("file-read")))
       if (!allowed) foreign.push(`${process} ${line}`)
     }
   }

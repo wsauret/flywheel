@@ -42,6 +42,7 @@ export const MODULE_IDS = [
   "provider-claude-agent-sdk",
   "provider-deepseek",
   "provider-github-copilot",
+  "provider-google-antigravity",
   "provider-google-api",
   "provider-google-vertex",
   "provider-openai-api",

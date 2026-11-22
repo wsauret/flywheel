@@ -118,16 +118,16 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
 
   /** The request's single call, once agy revealed it over ACP and parked it over MCP, in either order. */
   const settleCall = (): ProviderStreamEvent[] => {
-    const toolCallId = revealedCallId;
-    if (toolCallId === undefined || parked === undefined) return [];
+    const toolUseId = revealedCallId;
+    if (toolUseId === undefined || parked === undefined) return [];
     const { name, arguments: input } = parked;
     settled = true;
     return [
       ...releaseNotice(),
       ...closeBlock(),
-      { kind: "tool_input_start", toolUseId: toolCallId, name },
-      { kind: "tool_input_delta", toolUseId: toolCallId, partialJson: JSON.stringify(input) },
-      { kind: "tool_use", toolCall: { id: toolCallId, name, input } },
+      { kind: "tool_input_start", toolUseId, name },
+      { kind: "tool_input_delta", toolUseId, partialJson: JSON.stringify(input) },
+      { kind: "tool_use", toolCall: { id: toolUseId, name, input } },
       { kind: "done", stopReason: "tool_use" },
     ];
   };
@@ -166,7 +166,7 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
       if (settled) return [];
       // A call that agy runs itself, such as its own `manage_task`, ends without an MCP call of Flywheel's server.
       if (update.sessionUpdate === "tool_call_update") {
-        if (revealedCallId === update.toolCallId && parked === undefined && (update.status === "completed" || update.status === "failed")) revealedCallId = undefined;
+        if (revealedCallId === update.toolUseId && parked === undefined && (update.status === "completed" || update.status === "failed")) revealedCallId = undefined;
         return [];
       }
       if (!isModelFrame(update)) return [];
@@ -184,7 +184,7 @@ export function createRequestStream(options: RequestStreamOptions): RequestStrea
           if (update.content.text) events.push(...append("thinking", update.content.text));
           return events;
         case "tool_call":
-          revealedCallId = update.toolCallId;
+          revealedCallId = update.toolUseId;
           return [...events, ...settleCall()];
       }
     },

@@ -36,7 +36,7 @@ const InitializeResultSchema = Schema.Struct({
   authMethods: Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String })),
   agentInfo: Schema.Struct({ name: Schema.String, version: Schema.String }),
 })
-export type AcpInitializeResult = typeof InitializeResultSchema.Type
+type AcpInitializeResult = typeof InitializeResultSchema.Type
 
 const NewSessionResultSchema = Schema.Struct({
   sessionId: Schema.String,
@@ -90,6 +90,7 @@ export interface AcpRequests {
     readonly params: { readonly methodId: string }
     readonly result: typeof EmptyResultSchema.Type
   }
+  readonly logout: { readonly params: { readonly [key: string]: never }; readonly result: typeof EmptyResultSchema.Type }
   readonly "session/new": {
     readonly params: { readonly cwd: string; readonly mcpServers: readonly unknown[]; readonly _meta?: { readonly antigravity: { readonly systemPrompt: { readonly append: string } } } }
     readonly result: AcpNewSessionResult
@@ -121,6 +122,7 @@ type AcpResultDecoders = { readonly [M in AcpMethod]: Schema.Decoder<AcpRequests
 const RESULT_SCHEMAS: AcpResultDecoders = {
   initialize: InitializeResultSchema,
   authenticate: EmptyResultSchema,
+  logout: EmptyResultSchema,
   "session/new": NewSessionResultSchema,
   "session/prompt": PromptResultSchema,
   "session/set_config_option": SetConfigOptionResultSchema,
@@ -132,26 +134,30 @@ export function decodeAcpResult<M extends AcpMethod>(method: M, raw: unknown): O
   return Schema.decodeUnknownOption(RESULT_SCHEMAS[method])(raw)
 }
 
+/** ACP version 1 spells the call id `toolCallId` on the wire; it decodes to
+ *  Flywheel's canonical `toolUseId`. */
+const WIRE_TOOL_CALL_KEYS = { toolUseId: "toolCallId" } as const
+
 const KnownSessionUpdateSchema = Schema.Union([
   Schema.Struct({ sessionUpdate: Schema.Literal("agent_message_chunk"), content: ContentBlockSchema }),
   Schema.Struct({ sessionUpdate: Schema.Literal("agent_thought_chunk"), content: ContentBlockSchema }),
   Schema.Struct({ sessionUpdate: Schema.Literal("user_message_chunk"), content: ContentBlockSchema }),
   Schema.Struct({
     sessionUpdate: Schema.Literal("tool_call"),
-    toolCallId: Schema.String,
+    toolUseId: Schema.String,
     status: ToolCallStatusSchema,
     title: Schema.String,
     name: Schema.optionalKey(Schema.String),
     rawInput: Schema.optionalKey(Schema.Unknown),
-  }),
+  }).pipe(Schema.encodeKeys(WIRE_TOOL_CALL_KEYS)),
   Schema.Struct({
     sessionUpdate: Schema.Literal("tool_call_update"),
-    toolCallId: Schema.String,
+    toolUseId: Schema.String,
     status: Schema.optionalKey(ToolCallStatusSchema),
     name: Schema.optionalKey(Schema.String),
     rawInput: Schema.optionalKey(Schema.Unknown),
     rawOutput: Schema.optionalKey(Schema.Unknown),
-  }),
+  }).pipe(Schema.encodeKeys(WIRE_TOOL_CALL_KEYS)),
   Schema.Struct({ sessionUpdate: Schema.Literal("usage_update"), used: Schema.Number, size: Schema.Number }),
   Schema.Struct({
     sessionUpdate: Schema.Literal("available_commands_update"),
@@ -161,7 +167,9 @@ const KnownSessionUpdateSchema = Schema.Union([
   Schema.Struct({ sessionUpdate: Schema.Literal("config_option_update"), configOptions: Schema.Array(ConfigOptionSchema) }),
   Schema.Struct({ sessionUpdate: Schema.Literal("session_info_update"), title: Schema.optionalKey(Schema.NullOr(Schema.String)) }),
 ])
-const KNOWN_UPDATE_KINDS: ReadonlySet<string> = new Set(KnownSessionUpdateSchema.members.map((member) => member.fields.sessionUpdate.literal))
+const KNOWN_UPDATE_KINDS: ReadonlySet<string> = new Set(
+  KnownSessionUpdateSchema.members.map((member) => ("to" in member ? member.to : member).fields.sessionUpdate.literal),
+)
 const KnownSessionNotificationSchema = Schema.Struct({ sessionId: Schema.String, update: KnownSessionUpdateSchema })
 
 /** One `session/update`. A kind that this agy version was not qualified with

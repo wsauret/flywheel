@@ -291,8 +291,8 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
   // schemas store the key, so toolCallId would have split the codebase into
   // two vocabularies. The glossary records the correction; toolCallId retired.
   // Agent Client Protocol version 1 fixes toolCallId as an external wire field
-  // name, so its codec and the benchmark's ACP client spell it.
-  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowPaths: ["src/protocol/acp.ts", "src/orchestration/modules/development/benchmark/headless-execution.ts"], allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
+  // name, so its codecs and the benchmark's ACP client spell it.
+  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowPaths: ["src/protocol/acp.ts", "src/orchestration/modules/development/benchmark/headless-execution.ts", "src/orchestration/modules/provider-google-antigravity/acp/schema.ts"], allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
   { pattern: /\bToolInvocation\w*/, replacement: "tool call vocabulary", slice: 9, active: true },
 
   // Slice 10: providers.
