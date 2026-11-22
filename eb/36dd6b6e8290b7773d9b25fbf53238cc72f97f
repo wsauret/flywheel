@@ -1,0 +1,22 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 391
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 92,679
+src/orchestration/app-service/runtime-work-settlement.ts
+  h_4b47e9e4a8b456 3,11,13,15-16,18,102-103,111,147-150,156,158-162,164-170
+src/orchestration/session/reply-waits.ts
+  h_4b47e9e4a8b456 544,572-576,605,610,626-637
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 18-19,22-24,88-96,445,490-525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eb36dd6b6e8290b7773d9b25fbf53238cc72f97f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
