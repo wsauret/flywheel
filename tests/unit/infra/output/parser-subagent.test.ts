@@ -242,7 +242,7 @@ describe("RuntimeEventProjector — subagent", () => {
       if (status === "paused") projector.apply({ type: "agent-paused", toolUseId: "retry", pausedBy: "person", timestamp: 1001 });
       else projector.apply({ type: "tool-result", toolUseId: "retry", outcome: status === "cancelled" ? "cancelled" : "ok", details: { partial: status === "partial" }, timestamp: 1001 });
       expect(toolRow(projector.getBlocks()[0])).toMatchObject(status === "cancelled"
-        ? { status: "error", errorMessage: "Canceled" }
+        ? { status: "error", errorMessage: "Canceled by the parent" }
         : { status: "blocked", statusMessage: status === "paused" ? "Interrupted" : "Partial" });
       if (status === "paused") {
         const reopened = new OutputProjector({ executionCwd: "/workspace" });

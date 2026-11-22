@@ -126,9 +126,9 @@ A build is kept while the active-build entry names it, the collecting process ru
 Because: Age is not liveness: a sleeping process outlives any freshness window.
 Not: Timestamp-based garbage collection.
 
-## ARCH-DISTRIBUTION-027: Collection runs under the update lease inside the update flow
+## ARCH-DISTRIBUTION-027: Collection runs under the update lease after an update or an installation
 
-Collection runs inside an update run, takes the account update lease itself, removes nothing when it cannot win the lease, and has no second scheduler. A build leaves the installed set by rename before it is unlinked, so a later sweep reclaims any remainder that an interruption leaves. A staging remainder is removed only when the process that its name states is gone. A sweep is bounded by its lease term and stops between removals when withdrawn.
+Collection runs inside an update run and after an installation completes. It takes the account update lease itself, removes nothing when it cannot win the lease, and has no second scheduler. A build leaves the installed set by rename before it is unlinked, so a later sweep reclaims any remainder that an interruption leaves. A staging remainder is removed only when the process that its name states is gone. A sweep is bounded by its lease term and stops between removals when withdrawn.
 Because: The lease is what stops an activation from pointing at a tree that the sweep already chose to remove.
 Not: Collecting at launch.
 
