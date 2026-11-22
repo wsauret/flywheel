@@ -391,7 +391,7 @@ describe("one runtime's optional capability surfaces", () => {
     // shipped after it, so migration reads them as enabled.
     const harness = await startHarness('modules = ["skills"]\n');
 
-    expect(harness.moduleProjection.view().capabilities).toEqual(canonicalModuleIds(["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "side-question", "skills"]));
+    expect(harness.moduleProjection.view().capabilities).toEqual(canonicalModuleIds(["definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", ...MODULE_IDS.filter((id) => id.startsWith("provider-")), "reclaim-storage", "side-question", "skills"]));
     expect(composeRealmModuleSnapshot(harness.policy.state()).enabledModuleIds).toContain("experiments");
     expect(builtIn(harness, "experiment")).toBe(true);
   });
