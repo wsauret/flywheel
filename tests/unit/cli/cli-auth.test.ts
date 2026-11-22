@@ -186,7 +186,7 @@ describe("auth cli", () => {
         await runAuth(["login"], { ...DIRECTORIES, accountHome, userDataRoot }, dependencies).catch(() => undefined)
         const picker = lines.join("\n")
         expect(picker.indexOf("Custom providers (flywheel.toml):")).toBeGreaterThan(picker.indexOf("Exa web search (API key)"))
-        expect(picker).toMatch(/Custom providers \(flywheel\.toml\):\n {2}13\) fixture \(API key\)/)
+        expect(picker).toMatch(/Custom providers \(flywheel\.toml\):\n {2}14\) fixture \(API key\)/)
       } finally {
         installCustomProviders([])
         rmSync(accountHome, { recursive: true, force: true })
@@ -227,8 +227,8 @@ describe("auth cli", () => {
       await auth(["login"])
       expect(promptCalls.map(({ question }) => question)).toEqual([
         "Enter number (or q to cancel): ",
-        "99 is not a choice. Enter a number from 1 to 12 (or q to cancel): ",
-        "two is not a choice. Enter a number from 1 to 12 (or q to cancel): ",
+        "99 is not a choice. Enter a number from 1 to 13 (or q to cancel): ",
+        "two is not a choice. Enter a number from 1 to 13 (or q to cancel): ",
         "Enter the OpenAI API key: ",
       ])
       expect(mockLoginWithApiKey).toHaveBeenCalledWith("openai_api", "[redacted secret]", CREDENTIALS, expect.any(Function), expect.anything(), mockSettleCatalog)
@@ -418,10 +418,11 @@ describe("auth cli", () => {
       expect(output).toContain("6) DeepSeek (API key)")
       expect(output).toContain("7) Google (API key)")
       expect(output).toContain("8) Google Vertex (API key)")
-      expect(output).toContain("9) ChatGPT (browser OAuth)")
-      expect(output).toContain("10) GitHub Copilot (device code)")
-      expect(output).toContain("11) SuperGrok (device code)")
-      expect(output).toContain("12) Exa web search (API key)")
+      expect(output).toContain("9) Google Antigravity (external login)")
+      expect(output).toContain("10) ChatGPT (browser OAuth)")
+      expect(output).toContain("11) GitHub Copilot (device code)")
+      expect(output).toContain("12) SuperGrok (device code)")
+      expect(output).toContain("13) Exa web search (API key)")
     })
   })
 

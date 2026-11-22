@@ -11,6 +11,7 @@ import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { OwnedProcess } from "../../../infra/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import { openAcpConnection, type AcpConnection } from "./acp/connection.js"
+import { withLoginOwnership } from "./engine-process.js"
 import type { GateHookHandler } from "./hook-command.js"
 import { EngineCannotStartError, loginProblems, type LoginObservations, type ProfileLogin } from "./login-status.js"
 import { accountRecordPath, GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL, loginsDirectory } from "./names.js"
@@ -166,7 +167,8 @@ function settleEngineLog(profile: AntigravityProfile, loginDir: string, logFile:
 }
 
 /** Makes the login directory ready for an engine launch: its private home and its token store, which on macOS is the
- *  login's private keychain, so that no launch can show the person a keychain dialog or reach their own keychains. */
+ *  login's private keychain, so that no launch can show the person a keychain dialog or reach their own keychains. The
+ *  caller owns the login (`withLoginOwnership`), so no other process's engines read the hook that this writes. */
 async function prepareLaunch(profile: AntigravityProfile, loginDir: string, launcher: LauncherScope): Promise<void> {
   const run = ownedCommandRunner(launcher)
   await prepareLoginHome(loginDir, { gateHook: profile.gateHook(loginDir), run })
@@ -285,7 +287,7 @@ async function browserSignIn(profile: AntigravityProfile, ports: ExternalLoginPo
 
 /** Runs agy's own sign-in on the prepared login directory and returns the account that agy's log names. */
 async function signIn(profile: AntigravityProfile, loginDir: string, ports: ExternalLoginPorts): Promise<string | undefined> {
-  await prepareLaunch(profile, loginDir, ports.launcher)
+  await withLoginOwnership(loginDir, () => prepareLaunch(profile, loginDir, ports.launcher))
   const launch = engineLaunch(profile, loginDir, "login")
   try {
     await (ports.openBrowser === undefined ? pastedCodeSignIn : browserSignIn)(profile, ports, launch)
@@ -298,7 +300,8 @@ async function signIn(profile: AntigravityProfile, loginDir: string, ports: Exte
 }
 
 /** Runs agy's documented logout of the login directory (ACP `logout`, which `initialize` advertises as
- *  `agentCapabilities.auth.logout`) on a prepared token store, within `LOGOUT_TIMEOUT_MS`. */
+ *  `agentCapabilities.auth.logout`) on a prepared token store, within `LOGOUT_TIMEOUT_MS`. The caller owns the login
+ *  (`withLoginOwnership`). */
 async function engineLogout(profile: AntigravityProfile, loginDir: string, ports: LogoutPorts): Promise<void> {
   await prepareLaunch(profile, loginDir, ports.launcher)
   const launch = engineLaunch(profile, loginDir, "logout")
@@ -353,14 +356,17 @@ export async function loginAntigravityAccount(profile: AntigravityProfile, ports
   return { accountId, identity, configDir: loginDir }
 }
 
-/** Ends one login directory while no engine runs or starts on it (`withLoginReleased`): agy's logout there, and only
- *  after that succeeded the directory's removal; then forgets what this process observed about it. A failed logout
- *  keeps every file, so a later attempt can end the token that agy still holds. */
+/** Ends one login directory while no engine runs or starts on it: this process's engines of the login close first
+ *  (`withLoginReleased`), and then the login's ownership (`withLoginOwnership`) holds every other process off. agy's
+ *  logout runs there, and only after it succeeded the directory goes; then this process forgets what it observed
+ *  about the login. A login that another process serves cannot be ended from here: it rejects with
+ *  `EngineUnavailableError` (`login-in-use`) and runs no logout. A failed or refused logout keeps every file, so a
+ *  later attempt can end the token that agy still holds. */
 async function endLogin(profile: AntigravityProfile, loginDir: string, ports: LogoutPorts): Promise<void> {
-  await profile.withLoginReleased(loginDir, ports.signal, async () => {
+  await profile.withLoginReleased(loginDir, ports.signal, () => withLoginOwnership(loginDir, async () => {
     await engineLogout(profile, loginDir, ports)
     rmSync(loginDir, { recursive: true, force: true })
-  })
+  }))
   profile.observations.forget(loginDir)
   log.info("Google Antigravity login ended", { login: basename(loginDir) })
 }

@@ -5,15 +5,15 @@ import { join } from "node:path"
  * Every private temporary root that Flywheel keeps. Each stays in the
  * temporary directory for good, and only its contents come and go: spools of
  * persistent processes, the lease records of process guardians, the socket
- * directories of open projects, the native assets that a source run stages, and the temporary directory of the
- * Claude engines that Flywheel runs.
+ * directories of open projects, the native assets that a source run stages, the temporary directory of the
+ * Claude engines that Flywheel runs, and the step gate sockets of its Google Antigravity logins.
  *
  * @public
  * `scripts/test-temp-guard.ts` reads this list to look inside the roots
  * instead of reporting them as leaks. Knip does not trace scripts into the
  * production project, so this export is not dead.
  */
-export const PRIVATE_TEMPORARY_ROOT_STEMS = ["flywheel-spools", "flywheel-leases", "fw-ipc", "flywheel-native", "fw-claude"] as const
+export const PRIVATE_TEMPORARY_ROOT_STEMS = ["flywheel-spools", "flywheel-leases", "fw-ipc", "flywheel-native", "fw-claude", "fw-agy"] as const
 export type PrivateTemporaryRootStem = (typeof PRIVATE_TEMPORARY_ROOT_STEMS)[number]
 
 /** The name of the root for `stem`: `<stem>-<uid>`, or `<stem>` where the

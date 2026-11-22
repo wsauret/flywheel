@@ -21,6 +21,7 @@ import { PRIMER_TEXT } from "../../../../../src/orchestration/modules/provider-g
 import { createAntigravityClient } from "../../../../../src/orchestration/modules/provider-google-antigravity/client.js"
 import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-process.js"
 import { createEngineRegistry, type EngineRegistry } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-registry.js"
+import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login-status.js"
 import { CONTINUATION_PROMPT } from "../../../../../src/orchestration/modules/provider-google-antigravity/request-plan.js"
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js"
 import { openEngineHarness, type EngineHarness, type HarnessLogin } from "./_engine.js"
@@ -115,7 +116,7 @@ async function openRig(fake: Parameters<typeof openEngineHarness>[1] = {}): Prom
         recordModelRefusal: () => {},
         providerSessionLifetime: { providerSessionKey: "conversation", treeRootSessionId: "tree-root", scope },
       }
-      const adapter = createAntigravityClient(build, { registry: rig.registry, loginDir: () => login.loginDir, gate: () => login.gate })
+      const adapter = createAntigravityClient(build, { registry: rig.registry, loginDir: () => login.loginDir, gate: () => login.gate, observations: createLoginObservations() })
       const client = await (await adapter.stage({ attribution: build.attribution, accountOfferings: [] })).connect()
       let closed = false
       const close = async () => {

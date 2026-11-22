@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { closeSync, mkdirSync, openSync, readSync, statSync } from "node:fs"
+import { closeSync, existsSync, mkdirSync, openSync, readSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { StringDecoder } from "node:string_decoder"
 import { antigravityEnginePath, requireQualifiedAntigravityVersion, separatedAntigravityEnvironment, type AntigravityEngineHost } from "../../../infra/antigravity-engine.js"
@@ -130,32 +130,50 @@ function oneLaunchPerLogin<T>(loginDir: string, launch: () => Promise<T>): Promi
 }
 
 /**
- * Launches one engine process on `options.loginDir` (plan M11, ARCH-PROVIDERS-086). Under the login's launch lock it
- * checks the login-stable files, prepares the token store (no `agy` runs before it, P16), qualifies the engine's
- * version in the separated environment, sweeps the session files of gone owners, records the new process, serves its
- * tools on its own path and token, writes the per-launch MCP configuration, and starts `agy acp`. Its output is read
- * from launch: ACP frames, its standard error (drained, never kept), its exit, and its log. The lock is released once
- * the engine listed its tools, so the next launch can rewrite the MCP configuration. Rejects with
- * `EngineUnavailableError`, `TokenStoreUnavailableError`, or a login failure, and then leaves no process, record, or
- * tool path behind.
+ * Runs `work` while this process owns the login directory `loginDir` against every other process: under the login's
+ * launch lock, after a sweep (`sweepLogin`) proved that no live owner of another process serves the login. Every write
+ * to the login's private home and every `agy` run on it happens inside this bracket, so the hook that `hooks.json`
+ * names is always the one of the process whose engines run on the login (plan P15). `work` may remove the login
+ * directory, and the lock goes with it. Rejects with `EngineUnavailableError` (`login-in-use`) when another process
+ * holds the lock or serves the login, and runs nothing then.
+ */
+export async function withLoginOwnership<T>(loginDir: string, work: () => Promise<T>): Promise<T> {
+  let lock: Awaited<ReturnType<typeof acquireLock>>
+  try {
+    lock = await acquireLock(join(loginDir, "launch.lock"))
+  } catch (error) {
+    if (error instanceof LockRefusal) throw new EngineUnavailableError("login-in-use", `Another Flywheel process is starting an Antigravity engine on the login at ${loginDir}: ${error.message}`)
+    throw error
+  }
+  try {
+    if (sweepLogin(loginDir).kind === "in-use") throw new EngineUnavailableError("login-in-use", `Another Flywheel process serves the Google Antigravity login at ${loginDir}.`)
+    return await work()
+  } finally {
+    if (existsSync(loginDir)) releaseLock(lock)
+  }
+}
+
+/**
+ * Launches one engine process on `options.loginDir` (plan M11, ARCH-PROVIDERS-086). While this process owns the login
+ * (`withLoginOwnership`) it checks the login-stable files, prepares the token store (no `agy` runs before it, P16),
+ * qualifies the engine's version in the separated environment, records the new process, serves its tools on its own
+ * path and token, writes the per-launch MCP configuration, and starts `agy acp`. Its output is read from launch: ACP
+ * frames, its standard error (drained, never kept), its exit, and its log. The lock is released once the engine listed
+ * its tools, so the next launch can rewrite the MCP configuration. Rejects with `EngineUnavailableError`,
+ * `TokenStoreUnavailableError`, or a login failure, and then leaves no process, record, or tool path behind.
  */
 export function launchEngine(options: EngineLaunchOptions): Promise<EngineProcess> {
   return oneLaunchPerLogin(options.loginDir, async () => {
     const started = Date.now()
     try {
-      const lock = await acquireLock(join(options.loginDir, "launch.lock"))
-      try {
-        return await launchUnderLock(options, started)
-      } finally {
-        releaseLock(lock)
-      }
+      return await withLoginOwnership(options.loginDir, () => launchOwned(options, started))
     } catch (error) {
       throw launchFailure(error)
     }
   })
 }
 
-async function launchUnderLock(options: EngineLaunchOptions, started: number): Promise<EngineProcess> {
+async function launchOwned(options: EngineLaunchOptions, started: number): Promise<EngineProcess> {
   const { loginDir, host } = options
   const run = ownedCommandRunner(options.launcher)
   const environment = separatedAntigravityEnvironment(host, loginDir)
@@ -175,7 +193,6 @@ async function launchUnderLock(options: EngineLaunchOptions, started: number): P
   await requireQualifiedAntigravityVersion(enginePath, separatedRun).catch((error: unknown) => {
     throw new EngineUnavailableError("engine-unqualified", errorMessage(error))
   })
-  if (sweepLogin(loginDir).kind === "in-use") throw new EngineUnavailableError("login-in-use", `Another Flywheel process serves the Google Antigravity login at ${loginDir}.`)
   const record = createProcessRecord(loginDir, processId)
   const sessions = new Map<string, EngineSessionHandlers>()
   let server: ReturnType<ToolListener["register"]>
@@ -228,11 +245,9 @@ function abortion(signal: AbortSignal): Promise<never> {
   })
 }
 
-/** The typed failure of a launch: a lock that another process holds means another owner, a typed failure stays, and
- *  every other error, such as a login directory that was removed, is an engine that cannot start, so the walk fails
- *  over at once. */
+/** The typed failure of a launch: a typed failure stays, and every other error, such as a login directory that was
+ *  removed, is an engine that cannot start, so the walk fails over at once. */
 function launchFailure(error: unknown): Error {
-  if (error instanceof LockRefusal) return new EngineUnavailableError("login-in-use", `Another Flywheel process is starting an Antigravity engine on this login: ${error.message}`)
   if (error instanceof RouteUnavailableError || error instanceof ProviderAuthenticationError) return error
   if (error instanceof AcpRequestError) return acpRequestFailure(error)
   return new EngineUnavailableError("launch-failed", `The Google Antigravity engine did not start: ${errorMessage(error)}`)

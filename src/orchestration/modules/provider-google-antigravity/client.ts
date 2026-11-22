@@ -12,6 +12,7 @@ import { sessionEngineDemand } from "./engine-demand.js"
 import type { EngineProcess } from "./engine-process.js"
 import type { EngineLease, EnginePlace, EngineRegistry } from "./engine-registry.js"
 import { textHistoryTarget } from "./history-text.js"
+import { loginFailure, type LoginObservations } from "./login-status.js"
 import { GOOGLE_ANTIGRAVITY_LABEL } from "./names.js"
 import { engineToolName } from "./private-home.js"
 import type { PlanLimits } from "./request-plan.js"
@@ -20,11 +21,13 @@ import { projectTools, type McpToolDeclaration } from "./tool-projection.js"
 import { createTransportAudit } from "./transport-audit.js"
 
 /** What the module's runtime gives each client: the process-wide engine registry, the login directory of each
- *  account, and the step gate of each login. */
+ *  account, the step gate of each login, and the process's login observations, which hear how each request of a
+ *  login ended. */
 export interface AntigravityClientDeps {
   readonly registry: EngineRegistry<EngineProcess>
   readonly loginDir: (accountId: string) => string
   readonly gate: (loginDir: string) => BridgeGate
+  readonly observations: Pick<LoginObservations, "recordRequest">
 }
 
 // agy fails every prompt of a session whose system text is over the model's budget: measured on agy 1.5.14 against
@@ -134,27 +137,35 @@ export function createAntigravityClient(build: AccessProviderBuild, deps: Antigr
         const effort = options.reasoningEffort === undefined || options.reasoningEffort === "off" ? undefined : options.reasoningEffort
         yield* withStreamAttempt<ProviderStreamEvent>(async function* (attempt) {
           const liveness = attempt.armLiveness({ label: "llm-google-antigravity", provider: GOOGLE_ANTIGRAVITY_LABEL, telemetry: options.telemetry, idleTimeoutMs: STREAM_IDLE_TIMEOUT_PATIENT_MS })
-          yield* bridge.stream({
-            systemPrompt: options.systemPrompt,
-            messages: presentToolHistory(options.messages, enginePresentation),
-            tools: projectTools(options.tools),
-            model: build.wireModelId,
-            ...effort === undefined ? {} : { effort },
-            estimatedTokens: options.estimatedContextTokens ?? 0,
-            signal: attempt.signal,
-            liveness,
-            ...options.onDispatch === undefined ? {} : { onDispatch: options.onDispatch },
-            async projectResult(content, call) {
-              if (fitsEngineWire(content)) return content
-              // The agent loop names the owners of every request that delivers a result; the project root stands in otherwise.
-              const savedOutputPath = await options.savedOutputPath?.(call.toolUseId)
-              return projectToolResult(content, {
-                executionCwd: options.executionCwd ?? build.projectRoot, projectRoot: build.projectRoot,
-                artifactScopeId: options.artifactScopeId ?? lifetime.providerSessionKey, toolName: call.toolName,
-                ...savedOutputPath === undefined ? {} : { savedOutputPath },
-              })
-            },
-          })
+          try {
+            yield* bridge.stream({
+              systemPrompt: options.systemPrompt,
+              messages: presentToolHistory(options.messages, enginePresentation),
+              tools: projectTools(options.tools),
+              model: build.wireModelId,
+              ...effort === undefined ? {} : { effort },
+              estimatedTokens: options.estimatedContextTokens ?? 0,
+              signal: attempt.signal,
+              liveness,
+              ...options.onDispatch === undefined ? {} : { onDispatch: options.onDispatch },
+              async projectResult(content, call) {
+                if (fitsEngineWire(content)) return content
+                // The agent loop names the owners of every request that delivers a result; the project root stands in otherwise.
+                const savedOutputPath = await options.savedOutputPath?.(call.toolUseId)
+                return projectToolResult(content, {
+                  executionCwd: options.executionCwd ?? build.projectRoot, projectRoot: build.projectRoot,
+                  artifactScopeId: options.artifactScopeId ?? lifetime.providerSessionKey, toolName: call.toolName,
+                  ...savedOutputPath === undefined ? {} : { savedOutputPath },
+                })
+              },
+            })
+          } catch (error) {
+            // Recorded before the failure reaches the walk, so a refused login has its question when the walk asks.
+            const failure = loginFailure(error instanceof Error ? error : undefined, false)
+            if (failure !== undefined) deps.observations.recordRequest(loginDir, failure)
+            throw error
+          }
+          deps.observations.recordRequest(loginDir, "served")
         }, options)
       },
   }))

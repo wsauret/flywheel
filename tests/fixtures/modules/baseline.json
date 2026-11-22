@@ -1259,6 +1259,7 @@
       "claude_agent_sdk",
       "deepseek",
       "github_copilot",
+      "google_antigravity",
       "google_api",
       "google_vertex",
       "openai_api",
@@ -1301,6 +1302,13 @@
         "shortName": "Copilot",
         "billing": "subscription",
         "catalogId": "github-copilot"
+      },
+      {
+        "id": "google_antigravity",
+        "displayName": "Google Antigravity",
+        "shortName": "Antigravity",
+        "billing": "subscription",
+        "catalogId": "google"
       },
       {
         "id": "google_api",

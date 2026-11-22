@@ -9,14 +9,18 @@ const REPO_ROOT = resolve(import.meta.dir, "../../..");
 const READINESS_ENTRIES = ["src/cli/serve.ts", "src/orchestration/app-service/project-executor-main.ts"] as const;
 
 /** Modules that serve no part of readiness. A provider's SDK and its adapter load when the provider opens its
- *  first connection, the Agent SDK bridge loads when the Claude engine is first built, and the MCP SDK loads when
- *  the first MCP server connects. */
+ *  first connection, the Agent SDK bridge loads when the Claude engine is first built, the Antigravity client and
+ *  bridge load when its first client is built, its tool listener when its first engine launches, and the MCP SDK
+ *  loads when the first MCP server connects. */
 const DEFERRED_PACKAGES: ReadonlySet<string> = new Set([
   "@anthropic-ai/claude-agent-sdk", "@anthropic-ai/sdk", "openai", "@google/genai", "@modelcontextprotocol/sdk",
 ]);
 const DEFERRED_FILES: ReadonlySet<string> = new Set([
   resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/bridge.ts"),
   resolve(REPO_ROOT, "src/orchestration/modules/provider-claude-agent-sdk/client.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/bridge.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/client.ts"),
+  resolve(REPO_ROOT, "src/orchestration/modules/provider-google-antigravity/mcp-server.ts"),
 ]);
 
 describe("the readiness entries", () => {

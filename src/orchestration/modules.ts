@@ -50,7 +50,6 @@ import { fileToolsModule } from "./modules/file-tools.js"
 import { learningModule } from "./modules/learning.js"
 import { subscriptionUsageModule } from "./modules/subscription-usage/module.js"
 import { mcpModule } from "./modules/mcp/module.js"
-import { googleAntigravityModule } from "./modules/provider-google-antigravity/module.js"
 import { customProviderModules } from "./custom-provider-modules.js"
 import { customProviderGeneration } from "../infra/llm/custom-provider-registry.js"
 import { recallModule } from "./modules/recall.js"
@@ -332,7 +331,7 @@ export function composeRealmModuleSnapshot(
  *  these. A source run adds the development catalog to this half through
  *  `installModuleCatalog`; nothing here names that catalog by value, so a
  *  release bundle never contains it. */
-export const SHIPPED_OTHER_MODULES = [askUserModule, backgroundCommandsModule, bashModule, bugReportsModule, codeModeModule, definitionOverridesModule, discoveryModule, experimentsModule, fileToolsModule, googleAntigravityModule, learningModule, mcpModule, papercutsModule, projectNotificationsModule, recallModule, reclaimStorageModule, remoteModule, sideQuestionModule, skillsModule, subagentsModule, subscriptionUsageModule, webModule, webChatgptModule, workflowsModule] as const satisfies readonly FirstPartyModule[]
+export const SHIPPED_OTHER_MODULES = [askUserModule, backgroundCommandsModule, bashModule, bugReportsModule, codeModeModule, definitionOverridesModule, discoveryModule, experimentsModule, fileToolsModule, learningModule, mcpModule, papercutsModule, projectNotificationsModule, recallModule, reclaimStorageModule, remoteModule, sideQuestionModule, skillsModule, subagentsModule, subscriptionUsageModule, webModule, webChatgptModule, workflowsModule] as const satisfies readonly FirstPartyModule[]
 publishShippedOtherModules(SHIPPED_OTHER_MODULES)
 
 /** The catalog every release composes from. */

@@ -13,6 +13,7 @@ import { chatgptModule } from "./modules/provider-chatgpt/module.js"
 import { claudeAgentSdkModule } from "./modules/provider-claude-agent-sdk/module.js"
 import { deepseekModule } from "./modules/provider-deepseek/module.js"
 import { githubCopilotModule } from "./modules/provider-github-copilot/module.js"
+import { googleAntigravityModule } from "./modules/provider-google-antigravity/module.js"
 import { googleApiModule } from "./modules/provider-google-api/module.js"
 import { googleVertexModule } from "./modules/provider-google-vertex/module.js"
 import { openaiApiModule } from "./modules/provider-openai-api/module.js"
@@ -25,7 +26,7 @@ import { webExaModule } from "./modules/web-exa.js"
  *  provider and each web auth provider. The module registry composes this
  *  tuple into the whole catalog. Auth reads this registry alone, so a login
  *  loads the provider definitions and never a tool or another module. */
-export const CREDENTIAL_PROVIDER_MODULES = [anthropicApiModule, chatgptModule, claudeAgentSdkModule, deepseekModule, githubCopilotModule, googleApiModule, googleVertexModule, openaiApiModule, opencodeGoModule, openrouterModule, supergrokModule, webExaModule] as const satisfies readonly FirstPartyModule[]
+export const CREDENTIAL_PROVIDER_MODULES = [anthropicApiModule, chatgptModule, claudeAgentSdkModule, deepseekModule, githubCopilotModule, googleAntigravityModule, googleApiModule, googleVertexModule, openaiApiModule, opencodeGoModule, openrouterModule, supergrokModule, webExaModule] as const satisfies readonly FirstPartyModule[]
 publishShippedCredentialProviders(CREDENTIAL_PROVIDER_MODULES)
 
 interface CredentialVocabulary {

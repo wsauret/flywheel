@@ -92,6 +92,7 @@ test("every installed provider declares its place in the auto-routing order", ()
     .map(({ id, billing, rank }) => ({ id, billing, rank }));
   expect(routingOrder).toEqual([
     { id: "claude_agent_sdk", billing: "subscription", rank: 0 },
+    { id: "google_antigravity", billing: "subscription", rank: 5 },
     { id: "chatgpt", billing: "subscription", rank: 10 },
     { id: "github_copilot", billing: "subscription", rank: 20 },
     { id: "opencode_go", billing: "subscription", rank: 30 },

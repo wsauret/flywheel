@@ -18,6 +18,7 @@ function providerTripwire(provider: AccessProviderId): boolean {
     case "claude_agent_sdk":
     case "deepseek":
     case "github_copilot":
+    case "google_antigravity":
     case "google_api":
     case "google_vertex":
     case "openai_api":
@@ -43,7 +44,7 @@ describe("capability module regression baseline", () => {
     // The vocabulary also names the development module, which only the source entry installs.
     expect(canonicalOutput).toEqual(MODULE_IDS.filter((id) => id !== "development"));
     expect(reorderedOutput).toEqual(canonicalOutput);
-    expect(providerIds.map(providerTripwire)).toEqual([true, true, true, true, true, true, true, true, true, true, true]);
+    expect(providerIds.map(providerTripwire)).toEqual([true, true, true, true, true, true, true, true, true, true, true, true]);
   });
 
   test("characterizes the production workflow observer chain", async () => {

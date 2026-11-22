@@ -1,5 +1,13 @@
 import { join } from "node:path"
 
+/** The module's id: its descriptor, its settings row, and its process service name it. */
+export const GOOGLE_ANTIGRAVITY_MODULE_ID = "provider-google-antigravity"
+export const GOOGLE_ANTIGRAVITY_PROVIDER_ID = "google_antigravity"
+/** The `flywheel auth login --<flag>` spelling of the provider. */
+export const GOOGLE_ANTIGRAVITY_CLI_FLAG = "google-antigravity"
+/** The command that logs the person in to the provider, which its setup hints name. */
+export const GOOGLE_ANTIGRAVITY_LOGIN_COMMAND = `flywheel auth login --${GOOGLE_ANTIGRAVITY_CLI_FLAG}`
+
 /** The provider as a person reads it in settings and in errors. */
 export const GOOGLE_ANTIGRAVITY_LABEL = "Google Antigravity"
 /** The program that owns the provider's login, as a person reads it. */

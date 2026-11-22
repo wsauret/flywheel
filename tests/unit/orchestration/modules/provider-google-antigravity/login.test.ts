@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test"
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, relative } from "node:path"
 import { Log } from "../../../../../src/infra/log.js"
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js"
@@ -9,6 +9,7 @@ import {
   logoutAntigravityAccount,
   logoutProfileAntigravityAccounts,
 } from "../../../../../src/orchestration/modules/provider-google-antigravity/login.js"
+import { gateHookHandler } from "../../../../../src/orchestration/modules/provider-google-antigravity/hook-command.js"
 import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login-status.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { AGY, engineHost, fakeAgy, GOOD_CODE, pastePorts, profile, SIGN_IN_URL } from "./_fake-agy.js"
@@ -199,6 +200,28 @@ describe("a Google Antigravity logout", () => {
     expect(existsSync(first.configDir)).toBe(false)
     expect(filesUnder(sibling.configDir).map((file) => [relative(sibling.configDir, file), readFileSync(file, "utf8")])).toEqual(siblingFiles)
     expect(antigravityAccounts(authDir)).toEqual([sibling])
+  })
+
+  test("of a login that another live Flywheel process serves is refused before agy runs, as is a login again there, and every file stays until that process is gone", async () => {
+    const { home, authDir } = place()
+    const agy = fakeAgy({ identity: "person@example.com" })
+    const account = await loginAntigravityAccount(profile(authDir, engineHost(home)), pastePorts(agy.launcher).ports)
+    // The test runner that started this process is alive and is not this process: its engines serve the login.
+    const foreign = join(account.configDir, "processes", "other.json")
+    mkdirSync(join(account.configDir, "processes"), { recursive: true })
+    writeFileSync(foreign, JSON.stringify({ pid: process.ppid, pendingOpens: 0, sessions: [] }))
+    const files = filesUnder(account.configDir).map((file) => [relative(account.configDir, file), readFileSync(file, "utf8")])
+    const runs = agy.launches.length
+
+    // The caller runs another executable, whose hook would differ from the owner's.
+    const other = { ...profile(authDir, engineHost(home)), gateHook: (loginDir: string) => gateHookHandler({ address: join(loginDir, "gate"), loginGateId: "gate", entry: ["/opt/other/flywheel"], platform: "linux" }) }
+    await expect(logoutAntigravityAccount(other, account.accountId, { launcher: agy.launcher })).rejects.toThrow("Another Flywheel process serves the Google Antigravity login")
+    await expect(loginAntigravityAccount(other, pastePorts(agy.launcher).ports, account)).rejects.toMatchObject({ name: "EngineUnavailableError", reason: "login-in-use" })
+    expect({ runs: agy.launches.length, files: filesUnder(account.configDir).map((file) => [relative(account.configDir, file), readFileSync(file, "utf8")]) }).toEqual({ runs, files })
+
+    rmSync(foreign)
+    await logoutAntigravityAccount(other, account.accountId, { launcher: agy.launcher })
+    expect(existsSync(account.configDir)).toBe(false)
   })
 
   test("whose agy step fails keeps the login directory and names the account; a profile logout tries every login", async () => {

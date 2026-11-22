@@ -89,7 +89,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   "provider-claude-agent-sdk": { contributions: { providers: ["claude_agent_sdk"], settings: ["provider-claude-agent-sdk"] } },
   "provider-deepseek": { contributions: { providers: ["deepseek"] } },
   "provider-github-copilot": { contributions: { providers: ["github_copilot"] } },
-  "provider-google-antigravity": { contributions: {} },
+  "provider-google-antigravity": { contributions: { providers: ["google_antigravity"], settings: ["provider-google-antigravity"] } },
   "provider-google-api": { contributions: { providers: ["google_api"] } },
   "provider-google-vertex": { contributions: { providers: ["google_vertex"], settings: ["provider-google-vertex"] } },
   "provider-openai-api": { contributions: { providers: ["openai_api"] } },
