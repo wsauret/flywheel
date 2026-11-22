@@ -541,7 +541,7 @@ export async function observeSessionYield(store: AsyncEventStateReadSurface, par
   const unread = new Set((await readUnreadSessionMessages(deps.projectionReader, sessionId)).map((cell) => cell.key))
   for (const wait of waits) {
     if (wait.sending || (wait.readKey && unread.has(wait.readKey))) continue
-    if (work && await wakesWithout(book, deps, work, wait, walk)) continue
+    if (work && await wakesWithout(book, work, new Set(await deps.lineage(wait.waiterSessionId)), walk)) continue
     if (yieldInput.waitRequested && book.parks.get(sessionId) !== currentPark) return
     if (book.suspended) return
     wait.end({ kind: "yielded", ...(yieldInput.lastText ? { lastText: yieldInput.lastText } : {}) })
@@ -569,12 +569,11 @@ interface ParkWalk {
   read(key: LiveWorkKey): void
 }
 
-/** Whether work that `work` references can wake the parked session without
- *  `waiter`. Each key the walk reads goes to `walk` before the read, so the
- *  park wakes for a change of any key that its answer rests on, also when
- *  the walk stops at its first live witness. */
-async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly WorkReference[], waiter: OpenWait, walk: ParkWalk): Promise<boolean> {
-  const lineage = new Set(await deps.lineage(waiter.waiterSessionId))
+/** Whether work that `work` references can wake its owner while no session
+ *  in `held` moves. Each key the walk reads goes to `walk` before the read,
+ *  so a park wakes for a change of any key that its answer rests on, also
+ *  when the walk stops at its first live witness. */
+async function wakesWithout(book: Pick<WaitBook, "waits" | "store">, work: readonly WorkReference[], held: ReadonlySet<string>, walk: ParkWalk): Promise<boolean> {
   const seen = new Set<LiveWorkKey>()
   async function tasksWake(tasks: WorkTasks): Promise<boolean> {
     walk.observe(tasks)
@@ -603,12 +602,12 @@ async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly 
           if ((waiting || member.state === "waiting_on_work") && await tasksWake(member.tasks)) return true
           if (waiting) continue
         }
-        if (lineage.has(member.sessionId)) continue
+        if (held.has(member.sessionId)) continue
         if (member.state === "running" || member.state === "between_steps") return true
       }
       return false
     }
-    if (lineage.has(id)) return false
+    if (held.has(id)) return false
     const waits = book.waits.get(id)
     if (waits?.size) {
       for (const wait of waits.values()) if (await tasksWake(wait.tasks)) return true
@@ -622,6 +621,18 @@ async function wakesWithout(book: WaitBook, deps: ReplyWaitDeps, work: readonly 
     return false
   }
   return any(work)
+}
+
+const UNOBSERVED_WALK: ParkWalk = { observe: () => {}, read: () => {} }
+
+/** Whether `work` can make progress while each session in `held` stays where
+ *  it is, as a session does that waits for a person's answer. Work that
+ *  waits for a reply only from a held session, directly or through other
+ *  reply waits and workflow members, cannot. A command counts as progress,
+ *  and so does a running session that holds no reply wait. Reads only the
+ *  live state of this process and observes nothing. */
+export async function workProgressesWithout(store: AsyncEventStateReadSurface, work: readonly WorkReference[], held: ReadonlySet<string>): Promise<boolean> {
+  return wakesWithout({ waits: books.get(store)?.waits ?? new Map(), store }, work, held, UNOBSERVED_WALK)
 }
 
 /** Rule 3: something about `sessionId` changed that can stop it from

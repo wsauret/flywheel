@@ -15,10 +15,13 @@ import { createRuntimeUiBus } from "../../../src/orchestration/app-service/runti
 import { createChatInvocationCompletion } from "../../../src/orchestration/chat/runner-completion.js"
 import type { AgentToolInput } from "../../../src/orchestration/agent-runtime/types.js"
 import { registerLiveWorkflowControl, runningChildSessionIds, liveWorkflowControls, onLiveWorkChanged } from "../../../src/orchestration/session/live-session-control.js"
-import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../src/infra/event-store-types.js"
+import { openReplyWait, suspendReplyWaits, workProgressesWithout, type ReplyWaitDeps } from "../../../src/orchestration/session/reply-waits.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../fixtures/runtime-supervisor-fixtures.js"
 
-function channelFixture(runningChildren: () => Promise<readonly string[]> = async () => [], workflows: Pick<Parameters<typeof createRuntimeWorkSettlement>[0], "busyWorkflows" | "onWorkflowChange"> = { busyWorkflows: async () => [], onWorkflowChange: () => () => {} }) {
+type LiveWorkOwners = Pick<Parameters<typeof createRuntimeWorkSettlement>[0], "busyWorkflows" | "onWorkflowChange" | "progressesWithout">
+
+function channelFixture(runningChildren: () => Promise<readonly string[]> = async () => [], workflows: LiveWorkOwners = { busyWorkflows: async () => [], onWorkflowChange: () => () => {}, progressesWithout: async () => true }) {
   const calls: FrontendMutation[] = []
   const records: HeadlessChatRecord[] = []
   const views = new Map<string, RuntimeSessionDetailView>([["root", detail("root")]])
@@ -79,6 +82,15 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
     } }),
     write: async (line: string) => { records.push(Schema.decodeUnknownSync(HeadlessChatRecordSchema)(JSON.parse(line))) },
     subscribed: () => listeners.size > 0,
+  }
+}
+
+/** The live work owners that the runtime composes from its live controls. */
+function liveWorkOwners(reader: AsyncEventStateReadSurface): LiveWorkOwners {
+  return {
+    busyWorkflows: async () => (await Promise.all(liveWorkflowControls(reader).map(async (control) => await control.state() === "interrupted" ? [] : [control.workflowId]))).flat(),
+    onWorkflowChange: (listener) => onLiveWorkChanged(reader, listener),
+    progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
   }
 }
 
@@ -430,10 +442,7 @@ describe("headless Chat JSONL transport", () => {
   ])("joins a chat request and live workflow work under $target (interrupted=$interrupted)", async ({ target, interrupted }) => {
     const context = createSupervisorTestContext()
     const reader = asAsyncEventReadSurface(context.store)
-    const fixture = channelFixture(() => runningChildSessionIds(reader), {
-      busyWorkflows: async () => (await Promise.all(liveWorkflowControls(reader).map(async (control) => await control.state() === "interrupted" ? [] : [control.workflowId]))).flat(),
-      onWorkflowChange: (listener) => onLiveWorkChanged(reader, listener),
-    })
+    const fixture = channelFixture(() => runningChildSessionIds(reader), liveWorkOwners(reader))
     let cut = false
     fixture.views.set(target, detail(target))
     const admission = deferred<void>()
@@ -474,6 +483,42 @@ describe("headless Chat JSONL transport", () => {
       expect(await pending).toEqual({ sessionId: "root", outcome: "complete" })
     } finally {
       unregister()
+      await disposeSupervisorTestContext(context)
+    }
+  })
+
+  it("reports input required when a workflow agent waits for a reply from the root chat that waits on a question", async () => {
+    const context = createSupervisorTestContext()
+    const reader = asAsyncEventReadSurface(context.store)
+    const fixture = channelFixture(() => runningChildSessionIds(reader), liveWorkOwners(reader))
+    // The root chat launched the workflow, which stays its background work.
+    const rootWork = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
+    rootWork.track({ done: new Promise(() => {}), meta: { id: "workflow", type: "workflow", description: "Fix" } })
+    fixture.registries.set("root", rootWork)
+    const memberWork = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} })
+    const member = detail("member")
+    fixture.views.set("member", { ...member, status: { ...member.status, waitingOnBackgroundWork: true, replyWaits: [{ sessionId: "root", name: "Root" }] } })
+    const unregister = registerLiveWorkflowControl(reader, {
+      workflowId: "workflow", kind: "workflow", state: async () => "waiting_on_work",
+      workProgress: async () => ({ runnable: false, members: [{ sessionId: "member", conversationId: "conversation-member", state: "waiting_on_work", tasks: memberWork }] }),
+      handBackMember: async (continueMember) => continueMember(), memberHost: async () => undefined,
+      deliver: async () => ({ status: "refused", reason: "settled" }),
+      notify: async () => false,
+    })
+    try {
+      const replyWaits: ReplyWaitDeps = { projectionReader: reader, eventWriter: asAsyncEventWriter(context.store), addresseeState: async () => "running", lineage: async (sessionId) => [sessionId] }
+      expect(await (await openReplyWait(replyWaits, { waiter: { sessionId: "member", tasks: memberWork }, addressee: { sessionId: "root", name: "Root" }, toolUseId: "ask-parent" })).accepted()).toBe(true)
+      // The root chat can still answer its agent, so the workflow runs on.
+      expect(await fixture.runtime.workSettlement.read("root")).toBe("busy")
+      fixture.questions.set("root", { kind: "question", toolUseId: "ask", questions: [], timestamp: 0 })
+      fixture.statuses.set("root", { ...detail("root").status, activity: "awaiting_user" })
+      // Only the person's answer moves the root chat, and only its reply moves the workflow.
+      expect(await fixture.runtime.workSettlement.read("root")).toBe("input_required")
+      expect(await runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "input_required" })
+      expect(memberWork.holdsWait("ask-parent")).toBe(true)
+    } finally {
+      unregister()
+      suspendReplyWaits(reader)
       await disposeSupervisorTestContext(context)
     }
   })

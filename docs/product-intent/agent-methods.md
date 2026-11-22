@@ -388,7 +388,7 @@ Open input permits more turns, and closing input lets submitted work finish. In 
 
 ## PI-AGENT-075: Headless questions wait for the caller
 
-A question waits until the caller answers or cancels it, and headless chat never invents approval. A run that ends with an open question reports input required, not approval or success.
+A question waits until the caller answers or cancels it, and headless chat never invents approval. A run that ends with an open question reports input required, not approval or success. A run also reports input required when its only remaining work waits, directly or through other agents, for a reply from a session that waits for an answer.
 
 ## PI-AGENT-076: Headless runs show settings and evidence
 

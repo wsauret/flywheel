@@ -1,6 +1,6 @@
 import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeClient } from "../../protocol/app-service-types.js"
 import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
-import { isWorkingStatus, type StatusView } from "../../protocol/status-protocol-types.js"
+import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { durableBranchHasUserMessage } from "../session/conversation/conversation-tree-handle.js"
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
@@ -8,11 +8,14 @@ import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import { liveWorkflowControl, onLiveWorkChanged } from "../session/live-session-control.js"
+import { workProgressesWithout } from "../session/reply-waits.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { WorkReference } from "../agent-runtime/background-work-progress.js"
 
-/** Includes preflight, acknowledgement, and draining without inventing session rows. */
-export function workflowSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange"> {
+/** Workflows include preflight, acknowledgement, and draining without inventing session rows. */
+export function liveWorkSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange" | "progressesWithout"> {
   return {
+    progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
     busyWorkflows: async () => (await Promise.all(hosts.allIds().map(async (id) =>
       await liveWorkflowControl(reader, id)?.state() === "interrupted" ? undefined : id))).filter((id): id is string => id !== undefined),
     onWorkflowChange: (listener) => {
@@ -96,6 +99,8 @@ export interface RuntimeWorkSettlement {
 interface SettlementDeps {
   readonly busyWorkflows: () => Promise<readonly string[]>
   readonly onWorkflowChange: (listener: () => void) => () => void
+  /** Whether `work` can progress while every session in `held` stays where it is. */
+  readonly progressesWithout: (work: readonly WorkReference[], held: ReadonlySet<string>) => Promise<boolean>
   readonly client: RuntimeClient
   readonly awaitAcceptedWork: () => Promise<void>
   readonly ownedSessionIds: () => readonly string[]
@@ -103,7 +108,7 @@ interface SettlementDeps {
   readonly keptSessions: () => readonly string[]
   readonly pendingTurnSettlement: (sessionId: string) => Promise<void> | undefined
   /** The background-work registry of a session's runner, which its agent loop also reads. */
-  readonly backgroundWork: (sessionId: string) => Pick<BackgroundWorkTracking, "awaitedTaskCount" | "pendingDeliveryCount"> | undefined
+  readonly backgroundWork: (sessionId: string) => Pick<BackgroundWorkTracking, "awaitedTaskCount" | "pendingDeliveryCount" | "liveWorkReferences"> | undefined
   readonly failed: (sessionId: string) => boolean
   readonly requiresContinuation: (sessionId: string, rootSessionId: string) => Promise<boolean>
   readonly onLiveSessionRemoved: (listener: (sessionId: string) => void) => () => void
@@ -139,21 +144,30 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
         deps.client.query({ type: "questionSnapshot", sessionIds }),
       ])
       const questionIds = new Set(questions.views.filter((entry) => entry.view !== null).map((entry) => entry.sessionId))
+      // Only a person's answer moves a session that waits on a question, so
+      // work that waits for a reply only from such a session cannot settle
+      // before the run reports the question (PI-AGENT-075).
+      const progresses = async (work: WorkReference): Promise<boolean> => questionIds.size === 0 || await deps.progressesWithout([work], questionIds)
       // Background work is pending exactly when the agent loop awaits it: every
       // tracked command holds completion, and a command launched to persist is
       // not tracked. A question parks the model, not sibling
       // commands in the same session, but a notification of ended work cannot
       // commit until the answer releases the turn, so it does not hold the question.
-      const awaitedWork = (sessionId: string): number => {
+      const awaitsWork = async (sessionId: string): Promise<boolean> => {
         const work = deps.backgroundWork(sessionId)
-        if (!work) return 0
-        return work.awaitedTaskCount() - (questionIds.has(sessionId) ? work.pendingDeliveryCount() : 0)
+        if (!work) return false
+        if (!questionIds.has(sessionId)) return work.awaitedTaskCount() > 0
+        // A pending delivery is a command reference, which always progresses.
+        const stalled = (await Promise.all(work.liveWorkReferences().map(progresses))).filter((live) => !live).length
+        return work.awaitedTaskCount() - work.pendingDeliveryCount() - stalled > 0
       }
-      if (kept.length > 0 || children.length > 0 || workflows.length > 0 || statuses.views.some(({ sessionId, view }) =>
-        view !== null && (awaitedWork(sessionId) > 0
-          || view.activeForegroundBashToolCallIds.length > 0
-          || isActiveActivity(view.activity) || view.activeSubagentCount > 0
-          || !questionIds.has(sessionId) && isWorkingStatus(view)))) return "busy"
+      const holdsWork = async (sessionId: string, view: StatusView): Promise<boolean> =>
+        view.activeForegroundBashToolCallIds.length > 0 || isActiveActivity(view.activity) || view.activeSubagentCount > 0
+        || (await awaitsWork(sessionId) || !questionIds.has(sessionId) && view.waitingOnBackgroundWork)
+          && (questionIds.has(sessionId) || await progresses({ kind: "session", sessionId }))
+      const busyWorkflows = (await Promise.all(workflows.map((workflowId) => progresses({ kind: "workflow", workflowId })))).some(Boolean)
+      if (kept.length > 0 || children.length > 0 || busyWorkflows
+        || (await Promise.all(statuses.views.map(({ sessionId, view }) => view !== null && holdsWork(sessionId, view)))).some(Boolean)) return "busy"
       if ([...pendingTurns].some((id) => !questionIds.has(id))) return "busy"
       if (questionIds.size > 0) return "input_required"
       if (sessionIds.some(deps.failed)) return "failed"

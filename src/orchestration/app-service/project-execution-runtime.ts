@@ -89,7 +89,7 @@ import { createStreamingEditValidationService } from "../agent-runtime/tools/str
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
-import { createRuntimeWorkSettlement, createSettledRuntimeDispatch, workflowSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
+import { createRuntimeWorkSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
 import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
 import { isResumableTurnEnd } from "../session/conversation/turn-end-record.js"
 import type { MutationEvidenceService } from "./mutation-evidence-service.js"
@@ -676,7 +676,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
   })
   const workSettlement = createRuntimeWorkSettlement({
-    client, ...workflowSettlementOwners(workflowHosts, eventReader),
+    client, ...liveWorkSettlementOwners(workflowHosts, eventReader),
     awaitAcceptedWork: runtimeSupervisor.awaitAcceptedWork,
     ownedSessionIds: () => [...runtimeSupervisor.ownedSessionIds(), ...sessionStore.allIds()],
     runningChildren: () => runningChildSessionIds(eventReader),
