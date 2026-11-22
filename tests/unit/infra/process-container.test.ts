@@ -356,6 +356,8 @@ function windowsProbe(
     commitBytes: () => undefined,
     runnableThreads: () => undefined,
     environment: () => undefined,
+    hold: () => undefined,
+    systemDirectory: () => undefined,
   }
   return { signal: () => {}, groupExists: () => true, windows }
 }

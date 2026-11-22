@@ -73,6 +73,8 @@ function windowsSurface(fake: WindowsFake): WindowsProcessApi {
     commitBytes: () => undefined,
     runnableThreads: () => undefined,
     environment: () => undefined,
+    hold: () => undefined,
+    systemDirectory: () => undefined,
   }
 }
 

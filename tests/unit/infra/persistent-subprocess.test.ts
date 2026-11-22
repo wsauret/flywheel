@@ -5,6 +5,7 @@ import {
   type PosixPersistentSubprocessPlatform,
   type WindowsPersistentSubprocessPlatform,
 } from "../../../src/infra/persistent-subprocess.js"
+import { OutsideJobsLaunchError } from "../../../src/infra/windows-outside-jobs.js"
 import type { SpoolHolders } from "../../../src/infra/persistent-spool.js"
 import { CONTAINER_MARK_VARIABLE, STRICT_DESCENDANT_SETTLEMENT_VARIABLE, enableStrictDescendantSettlement } from "../../../src/infra/container-mark.js"
 import type { ProcessIdentity } from "../../../src/infra/process-container.js"
@@ -41,6 +42,7 @@ function defaultPlatform(overrides: Partial<WindowsPersistentSubprocessPlatform>
     createSpool: () => spool,
     closeSpool: async () => {},
     launch: async () => ({ pid: 42, exited: new Promise<number>(() => {}), unref: () => {} }),
+    launchOutsideJobs: async () => { throw new Error("this launch did not ask to leave its jobs") },
     inspect: async () => ({ kind: "process", identity: "42:born" }),
     stopContainer: async () => {},
     holdSpool: () => {},
@@ -439,6 +441,47 @@ describe("persistent subprocess", () => {
 
     identity = { kind: "absent" }
     expect(await process.stop()).toBe("unsettled")
+  })
+
+  test("a launch outside every job goes through WMI on Windows with its output in the spools, and stays an ordinary launch elsewhere", async () => {
+    let outside: Parameters<WindowsPersistentSubprocessPlatform["launchOutsideJobs"]>[0] | undefined
+    const windows = defaultPlatform({
+      launch: async () => { throw new Error("a launch outside every job used the ordinary spawn") },
+      launchOutsideJobs: async (request) => {
+        outside = request
+        return { pid: 42, exited: new Promise<number>(() => {}), unref: () => {} }
+      },
+    })
+    const launched = await launchPersistentSubprocess(command, { platform: windows, selfManaged: true, cwd: "/work", env: { PATH: "/bin" }, outsideJobs: true })
+    expect(outside).toEqual({ command, cwd: "/work", env: { PATH: "/bin" }, stdoutPath: "/spool/stdout", stderrPath: "/spool/stderr" })
+    expect(launched.pid).toBe(42)
+
+    let posixCommand: readonly string[] | undefined
+    await launchPersistentSubprocess(command, {
+      selfManaged: true,
+      outsideJobs: true,
+      platform: posixPlatform({
+        launch: async (request) => {
+          posixCommand = request.command
+          return { pid: 42, exited: new Promise<number>(() => {}), unref: () => {}, control: { drained: Promise.resolve(), write: async () => {}, close: async () => {} } }
+        },
+      }),
+    })
+    expect(posixCommand).toEqual(command)
+  })
+
+  test("removes the spool of a launch outside every job that did not start, because no process can write it", async () => {
+    const removed: string[] = []
+    let closed = 0
+    const refusal = new OutsideJobsLaunchError("wmi", "WMI Win32_Process.Create answered 9 (path not found)")
+    const platform = defaultPlatform({
+      launchOutsideJobs: async () => { throw refusal },
+      closeSpool: async () => { closed += 1 },
+      removeSpool: (directory) => { removed.push(directory) },
+    })
+    await expect(launchPersistentSubprocess(command, { platform, selfManaged: true, outsideJobs: true })).rejects.toBe(refusal)
+    expect(closed).toBe(1)
+    expect(removed).toEqual(["/spool"])
   })
 
   test("lets the platform clean the child and spool when identity cannot be proven", async () => {

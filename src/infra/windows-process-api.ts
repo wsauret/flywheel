@@ -63,6 +63,26 @@ interface WindowsProcessRow {
   readonly parentPid: number
 }
 
+/** One process kept open through its own handle. While the handle is open,
+ *  the kernel keeps the process object, so its exit code stays readable after
+ *  it ends, and every call acts on that process and never on a later process
+ *  that got its pid. */
+export interface WindowsProcessHold {
+  /** The creation time of the held process, read through the handle. */
+  readonly createdFileTime: bigint
+  /** The code the process ended with, or nothing while it runs or after the
+   *  hold is closed. */
+  exitCode(): number | undefined
+  /** Resumes every thread of a process that was created suspended. False
+   *  when the kernel refused, or the hold is closed. */
+  resume(): boolean
+  /** Ends the held process with exit code 1. False when the kernel refused,
+   *  or the hold is closed. */
+  terminate(): boolean
+  /** Closes the handle. A second call does nothing. */
+  close(): void
+}
+
 export interface WindowsProcessApi {
   /** The creation time of `pid`, which with the pid forms a stable identity. */
   query(pid: number): WindowsProcessQuery
@@ -94,6 +114,13 @@ export interface WindowsProcessApi {
    *  when the process cannot be opened or its memory read. The kernel lets a
    *  process read the memory of a process of the same user only. */
   environment(pid: number): readonly string[] | undefined
+  /** Opens `pid` and keeps it open, for a launcher that did not create the
+   *  process itself and so holds no handle to it. Nothing when it cannot be
+   *  opened or its creation time read. */
+  hold(pid: number): WindowsProcessHold | undefined
+  /** The system directory, from the kernel and not from an environment
+   *  variable that a caller can set. Nothing when the call failed. */
+  systemDirectory(): string | undefined
 }
 
 /** `PROCESS_QUERY_LIMITED_INFORMATION`: enough to read a creation time, and
@@ -104,6 +131,11 @@ const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 const PROCESS_TERMINATE = 0x0001
 /** `PROCESS_VM_READ`: added to the query right only to read an environment. */
 const PROCESS_VM_READ = 0x0010
+/** `PROCESS_SUSPEND_RESUME`: added to a hold only to resume a process that
+ *  was created suspended. */
+const PROCESS_SUSPEND_RESUME = 0x0800
+/** `MAX_PATH`, in UTF-16 units. A system directory is never longer. */
+const MAX_PATH = 260
 const TH32CS_SNAPPROCESS = 0x2
 const ERROR_ACCESS_DENIED = 5
 const ERROR_INVALID_PARAMETER = 87
@@ -170,6 +202,8 @@ function openKernel32() {
     GetProcessTimes: { args: [FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr, FFIType.ptr], returns: FFIType.i32 },
     CloseHandle: { args: [FFIType.ptr], returns: FFIType.i32 },
     TerminateProcess: { args: [FFIType.ptr, FFIType.u32], returns: FFIType.i32 },
+    GetExitCodeProcess: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.i32 },
+    GetSystemDirectoryW: { args: [FFIType.ptr, FFIType.u32], returns: FFIType.u32 },
     GetSystemTimeAsFileTime: { args: [FFIType.ptr], returns: FFIType.void },
     GetLastError: { args: [], returns: FFIType.u32 },
     CreateToolhelp32Snapshot: { args: [FFIType.u32, FFIType.u32], returns: FFIType.ptr },
@@ -182,12 +216,14 @@ function openKernel32() {
   })
 }
 
-/** `ntdll.dll` holds the one call that names another process's PEB. Like
- *  kernel32 it is mapped into every Windows process before any code runs. */
+/** `ntdll.dll` holds the one call that names another process's PEB and the
+ *  one call that resumes a whole process. Like kernel32 it is mapped into
+ *  every Windows process before any code runs. */
 function openNtdll() {
   return dlopen("ntdll.dll", {
     NtQueryInformationProcess: { args: [FFIType.ptr, FFIType.u32, FFIType.ptr, FFIType.u32, FFIType.ptr], returns: FFIType.i32 },
     NtQuerySystemInformation: { args: [FFIType.u32, FFIType.ptr, FFIType.u32, FFIType.ptr], returns: FFIType.i32 },
+    NtResumeProcess: { args: [FFIType.ptr], returns: FFIType.i32 },
   })
 }
 
@@ -346,6 +382,43 @@ export function createWindowsProcessApi(kernel32: Kernel32, ntdll: Ntdll): Windo
       } finally {
         symbols.CloseHandle(handle)
       }
+    },
+    hold(pid) {
+      const handle = symbols.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE | PROCESS_SUSPEND_RESUME, 0, pid)
+      if (!handle) return undefined
+      const opened = processTimes(handle)
+      if (opened === undefined) {
+        symbols.CloseHandle(handle)
+        return undefined
+      }
+      let open = true
+      return {
+        createdFileTime: opened.created,
+        exitCode() {
+          if (!open) return undefined
+          // The exit time, not the code, says whether the process ended: a
+          // process may end with the code that reads as still running.
+          const times = processTimes(handle)
+          if (times === undefined || times.exited === 0n) return undefined
+          const code = new Uint32Array(1)
+          return symbols.GetExitCodeProcess(handle, ptr(code)) ? code[0] : undefined
+        },
+        // An NTSTATUS of 0 is success.
+        resume: () => open && ntdll.symbols.NtResumeProcess(handle) === 0,
+        terminate: () => open && Boolean(symbols.TerminateProcess(handle, 1)),
+        close() {
+          if (!open) return
+          open = false
+          symbols.CloseHandle(handle)
+        },
+      }
+    },
+    systemDirectory() {
+      const buffer = new Uint16Array(MAX_PATH)
+      // The call answers the length without the NUL, 0 on failure, and more
+      // than the buffer when the buffer was too small.
+      const length = symbols.GetSystemDirectoryW(ptr(buffer), MAX_PATH)
+      return length === 0 || length >= MAX_PATH ? undefined : new TextDecoder("utf-16le").decode(buffer.subarray(0, length))
     },
   }
 }

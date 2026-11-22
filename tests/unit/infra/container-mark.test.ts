@@ -301,7 +301,7 @@ describe("whether a settled command left a process running", () => {
 
   test("proves on Windows that nothing survives without asking the kernel, because the settled job held every descendant", () => {
     const unasked = (): never => { throw new Error("the settled job already proves the answer") }
-    const windows: WindowsProcessApi = { query: unasked, list: unasked, now: unasked, terminate: unasked, workingSetBytes: unasked, commitBytes: unasked, runnableThreads: unasked, environment: unasked }
+    const windows: WindowsProcessApi = { query: unasked, list: unasked, now: unasked, terminate: unasked, workingSetBytes: unasked, commitBytes: unasked, runnableThreads: unasked, environment: unasked, hold: unasked, systemDirectory: unasked }
 
     expect(mayHaveSurvivingDescendant(SETTLED_LAUNCH, { signal: unasked, groupExists: unasked, windows })).toBe(false)
   })

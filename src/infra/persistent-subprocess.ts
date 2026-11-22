@@ -22,6 +22,7 @@ import {
 } from "./persistent-spool.js"
 import { withDeadline } from "./with-deadline.js"
 import { drainSupervisorDiagnostics } from "./process-diagnostic-reader.js"
+import { launchOutsideJobs, OutsideJobsLaunchError, type OutsideJobsLaunchRequest } from "./windows-outside-jobs.js"
 
 interface PersistentEnvironment {
   readonly [name: string]: string | undefined
@@ -86,6 +87,7 @@ export interface PosixPersistentSubprocessPlatform extends PersistentPlatformBas
 export interface WindowsPersistentSubprocessPlatform extends PersistentPlatformBase {
   readonly kind: "windows"
   launch(request: PersistentLaunchRequest): Promise<PersistentChild>
+  launchOutsideJobs(request: OutsideJobsLaunchRequest): Promise<PersistentChild>
   stopContainer(pid: number, identity: string): Promise<PersistentStopOutcome | void>
 }
 
@@ -103,6 +105,14 @@ export interface PersistentLaunchData {
    *  starts ahead of it. A stop then signals the process itself and waits
    *  for its own ordered exit, and there is no process group to settle. */
   readonly selfManaged?: boolean
+  /** On Windows, the process starts outside every job this process belongs
+   *  to, so it outlives a host that ends its job, such as an editor that
+   *  holds each agent it starts in a kill-on-close job. WMI starts it, as
+   *  `launchOutsideJobs` states, with its output in the spools as for any
+   *  launch, and a launch that WMI refuses fails with
+   *  `OutsideJobsLaunchError` and no other launch. macOS and Linux ignore
+   *  this: a detached session already leaves the launcher's group. */
+  readonly outsideJobs?: boolean
 }
 
 export interface PersistentLaunchOptions extends PersistentLaunchData {
@@ -192,6 +202,7 @@ const persistentSubprocessPlatform: PersistentSubprocessPlatform = process.platf
         const child = Bun.spawn({ cmd: [...request.command], cwd: request.cwd, env: request.env, stdio: [request.stdin, request.stdoutFd, request.stderrFd], detached: request.detached, windowsHide: true })
         return { pid: child.pid, exited: child.exited, kill: (signal) => { child.kill(signal) }, unref: () => { child.unref() } }
       },
+      launchOutsideJobs: (request) => launchOutsideJobs(request),
       async inspect(pid) { return windowsProcessIdentity(pid) },
       async stopContainer(pid, expectedIdentity) { return await stopWindowsContainer(pid, expectedIdentity) },
     }
@@ -238,11 +249,18 @@ export async function launchPersistentSubprocess(command: readonly string[], opt
       // A self-managed command reads no admission; its control end closes at once.
       if (supervised) control = launched.control
       else void launched.control.close()
+    } else if (options.outsideJobs === true) {
+      child = await platform.launchOutsideJobs({ command: launchedCommand, cwd: options.cwd, env, stdoutPath: spool.stdoutPath, stderrPath: spool.stderrPath })
     } else {
       child = await platform.launch({ command: launchedCommand, cwd: options.cwd, env, stdin: "ignore", stdoutFd: spool.stdoutFd, stderrFd: spool.stderrFd, detached: true })
     }
   } catch (error) {
     try { await platform.closeSpool(spool) } catch { /* preserve the launch error */ }
+    // A launch outside every job resumes its process only once it holds it,
+    // so one that failed left no process that can write the spool.
+    if (error instanceof OutsideJobsLaunchError) {
+      try { platform.removeSpool(spool.directory) } catch { /* preserve the launch error */ }
+    }
     throw error
   }
   // The launcher holds the spool because it reads it, and the child holds it

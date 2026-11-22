@@ -41,10 +41,18 @@ function fakeKernel32(script: {
   readonly terminates?: boolean
   /** The FILETIME `GetSystemTimeAsFileTime` writes. */
   readonly systemTime?: bigint
+  /** The code `GetExitCodeProcess` writes. */
+  readonly exitCode?: number
+  /** The NTSTATUS `NtResumeProcess` answers; success unless told otherwise. */
+  readonly resumeStatus?: number
+  /** The system directory `GetSystemDirectoryW` writes, or nothing for a
+   *  failed call. */
+  readonly systemDirectory?: string
 }) {
   const closed: number[] = []
   const access: number[] = []
   const terminated: string[] = []
+  const resumed: number[] = []
   let index = 0
   const symbols = {
     OpenProcess: (desired: number) => { access.push(desired); return script.handle ?? 0 },
@@ -60,6 +68,15 @@ function fakeKernel32(script: {
     TerminateProcess: (handle: number, exitCode: number) => {
       terminated.push(`${handle} ${exitCode}`)
       return script.terminates === false ? 0 : 1
+    },
+    GetExitCodeProcess: (_handle: number, code: Pointer) => {
+      new Uint32Array(toArrayBuffer(code, 0, 4))[0] = script.exitCode ?? 0
+      return 1
+    },
+    GetSystemDirectoryW: (buffer: Pointer, size: number) => {
+      if (script.systemDirectory === undefined) return 0
+      new Uint8Array(toArrayBuffer(buffer, 0, size * 2)).set(Buffer.from(`${script.systemDirectory}\0`, "utf16le"))
+      return script.systemDirectory.length
     },
     GetSystemTimeAsFileTime: (time: Pointer) => { new BigUint64Array(toArrayBuffer(time, 0, 8))[0] = script.systemTime ?? 0n },
     CreateToolhelp32Snapshot: () => script.snapshot ?? 1,
@@ -92,6 +109,10 @@ function fakeKernel32(script: {
       new DataView(toArrayBuffer(information, 0, size)).setBigUint64(8, script.peb, true)
       return 0
     },
+    NtResumeProcess: (handle: number) => {
+      resumed.push(handle)
+      return script.resumeStatus ?? 0
+    },
   }
   function writeRow(entry: Pointer): number {
     const rows = script.rows ?? []
@@ -104,7 +125,7 @@ function fakeKernel32(script: {
     return 1
   }
   // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: a dlopen result's type brands each symbol and returned pointer with private tags that only dlopen produces, so a scripted stand-in cannot carry it
-  return { api: createWindowsProcessApi({ symbols } as never, { symbols: ntdll } as never), closed, access, terminated }
+  return { api: createWindowsProcessApi({ symbols } as never, { symbols: ntdll } as never), closed, access, terminated, resumed }
 }
 
 describe("windows process api", () => {
@@ -180,6 +201,44 @@ describe("windows process api", () => {
     expect(fakeKernel32({ handle: 0, lastError: ERROR_INVALID_PARAMETER }).api.terminate(999999, 1n)).toEqual({ kind: "absent" })
     // A protected process exists, and a kill it refused ended nothing.
     expect(fakeKernel32({ handle: 0, lastError: ERROR_ACCESS_DENIED }).api.terminate(4, 1n)).toEqual({ kind: "unproven" })
+  })
+
+  test("holds a process by its handle: its creation time, its exit code once its exit time says it ended, and resume and kill until closed", () => {
+    // 259 is the code that reads as still running, so the exit time decides.
+    const script = { handle: 42, created: 134320076628883394n, exited: 0n, exitCode: 259 }
+    const { api, closed, terminated, resumed } = fakeKernel32(script)
+    const hold = api.hold(1234)
+
+    expect(hold?.createdFileTime).toBe(134320076628883394n)
+    expect(hold?.exitCode()).toBeUndefined()
+    expect(hold?.resume()).toBe(true)
+    script.exited = 134320076700000000n
+    expect(hold?.exitCode()).toBe(259)
+    expect(hold?.terminate()).toBe(true)
+    expect(resumed).toEqual([42])
+    expect(terminated).toEqual(["42 1"])
+    // The handle stays open across calls, and closing twice closes it once.
+    expect(closed).toEqual([])
+    hold?.close()
+    hold?.close()
+    expect(closed).toEqual([42])
+    expect(hold?.exitCode()).toBeUndefined()
+    expect(hold?.resume()).toBe(false)
+    expect(hold?.terminate()).toBe(false)
+    expect(resumed).toEqual([42])
+  })
+
+  test("holds nothing for a pid it cannot open, or whose creation time it cannot read, and closes what it opened", () => {
+    expect(fakeKernel32({ handle: 0, lastError: ERROR_INVALID_PARAMETER }).api.hold(999999)).toBeUndefined()
+    const unread = fakeKernel32({ handle: 42, timesWritten: false })
+    expect(unread.api.hold(1234)).toBeUndefined()
+    expect(unread.closed).toEqual([42])
+    expect(fakeKernel32({ handle: 42, created: 1n, resumeStatus: STATUS_ACCESS_DENIED }).api.hold(1234)?.resume()).toBe(false)
+  })
+
+  test("reads the system directory from the kernel, and nothing when the call fails", () => {
+    expect(fakeKernel32({ systemDirectory: "C:\\WINDOWS\\system32" }).api.systemDirectory()).toBe("C:\\WINDOWS\\system32")
+    expect(fakeKernel32({}).api.systemDirectory()).toBeUndefined()
   })
 
   test("walks the process table into pid and parent pid rows", () => {

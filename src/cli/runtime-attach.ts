@@ -563,6 +563,9 @@ export async function launchAccountRuntime(
       ...(options.idleTimeoutSeconds === undefined ? {} : { FLYWHEEL_PROJECT_IDLE_TIMEOUT_SECONDS: String(options.idleTimeoutSeconds) }),
     },
     selfManaged: true,
+    // The service serves every client of the account, so it must outlive
+    // this one, also when an editor ends the job it holds this client in.
+    outsideJobs: true,
   })
   startupTrace("account service launched")
   try {

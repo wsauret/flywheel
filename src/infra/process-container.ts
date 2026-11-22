@@ -412,12 +412,13 @@ export interface TrustedCommandResult {
 
 /** Runs one trusted command to completion and answers its exit status and
  *  both of its streams, for a caller that must tell one refusal from another,
- *  such as a service manager command. A timeout kills the command and waits
- *  a bounded interval for its settlement. */
-export async function trustedCommandRun(launch: TrustedProbeLaunch, timeoutMs: number): Promise<TrustedCommandResult> {
-  let task: Bun.Subprocess<"ignore", "pipe", "pipe">
+ *  such as a service manager command. `input`, when given, is the command's
+ *  whole standard input. A timeout kills the command and waits a bounded
+ *  interval for its settlement. */
+export async function trustedCommandRun(launch: TrustedProbeLaunch, timeoutMs: number, input?: string): Promise<TrustedCommandResult> {
+  let task: Bun.Subprocess<"ignore" | Blob, "pipe", "pipe">
   try {
-    task = Bun.spawn([...launch.argv], { stdin: "ignore", stdout: "pipe", stderr: "pipe", env: launch.env, windowsHide: launch.windowsHide })
+    task = Bun.spawn([...launch.argv], { stdin: input === undefined ? "ignore" : new Blob([input]), stdout: "pipe", stderr: "pipe", env: launch.env, windowsHide: launch.windowsHide })
   } catch {
     return { exitCode: null, stdout: "", stderr: "" }
   }
