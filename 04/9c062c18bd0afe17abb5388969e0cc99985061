@@ -1,0 +1,52 @@
+scripts/check-diagnostics-registry.ts
+  h_4b47e9e4a8b456 261-280
+src/infra/diagnostics-registry.ts
+  h_4b47e9e4a8b456 196-206
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 406
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 112-113,165
+src/orchestration/agent-runtime/budget-exhaust.ts
+  h_4b47e9e4a8b456 96,159,202,258
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 501-510,513-515
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 110,758
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 27,68,91-92,172
+src/orchestration/agent-runtime/tool-output-recovery.ts
+  h_4b47e9e4a8b456 2-4,45-66
+src/orchestration/modules/provider-google-antigravity/bridge.ts
+  h_4b47e9e4a8b456 1-559
+src/orchestration/modules/provider-google-antigravity/client.ts
+  h_4b47e9e4a8b456 1-161
+src/orchestration/modules/provider-google-antigravity/engine-process.ts
+  h_4b47e9e4a8b456 6,83-85,221,398,466-469
+src/orchestration/modules/provider-google-antigravity/engine-registry.ts
+  h_4b47e9e4a8b456 1,158
+src/orchestration/modules/provider-google-antigravity/result-projection.ts
+  h_4b47e9e4a8b456 40,54-58
+src/orchestration/modules/provider-google-antigravity/retry-watch.ts
+  h_4b47e9e4a8b456 1,123
+src/orchestration/modules/provider-google-antigravity/transport-audit.ts
+  h_4b47e9e4a8b456 1-85
+tests/integration/orchestration/modules/provider-google-antigravity/_engine.ts
+  h_4b47e9e4a8b456 40-41,46,52,71,95
+tests/integration/orchestration/modules/provider-google-antigravity/_fake-gemini.ts
+  h_4b47e9e4a8b456 9-13,15,54-57,92
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 1-567
+tests/unit/orchestration/modules/provider-google-antigravity/bridge.test.ts
+  h_4b47e9e4a8b456 1-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "049c062c18bd0afe17abb5388969e0cc99985061",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
