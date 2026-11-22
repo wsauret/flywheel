@@ -1,0 +1,60 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 142,249
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 294-295
+src/infra/source-snapshot-content.ts
+  h_4b47e9e4a8b456 1-250
+src/infra/source-snapshot.ts
+  h_4b47e9e4a8b456 9,42,44,47-48,55,465,609
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 53,335,377
+src/orchestration/modules/provider-google-antigravity/acp/connection.ts
+  h_4b47e9e4a8b456 50,61
+src/orchestration/modules/provider-google-antigravity/acp/schema.ts
+  h_4b47e9e4a8b456 39,93,125,137-140,147,152,155,160,170-172
+src/orchestration/modules/provider-google-antigravity/login-status.ts
+  h_4b47e9e4a8b456 1-301
+src/orchestration/modules/provider-google-antigravity/login.ts
+  h_4b47e9e4a8b456 1-429
+src/orchestration/modules/provider-google-antigravity/module.ts
+  h_4b47e9e4a8b456 1-11
+src/orchestration/modules/provider-google-antigravity/names.ts
+  h_4b47e9e4a8b456 1-22
+src/orchestration/modules/provider-google-antigravity/request-plan.ts
+  h_4b47e9e4a8b456 42,45,70
+src/orchestration/modules/provider-google-antigravity/step-gate.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/provider-google-antigravity/stream-map.ts
+  h_4b47e9e4a8b456 121-122,128-130,169,187
+src/protocol/module-ids.ts
+  h_4b47e9e4a8b456 45
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1147,1197
+tests/integration/orchestration/modules/provider-google-antigravity/engine-keychain.test.ts
+  h_4b47e9e4a8b456 22-33,73,146,162
+tests/unit/infra/source-snapshot.test.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 628
+tests/unit/orchestration/module-complete-off.test.ts
+  h_4b47e9e4a8b456 92,233-235
+tests/unit/orchestration/modules/provider-google-antigravity/_fake-agy.ts
+  h_4b47e9e4a8b456 1-209
+tests/unit/orchestration/modules/provider-google-antigravity/login-status.test.ts
+  h_4b47e9e4a8b456 1-134
+tests/unit/orchestration/modules/provider-google-antigravity/login.test.ts
+  h_4b47e9e4a8b456 1-240
+tests/unit/orchestration/modules/provider-google-antigravity/request-plan.test.ts
+  h_4b47e9e4a8b456 108-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e52170d4cbaeb3c1d34d4e721ea95aa1a045e8bf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
