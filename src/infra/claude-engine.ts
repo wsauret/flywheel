@@ -8,7 +8,6 @@ import { localDateZone } from "./env-detection.js";
 import { buildPlatformArch, checkoutClaudeEngine, claudeEngineFile, nativeAssetDir } from "./native-assets.js";
 import type { OsAccount } from "./os-account.js";
 import { privateTemporaryRoot } from "./private-temporary-root.js";
-import type { OwnedCommandRunner } from "./owned-command.js";
 
 // The bundled `claude` engine is a shared primitive: the Claude provider runs it for model requests and the MCP
 // module runs it as the MCP client of the servers that use Claude. Neither owns where it lives or how it is kept
@@ -197,9 +196,6 @@ export interface ClaudeLoginEngine {
   stop(): Promise<void>;
 }
 
-/** A `--version` call takes about 150 ms. */
-const VERSION_BOUND_MS = 10_000;
-
 /**
  * The `claude` engine that ships with Flywheel: the platform binary of the pinned Agent SDK, `claude` or
  * `claude.exe`. A release runs the copy that its build placed in the build's native directory, which the build
@@ -214,15 +210,4 @@ export function enginePath(): string {
   const platformArch = buildPlatformArch();
   if (!runsThroughBun(process.execPath)) return join(nativeAssetDir(), claudeEngineFile(platformArch));
   return checkoutProgram(checkoutClaudeEngine(platformArch));
-}
-
-/** What `<engine> --version` names, run through the caller's owned-command runner. The call prints the version and
- *  exits: it reads no login, writes no file, and sends nothing. Rejects with the reason that it named none. */
-export async function readEngineVersion(engine: string, run: OwnedCommandRunner): Promise<string> {
-  const result = await run([engine, "--version"], { timeoutMs: VERSION_BOUND_MS });
-  if (result.timedOut) throw new Error(`it did not answer --version within ${VERSION_BOUND_MS / 1000} s`);
-  if (result.exitCode !== 0) throw new Error(`its --version call exited with code ${String(result.exitCode)}`);
-  const version = /^(\d+\.\d+\.\d+)\b/u.exec(result.stdout.trim())?.[1];
-  if (version === undefined) throw new Error("its --version output names no version");
-  return version;
 }

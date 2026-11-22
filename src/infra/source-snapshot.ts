@@ -44,12 +44,13 @@ import * as fs from "node:fs"
 import { dirname, join, relative } from "node:path"
 import { Schema } from "effect"
 
+import { holdsPinnedAntigravityBytes, pinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "./antigravity-engine.js"
 import { isSourceSnapshotDigest, runningSourceSnapshot, SOURCE_DIGEST_HEX_LENGTH, sourceSnapshotHome, type SourceSnapshotLocation } from "./cli-subprocess.js"
 import { ContainedPathError, type ContainedDirectory } from "./descriptor-directory-contract.js"
 import { openContainedDirectory, openExistingContainedDirectory } from "./descriptor-directory.js"
 import { errnoCode, errorMessage } from "./error-message.js"
 import { Log } from "./log.js"
-import { buildPlatformArch, checkoutClaudeEngine } from "./native-assets.js"
+import { buildPlatformArch, checkoutAntigravityEngine, checkoutClaudeEngine } from "./native-assets.js"
 import { acquireLockSyncIn, liveSharedHoldersIn, registerSharedHolderIn, releaseLockIn, releaseSharedHolderIn, tryAcquireLockSyncIn, type SharedHold } from "./ownership-file-lock.js"
 import { decodeHolderText, encodeHolderText, processHolders, type ProcessHolder } from "./process-holder.js"
 
@@ -129,6 +130,8 @@ export interface SourceEntrySeams {
   readonly afterCopy?: () => void
   /** Runs after each walk whose files are then read. */
   readonly beforeRead?: () => void
+  /** The bytes a pinned `agy` must hold, in place of the pin's. */
+  readonly antigravityPin?: AntigravityPinnedBytes
 }
 
 interface SourceFile {
@@ -182,12 +185,37 @@ async function listSourceFiles(checkout: string): Promise<SourceFile[]> {
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
 }
 
-/** The stat signature of a listing: what an entry compares before it reads
- *  any file. Any write, rename, or removal of a file of the set changes it. */
-function signatureOf(files: readonly SourceFile[]): string {
+/** The checkout's `agy`, by its path relative to the checkout: the copy of
+ *  the pinned version that the prepare step placed. */
+function antigravityCache(): string {
+  return checkoutAntigravityEngine(QUALIFIED_ANTIGRAVITY_VERSION, buildPlatformArch())
+}
+
+/** A walk of the checkout: the files of the set, and the stats of the
+ *  checkout's `agy`, which a snapshot pins beside its source. */
+interface SourceListing {
+  readonly files: readonly SourceFile[]
+  readonly antigravity: fs.BigIntStats | undefined
+  /** What an entry compares before it reads any file. Any write, rename, or
+   *  removal of a file of the set or of the `agy` changes it. */
+  readonly signature: string
+}
+
+async function listSource(checkout: string): Promise<SourceListing> {
+  const [files, antigravity] = await Promise.all([listSourceFiles(checkout), statOrUndefined(join(checkout, antigravityCache()))])
   const hash = createHash("sha256")
   for (const { path, stats } of files) hash.update(`${path}\0${stats.size}\0${stats.mtimeNs}\0${stats.ctimeNs}\0${stats.ino}\n`)
-  return hash.digest("hex")
+  // Not the `agy`'s ctime: the snapshot's own hard link to it changes that.
+  // A prepare renames a new file onto it, which changes its inode.
+  if (antigravity !== undefined) hash.update(`${antigravityCache()}\0${antigravity.size}\0${antigravity.mtimeNs}\0${antigravity.ino}\n`)
+  return { files, antigravity, signature: hash.digest("hex") }
+}
+
+/** The SHA-256 of the pinned `agy` when the file at `path` holds exactly its
+ *  bytes, and nothing otherwise. */
+async function verifiedAntigravity(path: string, seams: SourceEntrySeams): Promise<string | undefined> {
+  const pinned = seams.antigravityPin ?? pinnedAntigravityBytes()
+  return pinned !== undefined && await holdsPinnedAntigravityBytes(path, pinned) ? pinned.sha256 : undefined
 }
 
 /** A listed file's bytes, or undefined when the file has left the checkout
@@ -204,14 +232,18 @@ async function readListedFile(checkout: string, path: string): Promise<Buffer | 
 }
 
 /** The digest of the source `files` name, from the bytes `contents` holds
- *  for each of them in the same order. A copy and the checkout it copies
- *  fold the same way, so one source has one digest wherever it is read. */
-function digestOf(files: readonly SourceFile[], contents: readonly Uint8Array[]): string {
+ *  for each of them in the same order, and of the verified `agy` whose
+ *  SHA-256 is `antigravity`, when there is one. A copy and the checkout it
+ *  copies fold the same way, so one source has one digest wherever it is
+ *  read, and a snapshot that pins an `agy` is never the snapshot of the same
+ *  source that pins none. */
+function digestOf(files: readonly SourceFile[], contents: readonly Uint8Array[], antigravity: string | undefined): string {
   const hash = createHash("sha256")
   for (const [index, { path }] of files.entries()) {
     const content = contents[index] ?? new Uint8Array()
     hash.update(`${path}\0${content.length}\0`).update(content)
   }
+  if (antigravity !== undefined) hash.update(`${antigravityCache()}\0${antigravity}\0`)
   return hash.digest("hex").slice(0, SOURCE_DIGEST_HEX_LENGTH)
 }
 
@@ -231,7 +263,7 @@ interface SnapshotCopy {
  *  280 ms this way, and took 500 to 1200 ms with one synchronous copy at a
  *  time. Every copy settles before it answers, so the caller can remove
  *  `target` whatever the answer. */
-async function copyAndDigest(checkout: string, files: readonly SourceFile[], target: string): Promise<SnapshotCopy | undefined> {
+async function copyAndDigest(checkout: string, files: readonly SourceFile[], target: string, antigravity: string | undefined): Promise<SnapshotCopy | undefined> {
   const made = new Set<string>()
   for (const { path } of files) {
     const directory = dirname(join(target, path))
@@ -250,17 +282,38 @@ async function copyAndDigest(checkout: string, files: readonly SourceFile[], tar
     if (copy.value === undefined) return undefined
     contents.push(copy.value)
   }
-  return { digest: digestOf(files, contents), bytes: contents.reduce((sum, content) => sum + content.length, 0) }
+  return { digest: digestOf(files, contents, antigravity), bytes: contents.reduce((sum, content) => sum + content.length, 0) }
 }
 
-/** Pins the checkout's Claude engine into `target`. A package import loads once, but this program loads at each launch. An install removes and replaces package files, so a hard link keeps the original engine. Where a link fails, a copy keeps it instead. If the checkout has no engine, the snapshot uses the checkout's engine at launch. The copied lockfile includes the engine version in the snapshot digest. */
-async function pinClaudeEngine(checkout: string, target: string): Promise<void> {
-  const path = checkoutClaudeEngine(buildPlatformArch())
-  const source = join(checkout, path)
-  if (await statOrUndefined(source) === undefined) return
+/** Pins the checkout's engine file `path` into `target`. A package import loads once, but an engine loads at each launch. An install or a prepare removes or replaces the checkout's engine, so a hard link keeps the original one. Where a link fails, a copy keeps it instead. */
+async function pinEngine(checkout: string, target: string, path: string): Promise<void> {
   const pinned = join(target, path)
   fs.mkdirSync(dirname(pinned), { recursive: true })
-  await fs.promises.link(source, pinned).catch(() => fs.promises.copyFile(source, pinned, fs.constants.COPYFILE_FICLONE))
+  await fs.promises.link(join(checkout, path), pinned).catch(() => fs.promises.copyFile(join(checkout, path), pinned, fs.constants.COPYFILE_FICLONE))
+}
+
+/** Pins the checkout's Claude engine into `target`. If the checkout has no engine, the snapshot uses the checkout's engine at launch. The copied lockfile includes the engine version in the snapshot digest. */
+async function pinClaudeEngine(checkout: string, target: string): Promise<void> {
+  const path = checkoutClaudeEngine(buildPlatformArch())
+  if (await statOrUndefined(join(checkout, path)) !== undefined) await pinEngine(checkout, target, path)
+}
+
+/** Pins the checkout's `agy`, which `listing` found, into `target`, and answers its SHA-256 once the pinned file proves to hold the pin's bytes. A copy that does not, or that left the checkout, is not pinned, and the snapshot then runs no `agy` (`antigravityEnginePath`): it never runs the checkout's. The answer goes into the snapshot's digest, so an entry after a prepare that places the `agy` makes a snapshot of its own. The hash reads about 230 MB, about 100 ms, once for each snapshot made. */
+async function pinAntigravityEngine(checkout: string, target: string, listing: SourceListing, seams: SourceEntrySeams): Promise<string | undefined> {
+  if (listing.antigravity === undefined) return undefined
+  const path = antigravityCache()
+  const pinned = join(target, path)
+  try {
+    await pinEngine(checkout, target, path)
+  } catch (error) {
+    log.warn("the snapshot pins no Antigravity CLI, because the checkout's copy could not be pinned", { checkout, error: errorMessage(error) })
+    return undefined
+  }
+  const verified = await verifiedAntigravity(pinned, seams)
+  if (verified !== undefined) return verified
+  await fs.promises.rm(pinned, { force: true })
+  log.warn("the snapshot pins no Antigravity CLI, because the checkout's copy is not the pinned bytes; bun run engine:antigravity:prepare replaces it", { checkout, path, bytes: Number(listing.antigravity.size) })
+  return undefined
 }
 
 /** Links the client's packages into `target`. The web client pins versions of its own, such as `marked`, in `webview/node_modules`, and a bare import from the copy's `webview/` resolves up past that folder to the checkout's root packages. Without the link, a dev service builds its client against the root versions. Like the root packages, the link follows a later install. A junction needs no Windows privilege, and other platforms ignore the type. */
@@ -273,10 +326,13 @@ async function linkClientPackages(checkout: string, target: string): Promise<voi
 /** The digest of the source `files` name, as `checkout` holds it now, or
  *  undefined when a listed file left the checkout during the read. It reads
  *  every file at once, off the thread, and only the hash runs on it. */
-async function checkoutDigest(checkout: string, files: readonly SourceFile[]): Promise<string | undefined> {
-  const contents = await Promise.all(files.map(({ path }) => readListedFile(checkout, path)))
+async function checkoutDigest(checkout: string, listing: SourceListing, seams: SourceEntrySeams): Promise<string | undefined> {
+  const [contents, antigravity] = await Promise.all([
+    Promise.all(listing.files.map(({ path }) => readListedFile(checkout, path))),
+    listing.antigravity === undefined ? undefined : verifiedAntigravity(join(checkout, antigravityCache()), seams),
+  ])
   const read = contents.filter((content) => content !== undefined)
-  return read.length === files.length ? digestOf(files, read) : undefined
+  return read.length === listing.files.length ? digestOf(listing.files, read, antigravity) : undefined
 }
 
 /** The name of an entry this process makes in the snapshot home and
@@ -629,8 +685,8 @@ export async function enterSourceSnapshot(checkout: string, seams: SourceEntrySe
   try {
     // oxlint-disable-next-line no-unreachable-loop -- false positive: `continue` repeats this loop, which oxlint misreads inside a try with catch and finally
     for (let attempt = 0; attempt < READ_ATTEMPTS; attempt++) {
-      const files = await listSourceFiles(real)
-      const signature = signatureOf(files)
+      const listing = await listSource(real)
+      const { files, signature } = listing
       const latest = readLatest(homePath)
       if (latest?.signature === signature) {
         const refusal = refusalOf(latest.digest, signature)
@@ -638,10 +694,11 @@ export async function enterSourceSnapshot(checkout: string, seams: SourceEntrySe
         if (joinSnapshot(home, real, latest.digest)) return entered("reused", latest, refusal === "runs refused")
       }
       temporary = join(homePath, createdEntryName("tmp"))
+      const antigravity = await pinAntigravityEngine(real, temporary, listing, seams)
       seams.beforeRead?.()
-      const copy = await copyAndDigest(real, files, temporary)
+      const copy = await copyAndDigest(real, files, temporary, antigravity)
       seams.afterCopy?.()
-      if (copy === undefined || signatureOf(await listSourceFiles(real)) !== signature) {
+      if (copy === undefined || (await listSource(real)).signature !== signature) {
         await discardCopy(temporary)
         temporary = undefined
         continue
@@ -777,11 +834,11 @@ function sourceChangeCheck(snapshot: SourceSnapshotLocation, signature: string |
     const started = performance.now()
     try {
       for (let attempt = 0; attempt < READ_ATTEMPTS; attempt++) {
-        const files = await listSourceFiles(snapshot.checkout)
-        const walked = signatureOf(files)
+        const listing = await listSource(snapshot.checkout)
+        const walked = listing.signature
         const hashed = walked !== matched
         if (hashed) seams.beforeRead?.()
-        const digest = hashed ? await checkoutDigest(snapshot.checkout, files) : snapshot.digest
+        const digest = hashed ? await checkoutDigest(snapshot.checkout, listing, seams) : snapshot.digest
         if (digest === undefined) continue
         const refused = digest !== snapshot.digest && proofOf(snapshot.checkout)?.refused?.digest === digest
         if (digest !== snapshot.digest && !refused) return { kind: "source changed", checkout: snapshot.checkout, ownDigest: snapshot.digest, currentDigest: digest }

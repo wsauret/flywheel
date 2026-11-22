@@ -5,7 +5,8 @@ import type { OwnedCommandRunner } from "../../../infra/owned-command.js";
 import type { ModuleHealthReport } from "../../module-health.js";
 import { cliAccount, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 import { cliLoginAccount, loginDirectories } from "./cli-login.js";
-import { enginePath, readEngineVersion } from "../../../infra/claude-engine.js";
+import { enginePath } from "../../../infra/claude-engine.js";
+import { readEngineVersion } from "../../../infra/engine-version.js";
 import { ENGINE_CANNOT_START, type LoginFailure, type RequestOutcome } from "./login-observations.js";
 import { loginToken, type LoginToken, type TokenProbe } from "./login-token.js";
 
