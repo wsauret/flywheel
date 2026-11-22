@@ -1,0 +1,26 @@
+bench/chat-ab/README.md
+  h_4b47e9e4a8b456 18-20,22,48,242,366,532
+bench/chat-ab/campaign-policy.ts
+  h_4b47e9e4a8b456 1,3-6,11,14,18-26,29-37,40-47
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 90,183,202-239,241-242,260-261,265-270,272-289
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 294-295
+src/orchestration/modules/development/benchmark/headless-execution.ts
+  h_4b47e9e4a8b456 1-2,8,10,12,22-79,85,87,102-105,109-114,122-138,145-146,153,157-162,172-174,177-185,187-190,192-226,229-289,292-296,305,308,315,318-329,334-335,341-342,344-345,358-360,390-391,395,397-405,411,417-432
+tests/unit/bench/campaign-policy.test.ts
+  h_4b47e9e4a8b456 3-4,7-11,13-24,26-32,34-36,39-51
+tests/unit/orchestration/modules/development/benchmark/headless-execution.test.ts
+  h_4b47e9e4a8b456 3-4,6,9-11,17,78-105,109-110,113,126-134,137,142,150-195,201,205,212-213,234,238,240,252,257,261-263,266-271,273,278-279,281-283,285-286,302,304-337,361,371,386,397,411-451,455-463,472-478,480,483,495,501-503,506,511-512,517,520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c5e91942fd874ee6d290cd1b4fae8bb3589e22d4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
