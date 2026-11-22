@@ -3,8 +3,11 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { dockerRuntimeCommand, readinessPlan, RELEASE_LOGIN_VOLUME, releaseLoginContainerCommand, type LinuxClaudeLive } from "./readiness-plan.js";
-import { engineBump, FRESHNESS_BLOCKED_EXIT, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile, type EngineBump } from "./claude-engine-release.js";
+import { antigravityFakeHostContainerCommand, dockerRuntimeCommand, readinessPlan, RELEASE_LOGIN_VOLUME, releaseLoginContainerCommand, type LinuxContainerTarget } from "./readiness-plan.js";
+import { engineBump, LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "./claude-engine-release.js";
+import { antigravityEngineBump } from "./antigravity-engine-release.js";
+import { parseAntigravityPin, PIN_FILE } from "./antigravity-engine-asset.js";
+import { FRESHNESS_BLOCKED_EXIT, type EngineBump } from "./engine-freshness.js";
 import { parseReleaseLoginStatus, RELEASE_LOGIN_SETTING, WINDOWS_HOST_SETTING, WINDOWS_RELEASE_LOGIN_FOLDER } from "./readiness-login.js";
 import { selectStartupDirectories } from "../src/infra/directory-authorities.js";
 import { buildExecutable } from "../src/infra/update/build-identity.js";
@@ -29,6 +32,9 @@ const LIVE_QUALIFICATION = "Claude engine live qualification";
 const LIVE_LOGIN = "Claude engine live login";
 /** The live tier that an engine bump owes: only the Claude engine's live file (scripts/test-integration.ts). */
 const LIVE_TIER = "test:integration:claude-engine";
+/** The Antigravity CLI has no live tier yet. Its fake-host tier rides in the no-api suite on every host, so on a Mac
+ *  only its Linux container is a separate check. */
+const ANTIGRAVITY_QUALIFICATION = "Antigravity engine fake-host qualification";
 
 const TOKENIZER_MANIFEST = "crates/tokenizer/tokenizer-prebuilt.json";
 
@@ -78,6 +84,8 @@ export interface ReadinessOptions {
   /** The `packageManager` field of package.json, which pins the Bun that every gate, build, and container runs on. */
   readonly packageManager: string | undefined;
   readonly version: string;
+  /** The Antigravity CLI version that the pin states, which each archive's agy must report. */
+  readonly antigravityVersion: string;
   /** The home of this host's account, whose live auth profile the live tier reads without a release login home. */
   readonly accountHome: string;
   /** The auth profile that `LIVE_AUTH_PROFILE_SETTING` names, whose Claude logins the live tier runs on, or undefined
@@ -95,15 +103,30 @@ function dockerFailureDetail(result: CommandResult): string {
     : diagnostic;
 }
 
+/** The last release tag before HEAD, or undefined before a first release. */
+function lastReleaseTag(run: ReadinessDependencies["run"]): string | undefined {
+  const describe = run(["git", "describe", "--tags", "--abbrev=0", "--match", "v*"]);
+  return describe.exitCode === 0 ? describe.stdout.trim() : undefined;
+}
+
 /** Whether HEAD pins another Agent SDK than the last release tag, from the lockfiles that git holds for both, or why
  *  that cannot be read. */
-function pinnedEngineBump(run: ReadinessDependencies["run"]): EngineBump | Error {
-  const describe = run(["git", "describe", "--tags", "--abbrev=0", "--match", "v*"]);
-  const tag = describe.exitCode === 0 ? describe.stdout.trim() : undefined;
+function pinnedEngineBump(run: ReadinessDependencies["run"], tag: string | undefined): EngineBump | Error {
   try {
     return engineBump(run(["git", "show", "HEAD:bun.lock"]).stdout, tag === undefined ? undefined : { tag, lockText: run(["git", "show", `${tag}:bun.lock`]).stdout });
   } catch (error) {
     return new Error(`the pinned Agent SDK could not be read from the lockfiles: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/** Whether HEAD pins another Antigravity CLI than the last release tag, from the pins that git holds for both, or why
+ *  that cannot be read. A tag whose tree has no pin shipped none. */
+function pinnedAntigravityBump(run: ReadinessDependencies["run"], tag: string | undefined): EngineBump | Error {
+  try {
+    const shipped = tag === undefined ? undefined : run(["git", "show", `${tag}:${PIN_FILE}`]);
+    return antigravityEngineBump(run(["git", "show", `HEAD:${PIN_FILE}`]).stdout, tag === undefined ? undefined : { tag, pinText: shipped?.exitCode === 0 ? shipped.stdout : undefined });
+  } catch (error) {
+    return new Error(`the pinned Antigravity CLI could not be read from ${PIN_FILE}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -130,7 +153,7 @@ function hostLoginLocation(options: ReadinessOptions, profile: string): LoginLoc
  *  Docker CLI that answered the Linux login check. */
 interface LiveTiers {
   readonly host: boolean;
-  readonly linux: { readonly docker: string; readonly live: LinuxClaudeLive; readonly profile: string } | undefined;
+  readonly linux: { readonly docker: string; readonly live: LinuxContainerTarget; readonly profile: string } | undefined;
 }
 
 const NO_LIVE_TIER: LiveTiers = { host: false, linux: undefined };
@@ -180,8 +203,8 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     }
   };
   /** On an engine bump, settles the live tier's logins and returns where the tier still runs. */
-  const liveLogins = (): LiveTiers => {
-    const bump = pinnedEngineBump(dependencies.run);
+  const liveLogins = (tag: string | undefined): LiveTiers => {
+    const bump = pinnedEngineBump(dependencies.run, tag);
     if (bump instanceof Error) { record(LIVE_QUALIFICATION, "fail", bump.message); return NO_LIVE_TIER; }
     if (!bump.bumped) { record(LIVE_QUALIFICATION, "skip", bump.detail); return NO_LIVE_TIER; }
     const profile = options.liveAuthProfile;
@@ -197,19 +220,31 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
       record(`${prefix}${LIVE_QUALIFICATION}`, "blocked", `${bump.detail}; Docker CLI is unavailable; install Docker Desktop`);
       return { host, linux: undefined };
     }
-    const linuxStatus = runCandidateContainer({ docker, live, profile }, "status");
+    const linuxStatus = runCandidateContainer(docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, step: "status" }));
     return { host, linux: loginReady(prefix, LINUX_LOGIN_LOCATION, profile, bump, linuxStatus, dockerFailureDetail) ? { docker, live, profile } : undefined };
   };
-  /** Runs one step of the candidate in a Linux container on the release login volume. The container installs the
-   *  candidate's tracked files for Linux: a copy of the checkout would carry the Mac's dependencies and its ignored
-   *  project state. The tar lives in a temporary folder of its own, which is removed when the container is done. */
-  const runCandidateContainer = ({ docker, live, profile }: NonNullable<LiveTiers["linux"]>, step: "status" | "live"): CommandResult => {
+  /** On an Antigravity CLI bump, returns the Linux container that its fake-host tier still owes, if any. */
+  const antigravityLinuxTier = (tag: string | undefined): { readonly docker: string; readonly target: LinuxContainerTarget } | undefined => {
+    const bump = pinnedAntigravityBump(dependencies.run, tag);
+    if (bump instanceof Error) { record(ANTIGRAVITY_QUALIFICATION, "fail", bump.message); return undefined; }
+    if (!bump.bumped) { record(ANTIGRAVITY_QUALIFICATION, "skip", bump.detail); return undefined; }
+    const target = plan.linuxAntigravityFakeHost;
+    if (target === undefined) return undefined;
+    const docker = dependencies.which("docker");
+    if (docker) return { docker, target };
+    record(`${target.target} ${ANTIGRAVITY_QUALIFICATION}`, "blocked", `${bump.detail}; Docker CLI is unavailable; install Docker Desktop`);
+    return undefined;
+  };
+  /** Runs `containerCommand` on a candidate in a Linux container. The container installs the candidate's tracked files
+   *  for Linux: a copy of the checkout would carry the Mac's dependencies and its ignored project state. The tar lives
+   *  in a temporary folder of its own, which is removed when the container is done. */
+  const runCandidateContainer = (docker: string, containerCommand: (candidate: string) => readonly string[]): CommandResult => {
     const scratch = mkdtempSync(join(tmpdir(), "flywheel-readiness-candidate-"));
     try {
       const candidate = join(scratch, "candidate.tar");
       const archived = dependencies.run(["git", "archive", "--format=tar", `--output=${candidate}`, "HEAD"]);
       if (archived.exitCode !== 0) return { exitCode: archived.exitCode, stdout: "", stderr: `the candidate archive was not written: ${`${archived.stderr}\n${archived.stdout}`.trim() || `exit ${archived.exitCode}`}` };
-      return dependencies.run(withDocker(releaseLoginContainerCommand({ dockerPlatform: live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: profile, step }), docker));
+      return dependencies.run(withDocker(containerCommand(candidate), docker));
     } finally {
       rmSync(scratch, { recursive: true, force: true });
     }
@@ -220,7 +255,22 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     const name = `${linux.live.target} ${LIVE_QUALIFICATION}`;
     const diagnostic = dependencies.run([linux.docker, "info"]);
     if (diagnostic.exitCode !== 0) { record(name, "blocked", dockerFailureDetail(diagnostic)); return; }
-    settle(name, runCandidateContainer(linux, "live"));
+    settle(name, runCandidateContainer(linux.docker, (candidate) => releaseLoginContainerCommand({ dockerPlatform: linux.live.dockerPlatform, bunVersion: options.bunVersion, candidate, liveAuthProfile: linux.profile, step: "live" })));
+  };
+  /** Runs the Antigravity CLI's fake-host tier in a Linux container. Like the Linux live tier, it needs no build of this
+   *  run, so it runs before any later stop of the pass can drop its row. */
+  const runLinuxAntigravity = ({ docker, target }: NonNullable<ReturnType<typeof antigravityLinuxTier>>) => {
+    const name = `${target.target} ${ANTIGRAVITY_QUALIFICATION}`;
+    const diagnostic = dependencies.run([docker, "info"]);
+    if (diagnostic.exitCode !== 0) { record(name, "blocked", dockerFailureDetail(diagnostic)); return; }
+    settle(name, runCandidateContainer(docker, (candidate) => antigravityFakeHostContainerCommand({ dockerPlatform: target.dockerPlatform, bunVersion: options.bunVersion, candidate })));
+  };
+  /** Records one engine's freshness from its check command, which states its verdict on stdout after `label: `. */
+  const freshness = (name: string, script: string, label: string) => {
+    const result = dependencies.run([bun, "run", script]);
+    // `bun run` echoes the command on stderr.
+    const report = (result.stdout.trim() === "" ? result.stderr : result.stdout).split("\n").map((line) => line.replace(`${label}: `, "").trim()).filter((line) => line !== "").join("; ");
+    record(name, result.exitCode === 0 ? "pass" : result.exitCode === FRESHNESS_BLOCKED_EXIT ? "blocked" : "fail", report || `exit ${result.exitCode}`);
   };
   const finish = (): ReadinessOutcome => {
     dependencies.log("\nreadiness: summary");
@@ -244,12 +294,12 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
   const commitContract = run("commit contract", [bun, "run", "check:commits", "--upstream", "--head", "HEAD"]);
   if (!cleanTree || !commitContract) return finish();
   // The live tier's logins are read before the long gates, so a missing login is known in seconds.
-  const live = options.quick ? NO_LIVE_TIER : liveLogins();
+  const tag = options.quick ? undefined : lastReleaseTag(dependencies.run);
+  const live = options.quick ? NO_LIVE_TIER : liveLogins(tag);
+  const antigravityLinux = options.quick ? undefined : antigravityLinuxTier(tag);
   run("dependencies", [bun, "install", "--frozen-lockfile", "--dry-run"]);
-  const freshness = dependencies.run([bun, "run", "check:claude-engine"]);
-  // The check states its verdict on stdout; `bun run` echoes the command on stderr.
-  const freshnessReport = (freshness.stdout.trim() === "" ? freshness.stderr : freshness.stdout).split("\n").map((line) => line.replace(/^claude engine: /u, "").trim()).filter((line) => line !== "").join("; ");
-  record("Claude engine freshness", freshness.exitCode === 0 ? "pass" : freshness.exitCode === FRESHNESS_BLOCKED_EXIT ? "blocked" : "fail", freshnessReport || `exit ${freshness.exitCode}`);
+  freshness("Claude engine freshness", "check:claude-engine", "claude engine");
+  freshness("Antigravity engine freshness", "check:antigravity-engine", "antigravity engine");
   run("lint", [bun, "run", "lint"]);
   run("boundaries", [bun, "run", "check:boundaries"]);
   run("tracked ripgrep prebuilts", [bun, "run", "scripts/build-native-addon.ts", "--crate=ripgrep", "--verify"]);
@@ -258,11 +308,13 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
     record("integration suite", "skip", "--quick omits heavyweight and artifact evidence");
     record("release builds", "skip", "--quick omits heavyweight and artifact evidence");
   } else {
-    // The no-api suite holds the engine's fake-host tier. A release that ships a new engine also owes the live tier,
-    // on this host's Claude login (scripts/claude-engine-release.ts). Only the live tier reads the release login home.
+    // The no-api suite holds both engines' fake-host tiers. A release that ships a new Claude engine also owes the live
+    // tier, on this host's Claude login (scripts/claude-engine-release.ts). Only the live tier reads the release login
+    // home. On a Mac, a new Antigravity CLI also owes its fake-host tier in a Linux container.
     run("integration suite", [bun, "run", "test:integration:no-api"]);
     if (live.host) run(LIVE_QUALIFICATION, [bun, "run", LIVE_TIER], options.releaseLoginHome === undefined ? undefined : { HOME: options.releaseLoginHome });
     if (live.linux !== undefined) runLinuxLive(live.linux);
+    if (antigravityLinux !== undefined) runLinuxAntigravity(antigravityLinux);
     if (!plan.host) record("host release target", "blocked", `${options.platform}-${options.arch} is not in the release target matrix`);
     const tokenizer = dependencies.run([bun, "run", "build:tokenizer"]);
     if (tokenizer.exitCode !== 0) {
@@ -317,7 +369,7 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
         run("file edit planners", [bun, "run", harness, "--planners", "--target", plan.host.target]);
         run("production composition", [bun, "run", "scripts/verify-production-composition.ts", "--binary", binary]);
         if (plan.performance === "required") run("performance gate", [bun, "run", "test:perf", "--archive", archive]);
-        run("host package runtime", [bun, "run", harness, "--archive", archive, "--target", plan.host.target, "--expected-version", options.version]);
+        run("host package runtime", [bun, "run", harness, "--archive", archive, "--target", plan.host.target, "--expected-version", options.version, "--expected-antigravity-version", options.antigravityVersion]);
       }
     }
     if (plan.linuxRuntime.length > 0) {
@@ -331,7 +383,7 @@ export function runReadiness(options: ReadinessOptions, dependencies: ReadinessD
           for (const runtime of plan.linuxRuntime) {
             const archive = resolve(dist, runtime.archive);
             if (!built.has(runtime.target) || !dependencies.exists(archive)) record(`${runtime.target} ${runtime.evidence}`, "blocked", `${archive} was not built successfully in this run`);
-            else run(`${runtime.target} ${runtime.evidence}`, withDocker(dockerRuntimeCommand({ ...runtime, archive, harness, tokenizerManifest: resolve(options.root, "crates", "tokenizer", "tokenizer-prebuilt.json"), version: options.version, bunVersion: options.bunVersion }), docker));
+            else run(`${runtime.target} ${runtime.evidence}`, withDocker(dockerRuntimeCommand({ ...runtime, archive, harness, tokenizerManifest: resolve(options.root, "crates", "tokenizer", "tokenizer-prebuilt.json"), version: options.version, antigravityVersion: options.antigravityVersion, bunVersion: options.bunVersion }), docker));
           }
         }
       }
@@ -350,6 +402,7 @@ if (import.meta.main) {
   const releaseLoginHome = process.env[RELEASE_LOGIN_SETTING];
   const readinessResult = runReadiness({
     root, platform: process.platform, arch: process.arch, quick: process.argv.includes("--quick"), bunExecutable: process.execPath, bunVersion: Bun.version, version: metadata.version,
+    antigravityVersion: parseAntigravityPin(readFileSync(join(root, PIN_FILE), "utf8")).version,
     packageManager: "packageManager" in metadata && typeof metadata.packageManager === "string" ? metadata.packageManager : undefined,
     accountHome: selectStartupDirectories({ cwd: root, env: process.env }).accountHome, liveAuthProfile: liveAuthProfile(process.env),
     releaseLoginHome: releaseLoginHome === undefined || releaseLoginHome === "" ? undefined : resolve(releaseLoginHome),

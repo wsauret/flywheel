@@ -161,7 +161,7 @@ export function tarExecutable(platform: string = process.platform): string {
   return platform === "win32" ? join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "tar.exe") : "tar";
 }
 
-export interface PackageSmokeOptions { readonly target: string; readonly archive?: string; readonly addon?: string; readonly planners?: boolean; readonly expectedVersion?: string; readonly tokenizerManifest?: string }
+export interface PackageSmokeOptions { readonly target: string; readonly archive?: string; readonly addon?: string; readonly planners?: boolean; readonly expectedVersion?: string; readonly expectedAntigravityVersion?: string; readonly tokenizerManifest?: string }
 
 function requireSuccess(name: string, result: CommandResult): void {
   if (result.exitCode !== 0) throw new Error(`${name} exited ${result.exitCode}: ${result.stderr || result.stdout}`);
@@ -240,6 +240,7 @@ export async function runPackageSmoke(options: PackageSmokeOptions, dependencies
     }
     if (!options.archive) throw new Error("--archive requires a value");
     if (!options.expectedVersion) throw new Error("--expected-version requires a value");
+    if (!options.expectedAntigravityVersion) throw new Error("--expected-antigravity-version requires a value");
     const archive = resolve(options.archive);
     const isWindows = options.target.startsWith("win32-");
     // The platform's own tar, by path on Windows. `tar` on PATH there can be
@@ -254,6 +255,13 @@ export async function runPackageSmoke(options: PackageSmokeOptions, dependencies
     const nativeDir = join(payload, "native", options.target);
     const issues = await dependencies.probeRipgrepAddon(join(nativeDir, `flywheel-ripgrep.${options.target}.node`), workspace.root);
     const tokenizerEncodings = await dependencies.probeTokenizerAsset(join(nativeDir, "flywheel-tokenizer.wasm.zst"), options.tokenizerManifest);
+    // The archive's own Antigravity CLI, run as Flywheel runs it to qualify it: `--version` reads no login, writes
+    // no file, and sends nothing, so the isolated home needs no sign-in.
+    const antigravity = dependencies.run([join(nativeDir, isWindows ? "agy.exe" : "agy"), "--version"], workspace.root, env);
+    requireSuccess("packaged Antigravity CLI --version", antigravity);
+    // The pinned agy prints exactly its version, so any other text, such as a prerelease suffix, is another build.
+    const antigravityVersion = antigravity.stdout.trim();
+    if (antigravityVersion !== options.expectedAntigravityVersion) throw new Error(`the packaged Antigravity CLI reported ${JSON.stringify(antigravity.stdout)}, not the pinned ${options.expectedAntigravityVersion}`);
     const startupEnv = { ...env, FLYWHEEL_NATIVE_DIR: nativeDir };
     const installer = isWindows ? [dependencies.findPowerShell(), "-NoProfile", "-File", join(stage, "install.ps1")] : ["sh", join(stage, "install.sh")];
     requireSuccess("archive installer", dependencies.run(installer, stage, env));
@@ -268,7 +276,7 @@ export async function runPackageSmoke(options: PackageSmokeOptions, dependencies
     const missingStore = dependencies.run([installed, "--project-root", workspace.project, "events", "search", "--list-types"], workspace.project, startupEnv);
     const expectedStore = join(workspace.project, ".flywheel", "flywheel.sqlite");
     if (missingStore.exitCode === 0 || !`${missingStore.stdout}\n${missingStore.stderr}`.includes(expectedStore)) throw new Error(`missing-store behavior did not name ${expectedStore}: ${missingStore.stderr || missingStore.stdout}`);
-    console.log(`package-smoke: ${options.target} passed (${basename(archive)}; traversalIssues=${issues}; tokenizer=${tokenizerEncodings})`);
+    console.log(`package-smoke: ${options.target} passed (${basename(archive)}; traversalIssues=${issues}; tokenizer=${tokenizerEncodings}; agy=${antigravityVersion})`);
   } finally {
     dependencies.cleanup(workspace.root);
   }
@@ -311,7 +319,7 @@ if (import.meta.main) {
       for (const path of Object.values(workspace)) mkdirSync(path, { recursive: true });
       return workspace;
     };
-    await runPackageSmoke({ target: argument("--target") ?? (() => { throw new Error("--target requires a value"); })(), archive: argument("--archive"), addon: argument("--addon"), planners: process.argv.includes("--planners"), expectedVersion: argument("--expected-version"), tokenizerManifest: argument("--tokenizer-manifest") }, {
+    await runPackageSmoke({ target: argument("--target") ?? (() => { throw new Error("--target requires a value"); })(), archive: argument("--archive"), addon: argument("--addon"), planners: process.argv.includes("--planners"), expectedVersion: argument("--expected-version"), expectedAntigravityVersion: argument("--expected-antigravity-version"), tokenizerManifest: argument("--tokenizer-manifest") }, {
       createWorkspace,
       probeRipgrepAddon: (addonPath, root) => probeRipgrepAddonInSubprocess(addonPath, root, inherited),
       probeTokenizerAsset: verifyPackagedTokenizer,

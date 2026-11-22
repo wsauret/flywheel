@@ -34,6 +34,8 @@ import { PUBLIC_REPO, latestReleaseTag } from "./release-repo.js";
 import { hostBinaryPath } from "./binary-native-assets.js";
 import { verifyPackagedTokenizer } from "./readiness-package-smoke.js";
 import { engineBump } from "./claude-engine-release.js";
+import { antigravityEngineBump } from "./antigravity-engine-release.js";
+import { PIN_FILE as ANTIGRAVITY_PIN_FILE } from "./antigravity-engine-asset.js";
 
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");
@@ -99,9 +101,10 @@ if (refusal !== undefined) fail(refusal);
 // binary does. The relay deploys first (relay/README.md).
 step("probing the hosted relay's protocol version (bun run --cwd relay probe:worker)", ["bun", "run", "--cwd", "relay", "probe:worker"]);
 
-// A release never ships a Claude engine that newer releases superseded past the freshness window, unless a dated
-// hold says why (scripts/claude-engine-release.ts). It runs before anything is committed.
+// A release never ships an engine that newer releases superseded past the freshness window, unless a dated hold says
+// why (scripts/claude-engine-release.ts, scripts/antigravity-engine-release.ts). They run before anything is committed.
 step("checking the Claude engine pin (bun run check:claude-engine)", ["bun", "run", "check:claude-engine"]);
+step("checking the Antigravity CLI pin (bun run check:antigravity-engine)", ["bun", "run", "check:antigravity-engine"]);
 
 // Ship the freshest bundled models.dev snapshot the network can give us. The
 // snapshot only serves when the live fetch and the disk archive are both
@@ -184,6 +187,12 @@ step("gating the tree (bun run test:ci)", ["bun", "run", "test:ci"], { ...proces
 const engine = engineBump(readFileSync(join(ROOT, "bun.lock"), "utf8"), latestTag === undefined ? undefined : { tag: latestTag, lockText: captureCommandOutput(["git", "show", `${latestTag}:bun.lock`]) });
 console.log(`release: ${engine.detail}`);
 if (engine.bumped) step("qualifying the Claude engine bump (bun run test:integration:all)", ["bun", "run", "test:integration:all"]);
+// A release that ships another Antigravity CLI than the last release owes its fake-host tier, which the no-api suite
+// holds, so a Claude engine bump's run above already covers it. It has no live tier yet.
+const shippedAntigravityPin = latestTag === undefined ? undefined : Bun.spawnSync(["git", "show", `${latestTag}:${ANTIGRAVITY_PIN_FILE}`], { cwd: ROOT, stdout: "pipe", stderr: "pipe", windowsHide: true });
+const antigravity = antigravityEngineBump(readFileSync(join(ROOT, ANTIGRAVITY_PIN_FILE), "utf8"), latestTag === undefined ? undefined : { tag: latestTag, pinText: shippedAntigravityPin?.exitCode === 0 ? shippedAntigravityPin.stdout.toString() : undefined });
+console.log(`release: ${antigravity.detail}`);
+if (antigravity.bumped && !engine.bumped) step("qualifying the Antigravity CLI bump (bun run test:integration:no-api)", ["bun", "run", "test:integration:no-api"]);
 
 // Rebuild the universal tokenizer once. Every target build below copies these
 // exact bytes, after the offline verifier proves their digest and ABI.

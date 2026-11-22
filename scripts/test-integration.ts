@@ -1,4 +1,4 @@
-/** The integration suite, run inside the validation lane in one of four modes:
+/** The integration suite, run inside the validation lane in one of five modes:
  *
  *  - `no-api`: every file under tests/integration except the providers
  *    directory. It needs no credentials and costs nothing, so it is the gate
@@ -12,6 +12,8 @@
  *  - `claude-engine`: that Claude engine tier alone, which is what readiness
  *    owes on an engine bump. It needs only the Claude login, so it runs on a
  *    host's release login home, which holds no other credential.
+ *  - `antigravity-engine`: the Antigravity CLI's fake-host tier alone, which
+ *    `no-api` also runs. Readiness runs it in a Linux container on an agy bump.
  *  - `all`: `no-api` and `api`, in that order.
  *
  *  The suite is the directory, not a list of files, so a new integration file
@@ -37,17 +39,19 @@ const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const coverageDir = process.env.FLYWHEEL_COVERAGE_DIR;
 const API_SUITE = "tests/integration/providers";
 const GUARDIAN = "tests/integration/local/owned-subprocess-guardian.test.ts";
+const ANTIGRAVITY_SUITE = "tests/integration/orchestration/modules/provider-google-antigravity";
 type Run = readonly [label: string, args: readonly string[]];
 const NO_API_RUNS: readonly Run[] = [
   ["suite", ["tests/integration", `--path-ignore-patterns=${API_SUITE}/**`, `--path-ignore-patterns=${GUARDIAN}`]],
   ["guardian", [GUARDIAN]],
 ];
 const API_RUNS: readonly Run[] = [["api", [API_SUITE]]];
-const ANTIGRAVITY_MODES: ReadonlySet<string> = new Set(["no-api", "all"]);
+const ANTIGRAVITY_MODES: ReadonlySet<string> = new Set(["no-api", "antigravity-engine", "all"]);
 const MODES: ReadonlyMap<string, readonly Run[]> = new Map([
   ["no-api", NO_API_RUNS],
   ["api", API_RUNS],
   ["claude-engine", [["claude-engine", [`${API_SUITE}/claude-sdk-subscription-real.test.ts`]]]],
+  ["antigravity-engine", [["antigravity-engine", [ANTIGRAVITY_SUITE]]]],
   ["all", [...NO_API_RUNS, ...API_RUNS]],
 ]);
 

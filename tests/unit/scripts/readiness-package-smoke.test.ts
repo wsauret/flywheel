@@ -32,22 +32,31 @@ function dependencies(results: readonly { exitCode: number; stdout: string; stde
 }
 
 const success = { exitCode: 0, stdout: "", stderr: "" };
+const AGY = { exitCode: 0, stdout: "1.5.14\n", stderr: "" };
+const ARCHIVE = { target: "linux-x64", archive: "/archive.tar.gz", expectedVersion: "0.0.8", expectedAntigravityVersion: "1.5.14" };
 const BUILD_ID = "d".repeat(64);
 
 describe("readiness package smoke", () => {
   test("propagates a packaged version mismatch", async () => {
-    const deps = dependencies([success, success, { exitCode: 0, stdout: "flywheel 9.9.9", stderr: "" }]);
-    await expect(runPackageSmoke({ target: "linux-x64", archive: "/archive.tar.gz", expectedVersion: "0.0.8" }, deps)).rejects.toThrow('installed version was "flywheel 9.9.9"');
+    const deps = dependencies([success, AGY, success, { exitCode: 0, stdout: "flywheel 9.9.9", stderr: "" }]);
+    await expect(runPackageSmoke(ARCHIVE, deps)).rejects.toThrow('installed version was "flywheel 9.9.9"');
   });
 
   test("requires the installed build to name the build identity its archive states", async () => {
-    const deps = dependencies([success, success, { exitCode: 0, stdout: "flywheel 0.0.8", stderr: "" }]);
-    await expect(runPackageSmoke({ target: "linux-x64", archive: "/archive.tar.gz", expectedVersion: "0.0.8" }, deps)).rejects.toThrow(`not "flywheel 0.0.8 (build ${BUILD_ID})"`);
+    const deps = dependencies([success, AGY, success, { exitCode: 0, stdout: "flywheel 0.0.8", stderr: "" }]);
+    await expect(runPackageSmoke(ARCHIVE, deps)).rejects.toThrow(`not "flywheel 0.0.8 (build ${BUILD_ID})"`);
   });
 
   test("propagates a failed required subprocess", async () => {
     const deps = dependencies([{ exitCode: 2, stdout: "", stderr: "corrupt archive" }]);
-    await expect(runPackageSmoke({ target: "linux-x64", archive: "/archive.tar.gz", expectedVersion: "0.0.8" }, deps)).rejects.toThrow("archive extraction exited 2: corrupt archive");
+    await expect(runPackageSmoke(ARCHIVE, deps)).rejects.toThrow("archive extraction exited 2: corrupt archive");
+  });
+
+  test("refuses an archive whose Antigravity CLI reports another version than the pin", async () => {
+    const deps = dependencies([success, { exitCode: 0, stdout: "1.5.13\n", stderr: "" }]);
+    await expect(runPackageSmoke(ARCHIVE, deps)).rejects.toThrow('the packaged Antigravity CLI reported "1.5.13\\n", not the pinned 1.5.14');
+    const prerelease = dependencies([success, { exitCode: 0, stdout: "1.5.14-rc.1\n", stderr: "" }]);
+    await expect(runPackageSmoke(ARCHIVE, prerelease)).rejects.toThrow('the packaged Antigravity CLI reported "1.5.14-rc.1\\n", not the pinned 1.5.14');
   });
 
   test("defines exact, CRLF, and tab-indentation planner probes that the TypeScript planner passes", () => {
@@ -83,18 +92,20 @@ describe("readiness package smoke", () => {
     const calls: string[] = [];
     const deps = dependencies([
       success,
+      AGY,
       success,
       { exitCode: 0, stdout: `flywheel 0.0.8 (build ${BUILD_ID})`, stderr: "" },
       success,
       { exitCode: 1, stdout: "", stderr: join(workspace.project, ".flywheel", "flywheel.sqlite") },
     ], calls);
 
-    await runPackageSmoke({ target: "linux-x64", archive: "/archive.tar.gz", expectedVersion: "0.0.8" }, deps);
+    await runPackageSmoke(ARCHIVE, deps);
 
     expect(calls).toEqual([
       `${tarExecutable()} -xzf ${resolve("/archive.tar.gz")} -C ${workspace.extracted}`,
       `ripgrep:${join(workspace.extracted, "flywheel-linux-x64", "build", "native", "linux-x64", "flywheel-ripgrep.linux-x64.node")}`,
       `tokenizer:${join(workspace.extracted, "flywheel-linux-x64", "build", "native", "linux-x64", "flywheel-tokenizer.wasm.zst")}`,
+      `${join(workspace.extracted, "flywheel-linux-x64", "build", "native", "linux-x64", "agy")} --version`,
       `sh ${join(workspace.extracted, "flywheel-linux-x64", "install.sh")}`,
       `read:${join(workspace.extracted, "flywheel-linux-x64", "build", "build.json")}`,
       `${join(workspace.bin, "flywheel")} --version`,

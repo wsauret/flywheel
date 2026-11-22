@@ -19,9 +19,13 @@ import { RELEASE_TARGETS, type ReleaseTargetName } from "./release-contract.js";
  *    copy means no network. A build stages from this copy, so a cross build prepares the target it builds.
  * 2. `pin <version>` reads Google's release manifest of every target and writes a new pin. Google's endpoint serves
  *    only its latest release, so it refuses a version that the manifests do not serve.
+ *
+ * `pin --observe` changes no pin: it records what Google serves now for the freshness gate
+ * (scripts/antigravity-engine-release.ts).
  */
 
-const PIN_FILE = join("scripts", "antigravity-engine-pin.json");
+/** The pin, relative to the repository root, in the form that git paths and messages use on every host. */
+export const PIN_FILE = "scripts/antigravity-engine-pin.json";
 const MANIFEST_BASE = "https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests";
 /** Google's name of each Flywheel release target in its manifest URLs. */
 const MANIFEST_TARGETS = {
@@ -45,7 +49,7 @@ interface PinnedTarget extends EngineDigest {
   readonly member?: string;
 }
 
-interface AntigravityPin {
+export interface AntigravityPin {
   readonly version: string;
   readonly build: string;
   readonly targets: ReadonlyMap<string, PinnedTarget>;
@@ -53,7 +57,12 @@ interface AntigravityPin {
 
 /** The pin of the checkout at `root`. Throws when the file is not a pin. */
 export async function readAntigravityPin(root: string): Promise<AntigravityPin> {
-  const value: unknown = JSON.parse(await readFile(join(root, PIN_FILE), "utf8"));
+  return parseAntigravityPin(await readFile(join(root, PIN_FILE), "utf8"));
+}
+
+/** The pin that `text` states. Throws when the text is not a pin. */
+export function parseAntigravityPin(text: string): AntigravityPin {
+  const value: unknown = JSON.parse(text);
   const malformed = () => new Error(`${PIN_FILE} is not an Antigravity CLI pin`);
   if (!isRecord(value) || typeof value["version"] !== "string" || typeof value["build"] !== "string" || !isRecord(value["targets"])) throw malformed();
   const targets = new Map<string, PinnedTarget>();
@@ -165,11 +174,27 @@ export async function pinAntigravityEngine(root: string, version: string): Promi
   return pin;
 }
 
-async function manifestOf(manifestTarget: string): Promise<{ readonly version: string; readonly url: string; readonly sha512: string }> {
-  const url = `${MANIFEST_BASE}/${manifestTarget}.json`;
+/** What Google's release manifest of one target states: the one version that it serves, and that version's artifact. */
+export interface ReleaseManifest {
+  readonly version: string;
+  readonly url: string;
+  readonly sha512: string;
+}
+
+/** The URL of Google's release manifest of `manifestTarget`, such as `linux_amd64`. */
+export function antigravityManifestUrl(manifestTarget: string): string {
+  return `${MANIFEST_BASE}/${manifestTarget}.json`;
+}
+
+async function manifestOf(manifestTarget: string): Promise<ReleaseManifest> {
+  const url = antigravityManifestUrl(manifestTarget);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url} answered ${response.status}`);
-  const manifest: unknown = await response.json();
+  return parseReleaseManifest(url, await response.json());
+}
+
+/** The manifest that `url` answered with `manifest`. Throws when it is not a release manifest. */
+export function parseReleaseManifest(url: string, manifest: unknown): ReleaseManifest {
   if (typeof manifest !== "object" || manifest === null || !("version" in manifest) || !("url" in manifest) || !("sha512" in manifest)
     || typeof manifest.version !== "string" || typeof manifest.url !== "string" || typeof manifest.sha512 !== "string") {
     throw new Error(`${url} is not a release manifest`);
@@ -205,11 +230,15 @@ if (import.meta.main) {
   const [command, argument] = process.argv.slice(2);
   if (command === "prepare") {
     console.log(`The Antigravity CLI is ready at ${await prepareAntigravityEngine(root, argument ?? buildPlatformArch())}`);
+  } else if (command === "pin" && argument === "--observe") {
+    // Loaded only here: the freshness gate reads this file's pin and manifest helpers.
+    const { observeAntigravityRelease } = await import("./antigravity-engine-release.js");
+    for (const line of await observeAntigravityRelease(root)) console.log(line);
   } else if (command === "pin" && argument !== undefined) {
     const pin = await pinAntigravityEngine(root, argument);
     console.log(`Pinned the Antigravity CLI ${pin.version} (${pin.build}) for ${pin.targets.size} targets in ${PIN_FILE}`);
   } else {
-    console.error("usage: bun run scripts/antigravity-engine-asset.ts prepare [<platform-arch>] | pin <version>");
+    console.error("usage: bun run scripts/antigravity-engine-asset.ts prepare [<platform-arch>] | pin <version> | pin --observe");
     process.exit(2);
   }
 }

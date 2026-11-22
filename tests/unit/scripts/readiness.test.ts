@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { RELEASE_ARCHIVES, RELEASE_BUILD_COMMANDS, RELEASE_TARGETS } from "../../../scripts/release-contract.js";
-import { dockerRuntimeCommand, readinessPlan, releaseLoginContainerCommand } from "../../../scripts/readiness-plan.js";
+import { antigravityFakeHostContainerCommand, dockerRuntimeCommand, readinessPlan, releaseLoginContainerCommand } from "../../../scripts/readiness-plan.js";
 import { readinessCommandTimeout, runReadiness, type CommandEnvironment, type ReadinessDependencies } from "../../../scripts/readiness.js";
 
 const ROOT = resolve("/repo");
@@ -27,6 +27,12 @@ const lock = (version: string) => JSON.stringify({ lockfileVersion: 1, packages:
 const RELEASE_TAG = "v0.0.12";
 /** The git reads of the engine bump: the last release tag and the lockfile at HEAD and at that tag. */
 const ENGINE_BUMP_READS = [["git", "describe", "--tags", "--abbrev=0", "--match", "v*"], ["git", "show", "HEAD:bun.lock"], ["git", "show", `${RELEASE_TAG}:bun.lock`]];
+const AGY_PIN = "scripts/antigravity-engine-pin.json";
+/** An Antigravity CLI pin of `version`; the bump reads only its version and build. */
+const agyPin = (version: string) => JSON.stringify({ version, build: `${version}-1`, targets: {} });
+/** The git reads of the Antigravity CLI bump, after the Claude engine's: the pin at HEAD and at the last release tag. */
+const ANTIGRAVITY_BUMP_READS = [["git", "show", `${RELEASE_TAG}:${AGY_PIN}`], ["git", "show", `HEAD:${AGY_PIN}`]];
+const ANTIGRAVITY_QUALIFICATION = "Antigravity engine fake-host qualification";
 
 /** The account home of the fake host, whose live profile the live tier reads when no release login home is set. */
 const ACCOUNT_HOME = resolve("/home/person");
@@ -40,6 +46,8 @@ const PROFILE = "Live";
 interface Scenario {
   readonly shipped?: string;
   readonly pinned?: string;
+  /** The Antigravity CLI version that the last release tag pinned, or null for a tag with no pin. */
+  readonly agyShipped?: string | null;
   readonly quick?: boolean;
   /** The release login home that the readiness setting names. */
   readonly releaseLoginHome?: string;
@@ -60,6 +68,10 @@ function orchestrate(platform: string, arch: string, overrides: Partial<Readines
     if (command[1] === "describe") return { exitCode: 0, stdout: `${RELEASE_TAG}\n`, stderr: "" };
     if (command[1] === "show" && command[2] === "HEAD:bun.lock") return { exitCode: 0, stdout: lock(scenario.pinned ?? "0.3.296"), stderr: "" };
     if (command[1] === "show" && command[2] === `${RELEASE_TAG}:bun.lock`) return { exitCode: 0, stdout: lock(scenario.shipped ?? "0.3.296"), stderr: "" };
+    if (command[1] === "show" && command[2] === `HEAD:${AGY_PIN}`) return { exitCode: 0, stdout: agyPin("1.5.14"), stderr: "" };
+    if (command[1] === "show" && command[2] === `${RELEASE_TAG}:${AGY_PIN}`) {
+      return scenario.agyShipped === null ? { exitCode: 128, stdout: "", stderr: `fatal: path '${AGY_PIN}' does not exist in '${RELEASE_TAG}'` } : { exitCode: 0, stdout: agyPin(scenario.agyShipped ?? "1.5.14"), stderr: "" };
+    }
     return undefined;
   };
   const run: ReadinessDependencies["run"] = overrides.run ?? ((command) => {
@@ -80,7 +92,7 @@ function orchestrate(platform: string, arch: string, overrides: Partial<Readines
     },
   };
   const outcome = runReadiness({
-    root: ROOT, platform, arch, quick: scenario.quick ?? false, bunExecutable: BUN, bunVersion: "1.3.14", packageManager: scenario.packageManager ?? "bun@1.3.14", version: "0.0.8",
+    root: ROOT, platform, arch, quick: scenario.quick ?? false, bunExecutable: BUN, bunVersion: "1.3.14", packageManager: scenario.packageManager ?? "bun@1.3.14", version: "0.0.8", antigravityVersion: "1.5.14",
     accountHome: ACCOUNT_HOME, releaseLoginHome: scenario.releaseLoginHome, liveAuthProfile: scenario.noLiveAuthProfile ? undefined : PROFILE,
   }, dependencies);
   return { commands, environments, outcome };
@@ -119,13 +131,13 @@ describe("deployment readiness planning", () => {
   });
 
   test("constructs Docker runtime commands with the exact host Bun version", () => {
-    expect(dockerRuntimeCommand({ target: "linux-x64", dockerPlatform: "linux/amd64", dockerImageSuffix: "", archive: join(ROOT, "dist", "flywheel-linux-x64.tar.gz"), harness: HARNESS, tokenizerManifest: join(ROOT, "crates", "tokenizer", "tokenizer-prebuilt.json"), version: "0.0.8", bunVersion: "1.3.14" })).toEqual([
+    expect(dockerRuntimeCommand({ target: "linux-x64", dockerPlatform: "linux/amd64", dockerImageSuffix: "", archive: join(ROOT, "dist", "flywheel-linux-x64.tar.gz"), harness: HARNESS, tokenizerManifest: join(ROOT, "crates", "tokenizer", "tokenizer-prebuilt.json"), version: "0.0.8", antigravityVersion: "1.5.14", bunVersion: "1.3.14" })).toEqual([
       "docker", "run", "--rm", "--platform=linux/amd64", "--network=none",
       "--mount", `type=bind,source=${join(ROOT, "dist", "flywheel-linux-x64.tar.gz")},target=/input/archive.tar.gz,readonly`,
       "--mount", `type=bind,source=${HARNESS},target=/input/readiness-package-smoke.ts,readonly`,
       "--mount", `type=bind,source=${join(ROOT, "crates", "tokenizer", "tokenizer-prebuilt.json")},target=/input/tokenizer-prebuilt.json,readonly`,
       "oven/bun:1.3.14", "bun", "run", "/input/readiness-package-smoke.ts",
-      "--archive", "/input/archive.tar.gz", "--target", "linux-x64", "--expected-version", "0.0.8", "--tokenizer-manifest", "/input/tokenizer-prebuilt.json",
+      "--archive", "/input/archive.tar.gz", "--target", "linux-x64", "--expected-version", "0.0.8", "--expected-antigravity-version", "1.5.14", "--tokenizer-manifest", "/input/tokenizer-prebuilt.json",
     ]);
   });
 
@@ -147,8 +159,8 @@ describe("readiness orchestration", () => {
     expect(commands).toEqual([
       ["git", "status", "--porcelain=v1", "--untracked-files=all"],
       [BUN, "run", "check:commits", "--upstream", "--head", "HEAD"],
-      ...ENGINE_BUMP_READS,
-      [BUN, "install", "--frozen-lockfile", "--dry-run"], [BUN, "run", "check:claude-engine"], [BUN, "run", "lint"], [BUN, "run", "check:boundaries"], [BUN, "run", "scripts/build-native-addon.ts", "--crate=ripgrep", "--verify"], [BUN, "run", "test"], [BUN, "run", "test:integration:no-api"],
+      ...ENGINE_BUMP_READS, ...ANTIGRAVITY_BUMP_READS,
+      [BUN, "install", "--frozen-lockfile", "--dry-run"], [BUN, "run", "check:claude-engine"], [BUN, "run", "check:antigravity-engine"], [BUN, "run", "lint"], [BUN, "run", "check:boundaries"], [BUN, "run", "scripts/build-native-addon.ts", "--crate=ripgrep", "--verify"], [BUN, "run", "test"], [BUN, "run", "test:integration:no-api"],
       [BUN, "run", "build:tokenizer"],
       ["git", "show", "HEAD:crates/tokenizer/tokenizer-prebuilt.json"],
       ["git", "checkout", "--", "crates/tokenizer"],
@@ -159,7 +171,7 @@ describe("readiness orchestration", () => {
       [BUN, "run", HARNESS, "--planners", "--target", "darwin-arm64"],
       [BUN, "run", "scripts/verify-production-composition.ts", "--binary", join(ROOT, "dist", "flywheel-darwin-arm64", "build", "flywheel-bin")],
       [BUN, "run", "test:perf", "--archive", archives[0]!],
-      [BUN, "run", HARNESS, "--archive", archives[0]!, "--target", "darwin-arm64", "--expected-version", "0.0.8"], ["/docker", "info"],
+      [BUN, "run", HARNESS, "--archive", archives[0]!, "--target", "darwin-arm64", "--expected-version", "0.0.8", "--expected-antigravity-version", "1.5.14"], ["/docker", "info"],
       ...(["linux-arm64", "linux-arm64-musl", "linux-x64", "linux-x64-musl"] as const).map((target) => dockerRuntimeCommand({
         target,
         dockerPlatform: target.startsWith("linux-arm64") ? "linux/arm64" : "linux/amd64",
@@ -168,6 +180,7 @@ describe("readiness orchestration", () => {
         harness: HARNESS,
         tokenizerManifest: join(ROOT, "crates", "tokenizer", "tokenizer-prebuilt.json"),
         version: "0.0.8",
+        antigravityVersion: "1.5.14",
         bunVersion: "1.3.14",
       }).map((part, index) => index === 0 ? "/docker" : part)),
     ]);
@@ -180,8 +193,8 @@ describe("readiness orchestration", () => {
     const { commands, outcome } = orchestrate("win32", "x64");
     expect(commands).toEqual([
       ["git", "status", "--porcelain=v1", "--untracked-files=all"], [BUN, "run", "check:commits", "--upstream", "--head", "HEAD"],
-      ...ENGINE_BUMP_READS,
-      [BUN, "install", "--frozen-lockfile", "--dry-run"], [BUN, "run", "check:claude-engine"], [BUN, "run", "lint"], [BUN, "run", "check:boundaries"], [BUN, "run", "scripts/build-native-addon.ts", "--crate=ripgrep", "--verify"], [BUN, "run", "test"], [BUN, "run", "test:integration:no-api"],
+      ...ENGINE_BUMP_READS, ...ANTIGRAVITY_BUMP_READS,
+      [BUN, "install", "--frozen-lockfile", "--dry-run"], [BUN, "run", "check:claude-engine"], [BUN, "run", "check:antigravity-engine"], [BUN, "run", "lint"], [BUN, "run", "check:boundaries"], [BUN, "run", "scripts/build-native-addon.ts", "--crate=ripgrep", "--verify"], [BUN, "run", "test"], [BUN, "run", "test:integration:no-api"],
       [BUN, "run", "build:tokenizer"],
       ["git", "show", "HEAD:crates/tokenizer/tokenizer-prebuilt.json"],
       ["git", "checkout", "--", "crates/tokenizer"],
@@ -192,10 +205,11 @@ describe("readiness orchestration", () => {
       [BUN, "run", HARNESS, "--planners", "--target", "win32-x64"],
       [BUN, "run", "scripts/verify-production-composition.ts", "--binary", join(ROOT, "dist", "flywheel-win32-x64", "build", "flywheel-bin.exe")],
       [BUN, "run", "test:perf", "--archive", join(ROOT, "dist", "flywheel-win32-x64.tar.gz")],
-      [BUN, "run", HARNESS, "--archive", join(ROOT, "dist", "flywheel-win32-x64.tar.gz"), "--target", "win32-x64", "--expected-version", "0.0.8"],
+      [BUN, "run", HARNESS, "--archive", join(ROOT, "dist", "flywheel-win32-x64.tar.gz"), "--target", "win32-x64", "--expected-version", "0.0.8", "--expected-antigravity-version", "1.5.14"],
     ]);
     expect(outcome.exitCode).toBe(0);
-    expect(outcome.checks.filter(({ status }) => status === "skip").map(({ name }) => name)).toEqual(["Claude engine live qualification", "agent-observed live TUI UAT"]);
+    expect(outcome.checks.filter(({ status }) => status === "skip").map(({ name }) => name)).toEqual(["Claude engine live qualification", ANTIGRAVITY_QUALIFICATION, "agent-observed live TUI UAT"]);
+    expect(outcome.checks.find(({ name }) => name === ANTIGRAVITY_QUALIFICATION)?.detail).toBe(`${RELEASE_TAG} already shipped the Antigravity CLI 1.5.14`);
     expect(outcome.checks.find(({ name }) => name === "Claude engine live qualification")?.detail).toBe(`${RELEASE_TAG} already shipped ${SDK} 0.3.296`);
   });
 
@@ -295,6 +309,36 @@ describe("readiness orchestration", () => {
     } });
     expect(permission.outcome.checks.some(({ status, detail }) => status === "blocked" && detail.includes("permission denied while trying to connect"))).toBe(true);
     expect(permission.outcome.checks.at(-2)?.detail).not.toContain("start Docker Desktop");
+  });
+
+  test("reports the Antigravity CLI pin's freshness with the same verdicts", () => {
+    const report = { exitCode: 0, stdout: "antigravity engine: Antigravity CLI 1.5.14 (build 1.5.14-1) pinned; Google serves 1.5.14\n", stderr: "" };
+    const freshness = (exitCode: number) => orchestrate("win32", "x64", { run: (command) => command.includes("check:antigravity-engine") ? { ...report, exitCode } : { exitCode: 0, stdout: "", stderr: "" } }, { quick: true }).outcome;
+    expect(freshness(0).checks.find(({ name }) => name === "Antigravity engine freshness")).toEqual({ name: "Antigravity engine freshness", status: "pass", detail: "Antigravity CLI 1.5.14 (build 1.5.14-1) pinned; Google serves 1.5.14" });
+    expect([freshness(1), freshness(3)].map(({ exitCode, checks }) => [exitCode, checks.find(({ name }) => name === "Antigravity engine freshness")?.status])).toEqual([[1, "fail"], [1, "blocked"]]);
+  });
+
+  test("on an Antigravity CLI bump, a Mac runs its fake-host tier in a Linux container of the candidate after the integration suite, and every host runs it in the no-api suite", () => {
+    const { commands, outcome } = orchestrate("darwin", "arm64", {}, { agyShipped: "1.5.13" });
+    const integration = commands.findIndex((command) => command.includes("test:integration:no-api"));
+    const [candidate] = candidatesOf(commands);
+    expect(commands.slice(integration + 1, integration + 4)).toEqual([["/docker", "info"], archiveTo(candidate!), antigravityFakeHostContainerCommand({ dockerPlatform: "linux/arm64", bunVersion: "1.3.14", candidate: candidate! }).map((part, index) => index === 0 ? "/docker" : part)]);
+    // The guarded runner gives the tier a private TMPDIR and fails on leftovers, which a bare `bun test` skips.
+    expect(commands[integration + 3]?.at(-1)).toEndWith("&& bun run test:integration:antigravity-engine");
+    expect(existsSync(dirname(candidate!))).toBe(false);
+    expect(check(outcome, `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`)).toEqual({ name: `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`, status: "pass", detail: "" });
+    expect(check(outcome, ANTIGRAVITY_QUALIFICATION)).toBeUndefined();
+    expect(outcome.exitCode).toBe(0);
+
+    // A tag from before the pin shipped no Antigravity CLI. A host without the Linux containers owes only its no-api suite.
+    const windows = orchestrate("win32", "x64", {}, { agyShipped: null });
+    expect(windows.commands).toContainEqual([BUN, "run", "test:integration:no-api"]);
+    expect(windows.commands.some((command) => command[0] === "/docker")).toBe(false);
+    expect(windows.outcome.checks.some(({ name }) => name.includes(ANTIGRAVITY_QUALIFICATION))).toBe(false);
+    expect(windows.outcome.exitCode).toBe(0);
+
+    const noDocker = orchestrate("darwin", "arm64", { which: (name) => name === "tmux" ? "/tmux" : undefined }, { agyShipped: "1.5.13" });
+    expect(check(noDocker.outcome, `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`)).toEqual({ name: `linux-arm64 ${ANTIGRAVITY_QUALIFICATION}`, status: "blocked", detail: "the Antigravity CLI 1.5.13-1 in v0.0.12 is now 1.5.14-1; Docker CLI is unavailable; install Docker Desktop" });
   });
 
   test("reports the Claude engine pin's freshness, and an unanswered registry as blocked", () => {
