@@ -40,6 +40,9 @@ export interface ProviderSessionLifetime {
   /** Present for a workflow agent or a subagent (ARCH-PROVIDERS-006): a provider may run it in one process with the other such
    *  sessions of the chat tree rooted at `treeRootSessionId`, whose shared state the session holds for its life. */
   readonly sharedHost?: SharedTree;
+  /** Present for every session that knows its chat tree, the chat itself included: the id of the tree's root session,
+   *  which names the tree to any provider, hosted or not. */
+  readonly treeRootSessionId?: string;
   /** Present for every session that knows its chat tree, the chat itself included: the account key of the login that
    *  the tree's live shared host uses (`treeLogin`), which each request prefers while that login can serve and no other
    *  login's included quota expires sooner. */
@@ -732,10 +735,12 @@ export interface ProviderAdapter {
   stage(admission: AdapterAdmission): Promise<StagedProviderClient>;
 }
 
-/** How one candidate's attempt settled. `provider_failure` is the one signal
- *  that advances the chain, so it carries only the failures the chain may
- *  advance on. `login_refused` retains the settled failure value for an
- *  interactive login wait; it never advances to another candidate.
+/** How one candidate's attempt settled. `provider_failure` carries only the
+ *  failures the chain may advance on, and advances it for every provider.
+ *  `login_refused` retains the settled failure value for an interactive login
+ *  wait. When that login is declined it ends the request, except on a provider
+ *  whose accounts never rotate (`ProviderChainDeps.singleAccountProviders`),
+ *  where it advances the chain to another provider (PI-MODEL-094).
  *  `repetition` is an attempt whose reasoning collapsed into repetition,
  *  which the walk resamples on the same candidate. */
 export type AdmittedModelRequestExecution<T> =

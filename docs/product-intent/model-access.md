@@ -12,7 +12,7 @@ Flywheel orders failover candidates by spend class: included subscription use fi
 
 ## PI-MODEL-059: A failure the request caused is reported at once
 
-When the request itself caused a failure, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, Flywheel reports it at once instead of trying other candidates. The report names that failure and never describes it as spent quota or credits.
+When the request itself caused a failure, such as a rejected or malformed request, bad credentials, or an error the provider did not classify, Flywheel reports it at once instead of trying other candidates. The report names that failure and never describes it as spent quota or credits. The one exception is bad credentials on a provider whose accounts never rotate (PI-MODEL-094): when the person does not log in again, the request moves to another provider.
 
 ## PI-MODEL-060: A failing candidate is retried in place before failover
 

@@ -436,8 +436,23 @@ interface AccessProviderDefinitionBase {
   readonly profileConversions?: readonly AuthProfileConversion[];
 }
 
+/** Whether a request may move between the accounts of one provider. Absent, it moves in account order when an account
+ *  cannot serve (PI-MODEL-058). `never` is for a provider whose terms forbid that move (PI-MODEL-094): each request
+ *  captures one account of the provider, and when that account cannot serve, the request moves to another provider.
+ *  The captured account is the one that `preferredAccount` names for the request's chat tree, when the request can use
+ *  it, else the first usable account in account order. */
+type AccessProviderAccountRotation =
+  | { readonly accountRotation?: undefined; readonly preferredAccount?: undefined }
+  | {
+    readonly accountRotation: "never";
+    /** The account (`instanceId`) that the chat tree rooted at `treeRootSessionId` already uses, from the provider's
+     *  own live state, such as the engine process that serves the tree; undefined when the tree uses none. Read at
+     *  each request's candidate capture, so it returns at once and never fails. */
+    readonly preferredAccount?: (treeRootSessionId: string) => string | undefined;
+  };
+
 /** A subscription declares each rollover mode its adapter supports. An omitted list offers no paid rollover. */
-export type AccessProviderDefinition = AccessProviderDefinitionBase & (
+export type AccessProviderDefinition = AccessProviderDefinitionBase & AccessProviderAccountRotation & (
   | { readonly billing: "subscription"; readonly spendMode?: never; readonly paidModes?: readonly ("prepaid" | "automatic")[] }
   | { readonly billing: "metered"; readonly spendMode: "direct_api" | "aggregator" }
 );

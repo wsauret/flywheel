@@ -21,7 +21,7 @@ import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-ty
 import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
 import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js";
-import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderDefinition, type AccessProviderId, type AccessProviderModelEligibility, type AdmittedFailoverPlan, type FailoverPlan, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { ProviderIdentity } from "../../../infra/llm/auth-error.js";
 import type { ModelsClient } from "../../../infra/llm/models.js";
@@ -275,7 +275,49 @@ function captureProviderRequestProfile(
   }
   const planned = options.providers.selection.plan(model, connection, eligibility, allowTrainingRoutes);
   if (planned.kind === "unavailable") throw new ModelUnavailable({ message: planned.reason, missing: planned.missing });
-  return Object.freeze({ candidateAttributions: planned.candidateAttributions });
+  const candidateAttributions = keepOneAccountOfFixedProviders(planned.candidateAttributions, options.providers.selection.definitions, connection.authDir, options.providerSessionLifetime.treeRootSessionId);
+  return Object.freeze({ candidateAttributions });
+}
+
+/** The one owner of account selection for a provider whose accounts never rotate (PI-MODEL-094): of each such
+ *  provider, the request keeps the planned attributions of one account and never stages the others, so its walk can
+ *  leave that account only for another provider. The kept account is the one that the provider names for the
+ *  request's chat tree when the request can use it, else the first usable account in account order. An account whose
+ *  login the provider refused cannot serve before a new login, so it is kept only when no account of the provider
+ *  can serve; its request then meets the refusal and can ask for that login. */
+function keepOneAccountOfFixedProviders(
+  attributions: readonly AccessProviderCandidateAttribution[],
+  definitions: readonly AccessProviderDefinition[],
+  authDir: string,
+  treeRootSessionId: string | undefined,
+): readonly AccessProviderCandidateAttribution[] {
+  const kept = new Map<AccessProviderId, string>();
+  for (const definition of definitions) {
+    if (definition.accountRotation !== "never") continue;
+    const accounts = [...new Set(attributions.flatMap(({ candidate }) => candidate.kind === "subscription" && candidate.providerId === definition.id ? [candidate.instanceId] : []))];
+    const [first, ...others] = accounts;
+    if (first === undefined) continue;
+    const preferred = treeRootSessionId === undefined ? undefined : definition.preferredAccount?.(treeRootSessionId);
+    // One planned account and no tree account to pass over: nothing to choose and nothing to record.
+    if (preferred === undefined && others.length === 0) continue;
+    const refused = new Set(definition.auth.kind === "external"
+      ? definition.auth.problems(authDir).flatMap((problem) => problem.kind === "login-rejected" ? [problem.accountId] : [])
+      : []);
+    const usable = accounts.filter((account) => !refused.has(account));
+    const choice = preferred !== undefined && usable.includes(preferred) ? preferred : usable[0] ?? first;
+    if (preferred !== undefined && choice !== preferred) {
+      // Per request, so DEBUG: the tree's account cannot serve this request, and the request keeps another one.
+      log.debug("tree account not kept for a single-account provider", {
+        provider: definition.id, preferred, kept: choice, reason: refused.has(preferred) ? "login-rejected" : "not-planned",
+      });
+    }
+    if (others.length > 0) kept.set(definition.id, choice);
+  }
+  if (kept.size === 0) return attributions;
+  return Object.freeze(attributions.filter(({ candidate }) => {
+    const account = kept.get(candidate.providerId);
+    return account === undefined || (candidate.kind === "subscription" && candidate.instanceId === account);
+  }));
 }
 
 function buildChainClient(
@@ -295,6 +337,7 @@ function buildChainClient(
   const adapters = new Map<string, Promise<ProviderAdapter>>();
   const routing = createRoutingDecisions();
   const treeLogin = options.providerSessionLifetime.treeLogin;
+  const singleAccountProviders: ReadonlySet<AccessProviderId> = new Set(options.providers.selection.definitions.flatMap((definition) => definition.accountRotation === "never" ? [definition.id] : []));
   const record = options.recordModelRefusal;
   const recordRefusal = (attribution: AccessProviderCandidateAttribution, refusal: ModelRefusal): void => {
     record?.({ connection, candidate: attribution.candidate, wireModelId: attribution.wireModelId, refusal });
@@ -348,6 +391,7 @@ function buildChainClient(
       family: plan.family,
       candidateAttributions: admission.candidateAttributions,
       ...(treeLogin === undefined ? {} : { preferredAccount: treeLogin }),
+      singleAccountProviders,
       shortName: options.providers.selection.shortName,
       build,
       affordability,

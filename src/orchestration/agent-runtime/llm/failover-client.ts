@@ -59,7 +59,7 @@ import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedErr
 import type { ModelRefusal } from "../../../infra/auth/provider-model-catalog-store.js";
 import { ThinkingStallError } from "./thinking-stall.js";
 import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
-import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure } from "./provider-failure.js";
+import { isFailoverFailure, isProviderAttributedFailure, ProviderAttemptFailure, type FailoverFailure, type ProviderFailure } from "./provider-failure.js";
 import { SAFE_RECHECK_MS } from "./provider-availability.js";
 import type { ProviderAvailability, QuotaExhaustion, QuotaProbe, RecheckPending, RequestAdmission, SubscriptionAllowanceResolver, SubscriptionBankedResetResolver, SubscriptionSpendAuthorizationResolver } from "./provider-availability-types.js";
 import type {
@@ -88,6 +88,10 @@ export interface ProviderChainDeps {
    *  (`SharedTree.login`). In included use a sooner expiring-window reset still goes first, so the login only breaks
    *  ties. Within that order the walk's eligibility and failover decide when the request leaves the login. */
   readonly preferredAccount?: () => string | undefined;
+  /** The providers whose accounts never rotate (`AccessProviderDefinition.accountRotation`, PI-MODEL-094). The request
+   *  captured one account of each, so a login of that account that stays refused hands the request to the next
+   *  candidate, which is another provider. A refused login of any other provider ends the request. */
+  readonly singleAccountProviders?: ReadonlySet<AccessProviderId>;
   readonly build: (attribution: AccessProviderCandidateAttribution) => Promise<StagedProviderClient>;
   readonly affordability?: ReadonlyMap<AccessProviderId, ProviderAffordabilityCapability>;
   readonly requestAdmission?: RequestAdmission;
@@ -537,6 +541,13 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
       selectNext,
       affordable,
       recordAuthConditions,
+      /** The account's login stays refused: only a person's new login clears it, so waiting does not. */
+      recordLoginRefused(failed: Selection, failure: Extract<ProviderFailure, { readonly _tag: "AuthFailure" }>): void {
+        recordSpent({
+          candidate: failed.candidate,
+          state: { available: false, kind: "terminal", reason: "ineligible", detail: extractProviderErrorDetail(failure.message).replace(/\.\s*$/, ""), reset: undefined },
+        });
+      },
       recordProviderFailure(failed: Selection, failure: FailoverFailure): void {
         const standing = failure._tag !== "QuotaExhaustedFailure" || failed.attribution.routeKind === "free"
           ? undefined
@@ -606,17 +617,20 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
               return result.value;
             }
             if (result.kind === "login_refused") {
-              if (deps.awaitLogin === undefined) return result.value;
-              let answer: LoginWaitAnswer;
-              request.onLoginWait?.(true);
-              try {
-                answer = await deps.awaitLogin(attempt.candidate, waitSignal);
-                waitSignal.throwIfAborted();
-              } finally {
-                request.onLoginWait?.(false);
+              let answer: LoginWaitAnswer = "declined";
+              if (deps.awaitLogin !== undefined) {
+                request.onLoginWait?.(true);
+                try {
+                  answer = await deps.awaitLogin(attempt.candidate, waitSignal);
+                  waitSignal.throwIfAborted();
+                } finally {
+                  request.onLoginWait?.(false);
+                }
               }
-              if (answer === "declined") return result.value;
-              continue;
+              if (answer !== "declined") continue;
+              if (deps.singleAccountProviders?.has(candidateProviderId(attempt.candidate)) !== true) return result.value;
+              walk.recordLoginRefused(attempt, result.failure);
+              break;
             }
             const failure = result.failure;
             if (failure._tag === "AuthConditionFailure") {

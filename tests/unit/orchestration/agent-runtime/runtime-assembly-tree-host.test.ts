@@ -37,6 +37,7 @@ describe("side calls of a chat tree", () => {
     const side = await hosted(purpose)
     const agent = await hosted({ kind: "subagent", renderAs: "subagent", parentToolUseId: "call" }, { toolGrant: ["read"] })
     expect(side.root).toBe("root-chat")
+    expect(agent.lifetime?.treeRootSessionId).toBe("root-chat")
     expect([...side.surface.tools.keys()]).toEqual([...agent.surface.tools.keys()])
     const usable = [...side.surface.tools.keys()].filter((name) => side.surface.usableToolNames.has(side.surface.registrationIdentities.get(name) ?? name))
     if (purpose.kind === "chat-learning-review") {
@@ -55,6 +56,7 @@ describe("side calls of a chat tree", () => {
     try {
       const chat = await hosted({ kind: "interactive-chat" })
       expect(chat.root).toBeUndefined()
+      expect(chat.lifetime?.treeRootSessionId).toBe("root-chat")
       expect(chat.lifetime?.treeLogin?.()).toBe("login-b")
     } finally { endHost(); release() }
   })

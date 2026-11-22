@@ -105,6 +105,28 @@ describe("provider authentication stops the request", () => {
     expect(availability.serviceEntryCount()).toBe(0);
   });
 
+  test("a refused login of a provider whose accounts never rotate hands a headless request to another provider (PI-MODEL-094)", async () => {
+    const refusal = normalizeProviderAttemptFailure(Object.assign(new Error("login refused"), { status: 401 })).failure;
+    if (refusal._tag !== "AuthFailure") throw new Error("expected authentication failure");
+    const visits: string[] = [];
+    const client = chain({
+      availability: fakeAvailability({}).availability,
+      candidates: [subscriptionCandidate("single_plan"), singletonCandidate("openai_api")],
+      singleAccountProviders: new Set(["single_plan"]),
+    });
+    const value = await (await client.admitRequest()).run({
+      prepare: preparedRequest,
+      execute: async ({ attempt }) => {
+        visits.push(attempt.accessProvider);
+        return attempt.accessProvider === "single_plan"
+          ? { kind: "login_refused", failure: refusal, value: "login error" }
+          : { kind: "success", value: attempt.accessProvider };
+      },
+    });
+    expect(visits).toEqual(["single_plan", "openai_api"]);
+    expect(value).toBe("openai_api");
+  });
+
   test("captured provider and file conditions skip only affected credential-backed candidates", async () => {
     const built: AccessProviderId[] = [];
     const availability = fakeAvailability({});

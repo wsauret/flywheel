@@ -167,7 +167,7 @@ const treeHolds = new WeakMap<Scope.Scope, SharedTree>();
  *  holds the tree while it lives. */
 function treeLifetime(lifetime: ProviderSessionLifetime, runScope: Scope.Scope | undefined, rootSessionId: string | undefined, treeHosted: boolean, capture: () => SharedTreeCapture): ProviderSessionLifetime {
   if (rootSessionId === undefined) return lifetime;
-  const routed: ProviderSessionLifetime = { ...lifetime, treeLogin: () => treeLogin(rootSessionId) };
+  const routed: ProviderSessionLifetime = { ...lifetime, treeRootSessionId: rootSessionId, treeLogin: () => treeLogin(rootSessionId) };
   if (!treeHosted) return routed;
   const owner = runScope ?? lifetime.scope;
   let tree = treeHolds.get(owner);
