@@ -1,0 +1,16 @@
+src/orchestration/modules/provider-google-antigravity/step-gate.ts
+  h_4b47e9e4a8b456 1-138
+tests/unit/orchestration/modules/provider-google-antigravity/step-gate.test.ts
+  h_4b47e9e4a8b456 1-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9e57345874ce9e7d9645d3c5dda3626e79ee25da",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
