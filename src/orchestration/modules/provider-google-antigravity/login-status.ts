@@ -6,7 +6,7 @@ import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
 import { classifyProviderFailure } from "../../agent-runtime/llm/provider-failure.js"
 import type { ModuleHealthReport } from "../../module-health.js"
 import { GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL } from "./names.js"
-import type { TokenStoreKind, TokenStoreObservation } from "./token-store.js"
+import { reachedKeyringKinds, type TokenStoreKind, type TokenStoreObservation } from "./token-store.js"
 
 const log = Log.create({ service: "provider-google-antigravity" })
 
@@ -240,8 +240,10 @@ interface ObservationLine {
 
 function observationText(observation: TokenStoreObservation | undefined): ObservationLine {
   if (observation === undefined) return { text: "no engine log of this login read in this process yet", attention: false }
-  if (observation.keyringFailures.length > 0) return { text: `the engine reached a keyring that it must not use (${[...new Set(observation.keyringFailures)].join(", ")})`, attention: true }
+  const reached = reachedKeyringKinds(observation)
+  if (reached.length > 0) return { text: `the engine reached a keyring that it must not use (${reached.join(", ")})`, attention: true }
   if (observation.fileStorageReason !== undefined) return { text: `file storage, because ${observation.fileStorageReason}`, attention: false }
+  if (observation.keyringFailures.includes("credential-manager-unavailable")) return { text: "file storage, because the OS credential manager is unavailable", attention: false }
   return { text: "no keyring call failed or waited", attention: false }
 }
 

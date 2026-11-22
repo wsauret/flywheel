@@ -18,7 +18,7 @@ export interface ParkedToolCall extends McpToolCall {
   readonly sessionId: string
 }
 
-interface ToolServerRegistration {
+export interface ToolServerRegistration {
   /** The tools that the engine lists, from `projectTools`. */
   readonly tools: readonly McpToolDeclaration[]
   /** Answers one call when Flywheel's dispatch has run it. `signal` aborts when agy gives up the call: its HTTP request

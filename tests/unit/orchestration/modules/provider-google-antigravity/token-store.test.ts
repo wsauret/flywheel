@@ -128,6 +128,16 @@ describe("the engine log's account of its token store", () => {
     expect(keychainReachedFailure(observation)).toBeUndefined()
   })
 
+  test("records a Windows Credential Manager that is unavailable, and does not fail the engine that falls back to a file in its home", () => {
+    const observation = tokenStoreObservation([
+      "W1122 09:02:54.294111      27 auth_store.go:162] OS credential manager unavailable (A specified logon session does not exist. It may already have been terminated.); falling back to file-based secret storage",
+      "I1122 09:02:54.294111      27 auth_store.go:199] Using file-based secret storage at C:\\scratch\\login\\home\\AppData\\Roaming\\antigravity\\plugin-secrets.json",
+    ])
+
+    expect(observation).toEqual({ keyringFailures: ["credential-manager-unavailable"] })
+    expect(keychainReachedFailure(observation)).toBeUndefined()
+  })
+
   test("fails the engine whose keyring call waited, as one that a keychain dialog holds up", () => {
     const failure = keychainReachedFailure(tokenStoreObservation([
       "W1121 22:17:03.000000      12 composite_token_storage.go:300] Keyring SaveToken timed out after 5s, using file-based token storage",

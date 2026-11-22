@@ -20,6 +20,12 @@ const AGENT_NAME = "flywheel"
 const MCP_SERVER_NAME = "runtime"
 const HOOK_NAME = "flywheel"
 
+/** The name under which agy shows the model, and names in a permission request, the tool `toolName` of Flywheel's MCP
+ *  server: `mcp_<server>_<tool>` (agy 1.5.14). */
+export function engineToolName(toolName: string): string {
+  return `mcp_${MCP_SERVER_NAME}_${toolName}`
+}
+
 // The agent replaces every default component of the engine with nothing but
 // Flywheel's tools, which reach it through the login's MCP configuration
 // (`inheritMcp`: a server the agent declares itself starts after the first

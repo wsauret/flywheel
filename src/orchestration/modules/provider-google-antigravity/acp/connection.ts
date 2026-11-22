@@ -1,4 +1,4 @@
-import { Option } from "effect"
+import { Option, Schema } from "effect"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { Log } from "../../../../infra/log.js"
 import { coalesceRepeats } from "../../../../infra/repeat-coalescer.js"
@@ -104,10 +104,16 @@ export interface AcpConnectionOptions extends AcpPipes {
   /** Each decoded `session/update`, in wire order. A throw fails the connection. */
   readonly onNotification: (notification: AcpSessionNotification) => void
   /** Each agent-to-client request, after the connection answered it with a
-   *  JSON-RPC error. Flywheel serves none: its agent has no default tools and
-   *  it advertises no fs or terminal capability, so a request is a defect
-   *  signal for the caller to act on. */
+   *  JSON-RPC error. Flywheel serves none but the permission of its own tools
+   *  (`allowedTools`): its agent has no default tools and it advertises no fs
+   *  or terminal capability, so a request is a defect signal for the caller to
+   *  act on. */
   readonly onAgentRequestRefused: (request: AcpRefusedAgentRequest) => void
+  /** The names, as agy names them in a `session/request_permission`, of the
+   *  tools of Flywheel's own MCP server, which the connection allows. agy asks
+   *  permission for each MCP tool call, and a call it was refused never reaches
+   *  Flywheel. Every other permission request stays refused. */
+  readonly allowedTools?: ReadonlySet<string>
   readonly limits?: { readonly maxFrameChars?: number }
 }
 
@@ -140,11 +146,30 @@ interface PendingRequest {
   readonly reject: (error: Error) => void
 }
 
+/** The part of a `session/request_permission` that the connection reads, as agy
+ *  1.5.14 sends it: `params.toolCall.name` names the tool, and `params.options`
+ *  lists the answers, each with its `optionId` and `kind`. */
+const PermissionRequestSchema = Schema.Struct({
+  toolCall: Schema.Struct({ name: Schema.String }),
+  options: Schema.Array(Schema.Struct({ optionId: Schema.String, kind: Schema.String })),
+})
+const decodePermissionRequest = Schema.decodeUnknownOption(PermissionRequestSchema)
+
+/** The option that allows the request `frame` once, when it is a permission
+ *  request for a tool of `allowedTools` that offers one. */
+function allowOnceOption(frame: Extract<AcpInboundFrame, { readonly kind: "agent-request" }>, allowedTools: ReadonlySet<string>): string | undefined {
+  if (frame.method !== "session/request_permission") return undefined
+  const request = decodePermissionRequest(frame.params)
+  if (Option.isNone(request) || !allowedTools.has(request.value.toolCall.name)) return undefined
+  return request.value.options.find(({ kind }) => kind === "allow_once")?.optionId
+}
+
 /** Every frame the connection writes. */
 type OutboundFrame =
   | { readonly jsonrpc: "2.0"; readonly id: number; readonly method: AcpMethod; readonly params: AcpRequests[AcpMethod]["params"] }
   | { readonly jsonrpc: "2.0"; readonly method: keyof AcpNotifications; readonly params: AcpNotifications[keyof AcpNotifications] }
   | { readonly jsonrpc: "2.0"; readonly id: AcpJsonRpcId; readonly error: { readonly code: number; readonly message: string } }
+  | { readonly jsonrpc: "2.0"; readonly id: AcpJsonRpcId; readonly result: { readonly outcome: { readonly outcome: "selected"; readonly optionId: string } } }
 
 /** Opens a JSON-RPC 2.0 client over the newline-delimited pipes of one `agy
  *  acp` process. Every inbound frame is decoded at this boundary; a frame that
@@ -227,6 +252,12 @@ export function openAcpConnection(options: AcpConnectionOptions): AcpConnection 
         return
       }
       case "agent-request": {
+        const allowed = allowOnceOption(frame, options.allowedTools ?? new Set())
+        if (allowed !== undefined) {
+          log.debug("ACP permission request of a Flywheel tool allowed", { sessionId: agentRequestSessionId(frame.params) })
+          void write({ jsonrpc: "2.0", id: frame.id, result: { outcome: { outcome: "selected", optionId: allowed } } }).catch(() => {})
+          return
+        }
         unserved.refusedAgentRequests += 1
         reportUnserved("ACP agent request refused", frame.method)
         void write({ jsonrpc: "2.0", id: frame.id, error: { code: ACP_METHOD_NOT_FOUND, message: `Flywheel does not serve ${frame.method}` } }).catch(() => {})

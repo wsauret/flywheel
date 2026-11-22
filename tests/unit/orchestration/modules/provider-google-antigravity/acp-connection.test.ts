@@ -9,7 +9,7 @@ import type { AcpSessionNotification } from "../../../../../src/orchestration/mo
 
 /** A fake `agy acp` on the other end of the pipes: the test writes its stdout
  *  lines and reads the frames the connection wrote to its stdin. */
-function fakeAgent(options: { readonly maxFrameChars?: number } = {}) {
+function fakeAgent(options: { readonly maxFrameChars?: number; readonly allowedTools?: ReadonlySet<string> } = {}) {
   const written: unknown[] = []
   let stdinEnded = false
   let heldFlush: Promise<number> | undefined
@@ -38,6 +38,7 @@ function fakeAgent(options: { readonly maxFrameChars?: number } = {}) {
     onNotification: (notification) => notifications.push(notification),
     onAgentRequestRefused: (request) => refused.push(request),
     limits: options.maxFrameChars === undefined ? undefined : { maxFrameChars: options.maxFrameChars },
+    ...(options.allowedTools === undefined ? {} : { allowedTools: options.allowedTools }),
   })
   return {
     connection,
@@ -124,6 +125,40 @@ describe("ACP connection", () => {
     expect(agent.refused).toEqual([{ method: "session/request_permission", sessionId: "s1" }])
     expect(agent.written).toEqual([{ jsonrpc: "2.0", id: "1", error: { code: -32601, message: "Flywheel does not serve session/request_permission" } }])
     expect((await agent.connection.close()).unserved.refusedAgentRequests).toBe(1)
+  })
+
+  // The request as agy 1.5.14 sends it for a call of an MCP tool.
+  const permissionRequest = (name: string, options: readonly unknown[] = [{ optionId: "allow", name: "Allow", kind: "allow_once" }, { optionId: "deny", name: "Deny", kind: "reject_once" }]) => ({
+    jsonrpc: "2.0",
+    id: "1",
+    method: "session/request_permission",
+    params: {
+      sessionId: "s1",
+      toolCall: { sessionUpdate: "tool_call", toolCallId: "t1", name, args: { text: "hi" }, status: "pending", kind: "other", title: `Run ${name}`, rawInput: { text: "hi" } },
+      options,
+    },
+  })
+  const refusal = { jsonrpc: "2.0", id: "1", error: { code: -32601, message: "Flywheel does not serve session/request_permission" } }
+
+  test("a permission request for a tool of Flywheel's own MCP server is allowed once", async () => {
+    const agent = fakeAgent({ allowedTools: new Set(["mcp_runtime_echo"]) })
+    agent.send(permissionRequest("mcp_runtime_echo"))
+    await agent.settle()
+    expect(agent.written).toEqual([{ jsonrpc: "2.0", id: "1", result: { outcome: { outcome: "selected", optionId: "allow" } } }])
+    expect(agent.refused).toEqual([])
+  })
+
+  test.each([
+    ["a tool of another MCP server", permissionRequest("mcp_other_echo")],
+    ["a built-in agy tool", permissionRequest("list_resources")],
+    ["no allow_once option", permissionRequest("mcp_runtime_echo", [{ optionId: "allow", name: "Allow", kind: "allow_always" }])],
+    ["an unknown shape", { jsonrpc: "2.0", id: "1", method: "session/request_permission", params: { sessionId: "s1", toolCall: { toolCallId: "t1" }, options: [] } }],
+  ])("a permission request is refused for %s", async (_case, frame) => {
+    const agent = fakeAgent({ allowedTools: new Set(["mcp_runtime_echo"]) })
+    agent.send(frame)
+    await agent.settle()
+    expect(agent.written).toEqual([refusal])
+    expect(agent.refused).toEqual([{ method: "session/request_permission", sessionId: "s1" }])
   })
 
   test("a session update of an unknown kind reaches the observer as unknown and the connection stays open", async () => {

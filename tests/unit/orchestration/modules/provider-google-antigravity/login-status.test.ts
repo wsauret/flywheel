@@ -93,10 +93,11 @@ describe("what a request tells about a Google Antigravity login", () => {
 
 describe("the Google Antigravity section of /doctor", () => {
   test("names the engine against its qualified version, each login folder, its token store and last observation, and states that token presence is not checked", async () => {
-    const { home, authDir, observations, a } = await twoAccounts()
+    const { home, authDir, observations, a, b } = await twoAccounts()
     const engine = engineFile(home)
     observations.recordTokenStoreObservation(a.configDir, { fileStorageReason: "no D-Bus session bus detected", keyringFailures: [] })
     observations.recordRequest(a.configDir, "served")
+    observations.recordTokenStoreObservation(b.configDir, { keyringFailures: ["credential-manager-unavailable"] })
 
     const report = await antigravityLoginHealth(antigravityLogins(authDir), observations, { enginePath: () => engine.path, pinned: engine.pinned })
 
@@ -105,6 +106,7 @@ describe("the Google Antigravity section of /doctor", () => {
     expect(report.lines).toContain("a@example.com: logged in, as far as this process observed")
     expect(report.lines).toContain(`a@example.com login folder: ${a.configDir}. Token store: a file in the login's private home; last observation: file storage, because no D-Bus session bus detected. Token presence: not checked (Flywheel reads no Antigravity credential). Last request in this process: served.`)
     expect(report.lines.filter((line) => line.startsWith("b@example.com login folder:"))).toHaveLength(1)
+    expect(report.lines.find((line) => line.startsWith("b@example.com login folder:"))).toContain("last observation: file storage, because the OS credential manager is unavailable.")
   })
 
   test("needs attention for an engine of another version, a missing engine, a refused login, and a keyring that an engine reached", async () => {

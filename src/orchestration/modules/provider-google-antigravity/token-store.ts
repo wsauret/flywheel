@@ -148,12 +148,19 @@ export function tokenStoreObservation(logLines: readonly string[]): TokenStoreOb
   return { ...(fileStorageReason === undefined ? {} : { fileStorageReason }), keyringFailures }
 }
 
+/** The kinds of keyring call in `observation` that reached an OS store, once each. An OS credential manager that is
+ *  unavailable is no reach: agy reached no OS store and kept its secret in a file of the private home (a Windows
+ *  logon with no Credential Manager, such as SSH). */
+export function reachedKeyringKinds(observation: TokenStoreObservation): readonly TokenStoreObservation["keyringFailures"][number][] {
+  return [...new Set(observation.keyringFailures.filter((kind) => kind !== "credential-manager-unavailable"))]
+}
+
 /** The failure of an engine whose log shows a keyring call that failed or waited, which the prepared token store
  *  makes impossible unless it was removed or changed while the engine ran; nothing when the log shows none. Records
  *  one warning per failed engine, with the failure kinds only. */
 export function keychainReachedFailure(observation: TokenStoreObservation): TokenStoreUnavailableError | undefined {
-  if (observation.keyringFailures.length === 0) return undefined
-  const kinds = [...new Set(observation.keyringFailures)]
-  log.warn("Google Antigravity engine reached a keyring", { kinds, count: observation.keyringFailures.length })
+  const kinds = reachedKeyringKinds(observation)
+  if (kinds.length === 0) return undefined
+  log.warn("Google Antigravity engine reached a keyring", { kinds })
   return new TokenStoreUnavailableError("keychain-reached", `The Google Antigravity engine reached a keyring that it must not use (${kinds.join(", ")}).`)
 }
