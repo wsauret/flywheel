@@ -1,0 +1,36 @@
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 339-340
+src/infra/llm/model-catalog-resolution.ts
+  h_4b47e9e4a8b456 6,228-231,429-430,487-498
+src/infra/llm/provider-model-info.ts
+  h_4b47e9e4a8b456 135-148
+src/orchestration/modules/provider-google-antigravity/catalog.ts
+  h_4b47e9e4a8b456 1-293
+src/orchestration/modules/provider-google-antigravity/context-limits.ts
+  h_4b47e9e4a8b456 1-40
+src/orchestration/modules/provider-google-antigravity/model-identity.ts
+  h_4b47e9e4a8b456 1-19
+tests/unit/infra/llm/model-listing-vertex.test.ts
+  h_4b47e9e4a8b456 1-88
+tests/unit/infra/llm/model-listing.test.ts
+  h_4b47e9e4a8b456 157
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 47
+tests/unit/orchestration/app-service/model-catalog-auth-eligibility.test.ts
+  h_4b47e9e4a8b456 15,18,396
+tests/unit/orchestration/app-service/model-catalog-chatgpt-login.test.ts
+  h_4b47e9e4a8b456 1-218
+tests/unit/orchestration/modules/provider-google-antigravity/catalog.test.ts
+  h_4b47e9e4a8b456 1-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "362a13f501998669b43de6fabfa2afa1c07e54f4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
