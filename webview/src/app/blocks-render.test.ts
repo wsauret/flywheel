@@ -83,8 +83,8 @@ describe("running work reads as running", () => {
       [{ status: "paused", pausedBy: "agent" }, "‖", "Interrupted by the parent"],
       [{ status: "paused", pausedBy: "runtime" }, "‖", "Interrupted by the runtime"],
       [{ status: "interrupted" }, "‖", "Interrupted"],
-      [{ status: "stopped" }, "–", "Stopped"],
-      [{ status: "cancelled" }, "–", "Canceled"],
+      [{ status: "stopped" }, "–", "Canceled"],
+      [{ status: "cancelled" }, "–", "Canceled by the parent"],
     ] as const
     for (const [state, glyph, sentence] of cases) {
       const html = renderBlock({ ...base, ...state })
@@ -276,7 +276,7 @@ describe("running work reads as running", () => {
     }
   })
 
-  test("a subagent a person stopped reads Stopped, in the Canceled tone, not as an error", () => {
+  test("a subagent a person canceled reads Canceled, apart from one its parent canceled, not as an error", () => {
     const card = (status: "stopped" | "cancelled") => renderBlock({
       kind: "agentGroup",
       id: "agent-1",
@@ -289,9 +289,8 @@ describe("running work reads as running", () => {
       totalToolCount: 0,
       timestamp: Date.now(),
     })
-    assert.match(textOf(card("stopped")), /–Stopped/)
-    assert.match(textOf(card("cancelled")), /–Canceled/)
-    assert.doesNotMatch(card("stopped"), /Canceled/)
+    assert.match(textOf(card("stopped")), /–Canceled$/)
+    assert.match(textOf(card("cancelled")), /–Canceled by the parent$/)
   })
 
   test("a linked subagent card shows the child's current model and effort", () => {
