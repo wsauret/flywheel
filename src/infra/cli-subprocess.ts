@@ -2,6 +2,8 @@ import { existsSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import type { ExecutableRole } from "./executable-roles.js"
+
 /** Whether `execPath` runs as Bun rather than as a packaged Flywheel build:
  *  a Bun executable, or this process's own executable started with
  *  `BUN_BE_BUN=1`, which makes a packaged binary act as the Bun it embeds and
@@ -11,6 +13,16 @@ import { fileURLToPath } from "node:url"
 export function runsThroughBun(execPath: string, current: Pick<NodeJS.Process, "execPath" | "env"> = process): boolean {
   const executable = basename(execPath.replaceAll("\\", "/")).toLowerCase()
   return executable === "bun" || executable === "bun.exe" || (execPath === current.execPath && current.env.BUN_BE_BUN === "1")
+}
+
+/** The argv that starts this executable in an internal `role`. A source run
+ *  starts it through the source entry, which holds the snapshot of a dev
+ *  service that the role runs from (ARCH-DISTRIBUTION-030); a packaged binary
+ *  re-enters itself with the role marker. */
+export function executableRoleCommand(role: ExecutableRole): readonly string[] {
+  return runsThroughBun(process.execPath)
+    ? [process.execPath, fileURLToPath(new URL("../../scripts/source-cli.ts", import.meta.url)), role]
+    : [process.execPath, role]
 }
 
 /** The serving lane a process belongs to. A source checkout serves beside the

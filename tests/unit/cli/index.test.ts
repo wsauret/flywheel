@@ -77,8 +77,9 @@ describe("internal roles", () => {
   // Every Flywheel process starts one guardian, and every open project one
   // command supervisor. `effect/Schema` reaches most of Effect, which cost
   // each of them about 14 MB of resident memory before it ran any code.
-  test("the guardian and command supervisor roles load no Effect Schema when they start", async () => {
-    for (const role of ["process-guardian.ts", "owned-command-supervisor.ts"]) {
+  // The Antigravity gate hook client starts once per engine model step.
+  test("the guardian, command supervisor, and gate hook roles load no Effect Schema when they start", async () => {
+    for (const role of ["process-guardian.ts", "owned-command-supervisor.ts", "antigravity-gate-hook.ts"]) {
       const entry = fileURLToPath(new URL(`../../../src/infra/${role}`, import.meta.url))
       const bundle = await Bun.build({ entrypoints: [entry], target: "bun", metafile: true })
       const inputs = bundle.metafile?.inputs ?? {}

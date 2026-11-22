@@ -6,6 +6,7 @@ export const EXECUTABLE_ROLES = {
   binaryInstall: "--internal-role=binary-install",
   projectExecutor: "--internal-role=project-executor",
   mutationGit: "--internal-role=mutation-git",
+  antigravityGate: "--internal-role=antigravity-gate",
 } as const
 
 export type ExecutableRole = typeof EXECUTABLE_ROLES[keyof typeof EXECUTABLE_ROLES]

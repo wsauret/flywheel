@@ -23,6 +23,10 @@ const internalRoles = {
     const { runBinaryInstall } = await import("./binary-install.js")
     process.exit(await runBinaryInstall())
   },
+  [EXECUTABLE_ROLES.antigravityGate]: async () => {
+    const { runGateHookMain } = await import("../infra/antigravity-gate-hook.js")
+    await runGateHookMain(process.argv)
+  },
 } satisfies { [Role in ExecutableRole]: () => Promise<void> }
 
 /** Selects this executable's role before loading application composition.

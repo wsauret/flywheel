@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto"
-import { fileURLToPath } from "node:url"
 
-import { runsThroughBun } from "./cli-subprocess.js"
+import { executableRoleCommand } from "./cli-subprocess.js"
 import { readOutcomeRecord, type OutcomeRecordRead } from "./command-handover.js"
 import { unmarkedEnvironment } from "./container-mark.js"
 import { errorMessage } from "./error-message.js"
@@ -181,14 +180,9 @@ export type ProcessSupervisorOptions = ProcessSupervisorTuning & (
   | { readonly lease: GuardianLease }
 )
 
-/** The one argv that starts this executable's guardian. A source run starts
- *  it through the source entry, which holds the snapshot of a dev service that
- *  the guardian runs from (ARCH-DISTRIBUTION-030); a packaged binary re-enters
- *  itself with the role marker. */
+/** The one argv that starts this executable's guardian. */
 export function guardianCommand(): readonly string[] {
-  return runsThroughBun(process.execPath)
-    ? [process.execPath, fileURLToPath(new URL("../../scripts/source-cli.ts", import.meta.url)), EXECUTABLE_ROLES.guardian]
-    : [process.execPath, EXECUTABLE_ROLES.guardian]
+  return executableRoleCommand(EXECUTABLE_ROLES.guardian)
 }
 
 /** The outcome of ending what an owner still holds. Settlement is proven, never
