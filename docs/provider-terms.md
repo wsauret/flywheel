@@ -256,7 +256,7 @@ Google's [ACP page](https://antigravity.google/docs/ide/extensions/acp) says: "A
 | Practice | What Flywheel does | Where |
 |---|---|---|
 | Sign-in | The CLI runs Google's own sign-in and keeps the token in a private home for each login. Flywheel never reads, stores, or sends the token. | PI-MODEL-094 |
-| Transport | Every model request goes through the CLI. Flywheel calls no Google endpoint itself, also not for quota or model lists. | ARCH-PROVIDERS-005, ARCH-PROVIDERS-086 |
+| Transport | Every model request goes through the CLI. Flywheel calls no Google endpoint itself, also not for quota or model lists. | ARCH-PROVIDERS-005, ARCH-PROVIDERS-086, ARCH-PROVIDERS-087 |
 | Identity | Flywheel names itself as the ACP client. It never names itself as an editor that Google lists, so it gets Gemini models only. | PI-MODEL-094 |
 | Tools | The CLI runs a documented custom agent with its default tools off. Flywheel's tools reach it over MCP, and Flywheel runs them. | ARCH-PROVIDERS-086 |
 | Accounts | A request never moves from one Antigravity account to another. | PI-MODEL-094 |

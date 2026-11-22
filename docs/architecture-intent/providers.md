@@ -31,7 +31,7 @@ Because: A read must not lose a credential that another release or provider wrot
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
-A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. The one request outside admission is the Antigravity engine's title request, which the engine sends once per engine session with only fixed text that Flywheel writes. An engine that cannot start fails its request as an unavailable route.
+A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. Outside admission, the Antigravity engine sends only its title request, once per engine session and at most twice more after a failure, each with fixed text that Flywheel writes. An engine that cannot start fails its request as an unavailable route.
 Because: A subprocess that decides its own retries, timeouts, continuation, or cancellation separates a stream from its consumer and makes a second owner of each.
 Not: A provider subprocess that owns its stream.
 
@@ -58,8 +58,13 @@ Not: A hook or proxy that writes a model reply.
 
 ## ARCH-PROVIDERS-086: An Antigravity login runs one engine per chat tree, with one session per agent
 
-An Antigravity login runs one engine process for each chat tree, and each agent of the tree is one engine session. The engine runs only while a client shows a session of the tree that needs it. Flywheel admits each model step through the engine's documented step hook, which fails closed, and cancels a step as soon as the engine starts a retry of its own. The route's context window ends below the engine's own compaction threshold, so the engine never compacts.
+An Antigravity login runs one engine process for each chat tree, and each agent of the tree is one engine session. The engine runs only while a client shows a session of the tree that needs it. Each agent's system text travels in its own session, never in a file that the login shares.
 Not: One engine process for each agent, or the shared-host dispatcher of the Claude engine.
+
+## ARCH-PROVIDERS-087: Flywheel admits every Antigravity engine step
+
+Flywheel admits each model step of an Antigravity engine through the engine's documented step hook, and proves the hook at the start of each engine session before any real content. A step that runs without admission because the hook failed, or that starts an engine retry, is cancelled at once and fails its request. The route's context window ends below the engine's own compaction threshold, so the engine never compacts.
+Because: The engine proceeds when its hook process fails, and it retries and compacts on its own.
 
 ## ARCH-PROVIDERS-073: Each host agent keeps its own definition and view
 
