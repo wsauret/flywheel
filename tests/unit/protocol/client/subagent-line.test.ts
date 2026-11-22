@@ -17,8 +17,8 @@ describe("subagent agent line", () => {
     ["completed", "done", "✓", "done", { kind: "summary", text: "Fixed the issue" }],
     ["partial", "partial", "◐", "warning", { kind: "state", text: "Partial: Fixed the issue" }],
     ["interrupted", "parked", "‖", "warning", { kind: "state", text: "Interrupted" }],
-    ["stopped", "skipped", "–", "muted", { kind: "reason", text: "Stopped" }],
-    ["cancelled", "skipped", "–", "muted", { kind: "reason", text: "Canceled" }],
+    ["stopped", "skipped", "–", "muted", { kind: "reason", text: "Canceled" }],
+    ["cancelled", "skipped", "–", "muted", { kind: "reason", text: "Canceled by the parent" }],
   ] as const)("maps %s with its elapsed time", (status, state, glyph, tone, detail) => {
     const line = subagentLine({ ...base, status, activity: { name: "Read", detail: "a.ts" }, summary: "Fixed the issue" }, undefined, 8000)
     expect(line).toEqual({ state, glyph, tone, time: "2s", ...(detail === undefined ? {} : { detail }) })
