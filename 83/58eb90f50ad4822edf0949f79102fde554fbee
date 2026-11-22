@@ -1,0 +1,34 @@
+src/orchestration/agent-runtime/llm/block-origin.ts
+  h_4b47e9e4a8b456 1-30
+src/orchestration/agent-runtime/llm/conversions/anthropic-messages.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 87-89,115,119
+src/orchestration/modules/provider-claude-agent-sdk/cli-view.ts
+  h_4b47e9e4a8b456 5-6
+src/orchestration/modules/provider-google-antigravity/history-text.ts
+  h_4b47e9e4a8b456 1-121
+src/orchestration/modules/provider-google-antigravity/request-plan.ts
+  h_4b47e9e4a8b456 1-177
+src/orchestration/modules/provider-google-antigravity/session-view.ts
+  h_4b47e9e4a8b456 1-59
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 276
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 16-17
+tests/unit/orchestration/modules/provider-google-antigravity/history-text.test.ts
+  h_4b47e9e4a8b456 1-100
+tests/unit/orchestration/modules/provider-google-antigravity/request-plan.test.ts
+  h_4b47e9e4a8b456 1-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8358eb90f50ad4822edf0949f79102fde554fbee",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
