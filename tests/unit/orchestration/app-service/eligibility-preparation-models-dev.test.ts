@@ -44,6 +44,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
           ...definition,
           dynamicCatalog: {
             ...definition.dynamicCatalog,
+            membership: undefined,
             probeAccess: async () => { probes += 1; return "completed" },
           },
         })),

@@ -132,6 +132,20 @@ export function narrowContextWindow(info: ModelInfo, limit: number): ModelInfo {
   });
 }
 
+/** The route's metadata bounded by the most context `cap` that the route serves: a stated window larger than the cap
+ *  is lowered to it, and a window that neither the provider nor the shared catalog stated, which holds the runtime
+ *  default, is the cap. The route then owns each window it set. */
+export function capContextWindow(info: ModelInfo, cap: number): ModelInfo {
+  const capped = (["contextLimit", "totalContextLimit"] as const).filter((field) => fieldSource(info, field) === 2 || (info[field] ?? 0) > cap);
+  if (capped.length === 0) return info;
+  return Object.freeze({
+    ...info,
+    contextLimit: capped.includes("contextLimit") ? cap : info.contextLimit,
+    ...(capped.includes("totalContextLimit") ? { totalContextLimit: cap } : {}),
+    ...(info.providerFields === undefined ? {} : { providerFields: Object.freeze([...new Set([...info.providerFields, ...capped])]) }),
+  });
+}
+
 type MutableModelInfo = { -readonly [Key in keyof ModelInfo]: ModelInfo[Key] };
 
 function copyField(target: MutableModelInfo, source: ModelInfo, field: ProviderModelInfoField): void {

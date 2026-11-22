@@ -3,7 +3,7 @@ import { DebugLog } from "../debug-log.js";
 import { canonicalCatalogModelId, canonicalModelId, preferredWireModelId, type CatalogDataUse } from "./model-id.js";
 import type { ModelFamily } from "./model-family.js";
 import type { ModelInfo } from "./models.js";
-import { enrichProviderModelInfo, providerModelInfo } from "./provider-model-info.js";
+import { capContextWindow, enrichProviderModelInfo, providerModelInfo } from "./provider-model-info.js";
 export interface CatalogModelOffering {
   readonly wireModelId: string;
   readonly metadata: CatalogJsonValue;
@@ -225,6 +225,10 @@ export interface ModelCatalogContribution {
    *  provider shows no model when it has neither a current listing nor valid saved first-party rows. Absent, models.dev
    *  rows stand in for a listing that fails. */
   readonly membership?: "first-party";
+  /** The most context, in tokens, that the route serves on the wire `wireModelId`, such as a window below an engine's
+   *  own compaction, or undefined for no cap. It bounds each listed row after the models.dev join: a smaller joined
+   *  window stays, a larger one is lowered to the cap, and a row that states no window takes the cap. */
+  readonly contextCap?: (wireModelId: string) => number | undefined;
 }
 
 /** The models.dev rows that may stand as a provider's catalog when its own listing has none. Enrichment of listed
@@ -422,7 +426,8 @@ export function resolveModelCatalog(options: ResolveModelCatalogOptions): Resolv
     ? undefined
     : validateCanonicalRows(options.canonicalFallback, options.contribution.limits);
   if (live?.kind === "valid" && live.rows.length > 0) {
-    const enriched = fallback?.kind === "valid" ? enrichCatalogRows(live.rows, fallback.rows) : live.rows;
+    const joined = fallback?.kind === "valid" ? enrichCatalogRows(live.rows, fallback.rows) : live.rows;
+    const enriched = options.contribution.contextCap === undefined ? joined : capCatalogRows(joined, options.contribution.contextCap);
     const bounded = validateCanonicalRows(enriched, options.contribution.limits);
     return {
       kind: "catalog",
@@ -477,6 +482,18 @@ export function enrichCatalogRows(firstParty: readonly CatalogCanonicalRow[], me
       })),
     });
   }));
+}
+
+function capCatalogRows(rows: readonly CatalogCanonicalRow[], cap: (wireModelId: string) => number | undefined): readonly CatalogCanonicalRow[] {
+  return Object.freeze(rows.map((row) => Object.freeze({
+    modelId: row.modelId,
+    offerings: Object.freeze(row.offerings.map((offering) => {
+      const limit = cap(offering.wireModelId);
+      return limit === undefined || offering.resolvedMetadata === undefined
+        ? offering
+        : Object.freeze({ ...offering, resolvedMetadata: capContextWindow(offering.resolvedMetadata, limit) });
+    })),
+  })));
 }
 
 function isCanonicalRow(value: unknown): value is CatalogCanonicalRow {

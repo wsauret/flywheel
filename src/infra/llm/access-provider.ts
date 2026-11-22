@@ -336,6 +336,8 @@ type AccessProviderDynamicCatalog = ModelCatalogContribution & {
     /** Marks an account whose usable models.dev rows are access candidates. The listing audits each candidate through
      *  this one probe and persists every conclusive result; a candidate serves only after its probe completed. */
     readonly probeAccess: (input: AccessProviderAccessProbeInput) => Promise<AccessProviderAccessOutcome>;
+    /** An audited catalog offers models.dev rows as access candidates, so its own listing is never its whole lineup. */
+    readonly membership?: undefined;
     /** What the fetch states. Absent, the fetch only validates the credential, and every candidate waits for its
      *  probe. `extends-baseline` is for a listing that states only part of what the login serves: the listed models
      *  serve at once, and only the models.dev rows that the listing does not name wait for their probe (PI-MODEL-065).
