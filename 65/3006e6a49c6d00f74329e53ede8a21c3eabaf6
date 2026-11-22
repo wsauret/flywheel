@@ -1,0 +1,44 @@
+package.json
+  h_4b47e9e4a8b456 28
+scripts/readiness-login.ts
+  h_4b47e9e4a8b456 2-6,16-17,21-22,24,26-33,48,50-51,56,65-73,136-145,150,163,193,195,198,218,233-235,237,243,247,255,257,271-276,283-289,291-294,309,311-316,319-320,330
+scripts/readiness-plan.ts
+  h_4b47e9e4a8b456 28-31,76,106-108,115-116,118-119,121-130,133-140,148,154-156,163
+scripts/readiness.ts
+  h_4b47e9e4a8b456 11,15,32-33,36-61,114,117,162,165-166,170-171,175-179,211,214,219,222,225-228,231,235-238,240,242-246,249,252-253,256,280-286,289,327,329-332,344-347,349,351
+scripts/test-integration.ts
+  h_4b47e9e4a8b456 1,17-20,29-31,47,54,60
+src/infra/diagnostics-registry.ts
+  h_4b47e9e4a8b456 198-199,206-207
+src/orchestration/modules/development/definitions/skills/flywheel-uat/SKILL.md
+  h_4b47e9e4a8b456 17-18
+src/orchestration/modules/provider-google-antigravity/acp/schema.ts
+  h_4b47e9e4a8b456 110-114,135
+src/orchestration/modules/provider-google-antigravity/bridge.ts
+  h_4b47e9e4a8b456 390-397,399,402
+src/orchestration/modules/provider-google-antigravity/engine-process.ts
+  h_4b47e9e4a8b456 232-237,473-474,478,484
+src/orchestration/modules/provider-google-antigravity/login.ts
+  h_4b47e9e4a8b456 13,48-55,296-297,300,309-323
+tests/integration/providers/antigravity-subscription-real.test.ts
+  h_4b47e9e4a8b456 1-293
+tests/unit/orchestration/modules/provider-google-antigravity/_fake-agy.ts
+  h_4b47e9e4a8b456 58-59,62,152-155
+tests/unit/orchestration/modules/provider-google-antigravity/login.test.ts
+  h_4b47e9e4a8b456 81-96
+tests/unit/scripts/readiness-login.test.ts
+  h_4b47e9e4a8b456 5,99-110,115,127,176-184,187,195,197-202,208
+tests/unit/scripts/readiness.test.ts
+  h_4b47e9e4a8b456 110,211,324,344-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "653006e6a49c6d00f74329e53ede8a21c3eabaf6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
