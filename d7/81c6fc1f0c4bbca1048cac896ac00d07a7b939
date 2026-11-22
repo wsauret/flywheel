@@ -1,0 +1,34 @@
+src/cli/runtime-attach.ts
+  h_4b47e9e4a8b456 566-568
+src/infra/persistent-subprocess.ts
+  h_4b47e9e4a8b456 25,90,108-115,205,252-253,259-263
+src/infra/process-container.ts
+  h_4b47e9e4a8b456 415-419,421
+src/infra/windows-outside-jobs.ts
+  h_4b47e9e4a8b456 1-321
+src/infra/windows-process-api.ts
+  h_4b47e9e4a8b456 66-85,117-123,134-138,205-206,219-221,226,386-422
+tests/unit/infra/_owned-subprocess-platform-fixtures.ts
+  h_4b47e9e4a8b456 76-77
+tests/unit/infra/container-mark.test.ts
+  h_4b47e9e4a8b456 304
+tests/unit/infra/persistent-subprocess.test.ts
+  h_4b47e9e4a8b456 8,45,446-486,499
+tests/unit/infra/process-container.test.ts
+  h_4b47e9e4a8b456 359-360
+tests/unit/infra/windows-outside-jobs.test.ts
+  h_4b47e9e4a8b456 1-165
+tests/unit/infra/windows-process-api.test.ts
+  h_4b47e9e4a8b456 44-50,55,72-80,112-115,128,206-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d781c6fc1f0c4bbca1048cac896ac00d07a7b939",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
