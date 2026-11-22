@@ -1,0 +1,219 @@
+import { LlmStreamError, OutputLengthExceededError } from "../../agent-runtime/llm/errors.js";
+import type { StreamLiveness } from "../../agent-runtime/llm/stream-liveness.js";
+import type { CompletedStopReason, ProviderStreamEvent, ToolCall } from "../../agent-runtime/llm/types.js";
+import type { AcpCloseReason } from "./acp/connection.js";
+import type { AcpPromptResult, AcpSessionUpdate, AcpUsage } from "./acp/schema.js";
+import { engineFailure, engineNoticeDetail, engineStoppedFailure } from "./errors.js";
+
+type ModelFrame = Extract<AcpSessionUpdate, { readonly sessionUpdate: "agent_message_chunk" | "agent_thought_chunk" | "tool_call" }>;
+
+/** The updates that show the model working on the session's current step. Everything else agy sends (the title,
+ *  config and command lists, context occupancy, the echo of a user message, and the status of a tool call that
+ *  Flywheel runs) is engine chatter that says nothing about the model. */
+function isModelFrame(update: AcpSessionUpdate): update is ModelFrame {
+  return update.sessionUpdate === "agent_message_chunk" || update.sessionUpdate === "agent_thought_chunk" || update.sessionUpdate === "tool_call";
+}
+
+/** One call of Flywheel's MCP tool server, as agy sent it: the tool's name and the arguments, without agy's own
+ *  `toolSummary`, which agy strips before the call. */
+export interface McpToolCall {
+  readonly name: string;
+  readonly arguments: ToolCall["input"];
+}
+
+export interface RequestStreamOptions {
+  /** Unique per Flywheel request; prefixes the request's block keys. */
+  readonly requestId: string;
+  readonly liveness: Pick<StreamLiveness, "preStream" | "frame" | "begin" | "append" | "complete">;
+  /** The request's dispatch observation (`StreamOptions.onDispatch`). */
+  readonly onDispatch?: () => void | Promise<void>;
+  /** The context occupancy that agy reports (`usage_update.used`), in tokens. It is no usage of the request. */
+  readonly onOccupancy: (used: number) => void;
+}
+
+/**
+ * The events of one Flywheel request on one agy session. The bridge feeds it the session's updates, the MCP call that
+ * agy parks for the session, and the prompt's result, in arrival order, and yields the events each call returns. A
+ * request settles once, at its single `tool_use` or at the end of the prompt; inputs after that are not its own.
+ */
+export interface RequestStream {
+  /** The bridge sent the request's work to agy (a prompt or a delivered tool result). */
+  released(): Promise<void>;
+  update(update: AcpSessionUpdate): readonly ProviderStreamEvent[];
+  toolCall(call: McpToolCall): readonly ProviderStreamEvent[];
+  /** The end of the prompt. Throws the typed failure of a prompt that did not complete. */
+  promptEnded(result: AcpPromptResult): readonly ProviderStreamEvent[];
+  /** The failure of the request when agy's connection ended before it settled. */
+  connectionEnded(reason: AcpCloseReason): Error;
+  /** Whether the request reported its usage. A request that settles at a call of an open prompt cannot: agy reports
+   *  one aggregate for the whole prompt, on the request that ends it, and none for a failed prompt. */
+  readonly usageReported: boolean;
+}
+
+interface OpenBlock {
+  readonly kind: "text" | "thinking";
+  readonly key: string;
+}
+
+export function createRequestStream(options: RequestStreamOptions): RequestStream {
+  const { liveness } = options;
+  let blockOrdinal = 0;
+  let block: OpenBlock | undefined;
+  let text = "";
+  /** The text of the open thinking block, which `thinking_complete` carries. */
+  let thought = "";
+  let responded = false;
+  let settled = false;
+  let usageReported = false;
+  /** A text chunk of the form of an agy failure notice, not yet decided. It is the failure when the prompt ends
+   *  without usage, which agy reports for no failed prompt. It is model text when another model frame follows or the
+   *  prompt ends with usage, and only then does it count as a model frame. */
+  let notice: string | undefined;
+  let revealedCallId: string | undefined;
+  let parked: McpToolCall | undefined;
+
+  const closeBlock = (): ProviderStreamEvent[] => {
+    const open = block;
+    if (open === undefined) return [];
+    block = undefined;
+    if (open.kind === "text") return [{ kind: "text_complete", blockKey: open.key }];
+    liveness.complete(open.key);
+    return thought === "" ? [] : [{ kind: "thinking_complete", thinking: thought, blockKey: open.key }];
+  };
+
+  const append = (kind: OpenBlock["kind"], delta: string): ProviderStreamEvent[] => {
+    const events = block?.kind === kind ? [] : closeBlock();
+    if (block === undefined) {
+      block = { kind, key: `${options.requestId}:${kind}:${blockOrdinal++}` };
+      if (kind === "thinking") {
+        thought = "";
+        liveness.begin(block.key);
+      }
+    }
+    if (kind === "thinking") {
+      thought += delta;
+      liveness.append(delta);
+      events.push({ kind: "thinking_delta", text: delta, blockKey: block.key });
+    } else {
+      text += delta;
+      events.push({ kind: "text_delta", text: delta, blockKey: block.key });
+    }
+    return events;
+  };
+
+  /** A frame of the model, which also releases a held notice as the model's text. */
+  const modelFrame = (): ProviderStreamEvent[] => {
+    liveness.frame();
+    const events: ProviderStreamEvent[] = responded ? [] : [{ kind: "provider_response_started" }];
+    responded = true;
+    if (notice !== undefined) {
+      const held = notice;
+      notice = undefined;
+      events.push(...append("text", held));
+    }
+    return events;
+  };
+
+  const releaseNotice = (): ProviderStreamEvent[] => notice === undefined ? [] : modelFrame();
+
+  /** The request's single call, once agy revealed it over ACP and parked it over MCP, in either order. */
+  const settleCall = (): ProviderStreamEvent[] => {
+    const toolCallId = revealedCallId;
+    if (toolCallId === undefined || parked === undefined) return [];
+    const { name, arguments: input } = parked;
+    settled = true;
+    return [
+      ...releaseNotice(),
+      ...closeBlock(),
+      { kind: "tool_input_start", toolUseId: toolCallId, name },
+      { kind: "tool_input_delta", toolUseId: toolCallId, partialJson: JSON.stringify(input) },
+      { kind: "tool_use", toolCall: { id: toolCallId, name, input } },
+      { kind: "done", stopReason: "tool_use" },
+    ];
+  };
+
+  const done = (stopReason: CompletedStopReason, usage: AcpUsage | undefined): ProviderStreamEvent[] => {
+    const events = [...releaseNotice(), ...closeBlock()];
+    if (usage !== undefined) {
+      usageReported = true;
+      events.push({
+        kind: "usage",
+        final: true,
+        inputTokens: usage.inputTokens,
+        // agy's `outputTokens` is the Gemini response's total less its prompt, which holds the thought tokens, so it
+        // is Flywheel's output with reasoning included (measured on agy 1.5.14).
+        outputTokens: usage.outputTokens,
+        cacheReadTokens: usage.cachedReadTokens,
+        cacheCreateTokens: usage.cachedWriteTokens,
+        reasoningTokens: usage.thoughtTokens,
+      });
+    }
+    events.push({ kind: "done", stopReason });
+    return events;
+  };
+
+  return {
+    async released() {
+      liveness.preStream();
+      await options.onDispatch?.();
+    },
+    update(update) {
+      // Occupancy belongs to the session, also after the request settled at its call.
+      if (update.sessionUpdate === "usage_update") {
+        options.onOccupancy(update.used);
+        return [];
+      }
+      if (settled) return [];
+      // A call that agy runs itself, such as its own `manage_task`, ends without an MCP call of Flywheel's server.
+      if (update.sessionUpdate === "tool_call_update") {
+        if (revealedCallId === update.toolCallId && parked === undefined && (update.status === "completed" || update.status === "failed")) revealedCallId = undefined;
+        return [];
+      }
+      if (!isModelFrame(update)) return [];
+      if (update.sessionUpdate === "agent_message_chunk" && engineNoticeDetail(update.content.text ?? "") !== undefined) {
+        const events = releaseNotice();
+        notice = update.content.text;
+        return events;
+      }
+      const events = modelFrame();
+      switch (update.sessionUpdate) {
+        case "agent_message_chunk":
+          if (update.content.text) events.push(...append("text", update.content.text));
+          return events;
+        case "agent_thought_chunk":
+          if (update.content.text) events.push(...append("thinking", update.content.text));
+          return events;
+        case "tool_call":
+          revealedCallId = update.toolCallId;
+          return [...events, ...settleCall()];
+      }
+    },
+    toolCall(call) {
+      if (settled) return [];
+      parked = call;
+      return settleCall();
+    },
+    promptEnded(result) {
+      if (settled) return [];
+      settled = true;
+      if (notice !== undefined && result.usage === undefined) throw engineFailure(engineNoticeDetail(notice) ?? notice);
+      switch (result.stopReason) {
+        case "end_turn": return done("end_turn", result.usage);
+        // A refusal of the content completes the turn, as a Gemini safety stop does on the native route.
+        case "refusal": return done("content_filter", result.usage);
+        case "max_tokens":
+          releaseNotice();
+          throw new OutputLengthExceededError("Response truncated: max_tokens", text);
+        case "max_turn_requests": throw new LlmStreamError("Google Antigravity ended the prompt at its turn limit", "unknown");
+        case "cancelled": throw new LlmStreamError("Google Antigravity cancelled the prompt", "transient");
+      }
+    },
+    connectionEnded(reason) {
+      settled = true;
+      return engineStoppedFailure(reason, responded);
+    },
+    get usageReported() {
+      return usageReported;
+    },
+  };
+}
