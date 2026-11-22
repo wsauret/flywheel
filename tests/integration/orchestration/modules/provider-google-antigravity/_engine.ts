@@ -37,19 +37,19 @@ export interface EngineHarness {
 }
 
 /** Opens the harness in `root`, an empty directory that the test removes. Unix socket paths are short, so `root` should
- *  be too. */
-export function openEngineHarness(root: string): EngineHarness {
+ *  be too. `fake` configures the fake Gemini host. */
+export function openEngineHarness(root: string, fake: Parameters<typeof openFakeGemini>[0] = {}): EngineHarness {
   const base = realpathSync(root)
   const supervisor = createProcessSupervisor({ guardianCommand: guardianCommand() })
   const launcher = createLauncherScope(supervisor)
   const run = ownedCommandRunner(launcher)
-  const fake = openFakeGemini()
+  const host = openFakeGemini(fake)
   const toolListener = openToolListener()
   const gates: StepGate[] = []
   const engines: EngineProcess[] = []
   const person = userInfo()
   return {
-    fake,
+    fake: host,
     run,
     async login(name) {
       const loginDir = join(base, name)
@@ -68,7 +68,7 @@ export function openEngineHarness(root: string): EngineHarness {
           const engine = await launchEngine({
             loginDir,
             launcher,
-            host: { account: { home: person.homedir, user: person.username }, platform: process.platform, hostEnvironment: process.env, testEnvironment: { GOOGLE_GEMINI_BASE_URL: fake.url, GEMINI_API_KEY: "flywheel-fake-key" } },
+            host: { account: { home: person.homedir, user: person.username }, platform: process.platform, hostEnvironment: process.env, testEnvironment: { GOOGLE_GEMINI_BASE_URL: host.url, GEMINI_API_KEY: "flywheel-fake-key" } },
             gateHook: gateHookHandler({ address, loginGateId: gateId }),
             toolListener,
             tools: options.tools ?? [ECHO_TOOL],
@@ -92,7 +92,7 @@ export function openEngineHarness(root: string): EngineHarness {
       await Promise.all(engines.map((engine) => engine.close("test-end")))
       await toolListener.close()
       await Promise.all(gates.map((gate) => gate.dispose()))
-      await fake.close()
+      await host.close()
       await launcher.close()
       await supervisor.dispose()
     },

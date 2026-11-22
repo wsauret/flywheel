@@ -1,9 +1,7 @@
-import { Log } from "../../../infra/log.js"
+import { DebugLog } from "../../../infra/debug-log.js"
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
 import type { EngineProcess } from "./engine-process.js"
 import type { McpToolDeclaration } from "./tool-projection.js"
-
-const log = Log.create({ service: "provider-google-antigravity" })
 
 /** What decides which engine process serves an agent: its chat tree and its login, nothing else (ARCH-PROVIDERS-086,
  *  plan P2). Every value in which sibling agents differ goes where agy reads it per session or per request, so no
@@ -157,7 +155,7 @@ export function createEngineRegistry<E extends RegisteredEngine>(launch: (place:
     await engine.whenIdle()
     // The process ended, or another replacement, a release, a logout, or a drain already closed it, meanwhile.
     if (slot.process !== current || current.closing) return
-    log.info("Google Antigravity engine replaced", { processId: engine.processId, reason: "tools", added: added.length })
+    DebugLog.record({ type: "provider.antigravity.process.replaced", payload: { processId: engine.processId, reason: "tools", added: added.length } })
     void close(current, "replaced", false)
     if (slot.leases > 0 && !draining) await start(slot)
   }

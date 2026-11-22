@@ -107,7 +107,7 @@ export type RequestInputs = Pick<AgentLoopOptions,
   | "client" | "initialPlannedAttempt" | "initialInteractionProfile" | "tools" | "systemPrompt" | "turnReminders" | "onContextReset"
   | "initialRequestContext" | "executionCwd" | "seed" | "persistence" | "reasoningEffort"
   | "providerOptions" | "cacheRetention" | "providerSessionKey" | "promptCacheKey" | "sessionId" | "conversationId"
-  | "sessionEventStore" | "sessionEventReader">;
+  | "sessionEventStore" | "sessionEventReader" | "artifactScopeId">;
 
 interface AssembledRequestInputs {
   readonly request: RequestInputs;
@@ -755,6 +755,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           providerOptions: options.providerOptions,
           cacheRetention: defaultCacheRetention(options.purpose),
           providerSessionKey: conversation.providerSessionKey,
+          artifactScopeId: conversation.artifactScopeId,
           // A run outside any chat tree is a tree of its own.
           promptCacheKey: treeRoot ?? conversation.providerSessionKey,
           sessionId,

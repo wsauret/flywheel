@@ -37,7 +37,7 @@ export interface ResultArtifactContext {
  * follow the text unchanged. Canonical history keeps `content`; only the engine's copy is cut.
  */
 export async function projectToolResult(content: readonly LlmToolOutputPart[], context: ResultArtifactContext): Promise<readonly LlmToolOutputPart[]> {
-  if (Buffer.byteLength(joinText(content), "utf8") <= TOOL_RESULT_WIRE_BYTES) return content
+  if (fitsEngineWire(content)) return content
   const { savedOutputPath, ...artifacts } = context
   const notice = savedOutputPath === undefined ? undefined : savedOutputNotice(savedOutputPath, context.executionCwd, context.capabilities)
   // Flywheel's cut ends a text part with the notice; parts after that part, such as a budget trailer, stay.
@@ -49,6 +49,11 @@ export async function projectToolResult(content: readonly LlmToolOutputPart[], c
     maxBytes: TOOL_RESULT_WIRE_BYTES,
   })
   return [{ type: "text", text: limited.text }, ...content.filter((part) => part.type === "image")]
+}
+
+/** Whether the engine reads the tool result `content` unchanged (`projectToolResult`). */
+export function fitsEngineWire(content: readonly LlmToolOutputPart[]): boolean {
+  return Buffer.byteLength(joinText(content), "utf8") <= TOOL_RESULT_WIRE_BYTES
 }
 
 function joinText(content: readonly LlmToolOutputPart[]): string {

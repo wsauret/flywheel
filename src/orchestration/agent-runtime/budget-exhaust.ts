@@ -93,6 +93,7 @@ interface BudgetExhaustionInput {
   providerSessionKey: string;
   promptCacheKey: string;
   artifactScopeId: string;
+  toolOutputs?: AssistantAttemptInput["toolOutputs"];
   maxLLMCalls: number;
   handoffConfigured: boolean;
   toolContext: ToolContext;
@@ -155,6 +156,7 @@ export async function runBudgetExhaustionTurn(input: BudgetExhaustionInput): Pro
     background: input.background,
     afterToolCall: input.afterToolCall,
     artifactScopeId: input.artifactScopeId,
+    ...(input.toolOutputs ? { toolOutputs: input.toolOutputs } : {}),
     onTurnAssistantMessage: input.onTurnAssistantMessage,
     reserveMessageId: input.reserveMessageId,
     releaseMessageId: input.releaseMessageId,
@@ -197,6 +199,7 @@ interface ExhaustionStreamInput {
   background: AgentLoopOptions["background"];
   afterToolCall: AgentLoopOptions["afterToolCall"];
   artifactScopeId: string;
+  toolOutputs?: AssistantAttemptInput["toolOutputs"];
   onTurnAssistantMessage: AgentLoopOptions["onTurnAssistantMessage"];
   pushAssistant: BudgetExhaustionInput["pushAssistant"];
   pushToolResults(results: ReadonlyArray<ToolResultEntry>): void | Promise<void>;
@@ -252,6 +255,7 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
         onEvent: input.onEvent,
         reserveMessageId: input.reserveMessageId,
         releaseMessageId: input.releaseMessageId,
+        ...(input.toolOutputs ? { toolOutputs: input.toolOutputs } : {}),
       }, execute: async (_candidate, fold) => {
       const executionScope = Scope.forkUnsafe(input.turn.scope, "sequential");
       try {

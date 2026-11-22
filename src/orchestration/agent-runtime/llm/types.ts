@@ -498,7 +498,20 @@ export interface StreamOptions {
   /** How the stream attempt guards a response against reasoning that collapses into repetition. Only the admitted
    *  request's walk sets it (`ServingCandidate.repetitionGuard`); without it the attempt runs unguarded. */
   repetitionGuard?: RepetitionGuard;
+  /** The directory in which the request's tool calls ran, against which a saved-output notice names its file. Only a
+   *  route that cuts a tool result again for its own wire reads it, and every other adapter ignores it. */
+  executionCwd?: string;
+  /** The directory scope of the runtime's saved tool output (`AgentLoopOptions.artifactScopeId`), under which such a
+   *  route saves a full output that the runtime did not save. */
+  artifactScopeId?: string;
+  /** The file to which the runtime's own cut saved the full output of the call `toolUseId`, from the call's recorded
+   *  result, or nothing when the runtime kept the output whole or holds no record of the call. Such a route names this
+   *  file instead of saving a second copy. */
+  savedOutputPath?: (toolUseId: string) => Promise<string | undefined>;
 }
+
+/** The owners of a request's tool output that the agent loop gives every request (`StreamOptions`). */
+export type ToolOutputOwners = Pick<StreamOptions, "executionCwd" | "artifactScopeId" | "savedOutputPath">;
 
 /** The repetition guard of one attempt of the walk. `detect`: the attempt stops a response whose reasoning collapses
  *  into repetition (`DegenerateRepetitionError`), so that the walk can resample it. `reasoning_off`: the last attempt

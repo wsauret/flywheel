@@ -403,7 +403,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       let budgetInterrupted = false;
       try {
         const exhausted = await runBudgetExhaustionTurn({
-          signal: budgetSignal, onEvent, handoffTracker,
+          signal: budgetSignal, onEvent, handoffTracker, toolOutputs: preparation.toolOutputs,
           onLoginWait: lifecycle?.onLoginWait,
           // oxlint-disable-next-line eslint/no-loop-func -- the budget turn awaits every capture before this loop can advance
           captureRequest: async (summaryAttempt) => {

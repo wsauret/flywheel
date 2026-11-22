@@ -24,6 +24,7 @@ import type { ProviderSession } from "./provider-runtime-cache.js";
 import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
 import { openRequestInputs, planRunCapabilities, type RequestInputs } from "./request-inputs.js";
 import { resolveRuntimeConversation } from "./runtime-conversation.js";
+import { toolOutputOwners } from "./tool-output-recovery.js";
 import type { Agent, AgentOptions, RunnableAgentOptions } from "./types.js";
 
 type ResolvedSurface = Awaited<ReturnType<RequestToolSurfaceOwner["resolve"]>>;
@@ -64,7 +65,7 @@ export interface RequestPreparationSinks {
 
 /** What a request's attempt input carries that its candidate and history do not decide. */
 type AttemptValues = Omit<AssistantAttemptInput,
-  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "messageCount" | "estimatedContextTokens" | "imageLimitCut">;
+  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "messageCount" | "estimatedContextTokens" | "imageLimitCut" | "toolOutputs">;
 
 /**
  * The one preparation of a run's requests (R5): the only code that builds request bytes. A send's loop and a
@@ -87,6 +88,8 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
     initialInteractionProfile: inputs.initialInteractionProfile ?? resolveModelInteractionProfile(client.model, client.modelFamily),
     /** The image-limit cut that the run's requests last recorded, which every attempt of every request advances. */
     imageLimitCut: { replaced: 0 } satisfies ImageLimitCutRecord,
+    /** The owners of the tool output of the run's requests, which every request carries (`StreamOptions`). */
+    toolOutputs: toolOutputOwners(inputs),
   };
   const writers = createLoopMessageWriters({
     messages: () => preparation.messages, history: sinks.history, onUserMessage: sinks.onUserMessage, onSystemMessage: sinks.onSystemMessage,
@@ -166,7 +169,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
             ...values,
             messages: outbound.messages, prepareAttempt: requestContext.prepare,
             staleMasking: outbound.mask.staleMasking, toolHistoryProjection: outbound.toolHistoryProjection,
-            imageLimitCut: preparation.imageLimitCut,
+            imageLimitCut: preparation.imageLimitCut, toolOutputs: preparation.toolOutputs,
             messageCount: outbound.messages.length, estimatedContextTokens: requestContext.anchor.estimate(),
           },
         };

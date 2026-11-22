@@ -3,6 +3,7 @@ import { closeSync, mkdirSync, openSync, readSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { StringDecoder } from "node:string_decoder"
 import { antigravityEnginePath, requireQualifiedAntigravityVersion, separatedAntigravityEnvironment, type AntigravityEngineHost } from "../../../infra/antigravity-engine.js"
+import { DebugLog } from "../../../infra/debug-log.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { Log } from "../../../infra/log.js"
 import { ownedCommandRunner, type OwnedCommandRunner } from "../../../infra/owned-command.js"
@@ -79,6 +80,9 @@ export interface EngineProcess {
   /** Opens one engine session in the login's private workspace, with `append` after the agent's fixed text. Rejects
    *  with the process's failure when the engine runs its default agent or reached a keyring. */
   openSession(options: { readonly append?: string } & EngineSessionHandlers): Promise<AcpNewSessionResult>
+  /** Forgets the session `sessionId` that its owner retired: its handlers and its transcript reader. Later updates and
+   *  calls of the session reach no one, and a call of it fails; a prompt of it that is still open settles as before. */
+  releaseSession(sessionId: string): void
   /** Sends one prompt to `sessionId` and settles with its result. When the retry watch saw a failed attempt of it, the
    *  prompt is cancelled and rejects with that failure; when the process failed, it rejects with that failure. */
   prompt(sessionId: string, prompt: readonly AcpTextBlock[]): Promise<AcpPromptResult>
@@ -214,7 +218,7 @@ async function launchUnderLock(options: EngineLaunchOptions, started: number): P
     await observed.engine.close("launch-failed")
     throw launchFailure(error)
   }
-  log.info("Google Antigravity engine started", { processId, pid: engine.pid, tools: options.tools.length, durationMs: Date.now() - started })
+  DebugLog.record({ type: "provider.antigravity.process.started", payload: { processId, pid: engine.pid, tools: options.tools.length, durationMs: Date.now() - started } })
   return observed.engine
 }
 
@@ -391,7 +395,7 @@ function observeEngine(launch: ObservedLaunch): ObservedEngine {
       log.warn("Google Antigravity engine session files not removed", { processId, error: errorMessage(error) })
     }
     const reason = endReason ?? "exited"
-    log.info("Google Antigravity engine ended", { processId, reason, served, code: exit.code, signal: exit.signal, sessions: record.sessions.length, durationMs: Date.now() - launch.started })
+    DebugLog.record({ type: "provider.antigravity.process.ended", payload: { processId, reason, served, code: exit.code, signal: exit.signal, sessions: record.sessions.length, durationMs: Date.now() - launch.started } })
     for (const resolve of idleWaiters.splice(0)) resolve()
     return { reason, served, ...(failure === undefined ? {} : { failure }) }
   })
@@ -458,6 +462,10 @@ function observeEngine(launch: ObservedLaunch): ObservedEngine {
         openPrompts.delete(sessionId)
         if (openPrompts.size === 0) for (const resolve of idleWaiters.splice(0)) resolve()
       }
+    },
+    releaseSession(sessionId) {
+      sessions.delete(sessionId)
+      transcripts.delete(sessionId)
     },
     cancel: (sessionId) => connection.notify("session/cancel", { sessionId }),
     configure: (method, params) => request(method, params),

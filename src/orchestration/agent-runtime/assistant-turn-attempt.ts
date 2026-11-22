@@ -109,6 +109,8 @@ export interface AssistantAttemptInput {
   canonicalizeToolName?: (name: string) => string;
   onHandoffStarted?: (call: Pick<import("./llm/types.js").ToolCall, "id" | "modelRequestId">) => void;
   canonicalizeToolCall?: (toolCall: import("./llm/types.js").ToolCall) => import("./llm/types.js").ToolCall;
+  /** The owners of the request's tool output (`StreamOptions.executionCwd`, `artifactScopeId`, `savedOutputPath`). */
+  toolOutputs?: import("./llm/types.js").ToolOutputOwners;
 }
 
 function publishToConsumers(input: AssistantAttemptInput, event: ProviderStreamEvent, signal: AbortSignal | undefined): void | Promise<void> {
@@ -160,6 +162,7 @@ export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; pr
     ...(outputTokenLimit < candidate.attempt.outputLimit ? { outputTokenLimit } : {}),
     providerOptions: candidate.prepared.providerOptions,
     ...(candidate.repetitionGuard === undefined ? {} : { repetitionGuard: candidate.repetitionGuard }),
+    ...input.toolOutputs,
   };
 }
 

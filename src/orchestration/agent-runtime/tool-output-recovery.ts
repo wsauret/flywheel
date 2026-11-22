@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js";
+import { readToolExecution } from "../session/tool-execution-projection.js";
+import type { ToolOutputOwners } from "./llm/types.js";
 
 export interface ToolOutputRecovery {
   contentTruncated: boolean;
@@ -37,5 +40,27 @@ export function createToolOutputRecovery(
     semanticOutputTruncated: limited.semanticTruncated,
     byteOutputTruncated: limited.byteTruncated,
     ...(limited.fullContentPath ? { fullContentPath: limited.fullContentPath } : {}),
+  };
+}
+
+/**
+ * The owners of the tool output of a run's requests (`StreamOptions.executionCwd`, `artifactScopeId`,
+ * `savedOutputPath`). A call's recorded result is the one record of the file that its cut saved
+ * (`ToolOutputRecovery.fullContentPath`), so the lookup reads that record by the call's id. A run with no durable
+ * session has no record, and its lookup is absent.
+ */
+export function toolOutputOwners(run: {
+  readonly executionCwd: string;
+  readonly artifactScopeId: string;
+  readonly sessionId?: string | undefined;
+  readonly sessionEventReader?: AsyncEventStateReadSurface | undefined;
+}): ToolOutputOwners {
+  const { sessionEventReader: reader, sessionId } = run;
+  return {
+    executionCwd: run.executionCwd,
+    artifactScopeId: run.artifactScopeId,
+    ...(reader === undefined || sessionId === undefined ? {} : {
+      savedOutputPath: async (toolUseId: string) => (await readToolExecution(reader, sessionId, toolUseId))?.fullContentPath,
+    }),
   };
 }

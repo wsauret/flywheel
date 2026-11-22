@@ -1,3 +1,4 @@
+import { DebugLog } from "../../../infra/debug-log.js"
 import { Log } from "../../../infra/log.js"
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js"
 import { engineFailure } from "./errors.js"
@@ -119,7 +120,7 @@ export function createRetryWatch(options: {
   const pending: PendingLine[] = []
   const end = (sessionId: string, failure: Error, sign: RetrySign["kind"] | "unattributed") => {
     if (!open.delete(sessionId)) return
-    log.info("Google Antigravity engine retry cancelled", { processId: options.processId, sessionId, sign })
+    DebugLog.record({ type: "provider.antigravity.retry.cancelled", payload: { processId: options.processId, sessionId, sign } })
     options.cancel(sessionId, failure)
   }
   const removeFrom = <T>(list: T[], item: T) => {

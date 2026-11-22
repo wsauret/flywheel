@@ -6,11 +6,13 @@
  */
 
 /** One scripted answer of a main request. `text`: a model answer, sent after `delayMs`. `calls`: a model answer with
- *  function calls. `status`: an HTTP error with the Gemini error body (`body` replaces it, for example with a RetryInfo
- *  detail). `when` names a text that the request must contain, so concurrent sessions take their own answers. */
-export type FakeAnswer = { readonly when?: string } & (
+ *  function calls, after a thought part when `thought` is set. `status`: an HTTP error with the Gemini error body
+ *  (`body` replaces it, for example with a RetryInfo detail). `when` names a text that the request must contain, so
+ *  concurrent sessions take their own answers. `promptTokens` replaces the prompt token count that the answer reports,
+ *  which is the request body's length divided by 4 otherwise. */
+export type FakeAnswer = { readonly when?: string; readonly promptTokens?: number } & (
   | { readonly kind: "text"; readonly text: string; readonly delayMs?: number }
-  | { readonly kind: "calls"; readonly calls: readonly { readonly name: string; readonly args?: { readonly [name: string]: unknown } }[] }
+  | { readonly kind: "calls"; readonly calls: readonly { readonly name: string; readonly args?: { readonly [name: string]: unknown } }[]; readonly thought?: string }
   | { readonly kind: "status"; readonly status: number; readonly body?: unknown }
 )
 
@@ -49,7 +51,10 @@ function errorStatus(status: number): string {
 function candidate(answer: Exclude<FakeAnswer, { readonly kind: "status" }>) {
   const parts = answer.kind === "text"
     ? [{ text: answer.text }]
-    : answer.calls.map((call) => ({ functionCall: { name: call.name, args: call.args ?? {} }, thoughtSignature: "c2ln" }))
+    : [
+      ...answer.thought === undefined ? [] : [{ text: answer.thought, thought: true }],
+      ...answer.calls.map((call) => ({ functionCall: { name: call.name, args: call.args ?? {} }, thoughtSignature: "c2ln" })),
+    ]
   return { content: { role: "model", parts }, finishReason: "STOP", index: 0 }
 }
 
@@ -84,7 +89,7 @@ export function openFakeGemini(options: { readonly titleStatus?: number } = {}):
       if (answer?.kind === "status") throw new Error("unreachable: a status answer returned above")
       const reply = answer ?? { kind: "text", text: "Fake Title" } as const
       if (reply.kind === "text" && reply.delayMs !== undefined) await Bun.sleep(reply.delayMs)
-      const promptTokens = Math.ceil(body.length / 4)
+      const promptTokens = answer?.promptTokens ?? Math.ceil(body.length / 4)
       const response = {
         candidates: [candidate(reply)],
         usageMetadata: { promptTokenCount: promptTokens, candidatesTokenCount: 7, totalTokenCount: promptTokens + 7, cachedContentTokenCount: 0, thoughtsTokenCount: 0 },
