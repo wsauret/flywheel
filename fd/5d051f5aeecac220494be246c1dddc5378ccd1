@@ -1,0 +1,30 @@
+src/cli/index.ts
+  h_4b47e9e4a8b456 26-29
+src/infra/antigravity-gate-hook.ts
+  h_4b47e9e4a8b456 1-136
+src/infra/cli-subprocess.ts
+  h_4b47e9e4a8b456 5-6,18-27
+src/infra/executable-roles.ts
+  h_4b47e9e4a8b456 9
+src/infra/process-supervisor.ts
+  h_4b47e9e4a8b456 3,183,185
+src/orchestration/modules/provider-google-antigravity/hook-command.ts
+  h_4b47e9e4a8b456 1-58
+tests/unit/cli/index.test.ts
+  h_4b47e9e4a8b456 80-82
+tests/unit/orchestration/modules/provider-google-antigravity/gate-hook-client.test.ts
+  h_4b47e9e4a8b456 1-155
+tests/unit/orchestration/modules/provider-google-antigravity/hook-command.test.ts
+  h_4b47e9e4a8b456 1-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fd5d051f5aeecac220494be246c1dddc5378ccd1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
