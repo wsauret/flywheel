@@ -1,0 +1,26 @@
+src/infra/antigravity-engine.ts
+  h_4b47e9e4a8b456 1-154
+src/infra/engine-version.ts
+  h_4b47e9e4a8b456 1-16
+src/infra/source-snapshot.ts
+  h_4b47e9e4a8b456 47,53,133-134,188-205,208-218,235-240,246,266,285-292,295,298-304,306-316,329-333,335,688-689,697,699,701,837-838,841
+src/orchestration/modules/provider-claude-agent-sdk/login-status.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/modules/provider-google-antigravity/private-home.ts
+  h_4b47e9e4a8b456 1-124
+tests/unit/infra/antigravity-engine.test.ts
+  h_4b47e9e4a8b456 1-179
+tests/unit/orchestration/modules/provider-google-antigravity/private-home.test.ts
+  h_4b47e9e4a8b456 1-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "506ef662dfa05180e194f63852058db6a160232a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
