@@ -107,11 +107,11 @@ test("a workflow delegates its typed card target to its module, while an agent c
   }
 })
 
-test("Stop asks first, then ends the row's launching call", async () => {
+test("Cancel asks first, then ends the row's launching call", async () => {
   const mounted = await mountBackgroundSheet(ROWS)
   try {
     await mounted.ready()
-    mounted.click("Stop", "Reviewer")
+    mounted.click("Cancel", "Reviewer")
     await mounted.ready()
     assert.deepEqual(mounted.mutations(), [])
     mounted.settleConfirmation(true)
