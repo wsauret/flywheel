@@ -116,7 +116,7 @@ describe("child session viewer", () => {
     expect(rows.slice(first, bottom).map(row => row.replace(/[│]/g, "").trim()).join(" ")).toContain(
       "This subagent finished. Unread messages stay in the parent chat and return to the sending window's composer while it is open.")
   })
-  it("accepts a header and geometry without modal width limits or implicit Stop", async () => {
+  it("accepts a header and geometry without modal width limits or implicit Cancel", async () => {
     const supplied = openerViewerProps()
     const input = createInput({ onClose: () => {}, dispatchCommand: async () => false })
     const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
@@ -131,7 +131,7 @@ describe("child session viewer", () => {
     await render.flush()
     expect(render.captureCharFrame()).toContain("Injected header " + "x".repeat(100))
     expect(render.captureCharFrame()).toContain("Return to origin")
-    expect(render.captureCharFrame()).not.toContain("Stop")
+    expect(render.captureCharFrame()).not.toContain("Cancel")
     expect(render.captureCharFrame()).not.toContain("Message agent")
   })
 
@@ -473,7 +473,7 @@ describe("child session viewer", () => {
     expect(settledFrame.split("\n").find((row) => row.includes("Idle"))).toMatch(/^│  ╰/)
     expect(settledFrame).not.toContain("Message this subagent")
   })
-  it("offers subagent controls and stops through the parent's tool call", async () => {
+  it("offers subagent controls and cancels through the parent's tool call", async () => {
     const kind = "subagent" as const
     const [admittedActions, setAdmittedActions] = createSignal<readonly SubagentSessionAction[]>(["session.send", "subagent.interrupt", "background.terminate"])
     const [agentState, setAgentState] = createSignal<"active" | "idle">("active")
@@ -511,12 +511,12 @@ describe("child session viewer", () => {
     // A subagent's controls sit in its footer.
     const actionRow = () => render.captureCharFrame().split("\n").find((row) => row.includes("Close")) ?? ""
     expect(actionRow()).toContain("Interrupt")
-    expect(actionRow()).toContain("Stop")
+    expect(actionRow()).toContain("Cancel")
     expect(actionRow()).not.toContain("Resume")
     expect(actionRow()).not.toContain("Pause")
 
     await press("Interrupt")
-    await press("Stop")
+    await press("Cancel")
     await Promise.resolve()
     expect(dispatched).toEqual([
       { type: "subagent.interrupt", sessionId: "child" },
@@ -532,7 +532,7 @@ describe("child session viewer", () => {
     await render.flush()
     expect(actionRow()).toContain("Resume")
     expect(actionRow()).not.toContain("Interrupt")
-    expect(actionRow()).not.toContain("Stop")
+    expect(actionRow()).not.toContain("Cancel")
     await press("Resume")
     await Promise.resolve()
     expect(dispatched.at(-1)).toEqual({ type: "subagent.resume", sessionId: "child" })
