@@ -1,0 +1,22 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 45,50
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 208-213
+src/orchestration/agent-runtime/model-chat-body.ts
+  h_4b47e9e4a8b456 6-9,19-20,173-276,315-316,318-319,322-333,336,343-347,349,408,421
+tests/unit/orchestration/agent-runtime/model-chat-body.test.ts
+  h_4b47e9e4a8b456 2,4-5,10,65-67,70-225,340-342,351-360,377,379-382,412-418,442-460
+tests/unit/orchestration/agent-runtime/model-interaction-profile.test.ts
+  h_4b47e9e4a8b456 7,44-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d1f294f85bb562ceb7560fcb1d6b9279b52b0a94",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
