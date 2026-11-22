@@ -90,14 +90,14 @@ const AcpFormPropertySchema = Schema.Union([
 type AcpFormProperty = typeof AcpFormPropertySchema.Type
 
 /** A form elicitation scoped to the session and the question's tool call. */
-const AcpElicitationParamsSchema = Schema.Struct({
+export const AcpElicitationParamsSchema = Schema.Struct({
   sessionId: Schema.String,
   toolCallId: Schema.String,
   mode: Schema.Literal("form"),
   message: Schema.String,
   requestedSchema: Schema.Struct({ type: Schema.Literal("object"), properties: Schema.Record(Schema.String, AcpFormPropertySchema), required: Schema.Array(Schema.String) }),
 })
-type AcpElicitationParams = typeof AcpElicitationParamsSchema.Type
+export type AcpElicitationParams = typeof AcpElicitationParamsSchema.Type
 
 const ToolCallStatusSchema = Schema.Literals(["pending", "in_progress", "completed", "failed"])
 const ToolKindSchema = Schema.Literals(["read", "edit", "search", "execute", "fetch", "other"])
@@ -145,7 +145,7 @@ type AcpErrorData = typeof AcpErrorDataSchema.Type
 
 /** The read-only settings that a session's results carry under `_meta`
  *  (PI-AGENT-076), in the protocol shapes of the runtime's own queries. */
-const AcpSessionMetaSchema = Schema.Struct({
+export const AcpSessionMetaSchema = Schema.Struct({
   "dev.flywheel/settings": Schema.Struct({
     modelPlan: RuntimeSessionModelPlanResultSchema,
     roles: Schema.NullOr(RoleAssignmentViewSchema),

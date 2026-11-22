@@ -308,8 +308,8 @@ test("answers each form through the caller's policy and leaves a declined questi
   const forms: string[] = [];
   const fixture = subject({ forms: [launchQuestion("launch"), designQuestion("design")] });
   const result = await executeHeadlessBenchmark({ ...fixture.input, answerQuestion: (form) => {
-    forms.push(form.toolUseId);
-    return form.toolUseId === "launch" ? { q1: "approve" } : undefined;
+    forms.push(form.toolCallId);
+    return form.toolCallId === "launch" ? { q1: "approve" } : undefined;
   } });
   expect(forms).toEqual(["launch", "design"]);
   expect(fixture.commands).toContainEqual({ jsonrpc: "2.0", id: "flywheel-1", result: { action: "accept", content: { q1: "approve" } } });
@@ -322,7 +322,7 @@ test("resumes the named session in a new process, and its prompt answers the que
   const policy: string[] = [];
   const fixture = subject({ reask: designQuestion("decision") });
   const result = await executeHeadlessBenchmark({ ...fixture.input, sessionId: "root", answers: "decision", message: "Try the smaller fix.", answerQuestion: (form) => {
-    policy.push(form.toolUseId);
+    policy.push(form.toolCallId);
     return { q1: "choice-1" };
   } });
   expect(result.outcome).toBe("complete");

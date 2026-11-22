@@ -6,10 +6,9 @@ import { canonicalModelId } from "../../../../infra/llm/model-id.js";
 import type { OwnedProcess } from "../../../../infra/owned-subprocess.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { applyWindowsPrivateDirectoryAcl } from "../../../../infra/windows-private-directory-acl.js";
+import { AcpElicitationParamsSchema, AcpSessionMetaSchema, type AcpElicitationParams } from "../../../../protocol/acp.js";
 import { decodeExecutionEvidence } from "../../../../protocol/execution-evidence.js";
-import { RuntimeSessionModelPlanResultSchema } from "../../../../protocol/model-assignment-protocol-schemas.js";
 import type { ModelSelectionEffort, RuntimeSessionModelPlanResult } from "../../../../protocol/model-assignment-protocol-types.js";
-import { RoleAssignmentViewSchema, WorkflowsModeSchema } from "../../../../protocol/runtime-protocol-schemas.js";
 import { createBenchmarkAccounting } from "./accounting.js";
 import { unavailableBenchmarkAccounting } from "./evidence.js";
 import type { HeadlessBenchmarkExecution } from "./headless-execution-contract.js";
@@ -24,40 +23,13 @@ interface HeadlessBenchmarkEnvironment {
  *  subject is an external process, so excess fields are ignored. */
 const SessionSettingsSchema = Schema.Struct({
   configOptions: Schema.Array(Schema.Struct({ id: Schema.String, currentValue: Schema.String })),
-  _meta: Schema.Struct({
-    "dev.flywheel/settings": Schema.Struct({
-      modelPlan: RuntimeSessionModelPlanResultSchema,
-      roles: Schema.NullOr(RoleAssignmentViewSchema),
-      workflowsMode: WorkflowsModeSchema,
-    }),
-  }),
+  _meta: AcpSessionMetaSchema,
 });
 const NewSessionSchema = Schema.Struct({ sessionId: Schema.String });
 const InitializeSchema = Schema.Struct({ protocolVersion: Schema.Literal(1) });
 const PromptResultSchema = Schema.Struct({ stopReason: Schema.String });
 const PromptErrorSchema = Schema.Struct({ data: Schema.optionalKey(Schema.Struct({ failure: Schema.String })) });
 
-const FormOptionSchema = Schema.Struct({ const: Schema.String, title: Schema.String });
-/** A form elicitation that asks the subject's open question: one property per
- *  question (`q1`, `q2`, ...), whose `oneOf` or `items.anyOf` entries are the
- *  question's choice ids and labels, and optional text properties beside them. */
-const QuestionFormSchema = Schema.Struct({
-  sessionId: Schema.String,
-  toolUseId: Schema.String,
-  mode: Schema.Literal("form"),
-  message: Schema.String,
-  requestedSchema: Schema.Struct({
-    properties: Schema.Record(Schema.String, Schema.Struct({
-      type: Schema.String,
-      title: Schema.String,
-      description: Schema.optionalKey(Schema.String),
-      oneOf: Schema.optionalKey(Schema.Array(FormOptionSchema)),
-      items: Schema.optionalKey(Schema.Struct({ anyOf: Schema.Array(FormOptionSchema) })),
-    })),
-  }),
-  // ACP v1 names the question's tool call with its own wire key.
-}).pipe(Schema.encodeKeys({ toolUseId: "toolCallId" }));
-type HeadlessQuestionForm = typeof QuestionFormSchema.Type;
 interface HeadlessFormContent {
   readonly [property: string]: string | readonly string[];
 }
@@ -102,7 +74,7 @@ interface HeadlessBenchmarkOptions {
   /** Answers a question the subject asks during the prompt: the form's
    *  accepted content, or undefined to leave the question open, which ends
    *  the run as `input_required`. Without it, every question stays open. */
-  readonly answerQuestion?: (form: HeadlessQuestionForm) => HeadlessFormContent | undefined;
+  readonly answerQuestion?: (form: AcpElicitationParams) => HeadlessFormContent | undefined;
 }
 
 export type HeadlessBenchmarkInput = HeadlessBenchmarkOptions & (
@@ -199,11 +171,11 @@ export async function executeHeadlessBenchmark(input: HeadlessBenchmarkInput): P
   void reasked.promise.catch(() => {});
 
   const ask = async (id: string | number, params: unknown) => {
-    const form = Schema.decodeUnknownSync(QuestionFormSchema)(params);
+    const form = Schema.decodeUnknownSync(AcpElicitationParamsSchema)(params);
     if (form.sessionId !== sessionId) throw new Error("subject asked a question of another session");
-    const content = form.toolUseId === input.answers ? undefined : input.answerQuestion?.(form);
+    const content = form.toolCallId === input.answers ? undefined : input.answerQuestion?.(form);
     if (content === undefined) {
-      if (form.toolUseId === input.answers) reasked.resolve();
+      if (form.toolCallId === input.answers) reasked.resolve();
       else if (prompting) leftOpen = true;
       await write({ jsonrpc: "2.0", id, result: { action: "cancel" } });
     } else await write({ jsonrpc: "2.0", id, result: { action: "accept", content } });

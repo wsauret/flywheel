@@ -209,18 +209,18 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
             asked = true;
             const workflowAnswer = campaignWorkflowApproval(form, capture.answered);
             if (workflowAnswer) {
-              recordCampaignAnswer(capture, form.toolUseId, "approve");
+              recordCampaignAnswer(capture, form.toolCallId, "approve");
               return workflowAnswer;
             }
             const designAnswer = campaignDesignAnswer(form, capture.answered);
             if (!designAnswer || challenge === undefined) return undefined;
             if (!delivered) {
-              designOpen = form.toolUseId;
+              designOpen = form.toolCallId;
               return undefined;
             }
             if (designApproved) return undefined;
             designApproved = true;
-            recordCampaignAnswer(capture, form.toolUseId, "approve");
+            recordCampaignAnswer(capture, form.toolCallId, "approve");
             return designAnswer;
           };
           const questions = async (sessionId: string) => {

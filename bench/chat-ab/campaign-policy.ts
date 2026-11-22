@@ -18,7 +18,7 @@ export function recordCampaignAnswer(
 /** The single-choice options of a form that asks exactly one question, which
  *  is the form's `q1` property; text properties beside it are `q1_<id>`. */
 function singleChoice(form: HeadlessQuestionForm, answered: ReadonlySet<string>) {
-  if (answered.has(form.toolUseId)) return undefined;
+  if (answered.has(form.toolCallId)) return undefined;
   const { properties } = form.requestedSchema;
   const questions = Object.keys(properties).filter((key) => /^q\d+$/.test(key));
   const question = properties.q1;

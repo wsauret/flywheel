@@ -5,11 +5,8 @@ import type { PendingQuestionView } from "../../../src/protocol/question-protoco
 import { workflowLaunchDecision } from "../../../src/orchestration/workflow-host/launch-origin.js";
 
 type Entry = PendingQuestionView["questions"][number];
-// Headless chat asks each open question as this form (protocol/acp.ts), and the adapter decodes its tool call id.
-const form = (...questions: Entry[]) => {
-  const { toolCallId, ...wire } = acpQuestionForm({ kind: "question", toolUseId: "tool", timestamp: 0, questions }, "root");
-  return { ...wire, toolUseId: toolCallId };
-};
+// Headless chat asks each open question as this form (protocol/acp.ts), which the adapter decodes as is.
+const form = (...questions: Entry[]) => acpQuestionForm({ kind: "question", toolUseId: "tool", timestamp: 0, questions }, "root");
 const { decision } = workflowLaunchDecision({ source: { kind: "path", path: "/scratch/coding.workflow.yaml", definitionSha256: "a".repeat(64) }, name: "Coding" });
 // The bound launch question's text, header, and choices, as the decision states them.
 const launch = (approveId: string = decision.approve.choiceId, question: string = decision.question): Entry => ({ question, header: "Workflow", multiSelect: false, choices: [
