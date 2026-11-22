@@ -1,0 +1,44 @@
+README.md
+  h_4b47e9e4a8b456 51,154
+bench/harbor/README.md
+  h_4b47e9e4a8b456 48
+src/infra/llm/model-family.ts
+  h_4b47e9e4a8b456 65,67
+src/orchestration/agent-runtime/llm/chat-completions.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/credential-provider-modules.ts
+  h_4b47e9e4a8b456 28
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 376
+tests/unit/cli/cli-auth.test.ts
+  h_4b47e9e4a8b456 189,230-231,258,260-262,419-424
+tests/unit/infra/module-regression.test.ts
+  h_4b47e9e4a8b456 46
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 109,111
+tests/unit/orchestration/agent-runtime/request-tool-surface.test.ts
+  h_4b47e9e4a8b456 628
+tests/unit/orchestration/capability-worker-composition.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 314
+vscode/README.md
+  h_4b47e9e4a8b456 37
+vscode/docs/about-flywheel.md
+  h_4b47e9e4a8b456 50
+website/src/components/ProviderFlow.astro
+  h_4b47e9e4a8b456 14
+website/src/pages/index.astro
+  h_4b47e9e4a8b456 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "49ce54df5f2cae9ec4cbc51b529208e899d8aeb4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
