@@ -98,6 +98,12 @@ export function readSavedProviderModels(access: AuthProfileAccess, accountLineag
   return { rows: entry.rows.length === 0 ? undefined : entry.rows, audit: entry.audit, refusals: entry.refusals ?? {} };
 }
 
+/** The model ids that any saved account catalog of the profile lists, for every account and lineage that it holds,
+ *  also of an account that is signed out now. A malformed document lists none. */
+export function savedProviderModelIds(access: AuthProfileAccess, limits: CatalogLimits): ReadonlySet<string> {
+  return new Set(readDocument(access, limits)?.accounts.flatMap((entry) => entry.rows.map((row) => row.modelId)));
+}
+
 /** Replaces the candidate basis without resetting settled outcomes: a candidate that the basis adds with no outcome
  *  becomes due, and a completed one stays settled. A refused one is checked again by every audit
  *  (`runAccessAudit`), and a manual recheck makes every candidate due. */

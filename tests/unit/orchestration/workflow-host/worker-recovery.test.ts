@@ -34,7 +34,7 @@ it("parks a step with a model that fails selection without starting another run 
       }
     }
   } })
-  const model = "unoffered-test-model"
+  const model = "claude-haiku-4.5"
   const { captureProviderConnection } = makeWorkflowDeps()
   const worker = handoverWorker(dir, (options) => {
     attempts += 1

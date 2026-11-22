@@ -362,7 +362,11 @@ On every client and in the auth login command, Flywheel refuses a free-plan sign
 
 ## PI-MODEL-039: Every agent waits until its model can serve
 
-When an agent's model cannot serve, the agent waits and continues on its own once the model can serve. It checks again at a stated time, such as a usage reset, at once when a sign-in, a key, an account, or a model setting changes, and soon when no time is stated. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). A runtime-served wait continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens a closed project.
+When an agent's model is in a provider catalog but cannot serve, the agent waits and continues on its own once the model can serve. It checks again at a stated time, such as a usage reset, at once when a sign-in, a key, an account, or a model setting changes, and soon when no time is stated. An unattended Agent Client Protocol run does not wait for a spent limit (PI-AGENT-128). A runtime-served wait continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens a closed project.
+
+## PI-MODEL-095: An unknown model id fails at once
+
+A model id that no provider catalog lists is a configuration error. Its agent fails at once, before it sends a model request, and the error names the id. When a listed model is not available from an account now, the agent waits as PI-MODEL-039 and PI-MODEL-087 state.
 
 ## PI-MODEL-063: Capacity wait status and end
 

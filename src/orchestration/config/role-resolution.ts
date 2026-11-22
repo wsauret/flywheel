@@ -1,6 +1,13 @@
 import type { ModelFamily } from "../../infra/llm/model-family.js";
 import { mergeProviderOptions } from "../../infra/llm/provider-options.js";
-import { canonicalModelId } from "../../infra/llm/model-id.js";
+import { canonicalCatalogModelId, canonicalModelId } from "../../infra/llm/model-id.js";
+import { isCustomProviderModel } from "../../infra/llm/custom-provider-registry.js";
+import { installedAccessProviderDefinitions } from "../credential-provider-modules.js";
+import { getSharedModelsClient } from "./llm-clients.js";
+import { AuthProfileDirectoryNotFoundError, openExistingAuthProfileDirectory, type AuthProfileAccess } from "../../infra/auth/auth-profile-store.js";
+import { savedProviderModelIds } from "../../infra/auth/provider-model-catalog-store.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../infra/llm/model-catalog-resolution.js";
+import { normalizeSelectableModelId } from "./model-compatibility.js";
 import { Log } from "../../infra/log.js";
 import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../infra/llm/access-provider.js";
 import type { ProviderConnection } from "../../infra/auth/auth-context.js";
@@ -66,8 +73,9 @@ const FALLBACK_ROLE_IDS: ReadonlySet<RoleId> = new Set([TITLE_GENERATION_ROLE_ID
 
 export type CapturedRoleSelection =
   | { readonly kind: "selected"; readonly role: ResolvedRole; readonly plan: AdmittedFailoverPlan }
-  /** The role's saved model, which no admitted account or enabled provider serves now: its agent waits for it. */
-  | { readonly kind: "unserved"; readonly role: ResolvedRole }
+  /** The role's saved model, which no admitted account or enabled provider serves now: its agent waits for it. When
+   *  no catalog lists the model (`listed` false), the id is a configuration error that no wait can clear. */
+  | { readonly kind: "unserved"; readonly role: ResolvedRole; readonly listed: boolean }
   | { readonly kind: "no-selection" }
   | { readonly kind: "access-pending" };
 
@@ -166,14 +174,46 @@ function buildRoleCatalog(
     if (!hasModels(available)) {
       const saved = savedPreference(roleId, setting, new Set());
       if (!setting.fixedModel && capture.eligibility?.accessPending(capture.allowTrainingRoutes)) return { kind: "access-pending" };
-      return saved === undefined ? { kind: "no-selection" } : { kind: "unserved", role: finalizedRole(roleId, setting, saved, options) };
+      return saved === undefined ? { kind: "no-selection" } : { kind: "unserved", role: finalizedRole(roleId, setting, saved, options), listed: catalogListsModel(saved.model, capture, userDataRoot) };
     }
     const preference = await rolePreference(roleId, setting, available, options);
     const role = finalizedRole(roleId, setting, preference, options);
     const plan = plans.get(preference.model);
-    return plan === undefined ? { kind: "unserved", role } : { kind: "selected", role, plan };
+    return plan === undefined ? { kind: "unserved", role, listed: catalogListsModel(preference.model, capture, userDataRoot) } : { kind: "selected", role, plan };
   };
   return { plans, resolve };
+}
+
+/** Whether any catalog Flywheel reads lists `model`: the capture's account catalogs, a custom provider's declared
+ *  models, the models.dev rows of an installed provider, also of a module that is off, in the current or the
+ *  bundled document, or the saved listing of any account of the profile, also of one that is signed out or whose
+ *  token expired. Only the path of a model that no account serves reads it. */
+function catalogListsModel(model: string, capture: RoleAccessCapture, userDataRoot: string): boolean {
+  const normalized = normalizeSelectableModelId(model);
+  if (capture.eligibility?.modelIds.has(normalized) || isCustomProviderModel(normalized)) return true;
+  const namespaces = [...new Set(installedAccessProviderDefinitions().flatMap((provider) =>
+    provider.catalogId === undefined ? provider.dynamicCatalog?.modelsDevCatalogIds ?? [] : [provider.catalogId]))];
+  const client = getSharedModelsClient(userDataRoot);
+  return (["current", "bundled"] as const).some((document) => client.getProviderCatalog(namespaces, Number.MAX_SAFE_INTEGER - 1, document)
+    .some((row) => (row.canonical?.modelId ?? canonicalCatalogModelId(row.wireModelId).modelId) === normalized))
+    || savedListingsName(normalized, capture.connection.authDir);
+}
+
+/** Whether a saved account listing of the profile at `profileDirectory` names `model`. A live listing can name a model
+ *  that models.dev does not, and its account can sign out while a role keeps the model (PI-MODEL-039). */
+function savedListingsName(model: string, profileDirectory: string): boolean {
+  let access: AuthProfileAccess;
+  try {
+    access = openExistingAuthProfileDirectory(profileDirectory);
+  } catch (error) {
+    if (error instanceof AuthProfileDirectoryNotFoundError) return false;
+    throw error;
+  }
+  try {
+    return savedProviderModelIds(access, DEFAULT_DYNAMIC_CATALOG_LIMITS).has(model);
+  } finally {
+    access.close();
+  }
 }
 
 interface RolePreference {

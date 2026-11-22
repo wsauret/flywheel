@@ -189,8 +189,10 @@ function headlessPromptOf(purpose: AgentOptions["purpose"]) {
 /** The failure of a request whose role keeps a saved model that no signed-in account or enabled provider offers:
  *  the agent waits for it and checks again after the safe recheck interval, or at once when a sign-in, a key, an
  *  account, or a model setting changes (PI-MODEL-039). An agent of an unattended run has no person who can change any
- *  of these, so its failure stands (PI-AGENT-128). */
-function notOfferedFailure(options: AgentOptions, model: string, fixedModel?: boolean): Error {
+ *  of these, so its failure stands (PI-AGENT-128). An id that no catalog lists is no model that a wait can serve, so
+ *  its failure also stands (PI-MODEL-095). */
+function notOfferedFailure(options: AgentOptions, model: string, listed: boolean, fixedModel?: boolean): Error {
+  if (!listed) return new ModelUnavailable({ missing: "offering", message: `No provider catalog lists the model "${model}". Choose a model that a provider offers, or a tier: cheap, mid, or powerful.` });
   const message = `No signed-in account or enabled provider offers "${model}".`;
   if (fixedModel || options.capabilityAccess?.unattended === true) return new ModelUnavailable({ missing: "provider", message });
   return new AllCandidatesExhaustedError({
@@ -517,7 +519,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       roleHold.held = { setting: rolePickSettingKey(pickSetting), model: resolved.role.model, effort: resolved.role.effort };
       await recordedPicks?.record({ setting: pickSetting, model: resolved.role.model, effort: resolved.role.effort });
     }
-    if (resolved?.kind === "unserved") throw notOfferedFailure(options, resolved.role.model, authored.fixedModel);
+    if (resolved?.kind === "unserved") throw notOfferedFailure(options, resolved.role.model, resolved.listed, authored.fixedModel);
     const selection = resolved?.kind === "selected" ? { ...resolved.role, effort: mapEffort(resolved.role.effort) } : authored;
     const { model, providerOptions } = selection;
     if (!model) throw new ModelUnavailable({ missing: "provider", message: "The active profile has no reachable model." });

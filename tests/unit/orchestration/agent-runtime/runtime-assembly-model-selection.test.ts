@@ -3,6 +3,9 @@ import { testProviderSessionLifetime } from "../../../helpers/provider-authority
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
+import { openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js"
+import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js"
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../src/infra/llm/model-catalog-resolution.js"
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js"
 import { providerModelEligibilityDecision, type ProviderModelEnabledCandidate } from "../../../../src/orchestration/config/provider-model-eligibility.js"
@@ -172,9 +175,9 @@ test("captures each model that a person saves next, and keeps tool calls on thei
   expect(JSON.parse(catalog.content).models.rows.map((row: unknown[]) => row[0])).toEqual(["claude-haiku-4.5"])
 })
 
-test("keeps an agent on its own model: an unreachable saved model or the pair an unsaved role resolved at the start fails its request as a wait for that model, and an unattended run's fails at once (PI-MODEL-087, ARCH-RUNTIME-082)", async () => {
+test("keeps an agent on its own model: an unreachable saved model or the pair an unsaved role resolved at the start fails its request as a wait for that model, an unattended run's fails at once, and a saved id that no catalog lists fails at once (PI-MODEL-087, ARCH-RUNTIME-082)", async () => {
   const auth = testAuthContext({ apiKeys: { openai_api: "test-key", anthropic_api: "test-key" } })
-  const connection = captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth })
+  const defaultConnection = captureProviderConnection({ profileId: "default", authDir: "/scratch/auth", auth })
   const providers = accessProviderRegistry(testCapabilityModules())
   const access = (model: string, family: "openai" | "anthropic") => {
     const candidate = { kind: "singleton", providerId: `${family}_api`, spendMode: "direct_api" } as const
@@ -187,7 +190,8 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
       }]]),
     }).worker
   }
-  const assemble = async (input: { readonly eligibility: ReturnType<typeof access>; readonly saved?: { readonly model: string; readonly effort: string }; readonly roleHold?: RoleHold; readonly unattended?: true; readonly durable?: LocalSqliteEventStore }) => {
+  const assemble = async (input: { readonly eligibility: ReturnType<typeof access>; readonly saved?: { readonly model: string; readonly effort: string }; readonly roleHold?: RoleHold; readonly unattended?: true; readonly durable?: LocalSqliteEventStore; readonly connection?: typeof defaultConnection }) => {
+    const connection = input.connection ?? defaultConnection
     const signal = new AbortController().signal
     const durableConversation = {
       kind: "durable-tree", sessionId: "own-model-session", conversationId: "own-model-conversation",
@@ -248,8 +252,26 @@ test("keeps an agent on its own model: an unreachable saved model or the pair an
   const haiku = access("claude-haiku-4.5", "anthropic")
   const waitsFor = (model: string) => ({ unserved: { model, reason: "not_offered" }, recovery: { kind: "at", hold: { kind: "recheck" } } })
   // A saved model that no account offers stays the agent's model, and its request waits for it.
-  await expect(assemble({ eligibility: luna, saved: { model: "lost-model", effort: "low" } })).rejects.toMatchObject(waitsFor("lost-model"))
-  await expect(assemble({ eligibility: luna, saved: { model: "lost-model", effort: "low" }, unattended: true })).rejects.toMatchObject({ missing: "provider" })
+  await expect(assemble({ eligibility: luna, saved: { model: "claude-haiku-4.5", effort: "low" } })).rejects.toMatchObject(waitsFor("claude-haiku-4.5"))
+  await expect(assemble({ eligibility: luna, saved: { model: "claude-haiku-4.5", effort: "low" }, unattended: true })).rejects.toMatchObject({ missing: "provider" })
+  // An id that no catalog lists is a configuration error that no wait can clear, so its request fails at once.
+  const unlisted = assemble({ eligibility: luna, saved: { model: "no-such-model-x1", effort: "low" } })
+  await expect(unlisted).rejects.toMatchObject({ _tag: "ModelUnavailable", missing: "offering" })
+  await expect(unlisted).rejects.toThrow('No provider catalog lists the model "no-such-model-x1"')
+  // A model that only the saved listing of a signed-out account names waits for that account to sign in again.
+  const profileDirectory = join(tempDir("own-model-auth-"), "profiles", "default")
+  mkdirSync(profileDirectory, { recursive: true })
+  const profile = openExistingAuthProfileDirectory(profileDirectory)
+  try {
+    const account = { kind: "subscription", providerId: "opencode_go", instanceId: "signed-out" } as const
+    const row = { modelId: "live-only-model-q7", offerings: [{ wireModelId: "live-only-model-q7", dataUse: "standard" as const, metadata: null, transport: "openai-responses" as const, resolvedMetadata: modelInfo("openai", "live-only-model-q7", "fixture", 2, 10, "2026-10-01") }] }
+    expect(await writeProviderModelCatalog({ access: profile, currentLineage: () => "lineage-1" }, { account, lineage: "lineage-1" }, [row], DEFAULT_DYNAMIC_CATALOG_LIMITS)).toBe(true)
+  } finally {
+    profile.close()
+  }
+  const signedOut = captureProviderConnection({ profileId: "default", authDir: profileDirectory, auth })
+  await expect(assemble({ eligibility: luna, saved: { model: "live-only-model-q7", effort: "low" }, connection: signedOut })).rejects.toMatchObject(waitsFor("live-only-model-q7"))
+  await expect(assemble({ eligibility: luna, saved: { model: "no-such-model-x1", effort: "low" }, connection: signedOut })).rejects.toMatchObject({ _tag: "ModelUnavailable", missing: "offering" })
   // An unsaved role resolves its default once, and the agent keeps that pair when it can no longer serve.
   const roleHold: RoleHold = {}
   const started = await assemble({ eligibility: luna, roleHold })
