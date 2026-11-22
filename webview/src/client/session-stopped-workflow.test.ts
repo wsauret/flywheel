@@ -41,7 +41,7 @@ const settle = async (): Promise<void> => {
   for (let turn = 0; turn < 12; turn += 1) await Promise.resolve()
 }
 
-test("a directly selected workflow agent whose detail says a person stopped it reads stopped and admits no Resume", async () => {
+test("a directly selected workflow agent whose detail says a person canceled it reads Canceled and admits no Resume", async () => {
   const session = createRuntimeSession({ connection: stoppedWorkflowConnection() })
   await settle()
   await session.select("wf")
@@ -49,7 +49,7 @@ test("a directly selected workflow agent whose detail says a person stopped it r
 
   const summary = summaryOf(createViewProjection()(session), "wf")
   assert.equal(summary?.stoppedBy, "person")
-  assert.equal(workflowStateLabel("paused", summary), "Stopped")
+  assert.equal(workflowStateLabel("paused", summary), "Canceled")
   assert.equal(offeredSessionControls(summary, false).primary, null)
   session.dispose()
 })
