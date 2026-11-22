@@ -195,13 +195,16 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   ["provider.claude_sdk.idle_cli.stopped", { tier: "info" }],
   // Google Antigravity engines: one per launch, exit, and replacement of an
   // engine process, one per prompt that its retry watch cancelled, and one per
-  // rotation of an engine session (DEBUG). A primer that did not reach the step
+  // rotation of an engine session, change of its model or thought level, and
+  // end of its prompt (DEBUG). A primer that did not reach the step
   // gate and a step that the gate did not admit always reach the default level.
   ["provider.antigravity.process.started", { tier: "info" }],
   ["provider.antigravity.process.ended", { tier: "info" }],
   ["provider.antigravity.process.replaced", { tier: "info" }],
   ["provider.antigravity.retry.cancelled", { tier: "info" }],
   ["provider.antigravity.session.rotated", { tier: "debug" }],
+  ["provider.antigravity.session.configured", { tier: "debug" }],
+  ["provider.antigravity.prompt.ended", { tier: "debug" }],
   ["provider.antigravity.gate.not_reached", { tier: "notable" }],
   ["provider.antigravity.request.refused", { tier: "notable" }],
   // One per access probe of an audit; only a probe engine that did not stop cleanly reaches the default level.

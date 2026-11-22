@@ -78,6 +78,22 @@ describe("a Google Antigravity login", () => {
     expect(account.identity).toBe("person@example.com")
   })
 
+  test("on a host with no display, such as a container or an SSH session, goes on with the pasted-code sign-in when agy finds no browser", async () => {
+    const { home, authDir } = place()
+    const agy = fakeAgy({ identity: "person@example.com", noDisplay: true })
+    const pasting = pastePorts(agy.launcher, GOOD_CODE, { openBrowser: async () => false })
+
+    const account = await loginAntigravityAccount(profile(authDir, engineHost(home)), pasting.ports)
+
+    // agy's browser sign-in refuses with no display, and the same login goes on with `agy acp --login`.
+    expect(agy.agyLaunches().map((launch) => launch.command.includes("--login"))).toEqual([false, true])
+    expect(agy.methods.map((call) => call.method)).toEqual(["initialize", "authenticate"])
+    expect(pasting.urls).toEqual([SIGN_IN_URL])
+    expect(agy.pasted).toEqual([GOOD_CODE])
+    expect(antigravityAccounts(authDir)).toEqual([account])
+    expect(readdirSync(join(account.configDir, "logs"))).toEqual([])
+  })
+
   test("on macOS prepares the login's private keychain before agy starts, with only the login's home", async () => {
     const { home, authDir } = place()
     const agy = fakeAgy({ identity: "person@example.com" })
