@@ -1,0 +1,82 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 33-37
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 199,373,375-383,393,395,399,403,407
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 246-247
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 31-32
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 92-93,662-663,665,683-705,732,735,739
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 240-241
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 365-366,369,371
+src/orchestration/app-service/runtime-work-settlement.ts
+  h_4b47e9e4a8b456 1,3-4,21,57-58,78,84-85,92-94,99-100,110-113,118-127,130-134,196,208-248
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 6,89-90
+src/orchestration/chat/runner-completion.ts
+  h_4b47e9e4a8b456 1,3,47-50,82-87,89-90,98-101
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 36,98-99,295,328,436,523,727
+src/orchestration/chat/runner-types.ts
+  h_4b47e9e4a8b456 12,28-29
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 381
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 6-10,18,20,26-42,44-47,49-51,53,56-57,60,63,78-243,259-260,270-274,296-306,320-332,338-339,388-392,398-459,464-465,472-482,487-534,547-557,563-566,569,571,573,577-590,592-606,609-621
+src/orchestration/headless/headless-chat-channel.ts
+  h_4b47e9e4a8b456 47-52,73-74,78-80,94,111,144-160,166-168,177-181,190,221-225,238,262,265-267
+src/orchestration/session/live-session-control.ts
+  h_4b47e9e4a8b456 293-294,297-300
+src/protocol/acp.ts
+  h_4b47e9e4a8b456 4-7,12-18,32-47,51-54,69-70,74-101,123-124,140-143,146-156,160-163,167-168,170,175,189-212,271-361
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 3,86,131
+src/protocol/chat-settlement-protocol-types.ts
+  h_4b47e9e4a8b456 1-47
+src/protocol/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 56
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 283-286,288
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 7,208,249,286,387,523,561
+src/protocol/runtime-ui-protocol-types.ts
+  h_4b47e9e4a8b456 18,33,103,240-242
+src/tui/hooks/shell-state.ts
+  h_4b47e9e4a8b456 478-479
+tests/unit/orchestration/app-service/project-execution-runtime.test.ts
+  h_4b47e9e4a8b456 100-101,131-135
+tests/unit/orchestration/app-service/runtime-supervisor-mailbox.test.ts
+  h_4b47e9e4a8b456 134
+tests/unit/orchestration/app-service/runtime-supervisor-settlement.test.ts
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/app-service/runtime-work-settlement.test.ts
+  h_4b47e9e4a8b456 1-43
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 76
+tests/unit/orchestration/chat/chat-invocation-completion.test.ts
+  h_4b47e9e4a8b456 78-94
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 18-19,26,37-46,69-71,83-84,104,451,454,456,461,479,485,490,499-525,529-531,579-615
+tests/unit/orchestration/headless/_acp-fixture.ts
+  h_4b47e9e4a8b456 1-258
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 2,7-8,32-33,257-403,408-457
+tests/unit/protocol/chat-settlement-protocol.test.ts
+  h_4b47e9e4a8b456 1-32
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 51,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2360d11b7572788cd9ad42e15ce6adcc7cd0f3fc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
