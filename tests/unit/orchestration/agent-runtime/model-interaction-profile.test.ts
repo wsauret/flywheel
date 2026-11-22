@@ -4,7 +4,7 @@ import { resolveModelInteractionProfile } from "../../../../src/orchestration/ag
 
 describe("model interaction profile resolution", () => {
   test("serves the OpenAI guidance models through the default profile with their guidance and the apply_patch edit contract", () => {
-    for (const model of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-astra", "gpt-6-luna"]) {
+    for (const model of ["gpt-6.2-sol", "gpt-6.2-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-astra", "gpt-6-luna"]) {
       const profile = resolveModelInteractionProfile(model, "openai")
       expect(profile.id).toBe("default")
       expect(profile.fileEditContract).toBe("apply_patch")
@@ -41,7 +41,12 @@ describe("model interaction profile resolution", () => {
     // A later version shares the profile object of its newest earlier entry.
     expect(resolveModelInteractionProfile("claude-fable-5.3", "anthropic")).toBe(resolveModelInteractionProfile("claude-fable-5.2", "anthropic"))
     expect(resolveModelInteractionProfile("claude-fable-5.2", "anthropic")).not.toBe(resolveModelInteractionProfile("claude-fable-5.1", "anthropic"))
-    expect(resolveModelInteractionProfile("gpt-6.2-sol", "openai")).toBe(resolveModelInteractionProfile("gpt-6.1-sol", "openai"))
+    expect(resolveModelInteractionProfile("gpt-6.3-sol", "openai")).toBe(resolveModelInteractionProfile("gpt-6.2-sol", "openai"))
+    expect(resolveModelInteractionProfile("gpt-6.2-sol", "openai").modelGuidance).not.toBe(resolveModelInteractionProfile("gpt-6.1-sol", "openai").modelGuidance)
+    // The GPT-6.2 models share one guidance, because their vendor prompt is the same.
+    expect(resolveModelInteractionProfile("gpt-6.2-astra", "openai").modelGuidance).toBe(resolveModelInteractionProfile("gpt-6.2-sol", "openai").modelGuidance)
+    // GPT-6.1 Terra has the guidance of GPT-6 Astra, because their vendor prompts are the same.
+    expect(resolveModelInteractionProfile("gpt-6.1-terra", "openai").modelGuidance).toBe(resolveModelInteractionProfile("gpt-6-astra", "openai").modelGuidance)
     expect(resolveModelInteractionProfile("gpt-7-luna", "openai").modelGuidance).toBeUndefined()
     // A model whose guidance is the base alone has no entry.
     for (const model of ["claude-opus-5.5", "claude-sonnet-5.5", "claude-opus-5", "claude-fable-5", "claude-sonnet-4", "claude-haiku-5"]) {

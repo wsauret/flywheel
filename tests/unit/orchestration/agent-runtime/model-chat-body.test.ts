@@ -1,12 +1,13 @@
 import { afterAll, describe, expect, it } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { Schema } from "effect";
 
 import { buildSystemPromptParts, buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOptions } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveModelInteractionProfile } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import { MODEL_GUIDANCE } from "../../../../src/orchestration/agent-runtime/model-chat-body.js";
+import { FLYWHEEL_CHAT_HOST, MODEL_GUIDANCE, renderAgentGuidance, renderChatBody } from "../../../../src/orchestration/agent-runtime/model-chat-body.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
@@ -61,7 +62,166 @@ const BLOCK_MARKERS = {
   corrections: "# Corrections",
   "quiet-caveats": "# Caveats",
   "model-limits": "speed up AI development",
+  "gpt-6.2-codex": "Bias towards action, as long as it progresses",
+  "gpt-6.1-codex": "Lead with the outcome and then develop",
+  "gpt-6-codex": "Give each paragraph one main point",
 } as const;
+
+/** The vendored Codex model catalog whose `models[].model_messages.instructions_template` the Codex passage sets copy
+ *  (ARCH-CONTEXT-045). The `slug` of each entry is the Flywheel model id. */
+const CODEX_MODELS = resolve("inspiration/codex/codex-rs/models-manager/models.json");
+const CodexModelsSchema = Schema.Struct({
+  models: Schema.Array(Schema.Struct({ slug: Schema.String, model_messages: Schema.Struct({ instructions_template: Schema.String }) })),
+});
+
+/** A run of source lines, 1-based and inclusive, that a rendering copies with its own line breaks. */
+type LineSpan = readonly [first: number, last: number];
+/** The Flywheel edits of one source line, in order, as `[from, to]`. */
+type CodexEdits = readonly (readonly [from: string, to: string])[];
+
+/** The replacement ledger of one Codex passage set: the spans of the template's lines that the chat and the agent
+ *  renderings copy, joined by a blank line, and every Flywheel edit, by line, as `[from, to]`. */
+interface CodexLedger {
+  readonly chat: readonly LineSpan[];
+  readonly agent: readonly LineSpan[];
+  readonly edits: ReadonlyMap<number, CodexEdits>;
+}
+
+const GPT_6_2_LEDGER: CodexLedger = {
+  chat: [[7, 9], [35, 41], [43, 45], [51, 51], [53, 53], [55, 55], [59, 59], [65, 73], [77, 77], [81, 83], [86, 86], [92, 102]],
+  agent: [[43, 43], [53, 53], [65, 73], [81, 83], [86, 86], [92, 102]],
+  edits: new Map([
+    // A Flywheel block heading is a first-level heading.
+    [7, [["## ", "# "]]],
+    [35, [["## ", "# "]]],
+    // Flywheel renders no trailing space at the end of a line.
+    [9, [["your reasoning. ", "your reasoning."]]],
+    [51, [["edits they want. ", "edits they want."]]],
+    [101, [["maintainability. ", "maintainability."]]],
+    // Flywheel has no `commentary` channel, and the collapse of earlier updates describes the Codex client.
+    [37, [["Disclosure in commentary alone", "Disclosure in progress updates alone"]]],
+    [39, [
+      ["intermediate commentary", "intermediate progress updates"],
+      ["prior context from commentary", "prior context from progress updates"],
+      ["read earlier commentary updates", "read earlier progress updates"],
+      [", since they are collapsed after the final answer is shown to users", ""],
+    ]],
+    // Flywheel's approval rules decide when to ask.
+    [59, [[" Ask only if the proposed action would address a specific, material gap in the user's requested outcome.", ""]]],
+    // The repository's instructions decide worktrees, merges, and pull requests.
+    [71, [[" (e.g. creating isolated worktrees / checkouts if needed, resolving merge conflicts, read-only actions, creating draft PRs etc)", ""]]],
+    // Follow-up work stays inside the request's scope and approval rules.
+    [77, [["When the user asks", "Within the limits above, when the user asks"]]],
+    // Flywheel handles only reachable states.
+    [96, [["If an operation can fail partway", "If an operation can, under supported conditions, fail partway"]]],
+  ]),
+};
+
+// The edits that the GPT-6 and GPT-6.1 ledgers share. A Flywheel block heading is a first-level heading, and Flywheel
+// has no `commentary` channel.
+const INTERMEDIATE_HEADING_EDITS: CodexEdits = [["## Intermediate commentary", "# Intermediate progress updates"]];
+// Flywheel has no `commentary` or `final` channel, and the collapse of earlier updates describes the Codex client.
+const finalAnswerEdits = (questionRule: string, finalChannelRule: string): CodexEdits => [
+  [questionRule, "Do NOT send user facing questions in intermediate progress updates."],
+  [finalChannelRule, ""],
+  ["read earlier commentary updates", "read earlier progress updates"],
+  [", since they are collapsed after the final answer is shown to users", ""],
+];
+// Flywheel's approval rules decide when to ask, and the repository's instructions decide how the work is published.
+const PERMISSION_EDITS: CodexEdits = [
+  ["For example, before deploying a change, writing to an external application, merging a PR or publishing a site, do all the work first so that user approval is the final step. ", ""],
+  ["You don't need user permission for", "Within the approval rules above, you don't need user permission for"],
+];
+// The repository's instructions decide worktrees, merges, and pull requests.
+const PERSIST_EDITS: CodexEdits = [[" (e.g. creating isolated worktrees / checkouts if needed, resolving merge conflicts, read-only actions, creating draft PRs etc)", ""]];
+
+const GPT_6_LUNA_LEDGER: CodexLedger = {
+  chat: [[7, 9], [13, 13], [19, 19], [25, 25], [31, 37], [57, 57], [63, 63]],
+  agent: [[7, 7], [13, 13], [31, 37]],
+  edits: new Map([
+    [7, [["## ", "# "]]],
+    [25, PERMISSION_EDITS],
+    [35, PERSIST_EDITS],
+    [57, INTERMEDIATE_HEADING_EDITS],
+    // The question rule also fixes the source's misspelling "intermedaite".
+    [63, finalAnswerEdits("Do NOT send user facing questions in intermedaite commentary messages.", "Do NOT put a final response in the commentary channel that should be asked in the final channel. ")],
+  ]),
+};
+
+/** The Sol ledger: the Luna lines, then the Sol rules on tests and corrections. */
+const GPT_6_SOL_LEDGER: CodexLedger = {
+  chat: [...GPT_6_LUNA_LEDGER.chat, [96, 96], [109, 110], [111, 111]],
+  agent: [...GPT_6_LUNA_LEDGER.agent, [96, 96], [109, 110]],
+  edits: new Map([
+    ...GPT_6_LUNA_LEDGER.edits,
+    // Fixing a correction stays inside the request's scope and approval rules.
+    [111, [["When the user corrects", "Within the limits above, when the user corrects"]]],
+  ]),
+};
+
+/** "Reviewer" names a Flywheel agent capability, which prompt text states only for a reader that holds it
+ *  (ARCH-CONTEXT-033). The reader of a pull request description is the same person. */
+const PR_READER_EDITS: CodexEdits = [["for a reviewer who", "for a reader who"], ["help reviewers assess", "help readers assess"]];
+
+const GPT_6_ASTRA_FINAL_ANSWER_EDITS = finalAnswerEdits("Do NOT send user facing questions in intermediate commentary messages.", "Do NOT put a final response in the commentary channel. ");
+
+/** The ledger of `gpt-6-astra` and `gpt-6.1-terra`, whose templates are the same. */
+const GPT_6_ASTRA_LEDGER: CodexLedger = {
+  chat: [[3, 3], [9, 9], [15, 21], [31, 33], [45, 57], [73, 73], [79, 79], [112, 112], [125, 126]],
+  agent: [[15, 21], [45, 45], [49, 51], [112, 112], [125, 126]],
+  edits: new Map([
+    [9, PERMISSION_EDITS],
+    [19, PERSIST_EDITS],
+    [31, [["## ", "# "]]],
+    [33, [["be useful. ", "be useful."]]],
+    [45, [["## ", "# "]]],
+    [49, [["practical limits. ", "practical limits."]]],
+    [53, [["### ", "## "]]],
+    [57, PR_READER_EDITS],
+    [73, INTERMEDIATE_HEADING_EDITS],
+    [79, GPT_6_ASTRA_FINAL_ANSWER_EDITS],
+  ]),
+};
+
+/** The ledger of `gpt-6.1-sol`: the Astra lines, two lines later from the technical communication heading on, because
+ *  its writing style adds a paragraph on apologies. */
+const GPT_6_1_SOL_LEDGER: CodexLedger = {
+  chat: [[3, 3], [9, 9], [15, 21], [31, 33], [47, 59], [75, 75], [81, 81], [114, 114], [127, 128]],
+  agent: [[15, 21], [47, 47], [51, 53], [114, 114], [127, 128]],
+  edits: new Map([
+    [9, PERMISSION_EDITS],
+    [19, PERSIST_EDITS],
+    [31, [["## ", "# "]]],
+    [33, [["be useful. ", "be useful."]]],
+    [47, [["## ", "# "]]],
+    [51, [["practical limits. ", "practical limits."]]],
+    [55, [["### ", "## "]]],
+    [59, PR_READER_EDITS],
+    [75, INTERMEDIATE_HEADING_EDITS],
+    [81, GPT_6_ASTRA_FINAL_ANSWER_EDITS],
+  ]),
+};
+
+/** The ledger of each model whose guidance holds a Codex passage set, by model id. */
+const CODEX_LEDGERS: ReadonlyMap<string, CodexLedger> = new Map([
+  ["gpt-6.2-sol", GPT_6_2_LEDGER],
+  ["gpt-6.2-astra", GPT_6_2_LEDGER],
+  ["gpt-6.1-sol", GPT_6_1_SOL_LEDGER],
+  ["gpt-6.1-terra", GPT_6_ASTRA_LEDGER],
+  ["gpt-6-sol", GPT_6_SOL_LEDGER],
+  ["gpt-6-astra", GPT_6_ASTRA_LEDGER],
+  ["gpt-6-luna", GPT_6_LUNA_LEDGER],
+]);
+
+/** The text that `spans` of `template` render with `edits` applied: each `from` must occur once in its line. */
+function applyCodexLedger(template: string, spans: readonly LineSpan[], edits: CodexLedger["edits"]): string {
+  const lines = template.split("\n");
+  const line = (number: number): string => (edits.get(number) ?? []).reduce((text, [from, to]) => {
+    expect({ number, from, count: text.split(from).length - 1 }).toEqual({ number, from, count: 1 });
+    return text.replace(from, to);
+  }, lines[number - 1] ?? "");
+  return spans.map(([first, last]) => Array.from({ length: last - first + 1 }, (_, offset) => line(first + offset)).join("\n")).join("\n\n");
+}
 
 /** The sections of the base that every chat body holds in this order, whatever the model. */
 const BASE_SECTIONS = ["# This session", "# Acting", "# Finishing the work", "# Initiative", "# Ambiguity", "# Working in Flywheel"] as const;
@@ -177,8 +337,9 @@ describe("chat body", () => {
 
   it("adds each model's guidance blocks to the base in its order, a later family version inheriting the newest earlier entry", () => {
     const withFileTools = [...TOOLS, spec("edit"), spec("write")];
-    const gpt = ["progress", "final-message", "authorization", "plain-writing", "corrections", "quiet-caveats"];
-    const gptWithoutCorrections = gpt.filter((block) => block !== "corrections");
+    // Each GPT model renders the Codex passage set of its own template in place of the final-message block.
+    const gpt = (codex: string, corrections = true): string[] => ["progress", codex, "authorization", "plain-writing", ...(corrections ? ["corrections"] : []), "quiet-caveats"];
+    const gpt62 = gpt("gpt-6.2-codex");
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
       ["claude-opus-5.5", []],
       ["claude-sonnet-5.5", []],
@@ -187,11 +348,16 @@ describe("chat body", () => {
       ["claude-fable-5.2", ["model-limits"]],
       ["claude-fable-5.3", ["model-limits"]],
       ["claude-haiku-5.5", ["scope"]],
-      ["gpt-6.1-sol", gpt],
-      ["gpt-6.2-sol", gpt],
-      ["gpt-6-sol", gpt],
-      ["gpt-6-astra", gptWithoutCorrections],
-      ["gpt-6-luna", gptWithoutCorrections],
+      ["gpt-6.1-sol", gpt("gpt-6.1-codex")],
+      ["gpt-6.1-terra", gpt("gpt-6.1-codex", false)],
+      ["gpt-6.2-terra", gpt("gpt-6.1-codex", false)],
+      ["gpt-6.2-sol", gpt62],
+      ["gpt-6.2-astra", gpt62],
+      ["gpt-6.3-sol", gpt62],
+      ["gpt-6.3-astra", gpt62],
+      ["gpt-6-sol", gpt("gpt-6-codex")],
+      ["gpt-6-astra", gpt("gpt-6.1-codex", false)],
+      ["gpt-6-luna", gpt("gpt-6-codex", false)],
       // A new major version is a new line: it gets the base alone until it has its own entry.
       ["gpt-7-luna", []],
     ];
@@ -208,8 +374,12 @@ describe("chat body", () => {
     }
     // Every GPT entry but luna's takes an authorized next step without ending the turn.
     const continues = "When the session already shows that the next step is authorized, take it. Do not end the turn to check.";
-    for (const model of ["gpt-6.1-sol", "gpt-6-sol", "gpt-6-astra"]) expect(build(model)).toContain(continues);
+    for (const model of ["gpt-6.2-sol", "gpt-6.2-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-astra"]) expect(build(model)).toContain(continues);
     expect(build("gpt-6-luna")).not.toContain(continues);
+    // The GPT-6 Sol set adds the rules on tests and corrections that the Luna set leaves out.
+    const solRules = "Broaden or repeat testing only to resolve a concrete remaining risk";
+    expect(build("gpt-6-sol")).toContain(solRules);
+    expect(build("gpt-6-luna")).not.toContain(solRules);
     expect(build("claude-opus-5.5", { tools: [...TOOLS, spec("recall")] })).toContain("session notes and the recorded history");
   });
 
@@ -239,10 +409,13 @@ describe("chat body", () => {
       [{ kind: "headless-task", prompt: { kind: "assembled", corePrompt: "You are a helpful AI Agent." } }, { promptKind: "headless" }],
     ];
     const expected: readonly (readonly [model: string, blocks: readonly string[]])[] = [
-      ["gpt-6.1-sol", ["corrections", "quiet-caveats"]],
-      ["gpt-6-sol", ["corrections", "quiet-caveats"]],
-      ["gpt-6-astra", ["quiet-caveats"]],
-      ["gpt-6-luna", ["quiet-caveats"]],
+      ["gpt-6.2-sol", ["gpt-6.2-codex", "corrections", "quiet-caveats"]],
+      ["gpt-6.2-astra", ["gpt-6.2-codex", "corrections", "quiet-caveats"]],
+      ["gpt-6.1-sol", ["gpt-6.1-codex", "corrections", "quiet-caveats"]],
+      ["gpt-6.1-terra", ["gpt-6.1-codex", "quiet-caveats"]],
+      ["gpt-6-sol", ["gpt-6-codex", "corrections", "quiet-caveats"]],
+      ["gpt-6-astra", ["gpt-6.1-codex", "quiet-caveats"]],
+      ["gpt-6-luna", ["gpt-6-codex", "quiet-caveats"]],
       ["claude-opus-5.5", []],
       ["claude-haiku-5.5", []],
     ];
@@ -264,6 +437,25 @@ describe("chat body", () => {
           expect(parts[1]?.text).not.toContain("until the user writes again");
         }
       }
+    }
+  });
+
+  it.skipIf(!existsSync(CODEX_MODELS))("copies each Codex passage set from its model's Codex template with only the edits of its ledger", () => {
+    const templates = new Map(Schema.decodeUnknownSync(CodexModelsSchema)(JSON.parse(readFileSync(CODEX_MODELS, "utf8"))).models.map((entry) => [entry.slug, entry.model_messages.instructions_template]));
+    const guided = MODEL_GUIDANCE.filter(([, guidance]) => [...guidance.chat, ...guidance.agent].some((block) => typeof block !== "string"));
+    expect(guided.map(([model]) => model).toSorted()).toEqual([...CODEX_LEDGERS.keys()].toSorted());
+    const has = (): boolean => true;
+    const base = renderChatBody([], has, FLYWHEEL_CHAT_HOST);
+    for (const [model, guidance] of guided) {
+      const ledger = CODEX_LEDGERS.get(model)!;
+      const template = templates.get(model);
+      if (template === undefined) throw new Error(`no Codex template for ${model}`);
+      const chatLines = new Set(ledger.chat.flatMap(([first, last]) => Array.from({ length: last - first + 1 }, (_, offset) => first + offset)));
+      for (const line of ledger.edits.keys()) expect({ model, line, copied: chatLines.has(line) }).toEqual({ model, line, copied: true });
+      const chat = guidance.chat.filter((block) => typeof block !== "string");
+      const agent = guidance.agent.filter((block) => typeof block !== "string");
+      expect(renderChatBody(chat, has, FLYWHEEL_CHAT_HOST)).toBe(base.replace(FLYWHEEL_CHAT_HOST.commitmentsHeading, `${applyCodexLedger(template, ledger.chat, ledger.edits)}\n\n${FLYWHEEL_CHAT_HOST.commitmentsHeading}`));
+      expect(renderAgentGuidance(agent, true)).toBe(`${renderAgentGuidance([], true)}\n\n${applyCodexLedger(template, ledger.agent, ledger.edits)}`);
     }
   });
 });

@@ -205,3 +205,9 @@ Because: A discarded prefix costs cache and reasoning silently, and only the pro
 A conversation's system prompt is rendered when its context opens and is held, durably, until its next compaction, model switch, or Flywheel version change. A later change to an input of the prompt, such as memory, instruction files, or the skill catalog, is appended once as a system-origin entry where it takes effect.
 Because: A changed system prompt invalidates the cached history behind it and drops replayed reasoning.
 Not: Rendering the prompt again for each turn and relying on cache breakpoints.
+
+## ARCH-CONTEXT-045: Model guidance states vendor intent in Flywheel's words, except vendor passages meant to be copied
+
+Per-model guidance states the intent of each vendor's model guidance in Flywheel's own words. The one exception is a passage of an OpenAI model prompt that OpenAI asks integrators to copy, such as the GPT-6 passages that its prompting guides cite. Such a passage is copied word for word. A narrow edit removes a capability that Flywheel does not offer or a rule that conflicts with Flywheel's rules, and a replacement ledger records each edit. A drift test compares the copy with the vendored source. A passage that no narrow edit can fit to Flywheel's rules is not copied.
+Because: OpenAI tunes those models against its exact wording and reports that a rephrased system prompt steers them less well.
+Not: Rephrasing those passages, or copying a vendor prompt whole, which brings in rules that conflict with Flywheel's design.

@@ -3,7 +3,10 @@
  * an entry in `MODEL_GUIDANCE`, for Claude and OpenAI models alike.
  *
  * The text follows the model guidance of two vendors, Anthropic and OpenAI, in Flywheel's own words: it keeps the
- * intent of each vendor's text, never its wording. It has three layers:
+ * intent of each vendor's text, not its wording. The one exception is a Codex passage set (ARCH-CONTEXT-045): passages
+ * of the Codex system prompt (Apache License 2.0) that OpenAI asks integrators to copy for a model. Such a set is
+ * copied word for word, and the replacement ledger of its drift test in `model-chat-body.test.ts` records each narrow
+ * edit. The text has three layers:
  *
  * - The base, which every chat gets: what both vendors give every current model (identity, how a long session
  *   continues, refused calls, when to ask for permission and what a permission covers, faithful reports, acting once
@@ -13,7 +16,8 @@
  *   and the final message. One block holds the conditions of both vendors' texts, so the models of both vendors that
  *   need the behavior use the same block.
  * - Vendor blocks, which carry a behavior that only one vendor tunes for, such as authorization and plain writing for
- *   the OpenAI models.
+ *   the OpenAI models. A Codex passage set is a vendor block: each GPT-6 model has one, from the Codex template of its
+ *   own model, in place of the final-message block.
  *
  * An entry names two lists of blocks, each in render order:
  *
@@ -166,6 +170,110 @@ const QUIET_CAVEATS = `# Caveats
 - Add no warnings, disclaimers, approval steps, or safety checklists that nobody asked for because of a risk that is only hypothetical. A risk that the evidence shows is real still gets its warning.
 - Keep implementation details out of the text of a product that you build, such as the labels and messages of an app or a web page. Show such a detail only when it helps the product's user make a real decision.`;
 
+/** One paragraph of a Codex passage set. `work` marks a paragraph about the work itself, which a subagent or a
+ *  workflow agent also renders; a paragraph about the conversation with the user renders in chat only. */
+interface CodexParagraph {
+  readonly text: string;
+  readonly work: boolean;
+}
+
+/** A Codex passage set: the paragraphs that Flywheel copies from the `instructions_template` of one model's entry in
+ *  `codex-rs/models-manager/models.json`, in source order. Paragraphs join with a blank line, as in the source. */
+type CodexPassages = readonly CodexParagraph[];
+
+const work = (text: string): CodexParagraph => ({ text, work: true });
+const chatOnly = (text: string): CodexParagraph => ({ text, work: false });
+
+/** The GPT-6.2 passage set, which the Codex entries `gpt-6.2-sol` and `gpt-6.2-astra` share. */
+const GPT_6_2_CODEX_PASSAGES: CodexPassages = [
+  chatOnly("# Writing style"),
+  chatOnly("Write as a user’s colleague would: clear, professional, and using terminology the user and sources use. Keep technical details and use domain-specific language when they make the explanation more precise. Use the active voice and keep closely related details together. Give the user enough context to follow your reasoning."),
+  chatOnly("# Final answer"),
+  chatOnly("In your final answer back to the user, mention any relevant flaws in your work or any decisions you made without explicit guidance from the user, so that the user can verify your approach and work. Disclosure in progress updates alone is not enough. You MUST repeat any such disclosures in the final answer."),
+  chatOnly("Treat your final answer as the user's first look at your work, not as a continuation of intermediate progress updates. Ensure that the response is understandable without any prior context from progress updates, and drop any new vocabulary or working shorthand that you built up while working. The final answer must always be fully self-contained: users should never need to read earlier progress updates."),
+  chatOnly("Skip routine process and conclusions that are already clear from available evidence."),
+  work("# Rules for getting work done"),
+  chatOnly("IMPORTANT: When the user asks you to finish, babysit, monitor, or wait, take end-to-end ownership of the task until the user's completion condition is reached. Autonomously perform authorized, in-scope steps, including checking progress, diagnosing problems, safely retrying, and fixing recoverable failures. Do not stop at an intermediate result or unchanged state."),
+  chatOnly("When drafting a message or any other material on behalf of the user to be sent to an external audience, consider who will read it and tailor the content to that intended audience. The intended audience likely does not have the same context as the user, so ensure that you provide the background information or reasoning required for the audience to understand the content. When reviewing or editing existing content, preserve the author’s content and wording, and follow the user's instruction carefully for what edits they want."),
+  work("Before calling work complete, check each deliverable against the user's intended goal, outcome, deliverable, and format. Identify anything still pending or unverified and ensure that you complete the task fully. If you are blocked and unable to make useful progress, you should state that clearly when you cannot do more useful work."),
+  chatOnly("# When to ask the user for permission"),
+  chatOnly("You MUST complete work that is already authorized before asking the user for permission as a final step. The user should be approving a concrete, reviewable result. Before asking for permission, make the progress you can with existing authorization. You don’t need user permission for read-only actions within the scope of the user’s request. Explain what the action would add or unblock and what requires the user's consent. If the authorized work is sufficient, finish the task."),
+  work("# Autonomy and persistence"),
+  work("Bias towards action, as long as it progresses the user's task and goal within scope. If a task requires sustained work, you continue working autonomously and with persistence until the desired user outcome is achieved."),
+  work("Before calling a task complete, check that the result fully satisfies the user’s intent, including the expected outcome, deliverable, and requested format. If any steps remain or any part of the result still needs verification, follow through before finishing. If you are blocked and unable to make useful progress, you should state that clearly when you cannot do more useful work."),
+  work("When the user expresses intent to perform new work or fix an existing issue, persist until the user's intended goal is complete. Progress autonomously towards the user's goal unless they are clearly destructive or irreversible."),
+  work("If a task requires sustained work, do all the necessary work until the intended outcome is completely fulfilled."),
+  chatOnly("Within the limits above, when the user asks a follow-up question, questions your approach, or implies that they'd like work beyond the immediate answer, understand the user's intent behind that question and carry the work through to a useful result. Do not second guess yourself, stop after describing what you could do, offer to do it, or provide a partial answer unless there is factual evidence to do so. Make reasonable, reversible assumptions and state them if it progresses the task within scope."),
+  work("# Frontend Design Guidance"),
+  work("When generating webpages or apps with a frontend user interface, follow these instructions:"),
+  work("- Include a text element only when it provides information the user needs, helps them navigate or act, or fulfills an explicit content request. Remove decorative numbering, filler badges, redundant headings, and explanatory copy that merely restates what the surrounding interface already makes clear, while preserving necessary labels, instructions, and status feedback."),
+  work("# Coding Style"),
+  work("Above all, be thorough in producing high-quality, correct code that completely fulfills the user's task. Keep the code easy to read and verify that the user-requested outcome works as they intend. Follow these instructions when coding:"),
+  work(`(a) Make sure the change works through the feature’s normal entry points and preserves the behavior existing callers rely on, except where the request changes that behavior. Handle the full range of supported inputs, including data created before the change. If an operation can, under supported conditions, fail partway, be retried, or run concurrently, keep the resulting state consistent.
+(b) Reuse existing logic in the user's repo when you can. You should reuse existing classes, methods, representations, and APIs in the codebase as long as they preserve correctness. Before consolidating or removing code, preserve the behavior its callers rely on unless the task requires changing it.
+(c) Skip new tests unless requested, required by the repo, or needed to catch a specific regression existing tests would miss.
+(d) Include every requested deliverable and ensure that it is usable and follows the user's guidelines. Unless requested by the user, avoid generating unrequested/unrelated artifacts, such as files, deployment changes, documentation rewrites, formatting churn, optional features, and configuration changes. Do not introduce unused helpers or state.
+(e) Make sure that code is human readable. Do not use fewer lines, shorter variable names, minified formatting, or dense one-liners as substitutes for simplicity. Ensure that comments and variable names are readable and understandable to a human. Code-golfed expressions count as overly complex when they encode many branches, conditions, or hidden assumptions.
+(f) Avoid unnecessary cyclomatic complexity. Do not introduce additional decision points like \`if\`, \`for\`, \`while\`, \`case\`, conditional operators, and control-flow branches if they reduce maintainability.
+(g) Avoid unnecessary indirection and abstraction. Helper functions, utility functions, and class abstractions can add cognitive complexity even when they do not add branches.`),
+];
+
+/** The GPT-6 Luna passage set, from the Codex entry `gpt-6-luna`. The `gpt-6-sol` template holds the same lines and
+ *  adds testing and correction rules (`GPT_6_SOL_CODEX_PASSAGES`). */
+const GPT_6_LUNA_CODEX_PASSAGES: CodexPassages = [
+  work("# Writing style"),
+  chatOnly("When discussing technical concepts, converse like how you would to a colleague or collaborator in conversation. You strive to minimize cognitive load for the user: write so the user understands your response on first read."),
+  work("Give each paragraph one main point and arrange the ideas in an order the reader can easily follow. When reporting changes, explain what changed, why, how it was tested, and any material risks or limitations. Include the evidence needed to understand the conclusion and its practical limits."),
+  chatOnly("# When to ask the user for permission"),
+  chatOnly("You MUST complete the work that is already authorized and necessary to make the proposed action concrete and reviewable before asking the user for permission as a final step. The user should be approving a concrete, reviewable result. Within the approval rules above, you don't need user permission for reversible tasks, read-only actions, reviews or fixes, or anything for which authorization is provided earlier in the session or implied from the task instruction."),
+  work("# Autonomy and persistence"),
+  work("The following instructions are critical for you to be an effective collaborator, so follow them carefully. You should infer the user's intent and task scope from the instructions and prior conversation context. Your job is to bias towards action and carry the user's intended task to completion."),
+  work("When the user expresses intent to perform new work or fix an existing issue, persist until the user's intended goal is complete. Progress autonomously towards the user's goal unless they are clearly destructive or irreversible."),
+  work("Do not settle for a partial or \"helpful enough\" solution that does not fully satisfy the user's task to save time, effort or tokens. If a task requires sustained work, complete all the necessary work until the intended outcome is fulfilled."),
+  chatOnly("# Intermediate progress updates"),
+  chatOnly("Do NOT send user facing questions in intermediate progress updates. The final answer must always be fully self-contained: users should never need to read earlier progress updates."),
+];
+
+/** The GPT-6 Sol passage set, from the Codex entry `gpt-6-sol`: the Luna set and the Sol rules on tests and
+ *  corrections. */
+const GPT_6_SOL_CODEX_PASSAGES: CodexPassages = [
+  ...GPT_6_LUNA_CODEX_PASSAGES,
+  work("# Rules for getting work done"),
+  work(`- Do not write tests for reversible, low-impact changes or that mirror the implementation. If you do choose to verify your work with tests, make sure that the tests are meaningful and necessary to verify implementation.
+- Broaden or repeat testing only to resolve a concrete remaining risk or satisfy a required gate. Once sufficiently verified, stop optional testing and continue toward the user's goal.`),
+  chatOnly("- Within the limits above, when the user corrects or questions your approach, points out a mistake or finds an unmet requirement in your work, assume they want you to fix the issue and are not asking you to acknowledge or explain your omission. If available evidence supports your original approach or you aren't able to proceed, clearly explain why. If the user asks only for an explanation, tells you to stop or narrow the task, or that the next step needs their input or approval, follow that direction."),
+];
+
+/** The GPT-6 Astra passage set, which the Codex entries `gpt-6-astra`, `gpt-6.1-terra`, and `gpt-6.1-sol` share: the
+ *  lines that Flywheel copies are the same in their three templates. */
+const GPT_6_ASTRA_CODEX_PASSAGES: CodexPassages = [
+  chatOnly("# When to ask the user for permission"),
+  chatOnly("You MUST complete the work that is already authorized and necessary to make the proposed action concrete and reviewable before asking the user for permission as a final step. The user should be approving a concrete, reviewable result. Within the approval rules above, you don't need user permission for reversible tasks, read-only actions, reviews or fixes, or anything for which authorization is provided earlier in the session or implied from the task instruction."),
+  work("# Autonomy and persistence"),
+  work("The following instructions are critical for you to be an effective collaborator, so follow them carefully. You should infer the user's intent and task scope from the instructions and prior conversation context. Your job is to bias towards action and carry the user's intended task to completion."),
+  work("When the user expresses intent to perform new work or fix an existing issue, persist until the user's intended goal is complete. Progress autonomously towards the user's goal unless they are clearly destructive or irreversible."),
+  work("When the user's prompt indicates a request for action, such as \"can you...\", \"I want to...\", \"help me...\" and similar expressions, treat these as instructions to do the work and take action. Do not stop at acknowledging capability (e.g. \"Yes…\"), proposing a plan, or offering to continue. Do not settle for a partial or \"helpful enough\" solution that does not fully satisfy the user's task to save time, effort or tokens. If a task requires sustained work, complete all the necessary work until the intended outcome is fulfilled."),
+  chatOnly("# Writing style"),
+  chatOnly("Your writing adapts to the conversation, matching the tone and understanding of the user. Make sure to state the main point clearly and early, then develop it with the explanation and detail the reader needs. Let each sentence build on what came before. Develop the points that matter and provide enough support to be useful."),
+  work("# Technical communication"),
+  chatOnly("In addition to the writing style instructions above, follow these guidelines when discussing technical work: Use plain language over jargon, and reference technical details only to the degree that it actually helps with the conversation. Communicate complex concepts in a clear and cohesive manner. Translating complex topics into clear communication comes easy for you, and the user should never have to read your writing twice to understand it."),
+  work("Lead with the outcome and then develop your reasoning for how you got there. When reporting changes, explain what changed, why, how it was tested, and any material risks or limitations. Include the evidence needed to understand the conclusion and its practical limits."),
+  work("Present reasoning and evidence in the order that makes the conclusion easiest to assess, rather than recounting your work chronologically. Summarize routine verification instead of listing every check. In progress updates, focus on what you have learned, what remains uncertain, and what the next step will resolve."),
+  chatOnly("## Writing PR descriptions"),
+  chatOnly("Lead the description with the concrete problem and resulting behavior. Use a concrete trigger and before/after example when helpful. Scale detail to complexity: simple PRs usually need one or two sentences plus relevant validation. Use structure when it helps scanning or the repository template requires it."),
+  chatOnly("Describe the final change for a reader who has not seen the conversation. When scope changes, rewrite the title and description around the final implementation. Omit conversational history and abandoned approaches unless they explain a tradeoff needed for review. Include only technical and validation details that help readers assess the change."),
+  chatOnly("# Intermediate progress updates"),
+  chatOnly("Do NOT send user facing questions in intermediate progress updates. The final answer must always be fully self-contained: users should never need to read earlier progress updates."),
+  work("# Rules for getting work done"),
+  work(`- Do not write tests for reversible, low-impact changes or that mirror the implementation. If you do choose to verify your work with tests, make sure that the tests are meaningful and necessary to verify implementation.
+- Run tests appropriate to the change and complete required checks. Once those pass, broaden or repeat testing only when new changes, failures, or unresolved concerns justify it; otherwise, continue toward completing the task.`),
+];
+
+/** The paragraphs of `passages` that `audience` reads. */
+function renderCodexPassages(passages: CodexPassages, audience: Audience): string {
+  return passages.filter((paragraph) => audience === "chat" || paragraph.work).map((paragraph) => paragraph.text).join("\n\n");
+}
+
 const MODEL_LIMITS = "Your training limited a narrow set of skills that could most directly speed up AI development, such as the optimization of accelerator kernels. In that work, trust your first ideas less and read the documentation more often. Otherwise, help with that work as usual. Ordinary machine learning work is not affected. This limit alone is not a reason to suggest a different model.";
 
 const capitalize = (text: string): string => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
@@ -204,39 +312,41 @@ const AGENT_BLOCKS = {
   "quiet-caveats": QUIET_CAVEATS,
 } as const satisfies { readonly [id: string]: string };
 
-/** One model's guidance: its chat blocks and its agent blocks, each in render order. */
+/** One model's guidance: its chat blocks and its agent blocks, each in render order. A block is the id of a Flywheel
+ *  block or a Codex passage set. */
 export interface ModelGuidance {
-  readonly chat: readonly (keyof typeof CHAT_BLOCKS)[];
-  readonly agent: readonly (keyof typeof AGENT_BLOCKS)[];
+  readonly chat: readonly (keyof typeof CHAT_BLOCKS | CodexPassages)[];
+  readonly agent: readonly (keyof typeof AGENT_BLOCKS | CodexPassages)[];
 }
 
-/** The guidance of `gpt-6-sol`; `gpt-6-astra` drops the corrections block, and `gpt-6-luna` also takes the
- *  authorization variant without the rule to continue an authorized step. */
-const GPT_6_SOL_GUIDANCE: ModelGuidance = {
-  chat: ["progress", "final-message", "authorization", "plain-writing", "corrections", "quiet-caveats"],
-  agent: ["corrections", "quiet-caveats"],
-};
-const GPT_6_ASTRA_GUIDANCE: ModelGuidance = {
-  chat: GPT_6_SOL_GUIDANCE.chat.filter((id) => id !== "corrections"),
-  agent: GPT_6_SOL_GUIDANCE.agent.filter((id) => id !== "corrections"),
-};
-const GPT_6_LUNA_GUIDANCE: ModelGuidance = {
-  chat: GPT_6_ASTRA_GUIDANCE.chat.map((id) => (id === "authorization" ? "authorization-without-continue" : id)),
-  agent: GPT_6_ASTRA_GUIDANCE.agent,
-};
+/** The guidance of a GPT-6 model whose Codex passage set is `passages`. The set renders after the progress block, and
+ *  its work paragraphs come before the agent blocks. `corrections` adds the corrections block.
+ *  `continueWhenAuthorized` selects the authorization block with the rule to continue an authorized step, which Luna
+ *  leaves out. */
+function gpt6Guidance(passages: CodexPassages, options: { readonly corrections: boolean; readonly continueWhenAuthorized: boolean }): ModelGuidance {
+  const workBlocks = options.corrections ? (["corrections", "quiet-caveats"] as const) : (["quiet-caveats"] as const);
+  const authorizationBlock = options.continueWhenAuthorized ? "authorization" : "authorization-without-continue";
+  return { chat: ["progress", passages, authorizationBlock, "plain-writing", ...workBlocks], agent: [passages, ...workBlocks] };
+}
+
+const GPT_6_2_GUIDANCE = gpt6Guidance(GPT_6_2_CODEX_PASSAGES, { corrections: true, continueWhenAuthorized: true });
+const GPT_6_ASTRA_GUIDANCE = gpt6Guidance(GPT_6_ASTRA_CODEX_PASSAGES, { corrections: false, continueWhenAuthorized: true });
 
 /** The canonical model ids that add guidance blocks to the base, each with its blocks. A later version of one of
- *  their families gets the entry of its newest earlier version (`familySettings`): `gpt-6.2-sol` takes `gpt-6.1-sol`.
+ *  their families gets the entry of its newest earlier version (`familySettings`): `gpt-6.3-sol` takes `gpt-6.2-sol`.
  *  A model with no entry gets the base alone. The Claude entries follow their vendor's tuning, which applies model
  *  guidance to the main chat only, so they have no agent blocks. */
 export const MODEL_GUIDANCE: readonly (readonly [model: string, guidance: ModelGuidance])[] = [
   ["claude-fable-5.1", { chat: ["progress", "scope", "final-message"], agent: [] }],
   ["claude-fable-5.2", { chat: ["model-limits"], agent: [] }],
   ["claude-haiku-5.5", { chat: ["scope"], agent: [] }],
-  ["gpt-6.1-sol", GPT_6_SOL_GUIDANCE],
-  ["gpt-6-sol", GPT_6_SOL_GUIDANCE],
+  ["gpt-6.2-sol", GPT_6_2_GUIDANCE],
+  ["gpt-6.2-astra", GPT_6_2_GUIDANCE],
+  ["gpt-6.1-sol", gpt6Guidance(GPT_6_ASTRA_CODEX_PASSAGES, { corrections: true, continueWhenAuthorized: true })],
+  ["gpt-6.1-terra", GPT_6_ASTRA_GUIDANCE],
+  ["gpt-6-sol", gpt6Guidance(GPT_6_SOL_CODEX_PASSAGES, { corrections: true, continueWhenAuthorized: true })],
   ["gpt-6-astra", GPT_6_ASTRA_GUIDANCE],
-  ["gpt-6-luna", GPT_6_LUNA_GUIDANCE],
+  ["gpt-6-luna", gpt6Guidance(GPT_6_LUNA_CODEX_PASSAGES, { corrections: false, continueWhenAuthorized: false })],
 ];
 
 function commitments(has: CapabilityCheck, host: ChatHost): string {
@@ -295,7 +405,7 @@ export function renderChatBody(blocks: ModelGuidance["chat"], has: CapabilityChe
     finishing("chat", CHAT_TURN_END),
     INITIATIVE,
     AMBIGUITY,
-    ...blocks.map((id) => CHAT_BLOCKS[id](has)),
+    ...blocks.map((block) => (typeof block === "string" ? CHAT_BLOCKS[block](has) : renderCodexPassages(block, "chat"))),
     commitments(has, host),
   ].join("\n\n");
 }
@@ -308,5 +418,5 @@ export function renderChatBody(blocks: ModelGuidance["chat"], has: CapabilityChe
  *  states its assumptions in its handoff. */
 export function renderAgentGuidance(blocks: ModelGuidance["agent"], hasParentChannel: boolean): string {
   const opening = `- No person reads your messages while you work, and ending a turn with only a message never pauses your work.${hasParentChannel ? "" : " No parent can answer during this run. When a choice needs the design, decide on your own judgment and state each assumption in your handoff."}`;
-  return [finishing("agent", opening), ...blocks.map((id) => AGENT_BLOCKS[id])].join("\n\n");
+  return [finishing("agent", opening), ...blocks.map((block) => (typeof block === "string" ? AGENT_BLOCKS[block] : renderCodexPassages(block, "agent")))].join("\n\n");
 }
