@@ -73,6 +73,11 @@ export function createSessionSummaryHistoryFixture(projectRoot: string): Session
   const semanticUsageIds = new Set<string>()
   const sessions = new Set<string>()
   try {
+    // A workspace store the current release creates is in incremental
+    // auto-vacuum mode, which SQLite fixes at the first page write. Without
+    // it the service converts the store at its first idle check and closes
+    // the project the scenario measures.
+    db.exec("PRAGMA auto_vacuum = INCREMENTAL")
     configureSqliteEventStore(db)
     const putSequence = db.query("insert or ignore into event_sequence (aggregate_id, seq) values (?, ?)")
     for (let index = 0; index < LARGE_SESSION_SUMMARY_HISTORY.sessions; index++) {
