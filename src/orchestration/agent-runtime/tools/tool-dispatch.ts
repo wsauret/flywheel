@@ -384,7 +384,7 @@ export async function executePreparedTool(
     ...baseContext,
     signal: watchdog ? mergeAbortSignals(context.signal, watchdog.signal) : context.signal,
     toolUseId: call.id,
-    outputByteBudget: TOOL_RESULT_MAX_BYTES - (prepared.repairNotice === undefined ? 0 : Buffer.byteLength(`${prepared.repairNotice}\n`, "utf-8")),
+    outputByteBudget: Math.min(TOOL_RESULT_MAX_BYTES, context.toolResultWireBytes ?? TOOL_RESULT_MAX_BYTES) - (prepared.repairNotice === undefined ? 0 : Buffer.byteLength(`${prepared.repairNotice}\n`, "utf-8")),
     ...(call.modelRequestId ? { modelRequestId: call.modelRequestId } : {}),
     ...(onExecutionOutput ? { onExecutionOutput: (text: string) => { resetWatchdog(); onExecutionOutput(text); } } : {}),
   };

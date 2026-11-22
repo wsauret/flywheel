@@ -406,6 +406,23 @@ describe("subscription usage binding", () => {
     expect(await serve()).toBe("openai_api");
     expect(connections).toBe(2);
   });
+
+  test("a staged attempt carries the tool result size that its route describes, and a route that describes none states none", async () => {
+    const base = testProviderRegistry();
+    const auth = { ...noKeysAuth, providers: authProviders({ base: noKeysAuth.providers, apiKeys: { openai_api: "key" } }) };
+    const providers = {
+      ...base,
+      factories: new Map(base.factories).set("openai_api", async (build) => {
+        const adapter = await base.factories.get("openai_api")!(build);
+        const describeAttempt = async (attribution: typeof build.attribution) => ({ ...(await adapter.stage({ attribution, accountOfferings: [] })).attempt, toolResultWireBytes: 9_922 });
+        return providerAdapter(build, describeAttempt, async () => await (await adapter.stage({ attribution: build.attribution, accountOfferings: [] })).connect(), (client) => client);
+      }),
+    };
+    const described = await createClient("gpt-5.5", testModelsClient(), auth, { ...CLIENT_DIRECTORIES, providers });
+    expect((await described.plannedAttempt()).toolResultWireBytes).toBe(9_922);
+    const plain = await createClient("gpt-5.5", testModelsClient(), auth, CLIENT_DIRECTORIES);
+    expect((await plain.plannedAttempt()).toolResultWireBytes).toBeUndefined();
+  });
 });
 
 describe("createAgentRuntime connection forwarding", () => {

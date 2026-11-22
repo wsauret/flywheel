@@ -87,6 +87,8 @@ interface TurnDispatcherDeps {
   executionWhitelist?: ExecutionWhitelist;
   toolExecutionGate?: ToolExecutionGate;
   requestAttribution?: { resolve(requestId: string): ToolAttributionIdentity | undefined };
+  /** The serving attempt's `toolResultWireBytes`, which each call's dispatch context carries. */
+  toolResultWireBytes?: number;
 }
 
 interface ToolBatchResult {
@@ -224,6 +226,7 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
     const context: ToolDispatchContext = {
       ...deps.toolContext,
       signal,
+      ...(deps.toolResultWireBytes === undefined ? {} : { toolResultWireBytes: deps.toolResultWireBytes }),
       ...(attributionIdentity ? {
         attributionIdentity,
         gitAiAttribution: attributionIdentity.service,

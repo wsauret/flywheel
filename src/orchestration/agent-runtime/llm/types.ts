@@ -637,6 +637,11 @@ export interface ServingAttempt {
   /** The route's client starts what a request needs before the request comes (`LLMClient.anticipate`), such as the
    *  process that serves it. A session's pre-start (`RequestPreparer`) hands its request only to a client of such a route. */
   readonly anticipatesRequests?: true;
+  /** The largest tool result text, in UTF-8 bytes, that this route delivers to its model unchanged, when it is below
+   *  the tool-output boundary's cap: the route cuts the model's copy of a longer result itself. Dispatch gives a tool
+   *  that pages its own output, such as read, this budget for the calls of a request that the route served. Absent
+   *  for a route that delivers every result as Flywheel produced it. */
+  readonly toolResultWireBytes?: number;
   /** Subset of model names this provider/account is allowed to use. Used by
    *  subagent tier resolution to avoid picking a model the API will reject.
    *  `undefined` means "no constraint" (e.g. Anthropic API key). */

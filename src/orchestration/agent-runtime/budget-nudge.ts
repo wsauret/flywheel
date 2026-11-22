@@ -27,6 +27,10 @@ export interface BudgetNudge {
    *  nudge stage is reached; the input unchanged before it. `turnsUsed`
    *  counts the turn whose results these are. */
   applyTrailer(results: ReadonlyArray<ToolResultEntry>, turnsUsed: number): ReadonlyArray<ToolResultEntry>;
+  /** The UTF-8 bytes that `applyTrailer` adds to the text of a result for the turn `turnsUsed`, the "\n" that
+   *  joins it to the text before it included; 0 before the nudge stage. A route that bounds each delivered result
+   *  reserves them, because the trailer can go to any call of the turn. */
+  trailerBytes(turnsUsed: number): number;
   /** Handoff-only execution whitelist once the closure stage is reached,
    *  undefined before it. `turn` is the ordinal of the turn being dispatched. */
   closureWhitelist(turn: number): ExecutionWhitelist | undefined;
@@ -34,6 +38,7 @@ export interface BudgetNudge {
 
 const INACTIVE: BudgetNudge = {
   applyTrailer: (results) => results,
+  trailerBytes: () => 0,
   closureWhitelist: () => undefined,
 };
 
@@ -42,13 +47,19 @@ export function createBudgetNudge(maxLLMCalls: number | undefined, handoffConfig
   const max = maxLLMCalls;
   const nudgeAt = Math.ceil(max * NUDGE_RATIO);
   const closureAt = Math.ceil(max * CLOSURE_RATIO);
+  const trailer = (turnsUsed: number) => turnsUsed < nudgeAt
+    ? undefined
+    : `[budget: ${max - turnsUsed} of ${max} turns remain. Consolidate: batch every remaining independent tool call into your next turns and call handoff before the cap.]`;
   return {
     applyTrailer(results, turnsUsed) {
       const last = results[results.length - 1];
-      if (!last || turnsUsed < nudgeAt) return results;
-      const remaining = max - turnsUsed;
-      const trailer = `[budget: ${remaining} of ${max} turns remain. Consolidate: batch every remaining independent tool call into your next turns and call handoff before the cap.]`;
-      return [...results.slice(0, -1), { ...last, content: [...last.content, { type: "text", text: trailer }] }];
+      const text = trailer(turnsUsed);
+      if (!last || text === undefined) return results;
+      return [...results.slice(0, -1), { ...last, content: [...last.content, { type: "text", text }] }];
+    },
+    trailerBytes(turnsUsed) {
+      const text = trailer(turnsUsed);
+      return text === undefined ? 0 : Buffer.byteLength(`\n${text}`, "utf8");
     },
     closureWhitelist(turn) {
       if (turn < closureAt) return undefined;

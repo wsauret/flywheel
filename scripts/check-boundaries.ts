@@ -108,12 +108,13 @@ const rules: BoundaryRule[] = [
   },
   {
     id: "mcp-sdk-is-quarantined",
-    description: "@modelcontextprotocol/sdk imports belong only in the MCP module home, its shared owned transport, the source-only iOS simulator owner, and the Agent SDK bridge's tool gate.",
+    description: "@modelcontextprotocol/sdk imports belong only in the MCP module home, its shared owned transport, the source-only iOS simulator owner, the Agent SDK bridge's tool gate, and the Antigravity tool listener.",
     matches(importRef): boolean {
       if (isUnder(importRef.sourcePath, "src/orchestration/modules/mcp/")) return false;
       if (importRef.sourcePath === "src/orchestration/agent-runtime/mcp-stdio-client-transport.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/development/ios-simulator-backend.ts") return false;
       if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/tool-gate.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/provider-google-antigravity/mcp-server.ts") return false;
       return importRef.specifier === "@modelcontextprotocol/sdk" || importRef.specifier.startsWith("@modelcontextprotocol/sdk/");
     },
   },

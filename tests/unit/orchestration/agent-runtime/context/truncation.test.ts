@@ -156,7 +156,7 @@ describe("limitOutput", () => {
     const retained = join(testDir, "scratch", "bash-foreground.log");
     const result = await limitOutput({
       content: "X".repeat(50_000),
-      retainedFullContent: { path: retained, bytes: 2_000_000, sha256: "a".repeat(64) },
+      retainedFullContent: { path: retained },
       executionCwd: testDir,
       projectRoot: testDir,
       artifactScopeId: "sess-retained",

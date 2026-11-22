@@ -539,6 +539,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         ...(executionWhitelist ? { executionWhitelist } : {}),
         ...(toolExecutionGate ? { toolExecutionGate } : {}),
         ...(options.requestAttribution ? { requestAttribution: options.requestAttribution } : {}),
+        // The route bounds each delivered result, and the budget trailer of this turn joins one of them.
+        ...(candidate.attempt.toolResultWireBytes === undefined ? {} : { toolResultWireBytes: candidate.attempt.toolResultWireBytes - budgetNudge.trailerBytes(llmCallsUsed) }),
       });
       const commitAssistant = createAssistantMessageSettlement({
         interruptSignal, runSignal: signal, observedCalls: () => observedCalls,

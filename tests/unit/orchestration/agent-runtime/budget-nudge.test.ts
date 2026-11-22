@@ -13,6 +13,7 @@ describe("createBudgetNudge", () => {
     const results = [entry("tc_1", "ok")];
     for (const nudge of [createBudgetNudge(undefined, true), createBudgetNudge(10, false)]) {
       expect(nudge.applyTrailer(results, 10)).toBe(results);
+      expect(nudge.trailerBytes(10)).toBe(0);
       expect(nudge.closureWhitelist(10)).toBeUndefined();
     }
   });
@@ -29,6 +30,10 @@ describe("createBudgetNudge", () => {
     expect(last).toContain("handoff");
     // The input entries stay unmutated.
     expect(JSON.stringify(results[1])).not.toContain("[budget:");
+    // The reserve that a bounded route takes is the joined text that the trailer adds.
+    const joined = (result: ToolResultEntry | undefined) => (result?.content ?? []).flatMap((part) => part.type === "text" ? [part.text] : []).join("\n");
+    expect(Buffer.byteLength(joined(nudged[1])) - Buffer.byteLength(joined(results[1]))).toBe(nudge.trailerBytes(120));
+    expect(nudge.trailerBytes(119)).toBe(0);
   });
 
   it("preserves image parts in the last result and appends the trailer after them", () => {

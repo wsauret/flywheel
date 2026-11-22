@@ -63,7 +63,7 @@ interface LimitOutputOptions extends OutputArtifactContext {
   fullContent?: string;
   /** A file the tool already retained with the full payload. The notice
    *  names it, and no breadcrumb is written. */
-  retainedFullContent?: RetainedFullContent;
+  retainedFullContent?: Pick<RetainedFullContent, "path">;
   /** Bound of the returned text, recovery notice included. */
   maxBytes?: number;
   /** Used as the breadcrumb filename prefix. Defaults to "output". */
@@ -105,7 +105,7 @@ export async function limitOutput(
 
   const savedPath = retainedFullContent?.path ?? await saveFullOutput(fullContent ?? content, toolName, projectRoot, artifactScopeId);
   const notice = savedPath
-    ? savedOutputNotice(displayRelativePath(savedPath, executionCwd), capabilities)
+    ? savedOutputNotice(savedPath, executionCwd, capabilities)
     // Breadcrumb write failed: every shell drop still shows its own inline
     // marker, and this notice states that no recovery file exists.
     : "[Output was truncated and the full output could not be saved to disk]";
@@ -120,7 +120,10 @@ export async function limitOutput(
   };
 }
 
-function savedOutputNotice(path: string, has: CapabilityCheck | undefined): string {
+/** The recovery notice that `limitOutput` puts after the kept content of a result whose full text it names in
+ *  `savedPath`, for the reader with the agent check `has`. */
+export function savedOutputNotice(savedPath: string, executionCwd: string, has: CapabilityCheck | undefined): string {
+  const path = displayRelativePath(savedPath, executionCwd);
   if (has === undefined) return `[Full output saved to ${path}]`;
   const ways = retrievalWays(has);
   const way = ways.search ? "grep it with the search tool" : ways.read ? "read it with offset and limit" : ways.shell ? "inspect it with a shell command" : undefined;

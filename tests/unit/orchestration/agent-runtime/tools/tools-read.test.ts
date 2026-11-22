@@ -399,6 +399,20 @@ describe("read tool", () => {
       expect(text).toMatch(/\nrow (\d+)\n\(Output limit reached at line \1 of the requested 1-50\. Use offset=\1 to continue reading\.\)$/u);
     });
 
+    it("pages within the route's tool result size when the serving route states one, and within the tool-output cap otherwise", async () => {
+      const filePath = path.join(tmpDir, "wire.txt");
+      fs.writeFileSync(filePath, Array.from({ length: 400 }, (_, i) => `wire line ${i + 1}`).join("\n"));
+      const read = (toolResultWireBytes?: number) => executePreparedTool(
+        prepareToolCall({ id: "read", name: "read", input: { path: filePath } }, new Map([["read", readDefinition]]), admitEveryTool),
+        makeContext({ executionCwd: tmpDir, projectRoot: tmpDir, ...(toolResultWireBytes === undefined ? {} : { toolResultWireBytes }) }),
+      ).then((result) => String(result.content));
+      const paged = await read(2_000);
+      expect(Buffer.byteLength(paged)).toBeLessThanOrEqual(2_000);
+      const last = lastShownLine(paged);
+      expect(paged).toEndWith(`\n(Output limit reached at line ${last} of the requested 1-400. Use offset=${last} to continue reading.)`);
+      expect(await read()).toEndWith("\n400|wire line 400");
+    });
+
     it("shares the budget across a path list in order and does not read a member with no room", async () => {
       fs.writeFileSync(path.join(tmpDir, "a.txt"), Array.from({ length: 100 }, (_, i) => `alpha line ${i + 1}`).join("\n"));
       fs.writeFileSync(path.join(tmpDir, "b.txt"), "beta");

@@ -147,6 +147,7 @@ export function providerAdapter<Transport>(
         supportsReasoning: described.supportsReasoning,
         ...(described.sharedPromptPrefix === undefined ? {} : { sharedPromptPrefix: described.sharedPromptPrefix }),
         ...(described.anticipatesRequests === undefined ? {} : { anticipatesRequests: described.anticipatesRequests }),
+        ...(described.toolResultWireBytes === undefined ? {} : { toolResultWireBytes: described.toolResultWireBytes }),
         ...(described.availableModels === undefined ? {} : { availableModels: described.availableModels }),
         priceFor: described.priceFor.bind(described),
       } satisfies ServingAttempt);

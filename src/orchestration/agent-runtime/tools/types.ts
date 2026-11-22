@@ -473,6 +473,8 @@ export type CreateNestedToolDispatchBatch = (options: {
  *  and in a nested batch, which passes the factory on to each nested call. */
 export type ToolDispatchContext = ToolContext & {
   createNestedToolDispatchBatch: CreateNestedToolDispatchBatch;
+  /** The `ServingAttempt.toolResultWireBytes` of the route that served the request whose call this is. */
+  toolResultWireBytes?: number;
 };
 
 /** The context a tool executes with: the dispatch seam (`executePreparedTool`) names the call. */
