@@ -1,0 +1,18 @@
+src/orchestration/modules/provider-google-antigravity/token-store.ts
+  h_4b47e9e4a8b456 1-159
+tests/integration/orchestration/modules/provider-google-antigravity/engine-keychain.test.ts
+  h_4b47e9e4a8b456 1-222
+tests/unit/orchestration/modules/provider-google-antigravity/token-store.test.ts
+  h_4b47e9e4a8b456 1-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "896ed6b49a17dab8be52a555e23aa6f46a3e61b1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
