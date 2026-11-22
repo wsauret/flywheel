@@ -1,0 +1,38 @@
+package.json
+  h_4b47e9e4a8b456 27,101
+scripts/antigravity-engine-asset.ts
+  h_4b47e9e4a8b456 22-24,27-28,52,60-65,177-190,193-197,233-236,241
+scripts/antigravity-engine-release.ts
+  h_4b47e9e4a8b456 1-225
+scripts/claude-engine-release.ts
+  h_4b47e9e4a8b456 8-9,21,31,81,100,117-118,124
+scripts/engine-freshness.ts
+  h_4b47e9e4a8b456 1-105
+scripts/readiness-package-smoke.ts
+  h_4b47e9e4a8b456 164,243,258-264,279,322
+scripts/readiness-plan.ts
+  h_4b47e9e4a8b456 18-19,30-33,75,88-89,101,112-114,139-155
+scripts/readiness.ts
+  h_4b47e9e4a8b456 6-10,35-37,87-88,106-111,114,122-132,156,206-207,223,226-241,247,258-273,297-299,301-302,311-313,317,372,386,405
+scripts/release.ts
+  h_4b47e9e4a8b456 37-38,104-105,107,190-195
+scripts/test-integration.ts
+  h_4b47e9e4a8b456 1,15-16,42,49,54
+tests/unit/scripts/antigravity-engine-release.test.ts
+  h_4b47e9e4a8b456 1-153
+tests/unit/scripts/readiness-package-smoke.test.ts
+  h_4b47e9e4a8b456 35-36,41-42,46-47,52-59,95,102,108
+tests/unit/scripts/readiness.test.ts
+  h_4b47e9e4a8b456 7,30-35,49-50,71-74,95,134,140,162-163,174,183,196-197,208,211-212,314-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6085f9023607280bbf166108969db5c3d4404232",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
