@@ -45,14 +45,14 @@ it("a subagent keeps its persona while initializing and reveals its full card wh
     expect(persona?.fg.equals(theme.text)).toBe(true)
     expect((persona?.attributes ?? 0) & TextAttributes.UNDERLINE).toBe(0)
     expect(capturedSpans.find(({ text }) => text.includes("Initializing"))?.fg.equals(theme.textSubtle)).toBe(true)
-    for (const detail of ["Read the files", "gpt-6-astra", "stop", "Open", "preview.ts", "Waiting on parent"]) expect(captureText()).not.toContain(detail)
+    for (const detail of ["Read the files", "gpt-6-astra", "cancel", "Open", "preview.ts", "Waiting on parent"]) expect(captureText()).not.toContain(detail)
   }
   const ready: AgentGroupBlock = { ...initial, status: "active", model: "gpt-6-astra high", linkUri: "flywheel://session/child", activeStartedAt: Date.now() }
   setBlock(ready)
   setRoles({ assignments: { chat: { model: "wrong-chat", effort: "low" } }, serving: { slot: { kind: "role", roleId: "chat" }, selection: { model: "gpt-6-astra", effort: "medium" } } })
   await render.renderOnce()
   expect(captureText()).not.toContain("Initializing")
-  for (const detail of ["Explorer", "Read the files", "gpt-6-astra medium", "stop", "Waiting on parent"]) expect(captureText()).toContain(detail)
+  for (const detail of ["Explorer", "Read the files", "gpt-6-astra medium", "cancel", "Waiting on parent"]) expect(captureText()).toContain(detail)
   expect(captureText()).toMatch(/└ ● Waiting on parent/)
   expect(captureText().split("\n")[0]).not.toContain("Waiting on parent")
   const readySpans = render.captureSpans().lines.flatMap(({ spans }) => spans)
