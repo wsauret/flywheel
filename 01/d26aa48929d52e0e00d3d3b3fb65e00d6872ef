@@ -1,0 +1,24 @@
+bench/chat-ab/campaign-policy.ts
+  h_4b47e9e4a8b456 21
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 212,218,223
+src/orchestration/modules/development/benchmark/headless-execution.ts
+  h_4b47e9e4a8b456 9,26,77,174,176,178
+src/protocol/acp.ts
+  h_4b47e9e4a8b456 93,100,148
+tests/unit/bench/campaign-policy.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/modules/development/benchmark/headless-execution.test.ts
+  h_4b47e9e4a8b456 311-312,325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "01d26aa48929d52e0e00d3d3b3fb65e00d6872ef",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
