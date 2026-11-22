@@ -87,7 +87,7 @@ export async function captureCampaignEventSearch(input: HeadlessBenchmarkInput, 
       ...(typeof type === "string" ? [type] : type).flatMap((value) => ["--type", value]),
       "--limit", "0", "--json", "--project-root", input.projectRoot];
     const reader = await scope.spawnOwned(input.wrapCommand ? input.wrapCommand(command) : command, {
-      cwd: input.projectRoot, env: { ...input.env, FLYWHEEL_AUTH_PROFILE: input.profile },
+      cwd: input.projectRoot, env: input.env,
     });
     reader.stdin?.end();
     const stop = () => { void reader.terminate().catch(() => {}); };
@@ -180,7 +180,7 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
         async preflight(context) {
           const result = await executeHeadlessBenchmark(input(context));
           if (result.outcome !== "preflight" || !result.plan || result.evidence.kind !== "observed") {
-            throw new Error(`Flywheel preflight requires official JSONL v1, model.save_effort, sessionModelPlan, and events evidence (${result.reason ?? result.outcome}; artifacts ${context.artifactDir})`);
+            throw new Error(`Flywheel preflight requires Agent Client Protocol v1 headless chat, its model and effort configuration options, its dev.flywheel/settings, and events evidence (${result.reason ?? result.outcome}; artifacts ${context.artifactDir})`);
           }
           const chat = result.plan.assignments.find((row) => row.slot.kind === "role" && row.slot.roleId === "chat")!;
           return structuredIdentity({ profileId: result.plan.profile.effectiveId, model: chat.model, effort: chat.effort,
@@ -199,8 +199,47 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
         searchEvents: (context, sessionId, type, path) => captureCampaignEventSearch(input(context), sessionId, type, path),
         async execute(context, message, capture, challenge) {
           const subject = input(context);
+          const reader = ownedCommandRunner(context.launcher);
+          // The design question a challenge revises: left open by the first run, then answered by the challenge prompt.
+          let designOpen: string | undefined;
+          let delivered = false;
+          let designApproved = false;
+          let asked = false;
+          const answerQuestion: NonNullable<HeadlessBenchmarkInput["answerQuestion"]> = (form) => {
+            asked = true;
+            const workflowAnswer = campaignWorkflowApproval(form, capture.answered);
+            if (workflowAnswer) {
+              recordCampaignAnswer(capture, form.toolUseId, "approve");
+              return workflowAnswer;
+            }
+            const designAnswer = campaignDesignAnswer(form, capture.answered);
+            if (!designAnswer || challenge === undefined) return undefined;
+            if (!delivered) {
+              designOpen = form.toolUseId;
+              return undefined;
+            }
+            if (designApproved) return undefined;
+            designApproved = true;
+            recordCampaignAnswer(capture, form.toolUseId, "approve");
+            return designAnswer;
+          };
+          const questions = async (sessionId: string) => {
+            const request = await reader(subject.wrapCommand([
+              ...subject.commandPrefix, "events", "search", "--session", sessionId,
+              "--type", "agent_input.*", "--limit", "0", "--json", "--project-root", context.projectRoot,
+            ]), { cwd: context.projectRoot, env: subject.env });
+            const path = join(context.artifactDir, `run-${capture.executions.length - 1}`, "questions.jsonl");
+            await writeArtifactFile(path, request.stdout);
+            await writeArtifactFile(`${path}.stderr`, request.stderr);
+            capture.questionArtifacts.set(capture.executions.length - 1, {
+              questions: { path, sha256: bytesIdentity(request.stdout), bytes: Buffer.byteLength(request.stdout) },
+              questionsStderr: { path: `${path}.stderr`, sha256: bytesIdentity(request.stderr), bytes: Buffer.byteLength(request.stderr) },
+            });
+            if (request.exitCode !== 0 || request.stdoutTruncated || request.stderrTruncated || request.timedOut) throw new Error("Subject question evidence command failed");
+          };
           const execute = async (invocation: HeadlessBenchmarkInput) => {
-            let execution = await executeHeadlessBenchmark(invocation);
+            asked = false;
+            let execution = await executeHeadlessBenchmark({ ...invocation, answerQuestion });
             if (treatment.disabledTools?.length) {
               try {
                 if (execution.evidence.kind !== "observed") throw new Error("Tool exclusion request inventory is unavailable");
@@ -218,68 +257,36 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
               }
             }
             capture.executions.push(execution);
+            // The typed question facts behind each form the run asked, or the question it left open.
+            if (execution.sessionId && (asked || execution.outcome === "input_required")) await questions(execution.sessionId);
             return execution;
           };
           let result = await execute({ ...subject, message, artifactDir: join(context.artifactDir, "run-0") });
-          const reader = ownedCommandRunner(context.launcher);
-          let challengePosition: number | undefined;
-          let challengeSession: string | undefined;
-          let designApproved = false;
-          const questions = async (sessionId: string) => {
-            const request = await reader(subject.wrapCommand([
-              ...subject.commandPrefix, "events", "search", "--session", sessionId,
-              "--type", "agent_input.*", "--limit", "0", "--json", "--project-root", context.projectRoot,
-            ]), { cwd: context.projectRoot, env: { ...subject.env, FLYWHEEL_AUTH_PROFILE: subject.profile } });
-            const path = join(context.artifactDir, `run-${capture.executions.length - 1}`, "questions.jsonl");
-            await writeArtifactFile(path, request.stdout);
-            await writeArtifactFile(`${path}.stderr`, request.stderr);
-            capture.questionArtifacts.set(capture.executions.length - 1, {
-              questions: { path, sha256: bytesIdentity(request.stdout), bytes: Buffer.byteLength(request.stdout) },
-              questionsStderr: { path: `${path}.stderr`, sha256: bytesIdentity(request.stderr), bytes: Buffer.byteLength(request.stderr) },
-            });
-            if (request.exitCode !== 0 || request.stdoutTruncated || request.stderrTruncated || request.timedOut) throw new Error("Subject question evidence command failed");
-            return request.stdout;
-          };
-          if (challenge !== undefined) {
-            const sessionId = result.sessionId;
-            const questionAnswer = result.outcome === "input_required" && sessionId
-              ? campaignDesignAnswer(await questions(sessionId), sessionId, capture.answered, challenge) : undefined;
-            if (sessionId && (questionAnswer || result.outcome === "complete" || result.outcome === "incomplete")) {
-              const before = await captureCampaignEventSearch(subject, sessionId, "chat.entries.appended", join(context.artifactDir, "challenge-before.jsonl"));
-              capture.questionArtifacts.set(0, { ...capture.questionArtifacts.get(0), challengeBefore: before.stdout, challengeBeforeStderr: before.stderr });
-              challengePosition = challengeConversationEvidence(await readFile(before.stdout.path, "utf8"), sessionId).position;
-              challengeSession = sessionId;
-              capture.challenge = { delivered: questionAnswer ? "revise-design" : "message" };
-              if (questionAnswer) recordCampaignAnswer(capture, questionAnswer, "revise-design");
-              result = await execute({
-                ...subject, sessionId, artifactDir: join(context.artifactDir, `run-${capture.executions.length}`),
-                ...(questionAnswer ? { questionAnswer } : { message: challenge }),
-              });
-            } else {
-              capture.challenge = { delivered: "none", reason: result.outcome === "input_required" ? "root question is not a single design approval" : `first run ended ${result.outcome}` };
-              return result;
-            }
+          if (challenge === undefined) return result;
+          const sessionId = result.sessionId;
+          const revise = result.outcome === "input_required" ? designOpen : undefined;
+          if (!sessionId || !(revise || result.outcome === "complete" || result.outcome === "incomplete")) {
+            capture.challenge = { delivered: "none", reason: result.outcome === "input_required" ? "root question is not a single design approval" : `first run ended ${result.outcome}` };
+            return result;
           }
-          while (result.outcome === "input_required" && result.sessionId) {
-            const sessionId = result.sessionId;
-            const jsonl = await questions(sessionId);
-            const workflowAnswer = campaignWorkflowApproval(jsonl, sessionId, capture.answered);
-            const designAnswer = challengePosition !== undefined && !designApproved ? campaignDesignAnswer(jsonl, sessionId, capture.answered) : undefined;
-            const questionAnswer = workflowAnswer ?? designAnswer;
-            if (!questionAnswer) break;
-            if (!workflowAnswer) designApproved = true;
-            recordCampaignAnswer(capture, questionAnswer, "approve");
-            result = await execute({ ...subject, sessionId, questionAnswer, artifactDir: join(context.artifactDir, `run-${capture.executions.length}`) });
-          }
-          if (challengePosition !== undefined && challengeSession) {
-            const after = await captureCampaignEventSearch(subject, challengeSession, "chat.entries.appended", join(context.artifactDir, "challenge-after.jsonl"));
-            const index = capture.executions.length - 1;
-            capture.questionArtifacts.set(index, { ...capture.questionArtifacts.get(index), challengeAfter: after.stdout, challengeAfterStderr: after.stderr });
-            const text = challengeConversationEvidence(await readFile(after.stdout.path, "utf8"), challengeSession, challengePosition).text;
-            const path = join(context.artifactDir, "challenge-reply.md");
-            await writeArtifactFile(path, text);
-            capture.challengeReply = { path, sha256: bytesIdentity(text), bytes: Buffer.byteLength(text) };
-          }
+          const before = await captureCampaignEventSearch(subject, sessionId, "chat.entries.appended", join(context.artifactDir, "challenge-before.jsonl"));
+          capture.questionArtifacts.set(0, { ...capture.questionArtifacts.get(0), challengeBefore: before.stdout, challengeBeforeStderr: before.stderr });
+          const challengePosition = challengeConversationEvidence(await readFile(before.stdout.path, "utf8"), sessionId).position;
+          capture.challenge = { delivered: revise ? "revise-design" : "message" };
+          if (revise) recordCampaignAnswer(capture, revise, "revise-design");
+          delivered = true;
+          // A new process resumes the session, so the challenge run keeps its own artifacts.
+          result = await execute({
+            ...subject, sessionId, message: challenge, artifactDir: join(context.artifactDir, `run-${capture.executions.length}`),
+            ...(revise ? { answers: revise } : {}),
+          });
+          const after = await captureCampaignEventSearch(subject, sessionId, "chat.entries.appended", join(context.artifactDir, "challenge-after.jsonl"));
+          const index = capture.executions.length - 1;
+          capture.questionArtifacts.set(index, { ...capture.questionArtifacts.get(index), challengeAfter: after.stdout, challengeAfterStderr: after.stderr });
+          const text = challengeConversationEvidence(await readFile(after.stdout.path, "utf8"), sessionId, challengePosition).text;
+          const path = join(context.artifactDir, "challenge-reply.md");
+          await writeArtifactFile(path, text);
+          capture.challengeReply = { path, sha256: bytesIdentity(text), bytes: Buffer.byteLength(text) };
           return result;
         },
       };
