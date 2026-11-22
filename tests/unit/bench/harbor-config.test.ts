@@ -98,7 +98,6 @@ describe("Harbor config resolution", () => {
     ["Claude", "tb-mini-claude.toml", "claude-sonnet-5.5", "medium", ["claude_agent_sdk"], ["api.anthropic.com"], []],
     ["DeepSeek board", "tb-board-deepseek-high.toml", "deepseek-v4.1-flash", "high", ["deepseek", "opencode_go", "openrouter"], ["api.deepseek.com", "opencode.ai", "openrouter.ai"], []],
     ["FrontierHarness DeepSeek 1017", "fh-deepseek-1017-max.toml", "deepseek-v4.1-flash-1017", "max", ["deepseek", "opencode_go", "openrouter"], ["api.deepseek.com", "opencode.ai", "openrouter.ai"], []],
-    ["FrontierHarness DeepSeek 1017 on Baseten", "fh-deepseek-1017-max-baseten.toml", "deepseek-v4.1-flash-1017", "max", ["baseten"], ["inference.baseten.co"], []],
   ])("the checked-in %s arm config passes host validation, pins its model and effort, and names its credential providers and their declared hosts", async (_arm, file, model, effort, providers, hosts, undeclared) => {
     const config = await resolveArgs(["--benchmark", "terminal-bench-2.1", "--arm", `bench/harbor/configs/${file}`, ...ACCESS, ...ONE_TASK]);
     expect(config.model).toBe(model);

@@ -25,7 +25,6 @@ disabled_modules = [
   "papercuts",
   "project-notifications",
   "provider-anthropic-api",
-  "provider-baseten",
   "provider-chatgpt",
   "provider-deepseek",
   "provider-github-copilot",

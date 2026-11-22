@@ -373,7 +373,7 @@ const _registryStatesVocabulary: RegistryStatesVocabulary = true; const _vocabul
 // cannot state a decision about them, so migration and reads treat them as enabled.
 const DEFAULT_ENABLED_SINCE_MODULES_SNAPSHOT: readonly ModuleId[] = [
   "definition-overrides", "experiments", "mcp", "papercuts", "project-notifications", "side-question", "reclaim-storage",
-  "provider-anthropic-api", "provider-baseten", "provider-chatgpt", "provider-claude-agent-sdk", "provider-deepseek", "provider-github-copilot", "provider-google-api",
+  "provider-anthropic-api", "provider-chatgpt", "provider-claude-agent-sdk", "provider-deepseek", "provider-github-copilot", "provider-google-api",
   "provider-google-vertex", "provider-openai-api", "provider-opencode-go", "provider-openrouter", "provider-supergrok",
 ]
 

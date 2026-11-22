@@ -186,7 +186,7 @@ describe("auth cli", () => {
         await runAuth(["login"], { ...DIRECTORIES, accountHome, userDataRoot }, dependencies).catch(() => undefined)
         const picker = lines.join("\n")
         expect(picker.indexOf("Custom providers (flywheel.toml):")).toBeGreaterThan(picker.indexOf("Exa web search (API key)"))
-        expect(picker).toMatch(/Custom providers \(flywheel\.toml\):\n {2}14\) fixture \(API key\)/)
+        expect(picker).toMatch(/Custom providers \(flywheel\.toml\):\n {2}13\) fixture \(API key\)/)
       } finally {
         installCustomProviders([])
         rmSync(accountHome, { recursive: true, force: true })
@@ -227,8 +227,8 @@ describe("auth cli", () => {
       await auth(["login"])
       expect(promptCalls.map(({ question }) => question)).toEqual([
         "Enter number (or q to cancel): ",
-        "99 is not a choice. Enter a number from 1 to 13 (or q to cancel): ",
-        "two is not a choice. Enter a number from 1 to 13 (or q to cancel): ",
+        "99 is not a choice. Enter a number from 1 to 12 (or q to cancel): ",
+        "two is not a choice. Enter a number from 1 to 12 (or q to cancel): ",
         "Enter the OpenAI API key: ",
       ])
       expect(mockLoginWithApiKey).toHaveBeenCalledWith("openai_api", "[redacted secret]", CREDENTIALS, expect.any(Function), expect.anything(), mockSettleCatalog)
@@ -255,11 +255,11 @@ describe("auth cli", () => {
       expect(lines.join("\n")).toContain("Google API key stored")
     })
 
-    it.each([["openrouter", "OpenRouter"], ["baseten", "Baseten"]])("login --%s stores via auth actions", async (provider, name) => {
+    it("login --openrouter stores via auth actions", async () => {
       promptAnswer = "test-api-key"
-      await auth(["login", `--${provider}`])
-      expect(mockLoginWithApiKey).toHaveBeenCalledWith(provider, promptAnswer, CREDENTIALS, expect.any(Function), expect.anything(), mockSettleCatalog)
-      expect(lines.join("\n")).toContain(`${name} API key stored`)
+      await auth(["login", "--openrouter"])
+      expect(mockLoginWithApiKey).toHaveBeenCalledWith("openrouter", promptAnswer, CREDENTIALS, expect.any(Function), expect.anything(), mockSettleCatalog)
+      expect(lines.join("\n")).toContain("OpenRouter API key stored")
     })
 
     it("login --chatgpt opens browser flow", async () => {
@@ -416,13 +416,12 @@ describe("auth cli", () => {
       expect(output).toContain("4) OpenCode Go (API key)")
       expect(output).toContain("5) OpenRouter (API key)")
       expect(output).toContain("6) DeepSeek (API key)")
-      expect(output).toContain("7) Baseten (API key)")
-      expect(output).toContain("8) Google (API key)")
-      expect(output).toContain("9) Google Vertex (API key)")
-      expect(output).toContain("10) ChatGPT (browser OAuth)")
-      expect(output).toContain("11) GitHub Copilot (device code)")
-      expect(output).toContain("12) SuperGrok (device code)")
-      expect(output).toContain("13) Exa web search (API key)")
+      expect(output).toContain("7) Google (API key)")
+      expect(output).toContain("8) Google Vertex (API key)")
+      expect(output).toContain("9) ChatGPT (browser OAuth)")
+      expect(output).toContain("10) GitHub Copilot (device code)")
+      expect(output).toContain("11) SuperGrok (device code)")
+      expect(output).toContain("12) Exa web search (API key)")
     })
   })
 

@@ -1,6 +1,6 @@
 /**
  * Chat Completions streaming adapter: the vendor-neutral `/chat/completions`
- * wire that OpenRouter, DeepSeek, OpenCode Go, Baseten, custom providers, and
+ * wire that OpenRouter, DeepSeek, OpenCode Go, custom providers, and
  * Copilot's chat-only models speak. No OpenAI route uses it; OpenAI models go
  * over the Responses API (`/responses`). The wire format differs:
  *
@@ -215,10 +215,6 @@ function chatCompletionsReasoningParams(
 ): UnknownFields {
   if (!info.reasoning || accessProvider === "github_copilot") return {};
   const wireEffort = chatCompletionsReasoningEffort(effort, info);
-  if (accessProvider === "baseten") {
-    if (wireEffort) return { reasoning_effort: wireEffort };
-    return effort === "off" && info.reasoningEfforts?.includes("none") ? { reasoning_effort: "none" } : {};
-  }
   if (accessProvider === "deepseek") {
     const forcedTool = toolChoice !== undefined && toolChoice !== "auto" && toolChoice !== "none";
     return wireEffort && !forcedTool ? { thinking: { type: "enabled" }, reasoning_effort: wireEffort } : { thinking: { type: "disabled" } };

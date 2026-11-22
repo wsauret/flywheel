@@ -62,9 +62,9 @@ export function inferModelFamilyFromProvider(providerId: string): ModelFamily | 
   if (normalized === "openai" || normalized.startsWith("openai-")) return "openai";
   // xAI's catalog serves the SuperGrok subscription, which speaks the Responses API.
   if (normalized === "xai") return "openai";
-  // OpenRouter, DeepSeek, and Baseten serve over Chat Completions, and so do the
+  // OpenRouter and DeepSeek serve over Chat Completions, and so do the
   // Go and Zen subscription plans by default.
-  if (normalized === "openrouter" || normalized === "deepseek" || normalized === "baseten") return "chat-completions";
+  if (normalized === "openrouter" || normalized === "deepseek") return "chat-completions";
   if (normalized === "opencode" || normalized.startsWith("opencode-")) return "chat-completions";
   if (
     normalized === "google" ||

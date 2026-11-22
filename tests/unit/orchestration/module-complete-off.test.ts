@@ -85,7 +85,6 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   papercuts: { contributions: { tools: ["papercut_log", "papercut_dispose"], settings: ["papercuts"], commands: ["papercuts"] } },
   "project-notifications": { contributions: { settings: ["project-notifications", "project-notifications-desktop"], commands: ["notifications"] }, observers: ["notify"] },
   "provider-anthropic-api": { contributions: { providers: ["anthropic_api"] } },
-  "provider-baseten": { contributions: { providers: ["baseten"] } },
   "provider-chatgpt": { contributions: { providers: ["chatgpt"] } },
   "provider-claude-agent-sdk": { contributions: { providers: ["claude_agent_sdk"], settings: ["provider-claude-agent-sdk"] } },
   "provider-deepseek": { contributions: { providers: ["deepseek"] } },

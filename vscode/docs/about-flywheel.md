@@ -47,7 +47,7 @@ Pause or resume the queue when those actions are available. **Flywheel: Interrup
 
 ## Your subscription, not another bill
 
-Sign in with ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or use an API key for Anthropic, OpenAI, Google, Baseten, OpenRouter, or an OpenAI-compatible endpoint. Provider setup uses an API-key prompt, device code, or browser flow as required.
+Sign in with ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or use an API key for Anthropic, OpenAI, Google, OpenRouter, or an OpenAI-compatible endpoint. Provider setup uses an API-key prompt, device code, or browser flow as required.
 
 You can connect several accounts, switch account profiles, select the chat model and effort, assign models to other roles, and inspect provider-reported usage. The available providers and models come from the installed runtime and connected accounts.
 

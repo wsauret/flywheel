@@ -13,7 +13,6 @@ import { ARM_CONFIG, harborLaunchArgs as launchArgs } from "../../fixtures/harbo
 const BRINGUP = [...launchArgs, "--task-names", "kv-store-grpc", "--attempts", "1", "--allow-low-k"];
 const DEEPSEEK_ARM = "bench/harbor/configs/tb-board-deepseek-high.toml";
 const CLAUDE_ARM = "bench/harbor/configs/tb-mini-claude.toml";
-const BASETEN_ARM = "bench/harbor/configs/fh-deepseek-1017-max-baseten.toml";
 const DEEP_SWE_TASK = "datacurve/python-statemachine-state-data-scoping";
 const COMMIT = "c".repeat(40);
 const timeouts = (agent_network_mode: ResolvedTask["agent_network_mode"]) => ({ agent_timeout_sec: 900, verifier_timeout_sec: 900, build_timeout_sec: 600, agent_network_mode });
@@ -140,7 +139,6 @@ describe("Harbor jobs", () => {
   test.each([
     ["DeepSeek failover", DEEPSEEK_ARM, ["api.deepseek.com", "opencode.ai", "openrouter.ai", "models.dev"]],
     ["Claude subscription", CLAUDE_ARM, ["api.anthropic.com", "models.dev"]],
-    ["Baseten", BASETEN_ARM, ["inference.baseten.co", "models.dev"]],
     ["ChatGPT subscription", ARM_CONFIG, ["chatgpt.com", "auth.openai.com", "models.dev"]],
   ])("an offline agent phase allows the %s arm's declared provider hosts and models.dev, and a benchmark without a wheelhouse has no wheelhouse step", async (_arm, arm, hosts) => {
     const builds: unknown[][] = [];

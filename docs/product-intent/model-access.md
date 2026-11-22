@@ -62,10 +62,6 @@ Contributor routes are ineligible unless the active auth profile explicitly allo
 
 OpenRouter free routes are off by default. For an exact OpenRouter account that includes them, Flywheel shows free variants under the same model choices, prefers an eligible free route, and retains that account's paid route as fallback. This preference does not grant contributor or training-route permission.
 
-## PI-MODEL-089: Baseten API key provider
-
-A person connects a Baseten API key in Authentication. Flywheel lists the models that Baseten's own model list states for that key with Baseten's listed prices, and each joins the model choice that other providers of the same model use. A variant that Baseten lists under its own name at its own price, such as a fast tier, is a separate model choice.
-
 ## PI-MODEL-014: Automatic session naming resumes after access recovery
 
 When a recoverable authentication or provider-configuration condition blocks automatic session naming, Flywheel keeps the immediate quick title and retries naming after that environment refreshes, without delaying chat work.
