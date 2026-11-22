@@ -84,6 +84,9 @@ export interface ProviderHistoryTarget {
   readonly model: string;
   /** Whether the shared Claude engine host serves this request, which only then reads the host's framing. */
   readonly sharedHost: boolean;
+  /** Set when the route reads history as text (Google Antigravity), so it replays no native deliberation, also of the
+   *  turns that it produced itself, and the lowering records each such block that it withholds. */
+  readonly readsHistoryAsText?: true;
 }
 
 type ReplayIdentity = Omit<ProviderHistoryTarget, "sharedHost">;
@@ -109,10 +112,11 @@ function readsFraming(message: Extract<ConversationMessage, { kind: "user" }>, t
 }
 
 /** Which native deliberation of `message` the target replays: all of it when the exact access provider, API, and
- *  model produced it, none otherwise. Builds before 2026-10-27 stamped a chat-completions turn with no access provider,
+ *  model produced it and the target reads native history, none otherwise. Builds before 2026-10-27 stamped a chat-completions turn with no access provider,
  *  so such a turn whose API, provider, and model match keeps the reasoning text and tool-call reasoning that the chat
  *  conversion replays, as those builds replayed it. Remove that conversion after 2027-04-27. */
 function replayOf(message: AssistantMessage, target: ReplayIdentity): DeliberationReplay {
+  if (target.readsHistoryAsText === true) return "none";
   if (isSameProviderReplay(message, target)) return "all";
   if (message.accessProvider === undefined && message.api === "openai-responses" && isSameProviderReplay({ ...message, accessProvider: target.accessProvider }, target)) return "chat-completions";
   if (isLegacyChatCompletionsTurn(message, target)) return message.accessProvider === undefined ? "chat-completions" : "all";

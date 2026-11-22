@@ -273,7 +273,7 @@ export const PromptToolHistoryProjectionSchema = Schema.Struct({
 })
 // What the shared lowering of provider history (agent-runtime/llm/provider-history.ts) withheld from this request's
 // messages: request framing that the serving route does not read, and deliberation that another access provider,
-// API, or model produced. `at` is the index of the message in the request's messages before the lowering, `block`
+// API, or model produced, or that a route which reads history as text cannot replay (`foreign-deliberation` names both). `at` is the index of the message in the request's messages before the lowering, `block`
 // the index of the content block that the edit changes, absent when the edit leaves out the whole message.
 // `promptSha256` covers the lowered messages; reconstruction replays the edits after the tool-history projection.
 export const PromptHistoryLoweringSchema = Schema.Struct({
