@@ -392,7 +392,7 @@ No person can end a wait of an unattended one-shot Agent Client Protocol run, an
 
 ## PI-AGENT-074: A headless prompt ends when its owned work ends
 
-A prompt is answered when its turn and all work that the agent owns have ended: its subagents, its workflows, and the work that its turn awaits, not other chats of the project. Only a command that the agent launched to persist after Flywheel exits is not such work (PI-AGENT-047). Closing input lets submitted work finish. In an unattended run, the agent's final reply is its result, written once, and the run then ends. The session stays available to continue.
+A prompt is answered when its turn and all work that the agent owns have ended: its subagents, its workflows, and the work that its turn awaits, not other chats of the project. A command launched to persist after Flywheel exits is not such work (PI-AGENT-047). Closing input lets submitted work finish. A cancelled prompt is answered once its turn stops, and the launched work runs on for later prompts. In an unattended run, the final reply is the result, written once, and the run then ends; a cancel ends it as incomplete. The session stays available to continue.
 
 ## PI-AGENT-075: Headless questions wait for the caller
 

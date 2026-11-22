@@ -281,7 +281,8 @@
  *  assignment row carries that entry as `configured`. The runtime refuses an
  *  older peer's mutation, and an older client rejects the rows.
  *  Version 89: the `chatSettlement` query answers whether the work that a
- *  chat's launch tree owns has ended, and the `settlement` workspace domain
+ *  chat's launch tree owns has ended, or with scope `turn` whether the
+ *  chat's own turn has stopped, and the `settlement` workspace domain
  *  carries `settlement.changed`, a wake with no content. An older peer
  *  rejects the query and the patch.
  */

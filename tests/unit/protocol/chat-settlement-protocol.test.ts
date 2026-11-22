@@ -3,8 +3,10 @@ import { Schema } from "effect"
 import { RuntimeQuerySchema, runtimeQueryResultSchema } from "../../../src/protocol/runtime-protocol-schemas.js"
 
 describe("chat settlement query", () => {
-  test("roundtrips the query through the public codec", () => {
-    const input = { type: "chatSettlement", sessionId: "chat" } as const
+  test.each([
+    { type: "chatSettlement", sessionId: "chat" },
+    { type: "chatSettlement", sessionId: "chat", scope: "turn" },
+  ] as const)("roundtrips the query %j through the public codec", (input) => {
     const query = Schema.decodeUnknownSync(RuntimeQuerySchema)(input)
     expect(query).toEqual(input)
     expect(Schema.encodeSync(RuntimeQuerySchema)(query)).toEqual(input)

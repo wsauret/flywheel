@@ -14,16 +14,16 @@ import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../.
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { catalogRow, deferred } from "../../helpers/session-catalog.js"
 import { createRuntimeUiBus } from "../../../src/orchestration/app-service/runtime-ui-bus.js"
-import { registerLiveWorkflowControl, runningChildSessionIds, liveWorkflowControls, onLiveWorkChanged } from "../../../src/orchestration/session/live-session-control.js"
+import { liveSessionControl, registerLiveSessionControl, registerLiveWorkflowControl, runningChildSessionIds, liveWorkflowControls, onLiveWorkChanged } from "../../../src/orchestration/session/live-session-control.js"
 import { heldSessionLineage, sessionSubtree, type SessionLineage } from "../../../src/orchestration/session/session-subtree.js"
 import { countStateRequests } from "../../helpers/state-requests.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../src/infra/event-store-types.js"
 import { openReplyWait, suspendReplyWaits, workProgressesWithout, type ReplyWaitDeps } from "../../../src/orchestration/session/reply-waits.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../fixtures/runtime-supervisor-fixtures.js"
 
-type LiveWorkOwners = Pick<Parameters<typeof createRuntimeWorkSettlement>[0], "busyWorkflows" | "onWorkflowChange" | "progressesWithout">
+type LiveWorkOwners = Pick<Parameters<typeof createRuntimeWorkSettlement>[0], "busyWorkflows" | "onWorkflowChange" | "progressesWithout" | "interrupted">
 
-function channelFixture(runningChildren: (sessionIds: readonly string[]) => Promise<readonly string[]> = async () => [], workflows: LiveWorkOwners = { busyWorkflows: async () => [], onWorkflowChange: () => () => {}, progressesWithout: async () => true }) {
+function channelFixture(runningChildren: (sessionIds: readonly string[]) => Promise<readonly string[]> = async () => [], workflows: LiveWorkOwners = { busyWorkflows: async () => [], onWorkflowChange: () => () => {}, progressesWithout: async () => true, interrupted: async () => false }) {
   const calls: FrontendMutation[] = []
   const views = new Map<string, RuntimeSessionDetailView>([["root", detail("root")]])
   const questions = new Map<string, PendingQuestionView>()
@@ -118,6 +118,7 @@ function liveWorkOwners(reader: AsyncEventStateReadSurface): LiveWorkOwners {
     busyWorkflows: async (members) => (await Promise.all(liveWorkflowControls(reader).filter((control) => members.has(control.workflowId)).map(async (control) => await control.state() === "interrupted" ? [] : [control.workflowId]))).flat(),
     onWorkflowChange: (listener) => onLiveWorkChanged(reader, listener),
     progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
+    interrupted: async (sessionId) => await liveSessionControl(reader, sessionId)?.state() === "interrupted",
   }
 }
 
@@ -405,6 +406,89 @@ describe("headless chat settlement", () => {
       expect(memberWork.holdsWait("ask-parent")).toBe(true)
     } finally {
       unregister()
+      suspendReplyWaits(reader)
+      await disposeSupervisorTestContext(context)
+    }
+  })
+
+  it.each([false, true])("answers a cancelled prompt once its turn stops while the work it launched keeps running (unattended=%p)", async (unattended) => {
+    const context = createSupervisorTestContext()
+    const reader = asAsyncEventReadSurface(context.store)
+    const fixture = channelFixture((sessionIds) => runningChildSessionIds(reader, sessionIds), liveWorkOwners(reader))
+    fixture.launch("root", "workflow", "workflow")
+    fixture.launch("workflow", "member", "workflow-agent")
+    // A second workflow of the root runs on its own, waiting on no one.
+    fixture.launch("root", "independent", "workflow")
+    const unregisterIndependent = registerLiveWorkflowControl(reader, {
+      workflowId: "independent", kind: "workflow", state: async () => "between_steps",
+      handBackMember: async (continueMember) => continueMember(), memberHost: async () => undefined,
+      deliver: async () => ({ status: "refused", reason: "settled" }),
+      notify: async () => false,
+    })
+    const rootWork = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
+    rootWork.track({ done: new Promise(() => {}), meta: { id: "workflow", type: "workflow", description: "Fix" } })
+    fixture.registries.set("root", rootWork)
+    fixture.statuses.set("root", { ...detail("root").status, activity: "generating" })
+    let rootState: "running" | "interrupted" = "running"
+    const unregisterRoot = registerLiveSessionControl(reader, {
+      sessionId: "root", state: async () => rootState,
+      deliver: async () => ({ status: "held", reason: "interrupted" }), notify: async () => false,
+    })
+    const memberWork = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} })
+    const member = detail("member")
+    fixture.views.set("member", { ...member, status: { ...member.status, waitingOnBackgroundWork: true, replyWaits: [{ sessionId: "root", name: "Root" }] } })
+    const unregister = registerLiveWorkflowControl(reader, {
+      workflowId: "workflow", kind: "workflow", state: async () => "waiting_on_work",
+      workProgress: async () => ({ runnable: false, members: [{ sessionId: "member", conversationId: "conversation-member", state: "waiting_on_work", tasks: memberWork }] }),
+      handBackMember: async (continueMember) => continueMember(), memberHost: async () => undefined,
+      deliver: async () => ({ status: "refused", reason: "settled" }),
+      notify: async () => false,
+    })
+    const input = new PassThrough()
+    const answered = deferred<unknown>()
+    const write = async (line: string) => {
+      const message: { id?: unknown; result?: unknown; error?: unknown } = JSON.parse(line)
+      if (message.id === 2) answered.resolve(message.result ?? message.error)
+    }
+    try {
+      // A person's interrupt of the root leaves its agent's wait open (PI-AGENT-025).
+      const replyWaits: ReplyWaitDeps = { projectionReader: reader, eventWriter: asAsyncEventWriter(context.store), addresseeState: async () => rootState, lineage: async (sessionId) => [sessionId] }
+      expect(await (await openReplyWait(replyWaits, { waiter: { sessionId: "member", tasks: memberWork }, addressee: { sessionId: "root", name: "Root" }, toolUseId: "ask-parent" })).accepted()).toBe(true)
+      const reached = deferred<void>()
+      fixture.onRead((query) => { if (query.type === "statusSnapshot") reached.resolve() })
+      input.write(OPEN + prompt("Launch a workflow for this work"))
+      const pending = runChannel(fixture, { input, write, ...(unattended ? { completion: unsealed } : {}) })
+      await reached.promise
+      expect(await fixture.workSettlement.read("root")).toBe("busy")
+      rootState = "interrupted"
+      fixture.statuses.set("root", detail("root").status)
+      fixture.continuations.add("root")
+      // A command the interrupt left running is still the root's work.
+      const command = trackCommand(fixture, "root", "build")
+      input.write(`${JSON.stringify({ jsonrpc: "2.0", method: "session/cancel", params: { sessionId: "root" } })}\n`)
+      fixture.changed()
+      // The interrupt stops the turn, not the command or the workflows.
+      expect(await answered.promise).toEqual({ stopReason: "cancelled" })
+      expect(fixture.calls).toContainEqual({ type: "chat.interrupt", sessionId: "root" })
+      expect(await fixture.workSettlement.read("root")).toBe("busy")
+      // A cancel stops an unattended run with its turn.
+      if (unattended) expect(await pending).toBe("incomplete")
+      expect(await fixture.workSettlement.read("root")).toBe("busy")
+      await command.finish({ status: "completed", content: "" })
+      unregisterIndependent()
+      fixture.changed()
+      // Closing input lets the launched work finish; the agent that waits on
+      // the interrupted root holds nothing.
+      if (!unattended) {
+        input.end()
+        expect(await pending).toBe("incomplete")
+      }
+      expect(memberWork.holdsWait("ask-parent")).toBe(true)
+    } finally {
+      input.destroy()
+      unregisterIndependent()
+      unregister()
+      unregisterRoot()
       suspendReplyWaits(reader)
       await disposeSupervisorTestContext(context)
     }

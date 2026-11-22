@@ -36,10 +36,6 @@ Headless chat is an Agent Client Protocol version 1 frontend over the production
 
 An attended headless chat reaches the runtime through the resident account service, as every other interactive client does. An unattended run, or an attended run with process-scoped options, hosts the runtime in its own process under the project's exclusive headless claim.
 
-## ARCH-RUNTIME-080: Headless settlement waits for the turn's recorded usage
-
-The headless channel settles only when the root's work is no longer busy and the root's totals state every usage that the work recorded. A budget read after settlement therefore states the whole turn.
-
 ## ARCH-RUNTIME-005: One account service is the sole public serving placement
 
 One resident account service per account and lane is the sole public protocol and control placement, and each project has at most one open composition inside it, so every surface reaches the same live sessions. The account service renders nothing: the terminal, editor windows, browsers, and paired devices are all its clients. Each project composition keeps its own event store, projections, and writable fact lane, and account routing and process initiation never become project facts.
@@ -417,6 +413,6 @@ Not: A producer that raises its own records to the default level because one rec
 
 ## ARCH-RUNTIME-079: A headless channel settles on current totals
 
-A headless channel settles only when the root's work is no longer busy and the root's totals state every usage that the work recorded. A budget read after settlement therefore states the whole turn. A totals read that fails ends the turn with an error.
+A headless channel settles only when the root's work is no longer busy and the root's totals state every usage that the work recorded. After a cancel, it waits only until the root's own turn has stopped, which the same runtime query states, and the work that the turn launched keeps running. A budget read after settlement therefore states the whole turn. A totals read that fails ends the turn with an error.
 Because: A client that sums usage would otherwise miss the last model request of every turn.
 Not: A channel that reports stale totals as settled.

@@ -3,8 +3,13 @@ import { workspaceDomainCursor } from "./runtime-ui-protocol-types.js"
 
 /** Asks whether the work that a chat owns has ended: the chat's turn and
  *  every session of its launch tree, not other chats of the project
- *  (PI-AGENT-074). The runtime answers at once and never waits for the work. */
-export const ChatSettlementQuerySchema = Schema.Struct({ type: Schema.Literal("chatSettlement"), sessionId: Schema.NonEmptyString })
+ *  (PI-AGENT-074). With scope `turn`, it asks only whether the chat's own
+ *  turn has stopped, as a cancelled prompt needs: the work that the turn
+ *  launched keeps running. The runtime answers at once and never waits for
+ *  the work. */
+export const ChatSettlementQuerySchema = Schema.Struct({
+  type: Schema.Literal("chatSettlement"), sessionId: Schema.NonEmptyString, scope: Schema.optionalKey(Schema.Literal("turn")),
+})
 export type ChatSettlementQuery = typeof ChatSettlementQuerySchema.Type
 
 /** The agent failure kinds that end a turn. An abort is a stop that a caller
@@ -35,7 +40,7 @@ export type ChatSettlementOutcome = typeof ChatSettlementOutcomeSchema.Type
  *  outcome, and `turnEnding` names how the chat's last turn ended when a turn
  *  ended since the chat last accepted input. The chat's totals state every
  *  usage that the work recorded before a settled answer is sent
- *  (ARCH-RUNTIME-080). */
+ *  (ARCH-RUNTIME-079). */
 export const ChatSettlementResultSchema = Schema.Union([
   Schema.Struct({ state: Schema.Literal("busy") }),
   Schema.Struct({ state: ChatSettlementOutcomeSchema, turnEnding: Schema.optionalKey(ChatTurnEndingSchema) }),

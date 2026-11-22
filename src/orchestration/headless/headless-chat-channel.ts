@@ -50,8 +50,9 @@ export interface ChatTransport {
   readonly authProfile?: string
   /** The one-shot invocation of an unattended run (PI-AGENT-121). The
    *  channel binds it to the chat it attaches, and returns once the first
-   *  prompt that submits work and the work it owns settle: complete only
-   *  with the invocation's sealed result, otherwise incomplete. */
+   *  prompt that submits work and the work it owns settle, or once its turn
+   *  stopped after a cancel: complete only with the invocation's sealed
+   *  result, otherwise incomplete. */
   readonly completion?: {
     bind(sessionId: string): void
     result(): AgentToolInput | undefined
@@ -77,11 +78,13 @@ export interface HeadlessChatChannel {
   write(line: string): Promise<void>
   /** Resolves when no input line is dispatching and the runtime answers that
    *  the work the root owns has ended, after the root's totals state every
-   *  usage that work recorded. This is the channel's one settlement rule; any
-   *  number of callers can wait on it at once. A read lost with its lane is
-   *  read again on the next lane. Rejects when the channel failed or the
+   *  usage that work recorded. While `turnOnly` says so, as after a cancel,
+   *  it waits only until the root's own turn stopped, and the work that the
+   *  turn launched keeps running. This is the channel's one settlement rule;
+   *  any number of callers can wait on it at once. A read lost with its lane
+   *  is read again on the next lane. Rejects when the channel failed or the
    *  runtime could not answer. */
-  settle(): Promise<HeadlessChatSettlement>
+  settle(turnOnly?: () => boolean): Promise<HeadlessChatSettlement>
   /** Keeps the channel from returning until `work` settles. A rejection fails
    *  the channel. */
   hold(work: Promise<void>): void
@@ -93,6 +96,9 @@ export interface HeadlessChatChannel {
 interface HeadlessChatCodec {
   frame(frame: RuntimeEventFrame): readonly string[]
   request(line: string): Promise<{ readonly lines: readonly string[]; readonly submitted: boolean }>
+  /** Whether the client cancelled the prompt that submitted work last, which
+   *  stops a one-shot run once that prompt's turn stopped. */
+  cancelled?(): boolean
   /** Hears that input ended, so nothing can answer what the framing asked the client. */
   inputEnded?(): void
 }
@@ -191,14 +197,15 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
             return sessionId
           }
           let dispatching = false
-          const settle = async (): Promise<HeadlessChatSettlement> => {
+          const settle = async (turnOnly: () => boolean = () => false): Promise<HeadlessChatSettlement> => {
             while (true) {
               const observed = revision
               // A channel whose framing attached no chat owns no work.
               const sessionId = attachedSessionId
               let settlement: ChatSettlementResult | undefined
               try {
-                settlement = sessionId === undefined ? { state: "complete" } : await client.query({ type: "chatSettlement", sessionId })
+                settlement = sessionId === undefined ? { state: "complete" }
+                  : await client.query({ type: "chatSettlement", sessionId, ...(turnOnly() ? { scope: "turn" as const } : {}) })
               } catch (error) {
                 if (!lostWithLane(error)) throw new Error(`The chat's settlement could not be read: ${errorMessage(error)}`, { cause: error })
               }
@@ -255,7 +262,8 @@ export async function runHeadlessChatChannel(client: HeadlessChatClient, transpo
           void reading.catch((error: unknown) => { inputFailure = new Error(errorMessage(error)); changed() })
           if (completion) await Promise.race([submitted.promise, reading])
           else await reading
-          const settled = (await settle()).state
+          // A cancel means stop: a one-shot run then ends with its turn.
+          const settled = (await settle(() => completion !== undefined && codec.cancelled?.() === true)).state
           const outcome = completion && settled === "complete" && !completion.result() ? "incomplete" : settled
           ending = true
           input.close()

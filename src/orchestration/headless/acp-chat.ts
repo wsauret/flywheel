@@ -46,7 +46,7 @@ interface AcpAnswer {
  *  the session's tools run: the starting directory of a runtime that this
  *  process hosts, or the project root in the account service. A prompt sends
  *  a message, or answers the open question with the prompt's text, and is
- *  answered when the channel settles.
+ *  answered when the channel settles, or after a cancel once its turn stopped.
  *  A turn that ends on an open question asks it as a form while the prompt
  *  stays open, for a client that can show one; otherwise the question streams
  *  as the agent's message and ends the prompt, and the next prompt answers it. */
@@ -225,6 +225,7 @@ function openAcpConnection(channel: HeadlessChatChannel, version: string, execut
   return {
     request,
     frame: (event: RuntimeEventFrame): readonly string[] => closed ? [] : session?.frame(event) ?? [],
+    cancelled: () => session?.cancelled() === true,
     inputEnded: () => {
       inputOpen = false
       outbound.dismiss()
@@ -501,11 +502,14 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
     // A settled answer names how the turn ended: a chat states how its last
     // turn ended until it accepts input again.
     let settlement: { readonly outcome: ChatSettlementOutcome; readonly ending?: ChatTurnEnding } | { readonly failure: string }
+    // A cancelled prompt is answered once its turn stopped; the work that the
+    // turn launched keeps running (PI-AGENT-074).
+    const turnOnly = () => cancelled
     while (true) {
       // A settlement that fails, as when the turn's totals cannot be read,
       // fails this prompt with no usage update; a failed channel also fails on
       // its own path.
-      settlement = await channel.settle().then(
+      settlement = await channel.settle(turnOnly).then(
         ({ state, turnEnding }) => ({ outcome: state, ...(turnEnding ? { ending: turnEnding } : {}) }),
         (error: unknown) => ({ failure: errorMessage(error) }),
       )
@@ -596,7 +600,7 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
 
   /** Ends the running prompt as cancelled. A prompt whose form is open is at
    *  rest on its question, which stays open; any other prompt's turn is
-   *  interrupted. */
+   *  interrupted, and the prompt is answered once that turn stopped. */
   const cancel = async (): Promise<void> => {
     if (!working) return
     cancelled = true
@@ -613,6 +617,7 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   return {
     sessionId, start, settings, setConfig, frame, prompt, askAgain, cancel, close,
     working: () => working,
+    cancelled: () => cancelled,
     dispose: () => { transcript?.dispose() },
   }
 }

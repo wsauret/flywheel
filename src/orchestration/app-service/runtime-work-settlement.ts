@@ -8,15 +8,16 @@ import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
-import { liveWorkflowControl, onLiveWorkChanged } from "../session/live-session-control.js"
+import { liveSessionControl, liveWorkflowControl, onLiveWorkChanged } from "../session/live-session-control.js"
 import { workProgressesWithout } from "../session/reply-waits.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 import type { WorkReference } from "../agent-runtime/background-work-progress.js"
 
 /** Workflows include preflight, acknowledgement, and draining without inventing session rows. */
-export function liveWorkSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange" | "progressesWithout"> {
+export function liveWorkSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange" | "progressesWithout" | "interrupted"> {
   return {
     progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
+    interrupted: async (sessionId) => await liveSessionControl(reader, sessionId)?.state() === "interrupted",
     busyWorkflows: async (members) => (await Promise.all(hosts.allIds().filter((id) => members.has(id)).map(async (id) =>
       await liveWorkflowControl(reader, id)?.state() === "interrupted" ? undefined : id))).filter((id): id is string => id !== undefined),
     onWorkflowChange: (listener) => {
@@ -81,8 +82,10 @@ export function createSettledRuntimeDispatch(
 
 export interface RuntimeWorkSettlement {
   /** Join the admission tails of the root's launch tree, then read the
-   *  current owners of that tree. Never interrupts work. */
-  read(rootSessionId: string): Promise<ChatSettlementOutcome | "busy">
+   *  current owners of that tree. With scope `turn`, join and read only the
+   *  root's own turn, which ignores the work that the turn launched. Never
+   *  interrupts work. */
+  read(rootSessionId: string, scope?: "turn"): Promise<ChatSettlementOutcome | "busy">
   /** Ownership changes only. Content and accounting patches do not wake readers. */
   onChange(listener: () => void): () => void
 }
@@ -94,6 +97,9 @@ interface SettlementDeps {
   readonly onWorkflowChange: (listener: () => void) => () => void
   /** Whether `work` can progress while every session in `held` stays where it is. */
   readonly progressesWithout: (work: readonly WorkReference[], held: ReadonlySet<string>) => Promise<boolean>
+  /** Whether the live loop of `sessionId` parks interrupted, where only the
+   *  person's message or Resume moves it. */
+  readonly interrupted: (sessionId: string) => Promise<boolean>
   readonly client: RuntimeClient
   readonly awaitAcceptedWork: (sessionIds: readonly string[]) => Promise<void>
   readonly runningChildren: (sessionIds: readonly string[]) => Promise<readonly string[]>
@@ -124,56 +130,82 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
       if (after.length === members.length) return after
     }
   }
+  /** Whether the turn of `sessionId` still records its end. Its end wakes
+   *  every reader once. */
+  function turnPending(sessionId: string): boolean {
+    const pending = deps.pendingTurnSettlement(sessionId)
+    if (!pending) return false
+    if (!observedTurns.has(pending)) {
+      observedTurns.add(pending)
+      void pending.then(() => { for (const listener of listeners) listener() })
+    }
+    return true
+  }
+  async function outcome(sessionIds: readonly string[], asked: boolean, rootSessionId: string): Promise<ChatSettlementOutcome> {
+    if (asked) return "input_required"
+    if (sessionIds.some(deps.failed)) return "failed"
+    if ((await Promise.all(sessionIds.map((id) => deps.requiresContinuation(id, rootSessionId)))).some(Boolean)) return "incomplete"
+    return "complete"
+  }
+  /** The root's own turn has stopped once its loop runs no model request,
+   *  tool, or foreground command and its end is recorded. Its subagents,
+   *  workflows, and background commands are not the turn. */
+  async function readTurn(rootSessionId: string): Promise<ChatSettlementOutcome | "busy"> {
+    await deps.awaitAcceptedWork([rootSessionId])
+    const [statuses, questions] = await Promise.all([
+      deps.client.query({ type: "statusSnapshot", sessionIds: [rootSessionId] }),
+      deps.client.query({ type: "questionSnapshot", sessionIds: [rootSessionId] }),
+    ])
+    const view = statuses.views[0]?.view
+    const asked = questions.views.some((entry) => entry.view !== null)
+    if (view && (view.activeForegroundBashToolCallIds.length > 0 || isActiveActivity(view.activity))) return "busy"
+    if (turnPending(rootSessionId) && !asked) return "busy"
+    return await outcome([rootSessionId], asked, rootSessionId)
+  }
   return {
-    async read(rootSessionId) {
+    async read(rootSessionId, scope) {
+      if (scope === "turn") return await readTurn(rootSessionId)
       const sessionIds = await settledMembers(rootSessionId)
       const memberSet = new Set(sessionIds)
       const children = await deps.runningChildren(sessionIds)
       const workflows = await deps.busyWorkflows(memberSet)
       const kept = deps.keptSessions().filter((id) => memberSet.has(id))
-      const pendingTurns = new Set<string>()
-      for (const id of sessionIds) {
-        const pending = deps.pendingTurnSettlement(id)
-        if (!pending) continue
-        pendingTurns.add(id)
-        if (observedTurns.has(pending)) continue
-        observedTurns.add(pending)
-        void pending.then(() => { for (const listener of listeners) listener() })
-      }
-      const [statuses, questions] = await Promise.all([
+      const pendingTurns = sessionIds.filter(turnPending)
+      const [statuses, questions, interrupted] = await Promise.all([
         deps.client.query({ type: "statusSnapshot", sessionIds }),
         deps.client.query({ type: "questionSnapshot", sessionIds }),
+        Promise.all(sessionIds.map(async (id) => await deps.interrupted(id) ? [id] : [])),
       ])
       const questionIds = new Set(questions.views.filter((entry) => entry.view !== null).map((entry) => entry.sessionId))
-      // Only a person's answer moves a session that waits on a question, so
-      // work that waits for a reply only from such a session cannot settle
-      // before the run reports the question (PI-AGENT-075).
-      const progresses = async (work: WorkReference): Promise<boolean> => questionIds.size === 0 || await deps.progressesWithout([work], questionIds)
+      // Only a person moves a session that waits on a question or that a turn
+      // interrupt parked, so work that waits for a reply only from such a
+      // session cannot settle before the run reports the question
+      // (PI-AGENT-075) or answers the interrupted prompt. Such a reply wait
+      // stays open (PI-AGENT-025); only the prompt ends.
+      const personHeld = new Set([...questionIds, ...interrupted.flat()])
+      const progresses = async (work: WorkReference): Promise<boolean> => personHeld.size === 0 || await deps.progressesWithout([work], personHeld)
       // Background work is pending exactly when the agent loop awaits it: every
       // tracked command holds completion, and a command launched to persist is
-      // not tracked. A question parks the model, not sibling
+      // not tracked. A question or an interrupt parks the model, not sibling
       // commands in the same session, but a notification of ended work cannot
-      // commit until the answer releases the turn, so it does not hold the question.
+      // commit until the person releases the turn, so it does not hold the park.
       const awaitsWork = async (sessionId: string): Promise<boolean> => {
         const work = deps.backgroundWork(sessionId)
         if (!work) return false
-        if (!questionIds.has(sessionId)) return work.awaitedTaskCount() > 0
+        if (!personHeld.has(sessionId)) return work.awaitedTaskCount() > 0
         // A pending delivery is a command reference, which always progresses.
         const stalled = (await Promise.all(work.liveWorkReferences().map(progresses))).filter((live) => !live).length
         return work.awaitedTaskCount() - work.pendingDeliveryCount() - stalled > 0
       }
       const holdsWork = async (sessionId: string, view: StatusView): Promise<boolean> =>
         view.activeForegroundBashToolCallIds.length > 0 || isActiveActivity(view.activity) || view.activeSubagentCount > 0
-        || (await awaitsWork(sessionId) || !questionIds.has(sessionId) && view.waitingOnBackgroundWork)
-          && (questionIds.has(sessionId) || await progresses({ kind: "session", sessionId }))
+        || (await awaitsWork(sessionId) || !personHeld.has(sessionId) && view.waitingOnBackgroundWork)
+          && (personHeld.has(sessionId) || await progresses({ kind: "session", sessionId }))
       const busyWorkflows = (await Promise.all(workflows.map((workflowId) => progresses({ kind: "workflow", workflowId })))).some(Boolean)
       if (kept.length > 0 || children.length > 0 || busyWorkflows
         || (await Promise.all(statuses.views.map(({ sessionId, view }) => view !== null && holdsWork(sessionId, view)))).some(Boolean)) return "busy"
-      if ([...pendingTurns].some((id) => !questionIds.has(id))) return "busy"
-      if (questionIds.size > 0) return "input_required"
-      if (sessionIds.some(deps.failed)) return "failed"
-      if ((await Promise.all(sessionIds.map((id) => deps.requiresContinuation(id, rootSessionId)))).some(Boolean)) return "incomplete"
-      return "complete"
+      if (pendingTurns.some((id) => !questionIds.has(id))) return "busy"
+      return await outcome(sessionIds, questionIds.size > 0, rootSessionId)
     },
     onChange(listener) {
       listeners.add(listener)
@@ -230,10 +262,10 @@ export function serveChatSettlement(deps: {
     }, 0)
   })
   // It never waits for the work. Before a settled answer, the root's totals
-  // catch up with every usage that the work recorded (ARCH-RUNTIME-080); a
+  // catch up with every usage that the work recorded (ARCH-RUNTIME-079); a
   // failure to read them rejects.
-  async function answer(sessionId: string): Promise<ChatSettlementResult> {
-    const state = await deps.settlement.read(sessionId)
+  async function answer(sessionId: string, scope: "turn" | undefined): Promise<ChatSettlementResult> {
+    const state = await deps.settlement.read(sessionId, scope)
     if (state === "busy") return { state }
     await deps.currentTotals(sessionId)
     const turnEnding = deps.turnEnding(sessionId)
@@ -241,7 +273,7 @@ export function serveChatSettlement(deps: {
   }
   function query<Q extends RuntimeQuery>(request: Q, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
   async function query(request: RuntimeQuery, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<RuntimeQuery>> {
-    return request.type === "chatSettlement" ? await answer(request.sessionId) : await deps.client.query(request, options)
+    return request.type === "chatSettlement" ? await answer(request.sessionId, request.scope) : await deps.client.query(request, options)
   }
   return { query, release() { clearTimeout(timer); unsubscribe() } }
 }
