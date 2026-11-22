@@ -1,0 +1,16 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 34,61,64-68
+docs/provider-terms.md
+  h_4b47e9e4a8b456 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1decc9167cd8c2fbb116c50b7e7719e431807203",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
