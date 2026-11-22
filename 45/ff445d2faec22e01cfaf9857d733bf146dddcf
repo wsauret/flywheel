@@ -1,0 +1,50 @@
+scripts/check-boundaries.ts
+  h_4b47e9e4a8b456 111,117
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 90-91,229
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 542-543
+src/orchestration/agent-runtime/budget-nudge.ts
+  h_4b47e9e4a8b456 30-33,41,50-52,56-62
+src/orchestration/agent-runtime/compaction/truncation.ts
+  h_4b47e9e4a8b456 66,108,123-126
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 150
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 640-644
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 387
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 476-477
+src/orchestration/modules/provider-google-antigravity/mcp-server.ts
+  h_4b47e9e4a8b456 1-189
+src/orchestration/modules/provider-google-antigravity/result-projection.ts
+  h_4b47e9e4a8b456 1-56
+src/orchestration/modules/provider-google-antigravity/tool-projection.ts
+  h_4b47e9e4a8b456 1-40
+tests/unit/orchestration/agent-runtime/budget-nudge.test.ts
+  h_4b47e9e4a8b456 16,33-36
+tests/unit/orchestration/agent-runtime/context/truncation.test.ts
+  h_4b47e9e4a8b456 159
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 409-425
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 402-415
+tests/unit/orchestration/modules/provider-google-antigravity/mcp-server.test.ts
+  h_4b47e9e4a8b456 1-167
+tests/unit/orchestration/modules/provider-google-antigravity/result-projection.test.ts
+  h_4b47e9e4a8b456 1-166
+tests/unit/orchestration/modules/provider-google-antigravity/tool-projection.test.ts
+  h_4b47e9e4a8b456 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "45ff445d2faec22e01cfaf9857d733bf146dddcf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
