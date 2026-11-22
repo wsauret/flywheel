@@ -1,0 +1,44 @@
+CONTRIBUTING.md
+  h_4b47e9e4a8b456 43-50
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 10800-10806
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 97-98
+docs/provider-terms.md
+  h_4b47e9e4a8b456 263
+package.json
+  h_4b47e9e4a8b456 100-101
+scripts/antigravity-engine-asset.ts
+  h_4b47e9e4a8b456 1-215
+scripts/antigravity-engine-pin.json
+  h_4b47e9e4a8b456 1-76
+scripts/build-binary.ts
+  h_4b47e9e4a8b456 31-32,261-263,266-273,294
+scripts/claude-engine-asset.ts
+  h_4b47e9e4a8b456 3,6,137,142
+scripts/engine-asset-verify.ts
+  h_4b47e9e4a8b456 1-23
+scripts/generate-third-party-licenses.ts
+  h_4b47e9e4a8b456 7,345-379,428
+scripts/test-integration.ts
+  h_4b47e9e4a8b456 21-27,31-32,46,61-71,84-85
+src/infra/native-assets.ts
+  h_4b47e9e4a8b456 78-89
+tests/unit/scripts/antigravity-engine-asset.test.ts
+  h_4b47e9e4a8b456 1-174
+tests/unit/scripts/legal-payload.test.ts
+  h_4b47e9e4a8b456 9,95-115
+third-party/reviewed/runtime/antigravity-cli-1.5.14/review.json
+  h_4b47e9e4a8b456 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e189a40a284128d1c040ce1819ba60316f4bd046",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
