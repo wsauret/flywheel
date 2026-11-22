@@ -1,0 +1,24 @@
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 365-369
+src/infra/auth/provider-model-catalog-store.ts
+  h_4b47e9e4a8b456 101-106
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 192-195,522
+src/orchestration/config/role-resolution.ts
+  h_4b47e9e4a8b456 3-10,76-78,177,182,187-218
+tests/unit/orchestration/agent-runtime/runtime-assembly-model-selection.test.ts
+  h_4b47e9e4a8b456 6-8,178,180,193-194,255-274
+tests/unit/orchestration/workflow-host/worker-recovery.test.ts
+  h_4b47e9e4a8b456 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "01cad5abe2b03015c8e6798710c2094935def6b1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
