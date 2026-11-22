@@ -44,8 +44,12 @@ interface HeadlessChatResult {
 /** What the channel gives the framing that speaks for it. */
 export interface HeadlessChatChannel {
   readonly client: RuntimeClient
-  /** The attached root chat. */
-  readonly sessionId: string
+  /** Attaches the channel's root chat once: the saved chat of this project
+   *  that `sessionId` names, or a new chat. It activates the chat, which
+   *  starts no work (ARCH-SESSIONS-038). Resolves with the chat's id, or
+   *  undefined when `sessionId` names no chat of this project. Rejects when
+   *  the open or the activation fails, or when a chat is already attached. */
+  attach(sessionId?: string): Promise<string | undefined>
   /** Writes one framed line after every earlier write. A failed write fails
    *  the channel and rejects. */
   write(line: string): Promise<void>
@@ -66,12 +70,14 @@ export interface HeadlessChatChannel {
 interface HeadlessChatCodec {
   frame(frame: RuntimeEventFrame): readonly string[]
   request(line: string): Promise<{ readonly lines: readonly string[]; readonly submitted: boolean }>
+  /** Hears that input ended, so nothing can answer what the framing asked the client. */
+  inputEnded?(): void
 }
 
 /** A wire framing of headless chat: the versioned JSONL channel or Agent
- *  Client Protocol version 1. `open` attaches it once the root chat is active,
- *  before any frame or input line reaches it. `final` is the line written
- *  after runtime disposal, if the framing has one. `turnEnded`, for a framing
+ *  Client Protocol version 1. `open` attaches it before any frame or input
+ *  line reaches it, and the framing chooses when to attach the root chat.
+ *  `final` is the line written after runtime disposal, if the framing has one. `turnEnded`, for a framing
  *  that answers each turn, hears how each turn of the root chat ended, before
  *  the channel settles after it. */
 export interface HeadlessChatFraming {
@@ -85,7 +91,7 @@ export interface HeadlessChatFraming {
  * question/session projection. Its subscriber lives until all writes settle.
  * The hosting function emits the framing's final line after resource disposal.
  */
-export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transport: ChatTransport): Promise<HeadlessChatResult & { readonly sessionId: string }> {
+export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transport: ChatTransport): Promise<HeadlessChatResult> {
   let outputFailure: Error | undefined
   let inputFailure: Error | undefined
   let input: ReturnType<typeof createInterface> | undefined
@@ -102,7 +108,7 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
     input?.close()
     changed()
   }
-  const framing = transport.framing ?? jsonlFraming(transport.completion?.invocation)
+  const framing = transport.framing ?? jsonlFraming(transport.completion?.invocation, transport.sessionId)
   return Effect.runPromise(Effect.scoped(Effect.gen(function*() {
     const writer = yield* Semaphore.make(1)
     const write = (line: string) => writer.withPermit(Effect.tryPromise({
@@ -135,24 +141,31 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
         const source = transport.input instanceof Readable ? transport.input : Readable.from(transport.input)
         const held = new Set<Promise<void>>()
         try {
-          let sessionId = transport.sessionId
-          if (sessionId) {
-            const detail = await runtime.client.query({ type: "sessionDetail", sessionId })
-            if (detail.view?.kind !== "chat") throw new Error(`Chat session not found: ${sessionId}`)
-          } else {
-            const opened = await runtime.client.dispatch({ type: "chat.open" })
-            if (!opened.ok || !opened.sessionId) throw new Error(opened.ok ? "Chat open returned no session id" : opened.error)
-            sessionId = opened.sessionId
+          let attachedSessionId: string | undefined
+          const attach = async (requested?: string): Promise<string | undefined> => {
+            if (attachedSessionId !== undefined) throw new Error(`The channel already attached chat ${attachedSessionId}`)
+            let sessionId = requested
+            if (sessionId) {
+              const detail = await runtime.client.query({ type: "sessionDetail", sessionId })
+              if (detail.view?.kind !== "chat") return undefined
+            } else {
+              const opened = await runtime.client.dispatch({ type: "chat.open" })
+              if (!opened.ok || !opened.sessionId) throw new Error(opened.ok ? "Chat open returned no session id" : opened.error)
+              sessionId = opened.sessionId
+            }
+            transport.completion?.bind(sessionId)
+            const activated = await runtime.client.dispatch({ type: "session.activate", sessionId })
+            if (!activated.ok) throw new Error(activated.error)
+            attachedSessionId = sessionId
+            return sessionId
           }
-          transport.completion?.bind(sessionId)
-          const activated = await runtime.client.dispatch({ type: "session.activate", sessionId })
-          if (!activated.ok) throw new Error(activated.error)
-          const attachedSessionId = sessionId
           let dispatching = false
           const settle = async (): Promise<HeadlessChatOutcome> => {
             while (true) {
               const observed = revision
-              const state = await runtime.workSettlement.read(attachedSessionId)
+              // A channel whose framing attached no chat owns no work.
+              const sessionId = attachedSessionId
+              const state = sessionId === undefined ? "complete" : await runtime.workSettlement.read(sessionId)
               if (outputFailure !== undefined) throw new Error(errorMessage(outputFailure))
               if (inputFailure !== undefined) throw new Error(errorMessage(inputFailure))
               if (observed !== revision) continue
@@ -161,9 +174,11 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
                 // so the last request of a turn is not in them when its work
                 // ends. A budget read after settlement states the whole turn.
                 // Totals that could not be read leave no settled turn to report.
-                await runtime.currentTotals(attachedSessionId).catch((error: unknown) => {
-                  throw new Error(`The session totals could not be read: ${errorMessage(error)}`)
-                })
+                if (sessionId !== undefined) {
+                  await runtime.currentTotals(sessionId).catch((error: unknown) => {
+                    throw new Error(`The session totals could not be read: ${errorMessage(error)}`)
+                  })
+                }
                 if (observed !== revision) continue
                 return state
               }
@@ -172,7 +187,7 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
           }
           const codec = await framing.open({
             client: runtime.client,
-            sessionId: attachedSessionId,
+            attach,
             write: (line) => Effect.runPromise(write(line).pipe(Effect.tapCause(failOutput))),
             settle,
             hold: (work) => {
@@ -203,7 +218,11 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
                 }
                 if (outputFailure !== undefined) throw new Error(errorMessage(outputFailure))
               }
-            } finally { submitted.resolve(); changed() }
+            } finally {
+              codec.inputEnded?.()
+              submitted.resolve()
+              changed()
+            }
           }
           reading = readInput()
           void reading.catch((error: unknown) => { inputFailure = new Error(errorMessage(error)); changed() })
@@ -216,7 +235,7 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
           input.close()
           await reading
           await Promise.all(held)
-          return { sessionId, outcome, ...(outcome === "complete" && handoff ? { handoff } : {}) }
+          return { sessionId: attachedSessionId ?? null, outcome, ...(outcome === "complete" && handoff ? { handoff } : {}) }
         } finally {
           input?.close()
           if (source !== transport.input) source.destroy()
@@ -240,10 +259,12 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
 /** The versioned JSONL channel of protocol/headless-chat.ts. A
  *  work-submitting dispatch first takes the one-shot invocation's admission,
  *  so a completed one-shot run refuses more work. */
-export function jsonlFraming(completion?: ReturnType<typeof createChatInvocationCompletion>): HeadlessChatFraming {
+export function jsonlFraming(completion?: ReturnType<typeof createChatInvocationCompletion>, savedSessionId?: string): HeadlessChatFraming {
   return {
     open: async (channel) => {
-      await channel.write(encodeRecord({ version: 1, type: "ready", sessionId: channel.sessionId }))
+      const attached = await channel.attach(savedSessionId)
+      if (attached === undefined) throw new Error(`Chat session not found: ${savedSessionId}`)
+      await channel.write(encodeRecord({ version: 1, type: "ready", sessionId: attached }))
       return {
         frame: (event) => [encodeRecord({ version: 1, type: "event", event })],
         request: async (line) => {

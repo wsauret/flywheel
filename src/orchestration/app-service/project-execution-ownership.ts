@@ -28,6 +28,8 @@ export function completeProjectExecutionOwnership(scope: RuntimeOwnership, input
   scope.shutdown("session-changes-publisher", "close-client-streams")
   scope.shutdown("background-index", "close-client-streams")
   scope.sequence("frontend-projection", "close-client-streams", [
+    // Publishes to the bus, so it stops before the bus does.
+    "settlement-wake",
     "definition-availability-subscription",
     "definition-availability-agent-types",
     "provider-observations-availability-fold", "provider-observations-capability-subscription",

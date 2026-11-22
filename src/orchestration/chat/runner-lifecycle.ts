@@ -33,7 +33,7 @@ import { awaitPlannedChildResumes } from "../session/planned-session-continuatio
 import { waitsForPerson } from "../session/conversation/turn-end-record.js"
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../infra/module-runtime.js"
 import { createIdleCompaction } from "./idle-compaction.js"
-import { createChatInvocationCompletion, createChatTurnDurability } from "./runner-completion.js"
+import { createChatInvocationCompletion, createChatTurnDurability, type ChatTurnEnding } from "./runner-completion.js"
 import { createChatCapacityWait } from "./chat-capacity-wait.js"
 import { createChatBackground } from "./chat-background.js"
 import { createSessionEngines } from "./session-engines.js"
@@ -95,6 +95,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   })
   const capacity = createChatCapacityWait({ sessionId, conversationId: deps.conversationId, unattended: deps.rootChatCompletion?.unattended === true, eventStore: deps.infra.eventStore, onNotice: (operation) => { emit("agent.notice.changed", { sessionId, data: { operation } }) } })
   const durability = createChatTurnDurability(() => deps.treeWriter.endTurn(), (error) => deps.onTreeFailure(error))
+  // How the last turn ended, until the chat accepts input or starts a turn (`ChatPorts.lastTurnEnding`).
+  let lastTurnEnding: ChatTurnEnding | undefined
   const { background, notifications, onBackgroundEvent } = createChatBackground({
     deps, emit, mailbox, awaitDurableFacts, admitsInput: () => !state.ended && !deps.rootChatCompletion?.sealed,
     deliver: (text, notificationKey) => submit(text, { source: "background", notificationKey }),
@@ -290,7 +292,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         },
         onCompactionContinuation: () => moduleObserver.onCompactionContinuation(),
         onTurnEnded: ({ runtimeConfig, contentRefused }) => {
-          if (isLiveTurn(turn)) turn.completion.turnEnded(contentRefused === true)
+          if (isLiveTurn(turn)) lastTurnEnding = turn.completion.turnEnded(contentRefused === true)
           return completeCurrentModelTurn(turn, runtimeConfig)
         },
         onConnectionState: (next) => { setCurrentTurnConnectionState(turn, next) },
@@ -323,6 +325,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     const lease = host.takeReservedTurn() ?? host.reserveTurn()
     if (!lease) throw new Error("startTurn requires an idle or reserved runner host")
     engines.turnStarted()
+    lastTurnEnding = undefined
     const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}), ...(opts.resumes ? { resumes: true as const } : {}) }
     let runnerStarted = false
     let userInputAfterStartupStop: (() => boolean) | undefined
@@ -430,7 +433,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // The runner is done: pending assistant/tool_result entries become
         // durable as one batch before any next provider request observes
         // them via `buildContext`, and the writer is idle for the next one.
-        await turn.completion.finish(result.terminal, durability.end)
+        lastTurnEnding = await turn.completion.finish(result.terminal, durability.end) ?? lastTurnEnding
         if (result.terminal.kind === "stream_stalled") wait.stall()
         state.detachRunner(session, detachStatus(result.terminal))
       } catch (err) {
@@ -517,6 +520,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       // Shutdown after the durable hold leaves the accepted notification for reactivation.
       if (state.ended) return true
     }
+    lastTurnEnding = undefined
     const activeTurn = host.activeTurnLease
     if (activeTurn) {
       if (backgroundNotification) {
@@ -720,6 +724,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     },
     settle: host.settle,
     get pendingTurnSettlement() { return durability.pendingTurnSettlement },
+    get lastTurnEnding() { return lastTurnEnding },
     awaitLogicalTurnDurability: durability.awaitDurable,
     learn() {
       if (deps.rootChatCompletion?.sealed) return false

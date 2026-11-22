@@ -30,7 +30,11 @@ Because: A VACUUM holds the store's only lock for minutes, which only a closed p
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
-Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf. Its framing is the versioned JSONL channel or Agent Client Protocol version 1, over one channel and one settlement rule.
+Headless chat is an Agent Client Protocol version 1 frontend over the production project runtime, not a second chat composition. Its requests reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done, which it takes from the chat's own launch tree and serves as a query. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf.
+
+## ARCH-RUNTIME-084: An attended headless chat runs in the account service
+
+An attended headless chat reaches the runtime through the resident account service, as every other interactive client does. An unattended run, or an attended run with process-scoped options, hosts the runtime in its own process under the project's exclusive headless claim.
 
 ## ARCH-RUNTIME-080: Headless settlement waits for the turn's recorded usage
 

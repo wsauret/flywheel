@@ -73,6 +73,7 @@ function lifecycleStub(): ChatPorts {
     abortGeneration() {},
     settle() { return Promise.resolve() },
     pendingTurnSettlement: undefined,
+    lastTurnEnding: undefined,
     awaitLogicalTurnDurability: async () => {},
     terminateBackgroundWorks: async () => {},
     terminateBackgroundWork() {},

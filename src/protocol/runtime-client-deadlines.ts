@@ -53,6 +53,7 @@ export const runtimeCallPolicies = {
   mutationFiles: outputRead,
   mutationPatchWindow: outputRead,
   sessionBackgroundWork: outputRead,
+  chatSettlement: controlRead,
   recallQueuedMessage: LOSSLESS,
   commandCatalog: controlRead,
   modelAssignments: modelConfigRead,

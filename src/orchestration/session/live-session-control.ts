@@ -290,13 +290,14 @@ export function liveChildRuns(store: AsyncEventStateReadSurface): readonly LiveC
   return [...controls(store).values()].filter(isChildControl)
 }
 
-/** The session ids of the child runs that still own work: a subagent run that is running, waiting on its own work, or
- *  between turns, and a workflow run that a person did not interrupt. On ordinary completion a workflow stays
+/** The ids of `sessionIds` whose child runs still own work: a subagent run that is running, waiting on its own work,
+ *  or between turns, and a workflow run that a person did not interrupt. On ordinary completion a workflow stays
  *  registered until reconciliation has submitted its result to the parent, so settlement sees no gap between the run
  *  and the parent's next turn. Stop, interruption, and runtime disposal reconcile outside the run by design. */
-export async function runningChildSessionIds(store: AsyncEventStateReadSurface): Promise<readonly string[]> {
-  const running = await Promise.all([...controls(store).values()].map(async (control) => {
-    if (!isChildControl(control)) return null
+export async function runningChildSessionIds(store: AsyncEventStateReadSurface, sessionIds: readonly string[]): Promise<readonly string[]> {
+  const running = await Promise.all(sessionIds.map(async (sessionId) => {
+    const control = liveChildRun(store, sessionId)
+    if (!control) return null
     const state = await control.state()
     return state === "running" || state === "waiting_on_work" || state === "between_steps" ? control.sessionId : null
   }))

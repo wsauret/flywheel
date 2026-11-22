@@ -243,6 +243,8 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       case "mutationFiles": return (await deps.mutationEvidence()).files(request)
       case "mutationPatchWindow": return (await deps.mutationEvidence()).patchWindow(request)
       case "sessionBackgroundWork": return await deps.backgroundIndex.snapshot(request.sessionId)
+      // Settlement reads the runners and live controls of the composition, which serves it around this client.
+      case "chatSettlement": throw new Error("The runtime composition answers chat settlement")
       case "snapshot": {
         const snapshotPosition = bus.snapshotPosition(runtimeReadAnchor(request.type))
         const local = await deps.projection.snapshot()

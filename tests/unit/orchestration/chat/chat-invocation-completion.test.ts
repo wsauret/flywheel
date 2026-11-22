@@ -75,6 +75,23 @@ it.each([
     resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal })
     await lifecycle.settle()
     expect(endings).toEqual([...expected])
+    expect(lifecycle.lastTurnEnding).toEqual(expected.at(-1))
+  } finally {
+    await lifecycle.terminateBackgroundWorks()
+  }
+})
+
+it("records how the last turn of any chat ended until the chat accepts input", async () => {
+  const { lifecycle, resolvers, runnerOptions } = makeLifecycle()
+  try {
+    await lifecycle.enqueueInput("first")
+    await flushMicrotasks()
+    resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal: { kind: "context_overflow" } })
+    await lifecycle.settle()
+    expect(lifecycle.lastTurnEnding).toEqual({ kind: "failed", failure: "context_overflow" })
+    expect(runnerOptions).toHaveLength(1)
+    await lifecycle.enqueueInput("next")
+    expect(lifecycle.lastTurnEnding).toBeUndefined()
   } finally {
     await lifecycle.terminateBackgroundWorks()
   }

@@ -131,7 +131,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
     ])).resolves.toEqual([{ ok: true }, { ok: true }])
     expect(deliveries).toEqual([])
     let drained = false
-    const settlement = supervisor.awaitAcceptedWork().then(() => { drained = true })
+    const settlement = supervisor.awaitAcceptedWork([sessionId]).then(() => { drained = true })
     await Promise.resolve()
     expect(drained).toBe(false)
 

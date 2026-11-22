@@ -1,5 +1,6 @@
 import type { Redacted } from "effect"
 import type { SessionBackgroundWorkQuery, SessionBackgroundWorkResult } from "./background-index-protocol-types.js"
+import type { ChatSettlementQuery, ChatSettlementResult } from "./chat-settlement-protocol-types.js"
 import type { MutationFilesQuery, MutationFilesResult, MutationPatchWindowQuery, MutationPatchWindowResult } from "./mutation-evidence-protocol-types.js"
 import type { SessionChangeSummaryQuery, SessionChangeSummaryResult, SessionChangesQuery, SessionChangesResult, SessionChangeDiffQuery, SessionChangeDiffResult, SessionChangesSetViewed, SessionChangesSetViewedResult, SessionChangesUndo, SessionChangesUndoResult } from "./session-changes-protocol-types.js"
 import type { CommandOutcome, RuntimeCommandCatalogResult, RuntimeCommandInvocation } from "./command-catalog-protocol-types.js"
@@ -82,6 +83,7 @@ type RuntimeKernelQuery =
   | SessionChangesQuery
   | SessionChangeDiffQuery
   | SessionBackgroundWorkQuery
+  | ChatSettlementQuery
   | MutationFilesQuery
   | MutationPatchWindowQuery
   | { readonly type: "snapshot" }
@@ -126,6 +128,7 @@ export type RuntimeQueryResult<Q extends RuntimeQuery> =
     : Q extends SessionChangesQuery ? SessionChangesResult
     : Q extends SessionChangeDiffQuery ? SessionChangeDiffResult
     : Q extends SessionBackgroundWorkQuery ? SessionBackgroundWorkResult
+    : Q extends ChatSettlementQuery ? ChatSettlementResult
     : Q extends MutationFilesQuery ? MutationFilesResult
     : Q extends MutationPatchWindowQuery ? MutationPatchWindowResult
     : Q extends { readonly type: "snapshot" } ? RuntimeUiSnapshot

@@ -362,12 +362,13 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   function runtimeState(sessionId: string): Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null {
     return actors.get(sessionId)?.runtimeState() ?? null
   }
-  async function awaitAcceptedWork(): Promise<void> {
+  async function awaitAcceptedWork(sessionIds: readonly string[]): Promise<void> {
+    const held = (): SessionRuntimeActor[] => sessionIds.flatMap((sessionId) => actors.get(sessionId) ?? [])
     let joined: readonly SessionRuntimeActor[]
     do {
-      joined = [...actors.values()]
+      joined = held()
       await Promise.all(joined.map((actor) => actor.awaitAcceptedWork()))
-    } while ([...actors.values()].some((actor) => !joined.includes(actor) || actor.hasAcceptedWork()))
+    } while (held().some((actor) => !joined.includes(actor) || actor.hasAcceptedWork()))
   }
   function warmChatRunner(): Promise<void> {
     return deps.runnerCapabilities().then(({ runnerLoader }) => runnerLoader.warm(), () => {})

@@ -1,5 +1,7 @@
-import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeClient } from "../../protocol/app-service-types.js"
+import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeClient, type RuntimeQuery, type RuntimeQueryOptions, type RuntimeQueryResult } from "../../protocol/app-service-types.js"
 import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
+import { settlementCursor, type ChatSettlementResult, type ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
+import type { RuntimeUiBus } from "./runtime-ui-bus.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { durableBranchHasUserMessage } from "../session/conversation/conversation-tree-handle.js"
@@ -16,7 +18,7 @@ import type { WorkReference } from "../agent-runtime/background-work-progress.js
 export function liveWorkSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange" | "progressesWithout"> {
   return {
     progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
-    busyWorkflows: async () => (await Promise.all(hosts.allIds().map(async (id) =>
+    busyWorkflows: async (members) => (await Promise.all(hosts.allIds().filter((id) => members.has(id)).map(async (id) =>
       await liveWorkflowControl(reader, id)?.state() === "interrupted" ? undefined : id))).filter((id): id is string => id !== undefined),
     onWorkflowChange: (listener) => {
       const offHosts = hosts.onChange(listener)
@@ -52,14 +54,13 @@ export function createSessionWorkSettlement<Startup>(startup: () => Promise<Star
   return { mailbox, ownAcceptedWork, waitForStartup, hasAcceptedWork, awaitAcceptedWork }
 }
 
-/** Adopt history-free chat shells before dispatch and correlate accepted targets
- * with runtime settlement. The underlying mutation outcome remains unchanged.
+/** Adopt history-free chat shells before dispatch. The underlying mutation
+ * outcome remains unchanged.
  */
 export function createSettledRuntimeDispatch(
   deps: Pick<RuntimeChatKernel, "manager" | "sessionStore" | "eventReader"> & {
     readonly client: RuntimeClient
     readonly supervisor: Pick<RuntimeSupervisor, "adoptBlankChat">
-    readonly settlement: RuntimeWorkSettlement
   },
 ): RuntimeClient["dispatch"] {
   function dispatch<C extends FrontendMutation>(command: C): Promise<MutationResult<C>>
@@ -74,37 +75,29 @@ export function createSettledRuntimeDispatch(
         })
       }
     }
-    const result = await deps.client.dispatch(command)
-    if (typeof result === "object" && result !== null
-      && "ok" in result && result.ok) {
-      deps.settlement.accepted([
-        ...("sessionId" in result && typeof result.sessionId === "string" ? [result.sessionId] : []),
-        ...("sessionId" in command && typeof command.sessionId === "string" ? [command.sessionId] : []),
-      ])
-    }
-    return result
+    return await deps.client.dispatch(command)
   }
   return dispatch
 }
 
 export interface RuntimeWorkSettlement {
-  /** Retain the identities of successfully accepted dispatch targets. */
-  accepted(sessionIds: readonly string[]): void
-  /** Join admission tails, then read current owners. Never interrupts work. */
+  /** Join the admission tails of the root's launch tree, then read the
+   *  current owners of that tree. Never interrupts work. */
   read(rootSessionId: string): Promise<HeadlessChatOutcome | "busy">
   /** Ownership changes only. Content and accounting patches do not wake readers. */
   onChange(listener: () => void): () => void
 }
 
 interface SettlementDeps {
-  readonly busyWorkflows: () => Promise<readonly string[]>
+  /** `rootSessionId` and every session it launched (`sessionSubtree`). The tree only grows. */
+  readonly members: (rootSessionId: string) => Promise<readonly string[]>
+  readonly busyWorkflows: (members: ReadonlySet<string>) => Promise<readonly string[]>
   readonly onWorkflowChange: (listener: () => void) => () => void
   /** Whether `work` can progress while every session in `held` stays where it is. */
   readonly progressesWithout: (work: readonly WorkReference[], held: ReadonlySet<string>) => Promise<boolean>
   readonly client: RuntimeClient
-  readonly awaitAcceptedWork: () => Promise<void>
-  readonly ownedSessionIds: () => readonly string[]
-  readonly runningChildren: () => Promise<readonly string[]>
+  readonly awaitAcceptedWork: (sessionIds: readonly string[]) => Promise<void>
+  readonly runningChildren: (sessionIds: readonly string[]) => Promise<readonly string[]>
   readonly keptSessions: () => readonly string[]
   readonly pendingTurnSettlement: (sessionId: string) => Promise<void> | undefined
   /** The background-work registry of a session's runner, which its agent loop also reads. */
@@ -114,22 +107,31 @@ interface SettlementDeps {
   readonly onLiveSessionRemoved: (listener: (sessionId: string) => void) => () => void
 }
 
-/** Settlement belongs to the runtime, not a frontend's historical session views.
- * The remembered ids identify work reached by this runtime, not lifecycle state.
+/** Settlement belongs to the runtime, not a frontend's historical session
+ * views. It reads only the root's launch tree: its subagents, its workflows
+ * and their agents, never other chats of the project (PI-AGENT-074). A reply
+ * wait on another chat holds the root through the root's own tracked work.
  */
 export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSettlement {
-  const reached = new Set<string>()
   const observedTurns = new WeakSet<Promise<void>>()
   const listeners = new Set<() => void>()
+  /** The tree once its admission tails are joined. A joined tail can launch a
+   *  child, which joins the tree, so the join repeats until the tree holds. */
+  async function settledMembers(rootSessionId: string): Promise<readonly string[]> {
+    for (;;) {
+      const members = await deps.members(rootSessionId)
+      await deps.awaitAcceptedWork(members)
+      const after = await deps.members(rootSessionId)
+      if (after.length === members.length) return after
+    }
+  }
   return {
-    accepted(sessionIds) { for (const id of sessionIds) reached.add(id) },
     async read(rootSessionId) {
-      await deps.awaitAcceptedWork()
-      const children = await deps.runningChildren()
-      const workflows = await deps.busyWorkflows()
-      const kept = deps.keptSessions()
-      for (const id of [rootSessionId, ...deps.ownedSessionIds(), ...children, ...kept]) reached.add(id)
-      const sessionIds = [...reached]
+      const sessionIds = await settledMembers(rootSessionId)
+      const memberSet = new Set(sessionIds)
+      const children = await deps.runningChildren(sessionIds)
+      const workflows = await deps.busyWorkflows(memberSet)
+      const kept = deps.keptSessions().filter((id) => memberSet.has(id))
       const pendingTurns = new Set<string>()
       for (const id of sessionIds) {
         const pending = deps.pendingTurnSettlement(id)
@@ -183,7 +185,6 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
         if (event.type !== "patch") return
         const { cursor, payload } = event.patch
         if (payload.kind === "status.updated" && cursor.scope === "session") {
-          reached.add(cursor.sessionId)
           const signature = workSignature(payload.status)
           if (signatures.get(cursor.sessionId) === signature) return
           signatures.set(cursor.sessionId, signature)
@@ -192,7 +193,7 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
           || payload.kind === "question.removed" || payload.kind === "session.added"
           || payload.kind === "session.removed") listener()
       })
-      const unsubscribeRemoved = deps.onLiveSessionRemoved((sessionId) => { reached.add(sessionId); listener() })
+      const unsubscribeRemoved = deps.onLiveSessionRemoved(listener)
       const unsubscribeWorkflows = deps.onWorkflowChange(listener)
       return () => { listeners.delete(listener); unsubscribe(); unsubscribeRemoved(); unsubscribeWorkflows() }
     },
@@ -203,4 +204,45 @@ function workSignature(status: StatusView): string {
   return JSON.stringify([status.activity, status.activeSubagentCount, status.waitingOnBackgroundWork,
     status.activeBackgroundCommands.map((command) => command.id), status.activeForegroundBashToolCallIds,
     status.replyWaits.map((wait) => wait.sessionId)])
+}
+
+interface ServedChatSettlement {
+  /** The runtime client's query, with `chatSettlement` answered here. */
+  readonly query: RuntimeClient["query"]
+  release(): void
+}
+
+/** Serves the `chatSettlement` query from the settlement owner and wakes the
+ *  clients that wait on a chat with one `settlement.changed` patch per task
+ *  for any burst of ownership changes. A woken client asks the query again.
+ *  `release` stops the wakes. */
+export function serveChatSettlement(deps: {
+  readonly client: Pick<RuntimeClient, "query">
+  readonly settlement: Pick<RuntimeWorkSettlement, "read" | "onChange">
+  readonly currentTotals: (sessionId: string) => Promise<void>
+  readonly turnEnding: (sessionId: string) => ChatTurnEnding | undefined
+  readonly bus: Pick<RuntimeUiBus, "publish">
+}): ServedChatSettlement {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const unsubscribe = deps.settlement.onChange(() => {
+    timer ??= setTimeout(() => {
+      timer = undefined
+      deps.bus.publish({ cursor: settlementCursor(), payload: { kind: "settlement.changed" } })
+    }, 0)
+  })
+  // It never waits for the work. Before a settled answer, the root's totals
+  // catch up with every usage that the work recorded (ARCH-RUNTIME-080); a
+  // failure to read them rejects.
+  async function answer(sessionId: string): Promise<ChatSettlementResult> {
+    const state = await deps.settlement.read(sessionId)
+    if (state === "busy") return { state }
+    await deps.currentTotals(sessionId)
+    const turnEnding = deps.turnEnding(sessionId)
+    return turnEnding ? { state, turnEnding } : { state }
+  }
+  function query<Q extends RuntimeQuery>(request: Q, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<Q>>
+  async function query(request: RuntimeQuery, options?: RuntimeQueryOptions): Promise<RuntimeQueryResult<RuntimeQuery>> {
+    return request.type === "chatSettlement" ? await answer(request.sessionId) : await deps.client.query(request, options)
+  }
+  return { query, release() { clearTimeout(timer); unsubscribe() } }
 }

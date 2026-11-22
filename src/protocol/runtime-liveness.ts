@@ -280,8 +280,12 @@
  *  `expected` profile-config entry of each role they write, and a model
  *  assignment row carries that entry as `configured`. The runtime refuses an
  *  older peer's mutation, and an older client rejects the rows.
+ *  Version 89: the `chatSettlement` query answers whether the work that a
+ *  chat's launch tree owns has ended, and the `settlement` workspace domain
+ *  carries `settlement.changed`, a wake with no content. An older peer
+ *  rejects the query and the patch.
  */
-export const RUNTIME_PROTOCOL_VERSION = 88
+export const RUNTIME_PROTOCOL_VERSION = 89
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

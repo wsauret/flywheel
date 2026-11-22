@@ -1,5 +1,6 @@
-import { failureTerminal, type AgentFailureReason, type AgentRunTerminal, type AgentToolInput } from "../agent-runtime/types.js"
+import { failureTerminal, type AgentRunTerminal, type AgentToolInput } from "../agent-runtime/types.js"
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
+import type { ChatTurnEnding as ProtocolChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
 
 /** Owns the logical turn's durability barrier independently of runner attempts. */
 export function createChatTurnDurability(endTurn: () => Promise<void>, onFailure: (error: unknown) => void) {
@@ -43,12 +44,10 @@ export function createChatTurnDurability(endTurn: () => Promise<void>, onFailure
   }
 }
 
-/** How a turn of the root chat ended: its model answered, the provider refused the conversation content, or
- *  the run failed with `failure`. An interrupt ends no turn here: the turn waits to resume. */
-export type ChatTurnEnding =
-  | { readonly kind: "completed" }
-  | { readonly kind: "refused" }
-  | { readonly kind: "failed"; readonly failure: Exclude<AgentFailureReason["kind"], "aborted"> }
+/** How a turn of a chat ended, as the `chatSettlement` query states it. An interrupt ends no turn here: the turn
+ *  waits to resume. `finish` assigns each agent failure kind but `aborted` to it, so a failure kind that the
+ *  protocol does not name fails the build. */
+export type ChatTurnEnding = ProtocolChatTurnEnding
 
 /** Owns one-shot input admission and publishes the accepted result only after durable success. The loop seals
  *  the invocation with its final reply when a turn ends and no work it owns still runs, as `claude -p` returns its
@@ -80,11 +79,15 @@ export function createChatInvocationCompletion(onCompletion: ((content: AgentToo
       accepted = { summary: finalReply }
       return true
     } : undefined,
-    /** Reports a turn that the model answered, or that the provider's content filter ended (`contentRefused`). */
-    turnEnded(contentRefused: boolean): void {
-      onTurnEnded?.({ kind: contentRefused ? "refused" : "completed" })
+    /** Reports a turn that the model answered, or that the provider's content filter ended (`contentRefused`),
+     *  and returns that ending. */
+    turnEnded(contentRefused: boolean): ChatTurnEnding {
+      const ending: ChatTurnEnding = { kind: contentRefused ? "refused" : "completed" }
+      onTurnEnded?.(ending)
+      return ending
     },
-    async finish(terminal: AgentRunTerminal, endDurably: () => Promise<void>): Promise<void> {
+    /** Ends the run durably, and returns the ending of a run that failed, which ends its turn. */
+    async finish(terminal: AgentRunTerminal, endDurably: () => Promise<void>): Promise<ChatTurnEnding | undefined> {
       if (onCompletion) await endDurably()
       else await endDurably().catch((error: unknown) => {
         if (error instanceof PersistenceWriteRefused) throw error
@@ -92,7 +95,10 @@ export function createChatInvocationCompletion(onCompletion: ((content: AgentToo
       if (terminal.kind === "completed" && accepted) onCompletion?.(accepted)
       // A run ends with its turn only when it fails; an abort is a stop that a caller asked for.
       const failure = failureTerminal(terminal)
-      if (failure && failure.kind !== "aborted") onTurnEnded?.(failure.kind === "api_error" && failure.contentRefused ? { kind: "refused" } : { kind: "failed", failure: failure.kind })
+      if (!failure || failure.kind === "aborted") return undefined
+      const ending: ChatTurnEnding = failure.kind === "api_error" && failure.contentRefused ? { kind: "refused" } : { kind: "failed", failure: failure.kind }
+      onTurnEnded?.(ending)
+      return ending
     },
   }
 }

@@ -1,198 +1,14 @@
 import { describe, expect, it } from "bun:test"
-import { realpathSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { PassThrough } from "node:stream"
-import type { FrontendMutation, FrontendOutputBlock, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
-import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import type { HeadlessChatOutcome } from "../../../../src/protocol/headless-chat.js"
-import type { AcpResult, AcpSessionUpdate } from "../../../../src/protocol/acp.js"
-import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
-import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
-import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import type { AgentToolInput } from "../../../../src/orchestration/agent-runtime/types.js"
-import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
-import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
-import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/headless-chat-channel.js"
-import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
-import { tailWindow } from "../../../helpers/runtime-views.js"
-
-/** One line Flywheel wrote: a response or a session update. */
-interface Message {
-  readonly id?: number
-  readonly method?: string
-  readonly result?: AcpResult
-  readonly error?: { readonly code: number; readonly message: string; readonly data?: { readonly failure: string } }
-  readonly params?: { readonly update: AcpSessionUpdate }
-}
-
-interface Inbound {
-  readonly id?: number
-  readonly method: string
-  readonly params: object
-}
-
-const SUMMARY = {
-  attempts: 2, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true,
-  tokens: { input: 100, output: 40, cacheRead: 900, cacheWrite: 0, reasoning: 10, total: 1040 },
-  estimatedBilledUsd: 0, includedValueUsd: 0.25, priceUnavailable: false,
-}
-const STATS: UsageSessionStats = {
-  sessionId: "root", asOf: 0, partial: false, descendantCount: 0, direct: SUMMARY, descendants: SUMMARY, totals: SUMMARY, models: [], tools: [],
-  generation: { basis: "O200kBase", totals: { outputTokens: 0, durationMs: 0, measuredRequests: 0, unmeasuredRequests: 0, measuredBlocks: 0, excludedBlocks: 0, averageTokensPerSecond: null }, coverageComplete: true, models: [] },
-}
-
-/** The directory the agent runs in, which session/new must name. */
-const CWD = tmpdir()
-
-const question: PendingQuestionView = {
-  kind: "question", toolUseId: "ask", timestamp: 0,
-  questions: [{ question: "Which port?", multiSelect: false, choices: [{ kind: "option", label: "8080" }, { kind: "freeform", label: "Other" }] }],
-}
-
-/** A root chat whose turns a test scripts: `onTurn` runs for every message
- *  or answer and owns the settlement state it ends in. */
-function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
-  const bus = createRuntimeUiBus()
-  const framing = acpFraming(realpathSync(CWD))
-  /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
-  const ended = (ending: ChatTurnEnding) => { framing.turnEnded?.(ending) }
-  const calls: FrontendMutation[] = []
-  // The rows a client reads, as the runtime's live edge publishes them, and
-  // the blocks whose bodies a row can leave out.
-  const blocks: FrontendOutputBlock[] = []
-  const bodies = new Map<string, FrontendOutputBlock>()
-  const resident = (block: FrontendOutputBlock) => {
-    bodies.set(blockIdentity(block), block)
-    const known = blocks.findIndex((candidate) => blockIdentity(candidate) === blockIdentity(block))
-    const index = known === -1 ? blocks.length : known
-    const row = projectFrontendOutputBlock(block)
-    blocks[index] = row
-    return { index, known: known !== -1, row }
-  }
-  const listeners = new Set<() => void>()
-  let state: HeadlessChatOutcome | "busy" = "complete"
-  let interrupt = () => {}
-  let budget: BudgetView | null = null
-  const settle = async (outcome: HeadlessChatOutcome) => {
-    await bus.drain()
-    state = outcome
-    for (const listener of listeners) listener()
-  }
-  let position = 0
-  const publish = (input: RuntimeUiPatchInput) => {
-    if (input.payload.kind === "budget.updated") budget = input.payload.budget
-    position = bus.publish(input)?.position ?? position
-  }
-  // Usage the store holds and the totals do not state yet: the totals follow
-  // the store through a derived index, which states it once it is current.
-  let unindexed: BudgetView | undefined
-  const stored = (next: BudgetView) => { unindexed = next }
-  // A failure of the next totals read, as when it passes its deadline.
-  let readFailure: Error | undefined
-  const unreadable = (error: Error) => { readFailure = error }
-  const currentTotals = async () => {
-    const failure = readFailure
-    readFailure = undefined
-    if (failure) throw failure
-    if (unindexed) publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: unindexed } })
-    unindexed = undefined
-  }
-  const output = (block: FrontendOutputBlock) => {
-    const { index, known, row } = resident(block)
-    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known ? "upsert" : "insert", index, blockId: blockIdentity(row), block: row }] } } })
-  }
-  /** Output whose live delta never reaches the client, as when its queue overflowed. */
-  const lose = (block: FrontendOutputBlock) => { resident(block) }
-  /** Removes a draft row, as a resync does: it truncates at the row and inserts the rows after it again. */
-  const retract = (block: FrontendOutputBlock) => {
-    const index = blocks.findIndex((candidate) => blockIdentity(candidate) === blockIdentity(block))
-    blocks.splice(index, 1)
-    const after = blocks.slice(index).map((row, offset) => ({ kind: "insert" as const, index: index + offset, blockId: blockIdentity(row), block: row }))
-    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, truncateTo: index, blocks: after } } })
-  }
-  const turn = async (command: FrontendMutation) => {
-    state = "busy"
-    queueMicrotask(() => { onTurn({ command, publish, stored, unreadable, output, lose, retract, ended, settle, streamed }) })
-    return { ok: true as const, sessionId: "root" }
-  }
-  const client: RuntimeClient = {
-    query: runtimeQuery({
-      budgetSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: budget })) }),
-      outputWindow: async ({ request }) => {
-        const start = Math.max(0, blocks.length - request.range.maxBlocks)
-        return tailWindow(blocks.slice(start), { snapshotPosition: position, startBlockIndex: start })
-      },
-      outputRange: async ({ request }) => {
-        if (request.anchor.kind !== "beforeBlock") throw new Error(`Unexpected anchor ${request.anchor.kind}`)
-        const { blockId } = request.anchor
-        const end = blocks.findIndex((block) => blockIdentity(block) === blockId)
-        const start = Math.max(0, end - request.maxBlocks)
-        return {
-          kind: "ok", consistencyToken: "fixture", anchor: request.anchor, streamingToolText: {}, streamingOutputChars: 0, blocks: blocks.slice(start, end),
-          window: { startBlockIndex: start, endBlockIndex: end - 1, hasBefore: start > 0, hasAfter: true, contentBytes: 0 },
-        }
-      },
-      outputBlockBody: async ({ request }) => {
-        const block = bodies.get(request.blockId)
-        return { blockId: request.blockId, ...(block?.kind === "tool" && block.content !== undefined ? { content: block.content } : {}) }
-      },
-      questionSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: state === "input_required" ? question : null })) }),
-      "usage.stats": async () => STATS,
-    }),
-    dispatch: recordedDispatch((command) => { calls.push(command) }, runtimeDispatch({
-      "chat.open": async () => ({ ok: true, sessionId: "root" }),
-      "session.activate": async () => ({ ok: true, sessionId: "root" }),
-      "session.send": turn,
-      "question.answer": turn,
-      "chat.interrupt": async () => { interrupt(); return { ok: true, sessionId: "root" } },
-    })),
-    close: async () => {},
-    subscribe: (next) => { bus.addListener(next); return () => { bus.removeListener(next) } },
-  }
-  const input = new PassThrough()
-  const messages: Message[] = []
-  const arrived = new Set<() => void>()
-  const channel = runHeadlessChatChannel({
-    client, startChatDefault: () => {}, currentTotals,
-    workSettlement: { accepted: () => {}, read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
-  }, {
-    ...transport, input, framing,
-    write: async (line) => {
-      messages.push(JSON.parse(line))
-      for (const wake of arrived) wake()
-    },
-  })
-  const send = (message: Inbound) => { input.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`) }
-  /** Resolves with the response to request `id`. */
-  const response = async (id: number): Promise<Message> => {
-    while (true) {
-      const found = messages.find((message) => message.id === id)
-      if (found) return found
-      await new Promise<void>((resolve) => { arrived.add(resolve) })
-    }
-  }
-  /** Resolves once a session update whose JSON contains `text` was written. */
-  const streamed = async (text: string): Promise<void> => {
-    while (!updates().some((update) => JSON.stringify(update).includes(text))) {
-      await new Promise<void>((resolve) => { arrived.add(resolve) })
-    }
-  }
-  const updates = () => messages.flatMap((message) => message.method === "session/update" && message.params ? [message.params.update] : [])
-  const open = async () => {
-    send({ id: 0, method: "initialize", params: { protocolVersion: 1, clientCapabilities: { fs: { readTextFile: true, writeTextFile: true }, terminal: true } } })
-    send({ id: 1, method: "session/new", params: { cwd: CWD, mcpServers: [] } })
-    return [await response(0), await response(1)]
-  }
-  return { send, response, updates, open, calls, messages, channel, end: () => { input.end() }, onInterrupt: (next: () => void) => { interrupt = next } }
-}
-
+import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion.js"
+import { CHAT, CWD, acpFixture, prompt, question } from "./_acp-fixture.js"
 /** A tool result larger than a live row carries inline. */
 const LARGE_RESULT = Array.from({ length: 400 }, (_, index) => `line ${index}`).join("\n")
 
-const prompt = (id: number, text: string) => ({ id, method: "session/prompt", params: { sessionId: "root", prompt: [{ type: "text", text }] } })
 
 describe("headless chat over ACP", () => {
   it("initializes, opens the root chat as its session, streams a turn, and answers the prompt when the turn settles", async () => {
@@ -213,8 +29,8 @@ describe("headless chat over ACP", () => {
       await settle("complete")
     })
     const [initialized, opened] = await fixture.open()
-    expect(initialized?.result).toMatchObject({ protocolVersion: 1, agentCapabilities: { loadSession: false }, agentInfo: { name: "flywheel" }, authMethods: [] })
-    expect(opened?.result).toEqual({ sessionId: "root" })
+    expect(initialized?.result).toMatchObject({ protocolVersion: 1, agentCapabilities: { loadSession: true, sessionCapabilities: { resume: {}, close: {} } }, agentInfo: { name: "flywheel" }, authMethods: [] })
+    expect(opened?.result).toMatchObject({ sessionId: "root", configOptions: [{ id: "model", currentValue: "gpt-a" }, { id: "effort", currentValue: "medium" }] })
 
     fixture.send(prompt(2, "list files"))
     expect((await fixture.response(2)).result).toEqual({
@@ -438,8 +254,205 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(3, "9090"))
     expect((await fixture.response(3)).result).toMatchObject({ stopReason: "end_turn" })
     expect(fixture.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
+    // A client that advertised no forms is never asked for one.
+    expect(fixture.messages.some((message) => message.method === "elicitation/create")).toBe(false)
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("loads a saved chat by replaying its history, the person's messages included, before it answers, and starts no work", async () => {
+    const fixture = acpFixture(({ settle }) => settle("complete"), {}, {
+      history: [
+        { kind: "userMessage", id: "u1", content: "list files", timestamp: 0, pending: false, injected: false },
+        { kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a.txt", timestamp: 0 },
+        { kind: "text", id: "t1", content: "One file.", timestamp: 0 },
+      ],
+    })
+    await fixture.initialize()
+    fixture.send({ id: 1, method: "session/load", params: { sessionId: "root", cwd: CWD, mcpServers: [] } })
+    const loaded = await fixture.response(1)
+    expect(loaded.result).toMatchObject({ configOptions: [{ id: "model" }, { id: "effort" }], _meta: { "dev.flywheel/settings": { workflowsMode: "ask", roles: { assignments: { chat: { model: "gpt-a" } } } } } })
+    const replayed = fixture.messages.slice(0, fixture.messages.indexOf(loaded)).flatMap((message) => message.params?.update ? [message.params.update] : [])
+    expect(replayed).toEqual([
+      { sessionUpdate: "user_message_chunk", content: { type: "text", text: "list files" } },
+      { sessionUpdate: "tool_call", toolCallId: "call-1", title: "Bash ls", kind: "execute", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "One file." } },
+    ])
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(fixture.calls).toEqual([{ type: "session.activate", sessionId: "root" }])
+  })
+
+  it("resumes a saved chat without a replay and starts no work, and refuses an unknown chat or another directory", async () => {
+    const fixture = acpFixture(({ settle }) => settle("complete"), {}, { history: [{ kind: "text", id: "t1", content: "Earlier.", timestamp: 0 }] })
+    await fixture.initialize()
+    fixture.send({ id: 1, method: "session/resume", params: { sessionId: "missing", cwd: CWD } })
+    expect((await fixture.response(1)).error).toEqual({ code: -32002, message: "Unknown session: missing", data: { sessionId: "missing" } })
+    fixture.send({ id: 2, method: "session/resume", params: { sessionId: "root", cwd: "/" } })
+    expect((await fixture.response(2)).error?.code).toBe(-32602)
+    fixture.send({ id: 3, method: "session/resume", params: { sessionId: "root", cwd: CWD } })
+    expect((await fixture.response(3)).result).toMatchObject({ configOptions: [{ id: "model" }, { id: "effort" }] })
+    expect(fixture.updates()).toEqual([])
+    // The resumed client already holds the history: a prompt streams only its own turn.
+    fixture.send(prompt(4, "go on"))
+    expect((await fixture.response(4)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.updates().filter((update) => update.sessionUpdate === "agent_message_chunk")).toEqual([])
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(fixture.calls).toEqual([{ type: "session.activate", sessionId: "root" }, { type: "session.send", sessionId: "root", input: "go on" }])
+  })
+
+  it("closes the session idempotently, letting go of the chat without deleting it", async () => {
+    const fixture = acpFixture(({ settle }) => settle("complete"))
+    await fixture.open()
+    fixture.send({ id: 2, method: "session/close", params: { sessionId: "root" } })
+    fixture.send({ id: 3, method: "session/close", params: { sessionId: "root" } })
+    fixture.send({ id: 4, method: "session/close", params: { sessionId: "other" } })
+    fixture.send(prompt(5, "hello"))
+    expect((await fixture.response(2)).result).toEqual({})
+    expect((await fixture.response(3)).result).toEqual({})
+    expect((await fixture.response(4)).error?.code).toBe(-32002)
+    expect((await fixture.response(5)).error?.code).toBe(-32602)
+    fixture.end()
+    await fixture.channel
+    expect(fixture.calls.filter((command) => command.type === "session.release")).toEqual([{ type: "session.release", sessionId: "root" }])
+    expect(fixture.calls.some((command) => command.type === "session.close" || command.type === "session.delete" || command.type === "session.send")).toBe(false)
+  })
+
+  it("lists the chat seat's model and effort as config options, saves a change for the session, and pushes a change the runtime made", async () => {
+    const fixture = acpFixture(({ settle }) => settle("complete"))
+    const [, opened] = await fixture.open()
+    expect(opened?.result).toMatchObject({
+      configOptions: [
+        { id: "model", name: "Model", category: "model", type: "select", currentValue: "gpt-a", options: [{ value: "gpt-a", name: "GPT A" }, { value: "gpt-b", name: "GPT B" }] },
+        { id: "effort", name: "Effort", category: "thought_level", type: "select", currentValue: "medium", options: [{ value: "low", name: "low" }, { value: "medium", name: "medium" }] },
+      ],
+      _meta: { "dev.flywheel/settings": { modelPlan: { sessionId: "root", profile: { effectiveId: "Personal" } }, workflowsMode: "ask" } },
+    })
+    // A model whose efforts leave out the one in force takes its first.
+    fixture.send({ id: 2, method: "session/set_config_option", params: { sessionId: "root", configId: "model", value: "gpt-b" } })
+    expect((await fixture.response(2)).result).toMatchObject({
+      configOptions: [{ id: "model", currentValue: "gpt-b" }, { id: "effort", currentValue: "high", options: [{ value: "high", name: "high" }] }],
+      _meta: { "dev.flywheel/settings": { modelPlan: { plans: [{ model: "gpt-b" }] } } },
+    })
+    expect(fixture.calls).toContainEqual({
+      type: "model.save_effort", scope: { kind: "session", sessionId: "root" }, slot: CHAT, model: "gpt-b", effort: "high",
+      expected: { kind: "value", value: { model: "gpt-a", effort: "medium" } },
+    })
+    fixture.send({ id: 3, method: "session/set_config_option", params: { sessionId: "root", configId: "effort", value: "low" } })
+    fixture.send({ id: 4, method: "session/set_config_option", params: { sessionId: "root", configId: "model", value: "gpt-off" } })
+    fixture.send({ id: 5, method: "session/set_config_option", params: { sessionId: "other", configId: "model", value: "gpt-a" } })
+    expect((await fixture.response(3)).error?.code).toBe(-32602)
+    expect((await fixture.response(4)).error?.code).toBe(-32602)
+    expect((await fixture.response(5)).error?.code).toBe(-32002)
+    const pushed = () => fixture.updates().filter((update) => update.sessionUpdate === "config_option_update")
+    // The session's own save pushes nothing the response did not state.
+    expect(pushed()).toEqual([])
+    fixture.reseat({ model: "gpt-a", effort: "low" })
+    fixture.send({ id: 6, method: "session/set_config_option", params: { sessionId: "root", configId: "bogus", value: "x" } })
+    expect((await fixture.response(6)).error?.code).toBe(-32602)
+    fixture.end()
+    await fixture.channel
+    expect(pushed()).toMatchObject([{ configOptions: [{ id: "model", currentValue: "gpt-a" }, { id: "effort", currentValue: "low" }] }])
+  })
+
+  const choices: PendingQuestionView = {
+    kind: "question", toolUseId: "ask", timestamp: 0,
+    questions: [
+      { question: "Which port?", header: "Port", multiSelect: false, choices: [{ kind: "option", choiceId: "c8080", label: "8080" }, { kind: "freeform", label: "Other" }] },
+      { question: "Which checks?", multiSelect: true, choices: [{ kind: "option", choiceId: "lint", label: "Lint" }, { kind: "option", choiceId: "tests", label: "Tests", requiresText: true }] },
+    ],
+  }
+
+  it("asks a question as a form while the prompt stays open, answers it with the accepted choices, and answers the prompt after the next settlement", async () => {
+    let turns = 0
+    const fixture = acpFixture(async ({ output, settle }) => {
+      if (turns++ > 0) {
+        output({ kind: "text", id: "t1", content: "Started.", timestamp: 0 })
+        return settle("complete")
+      }
+      output(choices)
+      return settle("input_required")
+    }, {}, { forms: true, asks: choices })
+    await fixture.open()
+    fixture.send(prompt(2, "start the server"))
+    const asked = await fixture.form()
+    expect(asked.params).toEqual({
+      sessionId: "root", toolCallId: "ask", mode: "form", message: "Which port?\n\nWhich checks?",
+      requestedSchema: {
+        type: "object",
+        properties: {
+          q1: { type: "string", title: "Port", description: "Which port?", oneOf: [{ const: "c8080", title: "8080" }] },
+          q1_other: { type: "string", title: "Other" },
+          q2: { type: "array", title: "Which checks?", items: { anyOf: [{ const: "lint", title: "Lint" }, { const: "tests", title: "Tests" }] } },
+          q2_tests: { type: "string", title: "Tests: details" },
+        },
+        required: ["q2"],
+      },
+    })
+    expect(fixture.messages.some((message) => message.id === 2)).toBe(false)
+    fixture.reply(asked.id, { action: "accept", content: { q1: "c8080", q2: ["tests", "unknown"], q2_tests: " unit only " } })
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.calls).toContainEqual({
+      type: "question.answer", sessionId: "root", toolUseId: "ask", answers: {
+        "Which port?": { kind: "choice", selections: [{ choiceId: "c8080" }], text: "8080" },
+        "Which checks?": { kind: "choice", selections: [{ choiceId: "tests", text: "unit only" }], text: "Tests: unit only" },
+      },
+    })
+    // The question reaches a form client as the form, never as the agent's text.
+    expect(fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content.text] : [])).toEqual(["Started."])
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("declines a question when the form is declined, and leaves it open, ending the prompt, when the form is cancelled", async () => {
+    let turns = 0
+    const fixture = acpFixture(({ output, settle }) => {
+      turns++
+      if (turns === 2) return settle("complete")
+      output({ ...question, toolUseId: `ask-${turns}` })
+      return settle("input_required")
+    }, {}, { forms: true })
+    await fixture.open()
+    fixture.send(prompt(2, "first"))
+    fixture.reply((await fixture.form(0)).id, { action: "decline" })
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.calls).toContainEqual({ type: "question.cancel", sessionId: "root", toolUseId: "ask" })
+
+    fixture.send(prompt(3, "second"))
+    fixture.reply((await fixture.form(1)).id, { action: "cancel" })
+    expect((await fixture.response(3)).result).toMatchObject({ stopReason: "end_turn" })
+    const answers = fixture.calls.filter((command) => command.type === "question.answer" || command.type === "question.cancel")
+    expect(answers).toHaveLength(1)
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "input_required" })
+  })
+
+  it("asks a resumed chat's open question again: as a form, or as the agent's message to a client without forms", async () => {
+    const formClient = acpFixture(({ settle }) => settle("complete"), {}, { forms: true, waiting: true, history: [question] })
+    await formClient.initialize()
+    formClient.send({ id: 1, method: "session/resume", params: { sessionId: "root", cwd: CWD } })
+    await formClient.response(1)
+    const asked = await formClient.form()
+    expect(asked.params.toolCallId).toBe("ask")
+    expect(formClient.messages.indexOf(formClient.messages.find((message) => message.id === 1)!)).toBeLessThan(formClient.messages.findIndex((message) => message.method === "elicitation/create"))
+    formClient.reply(asked.id, { action: "accept", content: { q1_other: "9090" } })
+    formClient.end()
+    expect(await formClient.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(formClient.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
+
+    const textClient = acpFixture(({ settle }) => settle("complete"), {}, { waiting: true, history: [question] })
+    await textClient.initialize()
+    textClient.send({ id: 1, method: "session/resume", params: { sessionId: "root", cwd: CWD } })
+    await textClient.response(1)
+    textClient.send(prompt(2, "9090"))
+    expect((await textClient.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(textClient.updates().filter((update) => update.sessionUpdate === "agent_message_chunk")).toEqual([
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Which port?\n- 8080" } },
+    ])
+    expect(textClient.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
+    textClient.end()
+    expect(await textClient.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
   it("streams a thought once when its finalized block replaces the streamed draft under another identity", async () => {

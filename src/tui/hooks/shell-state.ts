@@ -475,6 +475,8 @@ export function createShellState(deps: {
     chat_default: sessionCatalog,
     executor: sessionCatalog,
     service: sessionCatalog,
+    // Only a headless client waits on a chat's settlement; the terminal shows the work itself.
+    settlement: "query-only",
     // Every module domain in the protocol registry, bound generically: a new
     // module domain needs no intake edit here, and a kernel domain still does.
     ...moduleIntakes,

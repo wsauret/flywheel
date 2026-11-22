@@ -237,8 +237,8 @@ export interface RuntimeSupervisor {
   runtimeState(sessionId: string): Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null
   /** Session actors held by this runtime, not historical project rows. */
   ownedSessionIds(): readonly string[]
-  /** Join every actor's admitted tails and startup without closing admission. */
-  awaitAcceptedWork(): Promise<void>
+  /** Join the admitted tails and startup of the actors of `sessionIds` without closing admission. */
+  awaitAcceptedWork(sessionIds: readonly string[]): Promise<void>
   /** A planned replacement's cut: interrupts every running child, chat turn,
    *  and agent of a workflow by the runtime, each with continuation authority for
    *  `handoffId`, and returns the sessions it interrupted. */

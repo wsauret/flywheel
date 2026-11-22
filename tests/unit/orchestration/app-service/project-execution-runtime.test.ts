@@ -97,6 +97,8 @@ test("execution composition opens no primary state connection and leaves its aut
     await expect(composition.client.dispatch({ type: "settings.set_update_auto_install", expected: true, value: false })).rejects.toThrow(ACCOUNT_UPDATES_ONLY)
     probe.mockRestore()
     expect(primaryConnections.size).toBe(0)
+    let settlementWakes = 0
+    const unsubscribe = composition.client.subscribe((event) => { if (event.type === "patch" && event.patch.payload.kind === "settlement.changed") settlementWakes++ })
     const opened = await composition.client.dispatch({ type: "chat.open" })
     if (!opened.ok || !opened.sessionId) throw new Error("Chat open refused")
     const sessionId = opened.sessionId
@@ -126,6 +128,11 @@ test("execution composition opens no primary state connection and leaves its aut
     expect((await composition.client.query({ type: "snapshot" })).rows.map((row) => row.id)).toEqual([sessionId])
     expect((await composition.client.query({ type: "sessionDetail", sessionId: childId })).view?.row).toMatchObject({ kind: "subagent", parentSessionId: sessionId })
     expect(await composition.blockers()).toEqual([])
+    // The child whose run no owner here holds is the chat's tree, and it holds no work.
+    expect(await composition.client.query({ type: "chatSettlement", sessionId })).toEqual({ state: "complete" })
+    // A new chat changes what owns work, which wakes a client that waits on settlement.
+    expect(settlementWakes).toBeGreaterThan(0)
+    unsubscribe()
     const shutdown = await composition.dispose({ clientsHold: false })
     expect(shutdown).toMatchObject({ kind: "settled" })
     composition = undefined

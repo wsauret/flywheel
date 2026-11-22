@@ -15,13 +15,15 @@ import { createRuntimeUiBus } from "../../../src/orchestration/app-service/runti
 import { createChatInvocationCompletion } from "../../../src/orchestration/chat/runner-completion.js"
 import type { AgentToolInput } from "../../../src/orchestration/agent-runtime/types.js"
 import { registerLiveWorkflowControl, runningChildSessionIds, liveWorkflowControls, onLiveWorkChanged } from "../../../src/orchestration/session/live-session-control.js"
+import { heldSessionLineage, sessionSubtree, type SessionLineage } from "../../../src/orchestration/session/session-subtree.js"
+import { countStateRequests } from "../../helpers/state-requests.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface } from "../../../src/infra/event-store-types.js"
 import { openReplyWait, suspendReplyWaits, workProgressesWithout, type ReplyWaitDeps } from "../../../src/orchestration/session/reply-waits.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../fixtures/runtime-supervisor-fixtures.js"
 
 type LiveWorkOwners = Pick<Parameters<typeof createRuntimeWorkSettlement>[0], "busyWorkflows" | "onWorkflowChange" | "progressesWithout">
 
-function channelFixture(runningChildren: () => Promise<readonly string[]> = async () => [], workflows: LiveWorkOwners = { busyWorkflows: async () => [], onWorkflowChange: () => () => {}, progressesWithout: async () => true }) {
+function channelFixture(runningChildren: (sessionIds: readonly string[]) => Promise<readonly string[]> = async () => [], workflows: LiveWorkOwners = { busyWorkflows: async () => [], onWorkflowChange: () => () => {}, progressesWithout: async () => true }) {
   const calls: FrontendMutation[] = []
   const records: HeadlessChatRecord[] = []
   const views = new Map<string, RuntimeSessionDetailView>([["root", detail("root")]])
@@ -32,7 +34,16 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   const continuations = new Set<string>()
   const listeners = new Set<(event: FrontendEvent) => void>()
   const bus = createRuntimeUiBus()
-  let admission = Promise.resolve()
+  // The launch tree: each view's catalog children, and the launches a test adds.
+  const launched = new Map<string, string[]>()
+  const kinds = new Map<string, string>()
+  const lineage = (): SessionLineage => {
+    const children = new Map<string, readonly string[]>()
+    for (const [id, view] of views) children.set(id, [...view.row.childSessionIds ?? []])
+    for (const [id, ids] of launched) children.set(id, [...children.get(id) ?? [], ...ids])
+    return { children, kinds: new Map([...[...children.values()].flat().map((id): [string, string] => [id, "subagent"]), ...kinds]), titles: new Map() }
+  }
+  let admission = { owner: "root", work: Promise.resolve() }
   let onRead: (query: RuntimeQuery) => void = () => {}
   const answered = runtimeQuery({
     sessionDetail: async (request) => ({ view: views.get(request.sessionId) ?? null }),
@@ -55,8 +66,9 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   }
   const workSettlement = createRuntimeWorkSettlement({
     ...workflows,
-    client, awaitAcceptedWork: () => admission,
-    ownedSessionIds: () => [...views.keys()], runningChildren, keptSessions: () => [],
+    client, members: async (root) => sessionSubtree(lineage(), root),
+    awaitAcceptedWork: (sessionIds) => sessionIds.includes(admission.owner) ? admission.work : Promise.resolve(),
+    runningChildren, keptSessions: () => [],
     failed: () => false,
     pendingTurnSettlement: (id) => pendingTurns.get(id),
     backgroundWork: (id) => registries.get(id),
@@ -68,7 +80,8 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   return {
     runtime: { client, startChatDefault: () => {}, workSettlement, currentTotals: async () => {} },
     calls, records, views, questions, statuses, pendingTurns, registries, continuations, bus,
-    admission: (work: Promise<void>) => { admission = work },
+    admission: (work: Promise<void>, owner = "root") => { admission = { owner, work } },
+    launch: (parent: string, child: string, kind: string) => { launched.set(parent, [...launched.get(parent) ?? [], child]); kinds.set(child, kind) },
     onRead: (next: typeof onRead) => { onRead = next },
     changed: () => {
       for (const [sessionId, view] of views) publish({ type: "patch", patch: {
@@ -88,7 +101,7 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
 /** The live work owners that the runtime composes from its live controls. */
 function liveWorkOwners(reader: AsyncEventStateReadSurface): LiveWorkOwners {
   return {
-    busyWorkflows: async () => (await Promise.all(liveWorkflowControls(reader).map(async (control) => await control.state() === "interrupted" ? [] : [control.workflowId]))).flat(),
+    busyWorkflows: async (members) => (await Promise.all(liveWorkflowControls(reader).filter((control) => members.has(control.workflowId)).map(async (control) => await control.state() === "interrupted" ? [] : [control.workflowId]))).flat(),
     onWorkflowChange: (listener) => onLiveWorkChanged(reader, listener),
     progressesWithout: (work, held) => workProgressesWithout(reader, work, held),
   }
@@ -435,21 +448,17 @@ describe("headless Chat JSONL transport", () => {
     expect(await pending).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
-  it.each([
-    { target: "root", interrupted: false },
-    { target: "other", interrupted: false },
-    { target: "root", interrupted: true },
-  ])("joins a chat request and live workflow work under $target (interrupted=$interrupted)", async ({ target, interrupted }) => {
+  it.each([false, true])("joins a chat request and the workflow it launches (interrupted=%p)", async (interrupted) => {
     const context = createSupervisorTestContext()
     const reader = asAsyncEventReadSurface(context.store)
-    const fixture = channelFixture(() => runningChildSessionIds(reader), liveWorkOwners(reader))
+    const fixture = channelFixture((sessionIds) => runningChildSessionIds(reader, sessionIds), liveWorkOwners(reader))
     let cut = false
-    fixture.views.set(target, detail(target))
+    fixture.launch("root", "workflow", "workflow")
     const admission = deferred<void>()
     fixture.admission(admission.promise)
     let ended = false
     const pending = runHeadlessChatChannel(fixture.runtime, {
-      input: [dispatchLine("send", { type: "session.send", sessionId: target, input: "Launch a workflow for this work" })],
+      input: [dispatchLine("send", { type: "session.send", sessionId: "root", input: "Launch a workflow for this work" })],
       write: fixture.write,
     }).then((result) => { ended = true; return result })
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -467,18 +476,18 @@ describe("headless Chat JSONL transport", () => {
       expect(ended).toBe(false)
       if (interrupted) {
         cut = true
-        fixture.continuations.add(target)
+        fixture.continuations.add("root")
         fixture.changed()
         expect(await pending).toEqual({ sessionId: "root", outcome: "incomplete" })
         return
       }
       const parentResult = deferred<void>()
-      fixture.pendingTurns.set(target, parentResult.promise)
+      fixture.pendingTurns.set("root", parentResult.promise)
       unregister()
       fixture.changed()
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(ended).toBe(false)
-      fixture.pendingTurns.delete(target)
+      fixture.pendingTurns.delete("root")
       parentResult.resolve()
       expect(await pending).toEqual({ sessionId: "root", outcome: "complete" })
     } finally {
@@ -487,10 +496,39 @@ describe("headless Chat JSONL transport", () => {
     }
   })
 
+  it("settles while another chat of the project, its request, and the workflow it launched still run", async () => {
+    const context = createSupervisorTestContext()
+    const reader = asAsyncEventReadSurface(context.store)
+    const fixture = channelFixture((sessionIds) => runningChildSessionIds(reader, sessionIds), liveWorkOwners(reader))
+    const other = detail("other")
+    fixture.views.set("other", { ...other, status: { ...other.status, activity: "generating" } })
+    fixture.launch("other", "workflow", "workflow")
+    const admission = deferred<void>()
+    fixture.admission(admission.promise, "other")
+    const unregister = registerLiveWorkflowControl(reader, {
+      workflowId: "workflow", kind: "workflow", state: async () => "between_steps",
+      handBackMember: async (continueMember) => continueMember(), memberHost: async () => undefined,
+      deliver: async () => ({ status: "refused", reason: "settled" }),
+      notify: async () => false,
+    })
+    try {
+      expect(await runHeadlessChatChannel(fixture.runtime, {
+        input: [dispatchLine("send", { type: "session.send", sessionId: "other", input: "Keep working" })],
+        write: fixture.write,
+      })).toEqual({ sessionId: "root", outcome: "complete" })
+    } finally {
+      admission.resolve()
+      unregister()
+      await disposeSupervisorTestContext(context)
+    }
+  })
+
   it("reports input required when a workflow agent waits for a reply from the root chat that waits on a question", async () => {
     const context = createSupervisorTestContext()
     const reader = asAsyncEventReadSurface(context.store)
-    const fixture = channelFixture(() => runningChildSessionIds(reader), liveWorkOwners(reader))
+    const fixture = channelFixture((sessionIds) => runningChildSessionIds(reader, sessionIds), liveWorkOwners(reader))
+    fixture.launch("root", "workflow", "workflow")
+    fixture.launch("workflow", "member", "workflow-agent")
     // The root chat launched the workflow, which stays its background work.
     const rootWork = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
     rootWork.track({ done: new Promise(() => {}), meta: { id: "workflow", type: "workflow", description: "Fix" } })
@@ -536,5 +574,42 @@ describe("headless Chat JSONL transport", () => {
     expect(JSON.stringify(fixture.records)).not.toContain("private")
     expect(fixture.records.at(-1)).toMatchObject({ type: "result", id: "read" })
     expect(fixture.calls).toEqual([{ type: "chat.open" }, { type: "session.activate", sessionId: "root" }])
+  })
+})
+
+describe("runtime work settlement", () => {
+  it("reads only the root's launch tree, however many other sessions the project holds", async () => {
+    const perRead = async (unrelated: number) => {
+      const context = createSupervisorTestContext()
+      try {
+        const root = await context.manager.createChat({ name: "Root" })
+        for (let index = 0; index < unrelated; index++) await context.manager.createChat({ name: `Other ${index}` })
+        const counter = countStateRequests(asAsyncEventReadSurface(context.store))
+        const read: string[][] = []
+        const client: RuntimeClient = {
+          query: runtimeQuery({
+            statusSnapshot: async (request) => { read.push([...request.sessionIds]); return { snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: detail(sessionId).status })) } },
+            questionSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: null })) }),
+          }),
+          dispatch: runtimeDispatch({}), close: async () => {}, subscribe: () => () => {},
+        }
+        const settlement = createRuntimeWorkSettlement({
+          ...liveWorkOwners(counter.reader), client,
+          members: async (rootSessionId) => sessionSubtree(await heldSessionLineage(counter.reader).replay(), rootSessionId),
+          awaitAcceptedWork: async () => {}, runningChildren: (sessionIds) => runningChildSessionIds(counter.reader, sessionIds),
+          keptSessions: () => [], failed: () => false, pendingTurnSettlement: () => undefined, backgroundWork: () => undefined,
+          requiresContinuation: async () => false, onLiveSessionRemoved: () => () => {},
+        })
+        // The first read folds the lineage once.
+        expect(await settlement.read(root)).toBe("complete")
+        counter.take()
+        read.length = 0
+        for (let index = 0; index < 3; index++) expect(await settlement.read(root)).toBe("complete")
+        return { requests: counter.take().length, statusIds: read.flat().length }
+      } finally { await disposeSupervisorTestContext(context) }
+    }
+    const few = await perRead(2)
+    expect(await perRead(20)).toEqual(few)
+    expect(few.statusIds).toBe(3)
   })
 })

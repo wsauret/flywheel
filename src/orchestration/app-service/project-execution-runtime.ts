@@ -89,7 +89,8 @@ import { createStreamingEditValidationService } from "../agent-runtime/tools/str
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
-import { createRuntimeWorkSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
+import { createRuntimeWorkSettlement, serveChatSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
+import { heldSessionLineage, sessionSubtree } from "../session/session-subtree.js"
 import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
 import { isResumableTurnEnd } from "../session/conversation/turn-end-record.js"
 import type { MutationEvidenceService } from "./mutation-evidence-service.js"
@@ -656,6 +657,33 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // The startup summary is the composition's one default-level record.
   log.debug("runtime composition done", { projectRoot })
 
+  const workSettlement = createRuntimeWorkSettlement({
+    client, ...liveWorkSettlementOwners(workflowHosts, eventReader),
+    // Workflow ids are session ids, so the launch tree holds workflows and their agents too.
+    members: async (rootSessionId) => sessionSubtree(await heldSessionLineage(eventReader).replay(), rootSessionId),
+    awaitAcceptedWork: runtimeSupervisor.awaitAcceptedWork,
+    runningChildren: (sessionIds) => runningChildSessionIds(eventReader, sessionIds),
+    keptSessions: keeper.sessions,
+    pendingTurnSettlement: (sessionId) => { const entry = sessionStore.get(sessionId); return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined },
+    backgroundWork: (sessionId) => sessionStore.get(sessionId)?.runner?.backgroundTasks,
+    failed: (sessionId) => runtimeSupervisor.runtimeState(sessionId)?.kind === "failed",
+    onLiveSessionRemoved: (listener) => onLiveSessionRemoved(eventReader, listener),
+    requiresContinuation: async (sessionId, rootSessionId) => {
+      const live = liveSessionControl(eventReader, sessionId)
+      if (live && await live.state() === "interrupted") return true
+      const host = workflowHosts.get(sessionId)
+      if (host) return Boolean(await host.cut())
+      const session = await manager.read(sessionId)
+      if (!session || session.kind === "workflow") return false
+      if ((await Promise.all(retainedOperations.map((authority) => authority.read({ sessionId, conversationId: session.conversationId })))).some((cells) => cells.length > 0)) return true
+      const end = (await readChatTurnEnd(projectionReader, session.conversationId))?.end
+      return sessionId === rootSessionId ? isResumableTurnEnd(end) : end?.reason === "paused"
+    },
+  })
+  const currentTotals = (sessionId: string) => projections.summaries.current([sessionId])
+  const chatSettlement = scope.own("settlement-wake", serveChatSettlement({ client, settlement: workSettlement, currentTotals, bus,
+    turnEnding: (sessionId) => { const entry = sessionStore.get(sessionId); return entry?.kind === "chat" ? entry.runner?.lastTurnEnding : undefined },
+  }), (served) => { served.release() })
   const { "stop-runners": runnerOwners = [], "close-client-streams": clientStreamOwners = [] } = client.shutdown.owners
 
   const ownershipOwners = completeProjectExecutionOwnership(scope, {
@@ -674,28 +702,6 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   const replacement = createReplacementReport({
     projectRoot, projectLabel: options.projectLabel, client, sessionStore, runningWorkflows: workflowHosts.allIds,
     listActive: () => manager.listActive(), listForIds: (sessionIds) => manager.listForIds(sessionIds), runningChildren: () => liveChildRuns(eventReader), keptSessions: keeper.sessions,
-  })
-  const workSettlement = createRuntimeWorkSettlement({
-    client, ...liveWorkSettlementOwners(workflowHosts, eventReader),
-    awaitAcceptedWork: runtimeSupervisor.awaitAcceptedWork,
-    ownedSessionIds: () => [...runtimeSupervisor.ownedSessionIds(), ...sessionStore.allIds()],
-    runningChildren: () => runningChildSessionIds(eventReader),
-    keptSessions: keeper.sessions,
-    pendingTurnSettlement: (sessionId) => { const entry = sessionStore.get(sessionId); return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined },
-    backgroundWork: (sessionId) => sessionStore.get(sessionId)?.runner?.backgroundTasks,
-    failed: (sessionId) => runtimeSupervisor.runtimeState(sessionId)?.kind === "failed",
-    onLiveSessionRemoved: (listener) => onLiveSessionRemoved(eventReader, listener),
-    requiresContinuation: async (sessionId, rootSessionId) => {
-      const live = liveSessionControl(eventReader, sessionId)
-      if (live && await live.state() === "interrupted") return true
-      const host = workflowHosts.get(sessionId)
-      if (host) return Boolean(await host.cut())
-      const session = await manager.read(sessionId)
-      if (!session || session.kind === "workflow") return false
-      if ((await Promise.all(retainedOperations.map((authority) => authority.read({ sessionId, conversationId: session.conversationId })))).some((cells) => cells.length > 0)) return true
-      const end = (await readChatTurnEnd(projectionReader, session.conversationId))?.end
-      return sessionId === rootSessionId ? isResumableTurnEnd(end) : end?.reason === "paused"
-    },
   })
   commandHandover.hearThrough(replacement)
   const shutdown: RuntimeShutdownRequest = {
@@ -723,14 +729,14 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     },
   }
 
-  const dispatch = createSettledRuntimeDispatch({ manager, sessionStore, eventReader, client, supervisor: runtimeSupervisor, settlement: workSettlement })
+  const dispatch = createSettledRuntimeDispatch({ manager, sessionStore, eventReader, client, supervisor: runtimeSupervisor })
   return {
     bus,
-    client: { ...client, dispatch },
+    client: { ...client, dispatch, query: chatSettlement.query },
     startChatDefault: authRuntime.chatDefault.start,
     adoptBlankChat: runtimeSupervisor.adoptBlankChat,
     workSettlement,
-    currentTotals: (sessionId) => projections.summaries.current([sessionId]),
+    currentTotals,
     transports,
     shutdown,
     blockers: replacement.blockers,

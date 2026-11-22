@@ -15,6 +15,7 @@ import type { GitPatchPayload } from "./git-protocol-types.js"
 import type { CommandUsagePatchPayload } from "./command-usage-protocol-types.js"
 import type { ChangesPatchPayload } from "./session-changes-protocol-types.js"
 import type { BackgroundPatchPayload } from "./background-index-protocol-types.js"
+import type { SettlementPatchPayload } from "./chat-settlement-protocol-types.js"
 import { isProtocolModuleDomain, protocolDomain, type ProtocolModuleDomainName, type ProtocolModulePatchPayload, type ProtocolModuleSessionDomain, type ProtocolModuleWorkspaceDomain, type ProtocolModuleWorkflowDomain } from "./modules.js"
 
 /** The runtime/TUI protocol's own ordering authority. A `RuntimePosition` is
@@ -29,7 +30,7 @@ export type RuntimePosition = number
  *  here; a module states its own in its protocol home and the registry in
  *  `modules.ts` composes them in. */
 export const KERNEL_SESSION_DOMAINS = ["session", "session_detail", "output", "status", "budget", "question", "roles", "auth", "changes", "background"] as const
-export const KERNEL_WORKSPACE_DOMAINS = ["runtime", "auth", "commands", "updates", "modules", "config", "gitAiAttribution", "git", "commandUsage", "chat_default", "executor", "service"] as const
+export const KERNEL_WORKSPACE_DOMAINS = ["runtime", "auth", "commands", "updates", "modules", "config", "gitAiAttribution", "git", "commandUsage", "chat_default", "executor", "service", "settlement"] as const
 type RuntimeKernelDomain = (typeof KERNEL_SESSION_DOMAINS)[number] | (typeof KERNEL_WORKSPACE_DOMAINS)[number]
 type RuntimeSessionScopedDomain = (typeof KERNEL_SESSION_DOMAINS)[number] | ProtocolModuleSessionDomain
 type RuntimeWorkspaceScopedDomain = (typeof KERNEL_WORKSPACE_DOMAINS)[number] | ProtocolModuleWorkspaceDomain
@@ -99,6 +100,7 @@ export type RuntimeUiPatchPayload =
   | CommandUsagePatchPayload
   | ChangesPatchPayload
   | BackgroundPatchPayload
+  | SettlementPatchPayload
   | ProtocolModulePatchPayload
 /** An ordered patch as it leaves the publish path. The sequencer mints `position`;
  * `prevPosition` is this cursor's last published position, or zero for its first
@@ -235,6 +237,9 @@ const RUNTIME_DELIVERY_POLICY = {
   executor: collapsible,
   // One patch carries the whole service state.
   service: collapsible,
+  // A wake with no value and no resident client state: a client that waits
+  // on a chat asks `chatSettlement` again on each one.
+  settlement: { delivery: "query-only", content: "change" },
 } as const satisfies { readonly [D in RuntimeKernelDomain]: RuntimeDomainDelivery }
 
 export function runtimeDeliveryPolicy(domain: RuntimeUiDomain): RuntimeDeliveryPolicy {

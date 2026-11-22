@@ -9,6 +9,7 @@ import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } fr
 import type { HeldRetainedOperation } from "../module-seams.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
+import type { ChatTurnEnding } from "./runner-completion.js"
 
 /** What a person's message to a chat came to. `recorded` is a message the
  *  conversation already held under its submission identity: a client sent it
@@ -24,6 +25,8 @@ export interface ChatRunner extends Runner {
   awaitTurnSettlement(): Promise<void>
   /** Present until the logical turn parks durably or finishes its terminal callbacks. */
   readonly pendingTurnSettlement?: Promise<void>
+  /** How the last turn ended, until the chat accepts input or starts another turn. */
+  readonly lastTurnEnding?: ChatTurnEnding
   /** Resolves immediately between logical turns, or after the active logical turn reaches its next durable save point. */
   awaitLogicalTurnDurability(): Promise<void>
   /** A person's message: saved, then shown and started or queued behind the

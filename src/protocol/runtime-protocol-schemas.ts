@@ -4,6 +4,7 @@ import { RuntimeClientDiagnosticSchema } from "./runtime-client-diagnostics.js"
 import { RuntimeCursorIdentitySchema } from "./runtime-cursor-schemas.js"
 import { ChatInputObjectSchema } from "../infra/chat-input-schema.js"
 import { BackgroundWorkRowSchema, SessionBackgroundWorkQuerySchema, SessionBackgroundWorkResultSchema } from "./background-index-protocol-types.js"
+import { ChatSettlementQuerySchema, ChatSettlementResultSchema, SettlementPatchPayloadSchema } from "./chat-settlement-protocol-types.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "./mutation-evidence-protocol-types.js"
 import { SessionChangeSummaryQuerySchema, SessionChangeSummaryResultSchema, SessionFileChangeCountsSchema, SessionChangesQuerySchema, SessionChangesResultSchema, SessionChangeDiffQuerySchema, SessionChangeDiffResultSchema, SessionChangesSetViewedSchema, SessionChangesUndoSchema } from "./session-changes-protocol-types.js"
 import { Rpc, RpcGroup } from "effect/rpc"
@@ -204,7 +205,7 @@ const UpdateAutoInstallSchema = Schema.Struct({ persisted: Schema.Boolean, force
 const UpdateStatusViewSchema: Schema.Codec<UpdateStatusView> = Schema.Struct({ revision: NonNegativeInt, autoInstall: UpdateAutoInstallSchema, status: UpdateStatusSchema, releaseNotice: Schema.optionalKey(Schema.Struct({ version: Schema.String, message: Schema.String, url: Schema.String })) })
 const RuntimeUpdateSnapshotResultSchema: Schema.Codec<RuntimeUpdateSnapshotResult> = Schema.Struct({ snapshotPosition: RuntimePositionSchema, update: UpdateStatusViewSchema })
 const UpdatePatchPayloadSchema: Schema.Codec<UpdatePatchPayload> = Schema.Struct({ kind: Schema.Literal("update.changed"), update: UpdateStatusViewSchema })
-const WorkflowsModeSchema = Schema.Literals(["off", "ask", "on"])
+export const WorkflowsModeSchema = Schema.Literals(["off", "ask", "on"])
 const ModuleSettingGroupSchema = Schema.Literals(MODULE_SETTING_GROUPS)
 const ModuleSettingSchema = Schema.Union([
   Schema.Struct({ control: Schema.Literal("binary"), label: Schema.String, description: Schema.String, group: Schema.optionalKey(ModuleSettingGroupSchema), providerId: Schema.optionalKey(Schema.String) }),
@@ -245,7 +246,7 @@ const QuestionPatchPayloadSchema: Schema.Codec<QuestionPatchPayload> = Schema.Un
   Schema.Struct({ kind: Schema.Literal("question.removed") }),
 ])
 const RuntimeQuestionSnapshotResultSchema: Schema.Codec<RuntimeQuestionSnapshotResult> = sessionViewsResultSchema(QuestionBlockSchema)
-const RoleAssignmentViewSchema: Schema.Codec<RoleAssignmentView> = Schema.Struct({
+export const RoleAssignmentViewSchema: Schema.Codec<RoleAssignmentView> = Schema.Struct({
   assignments: Schema.Record(Schema.String, RuntimeRoleAssignmentEntrySchema),
   serving: Schema.optionalKey(Schema.Struct({
     slot: Schema.Struct({ kind: Schema.Literal("role"), roleId: Schema.String }),
@@ -282,6 +283,7 @@ export const RuntimeUiPatchPayloadSchema = Schema.Union([
   GitAiAttributionPatchPayloadSchema,
   GitPatchPayloadSchema,
   CommandUsagePatchPayloadSchema,
+  SettlementPatchPayloadSchema,
   ...PROTOCOL_MODULE_DOMAINS.flatMap((domain) => recursiveUnionMembers(domain.patch)),
 ])
 const RuntimeUiPatchSchema: Schema.Codec<RuntimeUiPatch> = Schema.Struct({ cursor: RuntimeCursorIdentitySchema, position: RuntimePositionSchema, prevPosition: RuntimePositionSchema, payload: RuntimeUiPatchPayloadSchema })
@@ -382,6 +384,7 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   SessionChangeSummaryQuerySchema,
   SessionChangesQuerySchema, SessionChangeDiffQuerySchema,
   SessionBackgroundWorkQuerySchema,
+  ChatSettlementQuerySchema,
   MutationFilesQuerySchema, MutationPatchWindowQuerySchema,
   Schema.Struct({ type: Schema.Literal("snapshot") }),
   Schema.Struct({ type: Schema.Literal("outputWindow"), sessionId: Schema.String, request: OutputWindowRequestSchema }),
@@ -517,6 +520,7 @@ export function classifyRuntimeProtocolErrorKind(err: unknown): RuntimeProtocolE
 const RUNTIME_QUERY_RESULT_SCHEMAS = {
   sessionChangeSummary: SessionChangeSummaryResultSchema, sessionChanges: SessionChangesResultSchema, sessionChangeDiff: SessionChangeDiffResultSchema,
   sessionBackgroundWork: SessionBackgroundWorkResultSchema,
+  chatSettlement: ChatSettlementResultSchema,
   mutationFiles: MutationFilesResultSchema, mutationPatchWindow: MutationPatchWindowResultSchema,
   snapshot: RuntimeUiSnapshotSchema, outputWindow: OutputWindowSnapshotSchema, outputRange: HydratedOutputRangeSchema,
   outputGroupChildren: HydratedOutputGroupChildrenBatchSchema, outputBlockBody: HydratedOutputBlockBodySchema,
@@ -554,7 +558,7 @@ export const RUNTIME_READ_DOMAINS = {
   sessionChanges: [], sessionChangeDiff: [], outputRange: [], outputGroupChildren: [], outputBlockBody: [], transcriptSearch: [], transcriptFind: [], chatSearch: [], projectFiles: [],
   mutationFiles: [], mutationPatchWindow: [],
   authProfileDeletionPreview: [], sessionDetail: [], recallQueuedMessage: [], modelAssignments: [], modelOptions: [], effortOptions: [], modelRoles: [], "provider_models.query": [],
-  sessionModelPlan: [],
+  sessionModelPlan: [], chatSettlement: [],
   ...protocolQueryTable(PROTOCOL_MODULE_READS, (read) => PROTOCOL_MODULE_DOMAINS.filter((domain) => domain.snapshot.query === read.query).map((domain) => domain.domain)),
 } satisfies { readonly [Type in RuntimeQuery["type"]]: readonly RuntimeUiDomain[] }
 

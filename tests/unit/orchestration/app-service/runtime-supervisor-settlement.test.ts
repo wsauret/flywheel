@@ -33,7 +33,7 @@ describe("RuntimeSupervisor question settlement, compaction, and recall", () => 
         launch: { workflowDefinitionId: "work", description: "accepted work" } }
       expect(await supervisor.acceptRetainedOperation(parent, { kind: "workflow.launch", key: "accepted", payload: operation })).toBe(true)
       let drained = false
-      const settlement = supervisor.awaitAcceptedWork().then(() => { drained = true })
+      const settlement = supervisor.awaitAcceptedWork([parent]).then(() => { drained = true })
       await Promise.resolve()
       expect(drained).toBe(false)
       startup.resolve(await base.runnerCapabilities())

@@ -196,7 +196,7 @@ By default, every agent's shell refuses recognized writes and deletes outside th
 
 ## PI-AGENT-119: Headless shell commands write in place
 
-In a headless run, the shell offers no mutating declaration. Every shell command writes in place, enters no file-change record, and keeps the processes it starts as an ordinary command does. The file edit and write tools keep their change records.
+In an unattended run or a direct task, the shell offers no mutating declaration. Every shell command writes in place, enters no file-change record, and keeps the processes it starts as an ordinary command does. The file edit and write tools keep their change records.
 
 ## PI-AGENT-069: A refused shell write tells the agent what to do
 
@@ -370,9 +370,17 @@ The completion gives the parent each agent's result in workflow order, labeled b
 
 A workflow agent, subagent, or headless task recovers from provider faults alone, waits while its model's access is checked, and never asks the person to act. A fault that only a person can fix, such as a rejected request, an unconfigured model, or an unrepairable content refusal, ends the agent at once. When a fault can clear, such as a stall, dropped connection, overload, unexplained failure, or stopped engine, the agent continues its recorded conversation on a fresh attempt after a growing pause. The agent fails only after six fresh attempts in a row fail without a served request.
 
-## PI-AGENT-030: Headless chat uses standard input and output
+## PI-AGENT-030: Headless chat speaks the Agent Client Protocol
 
-Headless chat behaves like interactive chat, with standard input and output replacing the client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Unattended runs skip usage-limit waits (PI-AGENT-128). Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
+Headless chat behaves like interactive chat, with an Agent Client Protocol version 1 client on standard input and output in place of a Flywheel client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. An unattended run's shell offers no mutating declaration, and its session keeps the quick title. It adds no provider filter, billing ceiling, or usage pause. Unattended runs skip usage-limit waits (PI-AGENT-128). The client can start or continue a chat, send and cancel prompts, answer questions, and choose the model and effort.
+
+## PI-AGENT-134: A headless chat continues after its client restarts
+
+A client can continue an earlier chat of the same project by its session id, with or without a replay of its history. Continuing starts no work; only the next prompt or answer does. A question that is still open is asked again.
+
+## PI-AGENT-135: An attended headless chat shares its project
+
+Several attended headless chats and the terminal, desktop, and phone clients can use one project at the same time. An unattended run, and an attended run that turns off tools or pins an authentication snapshot, keeps the project to itself in its own process.
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
@@ -382,21 +390,21 @@ An Agent Client Protocol client can request an unattended one-shot run. That run
 
 No person can end a wait of an unattended one-shot Agent Client Protocol run, and the run has no deadline of its own. When no candidate can serve any agent of the run because each usage limit, quota, or credit is spent, that agent fails at once and never moves to another model. The failure names the provider's stated reset time, or says that none is known. The agent waits out a rate limit or an outage, which clear by themselves (PI-AGENT-118). The prompt is answered with that failure, and the run publishes its evidence and ends.
 
-## PI-AGENT-074: Headless chat ends when its owned work ends
+## PI-AGENT-074: A headless prompt ends when its owned work ends
 
-Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. Only a command that the agent launched to persist after Flywheel exits (PI-AGENT-047) is not such work. Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.
+A prompt is answered when its turn and all work that the agent owns have ended: its subagents, its workflows, and the work that its turn awaits, not other chats of the project. Only a command that the agent launched to persist after Flywheel exits is not such work (PI-AGENT-047). Closing input lets submitted work finish. In an unattended run, the agent's final reply is its result, written once, and the run then ends. The session stays available to continue.
 
 ## PI-AGENT-075: Headless questions wait for the caller
 
-A question waits until the caller answers or cancels it, and headless chat never invents approval. A run that ends with an open question reports input required, not approval or success. A run also reports input required when its only remaining work waits, directly or through other agents, for a reply from a session that waits for an answer.
+A question waits until the caller answers or declines it, and headless chat never invents approval. A client that can show a form gets the question as a form while the prompt stays open. Dismissing the form leaves the question open and ends the prompt. Another client gets the question as text, and its next prompt answers it. A prompt whose remaining work waits only on an open question, directly or through other agents, ends and reports that input is required.
 
 ## PI-AGENT-076: Headless runs show settings and evidence
 
-A caller can inspect resolved settings without making a model request. Run evidence identifies actual provider attempts and child activity and distinguishes estimated equivalent value, billed cost, and unavailable accounting.
+A caller can read the model, effort, authentication profile, and route of a chat without making a model request. Run evidence identifies actual provider attempts and child activity and distinguishes estimated equivalent value, billed cost, and unavailable accounting.
 
 ## PI-AGENT-077: Headless automation runs as a chat or a direct task
 
-Headless automation runs as a headless chat or as a direct task. The headless workflow command refuses and names both as its replacements.
+Headless automation runs as an Agent Client Protocol chat or as a direct task. The removed headless workflow command and the removed JSONL chat options refuse and name the replacements.
 
 ## PI-AGENT-120: An Agent Client Protocol prompt states how its turn ended
 

@@ -48,12 +48,13 @@ function workflowPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain
 function sessionPatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "session" | "session_detail" | "output" | "status" | "budget" | "question" | "roles" | "auth" | "changes" | "background" | "experiment_view"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "session", domain, sessionId: "session-1" }, position: 17, prevPosition: 11, payload }
 }
-function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "reclaim_storage"): RuntimeUiPatch & { readonly payload: P } {
+function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domain: "runtime" | "auth" | "commands" | "updates" | "modules" | "config" | "gitAiAttribution" | "git" | "commandUsage" | "chat_default" | "executor" | "service" | "settlement" | "definitionStaleness" | "mcp" | "papercuts" | "project_notifications" | "remote" | "reclaim_storage"): RuntimeUiPatch & { readonly payload: P } {
   return { cursor: { scope: "workspace", domain }, position: 17, prevPosition: 11, payload }
 }
 
 export const RUNTIME_UI_PATCH_FIXTURES = {
   "changes.changed": sessionPatch({ kind: "changes.changed" }, "changes"),
+  "settlement.changed": workspacePatch({ kind: "settlement.changed" }, "settlement"),
   "background.row.updated": sessionPatch({ kind: "background.row.updated", row: { id: "toolu_1", kind: "command", title: "bun test", startedAtMs: 1, cardToolUseId: "toolu_1", status: "running", stop: { sessionId: "session-1", toolUseId: "toolu_1" } } }, "background"),
   "background.row.removed": sessionPatch({ kind: "background.row.removed", rowId: "toolu_1" }, "background"),
   "runtime.invalidate": workspacePatch({ kind: "runtime.invalidate", reason: "rebase" }, "runtime"),

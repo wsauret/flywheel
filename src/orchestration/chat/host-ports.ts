@@ -3,7 +3,7 @@ import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
-import type { createChatInvocationCompletion } from "./runner-completion.js"
+import type { ChatTurnEnding, createChatInvocationCompletion } from "./runner-completion.js"
 import type { TurnCut } from "./runner-wait-state.js"
 import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
@@ -86,6 +86,8 @@ export interface ChatPorts {
   learn(): boolean
   settle(): Promise<void>
   readonly pendingTurnSettlement: Promise<void> | undefined
+  /** How the last turn ended, until the chat accepts input or starts another turn. */
+  readonly lastTurnEnding: ChatTurnEnding | undefined
   awaitLogicalTurnDurability(): Promise<void>
   terminateBackgroundWorks(): Promise<void>
   terminateBackgroundWork(toolUseId: string): void

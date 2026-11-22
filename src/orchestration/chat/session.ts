@@ -378,6 +378,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     sessionId,
     awaitTurnSettlement: () => inSession(() => lifecycle.settle()),
     get pendingTurnSettlement() { return lifecycle.pendingTurnSettlement },
+    get lastTurnEnding() { return lifecycle.lastTurnEnding },
     applyProjectionEvent: (event) => inSession(() => {
       session.applyProjectionEvent(event)
       session.flush()
