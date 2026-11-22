@@ -1,0 +1,24 @@
+src/orchestration/agent-runtime/llm/google-errors.ts
+  h_4b47e9e4a8b456 1-57
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 30-31,34
+src/orchestration/modules/provider-google-antigravity/errors.ts
+  h_4b47e9e4a8b456 1-89
+src/orchestration/modules/provider-google-antigravity/stream-map.ts
+  h_4b47e9e4a8b456 1-219
+tests/unit/orchestration/modules/provider-google-antigravity/errors.test.ts
+  h_4b47e9e4a8b456 1-78
+tests/unit/orchestration/modules/provider-google-antigravity/stream-map.test.ts
+  h_4b47e9e4a8b456 1-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fc67d7a7d9bdea36f18b17a1a02da09295d39b82",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
