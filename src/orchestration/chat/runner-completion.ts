@@ -51,10 +51,9 @@ export type ChatTurnEnding = ProtocolChatTurnEnding
 
 /** Owns one-shot input admission and publishes the accepted result only after durable success. The loop seals
  *  the invocation with its final reply when a turn ends and no work it owns still runs, as `claude -p` returns its
- *  final message, so a one-shot Chat needs no handoff call and writes its answer once. `onTurnEnded` hears how
- *  each turn of the root chat ended, for a headless caller that answers each turn. An `unattended` invocation is one
- *  whose client no person reads, so the root chat runs with the unattended purpose. */
-export function createChatInvocationCompletion(onCompletion: ((content: AgentToolInput) => void) | undefined, onTurnEnded?: (ending: ChatTurnEnding) => void, unattended = false) {
+ *  final message, so a one-shot Chat needs no handoff call and writes its answer once. An `unattended` invocation
+ *  is one whose client no person reads, so the root chat runs with the unattended purpose. */
+export function createChatInvocationCompletion(onCompletion: ((content: AgentToolInput) => void) | undefined, unattended = false) {
   let accepted: AgentToolInput | undefined
   let admitting = 0
   let pendingInput = () => false
@@ -79,12 +78,9 @@ export function createChatInvocationCompletion(onCompletion: ((content: AgentToo
       accepted = { summary: finalReply }
       return true
     } : undefined,
-    /** Reports a turn that the model answered, or that the provider's content filter ended (`contentRefused`),
-     *  and returns that ending. */
+    /** The ending of a turn that the model answered, or that the provider's content filter ended (`contentRefused`). */
     turnEnded(contentRefused: boolean): ChatTurnEnding {
-      const ending: ChatTurnEnding = { kind: contentRefused ? "refused" : "completed" }
-      onTurnEnded?.(ending)
-      return ending
+      return { kind: contentRefused ? "refused" : "completed" }
     },
     /** Ends the run durably, and returns the ending of a run that failed, which ends its turn. */
     async finish(terminal: AgentRunTerminal, endDurably: () => Promise<void>): Promise<ChatTurnEnding | undefined> {
@@ -96,9 +92,7 @@ export function createChatInvocationCompletion(onCompletion: ((content: AgentToo
       // A run ends with its turn only when it fails; an abort is a stop that a caller asked for.
       const failure = failureTerminal(terminal)
       if (!failure || failure.kind === "aborted") return undefined
-      const ending: ChatTurnEnding = failure.kind === "api_error" && failure.contentRefused ? { kind: "refused" } : { kind: "failed", failure: failure.kind }
-      onTurnEnded?.(ending)
-      return ending
+      return failure.kind === "api_error" && failure.contentRefused ? { kind: "refused" } : { kind: "failed", failure: failure.kind }
     },
   }
 }

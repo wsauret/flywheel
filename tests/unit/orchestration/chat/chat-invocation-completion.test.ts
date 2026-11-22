@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test"
 import { flushMicrotasks, makeLifecycle } from "./_chat-runner-lifecycle-fixtures"
 import { createChatControls } from "../../../../src/orchestration/chat/controls"
-import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion"
+import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion"
 
 it.each(["completed", "no_capture", "failed", "flush_failed"] as const)("publishes the sealed final reply only after successful durable completion: %s", async (scenario) => {
   const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
@@ -63,10 +63,8 @@ it.each([
   ["a run another provider fault failed", "none", { kind: "api_error", message: "overloaded", recovery: { kind: "retry" } }, [{ kind: "failed", failure: "api_error" }]],
   ["a run whose context overflowed", "none", { kind: "context_overflow" }, [{ kind: "failed", failure: "context_overflow" }]],
   ["a run the caller stopped", "none", { kind: "aborted" }, []],
-] as const)("reports how each turn of the root chat ended: %s", async (_name, turnEnd, terminal, expected) => {
-  const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
-  const endings: ChatTurnEnding[] = []
-  deps.rootChatCompletion = createChatInvocationCompletion(undefined, (ending) => { endings.push(ending) })
+] as const)("records how the turn of the chat ended: %s", async (_name, turnEnd, terminal, expected) => {
+  const { lifecycle, resolvers, runnerOptions } = makeLifecycle()
   try {
     await lifecycle.enqueueInput("first")
     await flushMicrotasks()
@@ -74,7 +72,6 @@ it.each([
     if (turnEnd !== "none") await options.lifecycle?.onTurnEnded?.({ handoffWritten: false, turnCount: 1, ...(turnEnd === "refused-turn" ? { contentRefused: true } : {}) })
     resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal })
     await lifecycle.settle()
-    expect(endings).toEqual([...expected])
     expect(lifecycle.lastTurnEnding).toEqual(expected.at(-1))
   } finally {
     await lifecycle.terminateBackgroundWorks()
@@ -99,7 +96,7 @@ it("records how the last turn of any chat ended until the chat accepts input", a
 
 it("runs the root chat of an unattended invocation with the unattended purpose", async () => {
   const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
-  deps.rootChatCompletion = createChatInvocationCompletion(undefined, () => {}, true)
+  deps.rootChatCompletion = createChatInvocationCompletion(undefined, true)
   try {
     await lifecycle.enqueueInput("first")
     await flushMicrotasks()

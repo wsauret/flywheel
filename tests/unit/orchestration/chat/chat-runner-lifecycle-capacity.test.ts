@@ -30,7 +30,7 @@ function capacityLifecycle(prefix: string, options: { readonly unattended?: true
   const made = makeLifecycle(undefined, (prepared) => {
     store = useStore(prepared, makeDirectory(prefix))
     ledger = registerCapacityWaits(prepared.infra.eventStore, { reader: prepared.infra.eventStore, writer: asAsyncEventWriter(store) })
-    if (options.unattended) prepared.rootChatCompletion = createChatInvocationCompletion(undefined, undefined, true)
+    if (options.unattended) prepared.rootChatCompletion = createChatInvocationCompletion(undefined, true)
   })
   const turnEnds: string[] = []
   made.deps.treeWriter.commitTurnEnd = async (by) => { turnEnds.push(String(by)); return { kind: "user", content: "interrupted", origin: "system" } }

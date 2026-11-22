@@ -89,7 +89,7 @@ import { createStreamingEditValidationService } from "../agent-runtime/tools/str
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import type { RuntimeChatKernel } from "./runtime-chat-kernel.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
-import { createRuntimeWorkSettlement, serveChatSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
+import { createRuntimeWorkSettlement, serveChatSettlement, createSettledRuntimeDispatch, liveWorkSettlementOwners } from "./runtime-work-settlement.js"
 import { heldSessionLineage, sessionSubtree } from "../session/session-subtree.js"
 import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
 import { isResumableTurnEnd } from "../session/conversation/turn-end-record.js"
@@ -132,12 +132,6 @@ export interface RuntimeComposition {
   /** Starts canonical default resolution after the output subscriber exists. */
   readonly startChatDefault: () => void
   readonly adoptBlankChat: RuntimeSupervisor["adoptBlankChat"]
-  readonly workSettlement: RuntimeWorkSettlement
-  /** Resolves once the session's totals, as its budget states them, include
-   *  every usage that was stored before the call. Rejects with the read's
-   *  error when the totals could not be read; the budget then states older
-   *  totals. */
-  readonly currentTotals: (sessionId: string) => Promise<void>
   /** The relay reverse transport registers its accept handler here, so a
    *  paired phone attaches to this composition through the same RPC server
    *  the local transport serves. */
@@ -735,8 +729,6 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     client: { ...client, dispatch, query: chatSettlement.query },
     startChatDefault: authRuntime.chatDefault.start,
     adoptBlankChat: runtimeSupervisor.adoptBlankChat,
-    workSettlement,
-    currentTotals,
     transports,
     shutdown,
     blockers: replacement.blockers,

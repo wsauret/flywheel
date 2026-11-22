@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HEADLESS_USAGE, hasHeadlessAcpFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
+import { HEADLESS_USAGE, hasHeadlessAcpFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
 
 describe("headless CLI args", () => {
   it("accepts bare headless chat", () => {
@@ -25,6 +25,16 @@ describe("headless CLI args", () => {
     expect(headlessDisabledTools(argv)).toEqual(["web"])
     expect(hasHeadlessAcpFlag(["--headless"])).toBe(false)
     expect(HEADLESS_USAGE).toContain("--acp")
+  })
+
+  it("attaches only an attended ACP chat with the account's tools and credentials to the account service", () => {
+    expect(headlessChatAttaches(["--headless", "--acp"])).toBe(true)
+    expect(headlessChatAttaches(["--headless", "--acp", "--auth-profile", "Work"])).toBe(true)
+    for (const own of [["--unattended"], ["--auth-snapshot", "/private/auth.json"], ["--auth-snapshot=/private/auth.json"], ["--disable-tool", "web"], ["--disable-tool=web"]]) {
+      expect(headlessChatAttaches(["--headless", "--acp", ...own])).toBe(false)
+    }
+    expect(headlessChatAttaches(["--headless"])).toBe(false)
+    expect(headlessChatAttaches(["--headless", "--acp", "--task", "x"])).toBe(false)
   })
 
   it("accepts a direct task", () => {

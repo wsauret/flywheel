@@ -5,9 +5,13 @@ import { createRuntimeChatKernel } from "../app-service/runtime-chat-kernel.js"
 import { claimHeadlessProjectExecution } from "../app-service/project-serving-lane.js"
 import type { AgentToolInput } from "../agent-runtime/types.js"
 import { createChatInvocationCompletion } from "../chat/runner-completion.js"
-import { jsonlFraming, runHeadlessChatChannel, type ChatTransport } from "./headless-chat-channel.js"
+import { inProcessHeadlessClient, jsonlFraming, runHeadlessChatChannel, type ChatTransport } from "./headless-chat-channel.js"
 
-/** Hosts the full production Chat runtime locally, without a public listener.
+/** Hosts the full production Chat runtime locally, without a public listener,
+ * under an exclusive claim of the project. This is the host of a run that no
+ * person reads, of a run whose tools or credentials differ from the
+ * account's, and of JSONL chat; an attended ACP run is a client of the
+ * account service instead (ARCH-RUNTIME-004).
  * Owns runtime disposal, not the launcher's or persistent process manager's
  * lifetime. The CLI releases those after this function has flushed output.
  * Returns 0 for a drained conversation, 1 for failure, and 2 for a conversation
@@ -21,10 +25,9 @@ export async function runHeadlessChat(options: RuntimeCompositionOptions & ChatT
   let outcome: HeadlessChatOutcome = "failed"
   let handoff: AgentToolInput | undefined
   let root: string | undefined
-  const turnEnded = options.framing?.turnEnded
   const oneShot = options.oneShot === true || options.unattended === true
-  const completion = oneShot || turnEnded ? {
-    invocation: createChatInvocationCompletion(oneShot ? (content) => { handoff = content } : undefined, turnEnded, options.unattended),
+  const completion = oneShot ? {
+    invocation: createChatInvocationCompletion((content) => { handoff = content }, options.unattended),
     bind: (id: string) => { root = id },
     result: () => handoff,
   } : undefined
@@ -34,7 +37,8 @@ export async function runHeadlessChat(options: RuntimeCompositionOptions & ChatT
       ...options,
       ...(completion ? { rootChatCompletion: (id: string) => id === root ? completion.invocation : undefined } : {}),
     }, (scope, lane) => createRuntimeChatKernel(options, scope, lane))
-    const result = await runHeadlessChatChannel(runtime, { ...options, oneShot, completion })
+    runtime.startChatDefault()
+    const result = await runHeadlessChatChannel(inProcessHeadlessClient(runtime.client), { ...options, oneShot, completion })
     sessionId = result.sessionId
     outcome = result.outcome
   } catch (error) {

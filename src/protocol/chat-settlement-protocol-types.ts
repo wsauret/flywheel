@@ -17,7 +17,7 @@ const TurnFailureKindSchema = Schema.Literals([
 
 /** How the last turn of a chat ended: its model answered, the provider
  *  refused the conversation content, or the run failed with `failure`. */
-export const ChatTurnEndingSchema = Schema.Union([
+const ChatTurnEndingSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("completed") }),
   Schema.Struct({ kind: Schema.Literal("refused") }),
   Schema.Struct({ kind: Schema.Literal("failed"), failure: TurnFailureKindSchema }),

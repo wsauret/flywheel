@@ -14,7 +14,7 @@ export const HEADLESS_USAGE =
   "  --headless       Run without TUI (CI/automation)\n" +
   "  --session        Attach an existing chat without resuming its interrupted turn.\n" +
   "  --one-shot       Return after durable handoff and owned work settle; plain parking is incomplete.\n" +
-  "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel.\n" +
+  "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel. The chat runs in the account service, as a terminal's chat does, and keeps running when this process ends. With --unattended, --disable-tool, or --auth-snapshot, this process runs the chat itself and holds the project alone.\n" +
   "  --unattended     With --acp, run one unattended prompt. Omit publication and communication guidance. Omit ask_user and skills that need a person. Do not wait for a spent usage limit.\n" +
   "  --task           Run one direct task through the shared production runner.\n" +
   "  --system-prompt  Replace the complete system prompt for a direct headless task; recorded in request-audit history, not secret input.\n" +
@@ -113,6 +113,16 @@ export function headlessDisabledTools(argv: readonly string[]): readonly string[
  *  or one-shot return. */
 export function hasHeadlessAcpFlag(argv: readonly string[]): boolean {
   return argv.includes("--acp")
+}
+
+/** Whether a headless chat is a client of the resident account service, as
+ *  a terminal is (ARCH-RUNTIME-004): an ACP chat that a person reads, with
+ *  the account's own tools and credentials. A chat that no person reads, or
+ *  one that disables tools or brings its own credentials, hosts its own
+ *  runtime and never looks for or starts a service. */
+export function headlessChatAttaches(argv: readonly string[]): boolean {
+  const given = (flag: string) => argv.some((arg) => arg === flag || arg.startsWith(`${flag}=`))
+  return isHeadlessChat(argv) && hasHeadlessAcpFlag(argv) && !given("--unattended") && !given("--disable-tool") && !given("--auth-snapshot")
 }
 
 export function needsHeadlessUsage(argv: readonly string[]): boolean {

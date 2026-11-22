@@ -7,7 +7,7 @@ import type { LauncherContext } from "../infra/process-supervisor.js"
 import { createPersistentProcessManager, type PersistentProcessManager } from "../infra/persistent-process-manager.js"
 import { startupTrace } from "../infra/startup-trace.js"
 import type { createStartupTimeline } from "../infra/startup-timeline.js"
-import { HEADLESS_USAGE, hasHeadlessAcpFlag, hasHeadlessFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSession, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
+import { HEADLESS_USAGE, hasHeadlessAcpFlag, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSession, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
 import { createCliLauncher } from "./runtime-launch.js"
 import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./runtime-launch.js"
 import type { TerminalHandoff } from "./terminal-handoff.js"
@@ -108,10 +108,13 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
     const { composeFirstPartyModules } = await import("../orchestration/modules.js")
     for (const warning of composeFirstPartyModules().warnings) Log.Default.warn(warning)
 
-    // Headless commands own their runtime here. The terminal's separate
-    // runtime prepares its own config before it admits client work.
-    const { prepareProjectDefaults } = await import("./project-preparation.js")
-    await prepareProjectDefaults(directories, { publishReferences: true })
+    // A headless command that hosts its runtime prepares it here. The
+    // account service that a terminal or an attended ACP chat reaches
+    // prepares its own config before it admits client work.
+    if (!headlessChatAttaches(args)) {
+      const { prepareProjectDefaults } = await import("./project-preparation.js")
+      await prepareProjectDefaults(directories, { publishReferences: true })
+    }
     const disabledTools = headlessDisabledTools(args)
 
     // Headless runs agent turns too: without parent-death detection, a closed
@@ -131,6 +134,17 @@ async function runCommand(args: readonly string[], subcommand: SubcommandDispatc
 
 async function runHeadless(args: readonly string[], directories: StartupDirectories, launcher: LauncherContext, persistentProcessManager: PersistentProcessManager, allowPersistentProcesses: boolean, disabledTools: readonly string[], output?: HeadlessOutputObserver): Promise<MutationResult> {
   const acp = hasHeadlessAcpFlag(args)
+  const write = (record: string) => new Promise<void>((resolve, reject) => {
+    process.stdout.write(record, (error) => {
+      if (error) reject(error)
+      else resolve()
+    })
+  })
+  const progressWriter = (line: string) => { process.stderr.write(`${line}\n`) }
+  if (headlessChatAttaches(args)) {
+    const { runAttachedAcpChat } = await import("./attached-acp-chat.js")
+    return await runAttachedAcpChat({ directories, allowPersistentProcesses, authProfile: headlessAuthProfile(args), input: process.stdin, write, progressWriter })
+  }
   if (isHeadlessChat(args)) {
     const { runHeadlessChat } = await import("../orchestration/headless/run-headless-chat.js")
     const { runtimeWorkerUrl } = await import("./runtime-launch.js")
@@ -141,13 +155,7 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
       ...directories, launcher: launcher.scope,
       persistentProcesses: persistentProcessManager.client(), allowPersistentProcesses,
       workerUrl: runtimeWorkerUrl(), sessionId: headlessSession(args), oneShot: args.includes("--one-shot"), unattended: args.includes("--unattended"), disabledTools,
-      input: process.stdin, write: (record) => new Promise<void>((resolve, reject) => {
-        process.stdout.write(record, (error) => {
-          if (error) reject(error)
-          else resolve()
-        })
-      }),
-      progressWriter: (line) => process.stderr.write(`${line}\n`),
+      input: process.stdin, write, progressWriter,
     })
   }
   const task = headlessTask(args)

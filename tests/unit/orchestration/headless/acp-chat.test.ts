@@ -123,7 +123,7 @@ describe("headless chat over ACP", () => {
 
   it("ends an unattended one-shot run after it answers the first prompt, while stdin stays open", async () => {
     let handoff: AgentToolInput | undefined
-    const invocation = createChatInvocationCompletion((content) => { handoff = content }, undefined, true)
+    const invocation = createChatInvocationCompletion((content) => { handoff = content }, true)
     const fixture = acpFixture(async ({ output, settle }) => {
       output({ kind: "text", id: "t1", content: "42", timestamp: 0 })
       // The loop seals the invocation with the final reply when the turn ends (PI-AGENT-121).
@@ -317,6 +317,49 @@ describe("headless chat over ACP", () => {
     await fixture.channel
     expect(fixture.calls.filter((command) => command.type === "session.release")).toEqual([{ type: "session.release", sessionId: "root" }])
     expect(fixture.calls.some((command) => command.type === "session.close" || command.type === "session.delete" || command.type === "session.send")).toBe(false)
+  })
+
+  it("follows its chat across broken lanes: it reads settlement again, activates the chat again, and streams on each lane's watch", async () => {
+    const fixture = acpFixture(async ({ output, settleUnseen, streamed }) => {
+      output({ kind: "text", id: "t1", content: "Before.", timestamp: 0 })
+      await streamed("Before.")
+      fixture.breakLane()
+      output({ kind: "text", id: "t2", content: "After.", timestamp: 0 })
+      await streamed("After.")
+      // No wake reaches the client: only the next lane reads the settled turn.
+      settleUnseen("complete")
+      fixture.breakLane()
+    })
+    await fixture.open()
+    fixture.loseSettlementReads(1)
+    fixture.send(prompt(2, "go"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.watching("root")).toBe(true)
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content] : [])).toEqual([
+      { type: "text", text: "Before." }, { type: "text", text: "After." },
+    ])
+    expect(fixture.calls.filter((command) => command.type === "session.activate")).toHaveLength(3)
+  })
+
+  it("selects the requested auth profile for the chat it opens, and fails session/new when the runtime refuses it", async () => {
+    const fixture = acpFixture(({ settle }) => settle("complete"), { authProfile: "Work" })
+    const [, opened] = await fixture.open()
+    expect(opened?.result).toMatchObject({ sessionId: "root" })
+    expect(fixture.calls.slice(0, 3)).toEqual([
+      { type: "chat.open" },
+      { type: "auth.profile.select", scope: { kind: "session", sessionId: "root" }, id: "Work" },
+      { type: "session.activate", sessionId: "root" },
+    ])
+    fixture.end()
+    await fixture.channel
+    const locked = acpFixture(({ settle }) => settle("complete"), { authProfile: "Locked" })
+    const [, refused] = await locked.open()
+    expect(refused?.error?.message).toBe("cannot switch the environment-selected auth profile")
+    expect(locked.calls.some((command) => command.type === "session.activate")).toBe(false)
+    locked.end()
+    await locked.channel
   })
 
   it("lists the chat seat's model and effort as config options, saves a change for the session, and pushes a change the runtime made", async () => {

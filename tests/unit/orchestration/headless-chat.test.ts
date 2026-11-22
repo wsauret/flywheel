@@ -6,8 +6,8 @@ import { recordedDispatch, recordedQuery, runtimeDispatch, runtimeQuery } from "
 import { HeadlessChatRecordSchema, type HeadlessChatRecord } from "../../../src/protocol/headless-chat.js"
 import type { PendingQuestionView } from "../../../src/protocol/question-protocol-types.js"
 import type { RuntimeSessionDetailView } from "../../../src/protocol/session-detail-protocol-types.js"
-import { runHeadlessChatChannel } from "../../../src/orchestration/headless/headless-chat-channel.js"
-import { createRuntimeWorkSettlement } from "../../../src/orchestration/app-service/runtime-work-settlement.js"
+import { inProcessHeadlessClient, runHeadlessChatChannel } from "../../../src/orchestration/headless/headless-chat-channel.js"
+import { createRuntimeWorkSettlement, serveChatSettlement } from "../../../src/orchestration/app-service/runtime-work-settlement.js"
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../src/orchestration/agent-runtime/background-work.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { catalogRow, deferred } from "../../helpers/session-catalog.js"
@@ -32,7 +32,10 @@ function channelFixture(runningChildren: (sessionIds: readonly string[]) => Prom
   const pendingTurns = new Map<string, Promise<void>>()
   const registries = new Map<string, ReturnType<typeof createBackgroundWorkRegistry>>()
   const continuations = new Set<string>()
+  // The channel's subscribers, and the runtime's own settlement owner, which
+  // outlives every channel.
   const listeners = new Set<(event: FrontendEvent) => void>()
+  const owners = new Set<(event: FrontendEvent) => void>()
   const bus = createRuntimeUiBus()
   // The launch tree: each view's catalog children, and the launches a test adds.
   const launched = new Map<string, string[]>()
@@ -55,18 +58,18 @@ function channelFixture(runningChildren: (sessionIds: readonly string[]) => Prom
     }),
   })
   const accepted = async () => ({ ok: true as const, sessionId: "root" })
-  const client: RuntimeClient = {
+  const runtime: RuntimeClient = {
     query: recordedQuery((request) => { onRead(request) }, answered),
     dispatch: recordedDispatch((command) => { calls.push(command) }, runtimeDispatch({
       "chat.open": accepted, "session.activate": accepted, "session.send": accepted, "chat.interrupt": accepted,
       "question.answer": accepted, "question.cancel": accepted, "background.terminate": accepted,
     })),
     close: async () => {},
-    subscribe: (next) => { listeners.add(next); bus.addListener(next); return () => { listeners.delete(next); bus.removeListener(next) } },
+    subscribe: (next) => { owners.add(next); return () => { owners.delete(next) } },
   }
   const workSettlement = createRuntimeWorkSettlement({
     ...workflows,
-    client, members: async (root) => sessionSubtree(lineage(), root),
+    client: runtime, members: async (root) => sessionSubtree(lineage(), root),
     awaitAcceptedWork: (sessionIds) => sessionIds.includes(admission.owner) ? admission.work : Promise.resolve(),
     runningChildren, keptSessions: () => [],
     failed: () => false,
@@ -75,10 +78,15 @@ function channelFixture(runningChildren: (sessionIds: readonly string[]) => Prom
     requiresContinuation: async (id) => continuations.has(id) || views.get(id)?.row.admittedActions?.some((action) => action === "chat.resume") === true,
     onLiveSessionRemoved: () => () => {},
   })
+  const served = serveChatSettlement({ client: runtime, settlement: workSettlement, currentTotals: async () => {}, turnEnding: () => undefined, bus })
+  const client = inProcessHeadlessClient({
+    ...runtime, query: served.query,
+    subscribe: (next) => { listeners.add(next); bus.addListener(next); return () => { listeners.delete(next); bus.removeListener(next) } },
+  })
   let position = 0
-  const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
+  const publish = (event: FrontendEvent) => { for (const listener of [...listeners, ...owners]) listener(event) }
   return {
-    runtime: { client, startChatDefault: () => {}, workSettlement, currentTotals: async () => {} },
+    client, workSettlement,
     calls, records, views, questions, statuses, pendingTurns, registries, continuations, bus,
     admission: (work: Promise<void>, owner = "root") => { admission = { owner, work } },
     launch: (parent: string, child: string, kind: string) => { launched.set(parent, [...launched.get(parent) ?? [], child]); kinds.set(child, kind) },
@@ -149,8 +157,8 @@ describe("headless Chat JSONL transport", () => {
     const blocked = deferred<void>()
     const interrupted = deferred<void>()
     const ready = deferred<void>()
-    const dispatch = fixture.runtime.client.dispatch
-    fixture.runtime.client.dispatch = async (command) => {
+    const dispatch = fixture.client.dispatch
+    fixture.client.dispatch = async (command) => {
       const result = await dispatch(command)
       if (command.type === "chat.interrupt") interrupted.resolve()
       return result
@@ -167,7 +175,7 @@ describe("headless Chat JSONL transport", () => {
         ready.resolve()
       }
     })
-    const pending = runHeadlessChatChannel(fixture.runtime, {
+    const pending = runHeadlessChatChannel(fixture.client, {
       input, write: async (line) => {
         const record = Schema.decodeUnknownSync(HeadlessChatRecordSchema)(JSON.parse(line))
         if (record.type === "event" && hold) {
@@ -229,7 +237,7 @@ describe("headless Chat JSONL transport", () => {
     const fixture = channelFixture()
     const input = new PassThrough()
     try {
-      await expect(runHeadlessChatChannel(fixture.runtime, {
+      await expect(runHeadlessChatChannel(fixture.client, {
         input, write: async (line) => {
           const record = Schema.decodeUnknownSync(HeadlessChatRecordSchema)(JSON.parse(line))
           if (record.type === type) throw new Error("closed stdout")
@@ -251,7 +259,7 @@ describe("headless Chat JSONL transport", () => {
       { type: "chat.interrupt", sessionId: "root" },
       { type: "background.terminate", sessionId: "root", toolUseId: "child" },
     ]
-    const result = await runHeadlessChatChannel(fixture.runtime, {
+    const result = await runHeadlessChatChannel(fixture.client, {
       input: [commands.map((command, index) => dispatchLine(String(index), command)).join("")],
       write: fixture.write,
     })
@@ -266,7 +274,7 @@ describe("headless Chat JSONL transport", () => {
     const input = new PassThrough()
     const first = deferred<void>()
     const originalWrite = fixture.write
-    const result = runHeadlessChatChannel(fixture.runtime, {
+    const result = runHeadlessChatChannel(fixture.client, {
       input, write: async (line) => {
         await originalWrite(line)
         const record = Schema.decodeUnknownSync(HeadlessChatRecordSchema)(JSON.parse(line))
@@ -285,7 +293,7 @@ describe("headless Chat JSONL transport", () => {
   it("reports an unanswered question at EOF without dispatching an answer or cancellation", async () => {
     const fixture = channelFixture()
     fixture.questions.set("root", { kind: "question", toolUseId: "ask", questions: [], timestamp: 0 })
-    expect(await runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "input_required" })
+    expect(await runHeadlessChatChannel(fixture.client, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "input_required" })
     expect(fixture.calls).toEqual([{ type: "chat.open" }, { type: "session.activate", sessionId: "root" }])
   })
 
@@ -293,7 +301,7 @@ describe("headless Chat JSONL transport", () => {
     const fixture = channelFixture()
     const view = detail("saved")
     fixture.views.set("saved", { ...view, row: { ...view.row, admittedActions: ["chat.resume"] } })
-    expect(await runHeadlessChatChannel(fixture.runtime, {
+    expect(await runHeadlessChatChannel(fixture.client, {
       sessionId: "saved", input: [], write: fixture.write,
     })).toEqual({ sessionId: "saved", outcome: "incomplete" })
     expect(fixture.calls).toEqual([{ type: "session.activate", sessionId: "saved" }])
@@ -308,7 +316,7 @@ describe("headless Chat JSONL transport", () => {
     const reached = deferred<void>()
     fixture.onRead((query) => { if (query.type === "questionSnapshot" && query.sessionIds.includes("child")) reached.resolve() })
     let ended = false
-    const pending = runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
+    const pending = runHeadlessChatChannel(fixture.client, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
     await reached.promise
     expect(ended).toBe(false)
     fixture.views.set("child", child)
@@ -322,7 +330,7 @@ describe("headless Chat JSONL transport", () => {
     const input = new PassThrough()
     input.write(dispatchLine("turn", { type: "session.send", sessionId: "root", input: "hello" }))
     try {
-      expect(await runHeadlessChatChannel(fixture.runtime, { oneShot: true, input, write: fixture.write })).toEqual({ sessionId: "root", outcome })
+      expect(await runHeadlessChatChannel(fixture.client, { oneShot: true, input, write: fixture.write })).toEqual({ sessionId: "root", outcome })
       expect(input.writableEnded).toBe(false)
       expect(fixture.calls).toEqual([{ type: "chat.open" }, { type: "session.activate", sessionId: "root" }, { type: "session.send", sessionId: "root", input: "hello" }])
     } finally { input.destroy() }
@@ -340,7 +348,7 @@ describe("headless Chat JSONL transport", () => {
     fixture.onRead((query) => { if (query.type === "questionSnapshot") reached.resolve() })
     const input = new PassThrough()
     input.write(dispatchLine("turn", { type: "session.send", sessionId: "root", input: "hello" }))
-    const pending = runHeadlessChatChannel(fixture.runtime, {
+    const pending = runHeadlessChatChannel(fixture.client, {
       oneShot: true, input, write: async (line) => {
         await fixture.write(line)
         const record = fixture.records.at(-1)
@@ -380,7 +388,7 @@ describe("headless Chat JSONL transport", () => {
     const input = new PassThrough()
     input.write(dispatchLine("turn", { type: "session.send", sessionId: "root", input: "hello" }))
     let ended = false
-    const pending = runHeadlessChatChannel(fixture.runtime, { oneShot: true, input, write: fixture.write }).then((result) => { ended = true; return result })
+    const pending = runHeadlessChatChannel(fixture.client, { oneShot: true, input, write: fixture.write }).then((result) => { ended = true; return result })
     try {
       await reached.promise
       expect(ended).toBe(false)
@@ -409,7 +417,7 @@ describe("headless Chat JSONL transport", () => {
     let reads = 0
     fixture.onRead((query) => { if (query.type === "statusSnapshot") { reads++; reached.resolve() } })
     let ended = false
-    const pending = runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
+    const pending = runHeadlessChatChannel(fixture.client, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
     await reached.promise
     fixture.changed()
     // Join the first ownership notification, then content cannot cause a read.
@@ -436,11 +444,11 @@ describe("headless Chat JSONL transport", () => {
     const reached = deferred<void>()
     fixture.onRead((query) => { if (query.type === "statusSnapshot") reached.resolve() })
     let ended = false
-    const pending = runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
+    const pending = runHeadlessChatChannel(fixture.client, { input: [], write: fixture.write }).then((result) => { ended = true; return result })
     await reached.promise
     // A settlement read while the server runs must say busy; the run's own
     // read can still be in flight, so `ended` alone proves nothing.
-    expect(await fixture.runtime.workSettlement.read("root")).toBe("busy")
+    expect(await fixture.workSettlement.read("root")).toBe("busy")
     expect(ended).toBe(false)
     await server.finish({ status: "cancelled", content: "" })
     fixture.statuses.set("root", root.status)
@@ -457,7 +465,7 @@ describe("headless Chat JSONL transport", () => {
     const admission = deferred<void>()
     fixture.admission(admission.promise)
     let ended = false
-    const pending = runHeadlessChatChannel(fixture.runtime, {
+    const pending = runHeadlessChatChannel(fixture.client, {
       input: [dispatchLine("send", { type: "session.send", sessionId: "root", input: "Launch a workflow for this work" })],
       write: fixture.write,
     }).then((result) => { ended = true; return result })
@@ -512,7 +520,7 @@ describe("headless Chat JSONL transport", () => {
       notify: async () => false,
     })
     try {
-      expect(await runHeadlessChatChannel(fixture.runtime, {
+      expect(await runHeadlessChatChannel(fixture.client, {
         input: [dispatchLine("send", { type: "session.send", sessionId: "other", input: "Keep working" })],
         write: fixture.write,
       })).toEqual({ sessionId: "root", outcome: "complete" })
@@ -547,12 +555,12 @@ describe("headless Chat JSONL transport", () => {
       const replyWaits: ReplyWaitDeps = { projectionReader: reader, eventWriter: asAsyncEventWriter(context.store), addresseeState: async () => "running", lineage: async (sessionId) => [sessionId] }
       expect(await (await openReplyWait(replyWaits, { waiter: { sessionId: "member", tasks: memberWork }, addressee: { sessionId: "root", name: "Root" }, toolUseId: "ask-parent" })).accepted()).toBe(true)
       // The root chat can still answer its agent, so the workflow runs on.
-      expect(await fixture.runtime.workSettlement.read("root")).toBe("busy")
+      expect(await fixture.workSettlement.read("root")).toBe("busy")
       fixture.questions.set("root", { kind: "question", toolUseId: "ask", questions: [], timestamp: 0 })
       fixture.statuses.set("root", { ...detail("root").status, activity: "awaiting_user" })
       // Only the person's answer moves the root chat, and only its reply moves the workflow.
-      expect(await fixture.runtime.workSettlement.read("root")).toBe("input_required")
-      expect(await runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "input_required" })
+      expect(await fixture.workSettlement.read("root")).toBe("input_required")
+      expect(await runHeadlessChatChannel(fixture.client, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "input_required" })
       expect(memberWork.holdsWait("ask-parent")).toBe(true)
     } finally {
       unregister()
@@ -563,7 +571,7 @@ describe("headless Chat JSONL transport", () => {
 
   it("rejects unsupported versions and invalid commands without echoing secret input, then accepts a query", async () => {
     const fixture = channelFixture()
-    expect(await runHeadlessChatChannel(fixture.runtime, {
+    expect(await runHeadlessChatChannel(fixture.client, {
       input: [
         `${JSON.stringify({ version: 2, type: "dispatch", id: "old", command: { type: "chat.open", secret: "private" } })}\n` +
         `${JSON.stringify({ version: 1, type: "dispatch", id: "bad", command: { type: "question.answer", secret: "private" } })}\n` +

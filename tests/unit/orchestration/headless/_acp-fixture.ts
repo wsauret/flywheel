@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { PassThrough } from "node:stream"
-import type { FrontendMutation, FrontendOutputBlock, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
 import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import type { HeadlessChatOutcome } from "../../../../src/protocol/headless-chat.js"
@@ -10,11 +10,13 @@ import type { ModelSelectionEffort } from "../../../../src/protocol/model-assign
 import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import type { ChatTurnEnding } from "../../../../src/protocol/chat-settlement-protocol-types.js"
+import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
+import { serveChatSettlement } from "../../../../src/orchestration/app-service/runtime-work-settlement.js"
 import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
-import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/headless-chat-channel.js"
+import { runHeadlessChatChannel, type HeadlessChatClient } from "../../../../src/orchestration/headless/headless-chat-channel.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 import { detailView, modulesView, tailWindow } from "../../../helpers/runtime-views.js"
 import { catalogRow } from "../../../helpers/session-catalog.js"
@@ -77,13 +79,16 @@ interface FixtureOptions {
 }
 
 /** A root chat whose turns a test scripts: `onTurn` runs for every message
- *  or answer and owns the settlement state it ends in. */
-export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}, options: FixtureOptions = {}) {
+ *  or answer and owns the settlement state it ends in. The client reaches it
+ *  as a client of the account service does: over a lane that a test can
+ *  break, and with live output only for a session that it watches. */
+export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; settleUnseen(outcome: HeadlessChatOutcome): void; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion" | "authProfile"> = {}, options: FixtureOptions = {}) {
   const bus = createRuntimeUiBus()
   const asks = options.asks ?? question
   const framing = acpFraming(realpathSync(CWD))
-  /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
-  const ended = (ending: ChatTurnEnding) => { framing.turnEnded?.(ending) }
+  /** How the root chat's last turn ended, until it accepts input again, as its runner states it. */
+  let turnEnding: ChatTurnEnding | undefined
+  const ended = (ending: ChatTurnEnding) => { turnEnding = ending }
   const calls: FrontendMutation[] = []
   // The rows a client reads, as the runtime's live edge publishes them, and
   // the blocks whose bodies a row can leave out.
@@ -107,6 +112,10 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
     state = outcome
     for (const listener of listeners) listener()
   }
+  /** Settles with no wake reaching the client, as when its lane broke. */
+  const settleUnseen = (outcome: HeadlessChatOutcome) => { state = outcome }
+  // The settlement reads the next lane loses, as a broken lane loses its calls.
+  let lostReads = 0
   let position = 0
   const publish = (input: RuntimeUiPatchInput) => {
     if (input.payload.kind === "budget.updated") budget = input.payload.budget
@@ -147,10 +156,11 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
   }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
-    queueMicrotask(() => { onTurn({ command, publish, stored, unreadable, output, lose, retract, ended, settle, streamed }) })
+    turnEnding = undefined
+    queueMicrotask(() => { onTurn({ command, publish, stored, unreadable, output, lose, retract, ended, settle, settleUnseen, streamed }) })
     return { ok: true as const, sessionId: "root" }
   }
-  const client: RuntimeClient = {
+  const runtime: RuntimeClient = {
     query: runtimeQuery({
       budgetSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: budget })) }),
       outputWindow: async ({ request }) => {
@@ -196,6 +206,7 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
       "question.cancel": turn,
       "chat.interrupt": async () => { interrupt(); return { ok: true, sessionId: "root" } },
       "session.release": async () => ({ ok: true, sessionId: "root" }),
+      "auth.profile.select": async (command) => command.id === "Locked" ? { ok: false, error: "cannot switch the environment-selected auth profile" } : { id: command.id },
       "model.save_effort": async (command) => {
         reseat({ model: command.model ?? seat.model, effort: command.effort ?? seat.effort })
         return { label: `${seat.model} ${seat.effort}` }
@@ -204,13 +215,57 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
     close: async () => {},
     subscribe: (next) => { bus.addListener(next); return () => { bus.removeListener(next) } },
   }
+  const served = serveChatSettlement({
+    client: runtime, currentTotals, bus, turnEnding: () => turnEnding,
+    settlement: { read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
+  })
+  // The open lane, the receivers that hear each new one, and the sessions
+  // whose output the open lane carries.
+  let lane = 1
+  const lanes = new Set<(lane: number) => void>()
+  const watched = new Map<string, number>()
+  const client: HeadlessChatClient = {
+    query: async (query, queryOptions) => {
+      if (query.type === "chatSettlement" && lostReads > 0) {
+        lostReads--
+        throw new RuntimeLaneLost(new Error("lane closed"))
+      }
+      return await served.query(query, queryOptions)
+    },
+    dispatch: runtime.dispatch,
+    subscribe: (next) => {
+      const listener = (event: FrontendEvent) => {
+        if (event.type === "patch" && event.patch.payload.kind === "output.delta" && event.patch.cursor.scope === "session" && !watched.has(event.patch.cursor.sessionId)) return
+        next(event)
+      }
+      return runtime.subscribe(listener)
+    },
+    onLane: (listener) => {
+      lanes.add(listener)
+      listener(lane)
+      return () => { lanes.delete(listener) }
+    },
+    watchOutput: (sessionId) => {
+      watched.set(sessionId, (watched.get(sessionId) ?? 0) + 1)
+      const watchedOn = lane
+      return () => {
+        const count = watched.get(sessionId) ?? 0
+        if (watchedOn !== lane) return
+        if (count <= 1) watched.delete(sessionId)
+        else watched.set(sessionId, count - 1)
+      }
+    },
+  }
+  /** Ends the open lane, whose watches end with it, and opens the next. */
+  const breakLane = () => {
+    watched.clear()
+    lane++
+    for (const listener of lanes) listener(lane)
+  }
   const input = new PassThrough()
   const messages: Message[] = []
   const arrived = new Set<() => void>()
-  const channel = runHeadlessChatChannel({
-    client, startChatDefault: () => {}, currentTotals,
-    workSettlement: { read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
-  }, {
+  const channel = runHeadlessChatChannel(client, {
     ...transport, input, framing,
     write: async (line) => {
       messages.push(JSON.parse(line))
@@ -252,7 +307,12 @@ export function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; 
     send({ id: 1, method: "session/new", params: { cwd: CWD, mcpServers: [] } })
     return [await initialized, await response(1)]
   }
-  return { send, reply, form, response, updates, initialize, open, reseat, calls, messages, channel, end: () => { input.end() }, onInterrupt: (next: () => void) => { interrupt = next } }
+  return {
+    send, reply, form, response, updates, initialize, open, reseat, calls, messages, channel, breakLane,
+    watching: (sessionId: string) => watched.has(sessionId),
+    loseSettlementReads: (count: number) => { lostReads = count },
+    end: () => { input.end() }, onInterrupt: (next: () => void) => { interrupt = next },
+  }
 }
 
 export const prompt = (id: number, text: string) => ({ id, method: "session/prompt", params: { sessionId: "root", prompt: [{ type: "text", text }] } })

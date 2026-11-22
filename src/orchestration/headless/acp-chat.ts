@@ -9,8 +9,8 @@ import {
   acpResult, acpToolOpen, acpUpdate, acpUsageUpdate,
   type AcpConfigOption, type AcpElicitationReply, type AcpStopReason, type AcpStreamed, type JsonRpcId,
 } from "../../protocol/acp.js"
+import type { ChatTurnEnding } from "../../protocol/chat-settlement-protocol-types.js"
 import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
-import type { ChatTurnEnding } from "../chat/runner-completion.js"
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/app-service-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { isBudgetPayload } from "../../protocol/budget-protocol-types.js"
@@ -44,8 +44,10 @@ interface AcpAnswer {
  *  channel's root chat is the one ACP session: `session/new` opens a chat, and
  *  `session/load` or `session/resume` attaches a saved chat of the project.
  *  Each refuses a second session or a `cwd` other than `executionCwd`, where
- *  the session's tools run. A prompt sends a message, or answers the open
- *  question with the prompt's text, and is answered when the channel settles.
+ *  the session's tools run: the starting directory of a runtime that this
+ *  process hosts, or the project root in the account service. A prompt sends
+ *  a message, or answers the open question with the prompt's text, and is
+ *  answered when the channel settles.
  *  A turn that ends on an open question asks it as a form while the prompt
  *  stays open, for a client that can show one; otherwise the question streams
  *  as the agent's message and ends the prompt, and the next prompt answers it. */
@@ -60,7 +62,6 @@ export function acpFraming(executionCwd: string): HeadlessChatFraming {
       connection?.dispose()
       return undefined
     },
-    turnEnded: (ending) => { connection?.turnEnded(ending) },
   }
 }
 
@@ -232,7 +233,6 @@ function openAcpConnection(channel: HeadlessChatChannel, version: string, execut
       inputOpen = false
       outbound.dismiss()
     },
-    turnEnded: (ending: ChatTurnEnding) => { session?.turnEnded(ending) },
     dispose: () => { session?.dispose() },
   }
 }
@@ -262,8 +262,6 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   let question: PendingQuestionView | undefined
   // The last error notice the running prompt streamed: why its turn failed.
   let notice: string | undefined
-  // How the last turn since the running prompt was sent ended, as the runtime reported it.
-  let ending: ChatTurnEnding | undefined
   // The usage update the client last received. A live budget patch that
   // repeats it, as the one behind a settled read does, streams nothing.
   let usage: string | undefined
@@ -359,9 +357,9 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   }
 
   /** The shared transcript store owns intake order, absolute coordinates, and
-   *  recovery. Headless chat holds one lane for its whole run, and its event
-   *  delivery carries every session's output, so the lane opens at once and
-   *  an output watch has nothing to start. */
+   *  recovery. It reads the session once per lane, and watches its output on
+   *  each lane, because the account service streams output only to a client
+   *  that watches it. Frames reach it in the channel's delivery order. */
   const openTranscript = (): TranscriptStore => {
     const store = createTranscriptStore({
       connection: {
@@ -370,11 +368,8 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
           frameListeners.add(listener)
           return () => { frameListeners.delete(listener) }
         },
-        onLane: (listener) => {
-          listener(1)
-          return () => {}
-        },
-        watchOutput: () => () => {},
+        onLane: channel.client.onLane,
+        watchOutput: channel.client.watchOutput,
       },
       sessionId,
       includeThinkingContent: () => true,
@@ -396,7 +391,9 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   }
 
   /** Attaches the transcript. A load streams the saved history and a resume
-   *  streams none, each before this resolves; a new chat has no history. */
+   *  streams none, each before this resolves; a new chat has no history. A
+   *  continued chat's open question is read before this resolves, so a
+   *  prompt that follows the answer at once answers it. */
   const start = async (mode: "new" | "load" | "resume"): Promise<void> => {
     const store = openTranscript()
     transcript = store
@@ -405,6 +402,7 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
     await store.open()
     await streaming
     adoption = undefined
+    question = (await channel.client.query({ type: "questionSnapshot", sessionIds: [sessionId] })).views[0]?.view ?? undefined
   }
 
   const readConfig = async (): Promise<AcpConfigOption[]> => {
@@ -497,7 +495,6 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
 
   const submit = async (command: TurnCommand) => {
     notice = undefined
-    ending = undefined
     return channel.client.dispatch(command)
   }
 
@@ -505,12 +502,17 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
    *  a form while the client can show one, then answers prompt `id`, if a
    *  prompt started the work. */
   const follow = async (id: JsonRpcId | undefined, store: TranscriptStore): Promise<void> => {
-    let settlement: { readonly outcome: HeadlessChatOutcome } | { readonly failure: string }
+    // A settled answer names how the turn ended: a chat states how its last
+    // turn ended until it accepts input again.
+    let settlement: { readonly outcome: HeadlessChatOutcome; readonly ending?: ChatTurnEnding } | { readonly failure: string }
     while (true) {
       // A settlement that fails, as when the turn's totals cannot be read,
       // fails this prompt with no usage update; a failed channel also fails on
       // its own path.
-      settlement = await channel.settle().then((outcome) => ({ outcome }), (error: unknown) => ({ failure: errorMessage(error) }))
+      settlement = await channel.settle().then(
+        ({ state, turnEnding }) => ({ outcome: state, ...(turnEnding ? { ending: turnEnding } : {}) }),
+        (error: unknown) => ({ failure: errorMessage(error) }),
+      )
       // A read the store already had out when the turn settled can answer from
       // before its last output, and a refresh joins it, so the second refresh
       // reads after the settlement.
@@ -545,6 +547,7 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
       }
     }
     if (id !== undefined) {
+      const ending = "outcome" in settlement ? settlement.ending : undefined
       const stopReason = "outcome" in settlement ? stopReasonOf(settlement.outcome, cancelled, ending) : undefined
       if (stopReason === undefined) {
         const message = "failure" in settlement ? settlement.failure : notice ?? "The turn ended before it completed"
@@ -578,10 +581,9 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
    *  form, whose answer starts work that no prompt answers, or as the
    *  agent's message when the client shows no forms and has not received it. */
   const askAgain = async (): Promise<void> => {
-    const view = (await channel.client.query({ type: "questionSnapshot", sessionIds: [sessionId] })).views[0]?.view ?? undefined
+    const view = question
     const store = transcript
     if (view === undefined || store === undefined || working) return
-    question = view
     if (!outbound.forms()) {
       const identity = blockIdentity(view)
       const next = acpBlockUpdates(view, streamed.get(identity))
@@ -609,14 +611,12 @@ function openAcpSession(channel: HeadlessChatChannel, sessionId: string, outboun
   /** Cancels the running prompt and lets go of the chat, which stays saved. */
   const close = async (): Promise<void> => {
     await cancel()
-    const released = await channel.client.dispatch({ type: "session.release", sessionId })
-    if (!released.ok) throw new Error(released.error)
+    channel.release()
   }
 
   return {
     sessionId, start, settings, setConfig, frame, prompt, askAgain, cancel, close,
     working: () => working,
-    turnEnded: (next: ChatTurnEnding) => { ending = next },
     dispose: () => { transcript?.dispose() },
   }
 }
