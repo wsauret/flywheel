@@ -169,10 +169,12 @@ export function createPromptBaseline(store: PromptBaselineStore | undefined, con
         identity,
         parts: parts.map(({ label, tier, change, text }) => ({ label, tier, change, text: held.get(label) ?? text })),
       };
+      const recorded = store?.record !== undefined;
       await store?.record?.(baseline);
       context = { baseline, tiers: joinSystemPromptParts(baseline.parts), ...context?.stated ? { stated: context.stated } : {} };
       rendered = true;
-      log.info("system prompt rendered", { ...conversation, reason, parts: parts.length, bytes: baseline.parts.reduce((total, part) => total + part.text.length, 0) });
+      // Only a recorded prompt is a state change. A pre-start renders for every runner start and records nothing.
+      log[recorded ? "info" : "debug"]("system prompt rendered", { ...conversation, reason, parts: parts.length, bytes: baseline.parts.reduce((total, part) => total + part.text.length, 0) });
       return context.tiers;
     },
     updates(messages) {
