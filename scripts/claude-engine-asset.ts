@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { claudeEngineFile } from "../src/infra/native-assets.js";
+import { requireDigestMatch, requireExecutable } from "./engine-asset-verify.js";
 
 /**
  * The Claude engine that every release archive carries: the `claude` binary that the Agent SDK pins, for one
@@ -133,15 +134,12 @@ export async function stageClaudeEngine(root: string, nativeDir: string, platfor
 export async function verifyClaudeEngine(root: string, nativeDir: string, platformArch: string): Promise<void> {
   const entry = await engineEntry(root, platformArch);
   const path = join(nativeDir, entry.binary);
-  // A Windows host's file system keeps no executable bit, so only a POSIX host can check it.
-  if (process.platform !== "win32" && !platformArch.startsWith("win32-") && ((await stat(path)).mode & 0o111) === 0) throw new Error(`The Claude engine for ${platformArch} is not executable`);
+  await requireExecutable(`The Claude engine for ${platformArch}`, path, platformArch);
   requireManifestMatch(platformArch, entry, new Uint8Array(await readFile(path)));
 }
 
 function requireManifestMatch(platformArch: string, entry: EngineEntry, bytes: Uint8Array): void {
-  if (bytes.byteLength !== entry.size) throw new Error(`The Claude engine for ${platformArch} is ${bytes.byteLength} bytes, and the SDK manifest states ${entry.size}`);
-  const digest = createHash("sha256").update(bytes).digest("hex");
-  if (digest !== entry.sha256) throw new Error(`The Claude engine for ${platformArch} has SHA-256 ${digest}, and the SDK manifest states ${entry.sha256}`);
+  requireDigestMatch(`The Claude engine for ${platformArch}`, "the SDK manifest", entry, bytes);
 }
 
 function sha512Integrity(bytes: Uint8Array): string {

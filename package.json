@@ -97,6 +97,8 @@
     "check:boundaries": "bun run scripts/check-boundaries.ts",
     "check:commits": "bun run scripts/commit-contract.ts check",
     "check:claude-engine": "bun run scripts/claude-engine-release.ts",
+    "engine:antigravity:prepare": "bun run scripts/antigravity-engine-asset.ts prepare",
+    "engine:antigravity:pin": "bun run scripts/antigravity-engine-asset.ts pin",
     "test:ci": "bun run lint && bun run test && bun run check:boundaries && bun run check:commits --upstream --head HEAD",
     "test:perf": "bun run scripts/perf-gate.ts",
     "test:perf:release": "bun run scripts/perf-gate.ts --set release",

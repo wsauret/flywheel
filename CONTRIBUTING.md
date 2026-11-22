@@ -40,6 +40,14 @@ bun run dev
 
 You do not need Rust for ordinary development. The repository commits the native assets that Flywheel uses at run time.
 
+The Google Antigravity route runs Google's Antigravity CLI. The repository pins one release of it in `scripts/antigravity-engine-pin.json` but does not commit the executable. To use that route from source, run this command once. It downloads the pinned release for your platform and verifies it, and later runs do nothing:
+
+```bash
+bun run engine:antigravity:prepare
+```
+
+A build and the integration suite run this step themselves. Flywheel itself never downloads the CLI.
+
 ## Find your way around
 
 - The section "Where New Code Lives" in [docs/architecture.md](docs/architecture.md#where-new-code-lives) tells you where each kind of code goes.

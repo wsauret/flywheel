@@ -1,0 +1,76 @@
+{
+  "version": "1.5.14",
+  "build": "1.5.14-5302690847260672",
+  "targets": {
+    "darwin-arm64": {
+      "manifestTarget": "darwin_arm64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/darwin-arm/cli_mac_arm64.tar.gz",
+      "sha512": "26830fd46bfb9200d073cf3e71bf94b707552557b4380ec01afd6e99f3a2b030e65422dab1867f77318078692defc859a7547d17ec4b0b1e9369f13c9c3caea6",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 229152672,
+      "sha256": "e8c2959bf4744580d0e5b8f938ec2dc3918a942b620a6262e53856400f14e5fb"
+    },
+    "darwin-x64": {
+      "manifestTarget": "darwin_amd64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/darwin-x64/cli_mac_x64.tar.gz",
+      "sha512": "1b6a1fc6dbe46ba6d9d0405d1b6095189f35ebfc4c3c33ceb1fd1b6d0c9fd702b52ac10b64b8b52aed0d8d71ae02c5df3cffd5e3e3d37549c2daffcce2a853c7",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 238884352,
+      "sha256": "5f3832bb8e391820bb895a08d1f837bb9e1714d48cd5ba31edf9286af6e9ea21"
+    },
+    "linux-arm64": {
+      "manifestTarget": "linux_arm64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-arm/cli_linux_arm64.tar.gz",
+      "sha512": "c9b29bba475f63a1a80161ae93ba72b221c7a586d9851e4d0061546704bab66d6b2760b25d716d191724fc7564f3246456ee151e28aa37af48dbcd72bdc6c463",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 256070320,
+      "sha256": "702b888abddc7d482ee30592fa153cda5785afae3188179d38b511b6ec360286"
+    },
+    "linux-arm64-musl": {
+      "manifestTarget": "linux_arm64_musl",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-arm-musl/cli_linux_arm64_musl.tar.gz",
+      "sha512": "f6e35fc3dab2cd49fd4296ddee0841b9cc4c7020b6c6aaea6452c5b3452b0ad8d66451c9098e418ad6b2f6eabcc81cdf13105ed043903248b11d6fb24ae709ab",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 231767616,
+      "sha256": "35af736ccb00178811b4507c3d27b7765b13e2f244b6e6888285cea50ab7f174"
+    },
+    "linux-x64": {
+      "manifestTarget": "linux_amd64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-x64/cli_linux_x64.tar.gz",
+      "sha512": "83311d3f354567612dc16c1ae2ea9b503d6f6833aa4e138d39aa229da3f3bb99b0e4d7cca0bce4796b0060d6a51d8113eb7449ed5dc0e7900bf217107ea5bff9",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 273240776,
+      "sha256": "37873b8062391b6202a3d3199ec012abc9e53aab720d26cd65699441497d8c94"
+    },
+    "linux-x64-musl": {
+      "manifestTarget": "linux_amd64_musl",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-x64-musl/cli_linux_x64_musl.tar.gz",
+      "sha512": "1da24922727c5b4e84369d0843575d7d6f180a1946e2dc4289171ad1e3ca92594e687724d1902a7d83e407f98f0a8d3b7c3e976f03680fd80dbed2d2da00c0ed",
+      "archive": "tar.gz",
+      "member": "antigravity",
+      "size": 244676552,
+      "sha256": "0af500447e48fff93bf84bc6422f04d02eb3f23d21ab8d5a721d9636446b89d8"
+    },
+    "win32-arm64": {
+      "manifestTarget": "windows_arm64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/windows-arm/cli_windows_arm64.exe",
+      "sha512": "b2ce5462cf1845b25c05ca651b5bd93735fd807f8e7b40c61d0e99445df1a76b97ee24c890d5f5ba0453f848ca174f74d492ad1901a2ddcba5d7a9b4399ddfef",
+      "archive": "exe",
+      "size": 226082456,
+      "sha256": "fbb00e7c0449388f62cf9e03b1257b7f81bc450a1bbfebb370267ec8e4b35c83"
+    },
+    "win32-x64": {
+      "manifestTarget": "windows_amd64",
+      "url": "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/windows-x64/cli_windows_x64.exe",
+      "sha512": "785548b23242ec9112759bb4b525d94a3d4d2e9868e5cedb9ea34e5ce01dbb00abf5de66c41d8f4903e8a4379445f685483f999ece91867bfbd9d4812760d835",
+      "archive": "exe",
+      "size": 238615704,
+      "sha256": "34352ef15084b2d6c71bcc6e95a232425203223245e5cae82343d69495c3bd42"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "component": "Antigravity CLI",
+  "publisher": "Google LLC",
+  "version": "1.5.14",
+  "build": "1.5.14-5302690847260672",
+  "terms": [
+    "https://antigravity.google/terms",
+    "https://policies.google.com/terms"
+  ],
+  "reviewedOn": "2026-11-21",
+  "redistribution": "permitted",
+  "finding": "Google publishes the release artifacts with no license file. The Google Antigravity Additional Terms of Service, read on 2026-11-21, name the Google Terms of Service, these Additional Terms, and the Google Privacy Policy as the governing documents and grant no explicit right to redistribute the CLI. On 2026-11-22 the maintainer settled that Flywheel install archives carry the unmodified, sha512-verified release (\"Bundle; I permit it\")."
+}

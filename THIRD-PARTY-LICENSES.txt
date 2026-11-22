@@ -10798,6 +10798,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
+Antigravity CLI 1.5.14 (Google LLC), shipped as agy in the native directory of each Flywheel install archive
+Terms: https://antigravity.google/terms and https://policies.google.com/terms
+================================================================================
+
+The Antigravity CLI is software of Google LLC. Flywheel redistributes Google's published release 1.5.14-5302690847260672 unmodified, after it matches the SHA-512 digest that Google's release manifest states. The Google Antigravity Additional Terms of Service and the Google Terms of Service govern its use.
+
+================================================================================
 @anthropic-ai/claude-agent-sdk-darwin-arm64@0.3.321
 License source: published package @anthropic-ai/claude-agent-sdk@0.3.321
 ================================================================================

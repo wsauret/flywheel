@@ -260,6 +260,7 @@ Google's [ACP page](https://antigravity.google/docs/ide/extensions/acp) says: "A
 | Identity | Flywheel names itself as the ACP client and never names itself as an editor that Google lists. Flywheel offers only the Gemini models that the CLI lists for the account. | PI-MODEL-094 |
 | Tools | The CLI runs a documented custom agent with its default tools off. Flywheel's tools reach it over MCP, and Flywheel runs them. | ARCH-PROVIDERS-086 |
 | Accounts | A request never moves from one Antigravity account to another. | PI-MODEL-094 |
+| Distribution | Each Flywheel install archive carries Google's unmodified CLI release, checked against the SHA-512 in Google's release manifest. Google publishes no license file for it; the maintainer settled this on 2026-11-22. | `third-party/reviewed/runtime/` |
 
 Two Google texts read against this practice when taken alone. Section 6 of the [Antigravity terms](https://antigravity.google/terms) says: "Using third party software, tools, or services to access the Service (e.g. using OpenClaw with Antigravity OAuth) is a breach of this Agreement." The [FAQ](https://antigravity.google/docs/faq) says: "Wrapping `agy` inside third-party coding agents or applications, or automating account rotation, is not supported under consumer plans." The first names third-party access through Antigravity OAuth, which Flywheel does not do. Google's own ACP page documents the CLI inside any ACP client. Flywheel never rotates Antigravity accounts.
 

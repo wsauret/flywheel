@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 
 import { cargoLicenseLedgerIsCurrent } from "../../../scripts/cargo-license-ledger.js";
 import {
+  assertAntigravityRedistributionPermitted,
   checkThirdPartyLicenses,
   generateNpmLicenseSections,
   productionNpmPackages,
@@ -86,6 +87,27 @@ describe("release legal payload", () => {
     try {
       writeFileSync(join(root, "package.json"), JSON.stringify({ packageManager: "bun@0.0.1" }));
       await expect(checkThirdPartyLicenses(root)).rejects.toThrow("package.json names packageManager bun@0.0.1");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("holds a release while the Antigravity CLI review does not permit redistribution of the pinned build", async () => {
+    const root = fixtureRoot();
+    try {
+      mkdirSync(join(root, "scripts"));
+      writeFileSync(join(root, "scripts", "antigravity-engine-pin.json"), JSON.stringify({ version: "1.5.14", build: "1.5.14-1", targets: {} }));
+      await expect(assertAntigravityRedistributionPermitted(root)).rejects.toThrow("has no legal review");
+      const reviewDir = join(root, "third-party", "reviewed", "runtime", "antigravity-cli-1.5.14");
+      mkdirSync(reviewDir, { recursive: true });
+      const review = (build: string, redistribution: string) => writeFileSync(join(reviewDir, "review.json"), JSON.stringify({ version: "1.5.14", build, terms: ["https://antigravity.google/terms"], redistribution }));
+
+      review("1.5.14-1", "unsettled");
+      await expect(assertAntigravityRedistributionPermitted(root)).rejects.toThrow("does not record that Google permits redistribution");
+      review("1.5.14-0", "permitted");
+      await expect(assertAntigravityRedistributionPermitted(root)).rejects.toThrow("the pin names 1.5.14-1");
+      review("1.5.14-1", "permitted");
+      await expect(assertAntigravityRedistributionPermitted(root)).resolves.toBeUndefined();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parse } from "jsonc-parser";
 
 import { isRecord } from "../src/infra/record.js";
+import { readAntigravityPin } from "./antigravity-engine-asset.js";
 import { cargoLicenseLedgerIsCurrent } from "./cargo-license-ledger.js";
 import type { ReviewedRuntimeComponent } from "./review-bun-runtime-licenses.js";
 
@@ -341,6 +342,41 @@ const MODELS_DEV_CATALOG = {
   files: ["third-party/reviewed/data/models.dev/LICENSE"],
 } as const;
 
+interface AntigravityCliReview {
+  readonly terms: readonly string[];
+  /** `permitted` only after the maintainer settled that a Flywheel archive may carry the binary. */
+  readonly redistribution: "unsettled" | "permitted";
+}
+
+// Each native install archive ships Google's Antigravity CLI (`agy`) that scripts/antigravity-engine-pin.json pins, as
+// Google publishes it. The release carries no license file, so a committed review of the pinned release names the
+// terms that govern it and records whether Google permits redistribution. A pin bump needs a new review.
+async function antigravityCliReview(root: string): Promise<AntigravityCliReview> {
+  const pin = await readAntigravityPin(root);
+  const path = join("third-party", "reviewed", "runtime", `antigravity-cli-${pin.version}`, "review.json");
+  if (!existsSync(join(root, path))) throw new Error(`The Antigravity CLI ${pin.version} that scripts/antigravity-engine-pin.json pins has no legal review at ${path}`);
+  const review: unknown = JSON.parse(await readFile(join(root, path), "utf8"));
+  const terms = isRecord(review) ? stringArray(review["terms"]) : undefined;
+  const redistribution = isRecord(review) ? review["redistribution"] : undefined;
+  if (!isRecord(review) || terms === undefined || terms.length === 0 || (redistribution !== "unsettled" && redistribution !== "permitted")) throw new Error(`${path} is not an Antigravity CLI review`);
+  if (review["version"] !== pin.version || review["build"] !== pin.build) throw new Error(`${path} reviews the Antigravity CLI ${String(review["build"])}, and the pin names ${pin.build}`);
+  return { terms, redistribution };
+}
+
+async function antigravityCliSection(root: string): Promise<string> {
+  const pin = await readAntigravityPin(root);
+  const { terms } = await antigravityCliReview(root);
+  return `================================================================================\nAntigravity CLI ${pin.version} (Google LLC), shipped as agy in the native directory of each Flywheel install archive\nTerms: ${terms.join(" and ")}\n================================================================================\n\nThe Antigravity CLI is software of Google LLC. Flywheel redistributes Google's published release ${pin.build} unmodified, after it matches the SHA-512 digest that Google's release manifest states. The Google Antigravity Additional Terms of Service and the Google Terms of Service govern its use.\n`;
+}
+
+/**
+ * Fails a release build while the legal review of the pinned Antigravity CLI does not record that Google permits a
+ * Flywheel archive to carry it. Linting, generation, and local builds do not check it.
+ */
+export async function assertAntigravityRedistributionPermitted(root: string): Promise<void> {
+  if ((await antigravityCliReview(root)).redistribution !== "permitted") throw new Error("The release archive would carry the Antigravity CLI, but its legal review under third-party/reviewed/runtime does not record that Google permits redistribution. Settle that question and set redistribution to permitted.");
+}
+
 async function reviewedComponentSection(root: string, heading: string, component: { readonly source: string; readonly files: readonly string[] }): Promise<string> {
   const documents = await Promise.all(component.files.map(async (relative) => ({ name: relative, text: await readFile(join(root, relative), "utf8") })));
   return `================================================================================\n${heading}\nLicense source: ${component.source}\n================================================================================\n\n${documents.map(appendDocument).join("\n")}`;
@@ -389,6 +425,7 @@ export async function generateThirdPartyLicenses(root: string): Promise<string> 
     ...await bunRuntimeComponentSections(root),
     await reviewedComponentSection(root, `zig@${ZIG_TOOLCHAIN.version} compiler-rt and mingw-w64 runtime (statically linked into the Windows launchers)`, ZIG_TOOLCHAIN),
     await reviewedComponentSection(root, "models.dev catalog data (bundled as the model catalog snapshot)", MODELS_DEV_CATALOG),
+    await antigravityCliSection(root),
     ...await generateNpmLicenseSections(root, lock),
   ];
   const ripgrep = join(root, "crates", "ripgrep");

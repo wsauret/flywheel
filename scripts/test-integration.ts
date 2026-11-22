@@ -18,10 +18,18 @@
  *  runs without a registration step and no file can fall out of every gate.
  *  The guardian test runs in its own `bun test` process because it owns the
  *  process tree it verifies and must not share a run with siblings that spawn
- *  their own. Every process gets a private TMPDIR and fails on leftovers. */
+ *  their own. Every process gets a private TMPDIR and fails on leftovers.
+ *
+ *  Integration tests outside the providers directory run the real pinned
+ *  Antigravity CLI against a fake host, from the checkout's verified copy. So
+ *  the modes that run them first prepare that copy for this host. The lane
+ *  admits the run first, because preparation hashes the executable and a
+ *  first preparation downloads it. */
 
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { buildPlatformArch } from "../src/infra/native-assets.js";
+import { prepareAntigravityEngine } from "./antigravity-engine-asset.js";
 import { createTestTempGuard, formatTempLeaks, type TempLeak } from "./test-temp-guard.js";
 import { enterValidationLane } from "./validation-lane.js";
 
@@ -35,6 +43,7 @@ const NO_API_RUNS: readonly Run[] = [
   ["guardian", [GUARDIAN]],
 ];
 const API_RUNS: readonly Run[] = [["api", [API_SUITE]]];
+const ANTIGRAVITY_MODES: ReadonlySet<string> = new Set(["no-api", "all"]);
 const MODES: ReadonlyMap<string, readonly Run[]> = new Map([
   ["no-api", NO_API_RUNS],
   ["api", API_RUNS],
@@ -49,6 +58,17 @@ if (!runs) {
   process.exit(2);
 }
 
+/** Whether this host's pinned Antigravity CLI is ready. A failure is reported with the command that repeats it. */
+async function antigravityEnginePrepared(): Promise<boolean> {
+  try {
+    await prepareAntigravityEngine(repoRoot, buildPlatformArch());
+    return true;
+  } catch (error) {
+    process.stderr.write(`The pinned Antigravity CLI could not be prepared: ${error instanceof Error ? error.message : String(error)}\nRun bun run engine:antigravity:prepare, then run this suite again.\n`);
+    return false;
+  }
+}
+
 const leave = await enterValidationLane(`integration:${mode}`);
 const tempGuard = createTestTempGuard();
 const tempLeaks: TempLeak[] = [];
@@ -61,7 +81,8 @@ const cancel = (signal: NodeJS.Signals) => {
 process.on("SIGINT", cancel);
 process.on("SIGTERM", cancel);
 try {
-  for (const [label, args] of runs) {
+  if (ANTIGRAVITY_MODES.has(mode) && !(await antigravityEnginePrepared())) process.exitCode = 1;
+  for (const [label, args] of process.exitCode ? [] : runs) {
     if (interrupted) break;
     const proc = Bun.spawn(["bun", "test", ...(coverageDir ? ["--coverage", "--coverage-reporter=lcov", `--coverage-dir=${join(coverageDir, label)}`] : []), ...args], {
       cwd: repoRoot,

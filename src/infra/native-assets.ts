@@ -75,6 +75,18 @@ export function checkoutClaudeEngine(platformArch: string): string {
   return join("node_modules", "@anthropic-ai", `claude-agent-sdk-${platformArch}`, claudeEngineFile(platformArch));
 }
 
+/** The Antigravity CLI's file name in a build's native directory and in a checkout's verified copy. */
+export function antigravityEngineFile(platformArch: string): string {
+  return platformArch.startsWith("win32-") ? "agy.exe" : "agy";
+}
+
+/** The Antigravity CLI of a source checkout, relative to the checkout: the copy of the pinned `version` that
+ *  the prepare step (`bun run engine:antigravity:prepare`, which a build and the integration suite also run)
+ *  verified and placed. Nothing downloads it at run time, so a checkout that never ran that step has none. */
+export function checkoutAntigravityEngine(version: string, platformArch: string): string {
+  return join("node_modules", ".cache", "antigravity-engine", version, platformArch, antigravityEngineFile(platformArch));
+}
+
 export function nativeAssetDir(): string {
   return process.env.FLYWHEEL_NATIVE_DIR ?? join(dirname(process.execPath), "native", buildPlatformArch());
 }

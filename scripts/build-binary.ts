@@ -28,7 +28,8 @@ import { patchOpenTuiNativePackageImportFiles, restorePatchedFiles } from "./ope
 import { BUILD_METADATA_FILE, buildExecutable, computeBuildId } from "../src/infra/update/build-identity.js";
 import { stageLegalPayload } from "./legal-payload.js";
 import { stageClaudeEngine, verifyClaudeEngine } from "./claude-engine-asset.js";
-import { assertEmbeddedBunRuntimeReviewed, checkThirdPartyLicenses } from "./generate-third-party-licenses.js";
+import { stageAntigravityEngine, verifyAntigravityEngine } from "./antigravity-engine-asset.js";
+import { assertAntigravityRedistributionPermitted, assertEmbeddedBunRuntimeReviewed, checkThirdPartyLicenses } from "./generate-third-party-licenses.js";
 import { releaseBuildInputs } from "./release-contract.js";
 import { parseRepositoryIdentity } from "../src/infra/update/release-manifest.js";
 
@@ -257,12 +258,19 @@ if (process.platform === "darwin" && platformArch.startsWith("darwin-")) {
 // Canonicalized assets are skipped — copyNativeAssets stages those bytes under their canonical names.
 console.log("Copying native assets...");
 await copyNativeAssets(ROOT, nativeStagingDir, platformArch, nativeProvenance);
-// The Claude engine ships only in a build: a source run runs the copy that bun installed in node_modules, so the
-// per-run native staging of a source run never copies it.
+// The Claude engine and the Antigravity CLI ship only in a build: a source run runs the copy that bun installed in
+// node_modules, or the verified copy that the Antigravity prepare step placed there, so the per-run native staging of
+// a source run never copies them.
 console.log("Staging the Claude engine...");
 await stageClaudeEngine(ROOT, nativeStagingDir, platformArch);
-// Only a release build is distributed, so only it must embed the runtime that the license bundle documents.
-if (publisher !== undefined) assertEmbeddedBunRuntimeReviewed();
+console.log("Staging the Antigravity CLI...");
+await stageAntigravityEngine(ROOT, nativeStagingDir, platformArch);
+// Only a release build is distributed, so only it must embed the runtime that the license bundle documents and carry
+// an Antigravity CLI whose review permits redistribution.
+if (publisher !== undefined) {
+  assertEmbeddedBunRuntimeReviewed();
+  await assertAntigravityRedistributionPermitted(ROOT);
+}
 await checkThirdPartyLicenses(ROOT);
 await stageLegalPayload(ROOT, payloadDir);
 const targetLibraryExt = nativeLibraryExt(platformArch);
@@ -283,6 +291,7 @@ for (const output of bundleResult.outputs) {
 console.log(`  ${shippedAssetCount} bundler asset(s) shipped, ${canonicalizedAssets.size} canonicalized`);
 await verifyNativeAssets(nativeStagingDir, platformArch);
 await verifyClaudeEngine(ROOT, nativeStagingDir, platformArch);
+await verifyAntigravityEngine(ROOT, nativeStagingDir, platformArch);
 
 // Step 4: Copy bundled font
 console.log("Copying bundled font...");
