@@ -8,9 +8,11 @@
 /** One scripted answer of a main request. `text`: a model answer, sent after `delayMs`. `calls`: a model answer with
  *  function calls, after a thought part when `thought` is set. `status`: an HTTP error with the Gemini error body
  *  (`body` replaces it, for example with a RetryInfo detail). `when` names a text that the request must contain, so
- *  concurrent sessions take their own answers. `promptTokens` replaces the prompt token count that the answer reports,
- *  which is the request body's length divided by 4 otherwise. */
-export type FakeAnswer = { readonly when?: string; readonly promptTokens?: number } & (
+ *  concurrent sessions take their own answers. `meets` names a text of another main request: the answer waits until
+ *  that request arrived too, so two requests that meet were open at the same time, and it fails with a 400 when the
+ *  other request does not arrive within `MEET_MS`. `promptTokens` replaces the prompt token count that the answer
+ *  reports, which is the request body's length divided by 4 otherwise. */
+export type FakeAnswer = { readonly when?: string; readonly meets?: string; readonly promptTokens?: number } & (
   | { readonly kind: "text"; readonly text: string; readonly delayMs?: number }
   | { readonly kind: "calls"; readonly calls: readonly { readonly name: string; readonly args?: { readonly [name: string]: unknown } }[]; readonly thought?: string }
   | { readonly kind: "status"; readonly status: number; readonly body?: unknown }
@@ -41,6 +43,7 @@ export interface FakeGemini {
 const TITLE_MARKER = /You are a conversation title generator/u
 const COMPACTION_MARKER = /continuation summary/iu
 const GENERATE = /:(stream)?[gG]enerateContent$/u
+const MEET_MS = 30_000
 
 function errorStatus(status: number): string {
   if (status === 429) return "RESOURCE_EXHAUSTED"
@@ -62,6 +65,14 @@ function candidate(answer: Exclude<FakeAnswer, { readonly kind: "status" }>) {
 export function openFakeGemini(options: { readonly titleStatus?: number } = {}): FakeGemini {
   const queue: FakeAnswer[] = []
   const requests: FakeRequest[] = []
+  const arrives = async (text: string): Promise<boolean> => {
+    const deadline = Date.now() + MEET_MS
+    while (!requests.some((request) => request.kind === "main" && request.body.includes(text))) {
+      if (Date.now() > deadline) return false
+      await Bun.sleep(10)
+    }
+    return true
+  }
   const take = (body: string): FakeAnswer | undefined => {
     const index = queue.findIndex(({ when }) => when === undefined || body.includes(when))
     return index < 0 ? undefined : queue.splice(index, 1)[0]
@@ -77,11 +88,13 @@ export function openFakeGemini(options: { readonly titleStatus?: number } = {}):
       const kind: FakeRequestKind = !generate ? "other" : TITLE_MARKER.test(body) ? "title" : COMPACTION_MARKER.test(body) ? "compaction" : "main"
       const answer: FakeAnswer | undefined = kind === "main" ? take(body) ?? { kind: "text", text: "default reply" } : undefined
       requests.push({ kind, at: Date.now(), path, body, answer })
+      const met = answer?.meets === undefined || await arrives(answer.meets)
       if (!generate) {
         if (/\/models\/?$/u.test(path)) return Response.json({ models: [] })
         return Response.json({})
       }
-      const failure = kind === "title" && options.titleStatus !== undefined ? { kind: "status", status: options.titleStatus } as const : answer?.kind === "status" ? answer : undefined
+      const failure = !met ? { kind: "status", status: 400, body: { error: { code: 400, message: `the scripted meeting with ${answer!.meets!} timed out`, status: "INVALID_ARGUMENT" } } } as const
+        : kind === "title" && options.titleStatus !== undefined ? { kind: "status", status: options.titleStatus } as const : answer?.kind === "status" ? answer : undefined
       if (failure !== undefined) {
         const error = failure.body ?? { error: { code: failure.status, message: `scripted ${String(failure.status)}`, status: errorStatus(failure.status) } }
         return Response.json(error, { status: failure.status })

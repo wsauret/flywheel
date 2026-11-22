@@ -11,6 +11,9 @@ interface AuditedStep {
   readonly appendBytes: number
   /** The fixed prompts that the bridge sent to the session and that the request's history never holds. */
   readonly synthetic: readonly SyntheticPrompt[]
+  /** The kinds of tool result that the bridge delivered to the session, which agy holds in every later model
+   *  request: a result with its start and end times before it, and a failed result after agy's error text. */
+  readonly delivered: { readonly results: boolean; readonly errors: boolean }
 }
 
 /** How one Flywheel request reached its engine session, as the audit names it. */
@@ -24,15 +27,22 @@ export interface AuditedRelease {
   readonly usageReported: boolean
   /** The request's tools that the serving process did not declare at launch, which the model cannot call. */
   readonly missingTools: readonly string[]
+  /** The tools that the serving process declares beyond the request's: the tree's tools that other agents hold, which
+   *  the model sees and Flywheel's dispatch refuses for this agent (plan P3). */
+  readonly sharedTools: readonly string[]
 }
 
 /**
  * What the engine added to the requests of one bridge, for the audit (ARCH-CONTEXT-008). Each model request of agy
  * wraps the session's append in agy's fixed agent text, injects a `toolSummary` argument into every tool, prefixes each
- * tool description, declares agy's own `manage_task` tool, and sends the session's fixed prompts again. A request that
- * agy sent by itself, such as the title request of each new session or a step that the gate did not admit, reaches the
- * audit on the record of the request during which the bridge saw it, because a record cannot belong to a request that
- * Flywheel never made.
+ * tool description and closes and orders each tool schema, declares agy's own `manage_task` tool and its MCP client's
+ * resource tools, declares the tree's tools beyond the request's, wraps each prompt in its request tags with the local
+ * time and its settings notices, puts start and end times before each tool result and its own error text before each
+ * failed result, sets its own output cap and
+ * thinking budget, and sends the session's fixed prompts again (agy 1.5.14, measured by the conformance suite against
+ * the Google API route). A request that agy sent by itself, such as the title request of each new session or a step
+ * that the gate did not admit, reaches the audit on the record of the request during which the bridge saw it, because
+ * a record cannot belong to a request that Flywheel never made.
  */
 export interface TransportAudit {
   /** A request that agy sent by itself. `source` is the code path: `title:<session kind>` or `unadmitted-step`. */
@@ -41,20 +51,28 @@ export interface TransportAudit {
   record(release: AuditedRelease): ProviderTransportContext
 }
 
-const STEP_BODY_ADDITIONS: readonly ProviderTransportAddition[] = [
+const STEP_ADDITIONS: readonly ProviderTransportAddition[] = [
+  { part: "message", kind: "prompt-wrapper" },
   { part: "body", kind: "tool-argument:toolSummary" },
   { part: "body", kind: "tool-description-prefix" },
+  { part: "body", kind: "tool-schema-rewrite" },
   { part: "body", kind: "tool:manage_task" },
+  { part: "body", kind: "tool:list_resources" },
+  { part: "body", kind: "tool:read_resource" },
+  { part: "body", kind: "generation-config" },
 ]
 
 /** The additions of one model step. `at` of a system part is the system block that it precedes; `at` of a fixed prompt
  *  is the number of the request's messages before it, which is the index of the message that follows it. */
-function stepAdditions(step: AuditedStep): ProviderTransportAddition[] {
+function stepAdditions(step: AuditedStep, sharedTools: readonly string[]): ProviderTransportAddition[] {
   return [
     { part: "system", kind: "agent-body", at: 0 },
     { part: "system", kind: "append", at: 0, value: String(step.appendBytes) },
     ...step.synthetic.map((prompt): ProviderTransportAddition => ({ part: "message", kind: prompt.kind === "primer" ? "primer" : "prompt:continuation", at: prompt.after })),
-    ...STEP_BODY_ADDITIONS,
+    ...step.delivered.results ? [{ part: "message", kind: "tool-result-timestamps" } as const] : [],
+    ...step.delivered.errors ? [{ part: "message", kind: "tool-error-prefix" } as const] : [],
+    ...STEP_ADDITIONS,
+    ...sharedTools.map((name): ProviderTransportAddition => ({ part: "body", kind: `shared-tool:${name}` })),
   ]
 }
 
@@ -68,7 +86,7 @@ export function createTransportAudit(): TransportAudit {
       const carried = hidden
       hidden = []
       const additions = [
-        ...release.step === undefined ? [] : stepAdditions(release.step),
+        ...release.step === undefined ? [] : stepAdditions(release.step, release.sharedTools),
         ...release.refusedSteps === 0 ? [] : [{ part: "message" as const, kind: "refused-step", value: String(release.refusedSteps) }],
       ]
       const notRecorded = [

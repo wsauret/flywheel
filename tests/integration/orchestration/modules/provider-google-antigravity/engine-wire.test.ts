@@ -4,7 +4,7 @@
  * is classified (`title`, `compaction`, `main`).
  */
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Exit, Scope } from "effect"
@@ -39,7 +39,7 @@ const roots: string[] = []
 const closers: (() => Promise<void>)[] = []
 afterEach(async () => {
   for (const close of closers.splice(0).toReversed()) await close()
-  for (const root of roots.splice(0)) Bun.spawnSync(["rm", "-rf", root], { windowsHide: true })
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
 interface Rig {
@@ -60,7 +60,7 @@ function hooksFile(login: HarnessLogin): string {
 
 function writeHook(login: HarnessLogin, handler: { readonly command: string; readonly timeout: number } | undefined): void {
   if (handler === undefined) {
-    Bun.spawnSync(["rm", "-f", hooksFile(login)], { windowsHide: true })
+    rmSync(hooksFile(login), { force: true })
     return
   }
   writeFileSync(hooksFile(login), JSON.stringify({ flywheel: { PreInvocation: [{ type: "command", ...handler }] } }))

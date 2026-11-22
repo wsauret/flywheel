@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js"
 import type { ConversationMessage, ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
+import { AcpConnectionClosed } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/connection.js"
 import type { AcpConfigOption, AcpPromptResult, AcpSessionUpdate } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js"
 import { createBridge, type BridgeEngine, type BridgeRequest } from "../../../../../src/orchestration/modules/provider-google-antigravity/bridge.js"
 import type { StepGateEvent } from "../../../../../src/orchestration/modules/provider-google-antigravity/step-gate.js"
@@ -51,14 +52,19 @@ const USAGE = { inputTokens: 10, outputTokens: 2, cachedReadTokens: 0, cachedWri
 /**
  * An engine process whose model answers each admitted step with the next scripted response. A step asks the gate
  * first unless the hook does not run; a call waits on the bridge's MCP handler, and a later call of the same response
- * follows its result without a new step, as agy 1.5.14 does.
+ * follows its result without a new step, as agy 1.5.14 does. `endsAt` names the log line of the request during which
+ * the process ends, which then fails as agy's closed connection fails it.
  */
-function fakeEngine(gate: ReturnType<typeof fakeGate>, options: { readonly hookRuns?: () => boolean } = {}) {
+function fakeEngine(gate: ReturnType<typeof fakeGate>, options: EngineOptions = {}) {
   const log: string[] = []
   const responses: Action[][] = []
   const sessions = new Map<string, Parameters<BridgeEngine["openSession"]>[0] & { config: AcpConfigOption[]; cancel?: () => void }>()
   let calls = 0
   let opened = 0
+  const record = (line: string, method: AcpConnectionClosed["method"]) => {
+    log.push(line)
+    if (line === options.endsAt) throw new AcpConnectionClosed(method, { kind: "ended" })
+  }
   const step = async (sessionId: string): Promise<AcpPromptResult> => {
     const session = sessions.get(sessionId)!
     for (;;) {
@@ -98,7 +104,7 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: { readonly hookR
     async openSession(handlers) {
       const sessionId = `s${String(++opened)}`
       sessions.set(sessionId, { ...handlers, config: [MODELS, LEVELS] })
-      log.push(handlers.append === undefined ? "open probe" : "open")
+      record(handlers.append === undefined ? "open probe" : "open", "session/new")
       return { sessionId, configOptions: [MODELS, LEVELS] }
     },
     async prompt(sessionId, blocks) {
@@ -115,7 +121,7 @@ function fakeEngine(gate: ReturnType<typeof fakeGate>, options: { readonly hookR
     },
     async configure(_method, params) {
       if (!("configId" in params)) throw new Error("the bridge changes the model through set_config_option")
-      log.push(`configure ${params.configId}=${params.value}`)
+      record(`configure ${params.configId}=${params.value}`, "session/set_config_option")
       const session = sessions.get(params.sessionId)!
       session.config = session.config.map((option) => option.id === params.configId ? { ...option, currentValue: params.value } : option)
       return { configOptions: session.config }
@@ -132,7 +138,12 @@ const SYSTEM = { stable: "stable", session: "session", conversation: "conversati
 const liveness = { preStream() {}, frame() {}, begin() {}, append() {}, complete() {} }
 const projectResult: BridgeRequest["projectResult"] = async (content) => content
 
-function rig(options: { readonly hookRuns?: () => boolean } = {}) {
+interface EngineOptions {
+  readonly hookRuns?: () => boolean
+  readonly endsAt?: string
+}
+
+function rig(options: EngineOptions = {}) {
   const gate = fakeGate()
   const fake = fakeEngine(gate, options)
   const bridge = createBridge({
@@ -313,5 +324,17 @@ describe("Google Antigravity bridge", () => {
     await expect(serve(bridge, [user("two")])).rejects.toBeInstanceOf(RouteUnavailableError)
     expect(log.filter((line) => line.startsWith("open"))).toEqual(["open probe"])
     expect(log).toContain("close gate-not-reached")
+  })
+
+  test.each([
+    ["session/new of the gate probe", "open probe", undefined],
+    ["session/new of a rotation", "open", undefined],
+    ["set_config_option of a rotation", "configure model=gemini-4-neon", undefined],
+    ["set_config_option before a pushed prompt", "configure thought_level=high", "low"],
+  ] as const)("an engine that ends during %s fails the request as a route that could not serve it", async (_name, endsAt, firstEffort) => {
+    const { bridge } = rig({ endsAt })
+    const history: ConversationMessage[] = [user("one")]
+    if (firstEffort !== undefined) history.push((await serve(bridge, history, { effort: firstEffort })).assistant, user("two"))
+    await expect(serve(bridge, history, { model: "gemini-4-neon", effort: "high" })).rejects.toBeInstanceOf(RouteUnavailableError)
   })
 })

@@ -4,8 +4,10 @@ import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-sche
 import { ContextLengthExceededError, LlmStreamError, RouteUnavailableError } from "../../agent-runtime/llm/errors.js"
 import type { SystemPromptTiers } from "../../agent-runtime/llm/system-prompt-tiers.js"
 import type { ContentBlock, ConversationMessage, ProviderStreamEvent } from "../../agent-runtime/llm/types.js"
+import { AcpConnectionClosed } from "./acp/connection.js"
 import type { AcpConfigOption, AcpPromptResult, AcpSessionUpdate, AcpTextBlock } from "./acp/schema.js"
 import type { EngineProcess } from "./engine-process.js"
+import { engineStoppedFailure } from "./errors.js"
 import { renderMessages } from "./history-text.js"
 import type { ParkedToolCall, ToolServerRegistration } from "./mcp-server.js"
 import { GOOGLE_ANTIGRAVITY_LABEL } from "./names.js"
@@ -122,6 +124,9 @@ interface Session {
   modelRequest: boolean
   /** The gate refused a step of the session while the open request ran. */
   refused: number
+  /** The kinds of tool result that the bridge delivered to the session, which agy then holds in every later model
+   *  request. */
+  readonly delivered: { results: boolean; errors: boolean }
   /** The session's primer: whether its step reached the gate, and whether the model answered it. */
   primer: { canary: boolean; modelFrames: number } | undefined
   /** The events of the last call the session revealed, for a request whose history does not hold it yet. */
@@ -137,6 +142,7 @@ interface SessionRef {
 /** What one request did, filled in as it runs, for the transport record that ends it, also when it fails. */
 interface RequestRecord {
   missingTools: readonly string[]
+  sharedTools: readonly string[]
   /** The session to which the request released work, and the request's events on it. */
   released?: { readonly target: Session; readonly feed: Feed }
 }
@@ -151,6 +157,17 @@ function isModelFrame(update: AcpSessionUpdate): boolean {
 
 function text(value: string): readonly AcpTextBlock[] {
   return [{ type: "text", text: value }]
+}
+
+/** An ACP request of the engine, whose failure the walk reads: a connection that ended with the engine, such as a
+ *  process that died during `session/new`, `session/set_config_option`, or a prompt, fails as a stopped engine, cut
+ *  after the first model frame of the released request's `stream` when it had one. Every engine request of the bridge
+ *  goes through it. */
+function engineRequest<T>(request: Promise<T>, stream?: RequestStream): Promise<T> {
+  return request.catch((error: unknown) => {
+    if (!(error instanceof AcpConnectionClosed)) throw error
+    throw stream === undefined ? engineStoppedFailure(error.close, false) : stream.connectionEnded(error.close)
+  })
 }
 
 function gateNotReached(processId: string, sessionId: string, phase: "probe" | "session", modelFrames: number): RouteUnavailableError {
@@ -177,15 +194,15 @@ function probeGate(serving: BridgeServing, config: BridgeConfig): Promise<void> 
     try {
       const { engine, gate } = prober
       let modelFrames = 0
-      const opened = await engine.openSession({
+      const opened = await engineRequest(engine.openSession({
         onUpdate: (update) => { if (isModelFrame(update)) modelFrames += 1 },
         onToolCall: () => Promise.resolve(CANCELLED_RESULT),
-      })
+      }))
       let canary = false
       const stop = gate.onEvent((event) => { if (event.sessionId === opened.sessionId && event.kind === "canary-refused") canary = true })
       try {
         gate.expectCanary(opened.sessionId)
-        await engine.prompt(opened.sessionId, text(PRIMER_TEXT))
+        await engineRequest(engine.prompt(opened.sessionId, text(PRIMER_TEXT)))
         config.audit.hidden("title:gate-probe")
       } finally {
         stop()
@@ -350,7 +367,7 @@ export function createBridge(config: BridgeConfig): Bridge {
   /** Sends `blocks` as the session's next prompt, whose end settles the open request. */
   const sendPrompt = (target: Session, blocks: readonly AcpTextBlock[]): void => {
     target.prompting = true
-    void target.serving.engine.prompt(target.sessionId, blocks).then((result: AcpPromptResult) => {
+    void engineRequest(target.serving.engine.prompt(target.sessionId, blocks), target.feed?.stream).then((result: AcpPromptResult) => {
       target.prompting = false
       const feed = target.feed
       if (feed !== undefined && !feed.settled) {
@@ -374,12 +391,12 @@ export function createBridge(config: BridgeConfig): Bridge {
   const select = async (target: Session, model: string, effort: ReasoningEffort | undefined): Promise<void> => {
     const { engine } = target.serving
     if (optionValue(target.config, "model") !== model) {
-      target.config = (await engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "model", value: model })).configOptions
+      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "model", value: model }))).configOptions
     }
     // A family offers only some thought levels; an effort it does not list leaves the family's default.
     const levels = target.config.find((option) => option.id === "thought_level")?.options.map((level) => level.value) ?? []
     if (effort !== undefined && levels.includes(effort) && optionValue(target.config, "thought_level") !== effort) {
-      target.config = (await engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "thought_level", value: effort })).configOptions
+      target.config = (await engineRequest(engine.configure("session/set_config_option", { sessionId: target.sessionId, configId: "thought_level", value: effort }))).configOptions
     }
   }
 
@@ -387,16 +404,16 @@ export function createBridge(config: BridgeConfig): Bridge {
   const open = async (serving: BridgeServing, plan: Extract<RequestPlan, { kind: "rotate" }>, request: BridgeRequest): Promise<Session> => {
     // agy sends nothing for a session before `session/new` returns its id, so the handlers find the session made below.
     const opening: SessionRef = {}
-    const opened = await serving.engine.openSession({
+    const opened = await engineRequest(serving.engine.openSession({
       append: plan.append,
       onUpdate: (update) => { if (opening.current !== undefined) onUpdate(opening.current, update) },
       onToolCall: (call, signal) => opening.current === undefined
         ? Promise.reject(new Error("the session is not open yet"))
         : onToolCall(opening.current, call, signal),
-    })
+    }))
     const target: Session = {
       serving, sessionId: opened.sessionId, appendBytes: Buffer.byteLength(plan.append, "utf8"), config: opened.configOptions, view: plan.view,
-      prompting: false, park: undefined, feed: undefined, pending: [], release: undefined, admitted: false, modelRequest: false, refused: 0,
+      prompting: false, park: undefined, feed: undefined, pending: [], release: undefined, admitted: false, modelRequest: false, refused: 0, delivered: { results: false, errors: false },
       primer: { canary: false, modelFrames: 0 }, lastCall: [],
       unsubscribe: serving.gate.onEvent((event) => { onGate(target, event) }),
     }
@@ -404,7 +421,7 @@ export function createBridge(config: BridgeConfig): Bridge {
     try {
       await select(target, request.model, request.effort)
       serving.gate.expectCanary(target.sessionId)
-      await serving.engine.prompt(target.sessionId, text(PRIMER_TEXT))
+      await engineRequest(serving.engine.prompt(target.sessionId, text(PRIMER_TEXT)))
       config.audit.hidden("title:new-session")
       const primer = target.primer
       target.primer = undefined
@@ -425,7 +442,9 @@ export function createBridge(config: BridgeConfig): Bridge {
   async function* serve(request: BridgeRequest, record: RequestRecord): AsyncGenerator<ProviderStreamEvent> {
     if (closed) throw new LlmStreamError(`The ${GOOGLE_ANTIGRAVITY_LABEL} bridge closed`, "transient")
     const serving = await config.serving(request.tools)
-    record.missingTools = request.tools.map((tool) => tool.name).filter((name) => !serving.engine.toolNames.has(name))
+    const granted = new Set(request.tools.map((tool) => tool.name))
+    record.missingTools = [...granted].filter((name) => !serving.engine.toolNames.has(name))
+    record.sharedTools = [...serving.engine.toolNames].filter((name) => !granted.has(name))
     await probeGate(serving, config)
     const limits = config.limits(request.model)
     const planned = { processId: serving.engine.processId, systemPrompt: request.systemPrompt, messages: request.messages, model: request.model, estimatedTokens: request.estimatedTokens, ...request.effort === undefined ? {} : { effort: request.effort } }
@@ -489,6 +508,8 @@ export function createBridge(config: BridgeConfig): Bridge {
         if (park === undefined) throw new LlmStreamError(`The ${GOOGLE_ANTIGRAVITY_LABEL} engine no longer waits for the call's result`, "transient")
         const projected = await request.projectResult(plan.result.content, { toolName: park.call.name, toolUseId: plan.result.toolUseId })
         const notices = renderMessages(plan.notices)
+        if (plan.result.isError === true) target.delivered.errors = true
+        else target.delivered.results = true
         park.answer({ content: resultContent(notices.length === 0 ? projected : [...projected, { type: "text", text: notices }]), ...plan.result.isError === true ? { isError: true } : {} })
       } else {
         sendPrompt(target, text(plan.kind === "push" ? plan.text : plan.prompt.text))
@@ -521,10 +542,11 @@ export function createBridge(config: BridgeConfig): Bridge {
   const finish = (record: RequestRecord): ProviderStreamEvent => {
     const released = record.released
     const release: AuditedRelease = {
-      ...released?.target.admitted === true ? { step: { appendBytes: released.target.appendBytes, synthetic: released.target.view.synthetic } } : {},
+      ...released?.target.admitted === true ? { step: { appendBytes: released.target.appendBytes, synthetic: released.target.view.synthetic, delivered: { ...released.target.delivered } } } : {},
       refusedSteps: released?.target.refused ?? 0,
       usageReported: released?.feed.stream.usageReported ?? false,
       missingTools: record.missingTools,
+      sharedTools: record.sharedTools,
     }
     return { kind: "transport_context", context: config.audit.record(release) }
   }
@@ -536,7 +558,7 @@ export function createBridge(config: BridgeConfig): Bridge {
       const before = queue
       queue = turn
       await before
-      const record: RequestRecord = { missingTools: [] }
+      const record: RequestRecord = { missingTools: [], sharedTools: [] }
       try {
         yield* serve(request, record)
       } catch (error) {
