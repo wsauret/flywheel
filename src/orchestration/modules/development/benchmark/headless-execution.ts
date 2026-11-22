@@ -422,10 +422,11 @@ async function runCaptured(scope: LauncherScope, command: readonly string[], lau
   const child = await scope.spawnOwned(command, launch);
   child.stdin?.end();
   const end = () => { void child.terminate().catch(() => {}); };
-  const pipes = await Promise.allSettled([capturePipe(child.stdout, outputs[0][1], undefined, end), capturePipe(child.stderr, outputs[1][1], undefined, end)]);
-  for (const [index, captured] of pipes.entries()) {
-    if (captured.status === "fulfilled") artifacts[outputs[index]![0]] = captured.value;
-  }
+  const [[stdoutName, stdoutPath], [stderrName, stderrPath]] = outputs;
+  const pipes = await Promise.allSettled([capturePipe(child.stdout, stdoutPath, undefined, end), capturePipe(child.stderr, stderrPath, undefined, end)]);
+  const [stdout, stderr] = pipes;
+  if (stdout.status === "fulfilled") artifacts[stdoutName] = stdout.value;
+  if (stderr.status === "fulfilled") artifacts[stderrName] = stderr.value;
   const exit = await child.exited;
   return exit.code === 0 && exit.ownership === "surrendered" && pipes.every((pipe) => pipe.status === "fulfilled");
 }
