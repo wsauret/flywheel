@@ -417,6 +417,73 @@ describe("catalog auth eligibility", () => {
     await service.dispose();
   });
 
+  test("a provider with first-party-only membership admits no model while its listing is empty", async () => {
+    const admission = async (membership: "first-party" | undefined) => {
+      const fixture = await cachedCatalogFixture(`first-party-membership-${membership ?? "control"}`);
+      const registry = accessProviderRegistry(fixture.modules);
+      const definitions = registry.selection.definitions;
+      const account = accessProviderAccountKey({ kind: "subscription", providerId: "chatgpt", instanceId: "account" });
+      const listing = createModelListingClient({
+        authDir: fixture.directory,
+        classifySlot: fixture.slots,
+        captureSubscriptions: captureFixtureSubscriptions(fixture, definitions),
+        providers: chatgptCatalogSelection(definitions.map((definition) => definition.id === "chatgpt" && definition.dynamicCatalog !== undefined && membership !== undefined
+          ? { ...definition, dynamicCatalog: { ...definition.dynamicCatalog, membership } }
+          : definition), async () => []),
+        modelsClient: eligibilityModelsClient,
+      });
+      const service = createProviderModelPreferenceService({ ...unusedProviderModelWrites(), displayName: registry.selection.displayName, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" });
+      let refreshSettled = false;
+      let refresh: Promise<unknown> | undefined;
+      const refreshStarted = Promise.withResolvers<void>();
+      const refreshedPublished = Promise.withResolvers<void>();
+      const prepare = createEligibilityPreparation({
+        allowTrainingRoutes: () => false,
+        userDataRoot: fixture.userDataRoot,
+        resolveKey: async () => undefined,
+        moduleSelection: () => fixture.modules, observeAuth: diskAuthObservation(() => fixture.modules),
+        prepare: service.prepare,
+        publish: (state) => {
+          service.publish(state);
+          if (refreshSettled) refreshedPublished.resolve();
+        },
+        current: service.state,
+        inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
+        resolveAuth: fixture.resolve,
+        resolveCatalog: ({ auth, discoveryMode, signal }) => {
+          const operation = resolveProviderModelCatalog({ userDataRoot: fixture.userDataRoot, authDirectory: () => fixture.directory, moduleSelection: () => fixture.modules, auth, discoveryMode, signal, listingClient: listing });
+          if (discoveryMode !== "refresh") return operation;
+          const settled = operation.then((resolved) => { refreshSettled = true; return resolved; });
+          refresh = settled;
+          refreshStarted.resolve();
+          return settled;
+        },
+      });
+      try {
+        await prepare({ id: fixture.profileId, directory: fixture.directory });
+        await refreshStarted.promise;
+        await refresh;
+        await Promise.race([refreshedPublished.promise, Bun.sleep(20).then(() => { throw new Error("the refreshed catalog was not published"); })]);
+        const state = service.state(fixture.profileId);
+        if (state === undefined) throw new Error("eligibility was not published");
+        const decision = providerModelEligibilityDecision({ profileId: fixture.profileId, revision: state.revision, catalogs: state.catalogs, enabledCandidates: state.enabledCandidates });
+        const plan = registry.selection.plan("gpt-6.1-sol", captureAccountConnection(await fixture.resolve(), fixture.directory, registry, fixture.profileId), decision.worker);
+        return { state, plan, account };
+      } finally {
+        await prepare.dispose();
+        await service.dispose();
+      }
+    };
+
+    const control = await admission(undefined);
+    expect(control.plan.kind).toBe("admitted");
+    const firstParty = await admission("first-party");
+    expect(firstParty.state.accountCatalogs.get(firstParty.account)?.catalog.size ?? 0).toBe(0);
+    expect(firstParty.state.inventoryCandidates.get(firstParty.account)?.inventoryOfferings?.size ?? 0).toBe(0);
+    expect(firstParty.state.picker?.has("gpt-6.1-sol") ?? false).toBe(false);
+    expect(firstParty.plan.kind).not.toBe("admitted");
+  });
+
   test("ChatGPT login publishes bundled exact-candidate eligibility after discovery failure", async () => {
     const userDataRoot = temporaryDirectory("flywheel-phase-7-");
     const profileId = "phase-7";

@@ -89,6 +89,25 @@ describe("model catalog resolution", () => {
       .toEqual({ kind: "catalog", provenance: "first-party-cached", liveOutcome: "valid", rows: [live, overlap] });
   });
 
+  test("first-party membership lets models.dev enrich listed rows but never stand as the catalog", () => {
+    const firstParty: ModelCatalogContribution = { ...contribution, membership: "first-party" };
+    const fallback = [
+      { modelId: "listed", offerings: [{ wireModelId: "listed", metadata: { source: "models.dev", context: 1 }, dataUse: "standard" as const }] },
+      { modelId: "models-dev-only", offerings: [{ wireModelId: "models-dev-only", metadata: null, dataUse: "standard" as const }] },
+    ];
+    const resolveFirstParty = (live: CatalogDiscovery) => resolveModelCatalog({ authenticated: true, live, canonicalFallback: fallback, fallbackProvenance: "bundled", contribution: firstParty });
+
+    expect(resolveFirstParty({ kind: "failed", reason: "transport" })).toEqual({ kind: "unavailable", reason: "discovery-failed", discoveryReason: "transport" });
+    expect(resolveFirstParty({ kind: "rows", rows: [] })).toEqual({ kind: "unavailable", reason: "empty" });
+    expect(resolveFirstParty({ kind: "rows", rows: [row("")] })).toEqual({ kind: "unavailable", reason: "unusable" });
+    expect(resolveFirstParty({ kind: "rows", rows: [{ id: "listed", endpoint: "provider" }] })).toEqual({
+      kind: "catalog",
+      provenance: "first-party",
+      liveOutcome: "valid",
+      rows: [{ modelId: "listed", offerings: [{ wireModelId: "listed", metadata: { source: "models.dev", context: 1, endpoint: "provider" }, dataUse: "standard" }] }],
+    });
+  });
+
   test("keeps provider model metadata authoritative over models.dev metadata", () => {
     const provider = providerModelInfo({
       provider: "openai",

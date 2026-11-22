@@ -151,6 +151,83 @@ test("cached-first waits for first-party discovery before admitting a models.dev
   expect(settled?.outcome).toMatchObject({ kind: "catalog", provenance: "models-dev-bundled", liveOutcome: "discovery-failed" });
 });
 
+/** A provider that states its own lineup: models.dev only describes the models it lists. */
+function firstPartyProvider(fetch: NonNullable<AccessProviderDefinition["dynamicCatalog"]>["fetch"]): AccessProviderDefinition {
+  const definition = delayedProvider(fetch);
+  if (definition.dynamicCatalog === undefined) throw new Error("the fixture provider has a catalog");
+  return { ...definition, dynamicCatalog: { ...definition.dynamicCatalog, membership: "first-party" } };
+}
+
+/** models.dev rows for the first-party provider: one it lists, one it never lists. */
+const firstPartyModelsClient = {
+  refresh: async () => {},
+  getTokenizerIdentity: () => undefined,
+  getProviderCatalog: () => ["listed-model", "models-dev-only"].map((wireModelId) => ({
+    providerId: "openai",
+    providerName: "OpenAI",
+    wireModelId,
+    metadata: modelInfo("openai", wireModelId, "openai", 3, 9, "2026-01-01"),
+    provenance: "bundled" as const,
+    canonical: { providerId: "openai", modelId: wireModelId },
+    transport: { npm: "@ai-sdk/openai" },
+  })),
+};
+
+const FIRST_PARTY_AUTH: AuthContext = {
+  ...AUTH_NONE,
+  providers: authProviders({ base: AUTH_NONE.providers, apiKeys: { delayed: "key" } }),
+  credentialLineages: { delayed: LINEAGE },
+};
+const FIRST_PARTY_KEY = accessProviderAccountKey({ kind: "singleton", providerId: "delayed" });
+
+test("a first-party-only provider shows no models.dev row while its listing fails or is pending", async () => {
+  const client = createModelListingClient({
+    classifySlot,
+    authDir: AUTH_DIR,
+    oauthPersistence: "access-only",
+    providers: createAccessProviderSelection([firstPartyProvider(async ({ credential }) => ({ discovery: { kind: "failed", reason: "transport" }, credential }))]),
+    modelsClient: firstPartyModelsClient,
+  });
+
+  const pending = await client.getModelCatalogs(FIRST_PARTY_AUTH, { mode: "cached-first" });
+  expect(pending.candidates.get(FIRST_PARTY_KEY)).toMatchObject({ models: null, outcome: { kind: "unavailable", reason: "discovery-pending" } });
+  expect(pending.candidates.get(FIRST_PARTY_KEY)?.visibleModels?.size).toBe(0);
+  for (const mode of ["fresh", "refresh"] as const) {
+    const failed = await client.getModelCatalogs(FIRST_PARTY_AUTH, { mode });
+    expect(failed.providers.get("delayed")).toBeUndefined();
+    expect(failed.candidates.get(FIRST_PARTY_KEY)).toMatchObject({ models: null, outcome: { kind: "unavailable", reason: "discovery-failed", discoveryReason: "transport" } });
+    expect(failed.candidates.get(FIRST_PARTY_KEY)?.visibleModels?.size).toBe(0);
+  }
+});
+
+test("a first-party-only listing, fresh or saved, keeps only its own rows and takes models.dev metadata for them", async () => {
+  const root = temporaryDirectory("flywheel-first-party-membership-");
+  const access = await new AuthProfileStore(root).create("default");
+  const authDir = access.authDirectory;
+  seedDelayedCredential(authDir);
+  access.close();
+  const fresh = createModelListingClient({
+    classifySlot,
+    authDir,
+    providers: createAccessProviderSelection([firstPartyProvider(async ({ credential }) => ({ discovery: { kind: "rows", rows: [{ id: "listed-model" }] }, credential }))]),
+    modelsClient: firstPartyModelsClient,
+  });
+  const listed = (await fresh.getModelCatalogs(FIRST_PARTY_AUTH, { mode: "fresh" })).candidates.get(FIRST_PARTY_KEY);
+  expect(listed?.models?.keys().toArray()).toEqual(["listed-model"]);
+  expect(listed?.visibleModels?.keys().toArray()).toEqual(["listed-model"]);
+  expect(listed?.models?.get("listed-model")?.[0]?.resolvedMetadata).toMatchObject({ cost: { input: 3, output: 9 } });
+
+  const saved = createModelListingClient({
+    classifySlot,
+    authDir,
+    providers: createAccessProviderSelection([firstPartyProvider(async () => { throw new Error("cached-first must not fetch"); })]),
+    modelsClient: firstPartyModelsClient,
+  });
+  const cached = (await saved.getModelCatalogs(FIRST_PARTY_AUTH, { mode: "cached-first" })).candidates.get(FIRST_PARTY_KEY);
+  expect(cached?.outcome).toMatchObject({ kind: "catalog", provenance: "first-party-cached" });
+  expect(cached?.visibleModels?.keys().toArray()).toEqual(["listed-model"]);
+});
+
 test("discovery reads the held models.dev catalog and never starts a metadata refresh when first-party discovery fails", async () => {
   let refreshes = 0;
   const client = createModelListingClient({

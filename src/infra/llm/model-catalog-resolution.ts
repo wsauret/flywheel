@@ -220,6 +220,17 @@ export interface ModelCatalogContribution {
    *  wire, the free wire joins it as a free offering, which only an account that prefers free routes uses. Otherwise
    *  the free wire is the model's own route. */
   readonly isFreeWire?: (wireModelId: string) => boolean;
+  /** `first-party` is for a provider whose own listing is its whole lineup, such as an engine that states the models
+   *  it serves. models.dev rows then only describe the models that listing names and never stand as the catalog, so the
+   *  provider shows no model when it has neither a current listing nor valid saved first-party rows. Absent, models.dev
+   *  rows stand in for a listing that fails. */
+  readonly membership?: "first-party";
+}
+
+/** The models.dev rows that may stand as a provider's catalog when its own listing has none. Enrichment of listed
+ *  rows always reads every models.dev row. */
+export function membershipFallback(contribution: ModelCatalogContribution, rows: readonly CatalogCanonicalRow[]): readonly CatalogCanonicalRow[] {
+  return contribution.membership === "first-party" ? [] : rows;
 }
 
 export type NormalizedCatalog =
@@ -420,13 +431,14 @@ export function resolveModelCatalog(options: ResolveModelCatalogOptions): Resolv
       rows: bounded.kind === "valid" ? bounded.rows : live.rows,
     };
   }
-  if (fallback?.kind === "valid" && fallback.rows.length > 0) {
+  const members = fallback?.kind === "valid" ? membershipFallback(options.contribution, fallback.rows) : [];
+  if (members.length > 0) {
     const provenance = options.fallbackProvenance === "live"
       ? "models-dev-live"
       : options.fallbackProvenance === "last-known-good"
         ? "models-dev-archive"
         : "models-dev-bundled";
-    return { kind: "catalog", provenance, liveOutcome, rows: fallback.rows };
+    return { kind: "catalog", provenance, liveOutcome, rows: members };
   }
 
   if (liveOutcome === "discovery-failed") {
