@@ -200,7 +200,7 @@ An agent uses the current effective model, reasoning effort, and provider option
 
 ## PI-MODEL-062: A switch across providers continues the conversation
 
-A switch to a model of another provider, or between the Claude engine and another route, continues the same conversation without a warning, also while tool calls are pending. The agent reads its earlier replies, progress updates, and tool work as its own. It never reads the earlier model's private reasoning, so that reasoning cannot appear as something the agent said.
+A switch to a model of another provider, or between the Claude engine and another route, continues the same conversation without a warning, also while tool calls are pending. The agent reads its earlier replies, progress updates, and tool work as its own. After a switch to Google Antigravity, which accepts no structured history, it reads the earlier work as text. It never reads the earlier model's private reasoning, so that reasoning cannot appear as something the agent said.
 
 ## PI-MODEL-022: Prefilled SuperGrok sign-in
 
@@ -239,6 +239,10 @@ Every surface that names the provider, such as Authentication, Settings, Doctor,
 ## PI-MODEL-071: Flywheel's Claude engine and the person's own install never interact
 
 The provider works the same whether or not the person has a separate install of the Claude engine, and it never uses that install. Flywheel's engine reads and writes nothing that belongs to the person's install or to the project's Claude configuration, such as settings, logins, hooks, instruction files, caches, or logs. Neither engine sees or signals the other's processes, and the person's install finds nothing of Flywheel's engine. The machine's Claude policy, which an administrator sets for every Claude install on the machine, applies to both.
+
+## PI-MODEL-094: Gemini through an Antigravity login
+
+The Google Antigravity provider serves Gemini models on a person's Antigravity plan through the Antigravity engine that ships with Flywheel. The engine runs and keeps each Google sign-in, and Flywheel never reads its token. The engine never uses the person's own Antigravity install or settings. A request never moves from one Antigravity account to another. When an Antigravity account cannot serve, the request moves to another provider.
 
 ## PI-MODEL-072: A Claude login shows its sign-in page, its account, and its state
 

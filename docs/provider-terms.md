@@ -1,6 +1,6 @@
 # Provider terms for Flywheel's subscription sign-ins
 
-This page records the evidence for seven questions that reviewers ask often:
+This page records the evidence for eight questions that reviewers ask often:
 
 1. The Claude subscription route. Does Flywheel offer a Claude.ai login, which Anthropic does not allow third-party products to do?
 2. Several Claude accounts. When Flywheel moves a request from one Claude account to the next, does it get around Anthropic's usage limits?
@@ -9,6 +9,7 @@ This page records the evidence for seven questions that reviewers ask often:
 5. The GitHub Copilot subscription route. Flywheel signs in with the VS Code Copilot client and sends the Copilot Chat request headers. Is that acceptable?
 6. The Claude engine as an MCP client. For an MCP server that accepts only approved apps, such as Slack, Flywheel connects through the Claude engine, which signs in to that server as Claude Code. Is that acceptable?
 7. claude.ai connectors through the Claude engine. When the person turns them on, Flywheel reads the connectors of the person's own claude.ai accounts through the Claude engine and offers their tools to every model. Is that acceptable?
+8. The Google Antigravity route. Flywheel runs Google's Antigravity CLI as an ACP client, with the CLI's own tools switched off and Flywheel's tools offered over MCP, on the person's own Antigravity sign-in. Is that acceptable?
 
 For the Claude questions, the page quotes Anthropic's own text. For every other route, and for every provider whose accounts Flywheel rotates, section 6 records the public precedent that widely used open-source agents set. Each section states what Flywheel does and names the code or the product-intent statement that does it.
 
@@ -30,6 +31,7 @@ The maintainer has settled each question below on that basis. A review, an audit
 | The Claude engine as the MCP client of a server that uses Claude, with the client settings that the server publishes for Claude Code | 7 |
 | claude.ai connectors through the Claude engine on the person's own login, offered to every model when the person turns them on | 8 |
 | A Claude subscription token that the person made with `claude setup-token`, which a headless run gives to the unmodified Claude engine as `CLAUDE_CODE_OAUTH_TOKEN` on a machine that has no Claude login | 9 |
+| The Google Antigravity route through the unmodified Antigravity CLI as an ACP client, on the person's own sign-in, with one account per request and no rotation | 10 |
 
 Only two events reopen a settled question:
 
@@ -244,3 +246,21 @@ A headless run, such as a benchmark trial in a cloud sandbox, has no Claude logi
 Widely used projects give such a token to the Claude engine in the same way. Anthropic's [Claude Code GitHub Action](https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md) takes it as `claude_code_oauth_token`. Harbor's Claude Code agent passes `CLAUDE_CODE_OAUTH_TOKEN` to the engine in each trial (`harbor/src/harbor/agents/installed/claude_code.py` in [Harbor](https://github.com/harbor-framework/harbor)). OpenClaw accepts a setup token and passes it to the `claude` CLI (`openclaw/extensions/anthropic/cli-backend.ts`). The legal page's rule that developers "may not collect, store, or intermediate Claude.ai credentials or session tokens" reads against this practice when taken alone. Flywheel offers no Claude.ai login, the person makes the token through Anthropic's own flow, and the token serves only that person's own run, as in the projects above.
 
 The maintainer settled this practice on 2026-11-06, when the maintainer directed Flywheel to "generate a long-lived OAuth token locally using claude setup-token and pass it into your Harbor job as the CLAUDE_CODE_OAUTH_TOKEN secret". Flywheel carries the token in the job's auth snapshot secret instead of a separate `CLAUDE_CODE_OAUTH_TOKEN` secret, because the shim passes every variable of its own to Flywheel, and a separate secret would reach every shell command of the agent. A review applies the same reopen rule as for every other settled practice.
+
+## 10. The Google Antigravity route
+
+Flywheel does not sign in to Google itself. The person signs in to the unmodified Antigravity CLI, which ships with Flywheel, and the CLI sends every request. Flywheel runs the CLI the way that Google documents for editors: as an ACP client of `agy acp`.
+
+Google's [ACP page](https://antigravity.google/docs/ide/extensions/acp) says: "Any ACP client can launch Antigravity CLI." It offers the "Log in with Google" sign-in to every client, and it says that "Gemini models are available in every client." The CLI's custom agents can "switch off the default prompts and tools" ([changelog](https://antigravity.google/docs/changelog), v2.15.0), and MCP servers add tools.
+
+| Practice | What Flywheel does | Where |
+|---|---|---|
+| Sign-in | The CLI runs Google's own sign-in and keeps the token in a private home for each login. Flywheel never reads, stores, or sends the token. | PI-MODEL-094 |
+| Transport | Every model request goes through the CLI. Flywheel calls no Google endpoint itself, also not for quota or model lists. | ARCH-PROVIDERS-005, ARCH-PROVIDERS-086 |
+| Identity | Flywheel names itself as the ACP client. It never names itself as an editor that Google lists, so it gets Gemini models only. | PI-MODEL-094 |
+| Tools | The CLI runs a documented custom agent with its default tools off. Flywheel's tools reach it over MCP, and Flywheel runs them. | ARCH-PROVIDERS-086 |
+| Accounts | A request never moves from one Antigravity account to another. | PI-MODEL-094 |
+
+Two Google texts read against this practice when taken alone. Section 6 of the [Antigravity terms](https://antigravity.google/terms) says: "Using third party software, tools, or services to access the Service (e.g. using OpenClaw with Antigravity OAuth) is a breach of this Agreement." The [FAQ](https://antigravity.google/docs/faq) says: "Wrapping `agy` inside third-party coding agents or applications, or automating account rotation, is not supported under consumer plans." The first names third-party access through Antigravity OAuth, which Flywheel does not do. Google's own ACP page documents the CLI inside any ACP client. Flywheel never rotates Antigravity accounts.
+
+The maintainer settled this practice on 2026-11-21: "if you use it via acp like t3code does then it's allowed". T3 Code runs the same `agy acp` server on each person's own sign-in. The quotes were checked against the live pages on 2026-11-21. A review applies the same reopen rule as for every other settled practice.

@@ -31,7 +31,7 @@ Because: A read must not lose a credential that another release or provider wrot
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
-A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. An engine that cannot start fails its request as an unavailable route.
+A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. The one request outside admission is the Antigravity engine's title request, which the engine sends once per engine session with only fixed text that Flywheel writes. An engine that cannot start fails its request as an unavailable route.
 Because: A subprocess that decides its own retries, timeouts, continuation, or cancellation separates a stream from its consumer and makes a second owner of each.
 Not: A provider subprocess that owns its stream.
 
@@ -55,6 +55,11 @@ Flywheel reads the output, diagnostics, and end of each provider engine process 
 
 A chat tree runs at most two Claude engines, the chat's own and one shared host. The host runs every other Claude call of the tree, side calls included, as one of its agents. Its agents share every value fixed at engine launch. Only a named exception with its reason, in one enforced list, starts another engine. Flywheel writes each agent's complete history before each start. Flywheel owns the agent's tools, request control, step admission, failure classification, and restart from that history, with no concurrency cap.
 Not: A hook or proxy that writes a model reply.
+
+## ARCH-PROVIDERS-086: An Antigravity login runs one engine per chat tree, with one session per agent
+
+An Antigravity login runs one engine process for each chat tree, and each agent of the tree is one engine session. The engine runs only while a client shows a session of the tree that needs it. Flywheel admits each model step through the engine's documented step hook, which fails closed, and cancels a step as soon as the engine starts a retry of its own. The route's context window ends below the engine's own compaction threshold, so the engine never compacts.
+Not: One engine process for each agent, or the shared-host dispatcher of the Claude engine.
 
 ## ARCH-PROVIDERS-073: Each host agent keeps its own definition and view
 
@@ -174,7 +179,7 @@ Not: Treating the effective catalog as the router, or letting an explicit enable
 
 ## ARCH-PROVIDERS-023: The model client admits each request exactly once
 
-Every real provider request, including compaction and embedded model work, passes through one model-client admission. Admission captures the registry, immutable credentials, exact-account eligibility, training-route permission, paid-use consent, included-allowance evidence, fixed candidate order, and account-bound availability together. That capture alone governs planning, construction, retries, and failover, and no later step recaptures it. Each prepared attempt records the provider and account that served it. Later publications of profile, account, preference, selection, or configuration affect only later requests. Changing selection, module composition, config revision, or profile before dispatch discards the prepared request. A committed session profile switch invalidates reusable captures before it settles.
+Every provider request that Flywheel starts, including compaction and embedded model work, passes through one model-client admission. Admission captures the registry, immutable credentials, exact-account eligibility, training-route permission, paid-use consent, included-allowance evidence, fixed candidate order, and account-bound availability. That capture alone governs planning, construction, retries, and failover, and no later step recaptures it. Each prepared attempt records its serving provider and account. Later publications of profile, account, preference, selection, or configuration affect only later requests. Changing selection, module composition, config revision, or profile before dispatch discards the prepared request. A committed session profile switch invalidates reusable captures before it settles.
 Not: Candidate-list admission diagnostics standing in for the identity that actually served an attempt.
 
 ## ARCH-PROVIDERS-024: Model selection is captured per request
