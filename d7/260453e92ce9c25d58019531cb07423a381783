@@ -1,0 +1,72 @@
+bench/harbor/configs/fh-deepseek-1017-max.toml
+  h_4b47e9e4a8b456 53
+bench/harbor/configs/haiku-high-agent-types.toml
+  h_4b47e9e4a8b456 31
+bench/harbor/configs/luna-high-agent-types.toml
+  h_4b47e9e4a8b456 29
+bench/harbor/configs/tb-board-deepseek-high.toml
+  h_4b47e9e4a8b456 36
+bench/harbor/configs/tb-board-deepseek-low.toml
+  h_4b47e9e4a8b456 36
+bench/harbor/configs/tb-luna-high-agent-types.toml
+  h_4b47e9e4a8b456 29
+bench/harbor/configs/tb-luna-high-shipped.toml
+  h_4b47e9e4a8b456 34
+bench/harbor/configs/tb-mini-claude.toml
+  h_4b47e9e4a8b456 31
+bench/harbor/configs/tb-mini-openai.toml
+  h_4b47e9e4a8b456 28
+src/infra/private-temporary-root.ts
+  h_4b47e9e4a8b456 8-9,16
+src/orchestration/credential-provider-modules.ts
+  h_4b47e9e4a8b456 16,29
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 334
+src/orchestration/modules/provider-google-antigravity/client.ts
+  h_4b47e9e4a8b456 15,24-25,30,140-168
+src/orchestration/modules/provider-google-antigravity/engine-process.ts
+  h_4b47e9e4a8b456 2,133-163,169,176,248-249
+src/orchestration/modules/provider-google-antigravity/engine-runtime.ts
+  h_4b47e9e4a8b456 1-138
+src/orchestration/modules/provider-google-antigravity/login-gate.ts
+  h_4b47e9e4a8b456 1-32
+src/orchestration/modules/provider-google-antigravity/login.ts
+  h_4b47e9e4a8b456 14,170-171,290,303-304,359-364,366,369
+src/orchestration/modules/provider-google-antigravity/module.ts
+  h_4b47e9e4a8b456 1-6,8-15,17-122
+src/orchestration/modules/provider-google-antigravity/names.ts
+  h_4b47e9e4a8b456 3-10
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1262,1306-1312
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 24,119
+tests/unit/cli/cli-auth.test.ts
+  h_4b47e9e4a8b456 189,230-231,421-425
+tests/unit/cli/startup-imports.test.ts
+  h_4b47e9e4a8b456 12-14,21-23
+tests/unit/infra/module-regression.test.ts
+  h_4b47e9e4a8b456 21,47
+tests/unit/orchestration/agent-runtime/llm/provider-chain-preflight.test.ts
+  h_4b47e9e4a8b456 95
+tests/unit/orchestration/capability-worker-composition.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/module-complete-off.test.ts
+  h_4b47e9e4a8b456 92
+tests/unit/orchestration/modules/provider-google-antigravity/engine-process.test.ts
+  h_4b47e9e4a8b456 2,29-47
+tests/unit/orchestration/modules/provider-google-antigravity/login.test.ts
+  h_4b47e9e4a8b456 2,12,205-226
+tests/unit/orchestration/modules/provider-google-antigravity/module.test.ts
+  h_4b47e9e4a8b456 1-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d7260453e92ce9c25d58019531cb07423a381783",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
