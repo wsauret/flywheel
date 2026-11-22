@@ -1,0 +1,32 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 142,249
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 15
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 439-453,455
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 24,278-320,340,394
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 62,91-94,544-550,620-628,630-633
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 43-45,738-743
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 170
+tests/unit/orchestration/agent-runtime/llm/client-factory-single-account.test.ts
+  h_4b47e9e4a8b456 1-154
+tests/unit/orchestration/agent-runtime/llm/failover-client-auth.test.ts
+  h_4b47e9e4a8b456 108-129
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 40,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "530c000b7beeb9c257f65dbe5b39ff6c3ff3d23d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
