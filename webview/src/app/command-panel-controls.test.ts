@@ -27,12 +27,12 @@ if (!output) throw new Error("Command panel fixture build produced no JavaScript
 const fixture: typeof import("./command-panel-controls-fixture.js") =
   await importBuiltModule(output)
 
-test("a running child's panel offers Interrupt and Stop, and no Pause", async () => {
+test("a running child's panel offers Interrupt and Cancel, and no Pause", async () => {
   const mounted = await fixture.mountChildCommandPanel()
   try {
     const labels = mounted.labels()
     assert.ok(labels.includes("Interrupt"), labels.join(", "))
-    assert.ok(labels.includes("Stop"), labels.join(", "))
+    assert.ok(labels.includes("Cancel"), labels.join(", "))
     assert.ok(!labels.some((label) => /pause/i.test(label)), labels.join(", "))
 
     const beforePress = mounted.dispatched.length
@@ -57,10 +57,10 @@ test("a child parked on its own background work still offers Interrupt", async (
   }
 })
 
-test("a child's Stop terminates the parent's tool call instead of interrupting the child", async () => {
+test("a child's Cancel terminates the parent's tool call instead of interrupting the child", async () => {
   const mounted = await fixture.mountChildCommandPanel()
   try {
-    await mounted.pick("Stop")
+    await mounted.pick("Cancel")
     assert.deepEqual(mounted.dispatched.at(-1), { type: "background.terminate", sessionId: "parent-chat", toolUseId: "tu-explorer" })
     assert.deepEqual(mounted.reports, [])
   } finally {
