@@ -58,7 +58,7 @@ test("the full-size card names the run as its inline card does, lists every phas
     // The run's one name is its record's, never the workflow session's own title.
     assert.match(mounted.text(), /^Back to chatMap Run/)
     assert.match(mounted.text(), /plan[\s\S]*draft[\s\S]*review/)
-    assert.deepEqual(mounted.labels(), ["Interrupt", "Stop"])
+    assert.deepEqual(mounted.labels(), ["Interrupt", "Cancel"])
     // The selection starts on the first phase that runs.
     assert.match(mounted.selected()[0] ?? "", /draft/)
     mounted.key("ArrowDown")
@@ -123,12 +123,12 @@ test("the full-size card's header counts the time the workflow worked, not the t
   try {
     assert.match(damaged.text(), /Interrupted · 51s/)
   } finally { damaged.dispose() }
-  // A stopped run has no runner to report active time, so the header reads
+  // A canceled run has no runner to report active time, so the header reads
   // the duration its row recorded.
-  const stopped = fixture.mountCardScreen(VIEW, { stoppedBy: "person", admittedActions: [], durationMs: 103_600 })
+  const canceled = fixture.mountCardScreen(VIEW, { stoppedBy: "person", admittedActions: [], durationMs: 103_600 })
   try {
-    assert.match(stopped.text(), /Stopped · 1m 43s/)
-  } finally { stopped.dispose() }
+    assert.match(canceled.text(), /Canceled · 1m 43s/)
+  } finally { canceled.dispose() }
 })
 
 test("the full-size card of saved progress that cannot be read keeps its header, its notice, and Restart in place of the plan", () => {
@@ -137,6 +137,6 @@ test("the full-size card of saved progress that cannot be read keeps its header,
     assert.match(damaged.text(), /Interrupted · 17s/)
     assert.match(damaged.text(), /This workflow's saved progress cannot run\. Restart runs it again from its recorded request\./)
     assert.match(damaged.text(), /This workflow's plan is unavailable\./)
-    assert.deepEqual(damaged.labels(), ["Restart", "Stop"])
+    assert.deepEqual(damaged.labels(), ["Restart", "Cancel"])
   } finally { damaged.dispose() }
 })
