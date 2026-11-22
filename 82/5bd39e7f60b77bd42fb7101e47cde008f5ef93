@@ -1,0 +1,32 @@
+src/orchestration/modules/provider-google-antigravity/bridge.ts
+  h_4b47e9e4a8b456 7,10,127-129,145,162-172,197,200,205,370,394,399,407,413,416,424,445-447,511-512,545,549,561
+src/orchestration/modules/provider-google-antigravity/transport-audit.ts
+  h_4b47e9e4a8b456 14-16,30-32,38-45,54-55,58,60-62,67,72-75,89
+tests/integration/orchestration/modules/provider-google-antigravity/_client.ts
+  h_4b47e9e4a8b456 1-150
+tests/integration/orchestration/modules/provider-google-antigravity/_engine.ts
+  h_4b47e9e4a8b456 8,10,12,16,29-30,40-41,45-84,86-88,97-98,105-108,113,118,123-124,137-143
+tests/integration/orchestration/modules/provider-google-antigravity/_fake-gemini.ts
+  h_4b47e9e4a8b456 11-15,46,68-75,91,96-97
+tests/integration/orchestration/modules/provider-google-antigravity/engine-conformance.test.ts
+  h_4b47e9e4a8b456 1-402
+tests/integration/orchestration/modules/provider-google-antigravity/engine-separation.test.ts
+  h_4b47e9e4a8b456 1-179
+tests/integration/orchestration/modules/provider-google-antigravity/engine-tree.test.ts
+  h_4b47e9e4a8b456 1-192
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 7,42,63
+tests/unit/orchestration/modules/provider-google-antigravity/bridge.test.ts
+  h_4b47e9e4a8b456 4,55-56,58,64-67,107,124,141-146,328-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "825bd39e7f60b77bd42fb7101e47cde008f5ef93",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
