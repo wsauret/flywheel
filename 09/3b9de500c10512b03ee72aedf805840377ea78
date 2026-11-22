@@ -1,0 +1,60 @@
+src/orchestration/modules/provider-google-antigravity/acp/connection.ts
+  h_4b47e9e4a8b456 1,107-110,112-116,149-166,172,255-260
+src/orchestration/modules/provider-google-antigravity/engine-demand.ts
+  h_4b47e9e4a8b456 1-100
+src/orchestration/modules/provider-google-antigravity/engine-process.ts
+  h_4b47e9e4a8b456 1-492
+src/orchestration/modules/provider-google-antigravity/engine-registry.ts
+  h_4b47e9e4a8b456 1-240
+src/orchestration/modules/provider-google-antigravity/live-engines.ts
+  h_4b47e9e4a8b456 1-17
+src/orchestration/modules/provider-google-antigravity/login-status.ts
+  h_4b47e9e4a8b456 9,243-244,246
+src/orchestration/modules/provider-google-antigravity/mcp-server.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/modules/provider-google-antigravity/private-home.ts
+  h_4b47e9e4a8b456 23-28
+src/orchestration/modules/provider-google-antigravity/retry-watch.ts
+  h_4b47e9e4a8b456 1-185
+src/orchestration/modules/provider-google-antigravity/session-files.ts
+  h_4b47e9e4a8b456 1-209
+src/orchestration/modules/provider-google-antigravity/token-store.ts
+  h_4b47e9e4a8b456 151-157,162-164
+tests/integration/orchestration/modules/provider-google-antigravity/_engine-owner.ts
+  h_4b47e9e4a8b456 1-18
+tests/integration/orchestration/modules/provider-google-antigravity/_engine.ts
+  h_4b47e9e4a8b456 1-127
+tests/integration/orchestration/modules/provider-google-antigravity/_fake-gemini.ts
+  h_4b47e9e4a8b456 1-105
+tests/integration/orchestration/modules/provider-google-antigravity/engine-process.test.ts
+  h_4b47e9e4a8b456 1-202
+tests/unit/orchestration/modules/provider-google-antigravity/_fake-engine.ts
+  h_4b47e9e4a8b456 1-90
+tests/unit/orchestration/modules/provider-google-antigravity/acp-connection.test.ts
+  h_4b47e9e4a8b456 12,41,130-163
+tests/unit/orchestration/modules/provider-google-antigravity/engine-demand.test.ts
+  h_4b47e9e4a8b456 1-106
+tests/unit/orchestration/modules/provider-google-antigravity/engine-process.test.ts
+  h_4b47e9e4a8b456 1-28
+tests/unit/orchestration/modules/provider-google-antigravity/engine-registry.test.ts
+  h_4b47e9e4a8b456 1-232
+tests/unit/orchestration/modules/provider-google-antigravity/login-status.test.ts
+  h_4b47e9e4a8b456 96,100,109
+tests/unit/orchestration/modules/provider-google-antigravity/retry-watch.test.ts
+  h_4b47e9e4a8b456 1-156
+tests/unit/orchestration/modules/provider-google-antigravity/session-files.test.ts
+  h_4b47e9e4a8b456 1-114
+tests/unit/orchestration/modules/provider-google-antigravity/token-store.test.ts
+  h_4b47e9e4a8b456 131-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "093b9de500c10512b03ee72aedf805840377ea78",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
