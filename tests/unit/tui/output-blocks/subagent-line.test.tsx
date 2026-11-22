@@ -65,7 +65,7 @@ it("drops operations, then cuts the goal while keeping identity, model, time, an
     expect(header).not.toContain("tokens")
     expect(header.includes("3 operations")).toBe(operations)
     expect(header.includes("Trace rendering")).toBe(goal)
-    for (const text of ["Explorer", "model high · 7s", "↗ Open", "stop"]) expect(header).toContain(text)
+    for (const text of ["Explorer", "model high · 7s", "↗ Open", "cancel"]) expect(header).toContain(text)
     if (width === 110) expect(header).toContain("Explorer · Trace rendering · model high · 7s · 3 operations")
   }
 })
@@ -127,7 +127,7 @@ it("dispatches admitted Interrupt and person Resume, preserving the held detail 
   setRow({ ...row(), admittedActions: ["subagent.interrupt", "subagent.resume"] as const })
   await render.renderOnce()
   expect(render.captureCharFrame()).toContain("Interrupted by you")
-  expect(render.captureCharFrame()).not.toContain("stop")
+  expect(render.captureCharFrame()).not.toContain("cancel")
   await click("resume")
   expect(dispatched).toEqual([{ type: "subagent.interrupt", sessionId: "child" }, { type: "subagent.resume", sessionId: "child" }])
   setBlock({ ...base, status: "completed" })
