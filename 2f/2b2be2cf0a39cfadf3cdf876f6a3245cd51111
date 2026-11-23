@@ -1,0 +1,14 @@
+tests/integration/orchestration/modules/provider-google-antigravity/engine-process.test.ts
+  h_4b47e9e4a8b456 56-57,59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2f2b2be2cf0a39cfadf3cdf876f6a3245cd51111",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
