@@ -1,0 +1,24 @@
+scripts/release-notes-method-prompt.md
+  h_4b47e9e4a8b456 1-49
+scripts/release-notes-terminal-prompt.md
+  h_4b47e9e4a8b456 3,6
+scripts/release-notes-vscode-prompt.md
+  h_4b47e9e4a8b456 3,8
+scripts/release-notes.ts
+  h_4b47e9e4a8b456 1-7,16-17,24-29,88-92,121-129,131-157,171,176-179,182,185-251,254-255,257,259-263,266,268-269,271,286-302,317,319,323,327-355,363
+scripts/release.ts
+  h_4b47e9e4a8b456 238
+tests/unit/scripts/release-notes.test.ts
+  h_4b47e9e4a8b456 10-11,19,27-28,31-106,111-113,116-121,123-125,127-129,138-139,141,145-148,161,165-166,170-171,178-200,203-207,209-227,229,233,236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "63e6b49e97130848fb4c285a5de4e4295f6bef51",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
