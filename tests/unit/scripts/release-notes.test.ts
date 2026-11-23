@@ -5,10 +5,10 @@ import { join } from "node:path"
 
 import {
   extractNotes,
-  releaseNotesHeadlessArgs,
   RELEASE_EVIDENCE_FILE,
   runReleaseNotes,
-  type ReleaseNotesInvocation,
+  type AcpConnection,
+  type AcpRequest,
 } from "../../../scripts/release-notes.js"
 import {
   createReleaseNotesManifest,
@@ -16,8 +16,7 @@ import {
   releaseNotesSha256,
 } from "../../../scripts/release-notes-manifest.js"
 
-const SUMMARY = JSON.stringify({ completed: true, termination: { version: 1, terminal: { kind: "completed" } } })
-const DRAFT = "This release improves chat. It fixes recovery.\n\n## Added\n\n- Resume chats"
+const SUMMARY = "This release improves chat. It fixes recovery."
 const NOTES = "This release improves chat recovery. It keeps your work available.\n\n## Fixed\n\n- Recover chats"
 const temporaryRoots: string[] = []
 
@@ -25,33 +24,109 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-function completed(notes: string): ReleaseNotesInvocation {
-  return { exitCode: 0, stdout: Buffer.from(`${JSON.stringify({ status: "success", notes })}\n${SUMMARY}\n`) }
+function success(notes: string): string {
+  return JSON.stringify({ status: "success", notes })
 }
 
-function fixture() {
+/** How the fake chat treats one request, keyed by method, or by
+ *  `session/set_config_option:<configId>` for a config option. */
+interface ChatScript {
+  readonly refuse?: string
+  readonly exitAt?: string
+  readonly stopReason?: string
+  /** The session updates that the prompt turn streams before its answer. */
+  readonly updates?: readonly object[]
+  /** A request that the chat sends to the client during the prompt turn. */
+  readonly ask?: boolean
+}
+
+const chunk = (text: string) => ({ sessionUpdate: "agent_message_chunk", content: { type: "text", text } })
+const toolCall = { sessionUpdate: "tool_call", toolCallId: "t1", title: "git log", kind: "execute", status: "pending" }
+const toolCallUpdate = { sessionUpdate: "tool_call_update", toolCallId: "t1", status: "completed" }
+
+function finalMessage(text: string): readonly object[] {
+  return [chunk("I will read the evidence first."), toolCall, chunk("Now I verify the claims."), toolCallUpdate, chunk(text.slice(0, 10)), chunk(text.slice(10))]
+}
+
+function promptText(request: AcpRequest | undefined): string | undefined {
+  return request?.method === "session/prompt" ? request.params.prompt[0].text : undefined
+}
+
+function fakeChat(script: ChatScript) {
+  const requests: AcpRequest[] = []
+  const queue: string[] = []
+  let ended = false
+  let wake: (() => void) | undefined
+  const state = { closed: false }
+  const reply = (lines: readonly object[]) => {
+    queue.push(...lines.map((line) => JSON.stringify(line)))
+    wake?.()
+  }
+  const waitForLine = () => new Promise<void>((resolve) => { wake = resolve })
+  function answer(request: AcpRequest): readonly object[] | "exit" {
+    const { id, method } = request
+    const key = request.method === "session/set_config_option" ? `${method}:${request.params.configId}` : method
+    if (key === script.exitAt) return "exit"
+    if (key === script.refuse) return [{ jsonrpc: "2.0", id, error: { code: -32602, message: "not available", data: { failure: "api_error" } } }]
+    const result = (value: { readonly sessionId?: string; readonly stopReason?: string }) => ({ jsonrpc: "2.0", id, result: value })
+    if (method === "session/new") return [result({ sessionId: "s1" })]
+    if (method !== "session/prompt") return [result({})]
+    const updates = (script.updates ?? finalMessage(success(NOTES))).map((update) => ({
+      jsonrpc: "2.0", method: "session/update", params: { sessionId: "s1", update },
+    }))
+    const asked = script.ask === true ? [{ jsonrpc: "2.0", id: 99, method: "elicitation/create", params: { sessionId: "s1", message: "Continue?" } }] : []
+    return [...asked, ...updates, result({ stopReason: script.stopReason ?? "end_turn" })]
+  }
+  const connection: AcpConnection = {
+    send(request) {
+      requests.push(request)
+      const lines = answer(request)
+      if (lines === "exit") {
+        ended = true
+        wake?.()
+      } else reply(lines)
+    },
+    lines: (async function* () {
+      for (;;) {
+        const line = queue.shift()
+        if (line !== undefined) yield line
+        else if (ended) return
+        else await waitForLine()
+      }
+    })(),
+    async close() {
+      state.closed = true
+      ended = true
+      wake?.()
+    },
+  }
+  return { connection, requests, state }
+}
+
+function fixture(script: ChatScript = {}) {
   const root = mkdtempSync(join(tmpdir(), "release-notes-test-"))
   temporaryRoots.push(root)
   const sourceRoot = join(root, "source")
   const outFile = join(root, "published", "release-notes.md")
-  const scratchRoots: string[] = []
-  const calls: Array<{ scratchRoot: string; authProfileId: string; task: string; evidence: string }> = []
-  const responses: ReleaseNotesInvocation[] = []
+  const chat = fakeChat(script)
+  const worktrees: Array<{ path: string; head: string; removed: boolean }> = []
+  const opened: Array<{ worktree: string; authProfileId: string; evidence: string }> = []
   const boundaries = {
     resolveAuthProfileId(projectRoot: string) {
-      expect(projectRoot).toBe(sourceRoot)
-      return projectRoot === sourceRoot ? "source-profile" : "sticky-profile"
+      return projectRoot === sourceRoot ? "source-profile" : "other-profile"
     },
-    createScratchProject() {
-      const scratchRoot = mkdtempSync(join(root, "scratch-"))
-      scratchRoots.push(scratchRoot)
-      return scratchRoot
+    createWorktree(head: string) {
+      const path = mkdtempSync(join(root, "worktree-"))
+      worktrees.push({ path, head, removed: false })
+      return path
     },
-    invoke(scratchRoot: string, authProfileId: string, task: string) {
-      calls.push({ scratchRoot, authProfileId, task, evidence: readFileSync(join(scratchRoot, RELEASE_EVIDENCE_FILE), "utf8") })
-      const response = responses.shift()
-      if (response === undefined) throw new Error("missing invocation response")
-      return response
+    removeWorktree(path: string) {
+      rmSync(path, { recursive: true, force: true })
+      for (const worktree of worktrees) if (worktree.path === path) worktree.removed = true
+    },
+    openChat(worktree: string, authProfileId: string) {
+      opened.push({ worktree, authProfileId, evidence: readFileSync(join(worktree, RELEASE_EVIDENCE_FILE), "utf8") })
+      return chat.connection
     },
   }
   const input = {
@@ -60,21 +135,17 @@ function fixture() {
     version: "1.2.3",
     outFile,
     collected: { evidence: "release evidence", head: "abc123", baseTag: "v1.2.2" },
-    prompt: "draft prompt",
-    reconciliationPrompt: "reconciliation prompt",
+    prompt: "surface prompt",
+    methodPrompt: "method prompt",
   }
-  return { root, sourceRoot, outFile, scratchRoots, calls, responses, boundaries, input }
+  return { root, outFile, chat, worktrees, opened, boundaries, input }
 }
 
 describe("release-notes extraction", () => {
-  test("returns notes with plain, soft-wrapped, or emphasized summary paragraphs before a completed summary line", () => {
-    for (const draft of [
-      DRAFT,
-      DRAFT.replace("chat. It", "chat.\nIt"),
-      DRAFT.replace("This release", "**This release**"),
-    ]) {
-      const notes = `${draft}\n\n## Fixed\n\n- Keep chat history`
-      expect(extractNotes(completed(notes).stdout.toString())).toEqual({ notes })
+  test("returns notes with plain, soft-wrapped, or emphasized summary paragraphs", () => {
+    for (const summary of [SUMMARY, SUMMARY.replace("chat. It", "chat.\nIt"), SUMMARY.replace("This release", "**This release**")]) {
+      const notes = `${summary}\n\n## Fixed\n\n- Keep chat history`
+      expect(extractNotes(success(notes))).toEqual({ notes })
     }
   })
 
@@ -87,116 +158,85 @@ describe("release-notes extraction", () => {
     `${NOTES}\n\nI cannot write these release notes.`,
   ]) {
     test(`rejects a success result with invalid notes: ${JSON.stringify(notes)}`, () => {
-      expect(extractNotes(completed(notes).stdout.toString())).toEqual({ error: "the model result is not release notes: expected a summary and nonempty release-note sections" })
+      expect(extractNotes(success(notes))).toEqual({ error: "the model result is not release notes: expected a summary and nonempty release-note sections" })
     })
   }
 
-  test("fails closed when the trailing line is not JSON", () => {
-    expect(extractNotes("notes\nnot-json")).toEqual({ error: "the invocation output does not end with the JSON summary line" })
-  })
-
-  test("fails closed when the trailing JSON is not the task summary", () => {
-    expect(extractNotes(`notes\n{"other":true}`)).toEqual({ error: "the trailing JSON line is not the headless task summary" })
-  })
-
-  test("fails closed when the task did not complete", () => {
-    const summary = JSON.stringify({ termination: { terminal: { kind: "api_error" } } })
-    expect(extractNotes(`notes\n${summary}`)).toEqual({ error: 'the headless task terminated as "api_error", not completed' })
-  })
-
-  test("fails closed when the summary line is the whole output", () => {
-    expect(extractNotes(`${SUMMARY}\n`)).toEqual({ error: "the model returned no notes text" })
+  test("fails closed on an empty final message", () => {
+    expect(extractNotes("  \n")).toEqual({ error: "the model returned no notes text" })
   })
 })
 
-describe("release-notes headless invocation", () => {
-  test("uses the mid tier while retaining the source project's auth profile and isolated storage", () => {
-    expect(releaseNotesHeadlessArgs("/scratch/project", "Personal", "write notes")).toEqual([
-      "--project-root", "/scratch/project",
-      "--auth-profile", "Personal",
-      "--headless",
-      "--task", "write notes",
-      "--model", "mid",
-      "--effort", "medium",
-      "--deadline-seconds", "900",
-    ])
-  })
-
-  test("drafts and reconciles in one scratch project with the source profile", async () => {
+describe("release-notes chat", () => {
+  test("runs one pinned turn in a checkout of the head and keeps only the final message", async () => {
     const state = fixture()
-    state.responses.push(completed(DRAFT), completed(NOTES))
 
     const notes = await runReleaseNotes(state.input, state.boundaries)
 
     expect(notes).toBe(NOTES)
-    expect(state.calls).toHaveLength(2)
-    expect(state.calls.map(({ authProfileId }) => authProfileId)).toEqual(["source-profile", "source-profile"])
-    expect(state.calls.map(({ scratchRoot }) => scratchRoot).every((root) => root === state.scratchRoots[0])).toBe(true)
-    expect(state.calls[1]?.task).toContain("reconciliation prompt")
-    expect(state.calls[1]?.task).toContain(DRAFT)
-    // Both calls read the evidence from the project, so no task carries it.
-    expect(state.calls.map(({ scratchRoot, task, evidence }) => ({ named: task.includes(join(scratchRoot, RELEASE_EVIDENCE_FILE)), carried: task.includes("release evidence"), evidence }))).toEqual([
-      { named: true, carried: false, evidence: "release evidence" },
-      { named: true, carried: false, evidence: "release evidence" },
-    ])
     expect(readFileSync(state.outFile, "utf8")).toBe(`${NOTES}\n`)
-    expect(existsSync(state.scratchRoots[0]!)).toBe(false)
+    expect(state.worktrees).toHaveLength(1)
+    const worktree = state.worktrees[0]!
+    expect(worktree).toMatchObject({ head: "abc123", removed: true })
+    expect(existsSync(worktree.path)).toBe(false)
+    expect(state.opened).toEqual([{ worktree: worktree.path, authProfileId: "source-profile", evidence: "release evidence" }])
+    expect(state.chat.state.closed).toBe(true)
+
+    const requests = state.chat.requests
+    expect(requests.map(({ method }) => method)).toEqual([
+      "initialize", "session/new", "session/set_config_option", "session/set_config_option", "session/prompt",
+    ])
+    expect(requests[1]?.params).toEqual({ cwd: worktree.path, mcpServers: [] })
+    expect(requests.slice(2, 4).map(({ params }) => params)).toEqual([
+      { sessionId: "s1", configId: "model", value: "claude-opus-5.5" },
+      { sessionId: "s1", configId: "effort", value: "high" },
+    ])
+    const task = promptText(requests[4]) ?? ""
+    // Surface scope, then method, then the evidence pointer, then the result contract.
+    const order = ["surface prompt", "method prompt", join(worktree.path, RELEASE_EVIDENCE_FILE), "v1.2.2", "abc123", '{"status":"success"']
+    const positions = order.map((part) => task.indexOf(part))
+    expect(positions.every((position, index) => position > (positions[index - 1] ?? -1))).toBe(true)
+    // The evidence is a file in the checkout, never part of the prompt.
+    expect(task).not.toContain("release evidence")
+  })
+
+  test("names the absence of a previous release", async () => {
+    const state = fixture()
+    await runReleaseNotes({ ...state.input, collected: { ...state.input.collected, baseTag: undefined } }, state.boundaries)
+    expect(promptText(state.chat.requests[4])).toContain("There is no previous release")
   })
 
   for (const failure of [
-    { name: "draft nonzero", responses: [{ exitCode: 7, stdout: Buffer.from("") }] },
-    {
-      name: "draft non-completed",
-      responses: [{ exitCode: 0, stdout: Buffer.from('notes\n{"termination":{"terminal":{"kind":"api_error"}}}\n') }],
-    },
-    { name: "reconciliation nonzero", responses: [completed(DRAFT), { exitCode: 9, stdout: Buffer.from("") }] },
-    {
-      name: "reconciliation non-completed",
-      responses: [completed(DRAFT), { exitCode: 0, stdout: Buffer.from('notes\n{"termination":{"terminal":{"kind":"api_error"}}}\n') }],
-    },
-  ] satisfies ReadonlyArray<{ name: string; responses: ReleaseNotesInvocation[] }>) {
-    test(`${failure.name} cleans scratch and does not publish`, async () => {
-      const state = fixture()
-      state.responses.push(...failure.responses)
+    { name: "a refused model", script: { refuse: "session/set_config_option:model" }, error: "refused session/set_config_option: not available" },
+    { name: "a refused effort", script: { refuse: "session/set_config_option:effort" }, error: "refused session/set_config_option: not available" },
+    { name: "a failed turn", script: { refuse: "session/prompt" }, error: "refused session/prompt: not available (api_error)" },
+    { name: "a cancelled turn", script: { stopReason: "cancelled" }, error: 'stopped with "cancelled", not end_turn' },
+    { name: "a chat that exits before it answers", script: { exitAt: "session/prompt" }, error: "exited before it answered session/prompt" },
+    { name: "a chat that asks a question", script: { ask: true }, error: "unexpected elicitation/create during session/prompt" },
+    { name: "a tool call after the last message text", script: { updates: [chunk(success(NOTES)), toolCall] }, error: "the model returned no notes text" },
+    { name: "a final message that is not JSON", script: { updates: [chunk("I cannot write these release notes.")] }, error: "the model did not return a release-notes JSON result" },
+    { name: "a refusal result", script: { updates: [chunk(JSON.stringify({ status: "refused", reason: "too large" }))] }, error: "the model refused to generate release notes" },
+    { name: "a success result that is not notes", script: { updates: [chunk(success("I cannot write these release notes."))] }, error: "expected a summary and nonempty release-note sections" },
+  ] satisfies ReadonlyArray<{ name: string; script: ChatScript; error: string }>) {
+    test(`${failure.name} fails, removes the checkout, and writes neither notes nor a manifest`, async () => {
+      const state = fixture(failure.script)
 
-      await expect(runReleaseNotes(state.input, state.boundaries)).rejects.toThrow()
+      await expect(runReleaseNotes({ ...state.input, surface: "vscode" }, state.boundaries)).rejects.toThrow(failure.error)
 
-      expect(existsSync(state.scratchRoots[0]!)).toBe(false)
+      expect(state.worktrees.map(({ removed }) => removed)).toEqual([true])
+      expect(state.chat.state.closed).toBe(true)
       expect(existsSync(state.outFile)).toBe(false)
+      expect(existsSync(join(state.root, "published", "release-notes.json"))).toBe(false)
     })
   }
 
-  for (const stage of ["draft", "reconciliation"] as const) {
-    for (const refusal of [
-      { text: "I cannot write these release notes.", error: "the model did not return a release-notes JSON result" },
-      { text: JSON.stringify({ status: "refused", reason: "I cannot write these release notes." }), error: "the model refused to generate release notes" },
-      { text: JSON.stringify({ status: "success", notes: "I cannot write these release notes." }), error: "expected a summary and nonempty release-note sections" },
-    ]) {
-      test(`${stage} refusal ${refusal.text} writes neither notes nor a manifest`, async () => {
-        const state = fixture()
-        if (stage === "reconciliation") state.responses.push(completed(DRAFT))
-        state.responses.push({ exitCode: 0, stdout: Buffer.from(`${refusal.text}\n${SUMMARY}\n`) })
-
-        await expect(runReleaseNotes({ ...state.input, surface: "vscode" }, state.boundaries)).rejects.toThrow(refusal.error)
-
-        expect(existsSync(state.scratchRoots[0]!)).toBe(false)
-        expect(existsSync(state.outFile)).toBe(false)
-        expect(existsSync(join(state.root, "published", "release-notes.json"))).toBe(false)
-        expect(state.calls).toHaveLength(stage === "draft" ? 1 : 2)
-      })
-    }
-  }
-
-  test("binds the VS Code manifest to reconciled text", async () => {
+  test("binds the VS Code manifest to the final notes", async () => {
     const state = fixture()
-    state.responses.push(completed(DRAFT), completed(NOTES))
-    const input = { ...state.input, surface: "vscode" as const }
 
-    await runReleaseNotes(input, state.boundaries)
+    await runReleaseNotes({ ...state.input, surface: "vscode" }, state.boundaries)
 
     const manifest = JSON.parse(readFileSync(join(state.root, "published", "release-notes.json"), "utf8"))
     expect(manifest.notesSha256).toBe(releaseNotesSha256(`${NOTES}\n`))
-    expect(manifest.notesSha256).not.toBe(releaseNotesSha256(`${DRAFT}\n`))
   })
 })
 

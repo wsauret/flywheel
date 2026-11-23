@@ -235,7 +235,7 @@ copyFileSync(join(ROOT, "install.ps1"), join(DIST, "install.ps1"));
 // release must keep the release contracts and be one that every served client
 // accepts, by that client's own code (ARCH-DISTRIBUTION-009).
 step("proving every served client accepts the release (scripts/release-acceptance.ts)", ["bun", "run", "scripts/release-acceptance.ts", "--dist", DIST, "--repo", PUBLIC_REPO]);
-step("composing the terminal release notes (model rewrite)", ["bun", "run", "scripts/release-notes.ts", "--surface", "terminal", "--version", next, "--out", join(DIST, "release-notes.md")]);
+step("composing the terminal release notes (verified agent run)", ["bun", "run", "scripts/release-notes.ts", "--surface", "terminal", "--version", next, "--out", join(DIST, "release-notes.md")]);
 
 // The full performance set runs on the exact host archive this release publishes.
 step("gating release performance (bun run test:perf:release)", ["bun", "run", "test:perf:release", "--archive", join(DIST, `flywheel-${process.platform}-${process.arch}.tar.gz`)]);

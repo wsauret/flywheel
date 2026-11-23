@@ -1,9 +1,10 @@
-/** Compose the release notes: the mechanical changelog from commit history,
- *  rewritten into product voice by one preset model invocation through
- *  Flywheel's own headless task mode. The mid tier respects the source
- *  profile's enabled models. Refine the surface-specific prompts by rerunning the matching `notes:draft`
- *  command until the output reads right. Binary and Marketplace publication
- *  use the same script with independent release tags and prompts.
+/** Compose the release notes: one unattended Flywheel agent chat reads the
+ *  mechanical changelog from commit history, verifies every claim against the
+ *  code of the release, and writes the notes in product voice. The chat runs in
+ *  a disposable checkout of the release head, so it reads the source that ships
+ *  and runs git against the previous release tag. Binary and Marketplace
+ *  publication use the same script with independent release tags and surface
+ *  prompts; both share one method prompt.
  *
  *  Usage: bun run scripts/release-notes.ts --surface terminal|vscode [--version <x.y.z>] [--out <path>]
  */
@@ -12,21 +13,20 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+import { Schema } from "effect";
+
 import { collectReleaseEvidence, type ReleaseSurface } from "./commit-contract.js";
 import { createReleaseNotesManifest } from "./release-notes-manifest.js";
 import { latestReleaseTag } from "./release-repo.js";
 import { parseSemanticVersion } from "./release-version.js";
 import { AuthProfileManager } from "../src/orchestration/auth/auth-profile-manager.js";
 
-// The preset invocation is shared; each publication surface owns its prompt.
-// Not the cheap tier: on 2026-10-28 it refused an 860-commit extension range
-// as too large to reconcile without omissions.
-const NOTES_MODEL = "mid";
-const NOTES_EFFORT = "medium";
-// The reconciliation pass reads every changelog entry since the last release,
-// and for v0.1.0 (over 1,100 commits) it took 250 to 300 s, so the bound leaves
-// room for a large release rather than for a typical one.
-const NOTES_DEADLINE_SECONDS = 900;
+// The strongest model at high effort, because no person audits the notes
+// before publication. On 2026-11-23 the earlier design (two mid-tier calls that
+// saw only commit messages) published a provider that the range had removed
+// and about 25 unsupported claims in v0.1.4, because it could not read the code.
+const NOTES_MODEL = "claude-opus-5.5";
+const NOTES_EFFORT = "high";
 const NOTES_RESULT_CONTRACT = `Return only one JSON object, with no code fence or commentary.
 On success, return {"status":"success","notes":"<release notes markdown>"}.
 The notes must start with one summary paragraph, followed by nonempty sections headed exactly "## Added", "## Fixed", "## Changed", or "## Performance". Separate the summary, headings, and bullet lists with blank lines. Use only "- " bullet entries, one line per entry, in each section.
@@ -85,30 +85,11 @@ async function resolveVersion(explicit: string | undefined, surface: ReleaseSurf
   return `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
 }
 
-/** Decode a model success result followed by the headless task JSON summary.
- * Returns an error for incomplete tasks, refusals, or Markdown outside the
- * release-note grammar. Task completion alone does not authorize publication. */
-export function extractNotes(stdout: string): { notes: string } | { error: string } {
-  const trimmed = stdout.trimEnd();
-  const summaryStart = trimmed.lastIndexOf("\n");
-  const summaryLine = trimmed.slice(summaryStart + 1);
-  let summary: unknown;
-  try {
-    summary = JSON.parse(summaryLine);
-  } catch {
-    return { error: "the invocation output does not end with the JSON summary line" };
-  }
-  if (typeof summary !== "object" || summary === null || !("termination" in summary)) {
-    return { error: "the trailing JSON line is not the headless task summary" };
-  }
-  const termination: unknown = summary.termination;
-  const kind =
-    typeof termination === "object" && termination !== null && "terminal" in termination &&
-    typeof termination.terminal === "object" && termination.terminal !== null && "kind" in termination.terminal
-      ? termination.terminal.kind
-      : undefined;
-  if (kind !== "completed") return { error: `the headless task terminated as ${JSON.stringify(kind)}, not completed` };
-  const body = (summaryStart === -1 ? "" : trimmed.slice(0, summaryStart)).trim();
+/** Decode the agent's final message as a release-notes success result.
+ * Returns an error for a refusal, other text, or Markdown outside the
+ * release-note grammar. A finished turn alone does not authorize publication. */
+export function extractNotes(message: string): { notes: string } | { error: string } {
+  const body = message.trim();
   if (body === "") return { error: "the model returned no notes text" };
   let result: unknown;
   try {
@@ -137,21 +118,43 @@ export function extractNotes(stdout: string): { notes: string } | { error: strin
   return { notes };
 }
 
-export function releaseNotesHeadlessArgs(scratchRoot: string, authProfileId: string, task: string): readonly string[] {
-  return [
-    "--project-root", scratchRoot,
-    "--auth-profile", authProfileId,
-    "--headless",
-    "--task", task,
-    "--model", NOTES_MODEL,
-    "--effort", NOTES_EFFORT,
-    "--deadline-seconds", String(NOTES_DEADLINE_SECONDS),
-  ];
-}
+/** The requests that the runner sends, in this order, in one notes chat. */
+type AcpRequestBody =
+  | { readonly method: "initialize"; readonly params: { readonly protocolVersion: 1; readonly clientCapabilities: { readonly [capability: string]: never } } }
+  | { readonly method: "session/new"; readonly params: { readonly cwd: string; readonly mcpServers: readonly never[] } }
+  | {
+    readonly method: "session/set_config_option";
+    readonly params: { readonly sessionId: string; readonly configId: "model" | "effort"; readonly value: string };
+  }
+  | { readonly method: "session/prompt"; readonly params: { readonly sessionId: string; readonly prompt: readonly [{ readonly type: "text"; readonly text: string }] } };
 
-export interface ReleaseNotesInvocation {
-  readonly exitCode: number;
-  readonly stdout: { toString(): string };
+export type AcpRequest = { readonly jsonrpc: "2.0"; readonly id: number } & AcpRequestBody;
+
+/** The parts of a chat message that the runner reads; other fields are ignored. */
+const ChatMessageSchema = Schema.Struct({
+  id: Schema.optionalKey(Schema.Unknown),
+  method: Schema.optionalKey(Schema.String),
+  params: Schema.optionalKey(Schema.Struct({
+    update: Schema.optionalKey(Schema.Union([
+      Schema.Struct({ sessionUpdate: Schema.Literal("agent_message_chunk"), content: Schema.Struct({ text: Schema.String }) }),
+      Schema.Struct({ sessionUpdate: Schema.String }),
+    ])),
+  })),
+  result: Schema.optionalKey(Schema.Struct({ sessionId: Schema.optionalKey(Schema.String), stopReason: Schema.optionalKey(Schema.String) })),
+  error: Schema.optionalKey(Schema.Struct({
+    message: Schema.String,
+    data: Schema.optionalKey(Schema.Struct({ failure: Schema.optionalKey(Schema.String) })),
+  })),
+});
+
+/** One Agent Client Protocol connection to a headless Flywheel chat. */
+export interface AcpConnection {
+  /** Write one JSON-RPC request. */
+  readonly send: (message: AcpRequest) => void;
+  /** Each newline-delimited message that the chat writes; ends when the chat exits. */
+  readonly lines: AsyncIterable<string>;
+  /** Stop the chat and wait for it to exit. */
+  readonly close: () => Promise<void>;
 }
 
 interface ReleaseNotesInput {
@@ -165,59 +168,107 @@ interface ReleaseNotesInput {
     readonly baseTag: string | undefined;
   };
   readonly prompt: string;
-  readonly reconciliationPrompt: string;
+  readonly methodPrompt: string;
 }
 
 interface ReleaseNotesBoundaries {
   readonly resolveAuthProfileId: (sourceRoot: string) => string;
-  readonly createScratchProject: () => string;
-  readonly invoke: (scratchRoot: string, authProfileId: string, task: string) => ReleaseNotesInvocation;
+  /** Check out `head` in a new directory outside the repository and return its path. */
+  readonly createWorktree: (head: string) => string;
+  readonly removeWorktree: (worktree: string) => void;
+  readonly openChat: (worktree: string, authProfileId: string) => AcpConnection;
 }
 
-/** The evidence file both calls read in the scratch project. */
+/** The evidence file that the chat reads in the worktree root. */
 export const RELEASE_EVIDENCE_FILE = "release-evidence.md";
 
-/** Draft and reconcile release notes through one isolated headless project.
- * The source project selects credentials. Publication occurs only after both
- * calls complete and their output passes strict extraction. The evidence is a
- * file in that project, not part of a task: a task is one command-line
- * argument, which the platform bounds (1 MB on macOS, 128 KB on Linux), and a
- * long release range exceeds it. */
-export async function runReleaseNotes(input: ReleaseNotesInput, boundaries: ReleaseNotesBoundaries): Promise<string> {
-  const authProfileId = boundaries.resolveAuthProfileId(input.sourceRoot);
-  const scratchRoot = boundaries.createScratchProject();
-  // The absolute path, because the agent resolves a relative one against its
-  // execution directory, which is the source checkout, not the scratch project.
-  const evidenceFile = join(scratchRoot, RELEASE_EVIDENCE_FILE);
-  const evidence = `Release evidence: read the file ${evidenceFile} in full before you answer. It holds every commit this release covers, newest first.`;
-  let reconciled: string;
-  try {
-    await Bun.write(evidenceFile, input.collected.evidence);
-    const draftInvocation = boundaries.invoke(
-      scratchRoot,
-      authProfileId,
-      `${input.prompt}\n\n${evidence}\n\n${NOTES_RESULT_CONTRACT}`,
-    );
-    if (draftInvocation.exitCode !== 0) throw new Error(`the draft model invocation failed (exit ${draftInvocation.exitCode})`);
-    const draft = extractNotes(draftInvocation.stdout.toString());
-    if ("error" in draft) throw new Error(draft.error);
-
-    const reconciliationInvocation = boundaries.invoke(
-      scratchRoot,
-      authProfileId,
-      `${input.reconciliationPrompt}\n\n${evidence}\n\nDraft release notes:\n\n${draft.notes}\n\n${NOTES_RESULT_CONTRACT}`,
-    );
-    if (reconciliationInvocation.exitCode !== 0) {
-      throw new Error(`the reconciliation model invocation failed (exit ${reconciliationInvocation.exitCode})`);
+/** Run one prompt turn in a new chat and return the text of the agent's final
+ *  message. Text before a tool call is narration, so each tool event discards
+ *  the text collected until then. Fails on a refused request, a turn that does
+ *  not end with `end_turn`, any request from the chat (an unattended chat has
+ *  nobody to answer it), or a chat that exits before it answers. */
+async function promptChat(chat: AcpConnection, cwd: string, task: string): Promise<string> {
+  const lines = chat.lines[Symbol.asyncIterator]();
+  let id = 0;
+  let finalMessage = "";
+  async function request(body: AcpRequestBody) {
+    const { method } = body;
+    id += 1;
+    chat.send({ jsonrpc: "2.0", id, ...body });
+    for (;;) {
+      const next = await lines.next();
+      if (next.done === true) throw new Error(`the notes chat exited before it answered ${method}`);
+      if (next.value.trim() === "") continue;
+      let json: unknown;
+      try {
+        json = JSON.parse(next.value);
+      } catch {
+        throw new Error(`the notes chat wrote a line that is not JSON during ${method}`);
+      }
+      const decoded = Schema.decodeUnknownOption(ChatMessageSchema)(json);
+      if (decoded._tag === "None") throw new Error(`the notes chat wrote a message that is not ACP JSON-RPC during ${method}`);
+      const message = decoded.value;
+      if (message.method === "session/update") {
+        const update = message.params?.update;
+        if (update?.sessionUpdate === "tool_call" || update?.sessionUpdate === "tool_call_update") finalMessage = "";
+        if (update !== undefined && "content" in update) finalMessage += update.content.text;
+        continue;
+      }
+      if (message.method !== undefined || message.id !== id) {
+        throw new Error(`the notes chat sent an unexpected ${message.method ?? "response"} during ${method}`);
+      }
+      if (message.error !== undefined) {
+        const failure = message.error.data?.failure === undefined ? "" : ` (${message.error.data.failure})`;
+        throw new Error(`the notes chat refused ${method}: ${message.error.message}${failure}`);
+      }
+      return message.result ?? {};
     }
-    const extracted = extractNotes(reconciliationInvocation.stdout.toString());
-    if ("error" in extracted) throw new Error(extracted.error);
-    reconciled = extracted.notes;
-  } finally {
-    rmSync(scratchRoot, { recursive: true, force: true });
   }
 
-  const notes = `${reconciled}\n`;
+  await request({ method: "initialize", params: { protocolVersion: 1, clientCapabilities: {} } });
+  const { sessionId } = await request({ method: "session/new", params: { cwd, mcpServers: [] } });
+  if (sessionId === undefined) throw new Error("the notes chat opened no session");
+  await request({ method: "session/set_config_option", params: { sessionId, configId: "model", value: NOTES_MODEL } });
+  await request({ method: "session/set_config_option", params: { sessionId, configId: "effort", value: NOTES_EFFORT } });
+  const answer = await request({ method: "session/prompt", params: { sessionId, prompt: [{ type: "text", text: task }] } });
+  if (answer.stopReason !== "end_turn") throw new Error(`the notes turn stopped with ${JSON.stringify(answer.stopReason)}, not end_turn`);
+  return finalMessage;
+}
+
+function releaseNotesTask(input: ReleaseNotesInput, evidenceFile: string): string {
+  const { baseTag, head } = input.collected;
+  const range = baseTag === undefined
+    ? `There is no previous release: the release covers every commit up to the head commit ${head}.`
+    : `The base tag is ${baseTag}, the previous release. The head commit is ${head}.`;
+  const evidence = `Release evidence: the file ${evidenceFile} holds every commit that this release covers, newest first. Read it in full. ${range}`;
+  return [input.prompt.trim(), input.methodPrompt.trim(), evidence, NOTES_RESULT_CONTRACT].join("\n\n");
+}
+
+/** Write the release notes from one unattended chat in a disposable checkout
+ * of the release head. The source project selects credentials. Publication
+ * occurs only after the turn ends normally and its final message passes strict
+ * extraction. The evidence is a file in the checkout, not part of the prompt,
+ * so the agent and its subagents read one copy. */
+export async function runReleaseNotes(input: ReleaseNotesInput, boundaries: ReleaseNotesBoundaries): Promise<string> {
+  const authProfileId = boundaries.resolveAuthProfileId(input.sourceRoot);
+  const worktree = boundaries.createWorktree(input.collected.head);
+  let finalMessage: string;
+  try {
+    const evidenceFile = join(worktree, RELEASE_EVIDENCE_FILE);
+    await Bun.write(evidenceFile, input.collected.evidence);
+    const chat = boundaries.openChat(worktree, authProfileId);
+    try {
+      finalMessage = await promptChat(chat, worktree, releaseNotesTask(input, evidenceFile));
+    } finally {
+      await chat.close();
+    }
+  } finally {
+    boundaries.removeWorktree(worktree);
+  }
+  const extracted = extractNotes(finalMessage);
+  if ("error" in extracted) throw new Error(extracted.error);
+
+  const notes = `${extracted.notes}\n`;
   mkdirSync(dirname(input.outFile), { recursive: true });
   await Bun.write(input.outFile, notes);
   if (input.surface === "vscode") {
@@ -232,7 +283,23 @@ export async function runReleaseNotes(input: ReleaseNotesInput, boundaries: Rele
     );
     await Bun.write(join(dirname(input.outFile), "release-notes.json"), `${JSON.stringify(manifest, null, 2)}\n`);
   }
-  return reconciled;
+  return extracted.notes;
+}
+
+async function* readLines(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for await (const bytes of stream) {
+    const lines = (buffer + decoder.decode(bytes, { stream: true })).split("\n");
+    buffer = lines.pop() ?? "";
+    yield* lines;
+  }
+  if (buffer !== "") yield buffer;
+}
+
+function git(args: readonly string[]): void {
+  const result = Bun.spawnSync(["git", ...args], { cwd: ROOT, stdout: "pipe", stderr: "pipe", windowsHide: true });
+  if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${result.stderr.toString().trim()}`);
 }
 
 if (import.meta.main) {
@@ -247,22 +314,45 @@ if (import.meta.main) {
 
   const promptFile = surface === "terminal" ? "release-notes-terminal-prompt.md" : "release-notes-vscode-prompt.md";
   const prompt = await Bun.file(join(ROOT, "scripts", promptFile)).text();
-  const reconciliationPrompt = await Bun.file(join(ROOT, "scripts", "release-notes-reconciliation-prompt.md")).text();
+  const methodPrompt = await Bun.file(join(ROOT, "scripts", "release-notes-method-prompt.md")).text();
 
-  console.error(`release-notes: rewriting the ${surface} v${version} changelog with ${NOTES_MODEL} (${NOTES_EFFORT})...`);
+  console.error(`release-notes: writing and verifying the ${surface} v${version} notes with ${NOTES_MODEL} (${NOTES_EFFORT})...`);
   let notes: string;
   try {
     notes = await runReleaseNotes(
-      { sourceRoot: ROOT, surface, version, outFile, collected, prompt, reconciliationPrompt },
+      { sourceRoot: ROOT, surface, version, outFile, collected, prompt, methodPrompt },
       {
         resolveAuthProfileId: (sourceRoot) =>
           new AuthProfileManager({ userDataRoot: join(homedir(), ".flywheel"), projectRoot: sourceRoot }).inspect().id,
-        createScratchProject: () => mkdtempSync(join(tmpdir(), "flywheel-release-notes-")),
-        invoke: (scratchRoot, authProfileId, task) =>
-          Bun.spawnSync(
-            [join(ROOT, "bin", "flywheel"), ...releaseNotesHeadlessArgs(scratchRoot, authProfileId, task)],
-            { cwd: ROOT, stdout: "pipe", stderr: "inherit", windowsHide: true },
-          ),
+        createWorktree: (head) => {
+          const worktree = join(mkdtempSync(join(tmpdir(), "flywheel-release-notes-")), "source");
+          git(["worktree", "add", "--quiet", "--detach", worktree, head]);
+          return worktree;
+        },
+        // Cleanup never throws, so it cannot hide the error of the run; prune
+        // drops the registration when `remove` failed and the directory is gone.
+        removeWorktree: (worktree) => {
+          Bun.spawnSync(["git", "worktree", "remove", "--force", worktree], { cwd: ROOT, stdout: "ignore", stderr: "inherit", windowsHide: true });
+          rmSync(dirname(worktree), { recursive: true, force: true });
+          Bun.spawnSync(["git", "worktree", "prune"], { cwd: ROOT, stdout: "ignore", stderr: "inherit", windowsHide: true });
+        },
+        openChat: (worktree, authProfileId) => {
+          const child = Bun.spawn(
+            [join(ROOT, "bin", "flywheel"), "--headless", "--acp", "--unattended", "--auth-profile", authProfileId, "--project-root", worktree],
+            { cwd: worktree, stdin: "pipe", stdout: "pipe", stderr: "inherit", windowsHide: true },
+          );
+          return {
+            send: (message) => {
+              child.stdin.write(`${JSON.stringify(message)}\n`);
+              void child.stdin.flush();
+            },
+            lines: readLines(child.stdout),
+            close: async () => {
+              child.kill();
+              await child.exited;
+            },
+          };
+        },
       },
     );
   } catch (error) {
