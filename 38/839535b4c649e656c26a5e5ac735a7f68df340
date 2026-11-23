@@ -1,0 +1,22 @@
+tests/integration/local/claude-plugin-export.test.ts
+  h_4b47e9e4a8b456 79
+tests/unit/orchestration/app-service/model-assignment-read-admission.test.ts
+  h_4b47e9e4a8b456 8,42-47,60,124,323,399,483
+tests/unit/orchestration/modules/provider-google-antigravity/hook-command.test.ts
+  h_4b47e9e4a8b456 10,12
+tests/unit/orchestration/modules/provider-google-antigravity/login.test.ts
+  h_4b47e9e4a8b456 50
+tests/unit/orchestration/modules/provider-google-antigravity/token-store.test.ts
+  h_4b47e9e4a8b456 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "38839535b4c649e656c26a5e5ac735a7f68df340",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
