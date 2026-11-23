@@ -4,7 +4,7 @@ This file states how Flywheel's source is organized: its layers, the kernel, mod
 
 ## ARCH-STRUCTURE-001: Source layers depend in one direction
 
-Source layers depend one way: infra, then protocol, then workflows, then orchestration, then clients. Infra imports nothing from the source tree, protocol imports only infra, and workflows import only infra and protocol. The CLI is the composition root: it may import every layer and holds no domain logic or UI components. Workspace members outside the source tree compile against the published protocol contract alone.
+Source layers depend one way: infra, then protocol, then workflows, then orchestration, then clients. Infra imports only types from the rest of the source tree, protocol imports only infra, and workflows import only infra and protocol. The CLI is the composition root: it may import every layer and holds no domain logic or UI components. Workspace members outside the source tree compile against the published protocol contract alone.
 
 ## ARCH-STRUCTURE-043: The source tree holds the binary, and other hosts are workspace members
 

@@ -177,7 +177,7 @@ Source layers depend in one direction (ARCH-STRUCTURE-001):
 ```text
 src/
   cli/             --> composition root, imports from everything
-  infra/           --> shared foundation, imports NOTHING from src/
+  infra/           --> shared foundation, imports only types from src/
   protocol/        --> published client contract, imports only from infra/
   workflows/       --> imports only from infra/ + protocol/
   orchestration/   --> imports from workflows/ + protocol/ + infra/
