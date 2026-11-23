@@ -1,0 +1,18 @@
+{
+  "name": "flywheel",
+  "owner": {
+    "name": "Wesley Sauret"
+  },
+  "description": "Flywheel's chat agent, engineering method, skills, and specialist agents.",
+  "plugins": [
+    {
+      "name": "flywheel",
+      "description": "Flywheel's chat agent, engineering method, skills, and specialist agents.",
+      "source": {
+        "source": "archive",
+        "url": "https://github.com/wsauret/flywheel/releases/download/v0.1.4/flywheel-claude-plugin.zip",
+        "sha256": "9b47f73b4cdc5e6fc381ce19696404d1dd6382b4e19e60c98c7e6cbea4353b00"
+      }
+    }
+  ]
+}
