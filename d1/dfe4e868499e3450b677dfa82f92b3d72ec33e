@@ -1,0 +1,26 @@
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 204-209
+scripts/check-owned-process-launches.ts
+  h_4b47e9e4a8b456 58-59,77
+src/infra/persistent-subprocess.ts
+  h_4b47e9e4a8b456 26,91-92,113-119,210,259-261,268-269
+src/infra/windows-breakaway-launch.ts
+  h_4b47e9e4a8b456 1-290
+src/infra/windows-outside-jobs.ts
+  h_4b47e9e4a8b456 52,98,248,251,294,299
+tests/unit/infra/persistent-subprocess.test.ts
+  h_4b47e9e4a8b456 45,447-469,490
+tests/unit/infra/windows-breakaway-launch.test.ts
+  h_4b47e9e4a8b456 1-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d1dfe4e868499e3450b677dfa82f92b3d72ec33e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
