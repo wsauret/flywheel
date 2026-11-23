@@ -1,0 +1,16 @@
+AGENTS.md
+  h_4b47e9e4a8b456 180
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2229714552db4d4e7af1d38c11c7bb5fcc9b1e9c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
