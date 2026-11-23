@@ -50,7 +50,7 @@ describe("the token store of a macOS login", () => {
 
     const password = readFileSync(join(loginDir, "keychain-password"), "utf8").trim()
     expect(password).toMatch(/^[0-9a-f]{64}$/u)
-    expect(statSync(join(loginDir, "keychain-password")).mode & 0o777).toBe(0o600)
+    if (process.platform !== "win32") expect(statSync(join(loginDir, "keychain-password")).mode & 0o777).toBe(0o600)
     expect(security.calls.map((call) => call.words.filter((word) => word !== password).join(" "))).toEqual([
       "create-keychain -p flywheel-agy.keychain-db",
       "unlock-keychain -p flywheel-agy.keychain-db",

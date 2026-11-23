@@ -47,7 +47,7 @@ describe("a Google Antigravity login", () => {
     expect(agy.pasted).toEqual([GOOD_CODE, GOOD_CODE])
     expect(account).toEqual({ accountId: loginDirs(authDir)[0] ?? "", identity: "person@example.com", configDir: join(authDir, "antigravity", account.accountId) })
     expect(other.configDir.startsWith(join(otherAuthDir, "antigravity"))).toBe(true)
-    expect(statSync(account.configDir).mode & 0o777).toBe(0o700)
+    if (process.platform !== "win32") expect(statSync(account.configDir).mode & 0o777).toBe(0o700)
     const record: unknown = JSON.parse(readFileSync(join(account.configDir, "account.json"), "utf8"))
     expect(record).toEqual({ version: 1, accountId: account.accountId, identity: "person@example.com", createdAt: expect.any(String), refreshedAt: expect.any(String) })
     // Every agy launch runs in the login's own private home and workspace, with agy's own sign-in command.
