@@ -201,6 +201,12 @@ An attached terminal follows the serving account service's announced build ident
 A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter. The client asks the manager to start it and never launches a twin beside it. A client launches the service itself only where nothing is registered and enabled. That launch is the explicitly authorized persistent kind and uses its lane's entry: the installed build, or the checkout's source. A client that has begun to exit starts no service.
 Not: A client-launched service beside a registered job, which holds the address while the job parks or respawns against it.
 
+## ARCH-RUNTIME-085: A Windows client starts the service outside every job and proves it before the service runs
+
+On Windows, a client starts the account service suspended, with a request to break away from every job, and checks that the suspended process is in no job before it lets it run. When Windows refuses the breakaway, or the process is still in a job, the client ends the suspended process and starts the service through WMI instead. The service's output goes to its spool files in both paths.
+Because: The service must outlive an editor's kill-on-close job, a client sees only its innermost job, and a WMI start costs hundreds of milliseconds.
+Not: A WMI start on every launch, or trust in a breakaway that Windows reports as done while an editor's outer job still holds the process.
+
 ## ARCH-RUNTIME-038: Only a proven login home registers or changes a registration
 
 Process initiation registers the service with the platform service manager only when the account home is the login home; an isolated account home registers nothing and reports initiation unavailable. A running service writes, reloads, or re-registers its own registration only when its manager started it and the login home is proven, and an unanswered proof is never remembered.

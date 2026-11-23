@@ -10,7 +10,7 @@ import { Log } from "../../../infra/log.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { OwnedProcess } from "../../../infra/owned-subprocess.js"
 import type { LauncherScope } from "../../../infra/process-supervisor.js"
-import { openAcpConnection, type AcpConnection } from "./acp/connection.js"
+import { AcpRequestError, openAcpConnection, type AcpConnection } from "./acp/connection.js"
 import { withLoginOwnership } from "./engine-process.js"
 import type { GateHookHandler } from "./hook-command.js"
 import { EngineCannotStartError, loginProblems, type LoginObservations, type ProfileLogin } from "./login-status.js"
@@ -45,6 +45,14 @@ const LOGIN_URL = /^\s+(https:\/\/accounts\.google\.com\/\S+)\s*$/u
 const SIGNED_IN = /OAuth: authenticated successfully as (\S+)\s*$/u
 /** agy's ACP method of the browser sign-in for a personal Google account. */
 const BROWSER_SIGN_IN = "oauth-personal"
+/** agy's refusal of the browser sign-in on a host with no display, such as a container or an SSH session (agy
+ *  1.5.14: `-32603`, "No browser is available here (no graphical display is available to open a browser). Run `agy
+ *  acp --login` in a terminal on this machine, ..."), observed in a Linux container. */
+const NO_BROWSER = /No browser is available/u
+
+function isNoBrowserRefusal(error: unknown): boolean {
+  return error instanceof AcpRequestError && error.method === "authenticate" && NO_BROWSER.test(error.message)
+}
 
 /** Flywheel's token-free record of a login directory's account (`account.json`), version 1. */
 const AccountRecordSchema = Schema.Struct({
@@ -285,18 +293,32 @@ async function browserSignIn(profile: AntigravityProfile, ports: ExternalLoginPo
   if (ports.signal?.aborted) throw new Error("Login cancelled")
 }
 
-/** Runs agy's own sign-in on the prepared login directory and returns the account that agy's log names. */
-async function signIn(profile: AntigravityProfile, loginDir: string, ports: ExternalLoginPorts): Promise<string | undefined> {
-  await withLoginOwnership(loginDir, () => prepareLaunch(profile, loginDir, ports.launcher))
+/** Runs one sign-in step on a new launch of the login directory and returns the account that agy's log names. */
+async function signInStep(profile: AntigravityProfile, loginDir: string, ports: ExternalLoginPorts, step: typeof pastedCodeSignIn): Promise<string | undefined> {
   const launch = engineLaunch(profile, loginDir, "login")
   try {
-    await (ports.openBrowser === undefined ? pastedCodeSignIn : browserSignIn)(profile, ports, launch)
+    await step(profile, ports, launch)
   } catch (error) {
     // A keychain that the engine reached is the failure that matters most, whatever ended the sign-in.
     settleEngineLog(profile, loginDir, launch.logFile)
     throw error
   }
   return settleEngineLog(profile, loginDir, launch.logFile)
+}
+
+/** Runs agy's own sign-in on the prepared login directory and returns the account that agy's log names. A client
+ *  that can open a browser gets agy's browser flow; on a host where agy finds no display, the same login goes on with
+ *  the pasted-code flow, which is agy's own remedy for that host. */
+async function signIn(profile: AntigravityProfile, loginDir: string, ports: ExternalLoginPorts): Promise<string | undefined> {
+  await withLoginOwnership(loginDir, () => prepareLaunch(profile, loginDir, ports.launcher))
+  if (ports.openBrowser === undefined) return await signInStep(profile, loginDir, ports, pastedCodeSignIn)
+  try {
+    return await signInStep(profile, loginDir, ports, browserSignIn)
+  } catch (error) {
+    if (!isNoBrowserRefusal(error)) throw error
+    log.info("Google Antigravity browser sign-in has no display here; using the pasted-code sign-in", { login: basename(loginDir) })
+    return await signInStep(profile, loginDir, ports, pastedCodeSignIn)
+  }
 }
 
 /** Runs agy's documented logout of the login directory (ACP `logout`, which `initialize` advertises as
