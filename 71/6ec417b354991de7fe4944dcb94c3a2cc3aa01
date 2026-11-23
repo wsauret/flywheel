@@ -1,0 +1,14 @@
+scripts/antigravity-engine-asset.ts
+  h_4b47e9e4a8b456 3,7,101-102,127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "716ec417b354991de7fe4944dcb94c3a2cc3aa01",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
