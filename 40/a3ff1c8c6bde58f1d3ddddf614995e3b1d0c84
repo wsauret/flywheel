@@ -1,0 +1,82 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 523
+docs/product-intent/updates.md
+  h_4b47e9e4a8b456 55
+scripts/dev.ts
+  h_4b47e9e4a8b456 42-63
+src/cli/fatal-exit.ts
+  h_4b47e9e4a8b456 65,69,79,96-113
+src/cli/serve-contract.ts
+  h_4b47e9e4a8b456 27-33
+src/cli/serve-next-service.ts
+  h_4b47e9e4a8b456 1-4,8-9,41-63
+src/cli/serve.ts
+  h_4b47e9e4a8b456 22,40,382,522-523,525
+src/infra/source-snapshot.ts
+  h_4b47e9e4a8b456 373-391
+src/orchestration/app-service/account-service-runtime.ts
+  h_4b47e9e4a8b456 6,151-155,234-240
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 61-62,273,399
+src/orchestration/app-service/mutation-handler.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/app-service/project-control-client.ts
+  h_4b47e9e4a8b456 5,40-41,45-51,574,659
+src/orchestration/app-service/service-restart.ts
+  h_4b47e9e4a8b456 1-64
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 105,151,480-485,789-801
+src/protocol/client/editor-protocol-coverage.ts
+  h_4b47e9e4a8b456 72
+src/protocol/client/service-restart-copy.ts
+  h_4b47e9e4a8b456 1-39
+src/protocol/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 43
+src/protocol/runtime-dispatch-result-schemas.ts
+  h_4b47e9e4a8b456 69
+src/protocol/runtime-liveness.ts
+  h_4b47e9e4a8b456 288-290,292
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 18,94-98,375,412,539,568
+src/protocol/serve-handshake.ts
+  h_4b47e9e4a8b456 41-52
+tests/helpers/account-service-state.ts
+  h_4b47e9e4a8b456 2,12-13,16-17,25-30,34,39-41
+tests/integration/local/account-service-web.test.ts
+  h_4b47e9e4a8b456 65
+tests/integration/local/dev-source-snapshot.test.ts
+  h_4b47e9e4a8b456 12,49-50,185-213,407-428
+tests/unit/cli/serve-successor.test.ts
+  h_4b47e9e4a8b456 7-8,59-78
+tests/unit/orchestration/app-service/project-control-service-state.test.ts
+  h_4b47e9e4a8b456 40-58
+tests/unit/orchestration/app-service/service-restart.test.ts
+  h_4b47e9e4a8b456 1-61
+tests/unit/protocol/serve-handshake.test.ts
+  h_4b47e9e4a8b456 2,105-116
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 3-4,6,433-508
+webview/src/app/sheets/status-sheet-restart.test.tsx
+  h_4b47e9e4a8b456 1-159
+webview/src/app/sheets/status-sheet.tsx
+  h_4b47e9e4a8b456 2,12-14,50-51,54,57,59,82-99,154-170,207-230
+webview/src/client/action-key.ts
+  h_4b47e9e4a8b456 13
+webview/src/client/service-restart.test.ts
+  h_4b47e9e4a8b456 1-26
+webview/src/client/service-restart.ts
+  h_4b47e9e4a8b456 1-55
+webview/src/styles/sheets.css
+  h_4b47e9e4a8b456 139-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "40a3ff1c8c6bde58f1d3ddddf614995e3b1d0c84",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
