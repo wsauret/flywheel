@@ -292,8 +292,11 @@
  *  the project wait on a question, closed ones included, each with the time
  *  its question opened, and the `waitingSessions` workspace domain carries
  *  `waitingSessions.changed` with the whole set. An older peer rejects the query and the patch.
+ *  Version 92: a system row may carry `watch`, the watch whose event or end
+ *  it shows, and a command row of the background index may carry `watch`.
+ *  An older client rejects such rows.
  */
-export const RUNTIME_PROTOCOL_VERSION = 91
+export const RUNTIME_PROTOCOL_VERSION = 92
 
 const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

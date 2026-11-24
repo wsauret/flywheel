@@ -30,7 +30,7 @@ import type { SessionNotice } from "../infra/session-notice.js"
 import type { MutationEvidence } from "../infra/mutation-evidence.js"
 import type { ToolResultAction } from "../infra/tool-result-action.js"
 import type { ToolAction } from "../infra/workflow-types.js"
-import type { AgentFailureDisplay, ContainerKind, DegradedBlock, DiffOmission, MessageSender, ProvisionalDiff, PausedBy, ToolPresentation, WorkflowCard } from "../infra/output-blocks.js"
+import type { AgentFailureDisplay, ContainerKind, DegradedBlock, DiffOmission, MessageSender, ProvisionalDiff, PausedBy, SystemWatch, ToolPresentation, WorkflowCard } from "../infra/output-blocks.js"
 import type {
   EffortOptionRow,
   ModelAssignmentRow,
@@ -348,6 +348,8 @@ export type FrontendOutputBlock =
     readonly message: string
     readonly level?: "info" | "error"
     readonly mutationEvidence?: MutationEvidence
+    /** The watch whose event or end this row shows. */
+    readonly watch?: SystemWatch
     /** Mutation lines the wire edge omitted from this notice. */
     readonly diffOmission?: DiffOmission
     readonly timestamp: number

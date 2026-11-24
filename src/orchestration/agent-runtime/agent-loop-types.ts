@@ -271,7 +271,7 @@ export interface AgentLoopOptions {
   onSystemMessage?: (message: string, level?: "info" | "error") => void;
   onNotice?: (operation: SessionNoticeOperation) => void;
   onNotification?: (episode: NotificationEpisodeInput) => void;
-  onUserMessage?: (content: string | ContentBlock[], origin: UserMessageOrigin, identity?: Pick<ChatInput, "submissionIds" | "dispatchIds">) => void;
+  onUserMessage?: (content: string | ContentBlock[], origin: UserMessageOrigin, identity?: Pick<ChatInput, "submissionIds" | "dispatchIds"> & { readonly backgroundNotificationIds?: readonly string[] }) => void;
   onTurnAssistantMessage?: (content: ContentBlock[], entryId?: string) => void;
   inputSource?: InputSource;
   /** Injects the park clock. Returns cleanup for the single wait expiry. */

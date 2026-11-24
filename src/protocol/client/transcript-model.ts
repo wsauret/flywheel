@@ -1,4 +1,4 @@
-import { isAgentInFlight } from "../../infra/output-blocks.js"
+import { isAgentInFlight, TOOL_PREVIEW_LINE_LIMIT, type SystemWatch } from "../../infra/output-blocks.js"
 import type { FrontendMessageSender, FrontendOutputBlock, FrontendToolEntry } from "../app-service-types.js"
 import { blockIdentity } from "../block-identity.js"
 import type { StatusView } from "../status-protocol-types.js"
@@ -15,6 +15,27 @@ import { toolRunCategoryFor } from "./tool-run-category.js"
 
 type FrontendThinkingBlock = Extract<FrontendOutputBlock, { kind: "thinking" }>
 type FrontendUserMessageBlock = Extract<FrontendOutputBlock, { kind: "userMessage" }>
+
+/** What every client shows of a watch row (PI-AGENT-136): a label line
+ *  that says whether the row is an event or the end of the watch, names the
+ *  command, and counts the events dropped before it; for an end, how the
+ *  watch ended; and the command's lines, at most TOOL_PREVIEW_LINE_LIMIT of
+ *  them until the person opens the rest, as a command's output shows.
+ *  `hidden` counts the lines left out, and `expandable` says whether a
+ *  disclosure exists. */
+export function watchRowView(row: { readonly watch: SystemWatch; readonly message: string }, open: boolean) {
+  const { watch } = row
+  const all = row.message.split("\n")
+  const lines = watch.kind === "end" ? all.slice(1) : all
+  const shown = open ? lines : lines.slice(0, TOOL_PREVIEW_LINE_LIMIT)
+  return {
+    label: `${watch.kind === "end" ? "watch ended" : "watch"} · ${watch.description}${watch.dropped ? ` · ${watch.dropped} dropped` : ""}`,
+    summary: watch.kind === "end" ? all[0] : undefined,
+    lines: shown,
+    hidden: lines.length - shown.length,
+    expandable: lines.length > TOOL_PREVIEW_LINE_LIMIT,
+  }
+}
 
 /** Visual activity includes managed work after its launching call completes.
  * Process membership comes from live status, never the saved background flag.

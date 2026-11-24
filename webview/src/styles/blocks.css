@@ -166,6 +166,11 @@
 }
 .block.system { font-size: var(--fw-text-sm); color: var(--fw-fg-muted); }
 .block.system.returned-input { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* A watch row: a muted one-line label naming the command, then the
+   command's own lines as readable monospace text. */
+.block.system.watch .watch-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.block.system.watch .watch-text { font-family: var(--fw-font-mono); color: var(--fw-fg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.block.system.watch .watch-summary { white-space: pre-wrap; overflow-wrap: anywhere; }
 .block.assistant::before,
 .block.system::before {
   content: "";

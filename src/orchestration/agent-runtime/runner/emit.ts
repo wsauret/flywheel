@@ -75,7 +75,7 @@ export function emitUser(
   content: string | ReadonlyArray<UserContentBlock>,
   origin: "user" | "system",
   parentToolUseId?: string,
-  identity?: Pick<ChatInput, "submissionIds" | "dispatchIds">,
+  identity?: Pick<ChatInput, "submissionIds" | "dispatchIds"> & { readonly backgroundNotificationIds?: readonly string[] },
 ): void {
   const userContent = typeof content === "string"
     ? [{ type: "text", text: content }]
@@ -83,7 +83,7 @@ export function emitUser(
 
   emit(
     createRuntimeEvent("model.user_message.recorded", {
-      message: { content: userContent, origin, ...(identity?.submissionIds?.length ? { submissionIds: identity.submissionIds } : {}), ...(identity?.dispatchIds?.length ? { dispatchIds: identity.dispatchIds } : {}) },
+      message: { content: userContent, origin, ...(identity?.submissionIds?.length ? { submissionIds: identity.submissionIds } : {}), ...(identity?.dispatchIds?.length ? { dispatchIds: identity.dispatchIds } : {}), ...(identity?.backgroundNotificationIds?.length ? { backgroundNotificationIds: identity.backgroundNotificationIds } : {}) },
       ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );

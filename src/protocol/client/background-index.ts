@@ -124,8 +124,8 @@ function workflowProgressParts(progress: BackgroundWorkProgress, active: boolean
   return [workflowProgressCount({ ...progress, lists: [] }), ...(names === "" ? [] : [names])]
 }
 
-/** What a row states beside its title: its status, the exit code of a
- *  command that ended by itself, the duration of a finished command or
+/** What a row states beside its title: its status, the mark of a watch,
+ *  the exit code of a command that ended by itself, the duration of a finished command or
  *  subagent, the model of a running child, and a workflow's progress. A
  *  stopped or canceled command shows no exit code: the code is the
  *  command's reaction to the stop, such as 143 from a trapped SIGTERM or the
@@ -134,6 +134,7 @@ export function backgroundRowDetail(row: BackgroundWorkRow): string {
   const endedByStop = row.status === "stopped" || row.status === "cancelled"
   return [
     backgroundStatusLabel(row),
+    row.watch ? "watch" : undefined,
     row.exitCode === undefined || endedByStop ? undefined : `exit ${row.exitCode}`,
     row.durationMs === undefined ? undefined : formatDuration(row.durationMs),
     row.model === undefined ? undefined : row.effort === undefined ? row.model : `${row.model} · ${row.effort}`,

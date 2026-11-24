@@ -11,9 +11,28 @@ test("returned input preserves the person's text in a whitespace-preserving noti
   const message = "Explorer finished before reading your message:\n\nrename `foo` to `bar`\n  keep  spacing"
   const notice: FrontendOutputBlock = { kind: "system", id: "returned-input:child:person:send", message, timestamp: 0 }
   const html = renderBlock(notice)
-  const content = html.match(/<div class="block system\s+returned-input">([\s\S]*?)<\/div>/)?.[1]
+  const content = html.match(/<div class="block system\s+returned-input\s*">([\s\S]*?)<\/div>/)?.[1]
   assert.equal(content, message)
   assert.doesNotMatch(renderBlock({ ...notice, id: "ordinary-notice" }), /returned-input/)
+})
+
+test("a watch row shows a label naming the command above the command's lines, and an end row says how it ended above its unfinished line", () => {
+  const html = renderBlock({ kind: "system", id: "watch:bash-bg-1:42", message: "ERROR one <x>\nERROR two", timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event", dropped: 3 } })
+  assert.match(html, /<div class="block system\s+watch">/)
+  assert.match(html, /<div class="watch-label">watch · tail -f app.log · 3 dropped<\/div>/)
+  assert.match(html, /<div class="watch-text">ERROR one &lt;x>\nERROR two<\/div>/)
+  assert.doesNotMatch(html, /watch_event|user-message|watch-more/)
+
+  const end = renderBlock({ kind: "system", id: "watch:bash-bg-1:end", message: "The watch reached its 300s deadline. It delivered 2 events.\npartial", timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "end" } })
+  assert.match(end, /<div class="watch-label">watch ended · tail -f app.log<\/div><div class="watch-summary">The watch reached its 300s deadline\. It delivered 2 events\.<\/div><div class="watch-text">partial<\/div>/)
+})
+
+test("a long watch row shows its first lines and a disclosure that counts the rest", () => {
+  const message = Array.from({ length: 50 }, (_, index) => `line ${index}`).join("\n")
+  const html = renderBlock({ kind: "system", id: "watch:bash-bg-1:900", message, timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } })
+  assert.match(html, /line 19<\/div>/)
+  assert.doesNotMatch(html, /line 20/)
+  assert.match(html, /30 more lines/)
 })
 
 test("shell rows show the live tail over restored bodies until settled output replaces it", () => {

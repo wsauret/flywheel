@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import { MutationEvidenceSchema } from "../infra/mutation-evidence-schema.js"
-import { AgentFailureDisplaySchema, ContainerKindSchema, DegradedBlockSchema, DiffOmissionSchema, MessageSenderSchema, ProvisionalDiffSchema, ToolPresentationSchema, ToolStreamingTextSchema, UserMessageImageSchema, WorkflowCardSchema } from "../infra/output-blocks.js"
+import { AgentFailureDisplaySchema, ContainerKindSchema, DegradedBlockSchema, DiffOmissionSchema, MessageSenderSchema, ProvisionalDiffSchema, SystemWatchSchema, ToolPresentationSchema, ToolStreamingTextSchema, UserMessageImageSchema, WorkflowCardSchema } from "../infra/output-blocks.js"
 import { ToolActionSchema } from "../infra/workflow-types.js"
 import { ToolResultActionSchema } from "../infra/tool-result-action.js"
 import type {
@@ -150,6 +150,7 @@ export const FrontendOutputBlockSchema = Schema.Union([
     message: Schema.String,
     level: Schema.optionalKey(Schema.Union([Schema.Literal("info"), Schema.Literal("error")])),
     mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
+    watch: Schema.optionalKey(SystemWatchSchema),
     diffOmission: Schema.optionalKey(DiffOmissionSchema),
     timestamp: Schema.Number,
   }),

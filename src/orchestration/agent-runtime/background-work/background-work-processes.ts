@@ -51,6 +51,7 @@ export function commandIndexRecord(meta: BackgroundWorkMeta, startedAtMs: number
     startedAtMs,
     ...(meta.modelRequestId ? { modelRequestId: meta.modelRequestId } : {}),
     ...(meta.parentToolUseId ? { parentToolUseId: meta.parentToolUseId } : {}),
+    ...(meta.watch ? { watch: true as const } : {}),
   };
   if (!settled) return { ...fields, state: "running" };
   const { status, exit } = settled.result;

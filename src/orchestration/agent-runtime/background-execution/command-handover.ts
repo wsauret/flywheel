@@ -39,7 +39,7 @@ import type { LauncherScope } from "../../../infra/process-supervisor.js"
 import { commandHandoversOfAsync, markCommandKept, retireCommandHandover, writeCommandHandover, type CommandCompletion, type CommandHandoverRow, type StoredCommandHandover } from "../../session/command-handover.js"
 import { createSessionFactWriter } from "../../session/persistence/session-fact-writer.js"
 import type { BackgroundWorkResult } from "../background-work/background-work-types.js"
-import { formatStandaloneNotification } from "../background-work/background-work-notifications.js"
+import { commandCompletionText } from "../background-work/background-work-notifications.js"
 import { handedOverPrivateCopy } from "../tools/bash/private-copy/bash-project-mutation.js"
 import type { PrivateCopyPool } from "../tools/bash/private-copy/bash-private-copy-pool.js"
 import { startManagedCommand, type ManagedCommand, type ManagedCommandEnd } from "../tools/bash/execution/managed-command.js"
@@ -129,6 +129,7 @@ async function handOverCommand(host: CommandHandoverScope, handoffId: string, co
   }
   try {
     const privateCopyHome = command.copyHomeForHandover()
+    const watch = command.watchForHandover()
     const handover = {
       channel: handoverChannelAddress({ userDataRoot: authority.userDataRoot, lane: authority.lane, token: owned.token }),
       // Beside the command's log, which is where every later reader finds it.
@@ -156,6 +157,7 @@ async function handOverCommand(host: CommandHandoverScope, handoffId: string, co
         pid: owned.pid,
         startedAtMs: command.startedAtMs,
         ...(command.deadlineAtMs === undefined ? {} : { deadlineAtMs: command.deadlineAtMs }),
+        ...(watch === undefined ? {} : { watch }),
       },
     })
     const answer = await command.handOver(handover)
@@ -176,7 +178,7 @@ async function handOverCommand(host: CommandHandoverScope, handoffId: string, co
 
 /** The completion of `command`, under the key its live publication uses. */
 function completionOf(command: ManagedCommand, result: BackgroundWorkResult): CommandCompletion {
-  return { key: command.meta.notificationKey, text: formatStandaloneNotification({ meta: command.meta, result }) }
+  return { key: command.meta.notificationKey, text: commandCompletionText(command.meta, result) }
 }
 
 /** The registry a host adopts into. `start` builds its presence of one
@@ -340,6 +342,7 @@ export function handedOverCommandInput(host: CommandHandoverScope, row: CommandH
     logPath: row.logPath,
     startedAtMs: row.startedAtMs,
     ...(row.deadlineAtMs === undefined ? {} : { deadlineAtMs: row.deadlineAtMs }),
+    ...(row.watch === undefined ? {} : { watch: row.watch }),
     ...(row.privateCopyHome === undefined ? {} : {
       privateCopy: handedOverPrivateCopy({
         home: row.privateCopyHome,

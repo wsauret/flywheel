@@ -1,3 +1,4 @@
+import { TOOL_PREVIEW_LINE_LIMIT } from "../../../../../src/infra/output-blocks.js"
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../../src/protocol/app-service-types.js"
 import { DEFAULT_ESTIMATE, estimateFrontendOutputBlockRows } from "../../../../../src/tui/transcript/transcript-store/output-height-estimates.js"
@@ -95,6 +96,15 @@ describe("TUI output height estimates", () => {
 
     expect(estimateFrontendOutputBlockRows(notice, false)).toBe(DEFAULT_ESTIMATE)
     expect(estimateFrontendOutputBlockRows(plain, false)).toBe(DEFAULT_ESTIMATE)
+  })
+
+  it("counts a watch row's label line and each line it shows closed, up to the preview limit and a count of the rest", () => {
+    const watch = { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } as const
+    const lines = (count: number): FrontendOutputBlock => ({ kind: "system", id: `watch:bash-bg-1:${count}`, message: Array.from({ length: count }, (_, i) => `ERROR ${i}`).join("\n"), timestamp: 1, watch })
+
+    expect(estimateFrontendOutputBlockRows(lines(1), false)).toBe(DEFAULT_ESTIMATE)
+    expect(estimateFrontendOutputBlockRows(lines(6), false)).toBe(7)
+    expect(estimateFrontendOutputBlockRows(lines(500), false)).toBe(TOOL_PREVIEW_LINE_LIMIT + 2)
   })
 
   it("counts invocation-body source lines with the first line sharing the header row", () => {

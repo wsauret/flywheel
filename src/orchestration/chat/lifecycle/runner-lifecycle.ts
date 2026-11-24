@@ -28,6 +28,7 @@ import type { AskUserController } from "../../runner/ask-user-controller.js"
 import { createModuleChatObservers } from "./module-observers.js"
 import { readChatTurnEndEvidence } from "../../session/control/chat-session-run-evidence.js"
 import { createChatWaitState } from "../runner-wait-state.js"
+import { watchNoticeRow } from "../../../infra/watch-notices.js"
 import { awaitPlannedChildResumes } from "../../session/control/planned-session-continuation.js"
 import { waitsForPerson } from "../../session/conversation/turn-end-record.js"
 import { NO_MODULE_RUNTIMES, type ModuleRuntimes } from "../../../infra/module-runtime.js"
@@ -65,7 +66,7 @@ interface ChatRunnerLifecycleInput {
   session: OutputSession
   applyNestedStoredFact: (event: StoredFact) => void | Promise<void>
   state: ChatSessionState
-  askUser: AskUserController
+  askUser: AskUserController & { hasPendingQuestions(): boolean }
   setConnectionState: (state: ConnectionState) => void
   awaitDurableFacts: () => Promise<void>
 }
@@ -99,6 +100,11 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
   const { background, notifications, onBackgroundEvent } = createChatBackground({
     deps, emit, mailbox, awaitDurableFacts, admitsInput: () => !state.ended && !deps.rootChatCompletion?.sealed,
     deliver: (text, notificationKey) => submit(text, { source: "background", notificationKey }),
+    // A watch holds its events while the chat cannot take a turn: its turn
+    // was interrupted, also as the stored turn end of a chat with no turn in
+    // the slot records it, a question waits for the person, or it waits for
+    // model capacity (PI-AGENT-136).
+    holdsWatchEvents: () => wait.waitsForPersonNow() || askUser.hasPendingQuestions() || capacity.waiting(),
   })
   const foregroundBashHold = createForegroundBashHoldController((activeIds) => deps.updateEntry({ activeForegroundBashToolCallIds: activeIds }))
   let moduleRuntimes: ModuleRuntimes = NO_MODULE_RUNTIMES
@@ -548,7 +554,18 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       try {
         await landWhileIdle(reservation, {
           admit: (waits) => ({ result: true, landing: waits ? "hold" : "wake" }),
-          commit: () => deps.treeWriter.commitBackgroundNotification(notification),
+          commit: async () => {
+            const entryId = await deps.treeWriter.commitBackgroundNotification(notification)
+            // The turn this commit wakes echoes the entry without its key, so
+            // the live row of a watch notice comes from the commit, under the
+            // entry id that stored history projects it with.
+            const row = entryId === null ? undefined : watchNoticeRow([entryId], notification.text)
+            if (entryId !== null && row !== undefined) {
+              session.pushSystemMessage(row.text, Date.now(), { id: entryId, watch: row.watch })
+              session.flush()
+            }
+            return entryId
+          },
           wake: () => startTurn(typeof input === "string" ? input : input.text, opts),
         })
       } catch {

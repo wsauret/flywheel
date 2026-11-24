@@ -30,7 +30,7 @@ if (!javascript) throw new Error("Background sheet fixture build produced no Jav
 const { mountBackgroundSheet }: typeof import("./background-sheet-interaction-fixture.js") = await importBuiltModule(javascript)
 
 const ROWS: readonly BackgroundWorkRow[] = [
-  { id: "toolu_server", kind: "command", title: "bun run dev", startedAtMs: 100, cardToolUseId: "toolu_server", status: "running", stop: { sessionId: "chat", toolUseId: "toolu_server" } },
+  { id: "toolu_server", kind: "command", title: "bun run dev", startedAtMs: 100, cardToolUseId: "toolu_server", status: "running", stop: { sessionId: "chat", toolUseId: "toolu_server" }, watch: true },
   { id: "reviewer", kind: "subagent", title: "Reviewer", startedAtMs: 200, cardToolUseId: "toolu_reviewer", target: { kind: "session", sessionId: "reviewer" }, status: "running", stop: { sessionId: "chat", toolUseId: "toolu_reviewer" } },
   { id: "toolu_test", kind: "command", title: "bun test", startedAtMs: 300, cardToolUseId: "toolu_test", status: "failed", exitCode: 2, durationMs: 1_500 },
 ]
@@ -42,6 +42,7 @@ test("lists running work whose card is outside the loaded window, and a tap land
     assert.deepEqual(mounted.queriesBeforeMount(), [{ type: "sessionBackgroundWork", sessionId: "chat" }])
     assert.deepEqual(mounted.queriesSinceMount(), [])
     assert.match(mounted.text(), /bun run dev/)
+    assert.match(mounted.text(), /Running · watch/)
     assert.match(mounted.text(), /Reviewer/)
     assert.doesNotMatch(mounted.text(), /bun test/)
 

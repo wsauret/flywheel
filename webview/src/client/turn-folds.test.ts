@@ -66,18 +66,20 @@ test("a settled turn folds its work, leaves its answer and restores every divide
   assert.deepEqual(turnChangedFiles(fold), [])
 })
 
-test("returned input stays after a closed fold and appears once when opened", () => {
+test("returned input stays after a closed fold and appears once when opened, and a watch event folds with the turn's work", () => {
   const returned: FrontendOutputBlock = {
     kind: "system", id: "returned-input:child:person:send", message: "Explorer finished before reading your message:\n\nrename `foo` to `bar`", timestamp: 4000,
   }
+  const watch: FrontendOutputBlock = { kind: "system", id: "watch:bash-bg-1:42", message: "ERROR one", timestamp: 4500, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } }
   const ordinary: FrontendOutputBlock = { kind: "system", id: "ordinary", message: "Updated skill.", timestamp: 5000 }
-  const view = viewOf([person, narration, command, returned, ordinary, answer])
+  const view = viewOf([person, narration, command, returned, watch, ordinary, answer])
   const folded = foldWebTurns(view, true)
   assert.deepEqual(folded.rows.map(row => row.kind), ["userMessage", "turnFold", "system", "text"])
   assert.equal(folded.rows[2], returned)
   const fold = folded.rows[1]
   assert.ok(fold?.kind === "turnFold")
   assert.ok(!fold.rows.includes(returned))
+  assert.ok(fold.rows.includes(watch))
   assert.ok(fold.rows.includes(ordinary))
   const opened = foldWebTurns(view, true, () => true)
   assert.deepEqual(opened.rows.filter(row => row.kind !== "turnFold"), view.rows)

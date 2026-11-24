@@ -58,6 +58,8 @@ export const BackgroundWorkRowSchema = Schema.Struct({
   /** The `background.terminate` that stops an active row. Absent when the
    *  runtime admits no Stop for the row. */
   stop: Schema.optionalKey(Schema.Struct({ sessionId: Schema.NonEmptyString, toolUseId: Schema.NonEmptyString })),
+  /** Set on the row of a command that runs as a watch (ARCH-TOOLS-059). */
+  watch: Schema.optionalKey(Schema.Literal(true)),
 })
 export type BackgroundWorkRow = typeof BackgroundWorkRowSchema.Type
 

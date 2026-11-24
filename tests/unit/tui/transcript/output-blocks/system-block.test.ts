@@ -157,6 +157,41 @@ describe("system block", () => {
     }
   })
 
+  it("renders a watch row as a muted label naming the command and its lines as readable text", async () => {
+    const message = "ERROR one `x`\nERROR two"
+    const result = await renderSystemBlock({ kind: "system", id: "watch:bash-bg-1:42", message, timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event", dropped: 2 } }, { height: 6 })
+    try {
+      expect(await restingFrameLines(result, 6)).toEqual(["• watch · tail -f app.log · 2 dropped", "  ERROR one `x`", "  ERROR two"])
+      const spans = result.captureSpans().lines.flatMap(line => line.spans)
+      expect(spans.find(span => span.text.includes("watch · tail"))?.fg.equals(theme.textMuted)).toBe(true)
+      expect(spans.find(span => span.text.includes("ERROR two"))?.fg.equals(theme.text)).toBe(true)
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
+  it("renders a watch's end row with how it ended in notice style, and a long event row with its first lines and a count of the rest", async () => {
+    const end = await renderSystemBlock({ kind: "system", id: "watch:bash-bg-1:end", message: "The watch reached its 300s deadline. It delivered 2 events.\npartial", timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "end" } }, { height: 6 })
+    try {
+      expect(await restingFrameLines(end, 6)).toEqual(["• watch ended · tail -f app.log", "  The watch reached its 300s deadline. It delivered 2 events.", "  partial"])
+      const spans = end.captureSpans().lines.flatMap(line => line.spans)
+      expect(spans.find(span => span.text.includes("deadline"))?.fg.equals(theme.textMuted)).toBe(true)
+      expect(spans.find(span => span.text.includes("partial"))?.fg.equals(theme.text)).toBe(true)
+    } finally {
+      end.renderer.destroy()
+    }
+    const message = Array.from({ length: 50 }, (_, index) => `line ${index}`).join("\n")
+    const long = await renderSystemBlock({ kind: "system", id: "watch:bash-bg-1:900", message, timestamp: 0, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } }, { height: 30 })
+    try {
+      const lines = await restingFrameLines(long, 30)
+      expect(lines).toHaveLength(22)
+      expect(lines[20]).toBe("  line 19")
+      expect(lines[21]).toBe("  30 more lines ▸")
+    } finally {
+      long.renderer.destroy()
+    }
+  })
+
   it("hides a reloaded review notice's diff until disclosure", async () => {
     const { block, fixture } = await retainedNotice(4)
     const result = await renderSystemBlock(block, { height: 32, evidenceReader: fixture.reader })

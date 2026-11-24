@@ -217,8 +217,9 @@ export function outputSessionStub(sessionId: string): OutputSession {
   }
 }
 
-export function askUserStub(): AskUserController {
+export function askUserStub(): AskUserController & { hasPendingQuestions(): boolean } {
   return {
+    hasPendingQuestions: () => false,
     ask: async () => ({ kind: "cancelled" }),
     answerQuestion() {},
     cancelQuestion() {},

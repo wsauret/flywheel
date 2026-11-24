@@ -4,6 +4,9 @@ import { SEARCH_CPU_LIMIT_SECONDS, SHELL_SEARCH_PROGRAMS, SHELL_SEARCH_RULES, ty
 import type { RuntimeTool } from "../types.js";
 
 const SHELL_OUTPUT_GUIDANCE = "Preserve live command output: the runtime captures stdout and stderr. Never redirect, suppress, filter, or capture diagnostic output with `>`, `>>`, `2>`, `2>&1`, `&>`, `/dev/null`, or log-filtering pipes. Redirect stdout only when stdout is the requested file artifact. Read the output of a command in managed execution with process read_output or its completion notification.";
+/** The one exception to the output rule, where the shell offers watches:
+ *  a watch's output is its events, so its filter is part of the command. */
+const WATCH_OUTPUT_EXCEPTION = "A watch is the exception: its redirects and filtering pipes choose its events, so use them there.";
 
 const mutationGuidance = (recordedLike: string, has: CapabilityCheck): string => {
   const scripts = has("write") ? " Create files to run, such as scratch scripts, with the write tool; bash only runs them." : "";
@@ -12,6 +15,18 @@ const mutationGuidance = (recordedLike: string, has: CapabilityCheck): string =>
 
 const timeoutGuidance = (background: boolean): string => `Optional hard deadline in seconds, at most 3600. Set it only when the command must stop by then. ${background ? "It also binds a background command, stays active after a transfer to managed execution, and ends the process group." : "It stays active after a transfer to managed execution and ends the process group."}`;
 
+/** The rules of a watch (PI-AGENT-136), on the one field that starts one.
+ *  The numbers are the limits of `WATCH_LIMITS` and the default deadline. */
+const WATCH_GUIDANCE = "Run this command in the background as a watch: while it runs, every line it writes reaches you as a watch_event notification and wakes you as a completion does. "
+  + "Every output line is an event, from stdout and stderr alike, so the command itself decides what you hear: filter its output in the command, and redirect a stream you do not need, such as chatty stderr, to a file. "
+  + "Choose a watch when you need to hear about each occurrence, for example every test file that fails during a long run or every job a queue receives. When one notice is enough, for example the end of a migration, run the command in the background without watch and let it exit when the condition holds. "
+  + "Each stage of a pipe must pass each line on as soon as it has it: use the stage's line-buffered mode, such as sed -u, stdbuf -oL, or python3 -u; a stage that buffers holds its lines back, and you hear nothing. "
+  + "Match the failure states as well as success, for example a crash, a timeout, or a non-zero status as well as the line that reports a pass, because a watch that matches only success reports nothing when the work fails, and you cannot tell that from work in progress. "
+  + "In a loop that polls something, print only the items that are new since the last pass, such as by remembering the last id you printed; a line printed again is a new event. "
+  + "Lines written within 200 ms arrive as one event. A line is cut at 500 characters and an event at 3,000. After a burst of 10 events, one event passes every 2 seconds, and the next delivered event counts the dropped ones; a command that writes too fast for more than 30 seconds is stopped. "
+  + "timeout is the watch's deadline: 300 seconds when you omit it, at most 3600. A watch_ended notification says how the watch ended and how many events it delivered; start it again to continue. "
+  + "While you wait for events, call process with action wait and a soft_timeout of the time left until the deadline. Never poll the log or sleep.";
+
 /** The fields of a bash schema after `mutates`, in order. Timeout and
  *  persistence rules live on their fields. */
 const commandProperties = (background: boolean, persistence: boolean, mutatingDeclaration: boolean) => ({
@@ -19,6 +34,7 @@ const commandProperties = (background: boolean, persistence: boolean, mutatingDe
   cwd: { type: "string", description: "Default: project root." },
   timeout: { type: "number", description: timeoutGuidance(background) },
   ...(background ? { background: { type: "boolean", description: "Run the command as a managed background process." } } : {}),
+  ...(background ? { watch: { type: "boolean", description: WATCH_GUIDANCE } } : {}),
   ...(persistence ? { persist_after_exit: { type: "boolean", description: `Let this background command outlive the runtime, such as a server that must keep running after you stop waiting. The runtime can inspect and stop it only until it exits. Requires background=true; cannot be combined with timeout${mutatingDeclaration ? " or mutates" : ""}.` } } : {}),
   raw_output: { type: "boolean", description: "Skip output compression for this call. Without it, a long bun test run drops passing-test lines, and other output over about 28,000 bytes keeps its head, its tail, and its error and warning lines. The result marks each cut and names the file with the full output. Prefer streaming and chunked processing over loading everything into memory." },
 });
@@ -115,7 +131,7 @@ export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = t
   const searchRules = platform !== "win32" ? [SEARCH] : has("search") ? [WINDOWS_SEARCH] : [];
   return {
     description: [head(platform, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), ...searchRules].join(" "),
-    promptGuidelines: [SHELL_OUTPUT_GUIDANCE, ...[fileWorkGuidance(fileEditTool, has)].filter((line) => line !== undefined)],
+    promptGuidelines: [background ? `${SHELL_OUTPUT_GUIDANCE} ${WATCH_OUTPUT_EXCEPTION}` : SHELL_OUTPUT_GUIDANCE, ...[fileWorkGuidance(fileEditTool, has)].filter((line) => line !== undefined)],
     inputSchema: {
       type: "object",
       properties: mutatingDeclaration

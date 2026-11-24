@@ -598,7 +598,7 @@ describe("bash tool: mutation commands", () => {
     expect(run.fileChanges).toHaveLength(1);
   });
 
-  it("lands a background command's mutation at exit, records them against the original call, notifies, then removes the copy", async () => {
+  it("lands a background command's mutation at exit, records them against the original call, notifies, then removes the copy, and a watch's last notice reports its landing", async () => {
     const root = project([["a.txt", "a\n"]]);
     const run = await runManagedMutation(root, (cwd) => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"), { background: true });
     await settled(run.registry);
@@ -615,6 +615,11 @@ describe("bash tool: mutation commands", () => {
     expect(run.store.facts.filter((fact) => fact.type === "file.changed").map((fact) => fact.payload)).toEqual([
       expect.objectContaining({ displayPath: "a.txt", origin: expect.objectContaining({ toolUseId: "bash-1" }) }),
     ]);
+    expect(await remainingCopies(root)).toEqual([]);
+
+    const watched = await runManagedMutation(root, (cwd) => fs.writeFileSync(path.join(cwd, "a.txt"), "watched\n"), { watch: true });
+    await settled(watched.registry);
+    expect([fs.readFileSync(path.join(root, "a.txt"), "utf8"), watched.notifications.at(-1)]).toEqual(["watched\n", expect.stringMatching(/^<watch_ended>[\s\S]*Applied to the project:\nUpdated a\.txt/)]);
     expect(await remainingCopies(root)).toEqual([]);
   });
 

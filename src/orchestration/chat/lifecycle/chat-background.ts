@@ -21,6 +21,7 @@ export function createChatBackground(input: {
   readonly awaitDurableFacts: () => Promise<void>
   readonly admitsInput: () => boolean
   readonly deliver: (text: string, notificationKey: string | undefined) => Promise<boolean>
+  readonly holdsWatchEvents: () => boolean
 }) {
   const { deps, emit, mailbox } = input
   const { sessionId } = deps
@@ -45,6 +46,7 @@ export function createChatBackground(input: {
       return input.awaitDurableFacts()
     },
     onCommandRecorded: (record) => { emitBackgroundCommandRecorded(onBackgroundEvent, record) },
+    holdsWatchEvents: input.holdsWatchEvents,
   }), deps.commandHandover ? {
     authority: deps.commandHandover, sessionId, conversationId: deps.conversationId, holder: "conversation",
     // A completion found at adoption reaches the chat as any completion does.

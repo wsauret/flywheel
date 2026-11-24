@@ -22,6 +22,7 @@ import type { ShellRuntimeClient } from "./execution/shell-runtime-types.js";
 import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS } from "./execution/shell-execution.js";
 import { createToolEnvironmentFactory, refuseBackgroundCommand, runPersistentCommand } from "./shell-environment.js";
 import { runInPrivateCopy, type MutationExecution } from "./private-copy/bash-project-mutation.js";
+import { WATCH_DEFAULT_DEADLINE_SEC } from "./execution/watch-stream.js";
 
 
 
@@ -139,7 +140,7 @@ function shellPolicyOptions(context: ToolContext, cwd: string, platform: Runtime
 
 /** The refusal of an input that the bash schema advertises to every agent of a
  *  chat tree but that this agent cannot use now (ARCH-CONTEXT-018). */
-function unavailableInput(input: "background" | "persist_after_exit", reason?: string): ToolResult {
+function unavailableInput(input: "background" | "persist_after_exit" | "watch", reason?: string): ToolResult {
   return { content: `The ${input} input of bash is unavailable to this agent now${reason === undefined ? "" : `: ${reason}`}. Do not send it again.`, outcome: "error" };
 }
 
@@ -231,7 +232,7 @@ export function createBashDefinition(options: BashAdvertisement & {
   // input object to `executionPolicy` and then to `execute`, and an entry lives only as long as that object.
   const resolvedCommands = new WeakMap<Readonly<RuntimeToolInput>, ResolvedShellCommands>();
 
-  async function runCommandInner(command: string, background: boolean, persistence: "required" | "when-admitted" | false, context: ToolContext, timeoutSec: number | undefined, raw: boolean, mutates: boolean, resolved: ResolvedShellCommands | undefined): Promise<ToolResult> {
+  async function runCommandInner(command: string, background: boolean, persistence: "required" | "when-admitted" | false, context: ToolContext, timeoutSec: number | undefined, raw: boolean, mutates: boolean, resolved: ResolvedShellCommands | undefined, watch = false): Promise<ToolResult> {
     if (context.signal?.aborted) {
       return { content: "The bash invocation was aborted before it started. The signal was already triggered; likely the user interrupted the previous turn. Wait for the user's next instruction before retrying.", outcome: "interrupted" };
     }
@@ -300,6 +301,7 @@ export function createBashDefinition(options: BashAdvertisement & {
       postExitDrainGraceMs,
       ...(held && deadlineAllowsYield ? { totalYieldMs } : {}),
       ...(timeoutSec !== undefined ? { timeoutSec } : {}),
+      ...(watch ? { watch: true as const } : {}),
     });
     const scratchDir = context.scratchDir ?? tempDir;
     const result = mutates
@@ -325,14 +327,17 @@ export function createBashDefinition(options: BashAdvertisement & {
       const timeoutCheck = checkNumericRange(input.timeout, "timeout", { exclusiveMin: 0, max: MAX_TIMEOUT_SEC });
       if ("error" in timeoutCheck) return { content: timeoutCheck.error, outcome: "error" };
       const timeout = timeoutCheck.value;
-      const background = input.background === true;
+      const watch = input.watch === true;
+      if (watch && input.background === false) return { content: "Error: 'watch=true' runs the command in the background; remove 'background=false'.", outcome: "error" };
+      if (watch && input.persist_after_exit === true) return { content: "Error: 'watch=true' cannot be combined with 'persist_after_exit=true': a watch ends at its deadline.", outcome: "error" };
+      const background = input.background === true || watch;
       const persistent = input.persist_after_exit === true;
       if (persistent && !background) return { content: "Error: 'persist_after_exit=true' requires 'background=true'", outcome: "error" };
       if (persistent && timeout !== undefined) return { content: "Error: 'persist_after_exit=true' cannot be combined with 'timeout' because the runtime cannot enforce the deadline after it exits", outcome: "error" };
       if (persistent && !persistentProcesses) return unavailableInput("persist_after_exit");
-      if (background && backgroundRefusal !== undefined) return unavailableInput("background", backgroundRefusal);
+      if (background && backgroundRefusal !== undefined) return unavailableInput(watch ? "watch" : "background", backgroundRefusal);
       const effectiveContext = { ...context, executionCwd: bashCommandCwd(input, context.executionCwd) };
-      return runCommandInner(input.command, background, persistent ? "required" : false, effectiveContext, timeout, input.raw_output === true, mutates, resolvedCommands.get(input));
+      return runCommandInner(input.command, background, persistent ? "required" : false, effectiveContext, watch ? timeout ?? WATCH_DEFAULT_DEADLINE_SEC : timeout, input.raw_output === true, mutates, resolvedCommands.get(input), watch);
     },
     async executionPolicy(input, context) {
       const shellCommand = bashShellCommand(input, context.executionCwd);

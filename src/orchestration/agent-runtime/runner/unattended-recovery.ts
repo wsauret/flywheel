@@ -123,6 +123,8 @@ interface UnattendedRecovery {
   /** Ends the capacity wait that runs now for a person's message, and the
    *  run continues at once with it. False when no capacity wait runs. */
   continueNow(): boolean
+  /** Whether a wait for model capacity or a recheck runs now. */
+  waiting(): boolean
   /** The interrupt that ended the last wait, once, for its turn owner to record. */
   takeCutInterrupt(): TurnInterruption | undefined
   /** The run's turns ended with `result`: the capacity wait that the run
@@ -368,6 +370,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
       return true
     },
     continueNow: () => endCapacityWait("message"),
+    waiting: () => waiting !== null,
     takeCutInterrupt() {
       const by = cutInterrupt
       cutInterrupt = undefined

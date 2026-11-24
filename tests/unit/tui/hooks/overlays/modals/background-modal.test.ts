@@ -234,7 +234,7 @@ describe("useBackgroundModal", () => {
     const rows = [
       row({ id: "review", kind: "subagent", status: "running", startedAtMs: 1, target: { kind: "session", sessionId: "review" }, model: "gpt-6.1-sol", effort: "low", roleSessionId: "child-review" }),
       row({ id: "analyze", kind: "subagent", status: "running", startedAtMs: 2, target: { kind: "session", sessionId: "analyze" }, model: "claude-haiku-4-5", effort: "low", roleSessionId: "child-analyze" }),
-      row({ id: "server", status: "running", startedAtMs: 3 }),
+      row({ id: "server", status: "running", startedAtMs: 3, watch: true }),
     ]
     const fixture = await new Promise<ReturnType<typeof createModal> & { dispose: () => void }>((resolve) => {
       createRoot((dispose) => resolve({ ...createModal({ rows }), dispose }))
@@ -244,7 +244,7 @@ describe("useBackgroundModal", () => {
 
     expect(fixture.ensureRoleViews.mock.calls.at(-1)?.[0]).toEqual(["child-review", "child-analyze"])
     expect(fixture.modal.backgroundModalResult().rows[0]).toMatchObject({ kind: "option", option: { rightDetail: "Running · gpt-6.1-sol · low" } })
-    expect(fixture.modal.backgroundModalResult().rows[2]).toMatchObject({ kind: "option", option: { rightDetail: "Running" } })
+    expect(fixture.modal.backgroundModalResult().rows[2]).toMatchObject({ kind: "option", option: { rightDetail: "Running · watch" } })
 
     fixture.setRoles({ "child-review": { assignments: { chat: { model: "wrong", effort: "low" } }, serving: { slot: { kind: "role", roleId: "chat" }, selection: { model: "claude-opus-4-6", effort: "high" } } } })
     expect(fixture.modal.backgroundModalResult().rows[0]).toMatchObject({ kind: "option", option: { rightDetail: "Running · claude-opus-4-6 · high" } })

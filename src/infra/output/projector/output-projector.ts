@@ -114,7 +114,7 @@ export class OutputProjector {
         this.builder.pushUserMessage(event.text, event.timestamp, event.pending ?? false, event.injected ?? false, event.submissionIds, event.images, event.from, event.dispatchIds, event.entryId);
         return;
       case "push-system-message":
-        this.builder.pushSystemMessage(event.message, event.timestamp, { id: event.id, level: event.level, mutationEvidence: event.mutationEvidence });
+        this.builder.pushSystemMessage(event.message, event.timestamp, { id: event.id, level: event.level, mutationEvidence: event.mutationEvidence, watch: event.watch });
         return;
       case "push-divider":
         this.builder.pushDivider(event.label, event.timestamp);

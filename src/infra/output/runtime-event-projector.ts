@@ -1,6 +1,7 @@
 import type { AssistantEventData, RateLimitEventData, RuntimeEvent } from "../runtime-event-types.js";
 import { extractToolResultRecords } from "../runtime-tool-records.js";
 import { redactSecrets } from "../redact-secrets.js";
+import { watchNoticeRow } from "../watch-notices.js";
 import { AssistantDraftProjector } from "./assistant-draft-projector.js";
 import type { OutputProjector } from "./projector/output-projector.js";
 import { extractDisplayMeta } from "./projector/structured-event-tool-results.js";
@@ -60,7 +61,11 @@ export class RuntimeEventProjector {
         const key = extractStringField(event.data, "block_key");
         this.assistantDraft.completeToolInput({ type: "tool-input-complete", toolUseId: event.data.tool_use.id, name: event.data.tool_use.name, input: event.data.tool_use.input, timestamp: now, ...(key ? { leadingTextId: `${key}:lead` } : {}), ...this.parentToolUseIdFields(event) }, key);
       },
-      "model.user_message.recorded": (event, now) => this.handleToolResults(event, this.parentToolUseId(event), "conversation", now),
+      "model.user_message.recorded": (event, now) => {
+        const parentToolUseId = this.parentToolUseId(event);
+        this.handleToolResults(event, parentToolUseId, "conversation", now);
+        if (!parentToolUseId) this.handleWatchNotice(event.data, now);
+      },
       // The background index reads the whole record; the transcript row takes
       // only when the command ended, to state how long it ran.
       "tool.background_command.recorded": (event) => {
@@ -163,6 +168,19 @@ export class RuntimeEventProjector {
         ...(parentToolUseId ? { parentToolUseId } : {}),
       });
     }
+  }
+
+  /** A watch notice of the chat's own conversation becomes the row that
+   *  stored history projects for its entry, under the same id, so a reseed
+   *  keeps the block. A repeat of the entry finds the row and adds none. */
+  private handleWatchNotice(data: Extract<RuntimeEvent, { type: "model.user_message.recorded" }>["data"], now: number): void {
+    const keys = data.message?.backgroundNotificationIds;
+    const content = data.message?.content;
+    const part = typeof content === "string" ? undefined : content?.find((candidate) => candidate.type === "text");
+    const text = typeof content === "string" ? content : typeof part?.text === "string" ? part.text : "";
+    const row = watchNoticeRow(keys, text);
+    if (row === undefined || keys?.[0] === undefined) return;
+    this.projector.apply({ type: "push-system-message", id: keys[0], message: row.text, timestamp: now, watch: row.watch });
   }
 
   private handleAssistant(data: AssistantEventData, parentToolUseId: string | undefined, now: number): void {

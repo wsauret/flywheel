@@ -21,6 +21,7 @@ import type { ManagedShellExecutionOptions, OwnedSpawn, ProjectMutationLanding }
 import type { ProcessorClaims } from "./processor-claims.js";
 
 const log = Log.create({ service: "shell-runtime" });
+const watchLog = Log.create({ service: "watch" });
 /** How long a settled command waits for output its pipes still carry. */
 export const POST_EXIT_DRAIN_GRACE_MS = 2_000;
 /** How often a running command's live tail is read and published. */
@@ -119,11 +120,14 @@ export async function runManagedShell(options: ManagedShellExecutionOptions & Ex
     executionOutputThrottleMs,
     postExitDrainGraceMs: options.postExitDrainGraceMs ?? POST_EXIT_DRAIN_GRACE_MS,
     ...(privateCopy ? { privateCopy } : {}),
+    ...(options.watch ? { watch: { position: 0, events: 0 } } : {}),
     // The landing outlives the turn that launched the command, so only the
     // background-work lifetime cancels it.
     ...(context.backgroundSignal ?? context.disposalSignal ? { landingSignal: context.backgroundSignal ?? context.disposalSignal } : {}),
   });
   if (!foreground || !foregroundHold) await managed.track();
+  // A new watch only: an adopted one continues the watch this record started.
+  if (options.watch) watchLog.info("watch started", { processId, ...(timeoutSec === undefined ? {} : { deadlineMs: Math.round(timeoutSec * 1000) }) });
   let releaseReason: keyof typeof TRANSFER_REASONS | undefined;
   if (foreground) {
     let capTimer: ReturnType<typeof setTimeout> | undefined;
@@ -177,11 +181,13 @@ export async function runManagedShell(options: ManagedShellExecutionOptions & Ex
     content: [
       releaseReason
         ? `Command is still running and transferred to managed process ${processId} ${TRANSFER_REASONS[releaseReason]}.`
-        : `Running in background as managed process ${processId}.`,
+        : options.watch
+          ? `Running in background as watch ${processId}. Each line it writes arrives as a watch_event notification while it runs, and a watch_ended notification says how it ended.`
+          : `Running in background as managed process ${processId}.`,
       // The cap passed because the command waits its turn, not because it is
       // slow, so the agent learns how long the wait can be (PI-AGENT-052).
       ...(hold ? [`It waits for processor time, with ${hold.ahead} ${hold.ahead === 1 ? "command" : "commands"} ahead of it.`] : []),
-      "A background_command_notification with the exit code and log tail will arrive when it exits.",
+      ...(options.watch ? [] : ["A background_command_notification with the exit code and log tail will arrive when it exits."]),
       // The session waits on every tracked command (ARCH-TOOLS-031). A server
       // that dies with the runtime, or a pattern kill that also matches the
       // runtime's own command line, ends work the agent needs.

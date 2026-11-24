@@ -1,6 +1,7 @@
 import { TOOL_PREVIEW_LINE_LIMIT } from "../../../infra/output-blocks.js"
 import { getToolDisplay } from "../../../infra/tools/tool-display-registry.js"
 import { toolRunCategoryFor } from "../../../protocol/client/tool-run-category.js"
+import { watchRowView } from "../../../protocol/client/transcript-model.js"
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../protocol/app-service-types.js"
 
 export interface OutputHeightEstimate {
@@ -22,6 +23,11 @@ const METADATA_ESTIMATE = 3
 // Header row plus the CollapsibleBox's vertical padding around an open tool body.
 const TOOL_BODY_CHROME_ROWS = 3
 
+function watchRowRows(watch: NonNullable<Extract<FrontendOutputBlock, { kind: "system" }>["watch"]>, message: string): number {
+  const view = watchRowView({ watch, message }, false)
+  return 1 + (view.summary === undefined ? 0 : 1) + view.lines.length + (view.hidden > 0 ? 1 : 0)
+}
+
 const estimatedRowsByBlock = new WeakMap<FrontendOutputBlock, { readonly text: string; readonly lineBreaks: number; readonly rows: number }>()
 
 export function estimateFrontendOutputBlockRows(block: FrontendOutputBlock, toolContentVisible: boolean): number {
@@ -35,6 +41,9 @@ export function estimateFrontendOutputBlockRows(block: FrontendOutputBlock, tool
     case "tool":
       return estimateToolEntryRows(block, toolContentVisible)
     case "system":
+      // A watch row shows a label line, its summary, its first lines, and a
+      // count of the hidden ones, closed as it first renders.
+      return block.watch ? Math.max(METADATA_ESTIMATE, watchRowRows(block.watch, block.message)) : METADATA_ESTIMATE
     case "degraded":
       return METADATA_ESTIMATE
     case "divider":

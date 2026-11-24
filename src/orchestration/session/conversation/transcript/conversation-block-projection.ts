@@ -26,6 +26,7 @@ import { isContextResetRecord, isHistoricalCompletionEntry, isVisibleTurnEnd, tu
 import { isBriefEntry } from "../tree/brief-entry.js";
 import { rawToolUseId } from "../../../../protocol/block-identity.js";
 import { sessionMessageRecoveryNotice } from "../../../../infra/chat-input.js";
+import { watchNoticeRow } from "../../../../infra/watch-notices.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
 import { assignSubagentCards, childCall, ownsSubagentCard, ownSubagentCard, type SubagentCardAssignment } from "./subagent-card-ownership.js";
 import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js";
@@ -317,6 +318,14 @@ export class TreeBlockProjection {
       if (message.invocation.args) {
         this.append({ kind: "userMessage", id, content: message.invocation.args, timestamp, pending: false, injected: false, ...(message.submissionIds?.length ? { submissionIds: message.submissionIds } : {}) });
       }
+      return;
+    }
+    // A watch notice is a row of the command's text under the notice's key,
+    // as the live display paints it (PI-AGENT-136). A held notice commits
+    // under its one key as the entry id, so the id is the key.
+    const watch = message.origin === "system" ? watchNoticeRow([id], contentText(message.content)) : undefined;
+    if (watch) {
+      this.append({ kind: "system", id, message: watch.text, timestamp, watch: watch.watch });
     } else if (message.origin !== "system" || isBriefEntry(id)) {
       // System-origin user-role messages are model-visible but hidden from the
       // user, matching the live renderer, which never paints them. An

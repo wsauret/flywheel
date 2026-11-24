@@ -375,6 +375,18 @@ const AgentGroupBlockSchema = Schema.Union([
   })),
 ])
 
+/** The watch whose notice a system row shows (ARCH-TOOLS-059): its process,
+ *  a label of its command, whether the row is an event or the end of the
+ *  watch, and the events dropped before it. The row's id is the notice's
+ *  key and its message is the notice's text without the envelope: an
+ *  event's lines, or how the watch ended followed by its unfinished line. */
+export const SystemWatchSchema = Schema.Struct({
+  processId: Schema.String,
+  description: Schema.String,
+  kind: Schema.Literals(["event", "end"]),
+  dropped: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))),
+})
+
 const SystemBlockSchema = Schema.Struct({
   kind: Schema.Literal("system"),
   id: Schema.String,
@@ -382,6 +394,8 @@ const SystemBlockSchema = Schema.Struct({
   level: Schema.optionalKey(Schema.Union([Schema.Literal("info"), Schema.Literal("error")])),
   /** One manifest for all writes reported by this notice. */
   mutationEvidence: Schema.optionalKey(MutationEvidenceSchema),
+  /** Set only on the row of a watch's event or of its end. */
+  watch: Schema.optionalKey(SystemWatchSchema),
   /** Set only by the derived-history wire edge when it truncates the notice's
    *  mutation previews (see transcript-queries.ts). */
   diffOmission: Schema.optionalKey(DiffOmissionSchema),
@@ -541,8 +555,9 @@ export function isAgentInFlight(status: AgentGroupBlock["status"]): boolean {
   return status === "pending" || status === "queued" || status === "active"
 }
 export type SystemBlock = typeof SystemBlockSchema.Type
+export type SystemWatch = typeof SystemWatchSchema.Type
 /** Optional metadata that lands on the SystemBlock unchanged. */
-export type SystemMessageOptions = Pick<SystemBlock, "level" | "mutationEvidence"> & { readonly id?: string }
+export type SystemMessageOptions = Pick<SystemBlock, "level" | "mutationEvidence" | "watch"> & { readonly id?: string }
 export type ThinkingBlock = typeof ThinkingBlockSchema.Type
 export type DividerBlock = typeof DividerBlockSchema.Type
 export type UserMessageBlock = typeof UserMessageBlockSchema.Type

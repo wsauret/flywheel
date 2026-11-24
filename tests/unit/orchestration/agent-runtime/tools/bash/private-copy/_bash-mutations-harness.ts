@@ -74,7 +74,7 @@ export function bashMutationHarness(createDirectory: (prefix: string) => string)
   /** Runs a mutating command through the managed path: `background` launches it
    *  there, and a held `exit` lets the 5 ms runtime cap transfer it. A
    *  function in place of `exit` makes the command's container. */
-  async function runManagedMutation(root: string, mutate: (cwd: string) => void, input: { readonly background?: boolean }, exit?: Promise<OwnedExit> | (() => OwnedProcess), overrides: BashCallOverrides = {}, mergeFile?: MergeFileFake) {
+  async function runManagedMutation(root: string, mutate: (cwd: string) => void, input: { readonly background?: boolean; readonly watch?: boolean }, exit?: Promise<OwnedExit> | (() => OwnedProcess), overrides: BashCallOverrides = {}, mergeFile?: MergeFileFake) {
     const order: string[] = [];
     const notifications: string[] = [];
     const recorded: Array<{ readonly toolUseId: string; readonly output: string; readonly mutation: SettledProjectMutation }> = [];

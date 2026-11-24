@@ -9,10 +9,20 @@ import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type StreamOption
 import { asModelClient } from "../agent-runtime/_model-client"
 import { chain, fakeAvailability } from "../agent-runtime/llm/_provider-chain-harness"
 import { chatInputText, type ChatInputLike } from "../../../../src/infra/chat-input"
-import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
+import { appendTurnEnd, captureBlocks, createStoredChatSession, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
+import { interruptedTurnEnd } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
 import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work/background-work-notifications"
 import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work/background-work-types"
+import type { BackgroundWorkRegistry, BackgroundWorkTracking } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
+
+function isBackgroundWorkRegistry(tasks: BackgroundWorkTracking): tasks is BackgroundWorkRegistry {
+  return "deliverWatchEvent" in tasks
+}
 
 describe("chat session with agent runtime — background-work notification (f06c00e9c8cd regression)", () => {
   let session: ChatRunner | null = null
@@ -271,5 +281,183 @@ describe("chat session with agent runtime — background-work notification (f06c
 
     expect(streams).toBe(3)
     expect(waitingOnBackgroundWork).toBe(false)
+  })
+
+  it("wakes the chat that owns a watch with each event as its own entry, and holds events while the chat is interrupted", async () => {
+    const calls: ConversationMessage[][] = []
+    let capturedBackground: NonNullable<AgentOptions["runtimeSurfaces"]>["background"]
+    let nextPark = Promise.withResolvers<void>()
+    const recorded: unknown[] = []
+    const createClient = async () => asModelClient({
+      accessProvider: "anthropic_api",
+      modelFamily: "anthropic",
+      model: "test",
+      contextLimit: 100_000,
+      outputLimit: 8_000,
+      supportsReasoning: false,
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      async *streamWithTools(options: StreamOptions) {
+        calls.push([...options.messages])
+        yield { kind: "text_delta", text: `answer ${calls.length}`, blockKey: "b0" } as const
+        if ((capturedBackground?.tasks.awaitedTaskCount() ?? 0) > 0) {
+          yield { kind: "tool_use", toolCall: { id: `wait-${calls.length}`, name: "process", input: { action: "wait", soft_timeout: 600 } } } as const
+          yield { kind: "done", stopReason: "tool_use" } as const
+        } else {
+          yield { kind: "done", stopReason: "end_turn" } as const
+        }
+      },
+    })
+    const eventBus = new EventBus()
+    eventBus.subscribeToType("agent.turn.parked", () => {
+      nextPark.resolve()
+      nextPark = Promise.withResolvers<void>()
+    })
+    const deps = createTestChatSessionDeps({
+      sessionId: "chat-watch-owner",
+      eventBus,
+      createAgent: (options) => {
+        capturedBackground = options.runtimeSurfaces?.background
+        return newTestRunner({
+          ...options,
+          onEvent: (event) => {
+            if (event.type === "model.user_message.recorded") recorded.push(event.data)
+            options.onEvent?.(event)
+          },
+        }, createClient)
+      },
+    })
+    session = await createChatSession({ onError: () => {}, onEnded: () => {} }, deps)
+
+    const initialPark = nextPark.promise
+    expect(await session.send("start the watch")).toBe("accepted")
+    await initialPark
+    const tasks = capturedBackground!.tasks
+    const meta = { id: "bash-bg-watch", type: "background_command", description: "tail -f app.log", notificationKey: "watch:bash-bg-watch:end", watch: true } as const
+    const watchRun = Promise.withResolvers<BackgroundWorkResult>()
+    tasks.track({ done: watchRun.promise, meta })
+    expect(tasks.holdsWatchEvents()).toBe(false)
+
+    // A resting chat: the event starts a request.
+    const eventPark = nextPark.promise
+    tasks.deliverWatchEvent(meta, { text: "ERROR one", position: 10, dropped: 0 })
+    await eventPark
+    expect(calls).toHaveLength(2)
+    expect(String(calls[1]!.at(-1)?.content)).toContain("ERROR one")
+
+    // The second request parked in a wait on the watch; the next event ends it.
+    const waitPark = nextPark.promise
+    tasks.deliverWatchEvent(meta, { text: "ERROR two", position: 20, dropped: 0 })
+    await waitPark
+    expect(calls).toHaveLength(3)
+    expect(String(calls[2]!.at(-1)?.content)).toContain("ERROR two")
+    expect(String(calls[2]!.at(-1)?.content)).not.toContain("ERROR one")
+    expect(recorded).toContainEqual(expect.objectContaining({ message: expect.objectContaining({ origin: "system", backgroundNotificationIds: ["watch:bash-bg-watch:20"] }) }))
+
+    const interruptedPark = nextPark.promise
+    expect(session.interrupt()).toBe(true)
+    await interruptedPark
+    expect(tasks.holdsWatchEvents()).toBe(true)
+    // A held event is refused, so the watch keeps it and its place.
+    expect(tasks.deliverWatchEvent(meta, { text: "ERROR held", position: 30, dropped: 0 })).toBe(false)
+
+    expect(await session.send("go on")).toBe("accepted")
+    await nextPark.promise
+    expect(tasks.holdsWatchEvents()).toBe(false)
+    expect(calls.flat().some((message) => String(message.content).includes("ERROR held"))).toBe(false)
+    watchRun.resolve({ status: "completed", content: "<watch_ended>done</watch_ended>" })
+  })
+
+  it("holds a watch's events while a question waits for the person, and delivers again once it is answered", async () => {
+    let capturedBackground: NonNullable<AgentOptions["runtimeSurfaces"]>["background"]
+    let nextPark = Promise.withResolvers<void>()
+    let requests = 0
+    const createClient = async () => asModelClient({
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      async *streamWithTools() {
+        requests += 1
+        if (requests === 1) {
+          yield { kind: "tool_use", toolCall: { id: "ask-1", name: "ask_user", input: { context: "One decision is needed.", question: "Proceed?", header: "Go", options: [{ label: "Yes" }, { label: "No" }] } } } as const
+          yield { kind: "done", stopReason: "tool_use" } as const
+          return
+        }
+        yield { kind: "text_delta", text: "Done.", blockKey: "b0" } as const
+        yield { kind: "done", stopReason: "end_turn" } as const
+      },
+    })
+    const eventBus = new EventBus()
+    eventBus.subscribeToType("agent.turn.parked", () => {
+      nextPark.resolve()
+      nextPark = Promise.withResolvers<void>()
+    })
+    session = await createChatSession({ onError: () => {}, onEnded: () => {} }, createTestChatSessionDeps({
+      sessionId: "chat-watch-question",
+      eventBus,
+      createAgent: (options) => {
+        capturedBackground = options.runtimeSurfaces?.background
+        return newTestRunner(options, createClient)
+      },
+    }))
+    void session.send("ask me")
+    const deadline = Date.now() + 3_000
+    while (capturedBackground?.tasks.holdsWatchEvents() !== true && Date.now() < deadline) await Bun.sleep(5)
+    const tasks = capturedBackground!.tasks
+    const meta = { id: "bash-bg-q", type: "background_command", description: "tail -f app.log", notificationKey: "watch:bash-bg-q:end", watch: true } as const
+    const watchRun = Promise.withResolvers<BackgroundWorkResult>()
+    tasks.track({ done: watchRun.promise, meta })
+    expect(tasks.holdsWatchEvents()).toBe(true)
+    expect(tasks.deliverWatchEvent(meta, { text: "ERROR q", position: 5, dropped: 0 })).toBe(false)
+
+    const answered = nextPark.promise
+    session.answerQuestion("ask-1", { "Proceed?": { kind: "freeform", text: "Yes" } })
+    await answered
+    expect(tasks.holdsWatchEvents()).toBe(false)
+    watchRun.resolve({ status: "completed", content: "<watch_ended>done</watch_ended>" })
+  })
+
+  const temporary = temporaryDirectories()
+  it("holds a watch's events in a chat whose stored turn end is an interruption, with no turn in the slot, and paints the event that wakes it after Resume as a live row", async () => {
+    const projectRoot = temporary("chat-watch-stored-interrupt-")
+    const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
+    const capture = captureBlocks()
+    const { chat, calls, parked } = await createStoredChatSession({
+      sessionId: "chat-watch-stored", conversationId: "conversation-watch-stored", projectRoot,
+      reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store),
+      seed: async (tree) => {
+        await tree.appendMessage({ kind: "user", content: "watch the log", origin: "human" })
+        await appendTurnEnd(tree, interruptedTurnEnd("close"))
+      },
+      overrides: { updateEntry: capture.updateEntry },
+    })
+    const meta = { id: "bash-bg-stored", type: "background_command", description: "tail -f app.log", notificationKey: "watch:bash-bg-stored:end", watch: true } as const
+    const watchRun = Promise.withResolvers<BackgroundWorkResult>()
+    try {
+      // The runner attaches with no turn in the slot, as an adopted chat's does.
+      // The chat's tracking port is its registry, which a watch reaches whole.
+      const tasks = chat.backgroundTasks
+      if (!isBackgroundWorkRegistry(tasks)) throw new Error("the chat's tracking port is not its registry")
+      tasks.track({ done: watchRun.promise, meta })
+      await Bun.sleep(20)
+      expect(tasks.holdsWatchEvents()).toBe(true)
+      const event = { text: "ERROR stored", position: 13, dropped: 0 }
+      expect(tasks.deliverWatchEvent(meta, event)).toBe(false)
+      await Bun.sleep(20)
+      expect(calls).toHaveLength(0)
+
+      expect(chat.resume({ announce: false })).toBe(true)
+      await parked(1)
+      expect(tasks.holdsWatchEvents()).toBe(false)
+      const requests = calls.length
+      expect(tasks.deliverWatchEvent(meta, event)).toBe(true)
+      await parked(2)
+      expect(calls).toHaveLength(requests + 1)
+      expect(JSON.stringify(calls.at(-1))).toContain("ERROR stored")
+      const rows = capture.blocks().filter((block) => block.kind === "system" && block.watch !== undefined)
+      expect(rows).toEqual([expect.objectContaining({ kind: "system", id: "watch:bash-bg-stored:13", message: "ERROR stored", watch: { processId: "bash-bg-stored", description: "tail -f app.log", kind: "event" } })])
+    } finally {
+      watchRun.resolve({ status: "completed", content: "" })
+      await chat.dispose()
+      store.close()
+    }
   })
 })

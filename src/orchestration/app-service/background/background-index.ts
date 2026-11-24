@@ -447,7 +447,7 @@ export function createBackgroundIndex(deps: BackgroundIndexDeps): BackgroundInde
 }
 
 function commandRow(sessionId: string, record: BackgroundCommandRecord, held: boolean): BackgroundWorkRow {
-  const base = { id: record.toolUseId, kind: "command" as const, title: record.description, startedAtMs: record.startedAtMs, cardToolUseId: record.toolUseId }
+  const base = { id: record.toolUseId, kind: "command" as const, title: record.description, startedAtMs: record.startedAtMs, cardToolUseId: record.toolUseId, ...(record.watch ? { watch: true as const } : {}) }
   if (record.state === "running") {
     return held ? { ...base, status: "running", stop: { sessionId, toolUseId: record.toolUseId } } : { ...base, status: "ended" }
   }

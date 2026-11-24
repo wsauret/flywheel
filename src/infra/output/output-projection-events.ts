@@ -1,6 +1,6 @@
 import type { MutationEvidence } from "../mutation-evidence.js";
 import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
-import type { StreamPhase, QuestionEntry, PausedBy, UserMessageImage, MessageSender } from "../output-blocks.js";
+import type { StreamPhase, QuestionEntry, PausedBy, UserMessageImage, MessageSender, SystemWatch } from "../output-blocks.js";
 import type { ToolOutcome } from "../tool-outcome.js";
 
 export interface ToolInput {
@@ -31,7 +31,7 @@ export type OutputProjectionEvent =
   | { type: "begin-turn" }
   | { type: "set-model-phase"; phase: StreamPhase; timestamp: number }
   | { type: "push-user-message"; text: string; timestamp: number; entryId?: string; pending?: boolean; injected?: boolean; submissionIds?: readonly string[]; dispatchIds?: readonly string[]; images?: readonly UserMessageImage[]; from?: MessageSender }
-  | { type: "push-system-message"; id?: string; message: string; timestamp: number; level?: "info" | "error"; mutationEvidence?: MutationEvidence }
+  | { type: "push-system-message"; id?: string; message: string; timestamp: number; level?: "info" | "error"; mutationEvidence?: MutationEvidence; watch?: SystemWatch }
   | { type: "push-divider"; label: string; timestamp: number }
   | { type: "tool-use"; toolUseId?: string; name: string; input?: ToolInput; timestamp: number; parentToolUseId?: string; nestedInCode?: true; leadingTextId?: string }
   | { type: "tool-input-delta"; toolUseId: string; partialJson: string; parentToolUseId?: string }

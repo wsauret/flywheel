@@ -336,6 +336,21 @@ describe("OutputProjector", () => {
     expect(firstToolRow(projector.getBlocks())).toMatchObject({ status: "completed", endedAt: 46_600 });
   });
 
+  it("paints a recorded watch event of the chat as one row under its notice key, and a repeated or nested echo adds none", () => {
+    const projector = new OutputProjector({ executionCwd: "/workspace" });
+    const runtime = new RuntimeEventProjector(projector);
+    const content = "<watch_event>\n<source>runtime</source>\n<process_id>bash-bg-1</process_id>\n<description>tail -f app.log</description>\n<output>\nERROR one\n</output>\n</watch_event>";
+    const event = { type: "model.user_message.recorded", data: { message: { content, origin: "system", backgroundNotificationIds: ["watch:bash-bg-1:10"] } } } satisfies RuntimeEvent;
+    runtime.dispatch(event, 5);
+    runtime.dispatch(event, 6);
+    runtime.dispatch({ type: "model.user_message.recorded", data: { parent_tool_use_id: "agent-1", message: { content, origin: "system", backgroundNotificationIds: ["watch:bash-bg-1:20"] } } } satisfies RuntimeEvent, 7);
+    runtime.dispatch({ type: "model.user_message.recorded", data: { message: { content: "<background_notifications>\n</background_notifications>", origin: "system", backgroundNotificationIds: ["bash-bg-2"] } } } satisfies RuntimeEvent, 8);
+
+    expect(projector.getBlocks()).toEqual([
+      { kind: "system", id: "watch:bash-bg-1:10", message: "ERROR one", timestamp: 5, watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } },
+    ]);
+  });
+
   it("joins a settled mutation command's mutation, conflict markers, and refused changes onto its row, whether it settles before or after the result", async () => {
     const projector = new OutputProjector({ executionCwd: "/workspace" });
     const runtime = new RuntimeEventProjector(projector);

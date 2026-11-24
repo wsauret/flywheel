@@ -95,18 +95,23 @@ describe("tree -> output blocks re-projection", () => {
     ])
   })
 
-  it("skips system-origin user entries (runtime notification envelopes are hidden from the transcript)", () => {
+  it("skips system-origin user entries (runtime notification envelopes are hidden from the transcript), except a watch's event and end, which show as rows of the command's text under the notice key and never as a person's message", () => {
     const user = entry({ kind: "user", content: "real question" })
     const reply = entry({ kind: "assistant", content: [{ type: "text", text: "NUMBER=7" }] })
     const injected = entry({ kind: "user", content: "<subagent_notifications>\n<visibility>hidden_from_user</visibility>\n</subagent_notifications>", origin: "system" })
     const assistant = entry({ kind: "assistant", content: [{ type: "text", text: "NUMBER=7" }] })
-    const blocks = project([user, reply, injected, assistant])
+    const fields = "<source>runtime</source>\n<visibility>hidden_from_user</visibility>\n<process_id>bash-bg-1</process_id>\n<description>tail -f app.log</description>"
+    const event = entry({ kind: "user", origin: "system", content: `<watch_event>\n${fields}\n<output>\nERROR one &lt;x&gt;\nERROR two\n</output>\n</watch_event>` }, { id: "watch:bash-bg-1:42" })
+    const end = entry({ kind: "user", origin: "system", content: `<watch_ended>\n${fields}\n<summary>The watch reached its deadline after 3 events.</summary>\n</watch_ended>` }, { id: "watch:bash-bg-1:end" })
+    const blocks = project([user, reply, injected, assistant, event, end])
 
     // The hidden envelope leaves two replies adjacent; each stays its own row, as it was live.
     expect(blocks).toEqual([
       { kind: "userMessage", id: user.id, content: "real question", timestamp: Date.parse(T0), pending: false, injected: false },
       { kind: "text", id: `${reply.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
       { kind: "text", id: `${assistant.id}:0`, content: "NUMBER=7", timestamp: Date.parse(T0) },
+      { kind: "system", id: "watch:bash-bg-1:42", message: "ERROR one <x>\nERROR two", timestamp: Date.parse(T0), watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "event" } },
+      { kind: "system", id: "watch:bash-bg-1:end", message: "The watch reached its deadline after 3 events.", timestamp: Date.parse(T0), watch: { processId: "bash-bg-1", description: "tail -f app.log", kind: "end" } },
     ])
   })
 

@@ -1,5 +1,6 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter, InFlightRecord } from "../../infra/event-store-types.js"
 import { Log } from "../../infra/log.js"
+import type { WatchLimiterState } from "../agent-runtime/tools/bash/execution/watch-stream.js"
 import { heldBackgroundNotificationSwap } from "./conversation/queued-background-notifications.js"
 
 const log = Log.create({ service: "command-handover" })
@@ -49,6 +50,13 @@ export type CommandHandoverRow = {
   readonly startedAtMs: number
   readonly deadlineAtMs?: number
   readonly kept?: true
+  /** For a watch (ARCH-TOOLS-059): the byte offset of the log where the last
+   *  event the predecessor delivered or dropped ends, which the successor
+   *  reads on from, how many events it delivered, and its rate limit, so the
+   *  successor grants no new burst. A row written before watches existed has
+   *  no key and hands over an ordinary command, and a place with no limiter
+   *  starts a full burst, so neither needs a conversion. */
+  readonly watch?: { readonly position: number; readonly events: number; readonly limiter?: WatchLimiterState }
 }
 
 /** A readable row and the exact text it is stored as, which its retirement
@@ -60,7 +68,7 @@ export interface StoredCommandHandover {
 
 const REQUIRED_TEXT = ["handoffId", "sessionId", "conversationId", "processId", "description", "logPath", "recordPath", "channel", "token"] as const
 const OPTIONAL_TEXT = ["toolUseId", "parentToolUseId", "modelRequestId", "privateCopyHome"] as const
-const KNOWN_KEYS: ReadonlySet<string> = new Set(["version", ...REQUIRED_TEXT, ...OPTIONAL_TEXT, "pid", "startedAtMs", "deadlineAtMs", "kept"])
+const KNOWN_KEYS: ReadonlySet<string> = new Set(["version", ...REQUIRED_TEXT, ...OPTIONAL_TEXT, "pid", "startedAtMs", "deadlineAtMs", "kept", "watch"])
 
 /** Records that the command the row names is being handed to the next build,
  *  and answers the row as stored. Written before the handover word, so a
@@ -202,11 +210,12 @@ export function decodeCommandHandover(record: InFlightRecord, sessionId: string)
   const required = REQUIRED_TEXT.map(text)
   const [handoffId, rowSessionId, conversationId, processId, description, logPath, recordPath, channel, token] = required
   const { pid, startedAtMs, deadlineAtMs, kept } = value
+  const watch = decodeWatchPlace(value.watch)
   if (
     handoffId === undefined || conversationId === undefined || processId === undefined || description === undefined
     || logPath === undefined || recordPath === undefined || channel === undefined || token === undefined
     || rowSessionId !== sessionId || processId !== record.key
-    || !isCount(pid) || pid === 0 || !isCount(startedAtMs) || (deadlineAtMs !== undefined && !isCount(deadlineAtMs)) || (kept !== undefined && kept !== true)
+    || !isCount(pid) || pid === 0 || !isCount(startedAtMs) || (deadlineAtMs !== undefined && !isCount(deadlineAtMs)) || (kept !== undefined && kept !== true) || watch === null
     || OPTIONAL_TEXT.some((key) => value[key] !== undefined && text(key) === undefined)
   ) return undefined
   const toolUseId = text("toolUseId")
@@ -232,7 +241,45 @@ export function decodeCommandHandover(record: InFlightRecord, sessionId: string)
     startedAtMs,
     ...(deadlineAtMs === undefined ? {} : { deadlineAtMs }),
     ...(kept === true ? { kept } : {}),
+    ...(watch === undefined ? {} : { watch }),
   }
+}
+
+/** A row's watch place: undefined when the row has none, null when it has
+ *  one this release cannot read. */
+function decodeWatchPlace(value: unknown): CommandHandoverRow["watch"] | null {
+  if (value === undefined) return undefined
+  if (!isRecordOf(value, ["position", "events", "limiter"])) return null
+  const { position, events } = value
+  const limiter = decodeWatchLimiter(value.limiter)
+  if (!isCount(position) || !isCount(events) || limiter === null) return null
+  return { position, events, ...(limiter === undefined ? {} : { limiter }) }
+}
+
+const LIMITER_COUNTS = ["tokens", "pendingDropped", "droppedSinceOverLimit"] as const
+const LIMITER_TIMES = ["refilledAtMs", "overLimitSinceMs", "lastDropAtMs"] as const
+
+/** A watch place's rate limit: undefined when it has none, null when it has
+ *  one this release cannot read. */
+function decodeWatchLimiter(value: unknown): WatchLimiterState | undefined | null {
+  if (value === undefined) return undefined
+  if (!isRecordOf(value, [...LIMITER_COUNTS, ...LIMITER_TIMES])) return null
+  const { tokens, pendingDropped, droppedSinceOverLimit, refilledAtMs, overLimitSinceMs, lastDropAtMs } = value
+  if (!isCount(tokens) || !isCount(pendingDropped) || !isCount(droppedSinceOverLimit)) return null
+  if (LIMITER_TIMES.some((key) => value[key] !== undefined && !isCount(value[key]))) return null
+  return {
+    tokens,
+    pendingDropped,
+    droppedSinceOverLimit,
+    ...(isCount(refilledAtMs) ? { refilledAtMs } : {}),
+    ...(isCount(overLimitSinceMs) ? { overLimitSinceMs } : {}),
+    ...(isCount(lastDropAtMs) ? { lastDropAtMs } : {}),
+  }
+}
+
+/** Whether `value` is an object whose keys are all among `keys`. */
+function isRecordOf(value: unknown, keys: readonly string[]): value is { readonly [key: string]: unknown } {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && Object.keys(value).every((key) => keys.includes(key))
 }
 
 function isCount(value: unknown): value is number {

@@ -14,11 +14,13 @@ import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import type { PausedBy } from "../../../infra/output-blocks.js";
 import type { BackgroundCommandRecord } from "../../../infra/runtime-fact-types.js";
+import { watchEventKey } from "../../../infra/watch-notices.js";
 import {
   createBackgroundNotificationDelivery,
   completionWorkIds,
   formatChildInterruptedNotification,
-  formatStandaloneNotification,
+  commandCompletionText,
+  formatWatchEvent,
   formatSubagentNotificationBatch,
   type BackgroundNotificationEntry,
 } from "./background-work-notifications.js";
@@ -166,6 +168,15 @@ interface TaskLifecycle extends BackgroundWorkProgress {
   /** Every running managed command, for a planned replacement's close, which
    *  hands over the ones this host owns. */
   handoverCandidates(): ManagedCommand[];
+  /** Delivers one event of a watch this registry tracks, keyed by the log
+   *  position where its lines end, as a completion is delivered: it wakes the
+   *  owner's agent and ends its parked wait (PI-AGENT-136). False, with
+   *  nothing delivered, while the owner holds watch events, once the registry
+   *  admits no more work, or for a watch it does not track: the watch then
+   *  keeps the event and its place. */
+  deliverWatchEvent(meta: BackgroundWorkMeta, event: { readonly text: string; readonly position: number; readonly dropped: number }): boolean;
+  /** Whether a watch must hold its events now (`RegistryOptions.holdsWatchEvents`). */
+  holdsWatchEvents(): boolean;
   /** Terminates all controllable tasks and waits for every tracked task to settle. */
   terminateAll(): Promise<void>;
 }
@@ -237,6 +248,11 @@ interface RegistryOptions {
   /** A background command as it starts and as it settles, which the owner
    *  records durably for the background index of its session. */
   onCommandRecorded?: (record: BackgroundCommandRecord) => void;
+  /** Whether the owner's agent cannot take a turn now: it was interrupted,
+   *  waits on the person's answer, or waits for model capacity. A watch
+   *  reads nothing meanwhile and keeps its place (PI-AGENT-136). Absent, it
+   *  never holds. */
+  holdsWatchEvents?: () => boolean;
 }
 
 /** When settled work started and ended. */
@@ -643,7 +659,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     if (entry.meta.type !== "subagent") {
       const completed = { meta: entry.meta, result };
       if (entry.wait && !result.content) return;
-      enqueueNotification(entry.wait ? result.content : formatStandaloneNotification(completed), entry.meta.notificationKey, [entry.meta], entry.wait === true && result.runtimeNotice === true);
+      enqueueNotification(entry.wait ? result.content : commandCompletionText(completed.meta, result), entry.meta.notificationKey, [entry.meta], entry.wait === true && result.runtimeNotice === true);
       return;
     }
     // An interrupted run has not ended and owes no result. A person's
@@ -690,6 +706,12 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     terminateProcess,
     detach,
     handoverCandidates: () => [...active.values()].flatMap(({ command }) => command === undefined ? [] : [command]),
+    deliverWatchEvent: (meta, event) => {
+      if (!admitting || active.get(meta.id)?.meta !== meta || opts.holdsWatchEvents?.() === true) return false;
+      void enqueueNotification(formatWatchEvent({ processId: meta.id, description: meta.description, text: event.text, dropped: event.dropped }), watchEventKey(meta.id, event.position), [meta]);
+      return true;
+    },
+    holdsWatchEvents: () => opts.holdsWatchEvents?.() === true,
     terminateAll,
   };
 

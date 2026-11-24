@@ -157,10 +157,10 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(unguarded.inputSchema).toEqual(interactive.inputSchema);
   });
 
-  test("a shell without background launches, persistence, or other file tools names none of them", () => {
+  test("a shell without background launches, watches, persistence, or other file tools names none of them", () => {
     const interactive = bashToolSurface();
     const foreground = bashToolSurface({ background: false });
-    expect(Object.keys(foreground.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "background" && field !== "persist_after_exit"));
+    expect(Object.keys(foreground.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "background" && field !== "watch" && field !== "persist_after_exit"));
     expect(foreground.description).not.toMatch(/background|persist_after_exit/);
     expect(JSON.stringify(foreground.inputSchema)).not.toMatch(/background|persist/i);
     expect(foreground.description).toContain("Never use shell-level &, nohup, or disown.");

@@ -197,6 +197,7 @@ export const UserEventDataSchema = Schema.StructWithRest(Schema.Struct({
     origin: Schema.optionalKey(Schema.Union([Schema.Literal("user"), Schema.Literal("system")])),
     submissionIds: Schema.optionalKey(Schema.Array(Schema.String)),
     dispatchIds: Schema.optionalKey(Schema.Array(Schema.String)),
+    backgroundNotificationIds: Schema.optionalKey(Schema.Array(Schema.String)),
   }), [UnknownRecordSchema])),
 }), [UnknownRecordSchema]);
 export const GenericEventDataSchema = UnknownRecordSchema;

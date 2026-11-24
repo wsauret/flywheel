@@ -150,7 +150,7 @@ describe("unattended recovery", () => {
     expect(slept).toEqual([WALL_CLOCK_CHECK_MS])
   })
 
-  it("arms the durable wait before it waits, keeps it armed through the run that continues until that run ends, and withdraws it at once for a message, an interrupt, or a cancellation", async () => {
+  it("reports while it waits, arms the durable wait before it waits, keeps it armed through the run that continues until that run ends, and withdraws it at once for a message, an interrupt, or a cancellation", async () => {
     const steps: string[] = []
     const capacity: CapacityWaitAuthority = {
       arm: async (atMs) => { steps.push(`arm ${atMs - NOW}`) },
@@ -171,12 +171,16 @@ describe("unattended recovery", () => {
       held.holdNextSleep()
       const controller = new AbortController()
       const waiting = policy(held, { capacity, now: held.now, sleep: held.sleep })
+      expect(waiting.waiting()).toBe(false)
       const pending = waiting.recover(usageLimit, 0, controller.signal)
       await Bun.sleep(0)
+      // A watch holds its events while the wait runs (PI-AGENT-136).
+      expect(waiting.waiting()).toBe(true)
       if (end === "cut") expect(waiting.cutWait("person")).toBe(true)
       else if (end === "message") expect(waiting.continueNow()).toBe(true)
       else controller.abort()
       await pending
+      expect(waiting.waiting()).toBe(false)
       expect(steps).toEqual(["arm 60000", `withdraw ${reason}`])
     }
 

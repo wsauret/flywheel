@@ -585,7 +585,7 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
     expect(registry.assertHandoffReady()).toBeNull();
   });
 
-  it("counts every running background command, a server included, as owed work that blocks handoff", async () => {
+  it("counts every running background command, a server and a watch included, as owed work that blocks handoff", async () => {
     const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
     const done = deferred<BackgroundWorkResult>();
 
@@ -597,15 +597,19 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
       done: new Promise<never>(() => {}),
       meta: { id: "command-2", type: "background_command", description: "python3 server.py" },
     });
+    registry.track({
+      done: new Promise<never>(() => {}),
+      meta: { id: "command-3", type: "background_command", description: "tail -f ci.log", notificationKey: "watch:command-3:end", watch: true },
+    });
 
-    expect(registry.assertHandoffReady()).toEqual({ active: 2, pending: 0, activeDescriptions: ["bun run test:perf", "python3 server.py"], pendingDescriptions: [] });
-    expect(registry.awaitedTaskCount()).toBe(2);
+    expect(registry.assertHandoffReady()).toEqual({ active: 3, pending: 0, activeDescriptions: ["bun run test:perf", "python3 server.py", "tail -f ci.log"], pendingDescriptions: [] });
+    expect(registry.awaitedTaskCount()).toBe(3);
 
     done.resolve({ status: "completed", content: "ok" });
     await delay(5);
 
-    expect(registry.assertHandoffReady()).toEqual({ active: 1, pending: 0, activeDescriptions: ["python3 server.py"], pendingDescriptions: [] });
-    expect(registry.awaitedTaskCount()).toBe(1);
+    expect(registry.assertHandoffReady()).toEqual({ active: 2, pending: 0, activeDescriptions: ["python3 server.py", "tail -f ci.log"], pendingDescriptions: [] });
+    expect(registry.awaitedTaskCount()).toBe(2);
   });
 
   it("formats a synthesized subagent failure as an XML subagent batch", async () => {

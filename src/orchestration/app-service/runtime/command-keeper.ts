@@ -211,6 +211,10 @@ export function createCommandKeeper(input: {
           return recorded
         },
         onCommandRecorded: (record) => { emitBackgroundCommandRecorded(recordCommand, record) },
+        // No agent of the conversation can take a turn while the keeper
+        // holds its commands, so a kept watch keeps its place for the host
+        // that takes it over.
+        holdsWatchEvents: () => true,
       }), { authority: current, sessionId, conversationId, holder: "keeper" }),
     }
     return kept

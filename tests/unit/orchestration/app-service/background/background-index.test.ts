@@ -65,6 +65,19 @@ describe("the background index of a chat", () => {
     ])
   })
 
+  test("marks the row of a command recorded as a watch, and reads a record written before watches existed as an ordinary command", async () => {
+    const fixture = await chatWithWork()
+    await fixture.command("chat", { toolUseId: "toolu_watch", processId: "bash-3", description: "tail -f app.log", startedAtMs: 500, state: "settled", status: "completed", exitCode: 0, settledAtMs: 900, watch: true })
+    // The previous shape: the store holds the record as JSON with no `watch` key.
+    fixture.store.append({ aggregateId: "session:chat", sessionId: "chat", timestamp: Date.now(), type: "tool.background_command.recorded", version: 1, actor: "flywheel", payload: JSON.parse('{"toolUseId":"toolu_old","processId":"bash-4","description":"bun run build","startedAtMs":600,"state":"settled","status":"completed","exitCode":0,"settledAtMs":700}') })
+
+    const rows = await fixture.restarted().rows("chat")
+
+    expect(rows.find((row) => row.id === "toolu_watch")).toMatchObject({ kind: "command", status: "completed", watch: true })
+    expect(rows.find((row) => row.id === "toolu_old")).toMatchObject({ kind: "command", status: "completed" })
+    expect(rows.filter((row) => "watch" in row).map((row) => row.id)).toEqual(["toolu_watch"])
+  })
+
   test("after a restart lists the finished work with its outcome, and reads a command recorded as running with no owner as ended", async () => {
     const fixture = await chatWithWork()
 

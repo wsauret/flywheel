@@ -71,6 +71,7 @@ describe("background index rows", () => {
     // A person stops a command but cancels a child, whose run ends for its parent.
     expect(backgroundRowDetail(row({ id: "reviewer", kind: "subagent", status: "stopped" }))).toBe("Canceled")
     expect(backgroundRowDetail(row({ id: "plan", kind: "workflow", status: "cancelled" }))).toBe("Canceled by the parent")
+    expect(backgroundRowDetail(row({ id: "watch", status: "completed", exitCode: 0, durationMs: 1_500, watch: true }))).toBe("Completed · watch · exit 0 · 1.5s")
     expect(ROWS.map(backgroundStopWord)).toEqual(["Cancel", "Cancel", "Cancel", "Stop", "Stop"])
     expect(ROWS.find((candidate) => candidate.id === "explorer")?.cardToolUseId).toBe("toolu_workflow")
   })

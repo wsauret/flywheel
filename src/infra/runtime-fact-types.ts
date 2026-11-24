@@ -601,6 +601,10 @@ const BackgroundCommandFields = {
   startedAtMs: NonNegativeInt,
   modelRequestId: Schema.optionalKey(Schema.String),
   parentToolUseId: Schema.optionalKey(Schema.String),
+  /** Set for a watch (ARCH-TOOLS-059). A record written before watches
+   *  existed has no key and reads as an ordinary command, so it needs no
+   *  conversion. */
+  watch: Schema.optionalKey(Schema.Literal(true)),
 };
 
 /** One background command of a session, as the background index lists it:

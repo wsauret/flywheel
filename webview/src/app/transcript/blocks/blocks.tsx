@@ -1,7 +1,7 @@
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch, type JSX } from "solid-js"
 
 import { useClientExtensions } from "../../client-extensions.js"
-import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, type ProcessStatus } from "../../../../../src/protocol/client/transcript-model.js"
+import { PROCESSOR_WAIT_NOTE, toolActivity, toolProcess, waitsForProcessor, watchRowView, type ProcessStatus } from "../../../../../src/protocol/client/transcript-model.js"
 import type { StatusView } from "../../../../../src/protocol/status-protocol-types.js"
 import type { RoleAssignmentView } from "../../../../../src/protocol/role-protocol-types.js"
 import { parseSessionLink } from "../../../../../src/protocol/client/session-links.js"
@@ -41,6 +41,7 @@ import { BlockTime } from "../reading/row-time.js"
  *  or ordering, all of which arrive settled. */
 
 type FrontendQuestionBlock = Extract<FrontendOutputBlock, { kind: "question" }>
+type SystemWatch = NonNullable<Extract<FrontendOutputBlock, { kind: "system" }>["watch"]>
 
 interface ToolFileBodyMode {
   readonly bodyAvailable: boolean
@@ -170,8 +171,10 @@ function OrdinaryBlock(props: BlockProps) {
 
       <Match when={props.block.kind === "system" ? props.block : undefined}>
         {(block) => (
-          <div class="block system" classList={{ error: block().level === "error", "returned-input": isReturnedInputNotice(block().id) }}>
-            {block().message}
+          <div class="block system" classList={{ error: block().level === "error", "returned-input": isReturnedInputNotice(block().id), watch: block().watch !== undefined }}>
+            <Show when={block().watch} fallback={block().message}>
+              {(watch) => <WatchRowBody watch={watch()} message={block().message} sessionId={props.sessionId} disclosure={props.disclosure} disclosureId={`watch:${block().id}`} />}
+            </Show>
           </div>
         )}
       </Match>
@@ -248,6 +251,24 @@ function summarise(content: string): string {
 }
 
 
+
+/** A watch row: a muted label line, for an end how the watch ended in
+ *  notice style, then the command's lines, as `watchRowView` selects them. */
+function WatchRowBody(props: { watch: SystemWatch; message: string; sessionId: string; disclosure: BlockDisclosure; disclosureId: string }) {
+  const open = () => props.disclosure.state(props.sessionId, props.disclosureId)().open
+  const view = createMemo(() => watchRowView(props, open()))
+  return <>
+    <div class="watch-label">{view().label}</div>
+    <Show when={view().summary}>{(text) => <div class="watch-summary">{text()}</div>}</Show>
+    <Show when={view().lines.join("\n")}>{(text) => <div class="watch-text">{text()}</div>}</Show>
+    <Show when={view().expandable}>
+      <button class="disclosure watch-more" aria-expanded={open()} onClick={() => props.disclosure.setOpen(props.sessionId, props.disclosureId, !open())}>
+        <span class="chevron">{open() ? "\u25be" : "\u25b8"}</span>
+        <span class="tool-detail">{open() ? "Show fewer lines" : `${view().hidden} more lines`}</span>
+      </button>
+    </Show>
+  </>
+}
 
 /** The model's reasoning, one muted line that opens to the full text. */
 function Thought(props: { content: string; streaming: boolean }) {

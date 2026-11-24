@@ -79,6 +79,9 @@ interface BackgroundWorkMetaBase extends ToolCallIdentity {
   toolUseId?: string;
   /** The key the completion publishes under, so a repeat of it commits once. */
   notificationKey?: string;
+  /** Set for a watch (ARCH-TOOLS-059): its result content is its last notice
+   *  already formatted, and its index record marks it. */
+  watch?: true;
 }
 
 export type BackgroundWorkMeta = BackgroundWorkMetaBase & (

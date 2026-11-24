@@ -1,6 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import type { DividerBlock as DividerBlockType, SystemBlock as SystemBlockType } from "@infra/output-blocks"
+import { watchRowView } from "../../../protocol/client/transcript-model.js"
 import { blockIdentity } from "../../../protocol/block-identity.js"
 import { isReturnedInputNotice } from "../../../protocol/composer-returns.js"
 import { StyledText, bold as stBold, fg as stFg, type TextChunk, type TextRenderable } from "@opentui/core"
@@ -30,16 +31,42 @@ export function SystemBlock(props: SystemBlockProps) {
   const key = () => `${blockIdentity(props.block)}#notice-diff`
   const bodyExpanded = () => disclosure.disclosure(key()) ?? false
 
-  const chevron = createMemo(() => hasDiff() ? (bodyExpanded() ? "▾" : "▸") : null)
+  // A watch row names its command on a muted label line and shows the
+  // command's own lines below it as body text, never as a person's message.
+  // The first line of an end row says how the watch ended, in notice style.
+  // A long row shows its first lines until it is disclosed (`watchRowView`).
+  const watch = createMemo(() => {
+    const row = props.block.watch
+    return row ? watchRowView({ watch: row, message: props.block.message }, bodyExpanded()) : undefined
+  })
+  const chevron = createMemo(() => hasDiff() || watch()?.expandable === true ? (bodyExpanded() ? "▾" : "▸") : null)
 
   const toggleDiff = (): void => { disclosure.setDisclosure(key(), !bodyExpanded()) }
   const toggle = useUnifiedToggle(() => chevron() !== null, toggleDiff, () => hasDiff() && bodyExpanded())
 
-  // Returned person input is literal text, not the notice author's code spans.
-  const messageLines = createMemo(() => props.block.message.split("\n"))
-  const styledLine = (line: string, index: number): StyledText => {
-    const hasCode = !isReturnedInput() && line.includes("`")
-    const fg = isReturnedInput() ? (index === 0 ? theme.textMuted : theme.text) : hasCode ? theme.secondary : isError() ? theme.error : theme.textMuted
+  // Returned person input and watch output are literal text, not the notice
+  // author's code spans.
+  const isLiteral = () => isReturnedInput() || watch() !== undefined
+  /** Each line with whether it is muted: a watch row's label, its summary,
+   *  and its count of hidden lines are; its command's lines are not. */
+  const messageLines = createMemo((): readonly { readonly text: string; readonly muted: boolean }[] => {
+    const view = watch()
+    if (view === undefined) return props.block.message.split("\n").map((text) => ({ text, muted: false }))
+    return [
+      { text: view.label, muted: true },
+      ...(view.summary === undefined ? [] : [{ text: view.summary, muted: true }]),
+      ...view.lines.map((text) => ({ text, muted: false })),
+      ...(view.hidden > 0 ? [{ text: `${view.hidden} more lines`, muted: true }] : []),
+    ]
+  })
+  const noticeLineColor = (index: number, hasCode: boolean) => {
+    if (isReturnedInput()) return index === 0 ? theme.textMuted : theme.text
+    if (hasCode) return theme.secondary
+    return isError() ? theme.error : theme.textMuted
+  }
+  const styledLine = ({ text: line, muted }: { readonly text: string; readonly muted: boolean }, index: number): StyledText => {
+    const hasCode = !isLiteral() && line.includes("`")
+    const fg = watch() !== undefined ? (muted ? theme.textMuted : theme.text) : noticeLineColor(index, hasCode)
     const chunks: TextChunk[] = [stFg(fg)(hasCode ? line.replace(/`/g, "") : (line || " "))]
     const marker = index === messageLines().length - 1 ? chevron() : null
     if (marker) {

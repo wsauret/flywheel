@@ -39,6 +39,9 @@ export type ManagedShellExecutionOptions = ShellCommandHold & {
   totalYieldMs?: number;
   rawOutput: boolean;
   timeoutSec?: number;
+  /** The background command is a watch: each complete line of its log
+   *  reaches the agent as an event while it runs (ARCH-TOOLS-059). */
+  watch?: true;
   /** The agent can launch a command with persist_after_exit, so the reply of
    *  a background launch names that way to outlive the runtime. */
   persistable?: boolean;

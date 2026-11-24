@@ -9,6 +9,27 @@ import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmi
 import type { PrivateCopy, ProjectMutationLanding } from "./shell-runtime-types.js";
 import { createStderrTail, drainStderr, silentFailureStderr } from "./shell-stderr.js";
 import { armUnheldDeadline, NEVER_HELD, type HeldTime } from "./processor-claims.js";
+import { Log } from "../../../../../infra/log.js";
+import { watchEndKey } from "../../../../../infra/watch-notices.js";
+import { formatWatchEnded } from "../../../background-work/background-work-notifications.js";
+import { createWatchStream, type WatchLimiterState, type WatchOverLimit } from "./watch-stream.js";
+
+const log = Log.create({ service: "watch" });
+
+/** Where a watch reads from and what it delivered before: 0 and 0 for a new
+ *  watch, and what the handover row carries for a successor (ARCH-TOOLS-059). */
+interface WatchPlace {
+  /** The byte offset of the log where the last delivered or dropped event ends. */
+  readonly position: number;
+  /** How many events the watch delivered before this owner. */
+  readonly events: number;
+  /** The rate limit the predecessor left, so a handover grants no new burst. */
+  readonly limiter?: WatchLimiterState;
+}
+
+/** The most bytes of a backlog that one poll reads, so a watch that catches
+ *  up after a long hold never reads the whole log in one go. */
+const WATCH_BACKLOG_READ_BYTES = 256 * 1024;
 
 /** How the owner of a managed command learned that it ended. `exited` carries
  *  the exit status as the platform reports it (an exit code, or the signal
@@ -54,6 +75,9 @@ interface ManagedCommandInput {
   /** Cancels the landing. The landing outlives the turn that launched the
    *  command, so this is the background-work lifetime. */
   readonly landingSignal?: AbortSignal;
+  /** Present for a watch: each complete line of the log reaches the agent as
+   *  an event while the command runs (PI-AGENT-136). */
+  readonly watch?: WatchPlace;
 }
 
 interface ManagedSettlement {
@@ -92,6 +116,7 @@ export interface ManagedCommand {
     readonly parentToolUseId?: string;
     readonly modelRequestId?: string;
     readonly notificationKey: string;
+    readonly watch?: true;
   };
   readonly owned?: OwnedProcess;
   readonly logPath: string;
@@ -105,6 +130,11 @@ export interface ManagedCommand {
    *  the command's handover row. A later build can land the copy from that
    *  home, so from this call on the copy never goes back to its session's pool. */
   copyHomeForHandover(): string | undefined;
+  /** For a watch's handover row: stops its delivery here and answers where a
+   *  successor continues and how many events it delivered. A line read but
+   *  not delivered yet is the successor's to read again, so none repeats and
+   *  none is lost. Undefined for every other command. */
+  watchForHandover(): WatchPlace | undefined;
   deadlineExpired(): boolean;
   /** Who asked the registry to end the command, if anyone did. */
   stoppedBy(): BackgroundKillSource | undefined;
@@ -142,6 +172,40 @@ async function settleWithin(work: Promise<void>, ms: number): Promise<void> {
   }
 }
 
+function eventCount(count: number): string {
+  return `${count} ${count === 1 ? "event" : "events"}`;
+}
+
+const STOPPED_BY = { user: "the person", agent: "the agent", runtime: "the runtime" } as const satisfies { readonly [source in BackgroundKillSource]: string };
+
+/** How a watch ended, as its last notice and its transcript row state it. */
+interface WatchSummary {
+  readonly cause: "too_much_output" | "deadline" | "stopped" | "exit" | "ended";
+  readonly text: string;
+}
+
+function watchSummary(input: {
+  readonly overLimit: WatchOverLimit | undefined;
+  readonly expiredAfterSec: number | undefined;
+  readonly stoppedBy: BackgroundKillSource | undefined;
+  readonly end: ManagedCommandEnd;
+  readonly durationMs: number;
+  readonly events: number;
+}): WatchSummary {
+  const delivered = `It delivered ${eventCount(input.events)}.`;
+  const after = formatDuration(input.durationMs);
+  if (input.overLimit) {
+    return { cause: "too_much_output", text: `The watch was stopped because the command wrote too much output: ${eventCount(input.overLimit.dropped)} dropped over ${Math.round(input.overLimit.overLimitMs / 1000)}s. ${delivered} Start it again with a more selective command.` };
+  }
+  if (input.expiredAfterSec !== undefined) return { cause: "deadline", text: `The watch reached its ${input.expiredAfterSec}s deadline after ${after} and was stopped. ${delivered}` };
+  if (input.stoppedBy) return { cause: "stopped", text: `The watch was stopped by ${STOPPED_BY[input.stoppedBy]} after ${after}. ${delivered}` };
+  if (input.end.kind === "exited") {
+    const how = input.end.code !== null ? `exited with code ${input.end.code}` : `was ended by ${input.end.signal === null ? "a signal" : `signal ${input.end.signal}`}`;
+    return { cause: "exit", text: `The watched command ${how} after ${after}. ${delivered}` };
+  }
+  return { cause: "ended", text: `The watched command ended without a recorded exit status. ${delivered}` };
+}
+
 function endLine(end: ManagedCommandEnd, durationMs: number, description: string): string {
   if (end.kind !== "exited") {
     return end.kind === "unrecorded"
@@ -176,6 +240,7 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
   const clearDeadline = owned && deadlineAtMs !== undefined
     ? armUnheldDeadline(deadlineAtMs, input.heldTime ?? NEVER_HELD, () => {
       deadlineExpired = true;
+      if (input.watch !== undefined) log.info("watch stopped at its deadline", { processId, deadlineMs: deadlineAtMs - startedAtMs });
       void owned.terminate();
     })
     : () => {};
@@ -188,6 +253,68 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
   let sanitizer = createStreamingSanitizer((text) => settlementOutput.push(text));
   let tailerStopped = false;
   let tailerFinishing = false;
+  const watchPlace = input.watch;
+  /** Set once this presence delivers nothing more: the watch ended, or a
+   *  handover gave its place to a successor. */
+  let watchStopped = false;
+  let watchOverLimit: WatchOverLimit | undefined;
+  let watchPump: Promise<void> | undefined;
+  /** Whether the stream has read every byte that `pollLog` read, so the
+   *  next bytes `pollLog` reads are the stream's too, with no second read. */
+  let watchCaughtUp = watchPlace?.position === 0;
+  /** Set by a stop: the watch sends no more events, and its ending no longer
+   *  waits for the chat to take a turn. */
+  let watchHalted = false;
+  let wakeHoldWait: (() => void) | undefined;
+  /** Whether an event may reach the owner now: the watch delivers, and the
+   *  owner's agent can take a turn (PI-AGENT-136). Checked again after every
+   *  await, right before the stream reads or sends. */
+  const watchMayDeliver = (): boolean => !watchStopped && !watchHalted && registry !== undefined && !registry.holdsWatchEvents();
+  const watch = watchPlace === undefined ? undefined : createWatchStream({
+    position: watchPlace.position,
+    ...(watchPlace.limiter === undefined ? {} : { limiter: watchPlace.limiter }),
+    deliver: (event) => {
+      if (watchStopped || registry === undefined) return false;
+      const accepted = registry.deliverWatchEvent(meta, event);
+      if (accepted) log.debug("watch event delivered", { processId, position: event.position, chars: event.text.length, dropped: event.dropped });
+      return accepted;
+    },
+    overLimit: (evidence) => {
+      watchOverLimit = evidence;
+      log.info("watch stopped for too much output", { processId, dropped: evidence.dropped, overLimitMs: evidence.overLimitMs, position: watch?.settledPosition() });
+      registry?.terminateProcess(processId, "runtime");
+    },
+  });
+  /** Gives the bytes `pollLog` just read at `start` to a caught-up watch. */
+  const feedWatch = (start: number, bytes: Uint8Array): void => {
+    if (watch === undefined || !watchCaughtUp) return;
+    if (start === watch.readPosition() && watchMayDeliver()) watch.push(bytes, Date.now());
+    else watchCaughtUp = false;
+  };
+  /** Reads up to `end` of the log into the watch as a backlog, stopping at
+   *  the first chunk the owner cannot take now. */
+  const readWatchBacklog = async (end: number): Promise<void> => {
+    if (watch === undefined) return;
+    const file = Bun.file(logPath);
+    let next = watch.readPosition();
+    await readSpoolGrowth({ size: end, slice: (from, to) => file.slice(from, to) }, next, (bytes) => {
+      if (next !== watch.readPosition() || !watchMayDeliver()) return;
+      watch.push(bytes, Date.now(), "backlog");
+      next += bytes.length;
+    });
+  };
+  /** Catches a watch up with what `pollLog` read, a bounded part per poll,
+   *  and sends a batch whose window passed, unless the owner's agent cannot
+   *  take a turn now: then the watch reads nothing and keeps its place. */
+  const pumpWatch = async (): Promise<void> => {
+    if (watch === undefined || !watchMayDeliver()) return;
+    if (!watchCaughtUp) {
+      const target = observedBytes;
+      await readWatchBacklog(Math.min(target, watch.readPosition() + WATCH_BACKLOG_READ_BYTES));
+      if (watch.readPosition() === target && target === observedBytes) watchCaughtUp = true;
+    }
+    if (watchMayDeliver()) watch.tick(Date.now());
+  };
   const pollLog = async (settling = false): Promise<void> => {
     if (tailerStopped && !settling) return;
     try {
@@ -199,20 +326,30 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
         decoder = new TextDecoder();
         sanitizer = createStreamingSanitizer((text) => settlementOutput.push(text));
       }
+      let chunkStart = observedBytes;
       observedBytes = await readSpoolGrowth({ size, slice: (start, end) => file.slice(start, end) }, observedBytes, (bytes) => {
         settlementOutput.addBytes(bytes);
         sanitizer.push(decoder.decode(bytes, { stream: true }));
+        feedWatch(chunkStart, bytes);
+        chunkStart += bytes.length;
       });
       if (!tailerStopped) emitTail?.(settlementOutput.displayTail());
     } catch {
       // The process can race creation of its spool.
     }
   };
+  const pollThenPump = async (): Promise<void> => {
+    await pollLog();
+    watchPump = pumpWatch().catch(() => {
+      // The process can race creation of its spool.
+    });
+    await watchPump;
+  };
   const scheduleTailPoll = (): void => {
     if (tailerStopped || tailerFinishing) return;
     tailTimer = setTimeout(() => {
       tailTimer = undefined;
-      const poll = pollLog();
+      const poll = pollThenPump();
       pollInFlight = poll;
       void poll.finally(() => {
         if (pollInFlight === poll) pollInFlight = undefined;
@@ -262,6 +399,66 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
     if (!released && displayOutput !== output.executionOutputTail) emitTail?.(displayOutput);
     return { end, output, durationMs: endedAtMs - startedAtMs, ...(landing ? { landing } : {}) };
   })();
+  /** Whether the watch's deadline passed, which bounds how long its ending
+   *  waits for a turn, also after the command exited on its own. */
+  const pastDeadline = (): boolean => deadlineExpired || (command.deadlineAtMs !== undefined && Date.now() >= command.deadlineAtMs);
+  const watchTurnHeld = (): boolean => !watchHalted && !watchStopped && !released && !pastDeadline() && registry?.holdsWatchEvents() === true;
+  /** One poll interval of a held watch, which a stop or a handover ends early. */
+  const holdWatchTurn = (): Promise<void> => new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, input.executionOutputThrottleMs);
+    wakeHoldWait = () => { clearTimeout(timer); resolve(); };
+  });
+  /** Waits while the owner's agent cannot take a turn, until it can, a stop
+   *  or the deadline gives up the wait, or another owner takes the command,
+   *  as a host takes a watch that ended while the command keeper held it. */
+  const awaitWatchTurn = async (): Promise<void> => {
+    while (watchTurnHeld()) await holdWatchTurn();
+    wakeHoldWait = undefined;
+  };
+  /** The last notice of a watch. The lines no event carried yet are sent as
+   *  events first, once the owner's agent can take a turn, in batches of at
+   *  most `eventChars` through the rate limit, so the end notice carries only
+   *  how the watch ended, its counts, and the unfinished last line. After a
+   *  stop no event is sent, and the notice says where in the log the lines
+   *  that reached no event start. */
+  const watchEnding = async ({ end, durationMs, expired, landing }: { readonly end: ManagedCommandEnd; readonly durationMs: number; readonly expired: boolean; readonly landing: ProjectMutationLanding | undefined }): Promise<string> => {
+    if (watch === undefined || watchPlace === undefined) throw new Error("watchEnding called for a command that is not a watch");
+    await watchPump;
+    let logBytes = observedBytes;
+    try {
+      logBytes = Bun.file(logPath).size;
+      await awaitWatchTurn();
+      if (watchMayDeliver()) await readWatchBacklog(logBytes);
+    } catch {
+      // A log that is gone leaves only what was read.
+    }
+    if (watchMayDeliver()) watch.finish(Date.now());
+    watchStopped = true;
+    const events = watchPlace.events + watch.delivered();
+    // Complete lines in a batch that a stop or a refusal left open reach no
+    // event, so their output counts as undelivered.
+    const caughtUp = !watch.hasOpenBatch() && watch.readPosition() >= logBytes;
+    const summary = watchSummary({
+      overLimit: watchOverLimit,
+      expiredAfterSec: expired && deadlineAtMs !== undefined ? Math.round((deadlineAtMs - startedAtMs) / 1000) : undefined,
+      stoppedBy,
+      end,
+      durationMs,
+      events,
+    });
+    const undelivered = caughtUp || watchOverLimit !== undefined ? "" : ` The output after byte ${watch.settledPosition()} of the log reached no event; read it at log_path.`;
+    log.info("watch ended", { processId, cause: summary.cause, events, dropped: watch.pendingDropped(), position: watch.settledPosition(), undeliveredBytes: caughtUp ? 0 : logBytes - watch.settledPosition(), ms: durationMs, ...(stoppedBy === undefined ? {} : { stoppedBy }) });
+    return formatWatchEnded({
+      processId,
+      description,
+      summary: `${summary.text}${undelivered}`,
+      logPath,
+      dropped: watch.pendingDropped(),
+      unfinished: caughtUp ? watch.unfinished() : "",
+      stoppedByPerson: stoppedBy === "user",
+      ...(landing ? { landingReport: landing.report } : {}),
+    });
+  };
   let done: Promise<BackgroundWorkResult> | undefined;
   const completion = async (): Promise<BackgroundWorkResult> => {
     try {
@@ -270,6 +467,17 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
       const executionOutputTail = settledLandingOutput(output.executionOutputTail, landing);
       const exit = end.kind === "exited" ? commandExit(end) : undefined;
       const expired = deadlineExpired || (end.kind === "exited" && end.recorded?.deadlineExpired === true);
+      if (watch !== undefined && watchPlace !== undefined) {
+        // A person's Stop is stated inside the watch's own notice, which
+        // stays its outermost element, so its row survives the stop.
+        return {
+          status: stoppedBy === "user" ? "stopped" : exit !== undefined && "code" in exit && exit.code === 0 ? "completed" : "failed",
+          content: await watchEnding({ end, durationMs, expired, landing }),
+          ...(exit !== undefined ? { exit } : {}),
+          ...(executionOutputTail ? { executionOutputTail } : {}),
+          ...landingEvidence(landing),
+        };
+      }
       const content = [
         expired && deadlineAtMs !== undefined ? `Background command reached its ${(deadlineAtMs - startedAtMs) / 1000}s hard deadline and was terminated.` : undefined,
         endLine(end, durationMs, description),
@@ -296,8 +504,10 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
     description,
     ...input.identity,
     // One key per command, so a repeat of its completion, from this build or
-    // the next, commits once.
-    notificationKey: `command:${processId}`,
+    // the next, commits once. A watch's last notice has a key of the watch
+    // family, so the transcript shows it as the watch's row.
+    notificationKey: watchPlace === undefined ? `command:${processId}` : watchEndKey(processId),
+    ...(watchPlace === undefined ? {} : { watch: true as const }),
   };
   const command: ManagedCommand = {
     meta,
@@ -311,6 +521,11 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
     copyHomeForHandover() {
       input.privateCopy?.withhold?.();
       return input.privateCopy?.home;
+    },
+    watchForHandover() {
+      if (watch === undefined || watchPlace === undefined) return undefined;
+      watchStopped = true;
+      return { position: watch.settledPosition(), events: watchPlace.events + watch.delivered(), limiter: watch.limiter() };
     },
     deadlineExpired: () => deadlineExpired,
     stoppedBy: () => stoppedBy,
@@ -327,7 +542,15 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
           // A command this owner only observes belongs to its supervisor, so
           // host teardown drops the observer without waiting for its end. An
           // owned one is this host's to stop and to hand over.
-          ...(owned ? { kill: { run: (killedBy: BackgroundKillSource) => { stoppedBy = killedBy; interrupted = true; stopTailer(); void owned.terminate(); } } } : { hostClose: "detach" as const }),
+          ...(owned ? { kill: { run: (killedBy: BackgroundKillSource) => {
+            stoppedBy = killedBy;
+            interrupted = true;
+            if (watch !== undefined && watchOverLimit === undefined) log.info("watch stopped", { processId, stoppedBy: killedBy });
+            watchHalted = true;
+            wakeHoldWait?.();
+            stopTailer();
+            void owned.terminate();
+          } } } : { hostClose: "detach" as const }),
           readOutput: (request) => readBackgroundProcessOutput(logPath, request),
         });
         tracked = true;
@@ -351,6 +574,7 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
       const answer = await handOver(request);
       if (answer.kind === "handed_over") {
         released = true;
+        wakeHoldWait?.();
         clearDeadline();
         stopTailer();
         registry?.detach(processId);
@@ -372,6 +596,7 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand 
     release() {
       if (!owned) return undefined;
       released = true;
+      wakeHoldWait?.();
       clearDeadline();
       stopTailer();
       registry?.detach(processId);
