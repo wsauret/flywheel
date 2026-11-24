@@ -520,7 +520,7 @@ A running workflow agent's model picker identifies that agent and changes its se
 
 ## PI-INTERACTION-048: Restart brings everything back
 
-The restart command in the terminal restarts the background service and the terminal in place, from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and other connected clients reconnect on their own. Running work continues as it does after an update, including shell commands that are still running. If the service cannot restart, the terminal stays as it was and says why.
+The restart command in the terminal, and Restart in the Status sheet of every web client, restart the background service from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and every other connected client reconnects on its own. Running work continues as it does after an update, including shell commands that are still running. When nothing would start the service again, Restart says so and stops nothing. If the service cannot restart, the client stays as it was and says why.
 
 ## PI-INTERACTION-049: Every tap answers at once
 
@@ -600,7 +600,11 @@ On a web pane wide enough to keep the transcript column beside it, Changes, Back
 
 ## PI-INTERACTION-057: The web session list leads with what needs the person
 
-The web session list shows Needs you, then Working, then Recent, and only a question that waits for the person's answer puts a session in Needs you. An interrupted or crashed turn or a reported error keeps a session in its place by work and recency, and an error row keeps the error colour. Each group lists its newest first, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
+The web session list shows Needs you, then Working, then Recent, and only a question that waits for the person's answer puts a session in Needs you. A closed chat with such a question is in Needs you too. An interrupted or crashed turn or a reported error keeps a session in its place by work and recency, and an error row keeps the error colour. Each group lists its newest first, and a row shows its state and only its line counts that are not zero. When the list first shows, the open session's row is in view.
+
+## PI-INTERACTION-184: The terminal session picker leads with chats that need an answer
+
+The terminal session picker shows Needs you first: every chat of the project with a question that waits for the person's answer, closed chats included, newest first. Each of these rows carries the mark that a tab waiting on a question carries. The other chats follow in their groups by date. While a chat other than the one in front waits on a question, the terminal shows how many do.
 
 ## PI-INTERACTION-084: The web header names the open session and where it works
 
