@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import type { CampaignRecords, CellLine, GradeLine, RecordJudge, ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import type { BenchmarkMode } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/ranking.js";
+import { rankBenchmarkRecords, renderRanking, type RankingCorpus, type RankingInput, type RoleRanking } from "../../../src/orchestration/modules/development/benchmark/records/ranking.js";
 
 type FailureLine = CampaignRecords["failures"][number];
 

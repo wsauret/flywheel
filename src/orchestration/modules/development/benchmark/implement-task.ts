@@ -10,8 +10,8 @@ import { describeOutputIssues, schemaIssues } from "../../../../workflows/output
 import { compileOutput } from "../../../../workflows/output-contract/compile.js";
 import { decodeOutputObject } from "../../../../workflows/output-contract/grammar.js";
 import planContract from "../../../../workflows/workflows/contracts/implementation-plan.json" with { type: "json" };
-import { bytesIdentity, directoryIdentity, structuredIdentity } from "./content-identity.js";
-import { containedPath, realDirectoryUnder, realFileUnder } from "./paths.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "./campaign/content-identity.js";
+import { containedPath, realDirectoryUnder, realFileUnder } from "./campaign/paths.js";
 import {
   requireCompleteSandboxOutput,
   runCheckedSandboxCommand,
@@ -19,9 +19,9 @@ import {
   SANDBOX_HOME_DIR,
   type SandboxCommandOptions,
 } from "./sandbox-command.js";
-import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./task-schema.js";
-import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./implement-evidence.js";
-import { materializeCommitSnapshot } from "./snapshot-workspace.js";
+import { objectValue, parseImplementSandbox, parseManifestPoints, parseNativePath, stringValue, type ImplementManifest, type ImplementSandboxSpec, type ImplementTaskObject } from "./tasks/task-schema.js";
+import { retainImplementStore, retainNativeGradeFailure, type ImplementEvidence } from "./execution/implement-evidence.js";
+import { materializeCommitSnapshot } from "./execution/snapshot-workspace.js";
 
 /** The direct persona harness names this gitignored plan file in its prompt. */
 export const PLAN_FILE = ".bench-plan.json";

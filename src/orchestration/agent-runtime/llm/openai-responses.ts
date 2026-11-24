@@ -1,5 +1,5 @@
-import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
-import type { ModelInfo } from "../../../infra/llm/models.js";
+import type { AccessProviderId } from "../../../infra/llm/access/access-provider.js";
+import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { buildOpenAIResponseInput, createOpenAITools, resolveOpenAISystemPrompt } from "./openai-adapter-helpers.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "./provider-description.js";
 import { buildOpenAIParams, openAIWireReasoningEffort } from "./openai-helpers.js";

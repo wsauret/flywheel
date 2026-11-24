@@ -9,7 +9,7 @@ export interface ProviderModelLiteralViolation {
 }
 
 const PROVIDER_SOURCE = /^(?:src\/infra\/llm\/|src\/orchestration\/(?:app-service\/|config\/|agent-runtime\/llm\/|custom-provider-modules\.ts|modules\/provider-[^/]+\/))/;
-const EXCLUDED_FILES = new Set(["src/infra/llm/models-bundled.txt"]);
+const EXCLUDED_FILES = new Set(["src/infra/llm/models/models-bundled.txt"]);
 const MODEL_NAMES = /^(?:model|modelId|wireModel|wireModelId|canonical|normalizedModel)$/i;
 const AUTHORITY_NAMES = /(?:prefix|allowlist|denylist|pattern)/i;
 const SCOPED_EXCEPTION = /provider-model-literal-allow:\s*(?:display|identity|payload)\s+--\s+\S/;

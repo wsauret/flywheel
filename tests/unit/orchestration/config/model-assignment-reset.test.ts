@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
+import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js";
 import { listModelAssignments, resetRoleAssignmentsToDetectedDefaults } from "../../../../src/orchestration/config/models/model-assignments.js";
 import { fakeModelsClient, tierAvailableModels } from "../../../helpers/model-tier-fixtures.js";
 import { USER_DATA_ROOT } from "./_config-models-fixtures.js";

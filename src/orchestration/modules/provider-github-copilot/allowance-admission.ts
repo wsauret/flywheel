@@ -1,4 +1,4 @@
-import type { AccessProviderCandidate } from "../../../infra/llm/access-provider.js"
+import type { AccessProviderCandidate } from "../../../infra/llm/access/access-provider.js"
 import type { SubscriptionAllowanceAdmission, SubscriptionAllowanceResolver } from "../../agent-runtime/llm/provider-availability-types.js"
 import type { SubscriptionUsageService } from "../../auth/provider-observations/subscription-usage-service.js"
 

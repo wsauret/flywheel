@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { CHAT_AB_JUDGE } from "./judge-inputs.js";
 import { judgePlanningPairs } from "./planning-judge.js";
 import { openPlanningCampaign, scorePlanningRecall, type RecallReply } from "./planning-recall.js";

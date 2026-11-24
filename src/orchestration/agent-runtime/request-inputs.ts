@@ -11,7 +11,7 @@ import { resolveConversationResources } from "../session/conversation-resources.
 import { ownedCommandRunner } from "../../infra/owned-command.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../infra/agent-assets/system-prompt.js";
 import { canonicalize } from "../../infra/canonical-name.js";
-import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models.js";
+import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";
 import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "./llm/types.js";

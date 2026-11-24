@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { campaignIdentity, recordedCampaignIdentity } from "./campaign-store.js";
 import { chatLedger } from "./chat-store.js";
 import { chatJudgeInputs, chatRedaction, recordedChatRedactionIdentity, requireChatJudgeFamily } from "./chat-judge-inputs.js";

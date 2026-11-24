@@ -1,5 +1,5 @@
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
-import { mergeProviderOptions } from "../../../infra/llm/provider-options.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
+import { mergeProviderOptions } from "../../../infra/llm/access/provider-options.js";
 import { canonicalCatalogModelId, canonicalModelId } from "../../../infra/model-id.js";
 import { isCustomProviderModel } from "../../../infra/llm/custom-provider-registry.js";
 import { installedAccessProviderDefinitions } from "../../credential-provider-modules.js";
@@ -9,9 +9,9 @@ import { savedProviderModelIds } from "../../../infra/auth/provider-models/provi
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import { Log } from "../../../infra/log.js";
-import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../../infra/llm/access-provider.js";
+import type { AdmittedFailoverPlan, AccessProviderModelEligibility, AccessProviderSelection } from "../../../infra/llm/access/access-provider.js";
 import type { ProviderConnection } from "../../../infra/auth/auth-context.js";
-import type { ModelInfo } from "../../../infra/llm/models.js";
+import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
 import { clampReasoningEffort, newestLaterModelVersion } from "../../agent-runtime/llm/model-compat.js";
 import { parseBriefRoleId, briefPersonaRoleId } from "../../../protocol/brief-role-id.js";

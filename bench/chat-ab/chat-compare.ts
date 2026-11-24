@@ -1,12 +1,12 @@
 import { basename, join } from "node:path";
 import { mkdir } from "node:fs/promises";
 import { Schema } from "effect";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/campaign/json-lines.js";
 import { campaignIdentity, recordedCampaignIdentity } from "./campaign-store.js";
 import { chatLedger } from "./chat-store.js";
 import { compareCampaignRoles } from "./campaign-role-evidence.js";
-import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign-role-changes.js";
+import { renderCampaignRoleChanges } from "../../src/orchestration/modules/development/benchmark/campaign/campaign-role-changes.js";
 import { chatJudgeInputs, chatRedaction, recordedChatRedactionIdentity, requireChatJudgeFamily } from "./chat-judge-inputs.js";
 import { CHAT_AB_JUDGE } from "./judge-inputs.js";
 import { admitChatAbJudge, eachJudgeJob, judgePair, PAIR_JUDGE_INSTRUCTIONS, VerdictSchema } from "./pair-judge.js";

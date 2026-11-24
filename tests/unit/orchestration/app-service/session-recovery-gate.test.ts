@@ -4,7 +4,12 @@ import { createEventStoreWriterLane } from "../../../../src/infra/event-store-wr
 import { buildSessionContent, type SessionContentReference } from "../../../../src/infra/session-content.js"
 import { createSessionRecoveryGate, settlingGuardReads, type OwedRecovery } from "../../../../src/orchestration/app-service/session-recovery-gate.js"
 
-/** A lane over a writer that records each committed fact's type in order. */
+/** A lane over a writer that records each committed fact's type in order.
+ *  Its turn yield is a microtask: the real lane yields to a timer after 4ms of
+ *  continuous work, and a stalled runner can then order that timer behind a
+ *  test's own timer. With a microtask yield, every lane step finishes before
+ *  any timer fires, so a race against a timer detects only a wait that never
+ *  ends. */
 function recordingLane() {
   const committed: string[] = []
   let position = 0
@@ -19,7 +24,7 @@ function recordingLane() {
         }),
       }))
     },
-  })
+  }, {}, { now: () => performance.now(), sleep: (ms) => Bun.sleep(ms), nextTurn: () => Promise.resolve() })
   return { lane, committed }
 }
 

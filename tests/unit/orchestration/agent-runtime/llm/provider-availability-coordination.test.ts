@@ -16,12 +16,12 @@ import { afterAll, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { type AccessProviderCandidate, accessProviderCandidateKey, type AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
+import { type AccessProviderCandidate, accessProviderCandidateKey, type AccessProviderId } from "../../../../../src/infra/llm/access/access-provider.js";
 import { streamAssistantTurn } from "../../../../../src/orchestration/agent-runtime/assistant-turn-stream.js";
 import {
   type AvailabilityAuthority,
   createAvailabilityAuthority,
-} from "../../../../../src/infra/llm/availability-store.js";
+} from "../../../../../src/infra/llm/access/availability-store.js";
 import { createProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability.js";
 import type { ProviderAvailability } from "../../../../../src/orchestration/agent-runtime/llm/provider-availability-types.js";
 import { createFailoverClient, createRoutingDecisions } from "../../../../../src/orchestration/agent-runtime/llm/failover-client.js";

@@ -1,8 +1,8 @@
 import { cp, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { directoryIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { objectValue, stringValue } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
+import { directoryIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
+import { objectValue, stringValue } from "../../src/orchestration/modules/development/benchmark/tasks/task-schema.js";
 
 /** Skill packages installed into the sandbox's project store. The baseline installs nothing. */
 export interface Arm {

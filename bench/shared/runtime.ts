@@ -11,7 +11,7 @@ import { AuthProfileManager } from "../../src/orchestration/auth/auth-profile-ma
 import { startModulePolicy } from "../../src/orchestration/config/policy/module-policy.js";
 import { composeRealmModuleSnapshot, type ModuleId } from "../../src/orchestration/modules.js";
 import { installedAccessProviderIds } from "../../src/orchestration/credential-provider-modules.js";
-import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
+import { createAgentJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { prepareWorkflowDeps, type WorkflowDeps } from "../../src/orchestration/workflow-host/deps.js";
 import { createCliLauncher } from "../../src/cli/account-service/runtime-launch.js";
 import { createInstalledDefinitionRegistry } from "../../src/orchestration/definition-catalog.js";

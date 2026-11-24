@@ -15,11 +15,11 @@ import { credentialSlotClassifier } from "./auth/credential-slot-classifier.js"
 import type { KernelToolDeps } from "./agent-runtime/tools/kernel-tool-deps.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
 import type { ModuleRuntimeServices } from "./agent-runtime/module-runtime-services.js"
-import type { AccessProviderDefinition } from "../infra/llm/access-provider.js"
+import type { AccessProviderDefinition } from "../infra/llm/access/access-provider.js"
 import type { AuthContext, ProviderConnection } from "../infra/auth/auth-context.js"
 import type { CredentialSlotClassifier } from "../infra/auth/store/auth-store-types.js"
 import type { WebProviderDefinition } from "../infra/auth/web-providers.js"
-import type { SubscriptionUsageReader } from "../infra/llm/subscription-usage.js"
+import type { SubscriptionUsageReader } from "../infra/llm/usage/subscription-usage.js"
 import type { WebSearchProvider, WebSearchProviderId } from "./agent-runtime/web-search/types.js"
 import type { CommandMenuPosition, CommandOutcome, CommandReading, CommandSurfaceTarget } from "../protocol/command-catalog-protocol-types.js"
 import type { ModuleHealthCheck } from "./module-health.js"
@@ -147,7 +147,7 @@ interface FirstPartyContributionMap {
   readonly accountServices: AccountModuleServiceContribution
   readonly agentTasks: ModuleAgentTasks
   readonly providers:
-    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/provider-availability-types.js").ProviderAllowanceFactory }
+    { readonly definition: AccessProviderDefinition; readonly createClient: import("./agent-runtime/llm/client-factory.js").AccessProviderFactory; readonly usageReader?: SubscriptionUsageReader; readonly resetConsumer?: import("../infra/llm/usage/subscription-usage.js").SubscriptionUsageResetConsumer; readonly affordability?: import("./agent-runtime/llm/provider-affordability.js").ProviderAffordabilityFactory; readonly allowance?: import("./agent-runtime/llm/provider-availability-types.js").ProviderAllowanceFactory }
   readonly tools: { readonly kind: "tool"; readonly name: string; readonly declaration: ToolDeclaration<string>; readonly associatedPromptRosterIds?: readonly PromptRosterContribution["definition"][] }
   readonly promptFragments: PromptFragmentContribution
   readonly turnReminders: TurnReminderContribution

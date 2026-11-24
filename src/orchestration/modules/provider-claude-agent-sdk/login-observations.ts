@@ -1,6 +1,6 @@
 import { RouteUnavailableError } from "../../agent-runtime/llm/errors.js";
 import { classifyProviderFailure } from "../../agent-runtime/llm/provider-failure.js";
-import type { ExternalLoginQuestion, LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
+import type { ExternalLoginQuestion, LoginWaitAnswer } from "../../../infra/llm/access/access-provider.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import type { ExternalAccount } from "../../../infra/auth/provider-account.js";
 

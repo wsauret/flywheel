@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import Anthropic from "@anthropic-ai/sdk";
 import { Redacted } from "effect";
-import type { ModelInfo } from "../../../../src/infra/llm/models.js";
+import type { ModelInfo } from "../../../../src/infra/llm/models/models.js";
 
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream";
 import { ProviderRequestValidationError, QuotaExhaustedError } from "../../../../src/orchestration/agent-runtime/llm/errors";

@@ -19,7 +19,7 @@ import { withTurnRequestScope } from "../../../../src/orchestration/agent-runtim
 import { FUNCTION_TOOL_PRESENTATION, type AdmittedModelRequestRun, type ConversationMessage, type LLMClient, type ServingAttempt } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { TurnUsageTracker } from "../../../../src/orchestration/agent-runtime/turn-usage-tracker.js"
 import type { UsageSettlementDraft } from "../../../../src/orchestration/agent-runtime/usage-settlement.js"
-import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/usage-entry.js"
+import type { MeasuredUsageEntry, UsageEntry } from "../../../../src/infra/llm/usage/usage-entry.js"
 import { failoverFailure, preparedRequest } from "./llm/_provider-chain-harness.js"
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"

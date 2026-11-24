@@ -1,4 +1,4 @@
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import type { Effort } from "../../../infra/workflow-types.js";
 import { normalizeSelectableModelId } from "./model-compatibility.js";
 import type { RankedModelTier } from "./model-tiers.js";

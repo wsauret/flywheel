@@ -5,7 +5,7 @@ import { prepareSourceTreatment, resolveSourceTreatment, validatePreparedTreatme
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { ownedCommandResult } from "../../helpers/owned-command-fake.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
-import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 
 const temporary = temporaryDirectories();
 

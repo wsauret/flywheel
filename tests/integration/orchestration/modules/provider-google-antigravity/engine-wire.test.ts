@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Exit, Scope } from "effect"
-import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js"
+import { providerModelInfo } from "../../../../../src/infra/llm/catalog/provider-model-info.js"
 import type { AcpRequests } from "../../../../../src/orchestration/modules/provider-google-antigravity/acp/schema.js"
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js"
 import { limitOutput } from "../../../../../src/orchestration/agent-runtime/tools/truncation.js"

@@ -25,8 +25,8 @@ import {
   type ProviderStreamTelemetryCompletedInput,
   type ProviderStreamTelemetryEventInput,
 } from "../../session/provider-request-audit-types.js";
-import type { ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
-import type { ReasoningEffort } from "../../../infra/llm/models.js";
+import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
+import type { ReasoningEffort } from "../../../infra/llm/models/models.js";
 import type { CacheRetention, ConversationMessage, ProviderRequestAttribution } from "./types.js";
 import type { PromptKind } from "../system-prompt.js";
 import type { ModelInteractionProfileId } from "../model-interaction-profile.js";

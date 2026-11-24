@@ -3,8 +3,8 @@ import { AuthProfileStore } from "../../src/infra/auth/store/auth-profile-store.
 import { createSubscriptionSpendConsentStore } from "../../src/infra/auth/subscription/subscription-spend-consent-store.js"
 import { createSubscriptionSpendEnvelope, type SubscriptionSpendMode } from "../../src/infra/auth/subscription/subscription-spend-consent.js"
 import { appendCredentialInstanceWithReceipt } from "../../src/infra/auth/store/auth-store-mutations.js"
-import { createUsageAuthority } from "../../src/infra/llm/usage-authority.js"
-import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/subscription-usage.js"
+import { createUsageAuthority } from "../../src/infra/llm/usage/usage-authority.js"
+import type { SubscriptionUsageReport, SubscriptionUsageSpendSource } from "../../src/infra/llm/usage/subscription-usage.js"
 import { createSubscriptionAccountIdentity } from "../../src/infra/auth/subscription/subscription-account-identity.js"
 import { authDir } from "../../src/infra/paths.js"
 

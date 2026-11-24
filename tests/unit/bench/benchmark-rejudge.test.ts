@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { appendCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/benchmark-records.js";
+import { appendCampaignRecords, type CampaignHeader, type CellLine, type ScoreLine } from "../../../src/orchestration/modules/development/benchmark/records/benchmark-records.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { unavailableJudgeAccounting } from "../../../src/orchestration/modules/development/benchmark/scoring/judge.js";
 import { rejudgeRecords } from "../../../src/orchestration/modules/development/benchmark/rejudge.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { succeedingCommands } from "./_persona-benchmark-fixtures.js";

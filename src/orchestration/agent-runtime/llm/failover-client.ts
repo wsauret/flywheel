@@ -48,13 +48,13 @@
  */
 
 import { abortableSleep } from "../../../infra/abort.js";
-import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
-import type { ModelFamily } from "../../../infra/llm/model-family.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access/access-provider.js";
+import type { ModelFamily } from "../../../infra/llm/models/model-family.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
-import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../infra/llm/provider-error-copy.js";
-import { summarizeProviderError } from "../../../infra/llm/provider-error-diagnostic.js";
-import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
+import { exhaustedProvidersCopy, exhaustedProvidersRecovery, extractProviderErrorDetail, waitingClears, type CapacityHold, type CapacityReset, type ProviderUnavailableCause } from "../../../infra/llm/errors/provider-error-copy.js";
+import { summarizeProviderError } from "../../../infra/llm/errors/provider-error-diagnostic.js";
+import { providerOptionsUnservableReason, type ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import { AllCandidatesExhaustedError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError, SUBSCRIPTION_PAID_REVIEW_DETAIL } from "./errors.js";
 import type { ModelRefusal } from "../../../infra/auth/provider-models/provider-model-catalog-store.js";
 import { ThinkingStallError } from "./thinking-stall.js";

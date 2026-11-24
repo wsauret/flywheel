@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/campaign/content-identity.js";
 import { campaignCellKey } from "./campaign-store.js";
 import { workflowAuthorshipLedger, type WorkflowAuthorshipOutcome } from "./workflow-authorship-store.js";
 import { mean, median, taskBootstrap95, wilson95 } from "./statistics.js";

@@ -1,7 +1,7 @@
 import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-store.js";
 import { createSubscriptionSpendConsentStore } from "../../infra/auth/subscription/subscription-spend-consent-store.js";
 import type { SubscriptionUsageService } from "../auth/provider-observations/subscription-usage-service.js";
-import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js";
+import type { AccessProviderDefinition } from "../../infra/llm/access/access-provider.js";
 import { createSubscriptionSpendConsentService, type SubscriptionSpendConsentService } from "./subscription-spend-consent-service.js";
 
 /** Composes consent for a resolved profile's verified identities and declared paid modes. */

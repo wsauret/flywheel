@@ -1,4 +1,4 @@
-import type { CatalogSourceRow } from "../../src/infra/llm/model-catalog-resolution.js";
+import type { CatalogSourceRow } from "../../src/infra/llm/catalog/model-catalog-resolution.js";
 import type { CatalogLimits } from "../../src/infra/model-catalog-rows.js";
 
 export interface TestCatalogRow {

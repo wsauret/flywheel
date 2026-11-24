@@ -1,9 +1,9 @@
 import { join } from "node:path";
 import { Schema } from "effect";
-import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./evidence.js";
-import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "./json-lines.js";
-import { ensuredDirectoryUnder, realDirectoryUnder } from "./paths.js";
-import type { RunStoreLocation } from "./run-store.js";
+import { BenchmarkAccountingSchema, BenchmarkCampaignIdentitySchema } from "./accounting/evidence.js";
+import { createJsonFile, createJsonLinesLedger, readJsonFile, writeArtifactFile } from "./campaign/json-lines.js";
+import { ensuredDirectoryUnder, realDirectoryUnder } from "./campaign/paths.js";
+import type { RunStoreLocation } from "./scoring/run-store.js";
 
 const DIRECTORY_LABEL = "The benchmark results directory";
 const RepeatSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));

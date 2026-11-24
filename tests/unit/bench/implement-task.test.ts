@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { createBenchmarkCatalog } from "../../../src/orchestration/modules/development/benchmark/catalog.js";
-import { implementQualityJudgeInputIdentity } from "../../../src/orchestration/modules/development/benchmark/implement-scoring.js";
+import { implementQualityJudgeInputIdentity } from "../../../src/orchestration/modules/development/benchmark/scoring/implement-scoring.js";
 import {
   captureImplementation,
   loadImplementTasks,
@@ -12,7 +12,7 @@ import {
   provisionTaskSandbox,
 } from "../../../src/orchestration/modules/development/benchmark/implement-task.js";
 import { runCheckedSandboxCommand } from "../../../src/orchestration/modules/development/benchmark/sandbox-command.js";
-import { retainImplementStore } from "../../../src/orchestration/modules/development/benchmark/implement-evidence.js";
+import { retainImplementStore } from "../../../src/orchestration/modules/development/benchmark/execution/implement-evidence.js";
 import { MINIMAL_IMPLEMENTATION_PLAN } from "../../helpers/implementation-plan.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { syntheticCommands, writeSyntheticTaskDir } from "./_implement-task-fixtures.js";

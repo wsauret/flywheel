@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { providerModelInfo } from "../../../../../../src/infra/llm/provider-model-info.js";
+import { providerModelInfo } from "../../../../../../src/infra/llm/catalog/provider-model-info.js";
 import {
   coordinatorCandidates, hostKey, hostValues, processAgentHosts, type HostPlace,
 } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";

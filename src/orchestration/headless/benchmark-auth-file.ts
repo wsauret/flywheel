@@ -10,7 +10,7 @@ import type { AuthProfileAccess } from "../../infra/auth/store/auth-profile-stor
 import { captureProviderConnection, captureSubscriptionCredentials, oauthCredentialDto, resolveAuthContextFromStore, runtimeCredential, type ProviderConnection, type ProviderModelAccessSnapshot } from "../../infra/auth/auth-context.js"
 import type { KeyResolver } from "../../infra/auth/resolve-key.js"
 import { requireAuthProfileName } from "../../infra/paths.js"
-import type { AccessProviderDefinition, ExternalTokenLogin } from "../../infra/llm/access-provider.js"
+import type { AccessProviderDefinition, ExternalTokenLogin } from "../../infra/llm/access/access-provider.js"
 import { readSavedProviderModels } from "../../infra/auth/provider-models/provider-model-catalog-store.js"
 import { Log } from "../../infra/log.js"
 import { AuthProfileManager } from "../auth/auth-profile-manager.js"

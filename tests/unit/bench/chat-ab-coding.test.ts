@@ -5,7 +5,7 @@ import { codingRedaction, judgeBlocks } from "../../../bench/chat-ab/block-judge
 import { acceptanceTestPaths, captureCodingCell, codingMessage, findCodingTask, type CodingTask } from "../../../bench/chat-ab/coding-task.js";
 import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 
 const temporary = temporaryDirectories();
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/llm/free-plan-accounts.js"
+import { FREE_PLAN_REPLACE_QUESTION } from "../../../../src/infra/llm/access/free-plan-accounts.js"
 import { keptFreePlanMessage } from "../../../../src/protocol/client/auth-login.js"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

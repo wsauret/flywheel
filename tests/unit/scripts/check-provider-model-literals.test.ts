@@ -51,7 +51,7 @@ describe("provider model literal policy", () => {
         "const identity = wireModelId.endsWith(':free') ? 'free' : 'default' // provider-model-literal-allow: identity -- provider catalog grammar",
       ].join("\n"),
       "src/orchestration/config/custom-provider.ts": "const models = config.models",
-      "src/infra/llm/models-bundled.txt": "example:model-a",
+      "src/infra/llm/models/models-bundled.txt": "example:model-a",
     })).toEqual([]);
   });
 

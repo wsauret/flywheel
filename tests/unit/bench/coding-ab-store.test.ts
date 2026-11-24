@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { codingLedger, requireWritableCodingCampaign, type CodingCampaign, type CodingEvent, type CodingOutcomeRecord } from "../../../bench/chat-ab/coding-ab-store.js";
 import { campaignIdentity, campaignSchedule } from "../../../bench/chat-ab/campaign-store.js";
-import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
+import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/accounting/evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { renderCodingReport } from "../../../bench/chat-ab/coding-ab-report.js";
 import { campaignHeadlessOutcome } from "../../../bench/chat-ab/campaign-execution.js";
-import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
+import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/execution/headless-execution-contract.js";
 import { benchmarkInfrastructureIdentity } from "../../../bench/chat-ab/benchmark-infrastructure.js";
 import { REPO_ROOT } from "../../../bench/chat-ab/harness-paths.js";
 import { parseCodingDesign } from "../../../bench/chat-ab/coding-ab-design.js";

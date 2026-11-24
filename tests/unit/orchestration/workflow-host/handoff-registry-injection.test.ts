@@ -30,7 +30,7 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   // each reads the published revision once to resolve the definition
   // availability that its child's tools and text render against.
   "src/orchestration/modules/subagents.ts",
-  "src/orchestration/modules/development/benchmark/persona-run.ts",
+  "src/orchestration/modules/development/benchmark/persona/persona-run.ts",
 ])
 
 function sourceFiles(root: string): string[] {

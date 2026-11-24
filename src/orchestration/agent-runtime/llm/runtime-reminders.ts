@@ -2,7 +2,7 @@ import { release, type, version } from "node:os";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { detectShell, isGitRepo, isGitWorktree, localDate } from "../../../infra/env-detection.js";
 import { canonicalModelId } from "../../../infra/model-id.js";
-import type { ModelInfo } from "../../../infra/llm/models.js";
+import type { ModelInfo } from "../../../infra/llm/models/models.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
 import { ANTHROPIC_STANDARD_CONTEXT_WINDOW } from "./errors.js";
 import type { ConversationMessage, ServingAttempt } from "./types.js";
