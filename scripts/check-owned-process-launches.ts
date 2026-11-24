@@ -55,6 +55,8 @@ export const RAW_LAUNCH_AUTHORITY_FILES: ReadonlySet<string> = new Set([
   "src/infra/owned-command-supervisor.ts",
   "src/infra/process-supervisor.ts",
   "src/infra/persistent-subprocess.ts",
+  // `CreateProcessW` through FFI, which only the persistent authority imports.
+  "src/infra/windows-breakaway-launch.ts",
   "src/infra/windows-private-directory-acl.ts",
   "src/infra/foreground-successor.ts",
 ]);
@@ -72,6 +74,7 @@ const RAW_LAUNCH_FACTORY_SYMBOLS: ReadonlySet<string> = new Set([
   "ownUnixContainer",
   "commandSupervisorArgv",
   "persistentSubprocessPlatform",
+  "launchBreakaway",
 ]);
 
 const AUTHORITY_MODULE_STEMS: ReadonlySet<string> = new Set(

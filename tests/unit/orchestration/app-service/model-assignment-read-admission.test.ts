@@ -5,7 +5,7 @@ import { createFlywheelAppService } from "../../../../src/orchestration/app-serv
 import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js"
-import { writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { authDir } from "../../../../src/infra/paths.js"
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
@@ -39,6 +39,12 @@ import { diskAuthObservation } from "../../../helpers/profile-auth-observation.j
 import { refusingEventWriter } from "../../../helpers/event-writer-doubles.js"
 
 const temporaryDirectory = temporaryDirectories()
+/** Startup directories with an account home of the case, because user defaults and credentials that a case saves in the process-shared test home reach later test files of the same process. */
+function isolatedDirectories(dir: string) {
+  const accountHome = join(dir, "home")
+  mkdirSync(accountHome)
+  return { ...testDirectories(dir), accountHome, userDataRoot: join(accountHome, ".flywheel") }
+}
 const availability = await createDefinitionAvailability({ definitions: repoDefinitions(), modules: repoModules, capabilities: { state: () => decodeModuleState("") } })
 const unusedEventWriter = refusingEventWriter()
 /** A profile with no saved paid-use permission and no allowance evidence. */
@@ -51,7 +57,7 @@ const noSubscriptionAdmission = () => async () => ({
 
 test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling discovery or access audits", async (initial) => {
   const dir = temporaryDirectory("flywheel-saved-only-")
-  const directories = testDirectories(dir)
+  const directories = isolatedDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
   const preferences = createProviderModelPreferenceService({ ...unusedProviderModelWrites(),
     displayName: (id) => id, allowTrainingRoutes: () => false,
@@ -115,7 +121,7 @@ test.each(["cold", "stale"] as const)("reads %s eligibility without scheduling d
 
 test("reads saved model, assignment, and effort options for defaults and sessions before refresh settles", async () => {
   const dir = temporaryDirectory("flywheel-admitted-tier-")
-  const directories = testDirectories(dir)
+  const directories = isolatedDirectories(dir)
   const configPath = join(dir, "flywheel.toml")
   writeFileSync(configPath, '[profiles.default.roles.chat]\nmodel = "gpt-6.1-sol"\neffort = "medium"\n')
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath, watch: false })
@@ -314,7 +320,7 @@ test("reads saved model, assignment, and effort options for defaults and session
 
 test("a save says when its saved model cannot serve and that its agents wait, naming no stand-in, once for a mirrored save, and ends the waits of agents so that each resolves its role again (PI-MODEL-045, PI-MODEL-039)", async () => {
   const dir = temporaryDirectory("flywheel-save-serving-")
-  const directories = testDirectories(dir)
+  const directories = isolatedDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
   const candidate = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
   const models = ["gpt-6.1-sol", "gpt-5.4"]
@@ -390,7 +396,7 @@ test("a save says when its saved model cannot serve and that its agents wait, na
 
 test("each model row names the provider that would serve now, read afresh from the shared availability authority", async () => {
   const dir = temporaryDirectory("flywheel-serving-provider-")
-  const directories = testDirectories(dir)
+  const directories = isolatedDirectories(dir)
   const runtimeConfig = await createRuntimeConfigOwner({ userDataRoot: directories.userDataRoot, configPath: join(dir, "flywheel.toml"), watch: false })
   const model = "gpt-6.1-sol"
   const keyed = { kind: "singleton", providerId: "openai_api", spendMode: "direct_api" } as const
@@ -474,7 +480,7 @@ test("each model row names the provider that would serve now, read afresh from t
 
 test("keeps connection conditions with the credential capture when a transient fault repairs during key resolution", async () => {
   const dir = temporaryDirectory("flywheel-admission-conditions-")
-  const directories = testDirectories(dir)
+  const directories = isolatedDirectories(dir)
   const profiles = new AuthProfileManager({ userDataRoot: directories.userDataRoot, projectRoot: dir, env: {} })
   const access = await profiles.acquireAccess({ createDefault: true })
   access.close()

@@ -229,7 +229,12 @@ async function launchOwned(options: EngineLaunchOptions, started: number): Promi
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
       clientInfo: options.clientInfo,
     }, signal)
-    if (options.authMethod !== undefined) await observed.connection.request("authenticate", { methodId: options.authMethod }, signal)
+    // agy 1.5.14 boots its backend, which reads the MCP configuration and lists the tools, at the first request after
+    // `initialize`, and not before. A Google login has no `authenticate`: `session/list` boots the backend on agy's
+    // stored sign-in, with no browser and no model request, so the tools are listed while this launch still holds the
+    // login and the next launch cannot rewrite the configuration first.
+    if (options.authMethod === undefined) await observed.connection.request("session/list", { cwd: launch.cwd }, signal)
+    else await observed.connection.request("authenticate", { methodId: options.authMethod }, signal)
     await Promise.race([server.ready, observed.engine.ended.then(() => { throw new Error("the engine ended before it listed its tools") }), abortion(signal)])
   } catch (error) {
     await observed.engine.close("launch-failed")
@@ -465,14 +470,18 @@ function observeEngine(launch: ObservedLaunch): ObservedEngine {
       const open: OpenPrompt = { failure: undefined }
       openPrompts.set(sessionId, open)
       watch.open(sessionId)
+      const started = Date.now()
+      let stopReason = "failed"
       try {
         const result = await request("session/prompt", { sessionId, prompt })
         served = true
+        stopReason = result.stopReason
         if (open.failure !== undefined) throw open.failure
         return result
       } catch (error) {
         throw open.failure ?? error
       } finally {
+        DebugLog.record({ type: "provider.antigravity.prompt.ended", payload: { processId, sessionId, stopReason, durationMs: Date.now() - started } })
         watch.settle(sessionId)
         openPrompts.delete(sessionId)
         if (openPrompts.size === 0) for (const resolve of idleWaiters.splice(0)) resolve()
