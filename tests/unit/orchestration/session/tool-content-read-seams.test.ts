@@ -7,7 +7,7 @@ import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { asAsyncEventReadSurface, type AsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ContentResolver, ToolContentRow } from "../../../../src/infra/tool-content"
-import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta"
+import { createToolResultDisplayMetaCursorReader, readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import {
   createToolExecutionProjection,
   loadToolExecutionTimelineFromEvents,

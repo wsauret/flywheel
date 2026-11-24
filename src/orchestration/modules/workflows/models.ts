@@ -1,13 +1,13 @@
 import { candidateProviderId } from "../../../infra/llm/access-provider.js";
-import { captureRoleCatalog, type CapturedRoleSelection } from "../../config/role-resolution.js";
+import { captureRoleCatalog, type CapturedRoleSelection } from "../../config/models/role-resolution.js";
 import { effortOptionsForMetadata } from "../../agent-runtime/llm/model-compat.js";
 import type { CaptureProviderConnection } from "../../agent-runtime/model-runtime-capture.js";
 import { claudeKnowledgeCutoff } from "../../agent-runtime/llm/runtime-reminders.js";
 import type { AdvertisedTool, RuntimeTool } from "../../agent-runtime/tools/types.js";
 import { readModelScores, scoresForModel } from "../../../infra/llm/model-scores.js";
 import type { ModelScoreSnapshot } from "../../../infra/llm/model-scores-document.js";
-import { scoreCatalogModels } from "../../config/model-score-scope.js";
-import { getSharedModelsClient } from "../../config/llm-clients.js";
+import { scoreCatalogModels } from "../../config/models/model-score-scope.js";
+import { getSharedModelsClient } from "../../config/models/llm-clients.js";
 
 function selection(result: CapturedRoleSelection): { readonly model: string; readonly effort: string } | { readonly unavailable: string } {
   return result.kind === "selected" ? { model: result.role.model, effort: result.role.effort } : { unavailable: result.kind };

@@ -11,7 +11,7 @@ import { sessionContentFixture } from "../../../helpers/session-content"
 import type { ConversationEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { DELIVERY_CONFIRMATION } from "../../../../src/infra/delivery-confirmation.js"
 import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
-import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/conversation-block-projection"
+import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/transcript/conversation-block-projection"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks"
 

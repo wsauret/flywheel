@@ -1,12 +1,12 @@
 /** The contract of the MCP manager: what its callers, its registry owner, and each per-registry resource share. */
 import type { Deferred, Scope } from "effect";
 import type { McpConnectionStatusRow } from "../../../protocol/modules/mcp.js";
-import type { McpClaudeEngine } from "./claude-engine.js";
+import type { McpClaudeEngine } from "./claude-engine/claude-engine.js";
 import type { McpServerRegistry } from "./config.js";
-import type { McpConnectors } from "./connectors.js";
+import type { McpConnectors } from "./claude-engine/connectors.js";
 import type { McpCallResult, McpConnection, McpConnectionOptions, McpToolHit } from "./connection.js";
-import type { McpCredentialStore } from "./credentials.js";
-import type { McpOAuthAuthorization } from "./oauth.js";
+import type { McpCredentialStore } from "./oauth/credentials.js";
+import type { McpOAuthAuthorization } from "./oauth/oauth.js";
 
 /** One connection attempt for one server, and the only authority over it: the
  *  cancellation signal every request of the attempt shares, the single startup

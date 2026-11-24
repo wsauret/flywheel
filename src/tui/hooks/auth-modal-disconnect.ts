@@ -1,4 +1,4 @@
-import type { CredentialProviderId } from "../../infra/auth/auth-store-types.js"
+import type { CredentialProviderId } from "../../infra/auth/store/auth-store-types.js"
 import type { AuthProviderAccountStatus } from "../../protocol/auth-status-protocol-types.js"
 import type { ListModalKeyEvent } from "../components/modal-list-keys.js"
 import { soleAccount, type AuthRow, type DisconnectConfirmation, type ProviderOption } from "../modals/auth/auth-modal-options.js"

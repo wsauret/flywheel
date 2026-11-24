@@ -8,7 +8,7 @@ import { createSessionViewProjection, type SessionViewProjection } from "../../a
 import { experimentsRuntime } from "./runtime.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
 import type { ExperimentOperationState, ExperimentOperationView } from "./operation-owner.js"
-import { createExperimentProjection, EXPERIMENT_FACT_TYPES, type ExperimentProjection, type ExperimentSnapshot } from "./projection.js"
+import { createExperimentProjection, EXPERIMENT_FACT_TYPES, type ExperimentProjection, type ExperimentSnapshot } from "./state/projection.js"
 import type { SessionEntry, SessionStoreReader } from "../../session-store/types.js"
 
 const experimentViewCursor = (sessionId: string) => sessionDomainCursor("experiment_view", sessionId)

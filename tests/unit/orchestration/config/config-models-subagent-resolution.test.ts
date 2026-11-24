@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { resolveSubagentRole } from "../../../../src/orchestration/config/role-selection.js";
+import { resolveSubagentRole } from "../../../../src/orchestration/config/models/role-selection.js";
 import { validateRoleIds } from "../../../../src/orchestration/config/roles.js"
 
 // ---------------------------------------------------------------------------

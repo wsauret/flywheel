@@ -3,8 +3,8 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { selectStartupDirectories } from "../../../src/infra/directory-authorities.js"
 import { Log } from "../../../src/infra/log.js"
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
-import { runServe } from "../../../src/cli/serve.js"
-import { createCliLauncher } from "../../../src/cli/runtime-launch.js"
+import { runServe } from "../../../src/cli/account-service/serve.js"
+import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
 import type { AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account-service-runtime.js"
 import {
   createAccountHubHandler,

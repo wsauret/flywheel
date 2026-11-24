@@ -1,4 +1,4 @@
-import { configSection } from "../../config/config-section.js"
+import { configSection } from "../../config/schema/config-section.js"
 import { subscriptionUsageConfigSection } from "./config.js"
 import { moduleServiceHandle } from "../../../infra/module-service.js"
 import { errorMessage } from "../../../infra/error-message.js"

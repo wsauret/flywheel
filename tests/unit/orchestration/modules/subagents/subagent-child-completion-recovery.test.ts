@@ -17,7 +17,7 @@ import { bindSessionStops } from "../../../../../src/orchestration/session/modul
 import { executeChildSessionDeletionPlan } from "../../../../../src/orchestration/session/child-session-deletion.js"
 import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/child-session-reconciliation.js"
 import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, type HeldBackgroundNotification } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
-import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer.js"
 import { createSessionManager } from "../../../../../src/orchestration/session/manager.js"
 import { loadToolExecutionTimelineFromEvents } from "../../../../../src/orchestration/session/tool-execution-projection.js"

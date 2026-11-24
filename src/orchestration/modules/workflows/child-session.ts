@@ -3,7 +3,7 @@ import { workflowProgress, workflowSummaryText } from "../../../protocol/client/
 import { loadQueueSnapshotFromReader } from "../../../workflows/view/view-store.js"
 import { frontendAttempts } from "../../workflow-host/frontend-attempts.js"
 import { workflowAddressText } from "../../workflow-host/workflow-addressing.js"
-import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/launch-operation-contract.js"
+import { workflowLaunchHost, type WorkflowLaunchHost } from "../../workflow-host/lifecycle/launch-operation-contract.js"
 import { readChildCall, readChildStop } from "../../session/chat-session-run-evidence.js"
 import { liveWorkflowControl } from "../../session/live-session-control.js"
 import { workflowMembershipReader } from "../../session/workflow-membership.js"

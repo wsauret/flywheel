@@ -16,13 +16,13 @@ import type { DefinitionReload } from "../../../../workflows/definition-registry
 import { NEW_SKILL_TRIGGER_MAX_CHARS, type SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
 import { skillRecommendationRecordedFact } from "../../../../workflows/skill-facts.js";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../learning-journal.js";
-import { readConsentClaims, reconcileGlobalSkillOperations } from "../global-skill-mutation.js";
+import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
+import { readConsentClaims, reconcileGlobalSkillOperations } from "../skills/global-skill-mutation.js";
 import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
-import { admitSkillMutationPlan, planSkillMutation, storeRootDirs } from "../skill-mutation-plan.js";
-import { publishSkillMutation } from "../skill-mutation-publisher.js";
-import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores } from "../skill-store.js";
-import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin,  } from "../skill-store-types.js";
+import { admitSkillMutationPlan, planSkillMutation, storeRootDirs } from "../skills/skill-mutation-plan.js";
+import { publishSkillMutation } from "../skills/skill-mutation-publisher.js";
+import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores } from "../skills/skill-store.js";
+import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin,  } from "../skills/skill-store-types.js";
 
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../../../agent-runtime/tools/types.js";
 

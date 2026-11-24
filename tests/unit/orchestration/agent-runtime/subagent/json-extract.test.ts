@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { tryParseJsonFromText } from "../../../../../src/orchestration/modules/subagents/execution/json-extract.js";
+import { tryParseJsonFromText } from "../../../../../src/orchestration/modules/subagents/execution/result/json-extract.js";
 
 describe("tryParseJsonFromText", () => {
   it("parses raw JSON directly", () => {

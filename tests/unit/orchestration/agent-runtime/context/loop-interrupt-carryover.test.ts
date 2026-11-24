@@ -7,7 +7,7 @@ import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderStre
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/run-lifecycle.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
 import { interruptedTurnMessage } from "../../../../../src/orchestration/session/conversation/turn-end-record.js";
-import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/injection-queue.js";
+import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import type { RequestToolSurfaceOwner } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
 import { chain, fakeAvailability, singletonCandidate } from "../llm/_provider-chain-harness.js";

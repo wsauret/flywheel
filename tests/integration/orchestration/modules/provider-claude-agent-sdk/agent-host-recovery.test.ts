@@ -8,7 +8,7 @@ import { DISPATCH_TEXT } from "../../../../../src/orchestration/modules/provider
 import { processAgentHosts, type HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { createHostLauncher } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { processLoginObservations, type LoginKey, type RequestOutcome } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
-import type { ModelRefusal } from "../../../../../src/infra/auth/provider-model-catalog-store.js";
+import type { ModelRefusal } from "../../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { fakeAvailability } from "../../../../unit/orchestration/agent-runtime/llm/_provider-chain-harness.js";
 import { CONTINUATION_MESSAGES } from "../../../../../src/orchestration/agent-runtime/continuation-messages.js";
 import { turnContextEntry } from "../../../../../src/orchestration/agent-runtime/agent-loop-turn-context.js";

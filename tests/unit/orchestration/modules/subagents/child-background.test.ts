@@ -15,7 +15,7 @@ import { QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, decodeQueuedBackgroundNo
 import { commandHandoversOfAsync, writeCommandHandover } from "../../../../../src/orchestration/session/command-handover.js"
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/create-session-infra.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
-import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/injection-queue.js"
+import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { handedOverRow, handoverAuthority } from "../../agent-runtime/_command-handover-fixtures.js"
 

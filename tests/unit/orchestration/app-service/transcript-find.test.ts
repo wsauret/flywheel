@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { countFindMatches, findInTranscript } from "../../../../src/orchestration/app-service/transcript-find.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { TranscriptFindRequest } from "../../../../src/protocol/transcript-protocol-types.js"
 
 const text = (id: string, content: string): AnyBlock => ({ kind: "text", id, content, timestamp: 1 })

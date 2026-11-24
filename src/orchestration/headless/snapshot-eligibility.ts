@@ -3,7 +3,7 @@ import { createModelListingClient } from "../../infra/llm/model-listing.js"
 import type { ModelsClient } from "../../infra/llm/models.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
-import { resolveProviderModelCatalog } from "../config/model-assignment-providers.js"
+import { resolveProviderModelCatalog } from "../config/models/model-assignment-providers.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 
 /** The eligibility sources of a run that serves from a captured connection,

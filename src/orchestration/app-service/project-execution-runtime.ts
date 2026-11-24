@@ -32,10 +32,10 @@ import { attachedRunnerDelivery } from "./session-background-notifications.js"
 import { createChildSessionControl } from "../session/child-session-control.js"
 import { childSessionProjectionAttachment } from "../session-store/child-session-projection.js"
 import { bindRetainedOperationHost, composeRetainedOperationHosts } from "../../infra/retained-operation-hosts.js"
-import { workflowLaunchHost } from "../workflow-host/launch-operation-contract.js"
+import { workflowLaunchHost } from "../workflow-host/lifecycle/launch-operation-contract.js"
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { publishCustomProvidersFromConfig } from "../config/custom-providers.js"
-import { startModulePolicy } from "../config/module-policy.js"
+import { startModulePolicy } from "../config/policy/module-policy.js"
 import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../modules.js";
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
 import { installedAccessProviderIds } from "../credential-provider-modules.js";
@@ -47,8 +47,8 @@ import { createInstalledDefinitionRegistry } from "../definition-catalog.js"
 
 import { createModuleProjection } from "./module-projection.js"
 import { createRuntimeConfigProjection } from "./runtime-config-projection.js"
-import { persistentProcessPolicy } from "../config/persistent-process-policy.js"
-import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
+import { persistentProcessPolicy } from "../config/policy/persistent-process-policy.js"
+import { shellWriteGuardObserver } from "../config/policy/shell-write-guard-policy.js"
 import { createSessionViewLoader } from "../session-store/view.js"
 import { createFlywheelAppService, type FlywheelAppServiceDeps } from "./app-service.js"
 import { composeAuthLogin } from "./auth-login-composition.js"
@@ -489,7 +489,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   }
   const workflows = createLazyWorkflowController({
     create: async () => {
-      const { createWorkflowController } = await import("../workflow-host/controller.js")
+      const { createWorkflowController } = await import("../workflow-host/lifecycle/controller.js")
       return createWorkflowController({
         sessionStore,
         workflowHosts,

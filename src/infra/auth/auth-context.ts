@@ -13,10 +13,10 @@
  */
 
 import { Redacted } from "effect";
-import { isCredentialCollection, type AuthStore, type Credential, type CredentialLineages, type CredentialSlotClassifier, type OAuthCredential } from "./auth-store-types.js";
+import { isCredentialCollection, type AuthStore, type Credential, type CredentialLineages, type CredentialSlotClassifier, type OAuthCredential } from "./store/auth-store-types.js";
 
-import { authStoreObservationKey, loadAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
-import { apiKeyHint } from "./api-key-hint.js";
+import { authStoreObservationKey, loadAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./store/auth-store.js";
+import { apiKeyHint } from "./store/api-key-hint.js";
 import type { KeyResolver } from "./resolve-key.js";
 import { credentialIdOf, type AccessProviderAccountIdentity, type AccountLineage, type CredentialProvider, type ExternalAccount } from "./provider-account.js";
 

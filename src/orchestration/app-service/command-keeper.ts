@@ -30,7 +30,7 @@
 
 import { NO_CHANGED_TOOLS } from "../../infra/output/output-block-delta.js"
 import type { OutputProjectionEvent } from "../../infra/output/output-projection-events.js"
-import { StreamingToolTextStore } from "../../infra/output/streaming-tool-text.js"
+import { StreamingToolTextStore } from "../../infra/output/streaming/streaming-tool-text.js"
 import { redactSecrets } from "../../infra/redact-secrets.js"
 import { errorMessage } from "../../infra/error-message.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"

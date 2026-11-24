@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
+import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import type { CompactionEntry, MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types";
 import { estimateConversationTokens, tokenCountingPolicy } from "../../../../src/orchestration/agent-runtime/compaction/token-counter";
 import { assistantMessage, createSavePointContext, disposeSavePointContext, type SavePointTestContext } from "./_save-point-fixtures";

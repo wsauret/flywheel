@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, spyOn } from "bun:test";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import { summarizeSubagentWork } from "../../../../../src/orchestration/modules/subagents/execution/summarize-work.js";
+import { summarizeSubagentWork } from "../../../../../src/orchestration/modules/subagents/execution/result/summarize-work.js";
 import { newTestRunner } from "../../../../helpers/agent-runner.js";
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { asModelClient } from "../../agent-runtime/_model-client.js";
@@ -13,7 +13,7 @@ import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-st
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer";
 import { buildSubagentCompleted, buildSubagentPaused, buildSubagentResumed } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers";
 import { readSubagentRuns } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-projection";
-import { settleDeletedSubagent, stopSubagentSession } from "../../../../../src/orchestration/modules/subagents/execution/direct-child-control";
+import { settleDeletedSubagent, stopSubagentSession } from "../../../../../src/orchestration/modules/subagents/execution/control/direct-child-control";
 import { createSessionManager, type SessionManager } from "../../../../../src/orchestration/session/manager";
 import { liveChildRun } from "../../../../../src/orchestration/session/live-session-control";
 import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer";

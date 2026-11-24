@@ -12,7 +12,7 @@ import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import type { ModelsClient } from "../../../../src/infra/llm/models.js";
 import { offeringTransportFamily } from "../../../../src/infra/llm/model-catalog-resolution.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

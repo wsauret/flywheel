@@ -1,8 +1,8 @@
 import { Effect, Redacted, Scope } from "effect";
 import type { RuntimeOAuthCredential } from "../../../infra/auth/auth-context.js";
-import { replaceCredentialInstance } from "../../../infra/auth/auth-store-mutations.js";
-import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai-auth-types.js";
-import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai-jwt.js";
+import { replaceCredentialInstance } from "../../../infra/auth/store/auth-store-mutations.js";
+import { type StoredTokens, storedTokensToCredential } from "../../../infra/auth/openai/openai-auth-types.js";
+import { extractDisplayIdentityFromJwt } from "../../../infra/auth/openai/openai-jwt.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";

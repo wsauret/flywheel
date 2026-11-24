@@ -1,6 +1,6 @@
 import type { Accessor } from "solid-js"
 import type { FilteredResult } from "../components/modal-select-types.js"
-import type { PersistedSettingDefinition } from "../../orchestration/config/setting-definitions.js"
+import type { PersistedSettingDefinition } from "../../orchestration/config/schema/setting-definitions.js"
 import type { ModalDisclosure, ModalDisclosureItem } from "../components/modal-disclosure.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
 

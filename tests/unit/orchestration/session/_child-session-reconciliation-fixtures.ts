@@ -5,7 +5,7 @@ import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../s
 import { buildDurableSubagentCreated, buildSubagentCompleted, buildSubagentPaused, buildSubagentPrompted } from "../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import type { WorkflowPublication } from "../../../../src/orchestration/session/child-session-publication"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record"
 import { redactMessage } from "../../../../src/orchestration/agent-runtime/agent-loop-history"
 import { initializedWorkflowFacts } from "../../../helpers/workflow-root-fixtures"

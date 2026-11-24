@@ -11,7 +11,7 @@ import type { SubscriptionSpendConsentView } from "../../protocol/subscription-s
 import { subscriptionSpendAccountCorrelationId } from "../../protocol/subscription-spend-consent-protocol-types.js"
 import { createAuthConditionOwner, type AuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { accountSecretFile } from "../../infra/paths.js"
-import { lockedJsonStorePath } from "../../infra/auth/locked-json-store.js"
+import { lockedJsonStorePath } from "../../infra/auth/store/locked-json-store.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { accessProviderAccountKey } from "../../infra/auth/provider-account.js"
 

@@ -10,7 +10,7 @@ import {
   readConsentClaims,
   reconcileGlobalSkillOperations,
   type ConsentClaims,
-} from "../../src/orchestration/modules/learning/global-skill-mutation.js";
+} from "../../src/orchestration/modules/learning/skills/global-skill-mutation.js";
 import { agentInputConsumedFact } from "../../src/orchestration/session/agent-input-facts.js";
 import { createSessionFactWriter, type SessionFactWriter } from "../../src/orchestration/session/session-fact-writer.js";
 import {
@@ -23,17 +23,17 @@ import {
   isTerminalState,
   type OperationManifest,
   type OperationState,
-} from "../../src/orchestration/modules/learning/skill-operation-manifest.js";
-import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../src/orchestration/modules/learning/skill-store-types.js";
+} from "../../src/orchestration/modules/learning/skills/skill-operation-manifest.js";
+import type { SkillMutation, SkillStoreConfig, SkillStoreResult, SkillWriteOrigin } from "../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import { publishSkillRevision } from "../../src/workflows/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../src/workflows/skills.js";
 import type { ProjectDirectories } from "../../src/infra/directory-authorities.js";
-import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skill-mutation-plan.js";
-import { resultOfPlan } from "../../src/orchestration/modules/learning/skill-store.js";
+import { planSkillMutation, planLockPaths, storeRootDirs } from "../../src/orchestration/modules/learning/skills/skill-mutation-plan.js";
+import { resultOfPlan } from "../../src/orchestration/modules/learning/skills/skill-store.js";
 import { claimAnsweredDecision } from "../../src/orchestration/session/agent-input-decision.js";
 import { withPackageLocks } from "../../src/infra/package-directory-lock.js";
-import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/global-skill-mutation-protocol.js";
-import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/learning-journal.js";
+import { forgetOperation, runOperation } from "../../src/orchestration/modules/learning/skills/global-skill-mutation-protocol.js";
+import { reconcilePendingAudits, settlePendingAudit } from "../../src/orchestration/modules/learning/skills/learning-journal.js";
 
 /** The persisted proposal of one id, read through the startup proposal reader. */
 function readProposal(globalRoot: string, proposalId: string) {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { EMPTY_OUTPUT_CHANGE_BATCH } from "../../../../src/infra/output/output-block-delta";
-import { OutputProjector } from "../../../../src/infra/output/output-projector";
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector";
 import { RuntimeEventProjector } from "../../../../src/infra/output/runtime-event-projector";
 import type { RuntimeEvent } from "../../../../src/infra/runtime-event-types";
 import { makeAssistantEvent as assistantEvent } from "./_parser-fixtures";

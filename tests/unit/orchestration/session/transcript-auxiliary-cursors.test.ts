@@ -7,7 +7,7 @@ import {
   createToolResultDisplayMetaCursorReader,
   createToolResultDisplayMetaSetReader,
   readToolResultDisplayMeta,
-} from "../../../../src/orchestration/session/conversation/tool-result-meta"
+} from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
 import { readMutationEvidenceFiles } from "../../../../src/infra/mutation-evidence.js"
 import { completePatch, resolveRetainedPatch } from "../../../../src/orchestration/session/session-change-sources.js"

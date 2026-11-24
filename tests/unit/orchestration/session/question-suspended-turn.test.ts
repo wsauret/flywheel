@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types";
 import { reconcileAgentInput } from "../../../../src/orchestration/session/agent-input-reconciliation";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
+import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import { chatTurnEndOf } from "../../../../src/orchestration/session/conversation/turn-end-record";
 import {
   checkpointFinalizedToolResult,

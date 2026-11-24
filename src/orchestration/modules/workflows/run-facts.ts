@@ -2,7 +2,7 @@ import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact } from ".
 import { parseWorkflowRunFact, type WorkflowRunFact } from "../../../workflows/run-facts.js"
 import type { SessionManager } from "../../session/manager.js"
 import type { WorkflowRunCut, WorkflowRunWriter } from "../../workflow-host/run-record.js"
-import { createWorkflowRunReader } from "./run-record.js"
+import { createWorkflowRunReader } from "./runs/run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "../../session/child-session-publication.js"
 import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../workflows/vm/session-facts.js"
 import { buildQueueDeletedFact } from "../../../workflows/view/view-facts.js"

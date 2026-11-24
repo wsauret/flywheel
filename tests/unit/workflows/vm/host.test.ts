@@ -16,7 +16,7 @@ import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.j
 import { compileWorkflowControl } from "../../../../src/workflows/vm/compile.js"
 import { loadQueueFromEvents } from "../../../../src/workflows/view/view-projection.js"
 import { frontendAttempts } from "../../../../src/orchestration/workflow-host/frontend-attempts.js"
-import { createWorkflowViewProtocolReader } from "../../../../src/orchestration/modules/workflows/view-protocol.js"
+import { createWorkflowViewProtocolReader } from "../../../../src/orchestration/modules/workflows/protocol/view-protocol.js"
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { addressReachesStartedAgent } from "../../../../src/orchestration/workflow-host/workflow-addressing.js"
 import {

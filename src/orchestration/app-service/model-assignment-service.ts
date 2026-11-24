@@ -4,8 +4,8 @@ import { workflowRunReader } from "../module-catalog.js"
 import { agentPersonas, installedPersonaRole } from "../workflow-host/frontend-attempts.js"
 import type { RuntimeModelRolesResult } from "../../protocol/model-role-protocol-types.js"
 import { modelRoleAdmission, publishedModelRoles } from "./model-role-projection.js"
-import type { ModelPickerConfigDeps } from "../config/model-assignment-types.js"
-import type { FlywheelConfig } from "../config/schema.js"
+import type { ModelPickerConfigDeps } from "../config/models/model-assignment-types.js"
+import type { FlywheelConfig } from "../config/schema/schema.js"
 import { EffortSchema } from "../../infra/workflow-types.js"
 import { Schema } from "effect"
 import { errorMessage } from "../../infra/error-message.js"
@@ -14,7 +14,7 @@ import {
   createModelAssignmentController,
   loadGlobalDefaultRoles,
   type RoleCaptureStore,
-} from "../config/model-assignment-controller.js"
+} from "../config/models/model-assignment-controller.js"
 import { ensureDurableChatSession } from "./session-chat-durability.js"
 import type { DefinitionAvailabilityOwner } from "./definition-availability.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"

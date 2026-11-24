@@ -24,7 +24,7 @@ import { sessionStoreReaches, subagentChildHarnesses, completedRunner, heldRunne
 import { readSessionDurationFromReader } from "../../../../../src/orchestration/session/session-duration-projection.js"
 import { createSubagentToolSummaryReader } from "../../../../../src/orchestration/modules/subagents/history/tool-summary.js"
 import { executeChildSessionDeletionPlan } from "../../../../../src/orchestration/session/child-session-deletion.js"
-import { createWorkflowRunReader } from "../../../../../src/orchestration/modules/workflows/run-record.js"
+import { createWorkflowRunReader } from "../../../../../src/orchestration/modules/workflows/runs/run-record.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
 import { readConversationBackgroundNotifications } from "../../../../../src/orchestration/session/conversation/queued-background-notifications.js"
 import { quietOutputCollaborators } from "../../../../helpers/output-projection-deps.js"

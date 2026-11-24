@@ -1,5 +1,5 @@
 import { Redacted } from "effect";
-import { CHATGPT_BACKEND_API_BASE } from "../../../infra/auth/openai-auth-types.js";
+import { CHATGPT_BACKEND_API_BASE } from "../../../infra/auth/openai/openai-auth-types.js";
 import type { CatalogDiscovery, ModelCatalogContribution } from "../../../infra/llm/model-catalog-resolution.js";
 import type { CatalogJsonValue } from "../../../infra/catalog-model-offering.js";
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";

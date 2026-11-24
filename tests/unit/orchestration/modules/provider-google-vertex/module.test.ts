@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Redacted } from "effect";
 import type { RuntimeApiKeyCredential } from "../../../../../src/infra/auth/auth-context.js";
-import { loadAuthStoreWithDiagnostics } from "../../../../../src/infra/auth/auth-store.js";
+import { loadAuthStoreWithDiagnostics } from "../../../../../src/infra/auth/store/auth-store.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";

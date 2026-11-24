@@ -1,6 +1,6 @@
 import { Schema, type Redacted } from "effect";
 import type { AuthContext, CapturedSubscriptionCredential, OAuthPersistencePolicy, ProviderConnection, RuntimeCredential, RuntimeOAuthCredential, SubscriptionCredentials } from "../auth/auth-context.js";
-import type { CredentialSlotClassifier } from "../auth/auth-store-types.js";
+import type { CredentialSlotClassifier } from "../auth/store/auth-store-types.js";
 import { credentialIdOf, type AccessProviderAccountIdentity, type AuthProfileConversion, type CredentialProvider, type CredentialProviderCli, type CredentialStrategy, type ExternalAccount } from "../auth/provider-account.js";
 import type { ExternalUrlOpener } from "../open-external-url.js";
 import type { LauncherScope } from "../process-supervisor.js";

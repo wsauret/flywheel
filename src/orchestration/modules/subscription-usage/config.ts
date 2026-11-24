@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect"
-import type { ModuleConfigSection } from "../../config/config-section.js"
+import type { ModuleConfigSection } from "../../config/schema/config-section.js"
 
 export const DEFAULT_USAGE_ALERT_THRESHOLDS = [70, 90, 100] as const
 const thresholds = Schema.Array(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))).check(

@@ -3,7 +3,7 @@ import type { ChatInput } from "../../../../infra/chat-input.js";
 import { createHeldCellClaims, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js";
 import type { LiveSessionControl } from "../../../session/live-session-control.js";
 import { heldAtWakeLimit, type DeliveryOutcome } from "../../../session/message-disposition.js";
-import { WorkflowInjectionQueue } from "../../../workflow-host/injection-queue.js";
+import { WorkflowInjectionQueue } from "../../../workflow-host/execution/injection-queue.js";
 
 /** The one consumer of the messages a subagent run accepts. Every
  *  message is durable in its cell before it arrives here. A resumed run

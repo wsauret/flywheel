@@ -6,7 +6,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types.js"
 import type { MutationDiff } from "../../../../src/infra/mutation-diff.js"
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js"
 import { createMutationEvidenceRecovery } from "../../../../src/orchestration/session/mutation-evidence-recovery.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"

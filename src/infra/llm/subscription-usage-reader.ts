@@ -1,5 +1,5 @@
 import type { RuntimeOAuthCredential } from "../auth/auth-context.js";
-import type { StoredTokens } from "../auth/openai-auth-types.js";
+import type { StoredTokens } from "../auth/openai/openai-auth-types.js";
 import { isRecord, type UnknownRecord } from "../record.js";
 import {
   boundedProviderText,

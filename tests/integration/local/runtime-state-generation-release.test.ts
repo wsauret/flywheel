@@ -50,7 +50,7 @@ const disposals: string[] = []
 // too, so a delegating mock that read it back would call itself.
 const realEventStoreEffect = await import("../../../src/infra/event-store-effect.js")
 const realManager = await import("../../../src/orchestration/session/manager.js")
-const realMcp = await import("../../../src/orchestration/modules/mcp/manager.js")
+const realMcp = await import("../../../src/orchestration/modules/mcp/manager/manager.js")
 const realLane = await import("../../../src/orchestration/app-service/runtime-background-lane.js")
 const realWriterLane = await import("../../../src/infra/event-store-writer-lane.js")
 const realSessionStore = await import("../../../src/orchestration/session-store/store.js")

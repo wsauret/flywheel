@@ -2,8 +2,8 @@ import type { AssistantEventData, RateLimitEventData, RuntimeEvent } from "../ru
 import { extractToolResultRecords } from "../runtime-tool-records.js";
 import { redactSecrets } from "../redact-secrets.js";
 import { AssistantDraftProjector } from "./assistant-draft-projector.js";
-import type { OutputProjector } from "./output-projector.js";
-import { extractDisplayMeta } from "./structured-event-tool-results.js";
+import type { OutputProjector } from "./projector/output-projector.js";
+import { extractDisplayMeta } from "./projector/structured-event-tool-results.js";
 
 interface RuntimeEventFields {
   [key: string]: unknown;

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, mock } from "bun:test"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller"
+import { createWorkflowController } from "../../../../src/orchestration/workflow-host/lifecycle/controller"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"

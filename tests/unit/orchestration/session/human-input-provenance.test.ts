@@ -8,8 +8,8 @@ import type { ConversationMessage } from "../../../../src/orchestration/agent-ru
 import { createConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer";
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox";
 import { ConversationTreeFactSchemas, parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts";
-import { extractTreeFactContent } from "../../../../src/orchestration/session/conversation/conversation-tree-content-extraction";
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
+import { extractTreeFactContent } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-content-extraction";
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs";
 import { RequestToolMap } from "../../../helpers/request-tool-surface";
 import { makeCaptureClient } from "../agent-runtime/context/_loop-fixtures";

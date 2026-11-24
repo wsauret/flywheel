@@ -3,11 +3,11 @@ import { parseSchema, safeParse, safeParseStrip } from "../../../helpers/schema-
 import * as path from "node:path";
 import * as fs from "node:fs";
 import { loadConfig } from "../../../../src/orchestration/config/loader";
-import { MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/setting-definitions.js";
+import { MIN_PROACTIVE_COMPACTION_THRESHOLD } from "../../../../src/orchestration/config/schema/setting-definitions.js";
 import {
   installedConfigSchema,
-} from "../../../../src/orchestration/config/schema";
-import { resolveRoles } from "../../../../src/orchestration/config/role-resolution.js";
+} from "../../../../src/orchestration/config/schema/schema";
+import { resolveRoles } from "../../../../src/orchestration/config/models/role-resolution.js";
 import { fakeModelsClient, tierAvailableModels, tierModelIds } from "../../../helpers/model-tier-fixtures.js";
 import { mergeProviderOptions } from "../../../../src/infra/llm/provider-options.js";
 import { MODULE_IDS } from "../../../../src/protocol/module-ids.js";

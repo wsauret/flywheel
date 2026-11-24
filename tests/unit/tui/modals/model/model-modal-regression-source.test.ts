@@ -7,7 +7,7 @@ describe("model modal regressions", () => {
       fileURLToPath(new URL("../../../../../src/tui/hooks/use-model-modal.ts", import.meta.url)),
     ).text();
     const controllerSource = await Bun.file(
-      fileURLToPath(new URL("../../../../../src/orchestration/config/model-assignment-controller.ts", import.meta.url)),
+      fileURLToPath(new URL("../../../../../src/orchestration/config/models/model-assignment-controller.ts", import.meta.url)),
     ).text();
 
     expect(hookSource).not.toContain("globalDefaultChat");

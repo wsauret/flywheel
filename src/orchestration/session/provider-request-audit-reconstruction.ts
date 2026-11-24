@@ -9,7 +9,7 @@ import {
   type ProviderRequestAuditTool,
   type ProviderRequestIdentity,
 } from "./provider-request-audit-types.js"
-import { buildSessionContext, walkBranchFromLeaf } from "./conversation/conversation-tree-context.js"
+import { buildSessionContext, walkBranchFromLeaf } from "./conversation/tree/conversation-tree-context.js"
 import { maskToolResultsById } from "../agent-runtime/compaction/stale-tool-result-masker.js"
 import { createConversationTreeProjection } from "./conversation/conversation-projection.js"
 import type { ConversationEntry } from "./conversation/conversation-entry-types.js"

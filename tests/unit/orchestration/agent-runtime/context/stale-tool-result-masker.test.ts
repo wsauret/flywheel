@@ -9,7 +9,7 @@ import { DELIVERY_CONFIRMATION } from "../../../../../src/infra/delivery-confirm
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
-import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/conversation-tree-storage.js";
+import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js";
 import { readStaleMaskSeed } from "../../../../../src/orchestration/agent-runtime/active-request-context.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { countStateRequests } from "../../../../helpers/state-requests.js";

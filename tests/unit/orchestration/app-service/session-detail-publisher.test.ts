@@ -9,7 +9,7 @@ import { createSessionDetailPublisher } from "../../../../src/orchestration/app-
 import { createSessionDetailReader } from "../../../../src/orchestration/app-service/session-detail-projection.js"
 import { extractToolContentFact } from "../../../../src/infra/tool-content-extraction.js"
 import { childSessionResultFact } from "../../../../src/orchestration/session/child-session-completion.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import { projectSessionCatalogRow, replaceCatalogTotals } from "../../../../src/orchestration/session/session-catalog-row.js"
 import type { SessionRow } from "../../../../src/protocol/app-service-types.js"

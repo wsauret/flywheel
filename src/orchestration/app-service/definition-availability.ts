@@ -38,7 +38,7 @@ import { grantedSubagentTypes } from "../../workflows/agents/subagent-reachabili
 import type { SkillRegistryRevision } from "../../workflows/skill-schema.js"
 import type { WorkflowDefinition } from "../../workflows/workflow-schema.js"
 import { agentRecords } from "../../workflows/workflow-schema.js"
-import type { CapabilityGrant } from "../config/module-policy.js"
+import type { CapabilityGrant } from "../config/policy/module-policy.js"
 import type { ModuleState } from "../config/module-descriptor.js"
 import { moduleRequirementsForContribution } from "../module-requirements.js"
 import { parentRoleId } from "../config/roles.js"

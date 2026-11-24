@@ -11,13 +11,13 @@ import { createRunExperimentTool } from "./tools/run-experiment.js"
 import type { ExternalSkillChildGrant } from "../../agent-runtime/tools/skill.js"
 import type { ExperimentGuardSnapshot, RuntimeTool } from "../../agent-runtime/tools/types.js"
 import { EXPERIMENT_CHARTER_PATH } from "./charter.js"
-import type { ExperimentFact } from "./facts.js"
+import type { ExperimentFact } from "./state/facts.js"
 import { createFinalizeChildGrant } from "./finalize-child-run.js"
-import { captureExperimentTree, keepExperimentChanges, readExperimentHead, revertExperimentChanges } from "./git-operations.js"
-import { createExperimentGitSettlement } from "./git-settlement.js"
+import { captureExperimentTree, keepExperimentChanges, readExperimentHead, revertExperimentChanges } from "./git/git-operations.js"
+import { createExperimentGitSettlement } from "./git/git-settlement.js"
 import { createExperimentOperation, type ExperimentOperation } from "./operation-owner.js"
-import { validateExperimentWorktree } from "./git-worktree.js"
-import { createExperimentProjection, type ExperimentSnapshot } from "./projection.js"
+import { validateExperimentWorktree } from "./git/git-worktree.js"
+import { createExperimentProjection, type ExperimentSnapshot } from "./state/projection.js"
 
 /** The charter policy with the projection's guard revision: a holder of the
  *  policy, of the tool omissions it gives, or of the experiment prompt fragment

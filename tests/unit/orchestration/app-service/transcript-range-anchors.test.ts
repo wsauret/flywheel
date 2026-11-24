@@ -1,6 +1,6 @@
 import { expect, it } from "bun:test"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import type { OutputRangeRequest } from "../../../../src/protocol/transcript-protocol-types.js"
 import { outputSeamBlocks } from "../runner/_output-session-fixtures.js"

@@ -6,9 +6,9 @@ import {
   type SessionTranscriptProjectionOptions,
   type TranscriptAuxiliarySnapshot,
   type SessionTranscriptReadView,
-} from "../session/conversation/transcript-projection.js"
-import type { IndexedTranscript } from "../session/conversation/branch-history-builder.js"
-import { createToolResultDisplayMetaCursorReader, type IndexedGroupChildren, type ToolDisplaySource, type ToolResultDisplayMetaCatchUp, type ToolResultDisplayMetaCursorReader, type ToolChildRenderContext } from "../session/conversation/tool-result-meta.js"
+} from "../session/conversation/transcript/transcript-projection.js"
+import type { IndexedTranscript } from "../session/conversation/transcript/branch-history-builder.js"
+import { createToolResultDisplayMetaCursorReader, type IndexedGroupChildren, type ToolDisplaySource, type ToolResultDisplayMetaCatchUp, type ToolResultDisplayMetaCursorReader, type ToolChildRenderContext } from "../session/conversation/transcript/tool-result-meta.js"
 import type { SessionEntry } from "../session-store/types.js"
 import { runsWorkflowClock } from "../session-store/view.js"
 import { createAgentInputCursorReader, type AgentInputCursorReader } from "../session/agent-input-projection.js"
@@ -16,11 +16,11 @@ import { isAgentInFlight, type AgentGroupBlock, type AnyBlock, type ToolEntry } 
 import { singleLine } from "../../infra/tools/detail-helpers.js"
 import { sessionDisplayName } from "../session/schemas.js"
 import { readSessionMetadata } from "../session/session-metadata-store.js"
-import { projectToolUse, runFigures } from "../session/conversation/conversation-block-projection.js"
+import { projectToolUse, runFigures } from "../session/conversation/transcript/conversation-block-projection.js"
 import { rawToolUseId } from "../../protocol/block-identity.js"
 import { newestCall } from "../../infra/output/newest-call.js"
 import { readSessionDurationFromReader } from "../session/session-duration-projection.js"
-import { assignSubagentCards, ownSubagentCard, type SubagentCardAssignment } from "../session/conversation/subagent-card-ownership.js"
+import { assignSubagentCards, ownSubagentCard, type SubagentCardAssignment } from "../session/conversation/transcript/subagent-card-ownership.js"
 import { releaseConversationTreeProjection } from "../session/conversation/conversation-projection.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"

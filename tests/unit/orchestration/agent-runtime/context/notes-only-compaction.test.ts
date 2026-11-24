@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildSessionContext } from "../../../../../src/orchestration/session/conversation/conversation-tree-context.js";
+import { buildSessionContext } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-context.js";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,7 +7,7 @@ import { compactInput } from "../../../../../src/infra/agent-loop-events.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js";
-import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
+import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { FUNCTION_TOOL_PRESENTATION, type StreamOptions, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { assemblyPinned, RequestToolMap, admitEveryTool } from "../../../../helpers/request-tool-surface.js";

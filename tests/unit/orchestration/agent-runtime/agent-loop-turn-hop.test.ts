@@ -19,7 +19,7 @@ import type { DeliveryOutcome } from "../../../../src/orchestration/session/mess
 import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
 import { createSessionMessaging } from "../../../../src/orchestration/session/session-messaging.js"
-import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue.js"
+import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue.js"
 import { fixedRequestToolSurface, RequestToolMap } from "../../../helpers/request-tool-surface.js"
 import { cleanupTmpRoot, makeDepsWithStore, makeTmpDir, publishTestSubagent } from "../session/_session-manager-fixtures.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"

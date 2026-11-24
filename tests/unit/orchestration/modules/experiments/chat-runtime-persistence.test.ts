@@ -12,7 +12,7 @@ import type { ModuleRuntimeServices } from "../../../../../src/orchestration/age
 import type { CommandHost } from "../../../../../src/orchestration/app-service/command-host.js"
 import { experimentsModule } from "../../../../../src/orchestration/modules/experiments.js"
 import { createExperimentsRuntime, experimentsRuntime, type ExperimentsRuntime } from "../../../../../src/orchestration/modules/experiments/runtime.js"
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"
 import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
 import type { CommandOutcome } from "../../../../../src/protocol/command-catalog-protocol-types.js"
 import { testDirectories } from "../../../../helpers/directories.js"

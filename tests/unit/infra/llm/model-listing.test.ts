@@ -1,12 +1,12 @@
 import { expect, spyOn, test } from "bun:test";
-import type { CredentialSlotClassifier } from "../../../../src/infra/auth/auth-store-types.js";
+import type { CredentialSlotClassifier } from "../../../../src/infra/auth/store/auth-store-types.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Redacted } from "effect";
 import type { AuthContext } from "../../../../src/infra/auth/auth-context.js";
-import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js";
-import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
+import { AuthProfileStore } from "../../../../src/infra/auth/store/auth-profile-store.js";
+import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-models/provider-model-catalog-store.js";
 import { DebugLog } from "../../../../src/infra/debug-log.js";
 import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";

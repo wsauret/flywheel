@@ -10,7 +10,7 @@ import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
 import { HydratedOutputBlockBodySchema, HydratedOutputGroupChildrenBatchSchema, HydratedOutputRangeSchema, OutputGroupChildrenRequestSchema, OutputRangeRequestSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { WorkflowView, AttemptRow } from "../../../../src/workflows/view/types.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
@@ -23,7 +23,7 @@ async function openExistingTree(options: Parameters<typeof tryOpenConversationTr
   return tree
 }
 import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/transcript-queries.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import type { HydratedOutputGroupChildren, HydratedOutputGroupChildrenBatch } from "../../../../src/protocol/transcript-protocol-types.js"
 import { workflowControlInitializedEvent } from "../../workflows/vm/_workflow-control-fixtures.js"
 import { historicalSessionCreatedFacts } from "../../../fixtures/tolerant-reprojection-fixtures.js"

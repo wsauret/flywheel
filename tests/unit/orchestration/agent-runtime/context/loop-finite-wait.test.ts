@@ -11,8 +11,8 @@ import { SILENT_REPLY_NUDGE } from "../../../../../src/orchestration/agent-runti
 import { createProcessTool, DEFAULT_WAIT_SECONDS } from "../../../../../src/orchestration/agent-runtime/tools/process.js";
 import { createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
 import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mailbox.js";
-import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/injection-queue.js";
-import { createWorkflowLoopObservers } from "../../../../../src/orchestration/workflow-host/loop-observers.js";
+import { WorkflowInjectionQueue } from "../../../../../src/orchestration/workflow-host/execution/injection-queue.js";
+import { createWorkflowLoopObservers } from "../../../../../src/orchestration/workflow-host/execution/loop-observers.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { assemblyPinned, RequestToolMap } from "../../../../helpers/request-tool-surface.js";

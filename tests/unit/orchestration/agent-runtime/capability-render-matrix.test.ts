@@ -24,7 +24,7 @@ import { decodeModuleState } from "../../../../src/orchestration/config/module-d
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, effectiveModuleIds, SHIPPED_MODULES, workflowsModeOf, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js";
-import { reviewInstruction } from "../../../../src/orchestration/modules/learning/learning-review-prompts.js";
+import { reviewInstruction } from "../../../../src/orchestration/modules/learning/review/learning-review-prompts.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
 import type { ModuleId } from "../../../../src/protocol/module-ids.js";

@@ -7,11 +7,11 @@ import type { SessionManager } from "../../src/orchestration/session/manager.js"
 import { removeOwnerPid } from "../../src/orchestration/session/pid-lock.js"
 import type { WorkflowLaunchBinding } from "../../src/orchestration/session/child-session-publication.js"
 import { branchBlocks } from "./branch-blocks.js"
-import { buildSessionContext } from "../../src/orchestration/session/conversation/conversation-tree-context.js"
-import { readTranscript } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
+import { buildSessionContext } from "../../src/orchestration/session/conversation/tree/conversation-tree-context.js"
+import { readTranscript } from "../../src/orchestration/session/conversation/tree/conversation-tree-handle.js"
 import { turnEndOfEntry } from "../../src/orchestration/session/conversation/turn-end-record.js"
 import type { MessageEntry } from "../../src/orchestration/session/conversation/conversation-entry-types.js"
-import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../src/orchestration/workflow-host/launch-operation-contract.js"
+import { WORKFLOW_LAUNCH_OPERATION_KIND } from "../../src/orchestration/workflow-host/lifecycle/launch-operation-contract.js"
 
 /** Answers the launch binding of a workflow published under a chat. Every
  *  workflow has a chat parent: the manager refuses a publication whose parent

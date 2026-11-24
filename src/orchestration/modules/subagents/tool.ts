@@ -1,11 +1,11 @@
 import { createSubagentDispatch } from "./execution/tool.js";
 import { MIN_DISPATCH_RATIONALE_LENGTH, subagentDescription } from "./execution/prompts.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { SubagentDispatchDeps } from "./execution/dispatch-deps.js";
-import { summarizeSubagentWork } from "./execution/summarize-work.js";
+import type { SubagentDispatchDeps } from "./execution/dispatch/dispatch-deps.js";
+import { summarizeSubagentWork } from "./execution/result/summarize-work.js";
 import { SUBAGENT_SUMMARY_ROLE_ID } from "../../config/roles.js";
 import type { AdvertisedTool, RuntimeTool } from "../../agent-runtime/tools/types.js";
-import type { SubagentContext, SubagentResult } from "./execution/control-actions.js";
+import type { SubagentContext, SubagentResult } from "./execution/dispatch/control-actions.js";
 
 // The tool only dispatches: `process` controls a child after its launch.
 // The dispatcher's central validator reports missing fields and types from

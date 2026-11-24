@@ -8,11 +8,11 @@ import {
   describeDefinitionRefusal,
   loadPathWorkflow,
   type PathWorkflowLaunch,
-} from "../../../src/orchestration/workflow-host/path-workflow.js"
+} from "../../../src/orchestration/workflow-host/lifecycle/path-workflow.js"
 import type { WorkflowInputValue } from "../../../src/workflows/output-contract/compile.js"
 import type { AccumulatedContext } from "../../../src/workflows/context-bundle/context.js"
 import { createAttemptExecutor, type AttemptExecutorDeps } from "../../../src/workflows/vm/attempt-runner.js"
-import { runDefinition } from "../../../src/orchestration/workflow-host/definition-source.js"
+import { runDefinition } from "../../../src/orchestration/workflow-host/lifecycle/definition-source.js"
 import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
 import { authoredGuardrailLimits, compileWorkflowControl } from "../../../src/workflows/vm/compile.js"

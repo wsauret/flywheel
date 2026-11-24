@@ -1,4 +1,4 @@
-import type { CredentialProviderId } from "../../../infra/auth/auth-store-types.js"
+import type { CredentialProviderId } from "../../../infra/auth/store/auth-store-types.js"
 import type { AuthFileAttention, AuthProviderAccountStatus, AuthProviderAttention, AuthProviderSource, AuthProviderStatus, RuntimeAuthProfileView, RuntimeAuthLoginQuestion } from "../../../protocol/auth-status-protocol-types.js"
 import type { AuthProfileScopeLabel } from "../../hooks/auth-profile-selection.js"
 import type { RuntimeAuthProfileWriteScope } from "../../../protocol/auth-profile-selection-protocol-types.js"

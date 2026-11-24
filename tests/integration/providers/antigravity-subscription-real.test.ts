@@ -25,7 +25,7 @@ import type { ConversationMessage, ProviderSessionLifetime, ProviderStreamEvent,
 import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { composePortableModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
-import { antigravityAccounts } from "../../../src/orchestration/modules/provider-google-antigravity/login.js";
+import { antigravityAccounts } from "../../../src/orchestration/modules/provider-google-antigravity/login/login.js";
 import { googleAntigravityModule } from "../../../src/orchestration/modules/provider-google-antigravity/module.js";
 import { GOOGLE_ANTIGRAVITY_LOGIN_COMMAND, GOOGLE_ANTIGRAVITY_MODULE_ID, GOOGLE_ANTIGRAVITY_PROVIDER_ID } from "../../../src/orchestration/modules/provider-google-antigravity/names.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";

@@ -3,7 +3,7 @@ import { resolveTheme } from "../../../../../src/tui/context/theme/resolve.js";
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" };
 import { RGBA } from "@opentui/core";
 
-import { roleSlot } from "../../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../../src/orchestration/config/models/role-selection.js";
 export function fakeRow(roleId: string, label: string): ModelAssignmentRow {
   return {
     slot: roleSlot(roleId),

@@ -20,7 +20,7 @@ import { createBackgroundExecutionOwner } from "../../../../src/orchestration/ag
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js"
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
-import { subagentsRuntime } from "../../../../src/orchestration/modules/subagents/execution/runtime-binding.js"
+import { subagentsRuntime } from "../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js"
 import { makeDeps as makeSubagentDeps } from "./subagent/_fixtures.js"
 
 const ALL = composeFirstPartyModules()

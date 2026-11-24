@@ -12,7 +12,7 @@ import { createRuntimeConfigOwner } from "../../../../../src/orchestration/confi
 import { ConfigWriteError } from "../../../../../src/orchestration/config/writer.js"
 import type { McpConnection } from "../../../../../src/orchestration/modules/mcp/connection.js"
 import { McpNeedsAuthError, McpRegistrationRefusedError, McpSignInPortBusyError } from "../../../../../src/orchestration/modules/mcp/errors.js"
-import { createMcpManager } from "../../../../../src/orchestration/modules/mcp/manager.js"
+import { createMcpManager } from "../../../../../src/orchestration/modules/mcp/manager/manager.js"
 import type { McpManager } from "../../../../../src/orchestration/modules/mcp/manager-types.js"
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"

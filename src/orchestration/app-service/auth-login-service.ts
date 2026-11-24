@@ -9,7 +9,7 @@ import { disconnectProviderInstance, LoginRefusedError, loginWithApiKey, logoutP
 
 import type { AuthOperationNotice, AuthOperationSettlement, AuthProviderStatus } from "../../protocol/auth-status-protocol-types.js"
 import type { RuntimeAuthLoginMutation, RuntimeAuthLoginResult } from "../../protocol/auth-login-protocol-types.js"
-import type { CapabilityGrant, ModulePolicy } from "../config/module-policy.js"
+import type { CapabilityGrant, ModulePolicy } from "../config/policy/module-policy.js"
 import { installedModules } from "../module-catalog.js"
 import { canonicalModuleIds } from "../../protocol/module-ids.js"
 import type { ExternalLoginDefinition, ExternalLoginQuestion, OAuthLoginPrompt } from "../../infra/llm/access-provider.js"

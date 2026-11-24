@@ -20,7 +20,7 @@ import { WorkflowSessionFactSchema } from "../../../../src/workflows/vm/session-
 import { replaceWorkflowState, terminalWorkflowFacts } from "./_child-session-reconciliation-fixtures"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../../../../src/orchestration/chat/tree-writer"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"
-import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue"
+import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/execution/injection-queue"
 
 let tmpDir: string
 let stores: LocalSqliteEventStore[]

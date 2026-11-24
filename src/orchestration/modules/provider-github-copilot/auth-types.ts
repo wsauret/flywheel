@@ -1,5 +1,5 @@
 import { Redacted } from "effect";
-import type { OAuthCredential } from "../../../infra/auth/auth-store-types.js";
+import type { OAuthCredential } from "../../../infra/auth/store/auth-store-types.js";
 
 export interface CopilotStoredTokens {
   githubToken: Redacted.Redacted<string>;

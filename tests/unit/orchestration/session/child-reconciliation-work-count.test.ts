@@ -7,7 +7,7 @@ import { holdChildReconciliationIndex, readChildReconciliationChanges } from "..
 import { heldProjection } from "../../../../src/infra/projection-registry"
 import { reconcileChildSessionCompletions } from "../../../../src/orchestration/session/child-session-reconciliation"
 import { recordChildWorkflowStop } from "../../../../src/orchestration/session/child-workflow-result"
-import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle"
+import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { createSessionFactWriter, prepareSessionFactAppend } from "../../../../src/orchestration/session/session-fact-writer"
 import { parseSessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types"
 import { extractToolContentFact } from "../../../../src/infra/tool-content-extraction"

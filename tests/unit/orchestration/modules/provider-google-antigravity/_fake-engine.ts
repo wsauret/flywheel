@@ -1,6 +1,6 @@
-import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-process.js"
-import type { EnginePlace, RegisteredEngine } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine-registry.js"
-import type { McpToolDeclaration } from "../../../../../src/orchestration/modules/provider-google-antigravity/tool-projection.js"
+import type { EngineProcess } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-process.js"
+import type { EnginePlace, RegisteredEngine } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/engine-registry.js"
+import type { McpToolDeclaration } from "../../../../../src/orchestration/modules/provider-google-antigravity/tools/tool-projection.js"
 
 /** A fake engine process for the registry and the demand: a test opens and settles its prompts, and ends it. */
 export interface FakeEngine extends RegisteredEngine {

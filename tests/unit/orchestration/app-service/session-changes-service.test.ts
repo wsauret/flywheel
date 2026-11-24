@@ -13,7 +13,7 @@ import { capabilityAccessHolding, makeContext } from "../agent-runtime/tools/_fi
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { emitToolExecutionOutputRecorded } from "../../../../src/orchestration/agent-runtime/emit.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper.js"
-import { readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/tool-result-meta.js"
+import { readToolResultDisplayMeta } from "../../../../src/orchestration/session/conversation/transcript/tool-result-meta.js"
 import { backgroundLogPath } from "../../../helpers/background-log-path.js"
 import { publishFileEdits } from "../../../../src/orchestration/file-edits/file-edit-operation.js"
 import { RetainedFileEditAuthority } from "../../../../src/orchestration/file-edits/retained-file-edit-host.js"

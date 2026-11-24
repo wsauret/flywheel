@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
-import { OutputProjector } from "../../../../src/infra/output/output-projector.js"
+import { OutputProjector } from "../../../../src/infra/output/projector/output-projector.js"
 import { createDeferred, createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorWithRunner, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
 import { EventReaderService, EventStoreWriterService } from "../../../../src/infra/event-store-effect.js"

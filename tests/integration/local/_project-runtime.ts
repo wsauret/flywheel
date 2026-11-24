@@ -1,7 +1,7 @@
 import { readFileSync, realpathSync } from "node:fs"
 
-import { launchRuntimeClient } from "../../../src/cli/runtime-launch.js"
-import { isRuntimeListening } from "../../../src/cli/runtime-attach.js"
+import { launchRuntimeClient } from "../../../src/cli/account-service/runtime-launch.js"
+import { isRuntimeListening } from "../../../src/cli/account-service/runtime-attach.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"
 import type { StartupDirectories } from "../../../src/infra/directory-authorities.js"
 import { accountServeRecordPath, accountServeSocketPath } from "../../../src/infra/paths.js"

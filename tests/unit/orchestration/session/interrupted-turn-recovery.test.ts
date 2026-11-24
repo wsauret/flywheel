@@ -3,11 +3,11 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { hydrateToolContentFact } from "../../../../src/infra/tool-content-hydration";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths";
-import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/conversation-tree-writer";
-import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle";
+import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer";
+import { createConversationTree, tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle";
 import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs";
 import { holdQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-background-notifications";
-import type { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
+import type { ConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree";
 import {
   assistantMessage,
   assistantToolUseMessage,

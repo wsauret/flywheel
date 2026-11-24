@@ -1,4 +1,4 @@
-import { OutputProjector } from "../../../infra/output/output-projector.js"
+import { OutputProjector } from "../../../infra/output/projector/output-projector.js"
 import { RuntimeEventProjector } from "../../../infra/output/runtime-event-projector.js"
 import { resolveSessionDir } from "../../../infra/paths.js"
 import { mergeAbortSignals } from "../../../infra/abort.js"

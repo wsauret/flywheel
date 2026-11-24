@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { claudeEngineFreshness, engineBump, liveClaudeAccounts, type RegistryFetch } from "../../../scripts/claude-engine-release.js";
 import { AuthProfileManager } from "../../../src/orchestration/auth/auth-profile-manager.js";
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 

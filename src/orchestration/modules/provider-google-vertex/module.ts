@@ -1,7 +1,7 @@
 import { Redacted } from "effect";
 import { apiKeyCredential, type OAuthPersistencePolicy, type RuntimeApiKeyCredential } from "../../../infra/auth/auth-context.js";
-import { setMeteredKeyProject } from "../../../infra/auth/auth-store-mutations.js";
-import type { CredentialSlotClassifier } from "../../../infra/auth/auth-store-types.js";
+import { setMeteredKeyProject } from "../../../infra/auth/store/auth-store-mutations.js";
+import type { CredentialSlotClassifier } from "../../../infra/auth/store/auth-store-types.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { awaitWithAbortSignal } from "../../../infra/abort.js";
 import { errorMessage } from "../../../infra/error-message.js";

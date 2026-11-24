@@ -269,7 +269,7 @@ describe("agent loop input wait reservations", () => {
 
   it("after an interrupt, a message from a session and a message with no origin fold into history without a request, in both input sources", async () => {
     const fromParent = { text: "from the parent", producer: { kind: "session" as const, sessionId: "parent", conversationId: "parent-conversation", toolUseId: "call-1", hop: 0 } }
-    const { WorkflowInjectionQueue } = await import("../../../../src/orchestration/workflow-host/injection-queue.js")
+    const { WorkflowInjectionQueue } = await import("../../../../src/orchestration/workflow-host/execution/injection-queue.js")
     const queue = new WorkflowInjectionQueue()
     const mailbox = new ChatTurnMailbox()
     const sources: readonly { readonly name: string; readonly source: Pick<ChatTurnMailbox, "prepareWaitForInput">; readonly enqueue: () => void }[] = [
@@ -397,7 +397,7 @@ describe("agent loop input wait reservations", () => {
   })
 
   it("the injection queue hands a step worker the Resume ahead of later messages", async () => {
-    const { WorkflowInjectionQueue } = await import("../../../../src/orchestration/workflow-host/injection-queue.js")
+    const { WorkflowInjectionQueue } = await import("../../../../src/orchestration/workflow-host/execution/injection-queue.js")
     const queue = new WorkflowInjectionQueue()
     queue.enqueueResume()
     queue.enqueueMessage("steer")

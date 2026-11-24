@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { hydrateDerivedOutputRange } from "../../../../src/orchestration/app-service/transcript-queries.js"
 import { applyOutputDelta, buildBlockIndex } from "../../../../src/protocol/client/transcript-delta.js"
 

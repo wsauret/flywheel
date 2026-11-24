@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { liveChildRuns } from "../../../../../src/orchestration/session/live-session-control.js"
 import type { AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
-import { createSessionRoleResolver, effectiveRoleAssignments } from "../../../../../src/orchestration/config/session-role-resolver.js"
+import { createSessionRoleResolver, effectiveRoleAssignments } from "../../../../../src/orchestration/config/models/session-role-resolver.js"
 import { reconcileChildSessionCompletions } from "../../../../../src/orchestration/session/child-session-reconciliation.js"
 import { interruptChildForReplacement } from "../../../../../src/orchestration/session/planned-session-continuation.js"
 import { makeContext, TEST_RATIONALE } from "../../agent-runtime/subagent/_fixtures.js"

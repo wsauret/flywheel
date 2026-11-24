@@ -8,10 +8,10 @@ import { createPersistentProcessManager, type PersistentProcessManager } from ".
 import { startupTrace } from "../infra/startup-trace.js"
 import type { createStartupTimeline } from "../infra/startup-timeline.js"
 import { HEADLESS_USAGE, hasHeadlessFlag, headlessChatAttaches, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, isHeadlessChat, needsHeadlessUsage } from "./headless-args.js"
-import { createCliLauncher } from "./runtime-launch.js"
-import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./runtime-launch.js"
-import type { TerminalHandoff } from "./terminal-handoff.js"
-import { publishFailedHeadlessTerminal, type CliStartup } from "./startup.js"
+import { createCliLauncher } from "./account-service/runtime-launch.js"
+import type { CliLauncher, TerminalLaunch, TerminalRuntime } from "./account-service/runtime-launch.js"
+import type { TerminalHandoff } from "./account-service/terminal-handoff.js"
+import { publishFailedHeadlessTerminal, type CliStartup } from "./startup/startup.js"
 import type { SubcommandDispatch } from "./subcommands.js"
 import type { HeadlessOutputObserver } from "../orchestration/headless/headless-output.js"
 import type { HeadlessTaskResult } from "../orchestration/headless/run-headless-task.js"
@@ -141,12 +141,12 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
   })
   const progressWriter = (line: string) => { process.stderr.write(`${line}\n`) }
   if (headlessChatAttaches(args)) {
-    const { runAttachedAcpChat } = await import("./attached-acp-chat.js")
+    const { runAttachedAcpChat } = await import("./account-service/attached-acp-chat.js")
     return await runAttachedAcpChat({ directories, allowPersistentProcesses, authProfile: headlessAuthProfile(args), input: process.stdin, write, progressWriter })
   }
   if (isHeadlessChat(args)) {
     const { runHeadlessChat } = await import("../orchestration/headless/run-headless-chat.js")
-    const { runtimeWorkerUrl } = await import("./runtime-launch.js")
+    const { runtimeWorkerUrl } = await import("./account-service/runtime-launch.js")
     return await runHeadlessChat({
       headlessAuth: { profile: headlessAuthProfile(args), snapshotPath: headlessAuthSnapshot(args) },
       ...directories, launcher: launcher.scope,
@@ -211,7 +211,7 @@ async function runTUI(directories: StartupDirectories, launcher: CliLauncher, te
   // the relay, and a relay launch none of the local attach.
   const launchers = terminal.kind === "relay"
     ? { kind: "relay" as const, remote: terminal.remote, module: await import("./remote-terminal.js") }
-    : { kind: "local" as const, terminal, modules: await Promise.all([import("./runtime-launch.js"), import("./runtime-identity-record.js")]) }
+    : { kind: "local" as const, terminal, modules: await Promise.all([import("./account-service/runtime-launch.js"), import("./account-service/runtime-identity-record.js")]) }
   startupTrace("runtime launcher imported")
   endImports?.()
   const endClientCreate = timeline?.begin("client.client_create")

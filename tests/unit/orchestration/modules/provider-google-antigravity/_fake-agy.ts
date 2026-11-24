@@ -5,9 +5,9 @@ import type { AntigravityEngineHost } from "../../../../../src/infra/antigravity
 import type { ExternalLoginPorts } from "../../../../../src/infra/llm/access-provider.js"
 import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js"
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js"
-import { gateHookHandler } from "../../../../../src/orchestration/modules/provider-google-antigravity/hook-command.js"
-import type { AntigravityProfile } from "../../../../../src/orchestration/modules/provider-google-antigravity/login.js"
-import { createLoginObservations, type LoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login-status.js"
+import { gateHookHandler } from "../../../../../src/orchestration/modules/provider-google-antigravity/engine/hook-command.js"
+import type { AntigravityProfile } from "../../../../../src/orchestration/modules/provider-google-antigravity/login/login.js"
+import { createLoginObservations, type LoginObservations } from "../../../../../src/orchestration/modules/provider-google-antigravity/login/login-status.js"
 
 export const AGY = "/scratch/bin/agy"
 export const SIGN_IN_URL = "https://accounts.google.com/o/oauth2/auth?client_id=agy&code_challenge=c&state=s"

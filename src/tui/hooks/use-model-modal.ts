@@ -12,7 +12,7 @@ import type {
 import type { AttachedRuntimeClient } from "../../protocol/app-service-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { observeModelCatalog } from "./observe-model-catalog.js"
-import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/role-selection.js"
+import { defaultRoleSlots, sameSlot, roleSlot } from "../../orchestration/config/models/role-selection.js"
 import { isProfileModelRole } from "../../protocol/brief-role-id.js"
 import { buildModelModalItems, isSelectableItem } from "../modals/model/model-modal-helpers.js"
 import type { ModelAssignmentItem, ModelModalState, ModelModalView } from "../modals/model/model-modal-types.js"

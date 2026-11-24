@@ -16,7 +16,7 @@
  */
 import { LIVE_AUTH_PROFILE_UNSET, liveAuthProfile } from "../../../scripts/claude-engine-release.js";
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../src/orchestration/app-service/eligibility-preparation.js";
-import { AuthProfileStore } from "../../../src/infra/auth/auth-profile-store.js";
+import { AuthProfileStore } from "../../../src/infra/auth/store/auth-profile-store.js";
 import { normalizeAuthProfile } from "../../../src/infra/auth/auth-profile-normalization.js";
 import { resolveAuthContext } from "../../../src/infra/auth/auth-context.js";
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../../src/infra/auth/resolve-key.js";
@@ -36,8 +36,8 @@ import { providerModelPreferencePersistence } from "../../../src/orchestration/a
 import { createSubscriptionUsageService } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";
 import { createSubscriptionUsageServicePool } from "../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { credentialSlotClassifier } from "../../../src/orchestration/auth/credential-slot-classifier.js";
-import { getSharedModelsClient } from "../../../src/orchestration/config/llm-clients.js";
-import { startModulePolicy } from "../../../src/orchestration/config/module-policy.js";
+import { getSharedModelsClient } from "../../../src/orchestration/config/models/llm-clients.js";
+import { startModulePolicy } from "../../../src/orchestration/config/policy/module-policy.js";
 import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { composeRealmModuleSnapshot, type FirstPartyModule } from "../../../src/orchestration/modules.js";

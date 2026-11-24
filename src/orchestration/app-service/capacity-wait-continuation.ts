@@ -6,7 +6,7 @@ import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import { recordCapacityWait, type CapacityWaitLedger } from "../session/capacity-wait.js"
 import { liveSessionControl } from "../session/live-session-control.js"
 import { capacityContinuations, continuationTargetId, readPlannedSessionContinuationAsync, type CapacityWaitRow, type ContinuationLanes } from "../session/planned-session-continuation.js"
-import type { WorkflowController } from "../workflow-host/controller.js"
+import type { WorkflowController } from "../workflow-host/lifecycle/controller.js"
 import { resumeMutation } from "./replacement-continuation.js"
 import { WHOLE_WORKFLOW } from "../session/conversation/addressed-workflow-messages.js"
 

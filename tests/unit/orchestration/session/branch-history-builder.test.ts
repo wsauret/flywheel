@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { MessageEntry, ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { BranchHistoryBuilder } from "../../../../src/orchestration/session/conversation/branch-history-builder"
+import { BranchHistoryBuilder } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder"
 import { branchBlocks } from "../../../helpers/branch-blocks"
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
 import { buildMutationDiffEntries } from "../../../../src/infra/mutation-diff-evidence"

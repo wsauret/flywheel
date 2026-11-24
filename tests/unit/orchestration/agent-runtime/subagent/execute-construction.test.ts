@@ -8,7 +8,7 @@ import { createSubagentDispatch } from "../../../../../src/orchestration/modules
 import { buildSubagentTask } from "../../../../../src/orchestration/modules/subagents/execution/prompts.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
-import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
+import { prepareSubagentTools } from "../../../../../src/orchestration/modules/subagents/execution/dispatch/dispatch-preparation.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
@@ -22,7 +22,7 @@ import { openRequestInputs } from "../../../../../src/orchestration/agent-runtim
 import { resolveRuntimeConversation } from "../../../../../src/orchestration/agent-runtime/runtime-conversation.js";
 import type { RunnableAgentOptions } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/runtime-binding.js";
+import { subagentsRuntime } from "../../../../../src/orchestration/modules/subagents/execution/control/runtime-binding.js";
 import { definitionAvailabilityOf } from "../../../../../src/orchestration/app-service/definition-availability.js";
 import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
 import { asModelClient } from "../_model-client.js";

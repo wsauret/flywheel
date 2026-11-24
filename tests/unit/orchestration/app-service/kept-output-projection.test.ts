@@ -4,7 +4,7 @@ import type { ToolEntry, ToolStreamingText } from "../../../../src/infra/output-
 import type { CommandKeeper, KeptOutputChange } from "../../../../src/orchestration/app-service/command-keeper.js"
 import { createKeptOutputProjection } from "../../../../src/orchestration/app-service/kept-output-projection.js"
 import { readOutputSequence, type OutputSequence } from "../../../../src/orchestration/app-service/output-sequence.js"
-import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/branch-history-builder.js"
+import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { applyStreamingToolTextOps } from "../../../../src/protocol/client/streaming-text-edits.js"

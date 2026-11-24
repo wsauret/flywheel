@@ -12,10 +12,10 @@ import {
   MessageEntrySchema,
   ConversationEntrySchema,
 } from "../../../../src/orchestration/session/conversation/conversation-entry-schemas";
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
-import { forkConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-fork";
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage";
+import { forkConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-fork";
 import { branchBlocks } from "../../../helpers/branch-blocks";
-import { buildSessionContext } from "../../../../src/orchestration/session/conversation/conversation-tree-context";
+import { buildSessionContext } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-context";
 
 const temporaryDirectory = temporaryDirectories();
 

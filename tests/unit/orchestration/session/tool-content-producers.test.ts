@@ -15,7 +15,7 @@ import { ToolContentReferencePartSchema } from "../../../../src/infra/tool-conte
 import { subscribeSessionRuntimeFacts } from "../../../../src/orchestration/session/create-session-infra"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { parseConversationTreeFact } from "../../../../src/orchestration/session/conversation/conversation-facts"
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 
 const SESSION_ID = "session-1"

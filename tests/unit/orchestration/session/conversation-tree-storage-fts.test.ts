@@ -9,7 +9,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import { resolveEventStoreDbFile, resolveConversationSearchDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 
 let baseDir: string
 let store: LocalSqliteEventStore

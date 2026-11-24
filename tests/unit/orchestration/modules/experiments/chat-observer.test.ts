@@ -2,13 +2,13 @@ import { describe, expect, it } from "bun:test"
 
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.ts"
 import type { ToolCallEventData } from "../../../../../src/infra/runtime-event-payload-types.ts"
-import { createModuleChatObservers } from "../../../../../src/orchestration/chat/module-observers.ts"
+import { createModuleChatObservers } from "../../../../../src/orchestration/chat/lifecycle/module-observers.ts"
 import type { ModuleChatObserverContext } from "../../../../../src/orchestration/module-seams.ts"
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.ts"
 import { createTestChatSessionDeps } from "../../chat/_chat-session-agent-runtime-fixtures.ts"
 import { createExperimentChatObserver } from "../../../../../src/orchestration/modules/experiments/chat-observer.ts"
-import type { ExperimentSnapshot } from "../../../../../src/orchestration/modules/experiments/projection.ts"
-import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.ts"
+import type { ExperimentSnapshot } from "../../../../../src/orchestration/modules/experiments/state/projection.js"
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/state/facts.js"
 
 function snapshot(overrides: Partial<ExperimentSnapshot> = {}): ExperimentSnapshot {
   return {

@@ -2,8 +2,8 @@ import { expect, test } from "bun:test"
 import type { OwnedCommandRunner } from "../../../../../../src/infra/owned-command.js"
 import { createRunExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/run-experiment.js"
 import { createExperimentOperation } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
-import type { ExperimentRun } from "../../../../../../src/orchestration/modules/experiments/types.js"
-import type { ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/projection.js"
+import type { ExperimentRun } from "../../../../../../src/orchestration/modules/experiments/state/types.js"
+import type { ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/state/projection.js"
 import { experimentInterruptionMessage, makeContext, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
 
 const snapshot: ExperimentSnapshot = {

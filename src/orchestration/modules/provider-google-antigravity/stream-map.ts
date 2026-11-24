@@ -3,7 +3,7 @@ import type { StreamLiveness } from "../../agent-runtime/llm/stream-liveness.js"
 import type { CompletedStopReason, ProviderStreamEvent, ToolCall } from "../../agent-runtime/llm/types.js";
 import type { AcpCloseReason } from "./acp/connection.js";
 import type { AcpPromptResult, AcpSessionUpdate, AcpUsage } from "./acp/schema.js";
-import { engineFailure, engineNoticeDetail, engineStoppedFailure } from "./errors.js";
+import { engineFailure, engineNoticeDetail, engineStoppedFailure } from "./acp/errors.js";
 
 type ModelFrame = Extract<AcpSessionUpdate, { readonly sessionUpdate: "agent_message_chunk" | "agent_thought_chunk" | "tool_call" }>;
 

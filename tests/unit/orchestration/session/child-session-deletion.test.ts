@@ -12,7 +12,7 @@ import { testDirectories } from "../../../helpers/directories"
 import { contentEvidence } from "../../../../src/infra/content-evidence"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import { readToolExecution } from "../../../../src/orchestration/session/tool-execution-projection"
-import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage"
+import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import { deliverWorkflowInput } from "../../../../src/orchestration/session/session-input-delivery"
 

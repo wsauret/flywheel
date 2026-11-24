@@ -1,8 +1,8 @@
-import { openExistingAuthProfileDirectory } from "./auth-profile-store.js";
-import { AuthStoreMutationError, ensureCredentialLineages } from "./auth-store-mutations.js";
-import type { CredentialSlotClassifier } from "./auth-store-types.js";
+import { openExistingAuthProfileDirectory } from "./store/auth-profile-store.js";
+import { AuthStoreMutationError, ensureCredentialLineages } from "./store/auth-store-mutations.js";
+import type { CredentialSlotClassifier } from "./store/auth-store-types.js";
 import type { AuthProfileConversion, AuthProfileConversionInput, CredentialProvider } from "./provider-account.js";
-import { adoptPreviousProviderModelCatalogs } from "./provider-model-catalog-store.js";
+import { adoptPreviousProviderModelCatalogs } from "./provider-models/provider-model-catalog-store.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../model-catalog-rows.js";
 import { Log } from "../log.js";
 import type { NotificationOccurrence } from "../notification-episode.js";

@@ -3,7 +3,7 @@ import { createRuntimeEvent } from "../../infra/runtime-event-factory.js"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../infra/runtime-fact-mapper.js"
 import type { ToolOutcome } from "../../infra/tool-outcome.js"
 import type { ToolExecutionEntry } from "./tool-execution-types.js"
-import type { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
+import type { tryOpenConversationTree } from "./conversation/tree/conversation-tree-handle.js"
 
 /** Old result bytes remain the notification identity when only workflow terminology changed. */
 export function retainedSettledContent(content: string, workflowId: string, tool: ToolExecutionEntry): string {

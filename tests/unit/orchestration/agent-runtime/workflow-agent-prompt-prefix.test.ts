@@ -7,7 +7,7 @@ import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration
 import { assembleRuntimeForTurn } from "../../../../src/orchestration/agent-runtime/runtime-assembly.js"
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
-import type { HandoffToolSchema } from "../../../../src/orchestration/workflow-host/handoff-tool-schema.js"
+import type { HandoffToolSchema } from "../../../../src/orchestration/workflow-host/attempt/handoff-tool-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"

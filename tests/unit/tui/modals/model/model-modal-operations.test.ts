@@ -9,7 +9,7 @@ import { useModelModal } from "../../../../../src/tui/hooks/use-model-modal.js"
 import { createSettingsTree } from "../../../../../src/tui/hooks/settings-tree.js"
 import { fakeRow } from "./_model-modal-fixtures"
 
-import { roleSlot } from "../../../../../src/orchestration/config/role-selection.js";
+import { roleSlot } from "../../../../../src/orchestration/config/models/role-selection.js";
 import { SUBSCRIPTION_SPEND_DETECTION_FAILURE_MESSAGE } from "../../../../../src/protocol/subscription-spend-consent-protocol-types.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
 import { fakeLanes } from "../../../../helpers/fake-lanes.js"

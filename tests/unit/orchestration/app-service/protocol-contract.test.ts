@@ -24,7 +24,7 @@ const contractFiles = [
 const forbiddenImports = [
   "../session-store/types", "../workflow-host/runner-types",
   "../session/manager", "../session/types",
-  "../workflow-host/controller", "../../workflows/queue",
+  "../workflow-host/lifecycle/controller", "../../workflows/queue",
   "solid-js", "@opentui", "JSX",
 ]
 
