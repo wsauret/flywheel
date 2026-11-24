@@ -1,0 +1,20 @@
+src/orchestration/modules/subscription-usage/usage-projection.ts
+  h_4b47e9e4a8b456 102,104
+tests/unit/orchestration/modules/subscription-usage/usage-protocol.test.ts
+  h_4b47e9e4a8b456 100,112
+tests/unit/tui/usage-fixtures.ts
+  h_4b47e9e4a8b456 11
+webview/src/modules/subscription-usage/usage-format.test.ts
+  h_4b47e9e4a8b456 37,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7a6804dff87f6cb560037161a5797ecc200bce8c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
