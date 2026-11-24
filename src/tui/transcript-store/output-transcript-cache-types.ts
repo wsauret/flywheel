@@ -83,7 +83,7 @@ export interface TranscriptFreshness {
  *  render boundary must not call (open/loadPage/setReady/pin) removed. */
 export interface OutputTranscriptView {
   /** Publish visible block identities before the shared store chooses residency. */
-  protectReader(reader: import("../../protocol/client/transcript-store.js").TranscriptReader): void
+  protectReader(reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
   /** The resident session's passive evidence reader. Reactive; never opens a session. */
   mutationEvidence(): MutationEvidenceReader | undefined
   /** Record a failed projection with the resident store and rendered window metadata. Rethrows the same error. */
@@ -122,7 +122,7 @@ export interface OutputTranscriptView {
  *  `TranscriptStore` per resident session, projected into the Solid snapshots
  *  the output window renders. */
 export interface OutputTranscriptCache {
-  protectReader(sessionId: string, reader: import("../../protocol/client/transcript-store.js").TranscriptReader): void
+  protectReader(sessionId: string, reader: import("../../protocol/client/transcript-view.js").TranscriptReader): void
   /** Whether the resident window is current on this lane, or its read failed. Reactive. */
   isCurrent(sessionId: string): boolean
   /** The existing resident reader, or undefined before admission or after eviction. Reactive. */

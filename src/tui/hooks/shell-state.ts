@@ -24,7 +24,7 @@ import type { CommandCatalogReadiness } from "../../protocol/client/slash-route.
 import { commandUsageCursor, type CommandUsageView } from "../../protocol/command-usage-protocol-types.js"
 import type { BuiltInCommandDescriptor, OffCommandDescriptor } from "../../protocol/command-catalog-protocol-types.js"
 import type { SessionLifecycleState } from "../../orchestration/session/types.js"
-import type { RuntimeDomainIntakeBindings } from "../../protocol/runtime-ui-protocol-types.js"
+import type { RuntimeDomainIntakeBindings } from "../../protocol/runtime-delivery-policy.js"
 import { createHeldView } from "../../protocol/client/held-view.js"
 import { childCardStatus, type ChildCardStatus } from "../../protocol/client/session-controls.js"
 import { runtimeHealth as deriveRuntimeHealth } from "../../protocol/client/runtime-health.js"

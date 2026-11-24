@@ -40,7 +40,8 @@ import { nextService, serveExitCode, startNextService, startSuccessorService, ty
 import { startAddressVerdict, type PreviousService } from "./serve-address.js"
 import { accountHomeWatch, createRegistrationFollower, createRegistrationRetirement, createSupersededRetirementDecision, rememberAnsweredLoginHome, serveResidency, type ServeResidency } from "./serve-retirement.js"
 import { runtimeWorkerUrl } from "./runtime-launch.js"
-import { createAccountRuntimeAttach, probeRendezvous, readRuntimeIdentity, type RuntimeIdentity } from "./runtime-attach.js"
+import { createAccountRuntimeAttach, probeRendezvous } from "./runtime-attach.js"
+import { readRuntimeIdentity, type RuntimeIdentity } from "./runtime-identity-record.js"
 import { createStartupTimeline } from "../infra/startup-timeline.js"
 
 const log = Log.create({ service: "serve" })

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 
-import { threadProcessProbeSource, type OwnedChild, type OwnedExitStatus, type OwnedProcessBackend, type ThreadProcessProbe } from "../../../src/infra/owned-subprocess-backend.js"
+import type { OwnedChild, OwnedExitStatus } from "../../../src/infra/owned-command-control.js"
+import { threadProcessProbeSource, type OwnedProcessBackend, type ThreadProcessProbe } from "../../../src/infra/owned-subprocess-backend.js"
 import { connectOwnedProcessBridge, serveOwnedProcessBridge, type OwnedProcessBridge } from "../../../src/infra/owned-process-bridge.js"
 import { createOwnedProcess } from "../../../src/infra/owned-subprocess.js"
 import type { GuardianControl, LauncherScope, OwnershipClosure } from "../../../src/infra/process-supervisor.js"

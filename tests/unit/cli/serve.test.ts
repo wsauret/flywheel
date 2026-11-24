@@ -4,7 +4,7 @@ import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
 
-import { readRuntimeIdentity } from "../../../src/cli/runtime-attach.js"
+import { readRuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
 import { releaseHarnessRuntimeOptions, runServe } from "../../../src/cli/serve.js"
 import { serveExitCode } from "../../../src/cli/serve-next-service.js"
 import { accountHomeWatch, createRegistrationRetirement, createSupersededRetirementDecision } from "../../../src/cli/serve-retirement.js"

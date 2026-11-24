@@ -2,7 +2,7 @@ import type { FrontendOutputBlock } from "../app-service-types.js"
 import { blockIdentity } from "../block-identity.js"
 import type { MutationEvidenceReader } from "./mutation-evidence.js"
 import { bodyId } from "./transcript-store-paging.js"
-import type { BlockReplacement, TranscriptView } from "./transcript-store.js"
+import type { BlockReplacement, TranscriptView } from "./transcript-view.js"
 
 function ownerRoots(view: TranscriptView, blocks: readonly FrontendOutputBlock[]): Map<string, string | undefined> {
   const roots = new Map<string, string | undefined>()

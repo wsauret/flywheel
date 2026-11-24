@@ -51,7 +51,7 @@ export function trimResidentBodies(residents: readonly ResidentSession[], shown:
 /** What the page's surfaces leave in a resident session when the person
  *  leaves it, which they restore when the person returns. */
 export interface SessionMemory {
-  reader?: import("../../../src/protocol/client/transcript-store.js").TranscriptReader
+  reader?: import("../../../src/protocol/client/transcript-view.js").TranscriptReader
   /** Group keys and inferred fold openness survive coordinate recovery and
    *  navigation while this session stays resident. */
   presentation?: {

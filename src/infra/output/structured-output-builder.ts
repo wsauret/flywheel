@@ -23,7 +23,7 @@ import { appendKeyedDelta } from "./structured-output-grouping.js";
 import { contentKey, definedProps, rebuildBlockIndexes } from "./structured-output-helpers.js";
 import { resetFailedFileChange } from "./file-change-settlement.js";
 import { resolveToolRowPresentation } from "../tools/tool-display-registry.js";
-import type { StandaloneToolSink } from "./output-tool-projection-types.js";
+import type { StandaloneToolSink } from "../tools/types.js";
 import {
   type AgentBlockIdentity,
   type CompleteAgentMeta,

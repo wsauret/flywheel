@@ -211,7 +211,7 @@ async function runTUI(directories: StartupDirectories, launcher: CliLauncher, te
   // the relay, and a relay launch none of the local attach.
   const launchers = terminal.kind === "relay"
     ? { kind: "relay" as const, remote: terminal.remote, module: await import("./remote-terminal.js") }
-    : { kind: "local" as const, terminal, modules: await Promise.all([import("./runtime-launch.js"), import("./runtime-attach.js")]) }
+    : { kind: "local" as const, terminal, modules: await Promise.all([import("./runtime-launch.js"), import("./runtime-identity-record.js")]) }
   startupTrace("runtime launcher imported")
   endImports?.()
   const endClientCreate = timeline?.begin("client.client_create")

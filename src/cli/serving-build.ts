@@ -4,7 +4,7 @@ import { basename, join } from "node:path"
 import type { ServeLane } from "../infra/cli-subprocess.js"
 import { versionsDir } from "../infra/paths.js"
 import { assertInstallLocation, BUILD_METADATA_FILE, buildExecutable, decodeBuildMetadata, NATIVE_DIR } from "../infra/update/build-identity.js"
-import type { RuntimeIdentity } from "./runtime-attach.js"
+import type { RuntimeIdentity } from "./runtime-identity-record.js"
 import type { TerminalSuccessor } from "./terminal-handoff.js"
 
 /** The build a terminal re-executes into when the account service speaks a

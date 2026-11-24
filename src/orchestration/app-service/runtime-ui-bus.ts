@@ -3,7 +3,8 @@ import { Log } from "../../infra/log.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
 import type { FrontendEvent } from "../../protocol/app-service-types.js"
 import { createRuntimeUiPatchSequencer, type RuntimeReadAnchor } from "./runtime-ui-patch-sequencer.js"
-import { cursorKey, runtimeDeliveryPolicy, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
+import { cursorKey, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch, type RuntimeUiPatchInput } from "../../protocol/runtime-ui-protocol-types.js"
+import { runtimeDeliveryPolicy } from "../../protocol/runtime-delivery-policy.js"
 
 
 type Listener = (event: FrontendEvent) => void

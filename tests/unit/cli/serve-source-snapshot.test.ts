@@ -3,7 +3,8 @@ import * as fs from "node:fs"
 
 import { Redacted } from "effect"
 
-import { readRuntimeIdentity, requestAccountReplacement, type RuntimeIdentity } from "../../../src/cli/runtime-attach.js"
+import { requestAccountReplacement } from "../../../src/cli/runtime-attach.js"
+import { readRuntimeIdentity, type RuntimeIdentity } from "../../../src/cli/runtime-identity-record.js"
 import { runServe, type ServeSeams } from "../../../src/cli/serve.js"
 import { SERVE_EXIT } from "../../../src/cli/serve-contract.js"
 import { serveLaneFor } from "../../../src/infra/cli-subprocess.js"

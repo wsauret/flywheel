@@ -94,6 +94,9 @@ export function createAuthStoreSchema<const Id extends string>(installedIds: rea
   return Schema.Record(createInstalledIdSchema(installedIds), Schema.Union([MeteredCredentialRecordSchema, CredentialCollectionSchema]));
 }
 
+/** The auth store's file name inside an auth profile directory. */
+export const AUTH_STORE_FILE = "auth.json";
+
 export const PersistedAuthStoreSchema = Schema.Record(Schema.String, Schema.Union([MeteredCredentialRecordSchema, CredentialCollectionSchema]));
 
 /** Credential identities are open inside infra. Real boundaries inject the installed catalog. */

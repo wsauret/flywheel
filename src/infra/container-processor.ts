@@ -1,6 +1,6 @@
 import * as fs from "node:fs"
 
-import { windowsContainerName } from "./owned-command-supervisor.js"
+import { windowsContainerName } from "./windows-launch-names.js"
 import { bunContainerProbe, parseProcStat, type ContainerProbe, type ContainerRef } from "./process-container.js"
 import { windowsJobApi, type WindowsJob, type WindowsJobApi } from "./windows-job-object.js"
 import { windowsProcessApi, type WindowsProcessApi } from "./windows-process-api.js"

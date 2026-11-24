@@ -8,7 +8,7 @@ import { createHash } from "node:crypto"
 import * as fs from "node:fs"
 import { dirname, join } from "node:path"
 
-import { holdsPinnedAntigravityBytes, pinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "./antigravity-engine.js"
+import { holdsPinnedAntigravityBytes, pinnedAntigravityBytes, QUALIFIED_ANTIGRAVITY_VERSION, type AntigravityPinnedBytes } from "./antigravity-engine-pin.js"
 import { SOURCE_DIGEST_HEX_LENGTH } from "./cli-subprocess.js"
 import { errnoCode, errorMessage } from "./error-message.js"
 import { Log } from "./log.js"

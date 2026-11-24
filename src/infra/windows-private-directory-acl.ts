@@ -1,5 +1,5 @@
 import { dlopen, FFIType, ptr, type Pointer, toArrayBuffer } from "bun:ffi";
-import { trustedProbeLaunch } from "./process-container.js";
+import { trustedProbeLaunch } from "./trusted-probe-launch.js";
 
 const SID_TIMEOUT_MS = 2_000;
 const ACL_TIMEOUT_MS = 2_000;
