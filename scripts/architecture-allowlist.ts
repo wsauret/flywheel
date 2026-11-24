@@ -5,8 +5,8 @@ import type { KnownFinding } from "./architecture/known-findings.ts";
 // a part of the design that the rule cannot tell from a defect, or known
 // debt with its cheapest fix. A key holds no line number: it is the sorted
 // members of a circle, the owner and name of a field, or the path of a
-// module, directory, or file. A circle (module-cycle, tangle) stays known
-// while it keeps one of the members that its entry lists.
+// module, directory, or file. A finding matches an entry only by its exact
+// key, so a circle that grows, splits, or changes members is a new finding.
 //
 // The check fails on a finding that no entry names, and on an entry that no
 // finding matches. When a fix removes a finding, remove its entry. Add an
