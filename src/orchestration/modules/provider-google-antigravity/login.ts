@@ -5,7 +5,7 @@ import { antigravityEnginePath, separatedAntigravityEnvironment, type Antigravit
 import { readAppVersion } from "../../../infra/app-version.js"
 import { writeFileAtomic } from "../../../infra/atomic-write.js"
 import { errorMessage } from "../../../infra/error-message.js"
-import type { ExternalAccount, ExternalLoginDefinition, ExternalLoginPorts } from "../../../infra/llm/access-provider.js"
+import type { ExternalLoginDefinition, ExternalLoginPorts } from "../../../infra/llm/access-provider.js"
 import { Log } from "../../../infra/log.js"
 import { ownedCommandRunner } from "../../../infra/owned-command.js"
 import type { OwnedProcess } from "../../../infra/owned-subprocess.js"
@@ -17,6 +17,7 @@ import { EngineCannotStartError, loginProblems, type LoginObservations, type Pro
 import { accountRecordPath, GOOGLE_ANTIGRAVITY_LABEL, LOGIN_PROGRAM_LABEL, loginsDirectory } from "./names.js"
 import { acpLaunch, prepareLoginHome } from "./private-home.js"
 import { keychainReachedFailure, prepareTokenStore, tokenStoreObservation } from "./token-store.js"
+import type { ExternalAccount } from "../../../infra/auth/provider-account.js"
 
 // agy runs every sign-in itself (plan M7a, design feature 2): its browser
 // loopback flow through ACP `authenticate`, or `agy acp --login`, which prints

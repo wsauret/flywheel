@@ -4,8 +4,8 @@ import type { AuthContext, CapturedSubscriptionCredential } from "../../../../sr
 import type { resolveProviderModelCatalog } from "../../../../src/orchestration/config/model-assignment-providers.js"
 import { createCatalogSettlement } from "../../../../src/orchestration/auth/catalog-settlement.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
-import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js"
+import type { ResolvedProviderModels } from "../../../../src/infra/auth/provider-model-preferences.js"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 
 const account = { kind: "subscription", providerId: "github_copilot", instanceId: "exact", spendMode: "included" } as const

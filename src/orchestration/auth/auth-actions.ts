@@ -36,7 +36,7 @@ import { createUsageAuthority, type UsageAuthority } from "../../infra/llm/usage
 import type { SubscriptionUsageSnapshot } from "../../infra/llm/subscription-usage-store-codec.js";
 import { keptFreePlanMessage } from "../../protocol/client/auth-login.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { apiKeyRejectionReason, credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access-provider.js";
+import { apiKeyRejectionReason, type AccessProviderDefinition, type BrowserLoginPorts, type DeviceCodeLoginPorts, type ExternalLoginDefinition, type OAuthLoginResult } from "../../infra/llm/access-provider.js";
 import type { LauncherScope } from "../../infra/process-supervisor.js";
 import { Log } from "../../infra/log.js";
 import { customProviderRejections } from "../../infra/llm/custom-provider-registry.js";
@@ -49,6 +49,7 @@ import { customProviderRejections } from "../../infra/llm/custom-provider-regist
 // off. Login lookup describes a flow; CLI and runtime callers admit the provider
 // through their effective selection before they invoke it.
 import { installedAccessProviderDefinitions, installedAccessProviderSelection, installedCredentialProviderIds, installedCredentialSlotClassifier, installedUsageReader, installedWebAuthProviderDefinitions } from "../credential-provider-modules.js";
+import { credentialIdOf, isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/auth/provider-account.js";
 const destination = (authDir: string, writeAccess?: AuthProfileAccess) => writeAccess ?? authDir;
 const log = Log.create({ service: "auth-actions" });
 

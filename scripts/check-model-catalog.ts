@@ -1,5 +1,5 @@
 import bundledModelsJson from "../src/infra/llm/models-bundled.txt";
-import { canonicalCatalogModelId, canonicalModelId } from "../src/infra/llm/model-id.js";
+import { canonicalCatalogModelId, canonicalModelId } from "../src/infra/model-id.js";
 import { admitModelsDocument, type AdmittedModelsDocument } from "../src/infra/llm/models-document.js";
 import { modelMapIndex, providerNamespaceIndex, resolveLegacyRelationship, resolveModelMapRelationship } from "../src/infra/llm/model-relationships.js";
 

@@ -39,10 +39,9 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   },
   {
     lint: "module-cycle",
-    reason: "vm folds the facts that workflow-root, session-fact-source, and context-bundle write, while they decode facts through vm's parseWorkflowSessionFact and workflowAggregateId, view reads vm's recovery, and definition-provenance-facts reads vm's DefinitionIdentityMismatchSchema; give the workflow session fact union, the aggregate id, and the identity-mismatch schema a home below vm, then reassess.",
+    reason: "vm folds the facts that workflow-root, session-fact-source, and context-bundle write, while they decode facts through vm's parseWorkflowSessionFact and workflowAggregateId, and view reads vm's recovery; src/orchestration imports both from vm, so moving them below vm also changes those imports. Give workflowAggregateId a home below vm, give each lower module a parser of its own fact family, and pass the historical-tree function into queueFromProjection, then reassess.",
     key: [
       "flywheel::workflows::context-bundle",
-      "flywheel::workflows::definition-provenance-facts",
       "flywheel::workflows::session-fact-source",
       "flywheel::workflows::view",
       "flywheel::workflows::vm",
@@ -62,14 +61,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::tui::question-dock",
       "flywheel::tui::session-picker",
       "flywheel::tui::welcome-notice",
-    ].join(","),
-  },
-  {
-    lint: "module-cycle",
-    reason: "The cheapest tie: `auth` uses `llm` by 34 items, against 43 the other way. Move all of them below both: the access-provider definitions, external-account and profile-conversion shapes (auth-context, auth-profile-normalization, web-providers), catalog row validation, limits and transport (provider-model-catalog-store), preference transitions and canonicalModelId (provider-model-preference-store), and the subscription account identity (subscription-spend-consent and its store).",
-    key: [
-      "flywheel::infra::auth",
-      "flywheel::infra::llm",
     ].join(","),
   },
   { lint: "shallow-module", key: "flywheel::orchestration::runner", reason: "AgentGeneration now gives one-shot callers a contract without the chat turn slot of AgentHost, but OutputSession and Runner still show most of their methods. Next cut: move OutputSession to session-store, which drives it (ARCH-SESSIONS-002)." },

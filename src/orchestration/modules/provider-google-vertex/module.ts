@@ -6,8 +6,9 @@ import type { AccessProviderDefinition } from "../../../infra/llm/access-provide
 import { awaitWithAbortSignal } from "../../../infra/abort.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
-import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";
+import { canonicalizeIdCatalogRow, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
+import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/model-id.js";
 import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";

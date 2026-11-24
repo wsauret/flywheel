@@ -1,6 +1,7 @@
 import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
 import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogDiscovery, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogDiscovery, CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/model-catalog-rows.js";
 import { classifyFetchFailure } from "../../../infra/llm/model-listing.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 

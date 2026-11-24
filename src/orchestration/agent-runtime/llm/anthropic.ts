@@ -17,7 +17,7 @@ import { Redacted } from "effect";
 import { isAbortError } from "../../../infra/abort.js";
 import { errorDetail, errorMessage } from "../../../infra/error-message.js";
 import type { AccessProviderCandidate, AccessProviderId } from "../../../infra/llm/access-provider.js";
-import { dashedModelId } from "../../../infra/llm/model-id.js";
+import { dashedModelId } from "../../../infra/model-id.js";
 import { computeUsagePrice } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import type { ModelInfo, ReasoningEffort } from "../../../infra/llm/models.js";

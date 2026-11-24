@@ -7,7 +7,7 @@
  * /auth surface, the status report, and the runtime protocol type.
  */
 
-import type { CredentialProviderCli } from "../llm/access-provider.js";
+import type { CredentialProviderCli } from "./provider-account.js";
 
 export interface WebProviderDefinition {
   readonly id: WebProviderId;

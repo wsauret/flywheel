@@ -520,7 +520,7 @@ A running workflow agent's model picker identifies that agent and changes its se
 
 ## PI-INTERACTION-048: Restart brings everything back
 
-The restart command in the terminal restarts the background service and the terminal in place, from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and other connected clients reconnect on their own. Running work continues as it does after an update, including shell commands that are still running. If the service cannot restart, the terminal stays as it was and says why.
+The restart command in the terminal, and Restart in the Status sheet of every web client, restart the background service from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and every other connected client reconnects on its own. Running work continues as it does after an update, including shell commands that are still running. When nothing would start the service again, Restart says so and stops nothing. If the service cannot restart, the client stays as it was and says why.
 
 ## PI-INTERACTION-049: Every tap answers at once
 

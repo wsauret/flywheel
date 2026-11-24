@@ -1,9 +1,9 @@
 import { openExistingAuthProfileDirectory } from "./auth-profile-store.js";
 import { AuthStoreMutationError, ensureCredentialLineages } from "./auth-store-mutations.js";
 import type { CredentialSlotClassifier } from "./auth-store-types.js";
+import type { AuthProfileConversion, AuthProfileConversionInput, CredentialProvider } from "./provider-account.js";
 import { adoptPreviousProviderModelCatalogs } from "./provider-model-catalog-store.js";
-import type { AccessProviderDefinition, AuthProfileConversion, AuthProfileConversionInput } from "../llm/access-provider.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../llm/model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../model-catalog-rows.js";
 import { Log } from "../log.js";
 import type { NotificationOccurrence } from "../notification-episode.js";
 
@@ -15,7 +15,7 @@ const log = Log.create({ service: "auth-profile-normalization" });
  * phase, by provider id, and state what the person must act on through
  * `notify` when a person reads notifications. Pass the complete installed
  * vocabulary and definitions, never the enabled ones. */
-export async function normalizeAuthProfile(directory: string, classifySlot: CredentialSlotClassifier, installedIds: readonly string[], definitions: readonly AccessProviderDefinition[], notify?: (occurrence: NotificationOccurrence) => void): Promise<"normalized" | "read-only"> {
+export async function normalizeAuthProfile(directory: string, classifySlot: CredentialSlotClassifier, installedIds: readonly string[], definitions: readonly CredentialProvider[], notify?: (occurrence: NotificationOccurrence) => void): Promise<"normalized" | "read-only"> {
   const access = openExistingAuthProfileDirectory(directory);
   try {
     const profile: AuthProfileConversionInput = { access, classifySlot, installedIds, ...(notify === undefined ? {} : { notify }) };
@@ -36,7 +36,7 @@ export async function normalizeAuthProfile(directory: string, classifySlot: Cred
   }
 }
 
-async function runProfileConversions(definitions: readonly AccessProviderDefinition[], phase: AuthProfileConversion["phase"], profile: AuthProfileConversionInput): Promise<void> {
+async function runProfileConversions(definitions: readonly CredentialProvider[], phase: AuthProfileConversion["phase"], profile: AuthProfileConversionInput): Promise<void> {
   for (const definition of definitions.toSorted((left, right) => left.id.localeCompare(right.id))) {
     for (const conversion of definition.profileConversions ?? []) {
       if (conversion.phase === phase) await conversion.convert(profile);

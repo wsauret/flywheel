@@ -13,7 +13,7 @@ import type { SubscriptionUsageSnapshot } from "../../../infra/llm/subscription-
 import type { SubscriptionUsageMetric, SubscriptionUsageOutcome, SubscriptionUsageReader, SubscriptionUsageResetConsumer, SubscriptionUsageResetOutcome, SubscriptionUsageRuntimeAccount } from "../../../infra/llm/subscription-usage.js"
 
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js"
-import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/llm/subscription-account-identity.js"
+import { createSubscriptionAccountIdentity, type SubscriptionAccountIdentity } from "../../../infra/auth/subscription-account-identity.js"
 import { expiredSignInMessage } from "../../../infra/llm/auth-error.js"
 import type { AccessProviderRegistry } from "../../agent-runtime/llm/access-provider-registry.js"
 import { createOrderedLane } from "../../../infra/ordered-lane.js"

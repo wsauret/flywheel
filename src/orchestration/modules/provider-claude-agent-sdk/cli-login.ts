@@ -5,7 +5,7 @@ import { errorMessage } from "../../../infra/error-message.js";
 import { openContainedDirectory, openExistingContainedDirectory } from "../../../infra/descriptor-directory.js";
 import { Log } from "../../../infra/log.js";
 import { osAccount } from "../../../infra/os-account.js";
-import type { ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
+import type { ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
 import { runOwnedCommand } from "../../../infra/owned-command.js";
 import { isAuthProfileName } from "../../../infra/paths.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
@@ -13,6 +13,7 @@ import type { EngineHost } from "../../../infra/claude-engine.js";
 import { cliLoginEnvironment } from "./cli-environment.js";
 import type { LoginKey } from "./login-observations.js";
 import { globalConfigPath, LOGIN_ACCOUNTS_DIRECTORY } from "./names.js";
+import type { ExternalAccount } from "../../../infra/auth/provider-account.js";
 
 const REFERENCE_SUFFIX = ".reference.json";
 const log = Log.create({ service: "provider-claude-agent-sdk" });

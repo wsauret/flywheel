@@ -8,8 +8,8 @@ import { apiKey, captureProviderConnection } from "../../../../src/infra/auth/au
 import { writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
-import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogCanonicalRow } from "../../../../src/infra/model-catalog-rows.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { modelsSnapshotFile } from "../../../../src/infra/paths.js";

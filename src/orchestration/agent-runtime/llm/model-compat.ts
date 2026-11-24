@@ -1,5 +1,5 @@
 import { REASONING_EFFORTS, type ModelInfo, type ProviderReasoningEffort, type ReasoningEffort } from "../../../infra/llm/models.js";
-import { canonicalModelId } from "../../../infra/llm/model-id.js";
+import { canonicalModelId } from "../../../infra/model-id.js";
 
 /**
  * Per-model compat flags for wire-protocol quirks that models.dev's `ModelInfo`

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthProfileStore, openExistingAuthProfileDirectory } from "../../../../src/infra/auth/auth-profile-store.js";
 import { readSavedProviderModels, recordProviderModelRefusal, writeProviderModelCatalog } from "../../../../src/infra/auth/provider-model-catalog-store.js";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
 import { normalizeResolvedCatalogRows } from "../../../../src/infra/llm/model-catalog-resolution.js";
 import { createModelsClient } from "../../../../src/infra/llm/models.js";
@@ -15,6 +15,7 @@ import { combinedModelsDevProviders, modelsDevDocument, TEST_CATALOG_LIMITS } fr
 import { modelInfo } from "../../../helpers/model-tier-fixtures.js";
 import { AUTH_NONE } from "../../orchestration/config/_model-listing-fixtures.js";
 import { catalogProfile } from "../../../helpers/catalog-profile.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 
 /** A saved model refusal applies for one day. */
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;

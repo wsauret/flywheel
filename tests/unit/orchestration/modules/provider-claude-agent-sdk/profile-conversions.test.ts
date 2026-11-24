@@ -7,7 +7,7 @@ import { loadAuthStoreWithDiagnostics } from "../../../../../src/infra/auth/auth
 import { readProviderModelPreferences } from "../../../../../src/infra/auth/provider-model-preference-store.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
 import { createSubscriptionSpendConsentStore } from "../../../../../src/infra/auth/subscription-spend-consent-store.js";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription-account-identity.js";
 import { Log } from "../../../../../src/infra/log.js";
 import { accessProviderRegistry } from "../../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../../../../src/orchestration/auth/credential-slot-classifier.js";

@@ -5,7 +5,7 @@ import {
   prepareLocalTokenizer,
   type LocalTokenizerIdentity,
 } from "../../../src/infra/local-tokenizer.js"
-import type { ClaudeTokenizerIdentity } from "../../../src/infra/llm/model-id.js"
+import type { ClaudeTokenizerIdentity } from "../../../src/infra/model-id.js"
 
 describe("local tokenizer", () => {
   test("does not load or count a mapped model before preparation", async () => {

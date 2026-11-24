@@ -48,7 +48,7 @@
  */
 
 import { abortableSleep } from "../../../infra/abort.js";
-import { accessProviderAccountKey, accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
+import { accessProviderCandidateKey, candidateProviderId, type AccessProviderCandidate, type AccessProviderCandidateAttribution, type AccessProviderId, type LoginWaitAnswer } from "../../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
@@ -75,6 +75,7 @@ import type {
 
 } from "./types.js";
 import type { ProviderAffordabilityCapability } from "./provider-affordability.js";
+import { accessProviderAccountKey } from "../../../infra/auth/provider-account.js";
 
 
 export interface ProviderChainDeps {

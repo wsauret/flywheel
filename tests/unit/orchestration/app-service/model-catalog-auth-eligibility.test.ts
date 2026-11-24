@@ -12,9 +12,9 @@ import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.
 import { appendCredentialInstanceWithReceipt, replaceCredentialInstance, replaceCredentialInstanceWithReceipt } from "../../../../src/infra/auth/auth-store-mutations.js";
 import { loadAuthStoreWithDiagnostics } from "../../../../src/infra/auth/auth-store.js";
 import { isCredentialCollection } from "../../../../src/infra/auth/auth-store-types.js";
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
+import { createAccessProviderSelection, type AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
 import { createModelListingClient } from "../../../../src/infra/llm/model-listing.js";
-import { canonicalCatalogModelId } from "../../../../src/infra/llm/model-id.js";
+import { canonicalCatalogModelId } from "../../../../src/infra/model-id.js";
 import type { ModelsClient } from "../../../../src/infra/llm/models.js";
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
 import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/client-factory.js";
@@ -29,6 +29,7 @@ import { credentialSlotClassifier } from "../../../../src/orchestration/auth/cre
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { unusedProviderModelWrites } from "../../../helpers/provider-model-writes.js";
 import { diskAuthObservation } from "../../../helpers/profile-auth-observation.js";
+import { accessProviderAccountKey } from "../../../../src/infra/auth/provider-account.js";
 const temporaryDirectory = temporaryDirectories();
 
 type CatalogResult = "failed" | "auth-invalid" | readonly string[];

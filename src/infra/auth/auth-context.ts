@@ -18,8 +18,7 @@ import { isCredentialCollection, type AuthStore, type Credential, type Credentia
 import { authStoreObservationKey, loadAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
 import { apiKeyHint } from "./api-key-hint.js";
 import type { KeyResolver } from "./resolve-key.js";
-import { credentialIdOf, type AccessProviderAccountIdentity, type AccessProviderDefinition, type ExternalAccount } from "../llm/access-provider.js";
-import type { ProviderModelAccessSnapshot } from "./provider-model-catalog-store.js";
+import { credentialIdOf, type AccessProviderAccountIdentity, type AccountLineage, type CredentialProvider, type ExternalAccount } from "./provider-account.js";
 
 /** What the account holds for one credential id. An `api_key` state carries
  *  the resolved key; an `oauth` state only says the provider is connected,
@@ -107,6 +106,13 @@ export interface ProviderConnection {
   readonly modelAccess?: readonly ProviderModelAccessSnapshot[];
 }
 
+export type ProviderModelAccessOutcome = "completed" | "refused";
+export interface ProviderModelAccessOutcomes { readonly [modelId: string]: ProviderModelAccessOutcome }
+/** Settled access checks transferred with the account lineage that proved them. No catalog rows or probe authority are carried. */
+export interface ProviderModelAccessSnapshot extends AccountLineage {
+  readonly outcomes: ProviderModelAccessOutcomes;
+}
+
 /** The one constructor of a connection: it names the capture, so every plan and
  *  every client can be traced to the account state they were decided on. */
 export function captureProviderConnection(captured: Omit<ProviderConnection, "id" | "oauthPersistence" | "subscriptionCredentials" | "profileId"> & { readonly profileId: string; readonly oauthPersistence?: OAuthPersistencePolicy; readonly subscriptionCredentials?: SubscriptionCredentials }): ProviderConnection & { readonly profileId: string };
@@ -132,7 +138,7 @@ export function canonicalSubscriptionAccount(connection: ProviderConnection, pro
  *  stores nothing, so its instances are the accounts that its program holds
  *  for the profile in `authDir`. */
 export function captureSubscriptionCredentials(
-  definitions: readonly AccessProviderDefinition[],
+  definitions: readonly CredentialProvider[],
   source:
     | { readonly kind: "persisted"; readonly authDir: string; readonly classifySlot: CredentialSlotClassifier; readonly report?: boolean }
     | { readonly kind: "decoded"; readonly store: AuthStore; readonly authDir: string },
@@ -158,7 +164,7 @@ export function captureSubscriptionCredentials(
  *  absent: resolving it launches a helper, which a usage read never does. */
 export function meteredKeyAccount(
   load: Pick<AuthStoreLoadResult, "store" | "credentialLineages">,
-  definition: Pick<AccessProviderDefinition, "id" | "auth">,
+  definition: Pick<CredentialProvider, "id" | "auth">,
 ): CapturedSubscriptionCredential | undefined {
   const id = credentialIdOf(definition);
   const entry = load.store[id];
@@ -190,7 +196,7 @@ function externalInstances(accounts: readonly ExternalAccount[]): readonly Captu
  *  lock. Lineages are keyed by account: two accounts of one provider each
  *  have their own. */
 export function currentCredentialLineage(
-  definitions: readonly AccessProviderDefinition[],
+  definitions: readonly CredentialProvider[],
   authDir: string,
   classifySlot: CredentialSlotClassifier,
   account: AccessProviderAccountIdentity,
@@ -235,7 +241,7 @@ export function oauthCredentialDto(credential: RuntimeOAuthCredential): OAuthCre
 
 interface ResolveAuthOptions {
   readonly load?: AuthStoreLoadResult;
-  readonly definitions?: readonly AccessProviderDefinition[];
+  readonly definitions?: readonly CredentialProvider[];
   /** Account credential directory, derived from the startup `userDataRoot`. */
   readonly authDir: string;
   /** Resolves a stored key, running the helper a leading `!` names. Injected:

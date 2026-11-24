@@ -6,7 +6,7 @@ import { ownedCommandRunner } from "../../src/infra/owned-command.js";
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { Effort } from "../../src/infra/workflow-types.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { canonicalModelId } from "../../src/infra/llm/model-id.js";
+import { canonicalModelId } from "../../src/infra/model-id.js";
 import { executeClaudeCodeBenchmark } from "../../src/orchestration/modules/development/benchmark/claude-code-execution.js";
 import { executeHeadlessBenchmark, type HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/headless-execution.js";
 import type { HeadlessBenchmarkExecution } from "../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";

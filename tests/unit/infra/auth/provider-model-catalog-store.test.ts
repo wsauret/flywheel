@@ -6,7 +6,7 @@ import { AuthProfileStore, openExistingAuthProfileDirectory, type AuthProfileAcc
 import { normalizeAuthProfile } from "../../../../src/infra/auth/auth-profile-normalization.js";
 import { adoptPreviousProviderModelCatalogs, deleteProviderModelCatalog, liveModelRefusals, readSavedProviderModels, recordProviderModelAccess, recordProviderModelRefusal, writeProviderModelCatalog, writeProviderModelCandidates } from "../../../../src/infra/auth/provider-model-catalog-store.js";
 import type { AccessProviderDefinition } from "../../../../src/infra/llm/access-provider.js";
-import type { CatalogCanonicalRow } from "../../../../src/infra/llm/model-catalog-resolution.js";
+import type { CatalogCanonicalRow } from "../../../../src/infra/model-catalog-rows.js";
 import { accessProviderRegistry } from "../../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";

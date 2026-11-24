@@ -4,7 +4,7 @@ import { captureProviderConnection } from "../../../../../src/infra/auth/auth-co
 import { openExistingAuthProfileDirectory } from "../../../../../src/infra/auth/auth-profile-store.js";
 import { createSubscriptionSpendConsentStore } from "../../../../../src/infra/auth/subscription-spend-consent-store.js";
 import { createSubscriptionSpendEnvelope } from "../../../../../src/infra/auth/subscription-spend-consent.js";
-import { createSubscriptionAccountIdentity } from "../../../../../src/infra/llm/subscription-account-identity.js";
+import { createSubscriptionAccountIdentity } from "../../../../../src/infra/auth/subscription-account-identity.js";
 import { createAgentRuntime } from "../../../../../src/orchestration/agent-runtime/factory.js";
 import { createSubscriptionUsageServicePool } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service-pool.js";
 import { createSubscriptionUsageService } from "../../../../../src/orchestration/auth/provider-observations/subscription-usage-service.js";

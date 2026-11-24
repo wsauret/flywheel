@@ -3,7 +3,7 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import type { AuthContext } from "../../../../../src/infra/auth/auth-context.js"
-import { accessProviderAccountKey, createAccessProviderSelection, type AccessProviderCatalogFetchInput, type AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
+import { createAccessProviderSelection, type AccessProviderCatalogFetchInput, type AccessProviderDefinition } from "../../../../../src/infra/llm/access-provider.js"
 import type { CatalogDiscovery } from "../../../../../src/infra/llm/model-catalog-resolution.js"
 import { createModelListingClient } from "../../../../../src/infra/llm/model-listing.js"
 import { Log } from "../../../../../src/infra/log.js"
@@ -17,6 +17,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { modelInfo } from "../../../../helpers/model-tier-fixtures.js"
 import { testCapabilityModules } from "../../../../helpers/provider-authority.js"
 import { AUTH_DIR, AUTH_NONE } from "../../config/_model-listing-fixtures.js"
+import { accessProviderAccountKey } from "../../../../../src/infra/auth/provider-account.js"
 
 const temporary = temporaryDirectories()
 const providerLog = Log.create({ service: "provider-google-antigravity" })

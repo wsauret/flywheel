@@ -1,6 +1,6 @@
 import { configurationReferenceFile } from "../../infra/paths.js";
 import { errorMessage } from "../../infra/error-message.js";
-import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/llm/model-id.js";
+import { canonicalModelId, legacyDottedModelId, migrateModelId } from "../../infra/model-id.js";
 import { withConfigOwnership, withConfigOwnershipBlocking, type ConfigOwnership } from "./config-file.js";
 import type { ModelAssignmentExpected, ModelAssignmentPatch, ModelSelectionSlot } from "../../protocol/model-assignment-protocol-types.js";
 import { AGENT_ROLE_IDS, AUX_ROLE_IDS, DEFAULT_ROLES, type RoleId } from "./roles.js";

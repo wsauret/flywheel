@@ -8,11 +8,11 @@ import { AUTH_STORE_FILE, CredentialInstanceSchema, isCredentialCollection, type
 import { transferProviderModelPreferences } from "../../../infra/auth/provider-model-preference-store.js";
 import { transferSubscriptionSpendDecisions } from "../../../infra/auth/subscription-spend-consent-store.js";
 import { errorMessage } from "../../../infra/error-message.js";
-import type { AccessProviderAccountIdentity, AuthProfileConversion, ExternalAccount } from "../../../infra/llm/access-provider.js";
 import { Log } from "../../../infra/log.js";
 import type { NotificationOccurrence } from "../../../infra/notification-episode.js";
 import { isRecord, type UnknownRecord } from "../../../infra/record.js";
 import { CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL } from "./names.js";
+import type { AccessProviderAccountIdentity, AuthProfileConversion, ExternalAccount } from "../../../infra/auth/provider-account.js";
 
 const log = Log.create({ service: "provider-claude-agent-sdk" });
 

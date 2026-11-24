@@ -62,10 +62,11 @@ async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
   let failServiceStart
   let serviceListened
   let ServeStartupFailure
+  let startHeldByHost
   let SERVE_EXIT
   try {
     ;({ failServiceStart, serviceListened } = await import("../orchestration/update/service-start.js"))
-    ;({ ServeStartupFailure } = await import("../protocol/serve-handshake.js"))
+    ;({ ServeStartupFailure, startHeldByHost } = await import("../protocol/serve-handshake.js"))
     ;({ SERVE_EXIT } = await import("./serve-contract.js"))
   } catch (loadError) {
     // A process that cannot load the start's own module never listened.
@@ -75,6 +76,7 @@ async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
     return 1
   }
   announce(kind, serviceListened(), message)
+  if (!serviceListened() && !startHeldByHost(error) && await returnedToProvedSource(message)) return SERVE_EXIT.restart
   // The command runner throws an error of its own that wraps the command's.
   const failure = [error, error instanceof Error ? error.cause : undefined].find((candidate) => candidate instanceof ServeStartupFailure)
   // Every kind joins the streak as a thrown failure: only a person clears an
@@ -90,4 +92,22 @@ async function fatalExitCode(error: unknown, kind: FatalKind): Promise<number> {
 function announce(kind: FatalKind, listened: boolean, message: string): void {
   const words = kind !== "thrown" ? `fatal ${kind}` : listened ? "fatal thrown failure" : "failed to start"
   process.stderr.write(`flywheel: ${words}: ${message}\n`)
+}
+
+/** A dev service start from a snapshot that fails before it listens, for a
+ *  cause of its own build, refuses that snapshot and exits to be restarted
+ *  on the proved one (`refuseFailedServiceStart`). A failure to import the
+ *  CLI itself never reaches this path; the dev entry refuses that one.
+ *  Answers whether it refused. */
+async function returnedToProvedSource(message: string): Promise<boolean> {
+  try {
+    const [{ runningSourceSnapshot }, { startsServiceProcess }] = await Promise.all([import("../infra/cli-subprocess.js"), import("./serve-contract.js")])
+    const snapshot = runningSourceSnapshot()
+    if (snapshot === undefined || !startsServiceProcess(process.argv)) return false
+    const { refuseFailedServiceStart } = await import("../infra/source-snapshot.js")
+    return refuseFailedServiceStart(snapshot, message)
+  } catch (error) {
+    Log.Default.warn("the dev service failed to start and its snapshot could not be refused", { error: errorMessage(error) })
+    return false
+  }
 }

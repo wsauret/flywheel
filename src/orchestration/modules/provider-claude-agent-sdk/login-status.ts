@@ -1,4 +1,4 @@
-import type { ExternalAccount, ExternalLoginProblem } from "../../../infra/llm/access-provider.js";
+import type { ExternalLoginProblem } from "../../../infra/llm/access-provider.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { keychainUnlocked } from "../../../infra/macos-keychain.js";
 import type { OwnedCommandRunner } from "../../../infra/owned-command.js";
@@ -9,6 +9,7 @@ import { enginePath } from "../../../infra/claude-engine.js";
 import { readEngineVersion } from "../../../infra/engine-version.js";
 import { ENGINE_CANNOT_START, type LoginFailure, type RequestOutcome } from "./login-observations.js";
 import { loginToken, type LoginToken, type TokenProbe } from "./login-token.js";
+import type { ExternalAccount } from "../../../infra/auth/provider-account.js";
 
 /** The step that repairs one failed login, as a person reads it beside the account. It names no account: the
  *  problem also becomes a project notification, whose text must hold no account subject data (ARCH-BOUNDARIES-015). */

@@ -1,4 +1,5 @@
 import { Schema, SchemaTransformation } from "effect"
+import { DefinitionIdentityMismatchSchema, type DefinitionIdentityMismatch } from "../definition-identity-mismatch.js"
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import { reachableAgentNames, workflowAgentSubagents } from "../agents/subagent-reachability.js"
 import type { ResolvedAgent } from "../agent-resolution.js"
@@ -150,89 +151,10 @@ export const DefinitionIdentitySchema = Schema.Union([
   BindingDefinitionIdentitySchema,
 ])
 
-const AgentAspectSchema = Schema.Literals(["policy", "content", "output"])
-
-/** A changed agent record: its policy, its brief content, or its output. */
-const AgentMismatchSchema = Schema.Struct({
-  component: Schema.Literal("agent"),
-  definitionId: IdSchema,
-  aspect: AgentAspectSchema,
-  recorded: Schema.String,
-  current: Schema.String,
-})
-
-export const DefinitionIdentityMismatchSchema = Schema.Union([
-  Schema.Struct({
-    component: Schema.Literal("workflow"),
-    definitionId: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  Schema.Struct({
-    component: Schema.Literal("graph"),
-    definitionId: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  Schema.Struct({
-    component: Schema.Literal("phase"),
-    phaseId: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  AgentMismatchSchema,
-  // A changed record, as builds before the agent lexicon recorded it in
-  // adoption and drift facts. It reads as the `agent` change it is, so a
-  // replay compares it with the evidence that a current build computes.
-  // Remove after 2027-04-30.
-  Schema.Struct({
-    component: Schema.Literal("step"), // stored kind of adoption and drift evidence
-    stepId: IdSchema, // stored key of adoption and drift evidence
-    aspect: AgentAspectSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }).pipe(Schema.decodeTo(AgentMismatchSchema, SchemaTransformation.transform({
-    decode: ({ stepId, component: _retired, ...change }) => ({ component: "agent" as const, definitionId: stepId, ...change }), // stored key
-    encode: ({ definitionId, component: _current, ...change }) => ({ component: "step" as const, stepId: definitionId, ...change }), // stored kind and key
-  }))),
-  Schema.Struct({
-    component: Schema.Literal("version"),
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  Schema.Struct({
-    component: Schema.Literal("skill"),
-    skillId: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  Schema.Struct({
-    component: Schema.Literal("persona"),
-    personaName: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  // Evidence that builds before the brief cutover recorded, in
-  // adoption and drift facts. Readable, never produced for a current
-  // identity. Remove after 2027-04-30.
-  Schema.Struct({
-    component: Schema.Literal("binding"),
-    bindingId: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-  Schema.Struct({
-    component: Schema.Literal("registry"),
-    handoffType: IdSchema,
-    recorded: Schema.String,
-    current: Schema.String,
-  }),
-])
 export type DefinitionIdentity = typeof DefinitionIdentitySchema.Type
 export type StepDefinitionIdentity = typeof StepDefinitionIdentitySchema.Type
 /** An identity that names bindings and handoff types. */
 export type LegacyDefinitionIdentity = Exclude<DefinitionIdentity, StepDefinitionIdentity>
-export type DefinitionIdentityMismatch = typeof DefinitionIdentityMismatchSchema.Type
 
 export function isLegacyDefinitionIdentity(identity: DefinitionIdentity): identity is LegacyDefinitionIdentity {
   return "bindings" in identity
