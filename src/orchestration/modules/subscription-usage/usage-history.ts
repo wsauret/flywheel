@@ -1,4 +1,4 @@
-import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/subscription-usage-store.js"
+import type { SubscriptionUsageHistoryEntry } from "../../../infra/llm/subscription-usage-store-codec.js"
 import type { SubscriptionUsageMetric } from "../../../infra/llm/subscription-usage.js"
 import type { UsageHistoryObservation } from "./usage-projection.js"
 

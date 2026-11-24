@@ -6,7 +6,7 @@ import { isActiveActivity, type AttachedRuntimeClient, type RuntimeClient, type 
 import { isLaneBreak } from "../../protocol/client/cursor-intake.js"
 import { createHeldSessionDetails } from "../../protocol/client/held-session-details.js"
 import { sessionActiveMs } from "../../protocol/client/session-time.js"
-import { isGlobalRuntimeInvalidation } from "../../protocol/runtime-ui-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../../protocol/runtime-invalidation.js"
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { OutputView } from "../../protocol/output-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"

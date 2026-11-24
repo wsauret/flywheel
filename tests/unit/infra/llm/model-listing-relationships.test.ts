@@ -66,7 +66,7 @@ function auth() {
   };
 }
 
-function admittedWire(candidate: AccessProviderCandidate, models: ReadonlyMap<string, readonly import("../../../../src/infra/llm/model-catalog-resolution.js").CatalogModelOffering[]>, allowTrainingRoutes: boolean) {
+function admittedWire(candidate: AccessProviderCandidate, models: ReadonlyMap<string, readonly import("../../../../src/infra/llm/catalog-model-offering.js").CatalogModelOffering[]>, allowTrainingRoutes: boolean) {
   const canonicalModels = new Set(models.keys());
   const decision = providerModelEligibilityDecision({
     profileId: "default",

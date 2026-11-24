@@ -1,7 +1,8 @@
 import { Redacted } from "effect";
 import { apiKey } from "../../../infra/auth/auth-context.js";
 import type { AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
-import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogJsonValue, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
+import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../infra/llm/catalog-model-offering.js";
 import { fetchPaginatedCatalog } from "../../../infra/llm/model-listing.js";
 import { providerModelInfo } from "../../../infra/llm/provider-model-info.js";
 import { isRecord } from "../../../infra/record.js";

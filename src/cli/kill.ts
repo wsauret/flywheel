@@ -10,7 +10,8 @@ import { releaseLock, tryAcquireLockSync, type TriedLock, type TryLockOptions } 
 import { processAccountHome, type ProcessAccountHome } from "../infra/process-account-home.js"
 import { isProcessAlive } from "../infra/process-liveness.js"
 import { listProcesses, type ProcessRow } from "../infra/process-table.js"
-import { probeRendezvous, readRuntimeIdentity, refusesAccess, type RendezvousProbe } from "./runtime-attach.js"
+import { probeRendezvous, refusesAccess, type RendezvousProbe } from "./runtime-attach.js"
+import { readRuntimeIdentity } from "./runtime-identity-record.js"
 import { Log } from "../infra/log.js"
 
 const log = Log.create({ service: "kill" })

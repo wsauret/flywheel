@@ -4,7 +4,7 @@ import { createEligibilityPreparation } from "../../../../src/orchestration/app-
 import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { accessProviderAccountKey } from "../../../../src/infra/llm/access-provider.js"
-import type { CatalogModelOffering } from "../../../../src/infra/llm/model-catalog-resolution.js"
+import type { CatalogModelOffering } from "../../../../src/infra/llm/catalog-model-offering.js"
 import type { ResolvedProviderModels } from "../../../../src/infra/llm/provider-model-preferences.js"
 import type { ResolvedProviderModelCatalogs } from "../../../../src/orchestration/config/model-assignment-providers.js"
 import { testDirectories } from "../../../helpers/directories.js"

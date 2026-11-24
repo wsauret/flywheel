@@ -5,7 +5,7 @@ import { declaredMutationField, getToolDisplay, resolveToolRowPresentation, targ
 import type { ToolDiffInfo, ToolDisplay, ToolRowPresentation } from "../tools/types.js";
 import { getFiletype } from "../tools/filetype.js";
 import { deferredAgentMeta, deferredAgentMetaPatch } from "./deferred-agent-meta.js";
-import { stringField, type JsonFields } from "./json-field.js";
+import { stringField, type JsonFields } from "../tools/json-field.js";
 import type { PendingToolInfo, PlacedTool } from "./output-tool-projection-types.js";
 import type { StructuredOutputBuilder, ToolInputFields } from "./structured-output-builder.js";
 import { createProvisionalDiffInput } from "./provisional-diff-input.js";

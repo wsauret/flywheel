@@ -1,14 +1,6 @@
 import type { FrontendEvent } from "../app-service-types.js"
-import {
-  cursorKey,
-  isRuntimeInvalidationPayload,
-  isGlobalRuntimeInvalidation,
-  type RuntimeCursorIdentity,
-  type RuntimeInvalidationReason,
-  type RuntimePosition,
-  type RuntimeSnapshotScope,
-  type RuntimeUiPatch,
-} from "../runtime-ui-protocol-types.js"
+import { cursorKey, type RuntimeCursorIdentity, type RuntimeInvalidationReason, type RuntimePosition, type RuntimeSnapshotScope, type RuntimeUiPatch } from "../runtime-ui-protocol-types.js"
+import { isRuntimeInvalidationPayload, isGlobalRuntimeInvalidation } from "../runtime-invalidation.js"
 import { createCursorIntake, isLaneBreak, type CursorIntake, type RecoveryRequest } from "./cursor-intake.js"
 import { createReadRetry } from "./background-reads.js"
 import { lostWithLane } from "./connection-failures.js"

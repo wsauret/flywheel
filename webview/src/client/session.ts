@@ -8,7 +8,7 @@ import type { RuntimeConnection } from "../../../src/protocol/client/connection.
 import { isLaneBreak } from "../../../src/protocol/client/cursor-intake.js"
 import { runtimeHealth } from "../../../src/protocol/client/runtime-health.js"
 import { UNKNOWN_COMMAND_NOTICE } from "../../../src/protocol/client/slash-route.js"
-import { isGlobalRuntimeInvalidation } from "../../../src/protocol/runtime-ui-protocol-types.js"
+import { isGlobalRuntimeInvalidation } from "../../../src/protocol/runtime-invalidation.js"
 import { createCommandRoster } from "./command-choices.js"
 import { readWorkspaceSettings, type PanelSettings, type WorkspaceSettings } from "./session-settings.js"
 import { browserDesktopNotifier, type DesktopNotifier } from "./desktop-notifier.js"

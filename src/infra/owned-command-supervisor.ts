@@ -28,6 +28,7 @@ import {
 import { establishProcessPriority } from "./process-priority.js"
 import { Log } from "./log.js"
 import { LAUNCH_FAILED_EXIT_CODE } from "./owned-subprocess.js"
+import { windowsContainerName, windowsControlChannelName } from "./windows-launch-names.js"
 import { formatDebugLogLine } from "./debug-log.js"
 import { unsettledEmptyingStreak } from "./process-probe-streak.js"
 import { MAX_TIMER_MS } from "./timers.js"
@@ -57,23 +58,6 @@ const SUPERVISOR_CONTROL_FD = 3
 /** The payload never ran: ownership was refused, or the launcher died before
  *  it could admit the container. */
 export const OWNERSHIP_REFUSED_EXIT_CODE = 70
-
-/** The name a launch's job object is created under. One namespace, so a stray
- *  container is recognizable, and the ownership token, so the name is used
- *  once. */
-export function windowsContainerName(token: string): string {
-  return `Flywheel.container.${token}`
-}
-
-/** The launcher's control channel for one launch.
- *
- *  Windows has no descriptor a child can inherit beyond its three streams, so
- *  the channel is a named pipe. The name is the ownership token for the same
- *  reason the container's is: it belongs to exactly one launch, so no two
- *  launches can reach each other's channel. */
-export function windowsControlChannelName(token: string): string {
-  return String.raw`\\.\pipe\Flywheel.control.` + token
-}
 
 /** How long a re-raised signal is given to land before this process falls back
  *  to an ordinary exit. The kernel delivers it immediately; the wait exists so

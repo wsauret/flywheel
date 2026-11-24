@@ -8,7 +8,7 @@ import type { SessionManager, SessionMetadataChange } from "../../../../src/orch
 import type { SessionEntry, SessionStore } from "../../../../src/orchestration/session-store/types.js"
 import type { ChatSessionEntry } from "../../../helpers/session-entries.js"
 import type { RuntimeChatDefault } from "../../../../src/protocol/app-service-types.js"
-import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/app-service.js"
+import type { ProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js"
 import type { AdmittedModelAssignmentService } from "../../../../src/orchestration/app-service/model-assignment-admission.js"
 import { authMutationDoubles } from "../../../helpers/auth-mutation-doubles.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"

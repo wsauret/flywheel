@@ -1,5 +1,5 @@
 import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
-import type { TranscriptStatus, TranscriptView } from "./transcript-store.js"
+import type { TranscriptStatus, TranscriptView } from "./transcript-view.js"
 import { showsNothingOfOutput } from "./transcript-store-paging.js"
 
 /** What the store held when a render left the pane empty. */

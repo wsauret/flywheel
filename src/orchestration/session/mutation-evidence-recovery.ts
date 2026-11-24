@@ -15,7 +15,7 @@ import { MutationEvidenceResultDetailsSchema } from "../../infra/runtime-mutatio
 import { parseConversationTreeFact } from "./conversation/conversation-facts.js"
 import { parseFileMutationFact } from "./file-mutation-facts.js"
 import { parseFileMutationOperationCell, parseFileMutationOperationHeader, stageFileMutationOperation, type FileMutationOperationHeader } from "./file-mutation-operation.js"
-import { decodeLegacyFinalizedToolResultCheckpoint, FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema, type FinalizedToolResultCheckpoint } from "./finalized-tool-result-checkpoint.js"
+import { decodeLegacyFinalizedToolResultCheckpoint, FinalizedToolResultCheckpointSchema, UnversionedFinalizedToolResultCheckpointSchema, type FinalizedToolResultCheckpoint } from "./finalized-tool-result-checkpoint-schema.js"
 
 const decodeDiff = Schema.decodeUnknownSync(MutationDiffSchema, { onExcessProperty: "error" })
 const decodeUnversionedCheckpoint = Schema.decodeUnknownSync(UnversionedFinalizedToolResultCheckpointSchema, { onExcessProperty: "error" })

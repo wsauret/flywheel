@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { AccessProviderCandidateAttribution } from "../../../../../src/infra/llm/access-provider.js";
-import type { CatalogJsonValue } from "../../../../../src/infra/llm/model-catalog-resolution.js";
+import type { CatalogJsonValue } from "../../../../../src/infra/llm/catalog-model-offering.js";
 import { copilotAffordability } from "../../../../../src/orchestration/modules/provider-github-copilot/affordability.js";
 import { buildCopilotDynamicHeaders, copilotRequestInitiator } from "../../../../../src/orchestration/modules/provider-github-copilot/headers.js";
 import type { ConversationMessage, PreparedServingRequest } from "../../../../../src/orchestration/agent-runtime/llm/types.js";

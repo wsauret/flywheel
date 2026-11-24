@@ -1,6 +1,7 @@
 import type { GoneProof, HolderState, ProcessHolder } from "../infra/process-holder.js"
 import type { ServeStartRefusal } from "../protocol/serve-handshake.js"
-import { refusesAccess, type RendezvousProbe, type RuntimeIdentity } from "./runtime-attach.js"
+import { refusesAccess, type RendezvousProbe } from "./runtime-attach.js"
+import type { RuntimeIdentity } from "./runtime-identity-record.js"
 
 /** The service that published a lane's identity record and is proven gone. */
 export interface PreviousService {

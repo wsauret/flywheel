@@ -10,8 +10,10 @@ import {
   endAtOnce,
   identifyGuardian,
   reachCommand,
+  type AddressedContainer,
   type ControlledContainer,
   type HandedOverCommand,
+  type OwnedExitStatus,
   type ReachedCommand,
 } from "./owned-command-control.js"
 import {
@@ -19,7 +21,7 @@ import {
   type CommandSupervisorPolicy,
   type ContainerPolicy,
 } from "./owned-command-policy.js"
-import { windowsContainerName, windowsControlChannelName } from "./owned-command-supervisor.js"
+import { windowsContainerName, windowsControlChannelName } from "./windows-launch-names.js"
 import {
   bunContainerProbe,
   unixContainer,
@@ -63,29 +65,6 @@ import { drainSupervisorDiagnostics, type SupervisorDiagnostics } from "./proces
  *  A container that must outlive this process cannot be a job object at all: a
  *  job is reached through a handle, and a handle dies with the process holding
  *  it. That is the one case left with a weaker contract. */
-
-/** The exit status of an owned container, read once when it settles. */
-export interface OwnedExitStatus {
-  readonly code: number | null
-  readonly signal: NodeJS.Signals | null
-  /** Whose status `code` and `signal` are. `payload`: the supervisor exited
-   *  with its container already empty, so its status is the payload's own,
-   *  which the supervisor re-raises as its own. `supervisor`: the supervisor
-   *  exited while its container still held processes, so it was killed or
-   *  crashed, the launcher ended the rest, and the status is the supervisor's
-   *  own death. A signal that ends the whole container at once empties it
-   *  before the supervisor's exit is seen, so it reads as `payload`. */
-  readonly statusOf: "payload" | "supervisor"
-}
-
-export interface OwnedChild {
-  readonly stdin: FileSink | undefined
-  readonly stdout: ReadableStream<Uint8Array> | undefined
-  readonly stderr: ReadableStream<Uint8Array> | undefined
-  /** Settles once the supervisor has exited and its container is proven
-   *  empty, never on the supervisor's exit alone. */
-  readonly exited: Promise<OwnedExitStatus>
-}
 
 /** The supervisor process as the host spawned it, in Bun's own shape. */
 interface HostChild {
@@ -636,6 +615,11 @@ function supervisorPolicy(options: ContainerLaunchOptions, guardianIdentity: str
   }
 }
 
+/** The container that a handed-over command names, as `backend` addresses it for `reachCommand`. */
+function addressed(backend: OwnedProcessBackend, command: HandedOverCommand): AddressedContainer {
+  return { container: () => backend.container(command), forget: () => backend.forget(command) }
+}
+
 function unixBackend(host: ProcessGroupHost): OwnedProcessBackend {
   const backend: OwnedProcessBackend = {
     launch(command, input) {
@@ -656,7 +640,7 @@ function unixBackend(host: ProcessGroupHost): OwnedProcessBackend {
       const settlement = options.onPayloadExit === "end-descendants" ? markedContainer(group, child.pid, options.token, host) : group
       return launchedContainer(child, descriptorChannel(child.controlFd, host), settlement, options, () => {})
     },
-    reach: (command, killGraceMs) => reachCommand(command, backend, (pid) => unixProcessIdentity(pid, host), killGraceMs),
+    reach: (command, killGraceMs) => reachCommand(command, addressed(backend, command), (pid) => unixProcessIdentity(pid, host), killGraceMs),
     async emptyUnserved(command, supervisorIdentity, killGraceMs) {
       // A group is named by its leader's pid, and no process can take that
       // pid while the group still has a member. So a group whose leader is
@@ -749,7 +733,7 @@ function windowsBackend(host: JobObjectHost): OwnedProcessBackend {
       // side closes its handle and never ends the job.
       return launchedContainer(child, control, windowsJobContainer(job, child.pid), options, () => { backend.forget({ pid: child.pid, token: options.token }) })
     },
-    reach: (command, killGraceMs) => reachCommand(command, backend, (pid) => windowsProcessIdentity(pid, host), killGraceMs),
+    reach: (command, killGraceMs) => reachCommand(command, addressed(backend, command), (pid) => windowsProcessIdentity(pid, host), killGraceMs),
     async emptyUnserved(command) {
       // A job dies with its last handle, and its members die with it. A job
       // that still opens has a holder that may be its supervisor.

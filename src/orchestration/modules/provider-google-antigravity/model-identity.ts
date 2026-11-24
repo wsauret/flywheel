@@ -1,4 +1,4 @@
-import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../infra/antigravity-engine.js"
+import { QUALIFIED_ANTIGRAVITY_VERSION } from "../../../infra/antigravity-engine-pin.js"
 import { canonicalModelId } from "../../../infra/llm/model-id.js"
 import type { CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js"
 

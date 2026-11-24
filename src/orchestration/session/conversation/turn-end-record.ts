@@ -6,7 +6,7 @@ import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/message-ses
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { RestoredAgentWait } from "../../agent-runtime/agent-loop-types.js"
 import { createWaitToolPolicy, endsOpenWait, type OpenWaitInput } from "../../agent-runtime/agent-loop-wait.js"
-import { messageDisposition } from "../live-session-control.js"
+import { messageDisposition } from "../message-disposition.js"
 import type { SessionRelation } from "../../../infra/chat-input-schema.js"
 
 /** What the turn-end readers need of an entry: enough to name the record,
@@ -140,6 +140,24 @@ export function turnEndEntryId(end: TurnEnd, key: string): string {
     : end.pausedBy === "agent" ? AGENT_INTERRUPT_REASON
     : `paused-${end.pausedBy}${end.planned ? "-planned" : end.closed ? "-closed" : ""}`
   return `${TURN_END_ID_PREFIX}${reason}-${key}`
+}
+
+const HISTORICAL_COMPLETION_PREFIX = turnEndEntryId({ reason: "settled" }, "workflow-completion:")
+
+/** The entry under which an adoption records a completion that happened
+ *  before the workflow had its current parent. It is a settled record: the
+ *  model sees the result in later turns, but the parent owes no answer to
+ *  it, offers no Resume for it, and gets no wake.
+ *  The reconciler reads this entry as the delivered completion. */
+export function historicalCompletionEntryId(childSessionId: string): string {
+  return `${HISTORICAL_COMPLETION_PREFIX}${childSessionId}`
+}
+
+/** Whether an entry is an adoption's historical completion. The adopted
+ *  card states the same result, so the transcript shows the entry no row of
+ *  its own, as it shows no row for a live completion. */
+export function isHistoricalCompletionEntry(entryId: string): boolean {
+  return entryId.startsWith(HISTORICAL_COMPLETION_PREFIX)
 }
 
 /** The id reason of a parent agent's interrupt (`turnEndEntryId`). */

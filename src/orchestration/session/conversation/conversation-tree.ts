@@ -1,7 +1,6 @@
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js";
-import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
+import { hasInterruptedWork, interruptedTurnEntryId, interruptedWorkMessage, isRecoveredToolResultEntryId, type InterruptedTurnReason } from "./interrupted-turn-summary.js";
 import { chatTurnEndOf, endsAtTurnEnd, isPlannedCut, questionExchangeOf } from "./turn-end-record.js";
-import { isRecoveredToolResultEntryId } from "../finalized-tool-result-checkpoint.js";
 import { decodeQueuedUserInput, QUEUED_USER_INPUT_IN_FLIGHT_KIND, queuedInputDrops, queuedInputMessage, type QueuedUserInputCell, type QueuedUserInputCommitResult } from "./queued-user-inputs.js";
 import { decodeQueuedBackgroundNotification, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND, queuedBackgroundNotificationDrops, queuedBackgroundNotificationMessage, type QueuedBackgroundNotification } from "./queued-background-notifications.js";
 import { replyWaitRetirements } from "./reply-wait-cells.js";

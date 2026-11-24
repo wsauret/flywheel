@@ -11,7 +11,8 @@ import { BoundedJsonError, readBoundedJson, readBoundedJsonWithByteLength } from
 import { accessProviderAccountIdentity, accessProviderAccountKey, compareAutomaticSelection, type AccessProviderAccountIdentity, type AccessProviderCandidate, type AccessProviderCatalogFetchResult, type AccessProviderDefinition, type AccessProviderId, type AccessProviderSelection } from "./access-provider.js";
 import { customProviderById } from "./custom-provider-registry.js";
 import { recordCatalogDiscoveryDiagnostics, recordProviderCatalogFailure } from "./model-catalog-diagnostics.js";
-import { DEFAULT_DYNAMIC_CATALOG_LIMITS, membershipFallback, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogJsonValue, type CatalogLimits, type CatalogModelOffering, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import { DEFAULT_DYNAMIC_CATALOG_LIMITS, membershipFallback, resolveModelCatalog, type CatalogCanonicalRow, type CatalogDiscovery, type CatalogLimits, type ModelCatalogContribution, type ResolvedModelCatalog } from "./model-catalog-resolution.js";
+import type { CatalogJsonValue, CatalogModelOffering } from "./catalog-model-offering.js";
 import { catalogRowsToModelMap, decodeDiscoveryRows, joinCatalogRows, modelsDevBaseline, preferredCatalog, reconcileSavedCatalogRows, staticOfferingMap, withModelRefusals, type AccessProviderCandidateModels, type JoinedCatalogRows, type SharedModelsDevBaseline } from "./model-listing-rows.js";
 import { settleTasks } from "./model-listing-settlement.js";
 import type { ModelsClient } from "./models.js";

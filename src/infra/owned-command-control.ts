@@ -1,7 +1,8 @@
+import type { FileSink } from "bun"
+
 import { decodeSupervisorAnswer, encodeSupervisorWord, readOutcomeRecord, type CommandAdoption, type CommandHandover } from "./command-handover.js"
 import { connectLines } from "./line-channel.js"
 import { Log } from "./log.js"
-import type { OwnedChild, OwnedExitStatus, OwnedProcessBackend } from "./owned-subprocess-backend.js"
 import { emptyContainers, type ManagedContainer, type ProcessIdentity, type TerminationCause } from "./process-container.js"
 import { unsettledEmptyingStreak } from "./process-probe-streak.js"
 import { withDeadline } from "./with-deadline.js"
@@ -20,6 +21,30 @@ const log = Log.create({ service: "owned-command-control" })
  *  as it always did. `unacknowledged`: neither happened within the bound, so
  *  the container is still this side's. */
 type HandoverAcknowledgement = "acknowledged" | "exited" | "unacknowledged"
+
+/** The exit status of an owned container, read once when it settles. */
+export interface OwnedExitStatus {
+  readonly code: number | null
+  readonly signal: NodeJS.Signals | null
+  /** Whose status `code` and `signal` are. `payload`: the supervisor exited
+   *  with its container already empty, so its status is the payload's own,
+   *  which the supervisor re-raises as its own. `supervisor`: the supervisor
+   *  exited while its container still held processes, so it was killed or
+   *  crashed, the launcher ended the rest, and the status is the supervisor's
+   *  own death. A signal that ends the whole container at once empties it
+   *  before the supervisor's exit is seen, so it reads as `payload`. */
+  readonly statusOf: "payload" | "supervisor"
+}
+
+/** The container's streams and exit as this side holds them. */
+export interface OwnedChild {
+  readonly stdin: FileSink | undefined
+  readonly stdout: ReadableStream<Uint8Array> | undefined
+  readonly stderr: ReadableStream<Uint8Array> | undefined
+  /** Settles once the supervisor has exited and its container is proven
+   *  empty, never on the supervisor's exit alone. */
+  readonly exited: Promise<OwnedExitStatus>
+}
 
 /** A container this side controls through its supervisor's channel. */
 export interface ControlledContainer {
@@ -196,11 +221,20 @@ export function endAtOnce(container: ManagedContainer, end: TerminationCause): v
   void emptyContainers([container], 0, Bun.sleep, end)
 }
 
+/** A handed-over command's container as the backend that reaches it
+ *  addresses it. */
+export interface AddressedContainer {
+  /** The container, addressed from outside it. */
+  readonly container: () => ManagedContainer
+  /** Releases whatever the backend still holds for the container. */
+  readonly forget: () => void
+}
+
 /** Reaches a handed-over command's supervisor through the channel it serves.
  *  `identify` reads the adopting guardian's identity on this platform. */
 export async function reachCommand(
   command: HandedOverCommand,
-  backend: Pick<OwnedProcessBackend, "container" | "forget">,
+  addressed: AddressedContainer,
   identify: (pid: number) => ProcessIdentity,
   killGraceMs: number,
 ): Promise<ReachedCommand | undefined> {
@@ -215,7 +249,7 @@ export async function reachCommand(
     stdio: { stdin: undefined, stdout: undefined, stderr: undefined },
     gone: connection.ended,
     async settle() {
-      await emptied({ pid: command.pid, container: backend.container(command) }, killGraceMs, "handed-over command supervisor exited with work left", Bun.sleep)
+      await emptied({ pid: command.pid, container: addressed.container() }, killGraceMs, "handed-over command supervisor exited with work left", Bun.sleep)
       const read = readOutcomeRecord(command.recordPath)
       const outcome = read.kind === "record" ? read.record.outcome : undefined
       // A supervisor that ended without an outcome recorded was killed, so
@@ -230,11 +264,11 @@ export async function reachCommand(
     // supervisor's end of its container, retried until the container is empty.
     stop: (end) => {
       connection.say(encodeSupervisorWord({ kind: "stop" }))
-      if (end !== undefined) endAtOnce(backend.container(command), end)
+      if (end !== undefined) endAtOnce(addressed.container(), end)
     },
     letGo() {
       connection.close()
-      backend.forget(command)
+      addressed.forget()
     },
   })
   return {
