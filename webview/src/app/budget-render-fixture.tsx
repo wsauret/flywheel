@@ -16,7 +16,7 @@ import type { PlacementLabels, ScreenStack } from "./screen-stack.js"
 import { createCommandPanel } from "./command-panel.js"
 import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
 import { SessionList } from "./session-list.js"
-import { StatusSheet } from "./sheets/status-sheet.js"
+import { StatusSheet } from "./sheets/workspace/status-sheet.js"
 import { Toolbar } from "./toolbar.js"
 
 /** Every module domain with no view landed, as the real monitors read

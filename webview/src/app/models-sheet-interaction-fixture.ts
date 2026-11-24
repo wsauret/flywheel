@@ -6,8 +6,8 @@ import { fakeClient, fakePanelSettings, fakeSessionSummary, fakeViewState } from
 import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
 import type { InlineSettingAction } from "../client/settings-actions.js"
 import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
-import { ModelsSheet } from "./sheets/models-sheet.js"
-import { ModelSheet } from "./sheets/model-sheet.js"
+import { ModelsSheet } from "./sheets/models/models-sheet.js"
+import { ModelSheet } from "./sheets/models/model-sheet.js"
 
 const tick = async (): Promise<void> => {
   for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()

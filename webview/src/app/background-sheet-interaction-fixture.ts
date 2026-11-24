@@ -6,7 +6,7 @@ import { ClientExtensionsProvider } from "./client-extensions.js"
 import type { WebModuleClient } from "../web-module-client.js"
 
 import { createElement, insert, nodes, textContent } from "./render-ownership-host-fixture.js"
-import { BackgroundSheet } from "./sheets/background-sheet.js"
+import { BackgroundSheet } from "./sheets/workspace/background-sheet.js"
 import { fakeClient, fakeClientActions, fakeViewState } from "./client-context-fixture.js"
 import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"

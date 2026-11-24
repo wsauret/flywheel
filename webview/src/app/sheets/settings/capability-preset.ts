@@ -1,10 +1,10 @@
-import { actionKey } from "../../client/action-key.js"
-import { describeFailure } from "../../client/failure-message.js"
-import { settingRowKey, type SettingKeys, type SettingOutcome } from "../../client/settings-actions.js"
-import type { ClientContextValue } from "../client-context.js"
-import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
-import { CAPABILITY_PRESET_LABELS, WORKFLOWS_MODE_LABELS, WORKFLOWS_MODES, type CapabilityPresetReading } from "../../../../src/protocol/client/capabilities.js"
-import type { SegmentOption } from "./controls.js"
+import { actionKey } from "../../../client/action-key.js"
+import { describeFailure } from "../../../client/failure-message.js"
+import { settingRowKey, type SettingKeys, type SettingOutcome } from "../../../client/settings-actions.js"
+import type { ClientContextValue } from "../../client-context.js"
+import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js"
+import { CAPABILITY_PRESET_LABELS, WORKFLOWS_MODE_LABELS, WORKFLOWS_MODES, type CapabilityPresetReading } from "../../../../../src/protocol/client/capabilities.js"
+import type { SegmentOption } from "../controls.js"
 
 /** The keys a preset change runs under, as a setting change does: the preset
  *  row, which reads working while any preset is written, and the preset this

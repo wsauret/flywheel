@@ -1,7 +1,7 @@
 import { createMemo, createSignal, Show, type Accessor } from "solid-js"
-import { keyedRows } from "../keyed-rows.js"
+import { keyedRows } from "../../keyed-rows.js"
 
-import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
+import type { BackgroundWorkRow } from "../../../../../src/protocol/background-index-protocol-types.js"
 import {
   backgroundIndexEntries,
   backgroundRowDetail,
@@ -10,13 +10,13 @@ import {
   stopBackgroundRow,
   type BackgroundIndexFilter,
   type BackgroundIndexEntry,
-} from "../../../../src/protocol/client/background-index.js"
-import { actionKey } from "../../client/action-key.js"
-import { useClient } from "../client-context.js"
-import { SheetEmpty, SheetLoading, SheetRow } from "./sheet.js"
+} from "../../../../../src/protocol/client/background-index.js"
+import { actionKey } from "../../../client/action-key.js"
+import { useClient } from "../../client-context.js"
+import { SheetEmpty, SheetLoading, SheetRow } from "../sheet.js"
 import { WorkspaceSurface } from "./workspace-surface.js"
-import { useClientExtensions } from "../client-extensions.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
+import { useClientExtensions } from "../../client-extensions.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
 
 /** The background index of the selected chat, as the terminal's `/bg` modal
  *  lists it: the chat's background commands and every child it started, in

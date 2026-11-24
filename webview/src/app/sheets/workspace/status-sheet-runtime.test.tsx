@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { loadBudgetRenderFixture } from "../budget-render-test-loader.js"
+import { loadBudgetRenderFixture } from "../../budget-render-test-loader.js"
 
 test("Status retains its focused Runtime button and reconnects only while currently eligible", async () => {
   const fixture = await loadBudgetRenderFixture()

@@ -1,10 +1,10 @@
 import { For, Show } from "solid-js"
 
-import { renderSettingEntries, SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
-import { useClient } from "../client-context.js"
+import { renderSettingEntries, SETTING_SECTIONS } from "../../../../../src/protocol/setting-catalog.js"
+import { useClient } from "../../client-context.js"
 import { browserSettingRenderers, createSettingRowState } from "./setting-rows.js"
-import { Sheet, SheetLoading } from "./sheet.js"
-import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
+import { Sheet, SheetLoading } from "../sheet.js"
+import { KERNEL_COMMAND_NAMES } from "../../../../../src/protocol/command-names.js"
 
 /** Every setting, in the setting catalog's sections, edited in place.
  *

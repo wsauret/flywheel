@@ -1,8 +1,8 @@
 import { onCleanup, onMount, Show, type JSX } from "solid-js"
-import { scrollEdges } from "../scroll-edges.js"
-import { Icon, ICONS } from "../icons.js"
-import { Sheet } from "./sheet.js"
-import "../../styles/workspace-panel.css"
+import { scrollEdges } from "../../scroll-edges.js"
+import { Icon, ICONS } from "../../icons.js"
+import { Sheet } from "../sheet.js"
+import "../../../styles/workspace-panel.css"
 
 /** Shares content between a modal sheet and a non-modal, independently scrolling panel. */
 export function WorkspaceSurface(props: {

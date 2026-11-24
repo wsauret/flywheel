@@ -38,7 +38,7 @@ import { createRuntimeConnection } from "../../src/protocol/client/connection.js
 import { installedLauncherPath } from "../../src/protocol/installation.js"
 import { releaseRepository } from "../../scripts/release-contract.js"
 import { describeInstallFailure, installFlywheel } from "../src/runtime/bootstrap-install.js"
-import { nodeSocketLayer } from "../src/runtime/node-socket.js"
+import { nodeSocketLayer } from "../src/runtime/connection/node-socket.js"
 import { probeVersion } from "../src/runtime/probe-version.js"
 import { MINIMUM_RUNTIME_VERSION, resolveRuntime } from "../src/runtime/runtime-resolver.js"
 import { prepareAccountRuntime } from "../src/runtime/supervisor.js"
