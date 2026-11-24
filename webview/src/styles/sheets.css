@@ -136,6 +136,14 @@
   word-break: break-word;
   white-space: pre-line;
 }
+/* The status line of the Restart row reserves two lines, which its
+   longest sentence takes on a 320 px phone, so ready, Restarting,
+   unavailable, and a failure take the same space; a longer failure still
+   shows in full. The automatic-updates line of the Updates row holds its
+   one line before the update view arrives. */
+.sheet-row-auto-update { display: block; min-height: 1lh; }
+.sheet-row-restart { display: block; min-height: 2lh; }
+.sheet-row-restart.tone-warn { color: var(--fw-warning); }
 /* A model row's providers and facts stay on one line, so a phone row holds two lines however many providers serve it. */
 .model-option-detail {
   display: block;

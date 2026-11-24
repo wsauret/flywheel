@@ -19,7 +19,7 @@ import type { PersistentProcessManager } from "../infra/persistent-process-manag
 import { createProcessWatchdog, type ProcessWatchdog } from "../infra/process-watchdog.js"
 import { shutdownSignals } from "../infra/shutdown-signals.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../protocol/runtime-liveness.js"
-import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, type ServeStartRefusal } from "../protocol/serve-handshake.js"
+import { encodeServeStartFailure, encodeServeStatusRecord, ServeStartupFailure, startHeldByHost, type ServeStartRefusal } from "../protocol/serve-handshake.js"
 import { readOrCreateAccountAttachToken } from "../orchestration/app-service/account-attach-token.js"
 import { createAccountProjectRegistry } from "../orchestration/app-service/account-project-registry.js"
 import { createAccountServiceRuntime, type AccountServiceRuntimeOptions } from "../orchestration/app-service/account-service-runtime.js"
@@ -37,7 +37,7 @@ import { installedBuild, processRunningBuild, runningBuildId, runningDisplayBuil
 import { confirmServiceStart, endServiceStart, failServiceStart, type ProbationSchedule, withdrawServiceStart } from "../orchestration/update/service-start.js"
 import { lingerNotice } from "../protocol/client/process-initiation-copy.js"
 import { SERVE_EXIT } from "./serve-contract.js"
-import { nextService, serveExitCode, startNextService, startSuccessorService, type NextService, type ServeStop } from "./serve-next-service.js"
+import { nextService, restartRefusal, serveExitCode, startNextService, startSuccessorService, successorLaunchRefusal, type NextService, type ServeStop } from "./serve-next-service.js"
 import { startAddressVerdict, type PreviousService } from "./serve-address.js"
 import { accountHomeWatch, createRegistrationFollower, createRegistrationRetirement, createSupersededRetirementDecision, rememberAnsweredLoginHome, serveResidency, type ServeResidency } from "./serve-retirement.js"
 import { runtimeWorkerUrl } from "./runtime-launch.js"
@@ -379,6 +379,7 @@ export async function runServe(
       answerCutover: source.cutoverAnswer(retireIfSuperseded, request),
       source,
       retire: () => stopped.resolve("retired"),
+      restartRefusal: () => restartRefusal({ resident: lifetime.resident, startedByManager }, process.platform, () => successorLaunchRefusal(directories)),
       projectIdleGraceMs: projectIdleGraceMs(process.env) ?? (lane === "dev" ? DEV_SERVE_PROJECT_IDLE_GRACE_MS : undefined),
       holds: lifetime,
       loginShellPath,
@@ -518,11 +519,10 @@ export async function runServe(
     for (const [signal, listener] of listeners) process.off(signal, listener)
     return serveExitCode(stop)
   } catch (cause) {
-    // Another process holds a port this start needs, such as a predecessor
-    // still draining on the hub's fixed port: the host's state, not this
-    // build's failure to start. The hub names its port as the refusal.
+    // Another process holds a port this start needs: the host's state, not
+    // this build's failure to start.
     const refusal = cause instanceof ServeStartupFailure ? cause.refusal : undefined
-    if (refusal?.kind === "port-in-use" || (cause instanceof Error && "code" in cause && cause.code === "EADDRINUSE")) withdrawServiceStart()
+    if (startHeldByHost(cause)) withdrawServiceStart()
     endComposition?.("failed")
     endListening?.("failed")
     timeline?.finish("failed", cause)

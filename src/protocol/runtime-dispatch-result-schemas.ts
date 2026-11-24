@@ -66,7 +66,7 @@ const RUNTIME_DISPATCH_RESULT_SCHEMAS = {
   "auth.profile.bind_current_project": RuntimeAuthProfileMutationResultSchema, "auth.profile.unbind_current_project": RuntimeAuthProfileMutationResultSchema,
   "config.mutate": RuntimeConfigMutationResultSchema, "config.reset": RuntimeConfigMutationResultSchema,
   "settings.set_module": MutationResultSchema, "settings.set_modules": MutationResultSchema, "settings.set_workflow_mode": MutationResultSchema,
-  "settings.set_persistent_processes": MutationResultSchema, "settings.set_update_auto_install": MutationResultSchema,
+  "settings.set_persistent_processes": MutationResultSchema, "settings.set_update_auto_install": MutationResultSchema, "service.restart": MutationResultSchema,
   "command.invoke": CommandOutcomeSchema, "command_usage.record": MutationResultSchema,
   "model.save_effort": RuntimeSaveModelEffortResultSchema, "model.reset_assignments": RuntimeResetModelAssignmentsResultSchema,
   "provider_model.set": RuntimeSetProviderModelResultSchema, "provider_models.set_auto_enable": RuntimeSetProviderAutoEnableNewModelsResultSchema,

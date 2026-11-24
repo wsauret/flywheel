@@ -62,6 +62,7 @@ function zeroProjectAccount(prefix: string) {
     retireIfSuperseded: async () => "busy",
     answerCutover: async () => "busy",
     retire: () => {},
+    restartRefusal: () => "nothing would start it",
     recordTrustedAttach: async () => {},
     prepareProject: async () => {},
     loginShellPath: createLoginShellPath(),
