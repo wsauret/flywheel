@@ -1,0 +1,44 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 58,63
+src/orchestration/agent-runtime/tools/sessions/message-session.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/tools/sessions/process.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/agent-runtime/tools/sessions/workflow-targets.ts
+  h_4b47e9e4a8b456 1-8
+src/orchestration/app-service/projections/output/transcript-projection-cache.ts
+  h_4b47e9e4a8b456 28-35
+src/orchestration/session-store/event-adapter.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/conversation/transcript/conversation-block-projection.ts
+  h_4b47e9e4a8b456 33-41
+src/orchestration/workflow-host/workflow-addressing.ts
+  h_4b47e9e4a8b456 2,25-91
+src/protocol/client/host-contract.ts
+  h_4b47e9e4a8b456 7,131-169
+src/protocol/client/workflow-addresses.ts
+  h_4b47e9e4a8b456 4-9,72
+tests/unit/orchestration/workflow-host/workflow-addressing.test.ts
+  h_4b47e9e4a8b456 1-162
+tests/unit/protocol/client/workflow-addresses.test.ts
+  h_4b47e9e4a8b456 2,4,13
+vscode/src/providers/auth-notification-coordinator.test.ts
+  h_4b47e9e4a8b456 7-8
+vscode/src/providers/auth-notification-coordinator.ts
+  h_4b47e9e4a8b456 5
+webview/src/modules/project-notifications/sheet-fixture.ts
+  h_4b47e9e4a8b456 3-4
+webview/src/modules/project-notifications/sheet.tsx
+  h_4b47e9e4a8b456 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bf2712b869487674228a32af82fb7b5a0c3bf376",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
