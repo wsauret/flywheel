@@ -11,7 +11,7 @@ import { persistedDisabledModuleIds } from "../../protocol/module-ids.js";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "./schema.js";
 import { PERSISTED_SETTING_DEFINITIONS, persistedSettingDefinition } from "./setting-definitions.js";
 import { configLines, findFieldIndex, findSectionEnd, patchSemanticAssignment, removeAssignment, removeSection, escapeTomlString, quoteTomlKey, removeSemanticSubtree, replaceAssignment, rootEndIndex, sectionHasKeyLines, upsertSemanticAssignment } from "./config-assignment.js";
-import { installedConfigSections } from "../module-catalog.js";
+import { installedConfigSections } from "./config-section.js";
 import { decodeConfigObject } from "./loader.js";
 
 /** A runtime config write reaches us from a live TUI handler (theme, settings

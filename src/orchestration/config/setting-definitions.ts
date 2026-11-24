@@ -6,7 +6,8 @@ import { CacheRetentionPolicySchema } from "../../infra/llm/provider-options.js"
 import { DEFAULT_BUDGET } from "../../workflows/budget.js";
 import { MODULE_IDS } from "../../protocol/module-ids.js";
 import type { FirstPartyModule } from "../modules.js";
-import { installedConfigSections, installedModules } from "../module-catalog.js";
+import { installedModules } from "../module-catalog.js";
+import { installedConfigSections } from "./config-section.js";
 import { settingCatalogRowFor, type SettingCatalogRow } from "../../protocol/setting-catalog.js";
 import { DEFAULT_WRITE_SYNTAX_THEME_ID, WRITE_SYNTAX_THEME_IDS, WRITE_SYNTAX_THEME_OPTIONS, WriteSyntaxThemeIdSchema } from "../../protocol/write-syntax-theme.js";
 

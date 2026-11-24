@@ -116,7 +116,7 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "webview/src/client/", reason: WIDE },
   {
     lint: "module-cycle",
-    reason: "Cutting the cheapest printed tie (`agent-runtime` uses `module-requirements`) leaves this circle unchanged. Cut `definition-health` -> `definition-catalog`: give the skill health summary the installed definition registry from its composition instead of calling createInstalledDefinitionRegistry.",
+    reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess.",
     key: [
       "flywheel::orchestration::agent-runtime",
       "flywheel::orchestration::app-service",
@@ -130,7 +130,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::orchestration::file-edits",
       "flywheel::orchestration::headless",
       "flywheel::orchestration::migrations",
-      "flywheel::orchestration::module-catalog",
       "flywheel::orchestration::module-requirements",
       "flywheel::orchestration::modules",
       "flywheel::orchestration::runner",

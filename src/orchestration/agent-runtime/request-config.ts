@@ -1,4 +1,4 @@
-import { installedConfigSections } from "../module-catalog.js";
+import { installedConfigSections } from "../config/config-section.js";
 import type { FlywheelConfig } from "../config/schema.js";
 import type { RuntimeConfigSnapshot } from "../config/runtime-config-owner.js";
 import { profileRoleSettings } from "../config/env.js";
