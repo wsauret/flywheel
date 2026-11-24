@@ -69,6 +69,7 @@ const MUTATION_EXPOSURE = {
   "settings.set_workflow_mode": "exposed",
   "settings.set_persistent_processes": "exposed",
   "settings.set_update_auto_install": "exposed",
+  "service.restart": "exposed",
   "model.save_effort": "exposed",
   "model.reset_assignments": "exposed",
   "provider_model.set": "exposed",

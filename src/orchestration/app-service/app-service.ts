@@ -58,6 +58,8 @@ const ACCOUNT_SESSION_DETAIL_ONLY = "Session detail is held through the account 
  *  sends the executor the union of every connection's set on its private
  *  channel (`watchOutput`). */
 const ACCOUNT_OUTPUT_WATCH_ONLY = "Output watches are stated through the account service, never to a project executor"
+/** A restart moves the account service, so only that service answers it. */
+const ACCOUNT_RESTART_ONLY = "A restart is answered by the account service, never by a project executor"
 
 const log = Log.create({ service: "app-service" })
 
@@ -268,6 +270,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       // Updates are account-wide work, so the account service answers them and
       // never forwards them to a project executor (ARCH-PROTOCOL-043).
       case "updateSnapshot": throw new Error(ACCOUNT_UPDATES_ONLY)
+      case "restartReadiness": throw new Error(ACCOUNT_RESTART_ONLY)
       case "moduleSnapshot": return { capabilities: deps.capabilities.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: capabilitiesCursor() }) }
       case "configSnapshot": return { config: deps.config.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: runtimeConfigCursor() }) }
       case "gitAiAttributionSnapshot": return { status: deps.gitAiAttribution.view(), snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: gitAiAttributionCursor() }) }
@@ -393,6 +396,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     if (isSettingsMutation(mutation)) return dispatchSettingsMutation(deps, mutation)
     if (mutation.type === "session_detail.release") throw new Error(ACCOUNT_SESSION_DETAIL_ONLY)
     if (mutation.type === "output.watch") throw new Error(ACCOUNT_OUTPUT_WATCH_ONLY)
+    if (mutation.type === "service.restart") throw new Error(ACCOUNT_RESTART_ONLY)
     // The account sends it once no client follows the session's index.
     if (mutation.type === "background.release") {
       deps.backgroundIndex.release(mutation.sessionId)

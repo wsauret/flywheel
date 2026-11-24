@@ -9,8 +9,8 @@ import {
   isContentOnlyIdentityChange,
   type DefinitionIdentity,
   type DefinitionIdentityMigration,
-  type DefinitionIdentityMismatch,
 } from "./definition-identity.js"
+import type { DefinitionIdentityMismatch } from "../definition-identity-mismatch.js"
 import {
   committedWorkflowEvent,
   parseWorkflowControlFact,

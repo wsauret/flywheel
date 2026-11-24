@@ -24,6 +24,13 @@ import { SCHEDULED_TASK_ARGUMENT } from "../orchestration/app-service/account-se
  *  the successor. */
 export const SERVE_EXIT = { parked: 0, restart: 75 } as const
 
+/** Whether this process's arguments run `serve` to start the account
+ *  service, as a service manager or a client runs it. */
+export function startsServiceProcess(argv: readonly string[]): boolean {
+  const serveAt = argv.indexOf("serve")
+  return serveAt >= 0 && startsService(argv.slice(serveAt + 1))
+}
+
 /** Whether the arguments after `serve` start the account service, as a
  *  service manager or a client runs it, rather than manage its registration
  *  or ask for help. */

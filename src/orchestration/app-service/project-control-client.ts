@@ -2,7 +2,7 @@ import { errorMessage } from "../../infra/error-message.js"
 import { createSessionPlacements } from "../session/session-metadata-store.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import { createOrderedLane } from "../../infra/ordered-lane.js"
-import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeChatDefault, type RuntimeClient, type RuntimeExecutorState, type RuntimeQuery, type RuntimeQueryOptions, type RuntimeQueryResult, type RuntimeServiceState, type SessionCatalogError, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
+import { isActiveActivity, type FrontendEvent, type FrontendMutation, type MutationResult, type RuntimeChatDefault, type RuntimeClient, type RuntimeExecutorState, type RuntimeQuery, type RuntimeQueryOptions, type RuntimeQueryResult, type RuntimeRestartReadiness, type RuntimeServiceState, type SessionCatalogError, type SessionCatalogRow, type SessionRow } from "../../protocol/app-service-types.js"
 import { mergeCatalogRow } from "../../protocol/client/known-totals.js"
 import { withDetailEvidence } from "../../protocol/client/session-controls.js"
 import { sessionCursor, workspaceDomainCursor, type RuntimeSessionViewEntry, type RuntimeSessionViewsResult } from "../../protocol/runtime-ui-protocol-types.js"
@@ -37,10 +37,18 @@ import { gitCursor } from "../../protocol/git-protocol-types.js"
 /** The account's update coordinator, as one project serves it. */
 export type ProjectUpdates = Pick<AccountUpdates, "status" | "setAutoInstall" | "subscribe">
 
-/** What the account service reports about itself, as one project serves it. */
+/** What the account service reports about itself, and the restart a person
+ *  asks of it, as one project serves them. */
 export interface ProjectServiceState {
   readonly state: () => RuntimeServiceState
   subscribe(listener: (state: RuntimeServiceState) => void): () => void
+  /** Whether a restart would bring the service back, as decided now. */
+  readonly restartReadiness: () => RuntimeRestartReadiness
+  /** Asks the service to make way for its successor, as the terminal's
+   *  restart does, and answers once the service accepted the request and
+   *  before it retires. It refuses, stopping nothing, while
+   *  `restartReadiness` is `unavailable` or the request cannot be accepted. */
+  readonly restart: () => Promise<MutationResult>
 }
 
 export interface ProjectControlClientOptions {
@@ -563,6 +571,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       const snapshotPosition = bus.snapshotPosition(runtimeReadAnchor(request.type))
       return { rows: [...rows.values()], activeRuntimeCount: [...rows.values()].filter((row) => isActiveActivity(row.activity)).length, errors, snapshotPosition, projectRoot: options.directories.projectRoot, runtimeVersion: options.runtimeVersion, runtimeBuildId: options.runtimeBuildId, chatDefault: options.chatDefault(), executor: options.executorState(), service: options.service.state() }
     }
+    if (request.type === "restartReadiness") return options.service.restartReadiness()
     if (request.type === "updateSnapshot") {
       return { snapshotPosition: bus.snapshotPosition({ kind: "cursor", cursor: updatesCursor() }), update: options.updates.status() }
     }
@@ -647,6 +656,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     if (command.type === "session.activate") return activate(command, connection)
     if (options.accountModules?.owns(command)) return options.accountModules.mutate(command)
     if (command.type === "settings.set_update_auto_install") return settingsWriteResult(await options.updates.setAutoInstall(command.expected, command.value))
+    if (command.type === "service.restart") return options.service.restart()
     if (command.type === "chat.open" && command.initialMessage === undefined) {
       // This inspection precedes every await: later default changes cannot
       // change the profile chosen for this click. The chat records the profile

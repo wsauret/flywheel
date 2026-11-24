@@ -370,6 +370,25 @@ export function refuseSourceSnapshot(snapshot: SourceSnapshotLocation, reason: s
   return answer
 }
 
+/** Refuses the snapshot `snapshot` that a dev service start ran and that
+ *  failed before the service listened, such as checkout source that does not
+ *  build, so its manager's next start runs the snapshot that last opened a
+ *  project (PI-UPDATES-009). Without it the manager would start the same
+ *  broken source again and again, and a client that restarted the service
+ *  from away would never reconnect. The caller decides that the failure is
+ *  the build's own, not the host's, such as a port another program holds.
+ *  Answers true when the next start returns to the proved snapshot. It never
+ *  throws. */
+export function refuseFailedServiceStart(snapshot: SourceSnapshotLocation, cause: string): boolean {
+  const refusal = refuseSourceSnapshot(snapshot, `failed to start: ${cause}`)
+  if (refusal.kind !== "returned") {
+    log.warn("the dev service failed to start and stays on its source", { digest: snapshot.digest, refusal: refusal.kind, reason: refusal.reason })
+    return false
+  }
+  log.info("the dev service failed to start, so its snapshot is refused and the next start runs the proved snapshot", { refused: snapshot.digest, proved: refusal.proved })
+  return true
+}
+
 /** The snapshots this process holds, which it releases as it exits. */
 const holds: Array<{ readonly checkout: string; readonly hold: SharedHold }> = []
 
