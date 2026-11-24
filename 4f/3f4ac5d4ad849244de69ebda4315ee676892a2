@@ -1,0 +1,36 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 103,117,130-151
+scripts/architecture/build-model.ts
+  h_4b47e9e4a8b456 14-17,23-24,199-224,226-229,233,240-242,299-305,373-422
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 49
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/app-service/project-executor-client.ts
+  h_4b47e9e4a8b456 26
+src/orchestration/app-service/project-executor-protocol.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/app-service/replacement-blockers.ts
+  h_4b47e9e4a8b456 50-74
+src/orchestration/app-service/replacement-owner.ts
+  h_4b47e9e4a8b456 7
+src/protocol/client/session-changes.ts
+  h_4b47e9e4a8b456 13-26
+tests/integration/scripts/check-architecture.test.ts
+  h_4b47e9e4a8b456 30-89,108-115,132-133,135-141,149
+tests/unit/orchestration/app-service/replacement-owner.test.ts
+  h_4b47e9e4a8b456 2,4
+webview/src/app/changes-content.tsx
+  h_4b47e9e4a8b456 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4f3f4ac5d4ad849244de69ebda4315ee676892a2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
