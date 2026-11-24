@@ -10,7 +10,7 @@ import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.
 import type { BudgetView } from "../../protocol/budget-protocol-types.js"
 import type { PendingQuestionView } from "../../protocol/question-protocol-types.js"
 import { noticeText, selectPrimarySessionNotice, sessionNoticeChannel, type SessionNotice } from "../../infra/session-notice.js"
-import { createToastPresenter } from "../utils/toast-presenter.js"
+import { createToastPresenter } from "../context/toast-presenter.js"
 import type { RuntimeChatDefault, SessionCatalogError, SessionCatalogRow, SessionInputMode, SessionRow, AttachedRuntimeClient, RuntimeClient, RuntimeHealth, RuntimeStartupStatus } from "../../protocol/app-service-types.js"
 import type { RoleAssignmentView } from "../../protocol/role-protocol-types.js"
 import type { ActiveBackgroundCommandView, StatusView } from "../../protocol/status-protocol-types.js"

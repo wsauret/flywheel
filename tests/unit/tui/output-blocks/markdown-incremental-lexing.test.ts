@@ -5,7 +5,7 @@ import { configureMarkdownLexer, plainOf } from "../../../../src/tui/output-bloc
 import { foldTokensToSegments, lexMarkdown, renderToLineModel, TEXT_SEGMENT_LINES, type MarkdownSegment } from "../../../../src/tui/output-blocks/markdown/line-model.js"
 import { createStreamingSegments } from "../../../../src/tui/output-blocks/markdown/streaming-line-model.js"
 import type { MarkdownStyles, StyleSpec } from "../../../../src/tui/output-blocks/markdown/markdown-styles.js"
-import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/utils/text-attributes.js"
+import { BOLD, ITALIC, UNDERLINE } from "../../../../src/tui/text-attributes.js"
 
 const style: StyleSpec = { attr: 0 }
 const linkColor = RGBA.fromInts(30, 140, 220, 255)

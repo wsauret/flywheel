@@ -2,7 +2,7 @@
 
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
-import { BOLD } from "@tui/utils/text-attributes"
+import { BOLD } from "@tui/text-attributes"
 import { createEffect, createMemo, createSignal, For, type JSX, Match, on, onCleanup, Show, Switch } from "solid-js"
 import type { Action, ModalSelectOption, FilteredResult, FlatRow } from "./modal-select-types.js"
 import { ModalFooter } from "./modal-footer.js"

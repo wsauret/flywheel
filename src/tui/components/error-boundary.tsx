@@ -1,12 +1,12 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { BOLD } from "@tui/utils/text-attributes"
+import { BOLD } from "@tui/text-attributes"
 import { createSignal, For, Show } from "solid-js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
 import type { TuiErrorReport, TuiErrorReportProps } from "../tui-module.js"
 import { Button } from "./button.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 
 interface ErrorComponentProps {
   error: Error

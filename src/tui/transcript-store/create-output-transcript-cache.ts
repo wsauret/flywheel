@@ -10,7 +10,7 @@ import { createTranscriptStore, type TranscriptChange, type TranscriptStore } fr
 import type { BlockReplacement, TranscriptView } from "../../protocol/client/transcript-view.js"
 import type { HydratedOutputBlockBody } from "../../protocol/transcript-protocol-types.js"
 import { estimateAppendedBlockRows, estimateFrontendOutputBlockRows, heightEstimatesFromBlocks } from "./output-height-estimates.js"
-import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
+import { RESIDENT_BLOCK_BUDGET, type LoadDirection, type LoadPageResult, type OutputTranscriptCache, type OutputTranscriptView, type TranscriptFreshness, type TranscriptSnapshot, type TranscriptStatus } from "./output-transcript-cache-types.js"
 import { transcriptIdentitySample } from "../../protocol/client/transcript-delta.js"
 import { adoptedBlocks, type ChatSubmissionWindow } from "../../protocol/client/chat-submissions.js"
 import { createResidency, type ResidentLanes } from "../../protocol/client/residency.js"
@@ -580,17 +580,84 @@ export function createOutputTranscriptCache(deps: {
     throw error
   }
 
+  const jumpToLatest = (id: string): Promise<void> => residents.get(id) ? ensureResident(id).store.jumpToLatest() : Promise.resolve()
+
+  /** The per-session operations the render boundary calls, bound to whichever
+   *  session `sessionId` names when each call runs. While no session is
+   *  shown, reads answer nothing and writes do nothing, except
+   *  `reportProjectionFailure`, which still logs and rethrows the error. */
+  function bindSession(sessionId: () => string | undefined): OutputTranscriptView {
+    return {
+      protectReader: (reader) => {
+        const id = untrack(sessionId)
+        const resident = id ? residents.get(id) : undefined
+        if (resident) resident.reader = reader
+      },
+      mutationEvidence: () => {
+        const id = sessionId()
+        return id && cache[id] !== undefined ? residents.get(id)?.store.mutationEvidence : undefined
+      },
+      reportProjectionFailure: (error) => reportProjectionFailure(untrack(sessionId) ?? "", error),
+      visibleRange: () => {
+        const id = sessionId()
+        return id ? snapshotOf(id) : undefined
+      },
+      visibleMessageCount: () => {
+        const id = sessionId()
+        return id ? visibleCounts[id] ?? residents.get(id)?.store.view.visibleMessageCount ?? 0 : 0
+      },
+      jumpToLatest: () => {
+        const id = sessionId()
+        return id ? jumpToLatest(id) : Promise.resolve()
+      },
+      freshness: () => {
+        const id = sessionId()
+        return id ? freshness[id] : undefined
+      },
+      // An empty window that leaves the viewport short is read again from the tail.
+      hydrateAnchor: () => {
+        const id = sessionId()
+        return id ? jumpToLatest(id) : Promise.resolve()
+      },
+      loadAround: (entryId) => {
+        const id = sessionId()
+        return id && residents.get(id) ? ensureResident(id).store.openAround(entryId).then(() => undefined) : Promise.resolve()
+      },
+      takeEstimateUpdates: () => {
+        const id = untrack(sessionId)
+        const existing = id ? residents.get(id) : undefined
+        if (!existing || existing.estimateUpdates.size === 0) return []
+        const updates = [...existing.estimateUpdates.entries()]
+        existing.estimateUpdates.clear()
+        return updates
+      },
+      evictBefore: (blockIndex) => {
+        const id = untrack(sessionId)
+        if (id) residents.get(id)?.store.dropBefore(blockIndex)
+      },
+      setDisclosure: (key, expanded) => {
+        const id = sessionId()
+        if (id) setDisclosed(childStateKey(id, key), expanded)
+      },
+      disclosure: (key) => {
+        const id = sessionId()
+        return id ? disclosed[childStateKey(id, key)] : undefined
+      },
+      hydrateBlockBody: (blockId) => {
+        const id = sessionId()
+        const existing = id ? residents.get(id) : undefined
+        if (!existing) return
+        const block = existing.store.view.blocks.find((candidate) => (candidate.kind === "tool" || candidate.kind === "system" || candidate.kind === "userMessage") && blockIdentity(candidate) === blockId)
+        if (block !== undefined && "id" in block) void existing.store.hydrateBody(block.id)
+      },
+    }
+  }
+
   return {
-    protectReader: (id, reader) => { const resident = residents.get(id); if (resident) resident.reader = reader },
     isCurrent: (id) => {
       void freshness[id]?.revision
       return residents.get(id)?.store.windowCurrent ?? false
     },
-    mutationEvidence: (id) => {
-      const snapshot = cache[id]
-      return snapshot === undefined ? undefined : residents.get(id)?.store.mutationEvidence
-    },
-    reportProjectionFailure,
     startKnownEmpty: (id) => { ensureResident(id, true) },
     open: async (id) => {
       const { store } = ensureResident(id)
@@ -601,27 +668,7 @@ export function createOutputTranscriptCache(deps: {
     },
     refresh: (id) => ensureResident(id).store.refresh(),
     residentSessionIds: () => residents.ids(),
-    recoverOutputCursor: (id) => { void residents.get(id)?.store.refresh() },
     loadPage,
-    loadAround: (id, entryId) => residents.get(id) ? ensureResident(id).store.openAround(entryId).then(() => undefined) : Promise.resolve(),
-    // An empty window that leaves the viewport short is read again from the tail.
-    hydrateAnchor: (id) => residents.get(id) ? ensureResident(id).store.jumpToLatest() : Promise.resolve(),
-    jumpToLatest: (id) => residents.get(id) ? ensureResident(id).store.jumpToLatest() : Promise.resolve(),
-    hydrateBlockBody: (id, blockId) => {
-      const existing = residents.get(id)
-      if (!existing) return Promise.resolve()
-      const block = existing.store.view.blocks.find((candidate) => (candidate.kind === "tool" || candidate.kind === "system" || candidate.kind === "userMessage") && blockIdentity(candidate) === blockId)
-      return block !== undefined && "id" in block ? existing.store.hydrateBody(block.id) : Promise.resolve()
-    },
-    takeEstimateUpdates: (id) => {
-      const existing = residents.get(id)
-      if (!existing || existing.estimateUpdates.size === 0) return []
-      const updates = [...existing.estimateUpdates.entries()]
-      existing.estimateUpdates.clear()
-      return updates
-    },
-    evictBefore: (id, blockIndex) => { residents.get(id)?.store.dropBefore(blockIndex) },
-
     retain: (id) => {
       const handle = residents.retain(id)
       if (deferred.delete(id)) {
@@ -630,17 +677,15 @@ export function createOutputTranscriptCache(deps: {
       }
       return handle
     },
+    bindSession,
     visibleRange: snapshotOf,
-    visibleMessageCount: (id) => visibleCounts[id] ?? residents.get(id)?.store.view.visibleMessageCount ?? 0,
     streamingOutputChars: (id) => streamedChars[id],
-    freshness: (id) => freshness[id],
     historyMetadata: (id) => {
       const consistent = snapshotOf(id)
       if (!consistent) return undefined
       return { consistencyToken: consistent.source.kind === "historical" ? consistent.source.consistencyToken : null, totalBlocks: consistent.totalBlocks, window: consistent.window }
     },
     setDisclosure: (id, key, expanded) => setDisclosed(childStateKey(id, key), expanded),
-    disclosure: (id, key) => disclosed[childStateKey(id, key)],
     disclosures: (id) => {
       const prefix = childStateKey(id, "")
       return Object.fromEntries(Object.entries(disclosed).flatMap(([key, expanded]) => key.startsWith(prefix) ? [[key.slice(prefix.length), expanded]] : []))
@@ -654,4 +699,3 @@ export function createOutputTranscriptCache(deps: {
     ensure: (id) => { ensureResident(id) },
   }
 }
-

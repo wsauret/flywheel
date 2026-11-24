@@ -11,7 +11,7 @@ import { heightEstimatesFromBlocks } from "../../../src/tui/transcript-store/out
 import { wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { renderScheduledFrame } from "./_output-window-transcript.js"
-import { BOLD } from "../../../src/tui/utils/text-attributes.js"
+import { BOLD } from "../../../src/tui/text-attributes.js"
 
 type TranscriptWindow = TranscriptSnapshot["window"]
 

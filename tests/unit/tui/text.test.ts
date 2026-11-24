@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import { BoxRenderable, TextRenderable, fg } from "@opentui/core"
 import { testRender } from "@opentui/solid"
-import { displayWidth, fitChunks, shareWidth, truncateToWidth, useWrappedLineCount } from "../../../../src/tui/utils/text"
+import { displayWidth, fitChunks, shareWidth, truncateToWidth, useWrappedLineCount } from "../../../src/tui/text"
 
 describe("wrappedLineCount", () => {
   for (const wrapMode of ["word", undefined] as const) {

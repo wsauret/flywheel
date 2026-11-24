@@ -3,13 +3,13 @@ import { testRender } from "@opentui/solid"
 import { TextRenderable, type Renderable, type RGBA } from "@opentui/core"
 import { createSignal, type Accessor } from "solid-js"
 import { createComponent } from "solid-js/web"
-import { displayWidth } from "../../../src/tui/utils/text.js"
+import { displayWidth } from "../../../src/tui/text.js"
 import type { ModuleRow } from "../../../src/protocol/protocol-module.js"
 import type { RuntimeIdentity } from "../../../src/protocol/client/runtime-identity.js"
 import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
 import flywheelTheme from "../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import { resolveTheme } from "../../../src/tui/context/theme/resolve.js"
-import { BOLD, UNDERLINE } from "../../../src/tui/utils/text-attributes.js"
+import { BOLD, UNDERLINE } from "../../../src/tui/text-attributes.js"
 
 const theme = resolveTheme(flywheelTheme, "dark")
 

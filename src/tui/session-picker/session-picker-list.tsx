@@ -3,7 +3,7 @@
 import type { ScrollBoxRenderable } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useTickPool } from "@tui/context/tick-pool-context"
-import { BOLD } from "@tui/utils/text-attributes.js"
+import { BOLD } from "@tui/text-attributes.js"
 import { createMemo, createSignal, Show, type JSX } from "solid-js"
 import { useListSelectionReveal } from "../hooks/use-list-selection-reveal.js"
 import { Key } from "@solid-primitives/keyed"

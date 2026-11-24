@@ -402,6 +402,36 @@ describe("session detail publisher", () => {
     expect(p.reads).toEqual(["chat", "child", "chat", "child"])
   })
 
+  test("a park on background work and a status that goes away are edges of what Interrupt can cut; a session's first status is not", async () => {
+    const p = publisher()
+    const sequencer = createRuntimeUiPatchSequencer()
+    const report = (status: StatusView | undefined) =>
+      p.details.apply(sequencer.publish({ cursor: statusCursor("child"), payload: status === undefined ? { kind: "status.removed" } : { kind: "status.updated", status } }))
+    const waiting = { ...RESTING, activity: "idle", waitingOnBackgroundWork: true } as const
+    const settled = { ...RESTING, activity: "idle" } as const
+    p.titles.set("child", "Child")
+    await p.details.snapshot(undefined, ["child"], async () => {})
+    p.reads.length = 0
+    report(waiting)
+    await p.settled()
+    expect(p.reads).toEqual([])
+    report({ ...RESTING, activity: "generating" })
+    await p.settled()
+    expect(p.reads).toEqual([])
+    report(settled)
+    report(settled)
+    await p.settled()
+    expect(p.reads).toEqual(["child"])
+    report(undefined)
+    report(undefined)
+    await p.settled()
+    expect(p.reads).toEqual(["child", "child"])
+    // A status after one that went away is a new baseline.
+    report(waiting)
+    await p.settled()
+    expect(p.reads).toEqual(["child", "child"])
+  })
+
   test("a held child's provider retry with no activity edge reads it once at each connection edge", async () => {
     const p = publisher()
     const sequencer = createRuntimeUiPatchSequencer()

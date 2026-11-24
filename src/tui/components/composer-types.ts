@@ -7,7 +7,7 @@ import type { AgentInputAnswer } from "../../protocol/question-protocol-types.js
 import type { LocalRecall } from "../../protocol/client/chat-submissions.js"
 import type { DraftCache } from "../hooks/create-draft-cache.js"
 import type { PromptHistoryHook } from "../hooks/create-composer-history.js"
-import type { Clipboard } from "../utils/clipboard.js"
+import type { Clipboard } from "../clipboard.js"
 import type { ComposerPopupKeySlot } from "../hooks/create-composer-popup-key-slot.js"
 import type { ComposerAttachSlot } from "../hooks/create-composer-attach-slot.js"
 import type { SpinnerStatusSource } from "../hooks/create-spinner-status.js"

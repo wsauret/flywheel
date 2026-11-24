@@ -1,6 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import type { OutputTranscriptCache } from "../transcript-store/output-transcript-cache-types.js"
+import type { TranscriptPaging } from "../transcript-store/output-transcript-cache-types.js"
 
 const log = Log.create({ service: "background-hydration" })
 
@@ -25,7 +25,7 @@ const log = Log.create({ service: "background-hydration" })
  *  loop simply stops - a later re-open re-triggers it - and the user can still
  *  page older history on demand once the connection recovers. */
 export function createBackgroundHydration(deps: {
-  readonly transcriptCache: Pick<OutputTranscriptCache, "loadPage" | "historyMetadata">
+  readonly transcriptCache: TranscriptPaging
   readonly residentBlockBudget: number
 }) {
   const draining = new Set<string>()

@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { BOLD } from "@tui/utils/text-attributes"
+import { BOLD } from "@tui/text-attributes"
 import { For, type JSX } from "solid-js"
 
 /** A headed block. The blank line sits before the heading so headings never float away from their content. */

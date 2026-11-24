@@ -1,5 +1,5 @@
 import type { TextChunk } from "@opentui/core"
-import { displayWidth } from "@tui/utils/text.js"
+import { displayWidth } from "@tui/text.js"
 
 // Manual word-wrap for a tool row that keeps the whole row a single selectable
 // <text> element (copy/paste reconstructs from one renderable) while giving

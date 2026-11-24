@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { createToastPresenter } from "../../../../src/tui/utils/toast-presenter.js"
+import { createToastPresenter } from "../../../../src/tui/context/toast-presenter.js"
 
 interface ShownToast {
   message: string

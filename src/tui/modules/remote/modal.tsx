@@ -9,7 +9,7 @@ import { MODAL_FRAME_HORIZONTAL_INSET, ModalFrame } from "@tui/components/modal-
 import { ModalFooter } from "@tui/components/modal-footer"
 import { ControlledTextField } from "@tui/components/controlled-text-field"
 import { QrCode } from "@tui/components/qr-code"
-import { displayWidth, useWrappedLineCount } from "@tui/utils/text"
+import { displayWidth, useWrappedLineCount } from "@tui/text"
 import { qrCodeHeight, qrCodeWidth } from "../../../infra/qr-code.js"
 import { createEffect, createMemo, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"

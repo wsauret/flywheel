@@ -1,8 +1,8 @@
 import type { MouseEvent, Renderable } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { usePreserveScroll } from "@tui/context/scroll-preserve.js"
-import { hitsArea, hitsDrawnContent } from "@tui/utils/content-hit.js"
-import { hasSelectedCells } from "@tui/utils/selection.js"
+import { hitsArea, hitsDrawnContent } from "@tui/content-hit.js"
+import { hasSelectedCells } from "@tui/selection.js"
 import { useHoverHighlight, type HoverHandlers, type HoverHighlightHook } from "./use-hover-highlight.js"
 
 /** The pointer handlers of a click toggle, spread onto its box. A site that

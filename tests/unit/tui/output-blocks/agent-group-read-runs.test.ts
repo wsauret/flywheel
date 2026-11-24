@@ -7,7 +7,7 @@ import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-
 import { createSignal } from "solid-js"
 import { resolvedTheme, sameColor, spanColor } from "../components/prompt-border-fixtures.js"
 import { workflowCard as foldWorkflowCard } from "../../../../src/protocol/client/workflow-card.js"
-import { displayWidth } from "../../../../src/tui/utils/text.js"
+import { displayWidth } from "../../../../src/tui/text.js"
 import type { RowProcessControls } from "../../../../src/tui/output-blocks/stop-affordance.js"
 import { FANOUT, FANOUT_FAILED, timedFanoutOutline, type FanoutFixture } from "../../protocol/client/_workflow-card-fixtures.js"
 import { mutationEvidenceFixture } from "./_mutation-evidence-fixture.js"
