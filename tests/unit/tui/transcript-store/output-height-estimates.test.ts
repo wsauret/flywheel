@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { FrontendOutputBlock } from "../../../../src/protocol/app-service-types.js"
-import { DEFAULT_ESTIMATE, estimateFrontendOutputBlockRows } from "../../../../src/tui/hooks/output-height-estimates.js"
+import { DEFAULT_ESTIMATE, estimateFrontendOutputBlockRows } from "../../../../src/tui/transcript-store/output-height-estimates.js"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 
 function textBlock(content: string): FrontendOutputBlock {

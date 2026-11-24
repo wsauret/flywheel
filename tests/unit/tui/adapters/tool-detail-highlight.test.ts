@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { RGBA, type TextChunk } from "@opentui/core"
 import { highlightExecuteInputs, highlightToolDetail, linkifyChunks } from "@tui/adapters/tool-detail-highlight.js"
-import { resolveTheme, type TuiTheme } from "@tui/context/theme/resolve.js"
+import { resolveTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import flywheelTheme from "@tui/context/theme/flywheel.json" with { type: "json" }
 
 const theme: TuiTheme = {

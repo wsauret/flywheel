@@ -4,7 +4,7 @@ import type { UserMessageBlock as UserMessageBlockType, UserMessageImage } from 
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
 import { VerticalBarBorder } from "@tui/utils/border"
-import { bindSelectableStyledTextContent, bindStyledTextContent } from "@tui/utils/reactive-text.js"
+import { bindSelectableStyledTextContent, bindStyledTextContent } from "@tui/context/reactive-text.js"
 import { ITALIC } from "@tui/utils/text-attributes"
 import { useBodyToggle, useHeaderToggle, useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
 import { createContext, createEffect, createMemo, createSignal, For, on, Show, useContext, type Accessor } from "solid-js"

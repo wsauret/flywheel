@@ -2,8 +2,26 @@ import type { QuestionBlock, QuestionChoice, QuestionEntry } from "@infra/output
 import { formatQuestionChoiceAnswer, type AgentInputAnswer } from "../protocol/question-protocol-types.js"
 import { type Accessor, batch, createEffect, createSignal, on } from "solid-js"
 import { questionSkip } from "../protocol/client/question-settlement.js"
-import type { QuestionDraftNamespace, QuestionFormDraft } from "./hooks/create-draft-cache.js"
 import { createControlledTextEditor, MULTILINE_TEXT_ENTRY_POLICY, type TextEditorPresentation, type TextEntryVisualLine } from "./keymap/text-entry.js"
+
+/** The unsent input of one question form, which the draft cache keeps per
+ *  session and tool call. */
+export interface QuestionFormDraft {
+  readonly tab: number
+  readonly cursor: number
+  readonly answers: readonly {
+    readonly picked: readonly number[]
+    readonly freeformPicked: boolean
+  }[]
+  readonly editorText: readonly (readonly string[])[]
+}
+
+/** The draft storage a question form reads and writes. */
+export interface QuestionFormDrafts {
+  get(sessionId: string, toolUseId: string): QuestionFormDraft | undefined
+  set(sessionId: string, toolUseId: string, draft: QuestionFormDraft): void
+  clear(sessionId: string, toolUseId: string): void
+}
 
 interface QuestionAnswers { [question: string]: AgentInputAnswer }
 interface QuestionFormOptions {
@@ -13,7 +31,7 @@ interface QuestionFormOptions {
    *  when it sends an answer or a cancel, and writes it again when the send
    *  is refused, so a question that leaves holds a draft only when this
    *  client did not settle it. */
-  drafts?: QuestionDraftNamespace
+  drafts?: QuestionFormDrafts
   onAnswer: (answers: QuestionAnswers) => boolean | void | Promise<boolean | void>
   onCancel: () => boolean | void | Promise<boolean | void>
 }

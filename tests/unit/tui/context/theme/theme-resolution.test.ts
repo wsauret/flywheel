@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test"
 import { RGBA } from "@opentui/core"
-import { resolveTheme, resolveStyles, type ThemeJson, type TuiTheme } from "../../../../../src/tui/context/theme/resolve"
+import { resolveTheme, resolveStyles, type ThemeJson } from "../../../../../src/tui/context/theme/resolve"
+import type { TuiTheme } from "../../../../../src/tui/context/theme/tui-theme"
 import flywheelTheme from "../../../../../src/tui/context/theme/flywheel.json" with { type: "json" }
 import twilightTheme from "../../../../../src/tui/context/theme/twilight.json" with { type: "json" }
 import charcoalTheme from "../../../../../src/tui/context/theme/charcoal.json" with { type: "json" }

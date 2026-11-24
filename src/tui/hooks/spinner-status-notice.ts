@@ -1,14 +1,6 @@
 import { capacityWaitReasonText, type SessionNotice } from "../../infra/session-notice.js"
 import { formatDateTime } from "../../protocol/client/format.js"
-import type { SpinnerStatus } from "./spinner-status-animation.js"
-
-interface MetadataSegment {
-  text: string
-  colored: boolean
-}
-
-const STATUS_PADDING = 6
-const METADATA_SEPARATOR_WIDTH = " ── ".length
+import { composeSegments, type MetadataSegment, type SpinnerStatus } from "./spinner-status-model.js"
 
 export function noticeSpinnerStatus(notice: SessionNotice, width: number, nowMs = Date.now()): SpinnerStatus {
   // Only status-channel notices reach this line (shell-state routes pinned
@@ -44,21 +36,6 @@ export function noticeSpinnerStatus(notice: SessionNotice, width: number, nowMs 
     intensity: notice.severity === "error" ? 1 : notice.severity === "warning" ? 0.5 : 0,
     indicator: "spinner",
   }
-}
-
-function composeSegments(verb: string, segments: MetadataSegment[], width: number): MetadataSegment[] {
-  const budget = width - verb.length - STATUS_PADDING
-  if (budget <= 0) return []
-
-  const result: MetadataSegment[] = []
-  let totalLen = 0
-  for (const seg of segments) {
-    const addedLen = totalLen > 0 ? METADATA_SEPARATOR_WIDTH + seg.text.length : seg.text.length
-    if (totalLen + addedLen > budget) break
-    result.push(seg)
-    totalLen += addedLen
-  }
-  return result
 }
 
 function formatNoticeDelay(delayMs: number): string {

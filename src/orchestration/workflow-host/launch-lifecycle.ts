@@ -1,6 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
-import { readTerminalHandoff, readWorkflowCompletionEvidence, workflowCompletionContent, workflowStopContent } from "../../workflows/output-contract/workflow-completion.js"
+import { readTerminalHandoff, readWorkflowCompletionEvidence, workflowCompletionContent, workflowStopContent } from "../../workflows/workflow-completion.js"
 import type { BackgroundKillSource, BackgroundWorkResult, BackgroundWorkTracking, ChildInterruption } from "../agent-runtime/background-work.js"
 import { parentHost } from "../session/live-session-control.js"
 import { textField } from "../../infra/output/json-field.js"

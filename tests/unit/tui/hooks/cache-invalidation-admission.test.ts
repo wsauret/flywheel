@@ -3,7 +3,8 @@ import { createRoot } from "solid-js"
 import type { AttachedRuntimeClient, FrontendEvent, RuntimeQuery } from "../../../../src/protocol/app-service-types.js"
 import type { RuntimeCursorIdentity } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createAuthStatusCache } from "../../../../src/tui/hooks/create-auth-status-cache.js"
-import { createRuntimeConfigCache, createShellState } from "../../../../src/tui/hooks/shell-state.js"
+import { createRuntimeConfigCache } from "../../../../src/tui/hooks/create-runtime-config-cache.js"
+import { createShellState } from "../../../../src/tui/hooks/shell-state.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 
 const workspaceBindings = [

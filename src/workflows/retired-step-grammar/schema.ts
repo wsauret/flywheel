@@ -305,7 +305,7 @@ const WorkflowWhileNodeSchema = Schema.Struct({
 // `do` step one optional follow-up runs: `then` names an ordinary step, and
 // `reassess` names the step that reassesses the remaining items. A step in a
 // `reassess` slot declares no output: the VM owns its contract
-// (vm/reassessment-contract.ts), and its proposal can drop, replace, or
+// (reassessment-contract.ts), and its proposal can drop, replace, or
 // insert items. No `maxIterations`: a for-loop is bounded by the array
 // length, with the per-session insert guardrail as the backstop when
 // reassessment grows the array.

@@ -1,6 +1,6 @@
 import type { ToolAction } from "@infra/workflow-types.js"
 import { fg as stFg, type TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import { UNDERLINE } from "@tui/utils/text-attributes.js"
 import { highlightShellCommand } from "./shell-command-highlight.js"
 

@@ -2,7 +2,7 @@
 
 import { StyledText, fg as stFg, link as stLink, underline as stUnderline, type ColorInput, type TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/context/theme"
-import type { TuiTheme } from "@tui/context/theme/resolve"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { useHoverHighlight } from "@tui/hooks/use-hover-highlight"
 import { MODAL_FRAME_HORIZONTAL_INSET, ModalFrame } from "@tui/components/modal-frame"

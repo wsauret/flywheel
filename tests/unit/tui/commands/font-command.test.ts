@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createLauncherScope } from "../../../../src/infra/process-supervisor.js"
 import { handleFontCommand } from "../../../../src/tui/commands/command-definitions.js"
-import type { RuntimeConfigCache } from "../../../../src/tui/hooks/shell-state.js"
+import type { RuntimeConfigCache } from "../../../../src/tui/hooks/create-runtime-config-cache.js"
 import { configValues } from "../modals/_settings-modal-fixtures.js"
 import { runtimeDispatch, type DispatchAnswer } from "../../../helpers/runtime-dispatch.js"
 

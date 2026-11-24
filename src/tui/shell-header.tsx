@@ -2,7 +2,7 @@
 import { useTerminalDimensions } from "@opentui/solid"
 import { createMemo, Show } from "solid-js"
 import { useTheme } from "@tui/context/theme"
-import { bindStyledTextContent } from "@tui/utils/reactive-text"
+import { bindStyledTextContent } from "@tui/context/reactive-text"
 import { ContextControl } from "./components/context-control.js"
 import { TabsBar } from "./components/tabs-bar.js"
 import { createHeaderDisplay } from "./hooks/create-header-display.js"

@@ -1,4 +1,4 @@
-import type { AnimationInput, AnimationState } from "./spinner-status-animation.js"
+import type { AnimationInput, AnimationState } from "./spinner-status-model.js"
 
 export const THINKING_RAMP_START_MS = 10_000
 const THINKING_RAMP_END_MS = 20_000

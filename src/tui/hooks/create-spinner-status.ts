@@ -5,8 +5,8 @@ import type { ConnectionState, StreamPhase } from "../../infra/output-blocks.js"
 import type { SessionNotice } from "../../infra/session-notice.js"
 import type { StatusView } from "../../protocol/status-protocol-types.js"
 import { replyWaitLabel } from "../../protocol/client/session-controls.js"
+import type { AnimationState } from "./spinner-status-model.js"
 import {
-  type AnimationState,
   advanceAnimation,
   buildStatus,
   initialAnimationState,

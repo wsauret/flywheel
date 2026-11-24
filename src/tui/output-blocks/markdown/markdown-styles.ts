@@ -1,5 +1,5 @@
 import type { TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import { BOLD, ITALIC, UNDERLINE } from "@tui/utils/text-attributes.js"
 
 /**

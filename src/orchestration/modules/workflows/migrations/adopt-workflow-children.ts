@@ -38,7 +38,7 @@ import { interruptedTurnMessage, turnEndEntryId } from "../../../session/convers
 import { replayWorkflowControl, resumesFailedAgents, workflowInsertionRefusalReason } from "../../../../workflows/vm/fact-fold.js"
 import { proposeFollowUpTransfer } from "../../../../workflows/vm/transition.js"
 import type { CommittedWorkflowControl } from "../../../../workflows/vm/committed-control.js"
-import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/output-contract/workflow-completion.js"
+import { failedAgents, agentResults, terminalHandoff, workflowCompletionContent, workflowStopContent } from "../../../../workflows/workflow-completion.js"
 import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
 import type { WorkflowView } from "../../../../workflows/view/types.js"
 import { workflowFamilyBoundary } from "../../../../workflows/workflow-root.js"

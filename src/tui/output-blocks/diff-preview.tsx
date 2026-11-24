@@ -20,7 +20,7 @@ import { type Accessor, batch, createEffect, createMemo, For, Index, Match, Show
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import { useUnifiedToggle } from "@tui/hooks/use-body-toggle.js"
 import { BlankVerticalBarBorder, VerticalBarBorder } from "@tui/utils/border.js"
-import { bindSelectableStyledTextContent } from "@tui/utils/reactive-text.js"
+import { bindSelectableStyledTextContent } from "@tui/context/reactive-text.js"
 import { Button } from "../components/button.js"
 import { OVERSCAN_ROWS } from "../output-window/output-window-scroll.js"
 import { PreviewViewport } from "./preview-viewport.js"

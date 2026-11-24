@@ -1,9 +1,28 @@
-import type { ComposerDraft, ComposerDraftAttachment, ComposerDraftPaste, DraftCache } from "./create-draft-cache.js"
-import { attachmentMarker, nextAttachmentOrdinal } from "../../protocol/client/attachments.js"
-import { normalizeChatInput, type ChatInputLike } from "../../infra/chat-input.js"
+import type { ChatAttachment } from "../../infra/chat-input.js"
+
+export interface ComposerDraftPaste {
+  readonly start: number
+  readonly end: number
+  readonly text: string
+}
+
+export type ComposerDraftAttachment = ChatAttachment
+
+export interface ComposerDraft {
+  readonly text: string
+  readonly pastes: readonly ComposerDraftPaste[]
+  readonly attachments: readonly ComposerDraftAttachment[]
+  /** Where the caret stood when the draft was written; absent means the end. */
+  readonly caret?: number
+}
 
 /** Every marker the prompt writes: `[Image #3]` or `[File #4 notes.md]`. */
 const MARKER = /\[(Image|File) #(\d+)((?: [^\]]*)?)\]/g
+
+/** Every marker a draft holds: its attachments' markers, then the markers in its text. */
+export function draftMarkers(draft: ComposerDraft): string[] {
+  return [...draft.attachments.map((item) => item.marker), ...[...draft.text.matchAll(MARKER)].map((match) => match[0])]
+}
 
 /** The number inside a marker, or 0 when the marker is not numbered. */
 function markerNumber(marker: string): number {
@@ -16,24 +35,6 @@ function renumbered(marker: string, ordinal: number): string {
   return marker.replace(/#\d+/, `#${ordinal}`)
 }
 
-/** Moves ready and pending attachments together when a new chat adopts an existing session. */
-export function adoptDraftAttachments(
-  cache: DraftCache,
-  from: string,
-  to: string,
-  adoptPending: (from: string, to: string, occupied: readonly string[]) => ReadonlyMap<string, string>,
-): void {
-  const destination = cache.get(to)
-  const source = cache.get(from)
-  const reserved = [...destination.attachments.map((item) => item.marker), ...[...destination.text.matchAll(MARKER)].map((match) => match[0])]
-  const next = nextAttachmentOrdinal(reserved)
-  const occupied = [...reserved, ...source.attachments.map((_, index) => attachmentMarker("image", next + index))]
-  let renamed = source
-  for (const [oldMarker, newMarker] of adoptPending(from, to, occupied)) renamed = replaceDraftMarker(renamed, oldMarker, newMarker)
-  cache.set(from, renamed)
-  cache.adopt(from, to)
-}
-
 /** Combine a recalled draft into the draft that already belongs to its session,
  *  so a recall that settles after the user moved on loses nothing.
  *
@@ -41,7 +42,7 @@ export function adoptDraftAttachments(
  *  ranges keep their offsets. Recalled markers are renumbered above the
  *  current draft's highest marker, in both the text and the attachment metadata. */
 export function mergeComposerDrafts(current: ComposerDraft, recalled: ComposerDraft): ComposerDraft {
-  const highest = Math.max(0, ...current.attachments.map((item) => markerNumber(item.marker)), ...[...current.text.matchAll(MARKER)].map((match) => markerNumber(match[0])))
+  const highest = Math.max(0, ...draftMarkers(current).map(markerNumber))
   const renamed = new Map(recalled.attachments.map((item, index) => [item.marker, renumbered(item.marker, highest + index + 1)]))
 
   // Renumbering can change a marker's width, so every recalled offset moves by
@@ -76,13 +77,6 @@ export function mergeComposerDrafts(current: ComposerDraft, recalled: ComposerDr
     ...recalled.attachments.map((item) => ({ ...item, marker: renamed.get(item.marker) ?? item.marker })),
   ]
   return { text: current.text + separator + recalledText, pastes, attachments }
-}
-
-/** Merges a chat input that left the prompt back into its owner's cached
- *  draft, after anything the person typed there since. */
-export function mergeInputIntoDraft(cache: DraftCache, ownerId: string, input: ChatInputLike): void {
-  const normalized = normalizeChatInput(input)
-  cache.set(ownerId, mergeComposerDrafts(cache.get(ownerId), { text: normalized.text, pastes: [], attachments: normalized.attachments ?? [] }))
 }
 
 /** Replaces one attachment marker while keeping collapsed-paste offsets aligned. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Schema } from "effect";
-import { describeClosureFailure, validateSkillDependencies, validateWorkflowDefinition } from "../../../../src/workflows/definition-validation.js";
+import { validateWorkflowDefinition } from "../../../../src/workflows/definition-validation.js";
+import { describeClosureFailure, validateSkillDependencies } from "../../../../src/workflows/skill-closure.js";
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js";
 import type { SkillRegistryRevision } from "../../../../src/workflows/skill-schema.js";
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js";

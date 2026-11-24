@@ -1,5 +1,5 @@
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
-import type { TuiTheme } from "@tui/context/theme/resolve"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { displayWidth, truncateToWidth } from "../utils/text.js"
 import type { ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort } from "../../protocol/model-assignment-protocol-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"

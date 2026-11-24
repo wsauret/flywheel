@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { createDraftCache, type ComposerDraft } from "../../../../src/tui/hooks/create-draft-cache.js"
+import type { ComposerDraft } from "../../../../src/tui/hooks/composer-draft.js"
+import { createDraftCache } from "../../../../src/tui/hooks/create-draft-cache.js"
 
 describe("createDraftCache", () => {
   it("stores draft text, collapsed pastes, and attachments per session", () => {

@@ -9,7 +9,7 @@ import {
   type AssetLocation,
   type DefinitionAssetReader,
 } from "../../../../src/workflows/definition-assets.js";
-import { workflowAssets } from "../../../../src/workflows/agents/manifest.js";
+import { workflowAssets } from "../../../../src/workflows/asset-manifest.js";
 import { withLoadedContent } from "../../../../src/workflows/loader.js";
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js";
 import { parseWorkflowYaml } from "../../../../src/infra/workflow-yaml.js";

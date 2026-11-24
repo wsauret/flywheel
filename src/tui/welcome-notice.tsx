@@ -3,7 +3,7 @@
 import { StyledText, bold as stBold, fg as stFg, type TextRenderable } from "@opentui/core"
 import { useKeymap } from "@tui/context/keymap"
 import { useTheme } from "@tui/context/theme"
-import type { TuiTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import { createEffect, createMemo, Show, type Accessor, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 import { displayWidth } from "./utils/text.js"

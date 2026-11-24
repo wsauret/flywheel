@@ -3,8 +3,7 @@ import type { AttachedRuntimeClient, SessionRow } from "../../protocol/app-servi
 import type { ChatSubmissions } from "../../protocol/client/chat-submissions.js"
 import type { ChatInputLike } from "../../infra/chat-input.js"
 import type { ComposerHandle } from "../components/composer-types.js"
-import type { DraftCache } from "./create-draft-cache.js"
-import { mergeInputIntoDraft } from "./composer-draft-merge.js"
+import { mergeInputIntoDraft, type DraftCache } from "./create-draft-cache.js"
 import { onCleanup } from "solid-js"
 
 /** Binds claimed and locally refused child input to the terminal's existing

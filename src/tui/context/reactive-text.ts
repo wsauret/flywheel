@@ -1,6 +1,6 @@
 import { StyledText, type TextChunk, type TextRenderable } from "@opentui/core"
 import { createEffect, createMemo } from "solid-js"
-import { useFindPaint } from "@tui/context/find-highlight.js"
+import { useFindPaint } from "./find-highlight.js"
 import { preventSelectionStart } from "@tui/utils/selection.js"
 import { textChunksEqual } from "@tui/utils/text.js"
 

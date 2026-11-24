@@ -1,5 +1,5 @@
 import type { Extmark, SyntaxStyle, TextareaRenderable } from "@opentui/core"
-import type { ComposerDraftPaste } from "./create-draft-cache.js"
+import type { ComposerDraftPaste } from "./composer-draft.js"
 
 const PASTE_CHAR_THRESHOLD = 200
 const PASTE_LINE_THRESHOLD = 4

@@ -22,12 +22,13 @@ import { fontInstallSummary, getFontStatus, installBundledFont } from "../orches
 import type { AttachedRuntimeClient } from "../protocol/app-service-types.js"
 import type { RuntimeIdentity } from "../protocol/client/runtime-identity.js"
 import { ErrorComponent } from "./components/error-boundary.js"
+import { createTuiErrorReports } from "./modules.js"
 import { setExitHandler, setRendererHandoff } from "./exit.js"
 import { ownedCommandRunner } from "../infra/owned-command.js"
 import type { LauncherScope } from "../infra/process-supervisor.js"
 import { createClipboard } from "./utils/clipboard.js"
 import { createTerminalOutput, type TerminalOutput } from "./terminal-output.js"
-import { createRuntimeConfigCache } from "./hooks/shell-state.js"
+import { createRuntimeConfigCache } from "./hooks/create-runtime-config-cache.js"
 
 
 /** Resolved bootstrap inputs for the TUI. Ordinary settings come from RuntimeConfigView. */
@@ -139,7 +140,7 @@ export async function startTUI(options: TUIOptions): Promise<void> {
                     }
                     renderer.destroy()
                   }
-                  return <ErrorComponent error={error} onExit={handleExit} clipboard={clipboard} appService={options.appService} appVersion={options.appVersion} sessionId={foregroundId()} />
+                  return <ErrorComponent error={error} onExit={handleExit} clipboard={clipboard} appService={options.appService} appVersion={options.appVersion} sessionId={foregroundId()} createReports={createTuiErrorReports} />
                 }}>
                   <KeymapProvider config={runtimeConfig.view}>
                   <QuestionInputProvider>

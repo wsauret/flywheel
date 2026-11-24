@@ -2,13 +2,13 @@ import { describe, it, expect } from "bun:test"
 import { RGBA } from "@opentui/core"
 import {
   createHighlighter,
-  chatSyntaxColors,
   MAX_HIGHLIGHT_BYTES,
   MAX_HIGHLIGHT_LINES,
   MAX_HIGHLIGHT_LINE_LENGTH,
-  type SyntaxColors,
 } from "@tui/adapters/syntax-highlight.js"
-import { resolveTheme, type TuiTheme } from "@tui/context/theme/resolve.js"
+import { chatSyntaxColors, type SyntaxColors } from "@tui/context/theme/syntax-colors.js"
+import { resolveTheme } from "@tui/context/theme/resolve.js"
+import type { TuiTheme } from "@tui/context/theme/tui-theme.js"
 import flywheelTheme from "@tui/context/theme/flywheel.json" with { type: "json" }
 
 const mockTheme: TuiTheme = {

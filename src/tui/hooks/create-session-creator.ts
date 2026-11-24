@@ -4,9 +4,8 @@ import { errorMessage } from "../../infra/error-message.js"
 import { startupTrace } from "../../infra/startup-trace.js"
 import type { FrontendMutation, MutationResult, SessionCatalogRow } from "../../protocol/app-service-types.js"
 import type { ShellServices, ShellSignals } from "./shell-state.js"
-import { UNBOUND_COMPOSER_DRAFT, type DraftCache } from "./create-draft-cache.js"
+import { mergeInputIntoDraft, UNBOUND_COMPOSER_DRAFT, type DraftCache } from "./create-draft-cache.js"
 import type { TabState } from "./create-tabs.js"
-import { mergeInputIntoDraft } from "./composer-draft-merge.js"
 
 const FAILED_CHAT_DRAFT = "chat-open:failed"
 

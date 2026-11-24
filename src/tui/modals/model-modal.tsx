@@ -3,7 +3,7 @@
 import { StyledText, bold as stBold, fg as stFg, type ScrollBoxRenderable, type TextChunk, type TextRenderable } from "@opentui/core"
 import { OpaqueBox } from "@tui/components/opaque-box"
 import { useTheme } from "@tui/context/theme"
-import type { TuiTheme } from "@tui/context/theme/resolve"
+import type { TuiTheme } from "@tui/context/theme/tui-theme"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { BOLD } from "@tui/utils/text-attributes"
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"

@@ -1,6 +1,6 @@
 import { RGBA, type CliRenderer, type TerminalColors } from "@opentui/core"
 import { createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
-import type { SystemThemeInput } from "../context/theme/system-theme.js"
+import type { SystemThemeInput } from "./system-theme.js"
 
 interface PaletteRenderer extends Pick<CliRenderer, "getPalette" | "clearPaletteCache" | "prependInputHandler" | "removeInputHandler" | "resetTerminalBgColor"> {
   on(event: "palette", listener: (colors: TerminalColors) => void): void

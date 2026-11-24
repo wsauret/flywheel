@@ -3,7 +3,19 @@ import type { MutationEvidenceReader } from "../../protocol/client/mutation-evid
 import type { SessionNotice } from "../../infra/session-notice.js"
 import type { RuntimeTranscriptWindow } from "../../protocol/transcript-protocol-types.js"
 import type { OutputView } from "../../protocol/output-protocol-types.js"
-import type { OutputHeightEstimate } from "../hooks/output-height-estimates.js"
+import type { OutputHeightEstimate } from "./output-height-estimates.js"
+
+/** The resident-block budget: how many timeline blocks the TUI will hold
+ *  mounted-or-resident for one session. One number, two enforcement
+ *  mechanisms. A session whose TOTAL block count fits the budget mounts whole
+ *  once to measure every height and hydrates to the head (then virtualizes to
+ *  the viewport); a larger session virtualizes immediately, pages on demand,
+ *  and far-page eviction sheds residency back under the same budget - so the
+ *  two policies can never fight over one session. Sized ~3x the largest
+ *  observed real session (~350 blocks; events fold heavily into blocks) at
+ *  ~1ms measure cost per block. The over-budget path is insurance against the
+ *  condensation policy changing, not an expected path. */
+export const RESIDENT_BLOCK_BUDGET = 1000
 
 /** Which edge of the loaded window a page request extends. `older` walks toward
  *  block 0, `newer` toward the tail. */

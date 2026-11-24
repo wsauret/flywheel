@@ -1,6 +1,7 @@
 import { SyntaxStyle, type NativeResourceOwner } from "@opentui/core"
 import { getMarkdownSyntaxRules } from "./syntax-rules-markdown.js"
-import type { TuiTheme, ThemeStyles } from "./theme/resolve.js"
+import type { ThemeStyles } from "./resolve.js"
+import type { TuiTheme } from "./tui-theme.js"
 
 export function generateSyntax(theme: TuiTheme, styles: ThemeStyles, owner: NativeResourceOwner) {
   return SyntaxStyle.fromTheme(getSyntaxRules(theme, styles), owner)

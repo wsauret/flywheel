@@ -7,7 +7,7 @@ import { FORMER_STEP_SKILLS } from "./retired-bindings.js";
 import { parseFieldRef } from "./field-ref.js";
 import { compileInput, compileOutput, type CompiledInput, type CompiledOutput } from "./output-contract/compile.js";
 import { decodeInputObject, decodeOutputObject, type Field, type OutputObject } from "./output-contract/grammar.js";
-import { compileReassessmentOutput, compileRetiredReassessmentOutput, type ReassessmentPayload, type RetiredReassessmentPayload } from "./vm/reassessment-contract.js";
+import { compileReassessmentOutput, compileRetiredReassessmentOutput, type ReassessmentPayload, type RetiredReassessmentPayload } from "./reassessment-contract.js";
 import { latestReducer } from "./reducers/registry.js";
 import {
   agentRecords,

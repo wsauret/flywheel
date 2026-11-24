@@ -20,9 +20,9 @@ import {
   type TranscriptLayoutSlot,
   type TranscriptScrollState,
   upstreamCorrectionRows,
-  RESIDENT_BLOCK_BUDGET,
   windowGeometry,
 } from "../output-window/output-window-scroll.js"
+import { RESIDENT_BLOCK_BUDGET } from "../transcript-store/output-transcript-cache-types.js"
 import { createWheelRows, frameWheelRows, type WheelProfile, wheelProfileFor } from "../output-window/output-window-wheel.js"
 import { FOLLOWING, followBaseline, nextTranscriptFollow, type TranscriptFollow, type TranscriptFollowEvent } from "../output-window/transcript-follow.js"
 

@@ -1,7 +1,7 @@
 import type { TextChunk } from "@opentui/core"
 import { StyledText, fg as stFg } from "@opentui/core"
-import type { TuiTheme } from "../context/theme/resolve.js"
-import { chunksLength } from "./text-attributes.js"
+import type { TuiTheme } from "../context/theme/tui-theme.js"
+import { chunksLength } from "../utils/text-attributes.js"
 
 const BORDER_HORIZONTAL = "─"
 
