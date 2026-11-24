@@ -1,0 +1,394 @@
+scripts/architecture-allowlist.ts
+  h_4b47e9e4a8b456 109
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 31
+src/infra/paths.ts
+  h_4b47e9e4a8b456 215-221
+src/orchestration/agent-runtime/agent-loop-handoff.ts
+  h_4b47e9e4a8b456 19
+src/orchestration/agent-runtime/agent-loop-input.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/agent-runtime/assistant-turn-result.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/agent-runtime/background-execution-owner.ts
+  h_4b47e9e4a8b456 50
+src/orchestration/agent-runtime/background-work-notifications.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/background-work-outcome.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/background-work-processes.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/agent-runtime/background-work-readiness.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/agent-runtime/background-work-types.ts
+  h_4b47e9e4a8b456 1-107
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 25,30,72-73,166-167,692
+src/orchestration/agent-runtime/command-handover.ts
+  h_4b47e9e4a8b456 41
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 1-2
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 2,23,27
+src/orchestration/agent-runtime/handoff-correction-exhausted.ts
+  h_4b47e9e4a8b456 1-13
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 29,49
+src/orchestration/agent-runtime/llm/chat-completions.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/agent-runtime/llm/chatgpt-adapter-error.ts
+  h_4b47e9e4a8b456 1-4,26-39
+src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/agent-runtime/llm/chatgpt-adapter/transport.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/agent-runtime/llm/chatgpt-adapter/websocket.ts
+  h_4b47e9e4a8b456 8-9
+src/orchestration/agent-runtime/llm/client-factory.ts
+  h_4b47e9e4a8b456 39
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 35
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/agent-runtime/llm/openai-prompt-cache.ts
+  h_4b47e9e4a8b456 5-8,17-33
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 11,18-19,26
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/llm/runtime-errors.ts
+  h_4b47e9e4a8b456 1-109
+src/orchestration/agent-runtime/llm/stream-attempt.ts
+  h_4b47e9e4a8b456 23-33
+src/orchestration/agent-runtime/model-runtime-capture.ts
+  h_4b47e9e4a8b456 1-57
+src/orchestration/agent-runtime/module-runtime-services.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 20,55
+src/orchestration/agent-runtime/request-preparation.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/request-tool-surface.ts
+  h_4b47e9e4a8b456 34
+src/orchestration/agent-runtime/runner.ts
+  h_4b47e9e4a8b456 11-12,14
+src/orchestration/agent-runtime/shell-runtime.ts
+  h_4b47e9e4a8b456 1-11
+src/orchestration/agent-runtime/tools/bash-copy-repository-state.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/tools/bash-copy-state-digest.ts
+  h_4b47e9e4a8b456 1-17
+src/orchestration/agent-runtime/tools/bash-private-copy-home.ts
+  h_4b47e9e4a8b456 1-67
+src/orchestration/agent-runtime/tools/bash-private-copy-jobs.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/agent-runtime/tools/bash-private-copy-pool.ts
+  h_4b47e9e4a8b456 15,107
+src/orchestration/agent-runtime/tools/bash-private-copy-record.ts
+  h_4b47e9e4a8b456 22-49
+src/orchestration/agent-runtime/tools/bash-private-copy-tree.ts
+  h_4b47e9e4a8b456 27,29-32
+src/orchestration/agent-runtime/tools/bash-private-copy.ts
+  h_4b47e9e4a8b456 21-22,25
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 36-40
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 26
+src/orchestration/agent-runtime/tools/managed-command.ts
+  h_4b47e9e4a8b456 6-7
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/agent-runtime/tools/tool-dispatch.ts
+  h_4b47e9e4a8b456 29
+src/orchestration/agent-runtime/tools/truncation.ts
+  h_4b47e9e4a8b456 25-26
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 6-7
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 31,411
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 43
+src/orchestration/app-service/model-assignment-admission.ts
+  h_4b47e9e4a8b456 27
+src/orchestration/app-service/role-assignment-projection.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/app-service/role-protocol-projection.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/chat-module-host.ts
+  h_4b47e9e4a8b456 7-8,51-55,66
+src/orchestration/chat/chat-background.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 15,116-117
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 9,11
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 3,13,15-16
+src/orchestration/chat/types.ts
+  h_4b47e9e4a8b456 1-20,22-24,31-128
+src/orchestration/config/roles.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/config/session-role-resolver.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/config/workflow-agent-models.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/custom-provider-modules.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/headless/headless-bootstrap.ts
+  h_4b47e9e4a8b456 21
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 14
+src/orchestration/module-diagnostics.ts
+  h_4b47e9e4a8b456 45-48,52
+src/orchestration/modules/development/benchmark-tool.ts
+  h_4b47e9e4a8b456 35
+src/orchestration/modules/development/benchmark/admission.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/development/benchmark/judge.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/development/benchmark/persona-run.ts
+  h_4b47e9e4a8b456 26
+src/orchestration/modules/development/diagnostics/step-efficiency-projection.ts
+  h_4b47e9e4a8b456 61
+src/orchestration/modules/learning/learning-review-runner.ts
+  h_4b47e9e4a8b456 11,17
+src/orchestration/modules/provider-anthropic-api/module.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-deepseek/module.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-github-copilot/module.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/modules/provider-google-antigravity/client.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-google-antigravity/result-projection.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/provider-google-api/module.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/provider-google-vertex/module.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/modules/provider-openai-api/module.ts
+  h_4b47e9e4a8b456 9
+src/orchestration/modules/provider-opencode-go/module.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 13,22
+src/orchestration/modules/subagents/execution/dispatch-deps.ts
+  h_4b47e9e4a8b456 76
+src/orchestration/modules/subagents/execution/parent-delivery.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/subagents/execution/result-budget.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/modules/subagents/execution/result-resolver.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/modules/subagents/execution/run-end.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/subagents/execution/run-recorder.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/modules/subagents/execution/session-authority.ts
+  h_4b47e9e4a8b456 27,46
+src/orchestration/modules/workflows/models.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/runner/agent-turn.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/session/child-session-reconciliation.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/session/finalized-tool-result-checkpoint.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/session/reply-waits.ts
+  h_4b47e9e4a8b456 4-5
+src/orchestration/session/session-artifacts.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 32,42
+src/orchestration/workflow-host/controller.ts
+  h_4b47e9e4a8b456 3,16,18,25,49,51,55-57
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 10-11
+src/orchestration/workflow-host/launch-lifecycle.ts
+  h_4b47e9e4a8b456 4-5,14-20,57-72,74
+src/orchestration/workflow-host/launch-pipeline.ts
+  h_4b47e9e4a8b456 11-20,100-119,131
+src/orchestration/workflow-host/loop-observers.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/workspace-state-generation-members.ts
+  h_4b47e9e4a8b456 1
+tests/helpers/agent-runner.ts
+  h_4b47e9e4a8b456 1
+tests/helpers/role-capture.ts
+  h_4b47e9e4a8b456 2
+tests/integration/local/_bash-mutation-repository.ts
+  h_4b47e9e4a8b456 13
+tests/integration/local/bash-mutations.test.ts
+  h_4b47e9e4a8b456 9
+tests/integration/orchestration/modules/provider-google-antigravity/engine-wire.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/agent-runtime/agent-loop-handoff.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/assistant-message-settlement.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-outcomes.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/agent-runtime/background-command-records.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+  h_4b47e9e4a8b456 12-13
+tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/agent-runtime/background-task-watchdog.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/agent-runtime/context/loop-handoff-correction.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/context/loop-handoff-invariant.test.ts
+  h_4b47e9e4a8b456 12-13,15
+tests/unit/orchestration/agent-runtime/context/loop-interruption-barrier.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/context/loop-main.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/context/loop-silent-system.test.ts
+  h_4b47e9e4a8b456 6-7
+tests/unit/orchestration/agent-runtime/context/loop-stream-error.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
+  h_4b47e9e4a8b456 7-8,324,342,380
+tests/unit/orchestration/agent-runtime/context/run-end-process-notice.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/context/truncation.test.ts
+  h_4b47e9e4a8b456 5
+tests/unit/orchestration/agent-runtime/context/turn-budget.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/core/agent-failures.test.ts
+  h_4b47e9e4a8b456 5-6,22,29,36,44,51,57,68-69
+tests/unit/orchestration/agent-runtime/errors.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/agent-runtime/failure-message.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/agent-runtime/llm/chatgpt-backend/sse.test.ts
+  h_4b47e9e4a8b456 12-13
+tests/unit/orchestration/agent-runtime/llm/client-factory.test.ts
+  h_4b47e9e4a8b456 10-12
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 3-4,9
+tests/unit/orchestration/agent-runtime/llm/openai-session-affinity.test.ts
+  h_4b47e9e4a8b456 9-10
+tests/unit/orchestration/agent-runtime/llm/provider-failure.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/llm/reasoning-repetition.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/agent-runtime/llm/stream-watchdog.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/agent-runtime/overflow-recovery-guard.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/orchestration/agent-runtime/runner-capabilities.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/agent-runtime/runner.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/agent-runtime/subagent/child-execution.test.ts
+  h_4b47e9e4a8b456 7-8
+tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+  h_4b47e9e4a8b456 8,11
+tests/unit/orchestration/agent-runtime/tools/_bash-fixtures.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/agent-runtime/tools/_bash-mutations-harness.ts
+  h_4b47e9e4a8b456 25
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy.test.ts
+  h_4b47e9e4a8b456 8,334
+tests/unit/orchestration/agent-runtime/tools/process.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/agent-runtime/tools/shell-resource-admission.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/agent-runtime/tools/shell-runtime.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+  h_4b47e9e4a8b456 8-9
+tests/unit/orchestration/agent-runtime/typed-error-boundary.test.ts
+  h_4b47e9e4a8b456 4-6
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 5-6
+tests/unit/orchestration/app-service/background-index.test.ts
+  h_4b47e9e4a8b456 3-4
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/orchestration/app-service/role-protocol-projection.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/app-service/status-projection.test.ts
+  h_4b47e9e4a8b456 18-19
+tests/unit/orchestration/chat/_chat-runner-lifecycle-fixtures.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 11-12
+tests/unit/orchestration/chat/chat-runner-lifecycle-respawn.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/chat/chat-session-agent-runtime-background-notification.test.ts
+  h_4b47e9e4a8b456 15
+tests/unit/orchestration/chat/chat-session-agent-runtime-reconnect.test.ts
+  h_4b47e9e4a8b456 9,11
+tests/unit/orchestration/chat/chat-session-replacement-interrupt.test.ts
+  h_4b47e9e4a8b456 4-5
+tests/unit/orchestration/chat/chat-session-restored-wait.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/chat/chat-session.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 13-14
+tests/unit/orchestration/module-diagnostics.test.ts
+  h_4b47e9e4a8b456 2,4-6,9-10,18
+tests/unit/orchestration/modules/provider-google-antigravity/result-projection.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/modules/subagents/child-background.test.ts
+  h_4b47e9e4a8b456 10-11
+tests/unit/orchestration/modules/subagents/subagent-restored-wait.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/runner/agent-turn.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/session/chat-workflow-completion-recovery.test.ts
+  h_4b47e9e4a8b456 32-33
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 11
+tests/unit/orchestration/workflow-host/worker-callback.test.ts
+  h_4b47e9e4a8b456 18-20
+tests/unit/orchestration/workflow-host/worker-opening-turn.test.ts
+  h_4b47e9e4a8b456 6
+tests/unit/orchestration/workflow-host/workflow-loop-observers.test.ts
+  h_4b47e9e4a8b456 4-5,8
+tests/unit/scripts/capability-terms.test.ts
+  h_4b47e9e4a8b456 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d0f46064db0b904f3fdc6e5516bc03b8257aa186",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
