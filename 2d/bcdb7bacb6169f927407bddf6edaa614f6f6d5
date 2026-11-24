@@ -1,0 +1,24 @@
+src/orchestration/modules/provider-google-antigravity/engine/engine-process.ts
+  h_4b47e9e4a8b456 22
+src/orchestration/modules/provider-google-antigravity/request/bridge.ts
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/provider-google-antigravity/stream-map.ts
+  h_4b47e9e4a8b456 7
+tests/integration/providers/antigravity-subscription-real.test.ts
+  h_4b47e9e4a8b456 13
+tests/unit/orchestration/modules/provider-google-antigravity/stream-map.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/orchestration/modules/provider-google-antigravity/usage/conversation-usage.test.ts
+  h_4b47e9e4a8b456 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2dbcdb7bacb6169f927407bddf6edaa614f6f6d5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
