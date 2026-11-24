@@ -63,7 +63,7 @@ import type { CapacityReset, ProviderRecovery } from "../../../infra/llm/errors/
 import { Log } from "../../../infra/log.js"
 import type { SessionNotice, SessionNoticeOperation } from "../../../infra/session-notice.js"
 import { sleepUntil } from "../../../infra/wall-clock-sleep.js"
-import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../../session/capacity-wait.js"
+import { capacityWaitNotice, type CapacityWaitAuthority, type CapacityWaitWithdrawal } from "../../session/control/capacity-wait.js"
 import type { TurnInterruption } from "../../session/conversation/turn-end-record.js"
 import type { DeliveryOutcome } from "../../session/message-disposition.js"
 import { CONTINUATION_MESSAGES } from "../request/prompt/continuation-messages.js"

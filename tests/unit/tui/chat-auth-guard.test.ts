@@ -3,9 +3,9 @@ import { createSignal } from "solid-js"
 import { createCommandDispatch } from "../../../src/tui/commands/command-dispatch.js"
 import type { ProviderSetup } from "../../../src/protocol/client/provider-setup.js"
 import { runtimeCallPolicies } from "../../../src/protocol/runtime-client-deadlines.js"
-import type { CommandDeps } from "../../../src/tui/hooks/use-commands.js"
-import { useCommands } from "../../../src/tui/hooks/use-commands.js"
-import type { SettingsDestination } from "../../../src/tui/settings-destination.js"
+import type { CommandDeps } from "../../../src/tui/hooks/composer/use-commands.js"
+import { useCommands } from "../../../src/tui/hooks/composer/use-commands.js"
+import type { SettingsDestination } from "../../../src/tui/modals/settings/settings-destination.js"
 
 const originalDialogPolicy = process.env.FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS
 beforeEach(() => { process.env.FLYWHEEL_TEST_SUPPRESS_AUTO_DIALOGS = "0" })

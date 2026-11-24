@@ -25,7 +25,7 @@ import type { ConversationMessage } from "../../../agent-runtime/llm/types.js";
 import { failureTerminal, type AgentRunResult } from "../../../agent-runtime/types.js";
 import { LEARNING_REVIEW_ROLE_ID, requireRole, type ResolvedRole, type ResolvedRoles } from "../../../config/roles.js";
 import { withCapabilityGrant, type CapabilityAccess } from "../../../agent-runtime/tools/types.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 
 import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js";

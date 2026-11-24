@@ -1,7 +1,7 @@
 import type { AsyncEventStateReadSurface } from "../../src/infra/event-store-types"
 import type { ControlInterruption, TurnInterruption } from "../../src/orchestration/session/conversation/turn-end-record"
-import { liveChildRun, registerLiveSessionControl } from "../../src/orchestration/session/live-session-control"
-import type { ContinuationLanes } from "../../src/orchestration/session/planned-session-continuation"
+import { liveChildRun, registerLiveSessionControl } from "../../src/orchestration/session/control/live-session-control"
+import type { ContinuationLanes } from "../../src/orchestration/session/control/planned-session-continuation"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work/background-work"
 
 /** Registers a subagent run as live in this process, as a dispatch does,

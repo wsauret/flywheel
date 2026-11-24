@@ -15,7 +15,7 @@ import { readToolResultDisplayMeta } from "../../../../src/orchestration/session
 import {
   createToolExecutionProjection as createAsyncToolExecutionProjection,
   toolExecutionTimelineFromProjection,
-} from "../../../../src/orchestration/session/tool-execution-projection"
+} from "../../../../src/orchestration/session/runtime-facts/tool-execution-projection"
 
 const createToolExecutionProjection = (store: LocalSqliteEventStore, sessionId: string) =>
   createAsyncToolExecutionProjection(asAsyncEventReadSurface(store), sessionId)

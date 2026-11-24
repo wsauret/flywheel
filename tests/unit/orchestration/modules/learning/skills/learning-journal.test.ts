@@ -13,7 +13,7 @@ import {
   reconcilePendingAudits,
   type PendingAudit,
 } from "../../../../../../src/orchestration/modules/learning/skills/learning-journal.js";
-import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { memoryWrittenFact } from "../../../../../../src/workflows/learning/memory/memory-fact-writers.js";
 import { skillWrittenFact } from "../../../../../../src/workflows/skills/skill-facts.js";
 import { packageDigestAt } from "../../../../../../src/orchestration/modules/learning/skills/skill-package-planning.js";

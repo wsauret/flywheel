@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { createProjectRuntime } from "../../../../src/orchestration/app-service/project-runtime.js"
+import { createProjectRuntime } from "../../../../src/orchestration/app-service/account/projects/project-runtime.js"
 
 describe("ProjectRuntime disposal", () => {
   test("owns endpoint, transports, and barrier in independent ordered teardown", async () => {

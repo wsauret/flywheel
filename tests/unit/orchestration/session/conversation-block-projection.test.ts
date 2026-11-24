@@ -13,7 +13,7 @@ import { DELIVERY_CONFIRMATION } from "../../../../src/infra/delivery-confirmati
 import { FrontendOutputBlockSchema } from "../../../../src/protocol/transcript-protocol-schemas.js"
 import { TreeBlockProjection } from "../../../../src/orchestration/session/conversation/transcript/conversation-block-projection"
 import { branchBlocks } from "../../../helpers/branch-blocks"
-import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/frontend-output-blocks"
+import { projectFrontendOutputBlocks } from "../../../../src/orchestration/app-service/projections/output/frontend-output-blocks"
 
 const CWD = resolve("/scratch/project")
 const T0 = "2026-07-02T10:00:00.000Z"

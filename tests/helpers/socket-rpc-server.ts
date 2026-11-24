@@ -2,7 +2,7 @@ import { Effect, FiberSet, Layer, Scope } from "effect"
 import { NetAddress } from "effect/net"
 import { Socket, SocketServer } from "effect/socket"
 
-import { createBunRawSocketServer } from "../../src/orchestration/app-service/bun-socket-rpc.js"
+import { createBunRawSocketServer } from "../../src/orchestration/app-service/account/connections/bun-socket-rpc.js"
 
 /** A `SocketServer` over the production listener `createBunRawSocketServer`,
  *  for a test that serves one RPC protocol to every client of `path`. Each

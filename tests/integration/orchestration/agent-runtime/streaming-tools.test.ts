@@ -17,9 +17,9 @@ import type { ConversationMessage, LLMClient, ProviderStreamEvent, ToolCall } fr
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import type { RuntimeTool, ToolContext } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createOutputSession, type OutputSession } from "../../../../src/orchestration/runner/output-session.js";
-import { recoverFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/finalized-tool-result-checkpoint.js";
+import { recoverFinalizedToolResultCheckpoints } from "../../../../src/orchestration/session/history/finalized-tool-result-checkpoint.js";
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js";
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { createConversationTreeWriter } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-writer.js";
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { branchBlocks } from "../../../helpers/branch-blocks.js";

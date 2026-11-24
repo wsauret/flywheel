@@ -44,7 +44,7 @@ import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagent
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
 import { workflowLaunchTargets } from "../src/orchestration/workflow-host/lifecycle/launch-origin.js";
 import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definitions/definition-registry.js";
-import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
+import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/control/messaging/session-messaging.js";
 
 /** What every request of one assembly shares: its roots, its definitions, its configuration, and the module
  *  capture of its chat tree. `live` is the agent's own selection, which differs from `capture` only for an agent

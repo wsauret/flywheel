@@ -38,7 +38,7 @@ import type { ChildSlotReservation } from "../../../agent-runtime/request/module
 import { withCapabilityGrant } from "../../../agent-runtime/tools/types.js";
 import { readConversationQueuedUserInputs, readUnreadMessages, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js";
 import { readConversationBackgroundNotifications, type HeldBackgroundNotification } from "../../../session/conversation/queued-background-notifications.js";
-import { observeOpenReplyWaits } from "../../../session/reply-waits.js";
+import { observeOpenReplyWaits } from "../../../session/control/messaging/reply-waits.js";
 import type { ContinuationTarget, SubagentContext } from "./dispatch/control-actions.js";
 import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch/dispatch-preparation.js";
 import type { SubagentDispatchDeps } from "./dispatch/dispatch-deps.js";
@@ -46,13 +46,13 @@ import { resolveChildRole } from "./dispatch/dispatch-configuration.js";
 import { canonicalModelId } from "../../../../infra/model-id.js";
 import { AssistantPrefillSessionContextError } from "../../../session/conversation/tree/conversation-tree-context.js";
 import { launchAssignmentText, recordedEntryText } from "../../../session/conversation/tree/brief-entry.js";
-import { readRecordedInheritedIntent } from "../../../session/conversation-checkpoint.js";
+import { readRecordedInheritedIntent } from "../../../session/conversation-records/conversation-checkpoint.js";
 import { CONTINUATION_MESSAGES } from "../../../agent-runtime/request/prompt/continuation-messages.js";
-import { readAuthorizedRestoredWait } from "../../../session/chat-session-run-evidence.js";
-import { awaitPlannedChildResumes } from "../../../session/planned-session-continuation.js";
-import { recallQueuedInput } from "../../../session/queued-input-recall.js";
+import { readAuthorizedRestoredWait } from "../../../session/control/chat-session-run-evidence.js";
+import { awaitPlannedChildResumes } from "../../../session/control/planned-session-continuation.js";
+import { recallQueuedInput } from "../../../session/control/messaging/queued-input-recall.js";
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../agent-runtime/runner/unattended-recovery.js";
-import { capacityWaitAuthority } from "../../../session/capacity-wait.js";
+import { capacityWaitAuthority } from "../../../session/control/capacity-wait.js";
 import { createRunEnd } from "./result/run-end.js";
 
 const log = Log.create({ service: "subagent-tool" });

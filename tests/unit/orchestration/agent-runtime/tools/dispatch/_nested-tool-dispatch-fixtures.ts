@@ -1,5 +1,5 @@
 import type { NestedToolFactPublisher } from "../../../../../../src/orchestration/agent-runtime/tools/dispatch/nested-tool-dispatch.js";
-import type { SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { discardingSessionFactWriter } from "../../../../../helpers/event-writer-doubles.js";
 
 const FIXTURE_SECRET = ["Bearer", "fixturevalue123"].join(" ");

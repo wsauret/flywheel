@@ -4,7 +4,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createProjectDefinitionRegistry, definitionRoots } from "../../../../src/workflows/definitions/definition-registry.js";
-import { watchDefinitionRoots } from "../../../../src/orchestration/app-service/definition-root-watcher.js";
+import { watchDefinitionRoots } from "../../../../src/orchestration/app-service/definitions/definition-root-watcher.js";
 import type { SkillStoreRoot } from "../../../../src/workflows/skills/skills.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js";

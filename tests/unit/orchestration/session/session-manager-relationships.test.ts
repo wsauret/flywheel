@@ -10,14 +10,14 @@ import { buildWorkflowPausedFact } from "../../../../src/workflows/vm/transition
 import { readStoredSession } from "./_session-metadata-test-helpers";
 import { adoptTestWorkflow, cleanupTmpRoot, makeDeps, makeDepsWithStore, makeTmpDir, publishTestWorkflow, racingPublicationWriter } from "./_session-manager-fixtures";
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js";
-import { WorkflowParentRefusal } from "../../../../src/orchestration/session/child-session-publication";
+import { WorkflowParentRefusal } from "../../../../src/orchestration/session/control/children/child-session-publication";
 import { workflowRunReader, workflowRunWriter } from "../../../../src/orchestration/module-catalog";
 import { recoveredWorkflowRoot } from "../../../helpers/workflow-root-fixtures";
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts";
-import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestration/session/session-metadata-facts";
+import { decodeSessionMetadataFactForReplay } from "../../../../src/orchestration/session/metadata/session-metadata-facts";
 import { Schema } from "effect";
-import { SessionSchema } from "../../../../src/orchestration/session/schemas";
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership";
+import { SessionSchema } from "../../../../src/orchestration/session/metadata/schemas";
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership";
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold";
 

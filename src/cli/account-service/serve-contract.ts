@@ -3,7 +3,7 @@
  *  service managers act on. A start of the installed service counts itself at
  *  the entry, before command composition, so this module stays light. */
 
-import { SCHEDULED_TASK_ARGUMENT } from "../../orchestration/app-service/account-service-registration.js"
+import { SCHEDULED_TASK_ARGUMENT } from "../../orchestration/app-service/account/installation/account-service-registration.js"
 
 /** The exit-code contract of the service managers that restart a job
  *  (ARCH-RUNTIME-041, ARCH-RUNTIME-042): launchd's KeepAlive and systemd's Restart=on-failure with

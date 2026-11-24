@@ -191,7 +191,7 @@ src/
 - `bun run check:boundaries` enforces all three, and `bun run lint:relay` type-checks both relay deployables against their own runtimes. `bun run lint:webview` adds the client's stylesheet gate: colours, font sizes, z-indexes, and container widths come only from `webview/src/styles/tokens.css` and its width ladder (ARCH-PROTOCOL-064).
 - Keep every client surface (terminal, desktop web, phone web, and editor) mounted while the thing it shows exists. UI state belongs to the surface and stays local, and network updates patch it in place (PI-INTERACTION-062, ARCH-PROTOCOL-062). Stability takes precedence over showing new data sooner. For the web method and guard tests, load the `webview-rendering` package before you change a web client surface.
 - Run `bun run check:boundaries` after any file addition or move.
-- Render ordinary TUI action buttons with `src/tui/components/button.tsx`, never a copy of its styling in a new clickable box; callers own actions, keyboard routing, and progress text. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering (ARCH-PROTOCOL-065).
+- Render ordinary TUI action buttons with `src/tui/components/controls/button.tsx`, never a copy of its styling in a new clickable box; callers own actions, keyboard routing, and progress text. Tabs, selectable rows, header chrome, and transcript-inline Stop/Detach keep their specialized rendering (ARCH-PROTOCOL-065).
 
 Each layer and module home owns one kind of concern (ARCH-STRUCTURE-002, ARCH-STRUCTURE-018, ARCH-WORKFLOWS-010), and each layer has one static module registry (ARCH-STRUCTURE-017):
 

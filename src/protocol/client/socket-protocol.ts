@@ -29,7 +29,7 @@ import { RuntimeLaneLost } from "./connection-failures.js"
  *  The runtime's server protocol counts each `Ack` as credit for its stream
  *  byte window, so a client without them stalls its lane at the window. The
  *  counterpart that keeps this contract on the runtime side is
- *  `src/orchestration/app-service/runtime-protocol-socket-server.ts`
+ *  `src/orchestration/app-service/account/connections/runtime-protocol-socket-server.ts`
  *  (ARCH-PROTOCOL-022). */
 
 type FromServer = RpcMessage.FromServerEncoded

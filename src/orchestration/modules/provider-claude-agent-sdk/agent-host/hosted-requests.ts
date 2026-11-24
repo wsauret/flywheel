@@ -1,6 +1,6 @@
 import { DebugLog } from "../../../../infra/debug-log.js";
 import { LlmStreamError } from "../../../agent-runtime/llm/errors.js";
-import type { ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
+import type { ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import { CLAUDE_AGENT_SDK_LABEL } from "../names.js";
 import { serviceRequests, wireFailure, type WireFailure } from "../engine/service-requests.js";
 import { silentDebugOutputFailure, type DebugLine, type EngineDrift, type SilentVersions } from "../engine/stderr-signals.js";

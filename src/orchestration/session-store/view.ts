@@ -2,13 +2,13 @@ import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/e
 import type { Activity, AnyBlock, ConnectionState, ToolStreamingText } from "../../infra/output-blocks.js"
 import type { SessionNotice } from "../../infra/session-notice.js"
 import { createReadQueue, type ReadQueue } from "../../infra/read-queue.js"
-import { budgetSummaryFromState } from "../session/budget-summary.js"
-import { createBudgetProjection } from "../session/budget-projection.js"
-import { readSessionDurationFromReader } from "../session/session-duration-projection.js"
+import { budgetSummaryFromState } from "../session/metadata/catalog/budget-summary.js"
+import { createBudgetProjection } from "../session/runtime-facts/budget-projection.js"
+import { readSessionDurationFromReader } from "../session/runtime-facts/session-duration-projection.js"
 import { durableBranchHasUserMessage } from "../session/conversation/tree/conversation-tree-handle.js"
-import { readSessionMetadata } from "../session/session-metadata-store.js"
-import type { SessionLifecycleState } from "../session/types.js"
-import type { RoleSettings as RoleAssignments } from "../session/schemas.js"
+import { readSessionMetadata } from "../session/metadata/catalog/session-metadata-store.js"
+import type { SessionLifecycleState } from "../session/metadata/types.js"
+import type { RoleSettings as RoleAssignments } from "../session/metadata/schemas.js"
 import { effectiveRoleAssignments } from "../config/models/session-role-resolver.js"
 import type { SessionEntry, SessionEntryBase } from "./types.js"
 import type { WorkflowMembership } from "../../infra/session-workflow-membership.js"
@@ -133,7 +133,7 @@ async function loadSessionView(sessionId: string, reader: AsyncEventStateReadSur
     // must stay reachable even when no output was ever indexed - an empty index
     // means empty transcript, never "not a conversation". Loadability reads only
     // the current branch. The discard rule, `isEmptyChat` in
-    // session/empty-chat.ts, counts a message on any branch, so a chat that
+    // session/conversation-records/empty-chat.ts, counts a message on any branch, so a chat that
     // fails this check only because its message is on another branch is never
     // removed. The writer travels along because the runtime's read surface is
     // not a local append store.

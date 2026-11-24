@@ -9,7 +9,7 @@ import type { ConversationEntry, MessageEntry } from "./conversation-entry-types
 import { TURN_END_ID_PREFIX } from "./turn-end-record.js"
 import { admitEntries, chatTreeViolation, entryLink, type AdmissionFrontier, type EntryLink } from "./conversation-entry-admission.js"
 import { salvageConversationTreeFact, type ConversationTreeFact, type DegradedEntrySource, type ConversationTreeSalvageResult, type InlineConversationTreeFact, type SalvagedConversationEntry } from "./conversation-facts.js"
-import { sessionMessageSources, sessionMessageSourcesSync, recoverSessionMessageProducer, type SessionMessageSources } from "../session-message-sources.js"
+import { sessionMessageSources, sessionMessageSourcesSync, recoverSessionMessageProducer, type SessionMessageSources } from "../metadata/session-message-sources.js"
 import { ConversationContextIdentities } from "./conversation-context-identities.js"
 import { subagentCompletionRunIds } from "../../agent-runtime/background-work/background-work-notifications.js"
 

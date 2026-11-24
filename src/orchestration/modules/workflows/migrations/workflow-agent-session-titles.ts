@@ -9,8 +9,8 @@ import { createSqliteEventReadSurface } from "../../../../infra/sqlite-event-rea
 import { createSqliteEventInserter } from "../../../../infra/sqlite-event-store-core.js"
 import { loadQueueFromEvents } from "../../../../workflows/view/view-projection.js"
 import { checkedThrough, headPosition, recordChecked, recordMigration } from "../../../migrations/engine.js"
-import { recoverSessionMetadata } from "../../../session/session-metadata-projection.js"
-import { buildSessionMetadataAppend } from "../../../session/session-metadata-store.js"
+import { recoverSessionMetadata } from "../../../session/metadata/session-metadata-projection.js"
+import { buildSessionMetadataAppend } from "../../../session/metadata/catalog/session-metadata-store.js"
 import { workflowAgentSessionTitle } from "../agent-title.js"
 
 const MIGRATION_ID = "workflow-agent-session-titles"

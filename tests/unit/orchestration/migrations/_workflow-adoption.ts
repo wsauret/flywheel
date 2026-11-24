@@ -12,18 +12,18 @@ import { canonicalDirectory } from "../../../../src/infra/directory-authorities.
 import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { Log } from "../../../../src/infra/log.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
-import { buildRuntimeWorkflowInvocationAppend } from "../../../../src/orchestration/session/child-session-publication.js"
+import { buildRuntimeWorkflowInvocationAppend } from "../../../../src/orchestration/session/control/children/child-session-publication.js"
 import type { ConversationEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types.js"
 import { readConversationSnapshotSync } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-storage.js"
 import { createConversationMessageEntry } from "../../../../src/orchestration/session/conversation/tree/conversation-tree.js"
-import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../src/orchestration/session/session-metadata-facts.js"
-import { recoverSessionMetadata } from "../../../../src/orchestration/session/session-metadata-projection.js"
-import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/session-metadata-store.js"
+import { buildSessionChildLinkedFact, buildSessionCreatedFact } from "../../../../src/orchestration/session/metadata/session-metadata-facts.js"
+import { recoverSessionMetadata } from "../../../../src/orchestration/session/metadata/session-metadata-projection.js"
+import { buildSessionMetadataAppend } from "../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/recovery/fact-fold.js"
 import { replayDecodedWorkflow, transitionDecodedWorkflow } from "../../../../src/workflows/vm/control/transition.js"
 import { createMemoryStore, initialFacts, recordHistoricalFollowUp, testHost } from "../../workflows/vm/host-test-support.js"
-import type { ReplayedSession } from "../../../../src/orchestration/session/schemas.js"
+import type { ReplayedSession } from "../../../../src/orchestration/session/metadata/schemas.js"
 
 export function previousWorkflowCreatedFact(payload: Extract<ReplayedSession, { kind: "workflow" }>) {
   return { type: "session.created" as const, version: 5 as const, actor: "flywheel" as const, payload }

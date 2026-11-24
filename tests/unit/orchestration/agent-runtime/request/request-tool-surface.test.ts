@@ -8,7 +8,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../src/orchest
 import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../../src/infra/module-runtime.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, type FirstPartyModule } from "../../../../../src/orchestration/modules.js";
-import { hashToolInputFormat } from "../../../../../src/orchestration/session/provider-request-audit-hash.js";
+import { hashToolInputFormat } from "../../../../../src/orchestration/session/diagnostics/provider-request-audit-hash.js";
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { OPENAI_RESPONSES_TOOL_PRESENTATION } from "../../../../../src/orchestration/agent-runtime/llm/provider-description.js";
 import { prepareLocalTokenizer } from "../../../../../src/infra/local-tokenizer.js";

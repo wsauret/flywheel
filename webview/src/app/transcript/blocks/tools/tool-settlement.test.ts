@@ -5,7 +5,7 @@ import type { FrontendToolEntry } from "../../../../../../src/protocol/app-servi
 import { importBuiltModule } from "../../../../test-support/import-built-module.js"
 import { loadSolidFixture } from "../../../../test-support/solid-transform.js"
 import { afterAll } from "bun:test"
-import { mutationEvidenceFixture } from "../../../../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../../../../../tests/fixtures/mutation-evidence-fixture.js"
 
 const originalObserver = Object.getOwnPropertyDescriptor(globalThis, "IntersectionObserver")
 Object.defineProperty(globalThis, "IntersectionObserver", { configurable: true, value: class {

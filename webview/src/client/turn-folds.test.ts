@@ -8,7 +8,7 @@ import { createBlockLanding } from "../app/transcript/transcript-scroll.js"
 import { presentWebTranscript, rowHolding, rowIdentity, rowIndex, toolWorkCounts, type TranscriptViewRow } from "./tool-runs.js"
 import { createTurnFolds, foldWebTurns, turnCalls, turnFoldSummary, turnChangedFiles } from "./turn-folds.js"
 import type { MutationFilesView } from "../../../src/protocol/client/mutation-evidence.js"
-import { mutationEvidenceFixture } from "../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../../tests/fixtures/mutation-evidence-fixture.js"
 
 const person: FrontendOutputBlock = { kind: "userMessage", id: "person", content: "Do it", timestamp: 1000, pending: false, injected: false }
 const narration: FrontendOutputBlock = { kind: "text", id: "narration", content: "Working", timestamp: 2000 }

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import { mkdir, symlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { applyControlUiSecurityHeaders } from "../../../../src/orchestration/app-service/web-serving/control-ui-csp"
-import { serveControlUiStatic as serveProjectPage } from "../../../../src/orchestration/app-service/web-serving/control-ui-static"
+import { applyControlUiSecurityHeaders } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-csp"
+import { serveControlUiStatic as serveProjectPage } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-static"
 import { temporaryDirectories } from "../../../helpers/directories"
 
 const identity = "e".repeat(64)

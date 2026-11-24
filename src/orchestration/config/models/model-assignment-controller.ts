@@ -24,7 +24,7 @@ import {
 import { saveModelAssignment } from "./model-selection.js";
 import { isBriefSlot, roleSlot, slotLabel, type AgentPersonaRoles } from "./role-selection.js";
 import { parentRoleId } from "../roles.js";
-import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/schemas.js";
+import type { RoleSettingEntry as RoleAssignmentEntry, RoleSettings, RoleAssignments, RoleAssignmentSnapshot } from "../../session/metadata/schemas.js";
 import { ensureSessionRoleSnapshot, captureRoleAssignments, withInheritedRoles } from "./session-role-resolver.js";
 import { briefRoleId, isProfileModelRole, parseBriefRoleId } from "../../../protocol/brief-role-id.js";
 import { Schema } from "effect";

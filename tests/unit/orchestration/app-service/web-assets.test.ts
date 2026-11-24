@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
-import { createControlUiAssets } from "../../../../src/orchestration/app-service/web-serving/control-ui-assets"
-import { serveControlUiStatic } from "../../../../src/orchestration/app-service/web-serving/control-ui-static"
+import { createControlUiAssets } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-assets"
+import { serveControlUiStatic } from "../../../../src/orchestration/app-service/account/web-serving/control-ui-static"
 import { temporaryDirectories } from "../../../helpers/directories"
 import { snapshotFixture } from "../../../helpers/source-snapshot-fixture"
 
@@ -46,8 +46,8 @@ describe("Control UI asset lifecycle", () => {
   })
 
   test("a dev service builds and serves its snapshot's client after the checkout changes", async () => {
-    const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-assets-"), ["src/orchestration/app-service/web-serving/control-ui-assets.ts"])
-    const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/web-serving/control-ui-assets")>("src/orchestration/app-service/web-serving/control-ui-assets.ts")
+    const fixture = snapshotFixture(temporaryDirectory("flywheel-snapshot-assets-"), ["src/orchestration/app-service/account/web-serving/control-ui-assets.ts"])
+    const snapshotted = await fixture.importFromSnapshot<typeof import("../../../../src/orchestration/app-service/account/web-serving/control-ui-assets")>("src/orchestration/app-service/account/web-serving/control-ui-assets.ts")
     for (const root of [fixture.snapshot, fixture.checkout]) {
       await mkdir(join(root, "webview"), { recursive: true })
       await writeFile(join(root, "webview", "client.ts"), "original client")

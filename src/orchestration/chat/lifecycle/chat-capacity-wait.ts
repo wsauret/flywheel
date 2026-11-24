@@ -1,8 +1,8 @@
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import type { SessionNoticeOperation } from "../../../infra/session-notice.js"
 import { createUnattendedRecovery } from "../../agent-runtime/runner/unattended-recovery.js"
-import { capacityWaitAuthority } from "../../session/capacity-wait.js"
-import { capacityContinuations } from "../../session/planned-session-continuation.js"
+import { capacityWaitAuthority } from "../../session/control/capacity-wait.js"
+import { capacityContinuations } from "../../session/control/planned-session-continuation.js"
 
 /** A chat's capacity wait (PI-MODEL-039): a turn whose every route is spent
  *  until a stated time waits for it and continues on its own, with its

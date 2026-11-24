@@ -22,7 +22,7 @@ function fixture(includeTestOnlyExport: boolean): string {
   write(root, "src/lazy.ts", "export const lazyCommand = 'lazy'\n")
   write(root, "src/registry-entry.ts", "export const commandEntries = { run: () => 'run' }\n")
   write(root, "src/registry.ts", "import { commandEntries } from './registry-entry.js'; export const registry = { ...commandEntries }\n")
-  write(root, "src/orchestration/app-service/worker-entry.ts", "globalThis.postMessage?.('ready')\n")
+  write(root, "src/orchestration/app-service/background/worker-entry.ts", "globalThis.postMessage?.('ready')\n")
   write(root, "vscode/package.json", JSON.stringify({ name: "fixture-vscode", type: "module" }))
   write(root, "vscode/src/extension.ts", "/** @externalHost */ export function activate(): void {}\n")
   write(root, "vscode/webview/src/main.tsx", "document.body.textContent = 'ready'\n")

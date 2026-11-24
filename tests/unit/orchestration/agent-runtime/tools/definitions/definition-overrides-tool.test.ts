@@ -7,7 +7,7 @@ import { createDefinitionOverridesTool } from "../../../../../../src/orchestrati
 import { makeContext } from "../_fixtures.js"
 import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/event-store-types.js"
-import { createSessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import type { PreparedOverrideResolution } from "../../../../../../src/workflows/definitions/override-staleness.js"
 import { createManagedPackageWrites } from "../../../../../../src/orchestration/modules/learning/managed-package-writes.js"
 import { loadSkillDefinitions } from "../../../../../../src/workflows/skills/skills.js"

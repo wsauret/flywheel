@@ -5,7 +5,7 @@ import { ensureSessionDir, resolveSessionDir } from "../../../../src/infra/paths
 import type { OwnedCommandRunner } from "../../../../src/infra/owned-command";
 import { PRIVATE_COPY_RECORD } from "../../../../src/orchestration/agent-runtime/tools/bash/private-copy/bash-private-copy-record";
 import { mutationGitDirectoryName, prepareMutationGitEnvironment } from "../../../../src/orchestration/agent-runtime/tools/bash/git/bash-git-wrapper";
-import { sweepIdleScratch } from "../../../../src/orchestration/session/session-artifacts";
+import { sweepIdleScratch } from "../../../../src/orchestration/session/persistence/storage/session-artifacts";
 import { temporaryDirectories } from "../../../helpers/directories";
 
 const DAY_MS = 24 * 60 * 60 * 1000;

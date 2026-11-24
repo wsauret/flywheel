@@ -19,7 +19,7 @@ import { EventReaderService, EventStoreWriterService } from "../../../../src/inf
 import { createSessionStore } from "../../../../src/orchestration/session-store/store"
 import { createOutputSession } from "../../../../src/orchestration/runner/output-session"
 import { createSessionStoreTestContext } from "./_session-store-fixtures"
-import { registerLiveSessionControl } from "../../../../src/orchestration/session/live-session-control.js"
+import { registerLiveSessionControl } from "../../../../src/orchestration/session/control/live-session-control.js"
 import { createForegroundBashHoldController } from "../../../../src/orchestration/agent-runtime/background-work/foreground-bash-hold.js"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work/background-work"
 

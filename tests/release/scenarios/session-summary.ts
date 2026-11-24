@@ -5,8 +5,8 @@ import { join } from "node:path"
 import { accountServeRecordPath, accountServeSocketPath, accountServeTokenPath, resolveEventStoreDbFile, resolveSessionSummaryDbFile } from "../../../src/infra/paths.js"
 import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types.js"
 import { openReadonlyEventReader } from "../../../src/infra/sqlite-event-store.js"
-import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/socket-runtime-client.js"
-import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index.js"
+import { createSocketRuntimeClient } from "../../../src/orchestration/app-service/account/connections/socket-runtime-client.js"
+import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 import { encodeAccountAttach } from "../../../src/protocol/account-attach.js"
 import {
   LARGE_SESSION_SUMMARY_HISTORY,

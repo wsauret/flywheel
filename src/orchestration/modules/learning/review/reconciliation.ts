@@ -25,8 +25,8 @@ import type { ContextContentIdentities } from "../../../session/conversation/con
 import { reconcilePendingAudits } from "../skills/learning-journal.js";
 import { createMemoryStoreConfig, memoryStorePath } from "../memory-store.js";
 import type { CapabilityAccess } from "../../../agent-runtime/tools/types.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
-import { parseSessionFact } from "../../../session/session-fact-registry.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
+import { parseSessionFact } from "../../../session/persistence/session-fact-registry.js";
 
 const log = Log.create({ service: "learning-reconciliation" });
 

@@ -8,7 +8,7 @@ import { SESSION, settle } from "../../../../../tests/unit/protocol/client/_tran
 import { createMutationEvidenceReader, type MutationFilesView } from "../../../../../src/protocol/client/mutation-evidence.js"
 import type { RuntimeConnection } from "../../../../../src/protocol/client/connection.js"
 import { runtimeQuery } from "../../../../../tests/helpers/runtime-dispatch.js"
-import { mutationEvidenceFixture } from "../../../../../tests/unit/tui/output-blocks/_mutation-evidence-fixture.js"
+import { mutationEvidenceFixture } from "../../../../../tests/fixtures/mutation-evidence-fixture.js"
 
 let originalObserver: PropertyDescriptor | undefined
 beforeEach(() => {

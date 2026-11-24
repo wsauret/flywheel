@@ -6,9 +6,9 @@ import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore } from "../../../src/infra/event-store-types.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { InvariantViolation } from "../../../src/infra/invariant.js"
-import { agentInputConsumedFact } from "../../../src/orchestration/session/agent-input-facts.js"
-import { loadAgentInputProjection } from "../../../src/orchestration/session/agent-input-projection.js"
-import { createSessionFactWriter, type SessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js"
+import { agentInputConsumedFact } from "../../../src/orchestration/session/agent-input/agent-input-facts.js"
+import { loadAgentInputProjection } from "../../../src/orchestration/session/agent-input/agent-input-projection.js"
+import { createSessionFactWriter, type SessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js"
 
 const SESSION = "sess-consume"
 const AGGREGATE = `session:${SESSION}`

@@ -12,16 +12,16 @@ import { frontendAttempts, readWorkflowRunRecords, type WorkflowRunRecords } fro
 import { workflowAggregateId } from "../../../../workflows/vm/facts/session-facts.js"
 import type { AgentFailureDisplay, PausedBy } from "../../../../infra/output-blocks.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
-import { readChatTurnEnd, readChildStop } from "../../../session/chat-session-run-evidence.js"
+import { readChatTurnEnd, readChildStop } from "../../../session/control/chat-session-run-evidence.js"
 import { holdsForPerson, type ChatTurnEnd } from "../../../session/conversation/turn-end-record.js"
 import { createWorkflowRunReader } from "../runs/run-record.js"
 import { createWorkflowDurationReader } from "../runs/duration.js"
 import { readHeldWorkflowMemberTotals, readWorkflowMemberTotals, type WorkflowMemberTotals } from "../../../workflow-host/member-totals.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
-import { workflowMembershipReader, type WorkflowMember } from "../../../session/workflow-membership.js"
+import { workflowMembershipReader, type WorkflowMember } from "../../../session/metadata/workflow-membership.js"
 import { readAttemptStarts, servedAttempts, type AttemptStarts } from "../../../../workflows/vm/host/attempt-conversations.js"
-import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../../session/planned-session-continuation.js"
-import { readSessionMetadata } from "../../../session/session-metadata-store.js"
+import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../../session/control/planned-session-continuation.js"
+import { readSessionMetadata } from "../../../session/metadata/catalog/session-metadata-store.js"
 
 /** Resolve workflow cards from current ownership, independent of invocation origin.
  * The parent tool result remains the settlement owner; until it settles, the

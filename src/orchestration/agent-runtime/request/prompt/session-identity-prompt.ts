@@ -1,4 +1,4 @@
-import type { SessionIdentity } from "../../../session/session-messaging.js";
+import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
 
 const KIND_NAMES = {
   chat: "a root chat",

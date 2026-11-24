@@ -3,14 +3,14 @@ import { hydrateToolContentFact } from "../../../infra/tool-content-hydration.js
 import { CorruptEventRowError, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js";
 import type { CommandEvidence, ReadCommandEvidence } from "../../../workflows/output-contract/evidence.js";
 import { tryOpenConversationTree } from "../../session/conversation/tree/conversation-tree-handle.js";
-import { parseSessionRuntimeFact } from "../../session/session-runtime-event-types.js";
+import { parseSessionRuntimeFact } from "../../session/runtime-facts/session-runtime-event-types.js";
 import { parseBashResultDetails } from "../../agent-runtime/tools/bash/bash.js";
 import { workflowRunReader } from "../../module-catalog.js";
-import { parseFileMutationFact } from "../../session/file-mutation-facts.js";
-import { recordedExecutionCwd } from "../../session/session-execution-directory.js";
+import { parseFileMutationFact } from "../../session/file-mutations/file-mutation-facts.js";
+import { recordedExecutionCwd } from "../../session/metadata/session-execution-directory.js";
 import { shellCommandOf } from "../../tool-catalog.js";
-import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../session/tool-execution-projection.js";
-import { workflowMembershipReader } from "../../session/workflow-membership.js";
+import { loadToolExecutionTimelineFromEvents, TOOL_EXECUTION_FACT_TYPES } from "../../session/runtime-facts/tool-execution-projection.js";
+import { workflowMembershipReader } from "../../session/metadata/workflow-membership.js";
 
 interface CommandEvidenceSourceDeps {
   readonly workflowId: string;

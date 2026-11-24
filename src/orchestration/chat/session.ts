@@ -13,14 +13,14 @@ import type { ControlInterruption, PlannedCutInterrupt, RuntimeInterruption } fr
 import { ChatSessionState, type ChatCallbacks, type ChatSessionDeps } from "./types.js"
 import { createChatRunnerLifecycle } from "./lifecycle/runner-lifecycle.js"
 import { TITLE_GENERATION_ROLE_ID } from "../config/roles.js"
-import { wireSessionSubscribers } from "../session/create-session-infra.js"
+import { wireSessionSubscribers } from "../session/persistence/create-session-infra.js"
 import { createOutputSession } from "../runner/output-session.js"
 import { SessionEventAdapter } from "../session-store/event-adapter.js"
-import { deleteSessionArtifacts } from "../session/session-artifacts.js"
-import { generateSessionTitle, type SessionTitleGeneration } from "../session/session-title.js"
+import { deleteSessionArtifacts } from "../session/persistence/storage/session-artifacts.js"
+import { generateSessionTitle, type SessionTitleGeneration } from "../session/metadata/session-title.js"
 import { createAskUserController } from "../runner/ask-user-controller.js"
-import { voidUnclaimedDecisions } from "../session/agent-input-decision.js"
-import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
+import { voidUnclaimedDecisions } from "../session/agent-input/agent-input-decision.js"
+import { readChatTurnEnd } from "../session/control/chat-session-run-evidence.js"
 
 const log = Log.create({ service: "chat" })
 

@@ -48,7 +48,7 @@ export interface LaunchedRuntimeClient {
 
 export function runtimeWorkerUrl(): string {
   return runsThroughBun(process.execPath)
-    ? new URL("../../orchestration/app-service/worker-entry.ts", import.meta.url).href
+    ? new URL("../../orchestration/app-service/background/worker-entry.ts", import.meta.url).href
     : embeddedEntrySpecifier(import.meta.dir, "worker-entry.js")
 }
 
@@ -56,7 +56,7 @@ export function runtimeWorkerUrl(): string {
 export async function launchRuntimeClient(options: RuntimeLaunchOptions): Promise<LaunchedRuntimeClient> {
   startupTrace("socket runtime client start")
   log.info("socket runtime client start", { projectRoot: options.projectRoot })
-  const { createSocketRuntimeClient } = await import("../../orchestration/app-service/socket-runtime-client.js")
+  const { createSocketRuntimeClient } = await import("../../orchestration/app-service/account/connections/socket-runtime-client.js")
   const client = createSocketRuntimeClient({
     socketPath: options.attach.socketPath,
     // The terminal learns the identity from its startup attach and then

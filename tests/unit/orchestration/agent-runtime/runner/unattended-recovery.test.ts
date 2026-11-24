@@ -8,7 +8,7 @@ import { RouteUnavailableError } from "../../../../../src/orchestration/agent-ru
 import { classifyResponseFailed } from "../../../../../src/orchestration/agent-runtime/llm/adapters/openai/openai-helpers.js"
 import type { AgentFailureReason, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js"
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../../../src/orchestration/agent-runtime/runner/unattended-recovery.js"
-import { capacityWaitAuthority, registerCapacityWaits, type CapacityWaitAuthority } from "../../../../../src/orchestration/session/capacity-wait.js"
+import { capacityWaitAuthority, registerCapacityWaits, type CapacityWaitAuthority } from "../../../../../src/orchestration/session/control/capacity-wait.js"
 import { EventStoreWriterService } from "../../../../../src/infra/event-store-effect.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext } from "../../../../fixtures/runtime-supervisor-fixtures.js"

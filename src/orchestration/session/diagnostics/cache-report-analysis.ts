@@ -1,4 +1,4 @@
-import { providerRequestStreamKey, type ProviderRequestAuditEntry } from "../provider-request-audit-types.js"
+import { providerRequestStreamKey, type ProviderRequestAuditEntry } from "../runtime-facts/provider-request-audit-types.js"
 
 /** Why a prefix break happened. `stale-mask-advanced` is a planned prefix
  *  mutation (ARCH-CONTEXT-011). `idle-gap` is only a possible cause: the gap

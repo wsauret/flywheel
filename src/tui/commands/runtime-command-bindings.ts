@@ -1,6 +1,6 @@
 import type { BuiltInCommandDescriptor, CommandOutcome } from "../../protocol/command-catalog-protocol-types.js"
 import type { BuiltInCommandContext, BuiltInCommandDefinition } from "./command-types.js"
-import { chordForCommand, type Keymap } from "../keymap/keymap.js"
+import { chordForCommand, type Keymap } from "../terminal/keymap/keymap.js"
 import { chatOnlyCommandNotice } from "../../protocol/client/slash-route.js"
 
 type OutcomePresenter = Pick<BuiltInCommandContext, "showToast" | "focusSession" | "refreshCommandCatalog">

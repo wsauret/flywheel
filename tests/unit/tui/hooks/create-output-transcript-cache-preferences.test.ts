@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient, windowTotal, rangeOk, textBlock } from "./_output-transcript-cache-fixtures.js"
 
 describe("createOutputTranscriptCache content preferences", () => {

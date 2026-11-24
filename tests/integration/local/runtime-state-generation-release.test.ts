@@ -51,13 +51,13 @@ const disposals: string[] = []
 const realEventStoreEffect = await import("../../../src/infra/event-store-effect.js")
 const realManager = await import("../../../src/orchestration/session/manager.js")
 const realMcp = await import("../../../src/orchestration/modules/mcp/manager/manager.js")
-const realLane = await import("../../../src/orchestration/app-service/runtime-background-lane.js")
+const realLane = await import("../../../src/orchestration/app-service/background/runtime-background-lane.js")
 const realWriterLane = await import("../../../src/infra/event-store-writer-lane.js")
 const realSessionStore = await import("../../../src/orchestration/session-store/store.js")
 const realAppService = await import("../../../src/orchestration/app-service/app-service.js")
 const realAvailability = await import("../../../src/orchestration/agent-runtime/llm/routing/shared-provider-availability.js")
-const realRoleProjection = await import("../../../src/orchestration/app-service/role-protocol-projection.js")
-const realSessionAuth = await import("../../../src/orchestration/session/session-auth-profile.js")
+const realRoleProjection = await import("../../../src/orchestration/app-service/auth/models/role-protocol-projection.js")
+const realSessionAuth = await import("../../../src/orchestration/session/metadata/session-auth-profile.js")
 const EventStoreLive = realEventStoreEffect.EventStoreLive
 const createEventStoreWriterLane = realWriterLane.createEventStoreWriterLane
 const createSessionManager = realManager.createSessionManager
@@ -163,7 +163,7 @@ function workspace(name: string) {
       projectRoot,
       accountHome,
       userDataRoot,
-      workerUrl: new URL("../../../src/orchestration/app-service/worker-entry.ts", import.meta.url).href,
+      workerUrl: new URL("../../../src/orchestration/app-service/background/worker-entry.ts", import.meta.url).href,
       launcher: createLauncherScope({ spawnOwned: unguardedSpawnOwned(), adoptOwned: () => Promise.reject(new Error("no command is adopted here")) }),
       persistentProcesses: persistentProcessManager.client(),
       allowPersistentProcesses: false,

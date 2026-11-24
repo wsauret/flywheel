@@ -23,7 +23,7 @@ import { errorMessage } from "../../../../../infra/error-message.js";
 import { Log } from "../../../../../infra/log.js";
 import { bridgeExternalPromise } from "../../../../agent-runtime/external-promise-bridge.js";
 import { failureTerminal, type Agent, type OmitAgentOptions, type RunnableAgentOptions } from "../../../../agent-runtime/types.js";
-import type { SessionFactWriter } from "../../../../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../session/persistence/session-fact-writer.js";
 import type { AsyncEventStateReadSurface } from "../../../../../infra/event-store-types.js";
 import { createAgentGeneration } from "../../../../runner/host.js";
 import { tryParseJsonFromText } from "./json-extract.js";

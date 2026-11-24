@@ -1,18 +1,18 @@
 /** @jsxImportSource @opentui/solid */
 
 import { useTheme } from "@tui/context/theme"
-import { useModalDimensions } from "@tui/components/use-modal-dimensions"
+import { useModalDimensions } from "@tui/components/modal/use-modal-dimensions"
 import type { ScrollBoxRenderable } from "@opentui/core"
 import { createMemo, createSignal, For, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { useListSelectionReveal } from "../components/use-list-selection-reveal.js"
+import { useListSelectionReveal } from "../components/modal/scroll/use-list-selection-reveal.js"
 import { canStopBackgroundRow, type BackgroundIndexEntry, type BackgroundIndexFilter } from "../../protocol/client/background-index.js"
-import type { FilteredResult } from "../components/modal-select-types.js"
-import { Button } from "../components/button.js"
-import { ModalFrame } from "../components/modal-frame.js"
-import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal-copy.js"
-import { ModalFooter } from "../components/modal-footer.js"
-import { useHoverHighlight } from "../components/use-hover-highlight.js"
+import type { FilteredResult } from "../components/modal/select/modal-select-types.js"
+import { Button } from "../components/controls/button.js"
+import { ModalFrame } from "../components/modal/modal-frame.js"
+import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal/modal-copy.js"
+import { ModalFooter } from "../components/modal/modal-footer.js"
+import { useHoverHighlight } from "../components/controls/use-hover-highlight.js"
 import { KERNEL_COMMAND_NAMES } from "../../protocol/command-names.js"
 
 interface BackgroundModalProps {

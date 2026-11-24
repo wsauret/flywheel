@@ -18,13 +18,13 @@ import type { ExternalSkillChildGrant } from "./definitions/skill.js";
 import type { CapabilityAccess } from "./types.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
+import type { DefinitionAvailabilitySnapshot } from "../../app-service/definitions/definition-availability.js";
 import type { RuntimeConfigRequestCapture } from "../request/request-config.js";
 import type { AgentPurpose } from "../types.js";
 import type { ModelInteractionProfile } from "../request/prompt/model-interaction-profile.js";
-import type { SessionMessaging } from "../../session/session-messaging.js";
+import type { SessionMessaging } from "../../session/control/messaging/session-messaging.js";
 import type { CaptureProviderConnection } from "../request/model-runtime-capture.js";
-import type { ConversationCheckpointOwner } from "../../session/conversation-checkpoint.js";
+import type { ConversationCheckpointOwner } from "../../session/conversation-records/conversation-checkpoint.js";
 
 /** The model one request is served with. Per request, because the provider
  *  chain that serves a request is resolved per request. */

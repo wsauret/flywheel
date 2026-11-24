@@ -6,12 +6,12 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { asAsyncEventReadSurface, type LocalSqliteEventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
-import { isWorkflowResumeCandidate } from "../../../../src/orchestration/session/resumable.js"
+import { isWorkflowResumeCandidate } from "../../../../src/orchestration/session/metadata/resumable.js"
 import { loadQueueSnapshotFromReader } from "../../../../src/workflows/view/view-store.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { publishTestWorkflow } from "./_session-manager-fixtures.js"
-import { workflowSessionActions } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
+import { workflowSessionActions } from "../../../../src/orchestration/session/control/chat-session-run-evidence.js"
 import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 
 const dirs: string[] = []

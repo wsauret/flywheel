@@ -4,8 +4,8 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { StyledText, type MouseEvent, type ScrollBoxRenderable } from "@opentui/core"
 import { createMemo, createSignal, For, Show, untrack, type Accessor } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
-import { useListSelectionReveal } from "../../components/use-list-selection-reveal.js"
+import { createKeyedListSelection } from "../../hooks/overlays/modals/create-keyed-list-selection.js"
+import { useListSelectionReveal } from "../../components/modal/scroll/use-list-selection-reveal.js"
 import type { RuntimeClient } from "../../../protocol/app-service-types.js"
 import { dispatchInterrupt, resumeMutation, workflowCardControls, workflowHoldsFailedAgent, workflowParked, workflowStateLabel, type ControlRefusal } from "../../../protocol/client/session-controls.js"
 import { workflowCard, workflowCardChoice, workflowCardNotice, workflowRunName, workflowViewCardStatus, type WorkflowCardChoices } from "../../../protocol/client/workflow-card.js"
@@ -17,15 +17,15 @@ import { formatElapsed, formatCostSplit } from "../../../protocol/client/format.
 import { activeTimeMs } from "../../../protocol/client/session-time.js"
 import { useTheme } from "@tui/context/theme.js"
 import { useTickPool } from "@tui/context/tick-pool-context.js"
-import { useHoverHighlight } from "@tui/components/use-hover-highlight.js"
-import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/output-blocks/agents/workflow-card.js"
-import { hitsDrawnContent } from "@tui/content-hit.js"
+import { useHoverHighlight } from "@tui/components/controls/use-hover-highlight.js"
+import { workflowFullCardRows, type WorkflowCardAction, type WorkflowCardRow, type WorkflowFullCardRows } from "@tui/transcript/output-blocks/agents/workflow-card.js"
+import { hitsDrawnContent } from "@tui/terminal/content-hit.js"
 
 const NO_ROWS: WorkflowFullCardRows = { rows: [], bar: undefined }
 import { bindStyledTextContent } from "@tui/context/find/reactive-text.js"
-import { displayWidth, shareWidth, truncateToWidth } from "@tui/text.js"
-import { Button } from "@tui/components/button.js"
-import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal-frame.js"
+import { displayWidth, shareWidth, truncateToWidth } from "@tui/terminal/text.js"
+import { Button } from "@tui/components/controls/button.js"
+import { ModalFrame, MODAL_FRAME_CLOSE_WIDTH, MODAL_FRAME_HORIZONTAL_INSET, modalFrameBackWidth, sessionViewerBodyHeight, sessionViewerWidth } from "@tui/components/modal/modal-frame.js"
 
 type KeyEvent = { name: string; ctrl?: boolean; meta?: boolean; shift?: boolean; preventDefault?: () => void }
 

@@ -4,8 +4,8 @@ import * as loop from "../../../src/infra/event-loop-lag"
 import { createEventProjection } from "../../../src/infra/event-projection"
 import { asAsyncEventReadSurface } from "../../../src/infra/event-store-types"
 import { inMemoryEventReader } from "../../helpers/in-memory-event-reader"
-import { createProjectStateClient } from "../../../src/orchestration/app-service/project-state-client"
-import { encodeProjectStateResponseFrame, type ProjectStateResponseFrame } from "../../../src/orchestration/app-service/project-state-protocol"
+import { createProjectStateClient } from "../../../src/orchestration/app-service/project-state/project-state-client"
+import { encodeProjectStateResponseFrame, type ProjectStateResponseFrame } from "../../../src/orchestration/app-service/project-state/project-state-protocol"
 
 describe("loop probes", () => {
   test("late samples name the units that ran across the gap, summed per unit, and coalesce repeats", async () => {

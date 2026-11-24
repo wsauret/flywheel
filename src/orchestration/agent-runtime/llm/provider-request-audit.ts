@@ -9,8 +9,8 @@ import {
   recordProviderUsage,
   type ConversationDedup,
   type ProviderRequestAuditContext,
-} from "../../session/provider-request-audit-recorder.js";
-import type { ProviderRequestAuditFact } from "../../session/provider-request-audit-facts.js";
+} from "../../session/diagnostics/provider-request-audit-recorder.js";
+import type { ProviderRequestAuditFact } from "../../session/runtime-facts/provider-request-audit-facts.js";
 import {
   providerRequestAuditOptions,
   type PromptHistoryLowering,
@@ -24,13 +24,13 @@ import {
   type ProviderStreamSummary,
   type ProviderStreamTelemetryCompletedInput,
   type ProviderStreamTelemetryEventInput,
-} from "../../session/provider-request-audit-types.js";
+} from "../../session/runtime-facts/provider-request-audit-types.js";
 import type { ProviderRequestOptions } from "../../../infra/llm/access/provider-options.js";
 import type { ReasoningEffort } from "../../../infra/llm/models/models.js";
 import type { CacheRetention, ConversationMessage, ProviderRequestAttribution } from "./types.js";
 import type { PromptKind } from "../request/prompt/system-prompt.js";
 import type { ModelInteractionProfileId } from "../request/prompt/model-interaction-profile.js";
-import type { SessionFactWriter } from "../../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
 import type { DurableOwner } from "../../../infra/durable-owner.js";
 
 export interface ProviderRequestAuditHandle {

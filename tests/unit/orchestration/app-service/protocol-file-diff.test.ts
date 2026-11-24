@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { AnyBlock } from "../../../../src/infra/output-blocks.js"
-import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/transcript-queries.js"
+import { hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody } from "../../../../src/orchestration/app-service/projections/output/transcript-queries.js"
 import { indexOutputBlocks } from "../../../../src/orchestration/session/conversation/transcript/branch-history-builder.js"
 
 /** Unified diff whose hunk content lines are the only lines the client renders;

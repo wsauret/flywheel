@@ -1,6 +1,6 @@
 import { PersistenceWriteRefused } from "../../../../infra/event-store-types.js";
 import { asRecord } from "../../../../infra/record.js";
-import { finalizedToolResultCheckpointSwaps } from "../../../session/finalized-tool-result-checkpoint.js";
+import { finalizedToolResultCheckpointSwaps } from "../../../session/history/finalized-tool-result-checkpoint.js";
 import type { AgentLoopOptions } from "../../agent-loop-types.js";
 import type { ToolResultEntry } from "../turn/agent-state.js";
 import type { TurnSettlementRequest } from "./agent-turn-settlement.js";

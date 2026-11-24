@@ -7,7 +7,7 @@ import { planPromptRequest, plannedCapabilities, promptParts, type PlannedReques
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import type { CapabilityCheck } from "../../../../src/infra/capability-text.js";
 import { composeModuleRuntimes } from "../../../../src/infra/module-runtime.js";
-import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definition-availability.js";
+import { createDefinitionAvailability, type DefinitionAvailabilitySnapshot } from "../../../../src/orchestration/app-service/definitions/definition-availability.js";
 import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/request/prompt/capability-checks.js";
 import { createCapabilityNarrowing } from "../../../../src/orchestration/agent-runtime/request/prompt/capability-narrowing.js";
 import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/loop/agent-loop-input-consumer.js";

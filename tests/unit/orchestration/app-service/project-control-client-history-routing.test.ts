@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { createProjectControlClient } from "../../../../src/orchestration/app-service/project-control-client.js"
+import { createProjectControlClient } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
 import type { RuntimeQuery, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
-import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-types.js"
-import { projectSessionCatalogRow } from "../../../../src/orchestration/session/session-catalog-row.js"
+import type { DurableSessionCatalogRow } from "../../../../src/orchestration/session/metadata/catalog/session-catalog-types.js"
+import { projectSessionCatalogRow } from "../../../../src/orchestration/session/control/session-catalog-row.js"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { statusCursor, type StatusView } from "../../../../src/protocol/status-protocol-types.js"
 import { durableRow } from "./_frontend-projection-fixtures.js"
 import { fixture, privateExecutor } from "./_project-control-client-fixture.js"
 import { fixture as generationsFixture, settle } from "./_executor-generations-fixture.js"
-import { readAskerOf } from "../../../../src/orchestration/app-service/project-executor-generations.js"
+import { readAskerOf } from "../../../../src/orchestration/app-service/executor/project-executor-generations.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
 
 const HISTORY_FILES = 1

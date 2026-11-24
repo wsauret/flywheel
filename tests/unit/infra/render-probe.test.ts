@@ -13,7 +13,7 @@ import {
   renderProbeFrame,
   setRenderProbeEnabled,
 } from "../../../src/infra/render-probe.js"
-import { createOutputTranscriptCache } from "../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import { fakeRuntimeClient, flushRecovery, liveView, textBlock, toolEntry } from "../tui/hooks/_output-transcript-cache-fixtures.js"
 
 function probePayloadField(payload: unknown, field: "phase" | "monotonicEpochMs"): string | number | undefined {

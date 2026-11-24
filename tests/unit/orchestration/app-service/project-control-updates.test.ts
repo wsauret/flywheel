@@ -6,8 +6,8 @@
  */
 
 import { expect, test } from "bun:test"
-import { createProjectControlClient, type ProjectControlClientOptions, type ProjectControlExecutor } from "../../../../src/orchestration/app-service/project-control-client.js"
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { createProjectControlClient, type ProjectControlClientOptions, type ProjectControlExecutor } from "../../../../src/orchestration/app-service/account/projects/project-control-client.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import type { UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js"
 import { servingAccountService } from "../../../helpers/account-service-state.js"

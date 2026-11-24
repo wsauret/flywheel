@@ -145,8 +145,8 @@ const STORED_STEP_KEY_READERS: readonly string[] = [
   "src/infra/runtime-fact-types.ts",
   "src/cli/events/event-search-format.ts",
   "src/orchestration/agent-runtime/request/usage/usage-settlement.ts",
-  "src/orchestration/session/provider-request-audit-facts.ts",
-  "src/orchestration/session/provider-request-audit-projection.ts",
+  "src/orchestration/session/runtime-facts/provider-request-audit-facts.ts",
+  "src/orchestration/session/diagnostics/provider-request-audit-projection.ts",
   PROTOCOL_VERSION_NOTES,
 ];
 
@@ -182,7 +182,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
     active: true,
     allowPaths: [
       "src/vendor.d.ts",
-      "src/tui/launcher.ts",
+      "src/tui/shell/launcher.ts",
       "src/orchestration/modules/provider-github-copilot/auth-types.ts",
       // The Agent SDK bridge loads an engine plugin through the SDK's `plugins` option.
       "src/orchestration/modules/provider-claude-agent-sdk/",

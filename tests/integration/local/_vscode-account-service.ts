@@ -5,12 +5,12 @@ import { Log } from "../../../src/infra/log.js"
 import { createPersistentProcessManager } from "../../../src/infra/persistent-process-manager.js"
 import { runServe } from "../../../src/cli/account-service/serve.js"
 import { createCliLauncher } from "../../../src/cli/account-service/runtime-launch.js"
-import type { AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account-service-runtime.js"
+import type { AccountServiceRuntimeOptions } from "../../../src/orchestration/app-service/account/account-service-runtime.js"
 import {
   createAccountHubHandler,
   type AccountHubOptions,
   type Hub,
-} from "../../../src/orchestration/app-service/web-serving/hub.js"
+} from "../../../src/orchestration/app-service/account/web-serving/hub.js"
 import { isolatedHubRecordPath } from "./_account-service.js"
 
 /** The hub on an ephemeral port, so it never meets the person's own

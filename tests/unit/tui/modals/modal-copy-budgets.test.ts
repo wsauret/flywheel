@@ -1,6 +1,6 @@
 import { usageFooterRows } from "../../../../src/tui/modules/subscription-usage/footer.js"
 import { describe, expect, it } from "bun:test"
-import { displayWidth } from "../../../../src/tui/text.js"
+import { displayWidth } from "../../../../src/tui/terminal/text.js"
 import { SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
 import { settingCatalogRows } from "../../../helpers/setting-catalog-rows.js"
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js"
@@ -16,7 +16,7 @@ import {
   modalCopyLimit,
   settingsGroupDescription,
   SUBSCRIPTION_SPEND_CONSENT_COPY,
-} from "../../../../src/tui/components/modal-copy.js"
+} from "../../../../src/tui/components/modal/modal-copy.js"
 import { modalHelpRows } from "../../../../src/tui/modals/model/model-modal-chrome.js"
 import type { ModelModalState, ModelModalView } from "../../../../src/tui/modals/model/model-modal-types.js"
 import { scopeContextLine } from "../../../../src/tui/modals/model/model-modal-scope.js"

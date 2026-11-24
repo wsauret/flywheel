@@ -1,6 +1,6 @@
 import type { ConversationMessage, ServingAttempt, StreamOptions, SystemOriginMessage } from "../../../agent-runtime/llm/types.js";
 import { SYSTEM_PROMPT_SEPARATOR, type SystemPromptTiers } from "../../../agent-runtime/llm/system-prompt-tiers.js";
-import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/provider-request-audit-types.js";
+import type { ProviderTransportAddition, ProviderTransportContext, ProviderTransportHiddenRequest } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import type { CliMessage, CliView } from "../cli-view.js";
 import type { ResultRewrite } from "../query/request-plan.js";
 

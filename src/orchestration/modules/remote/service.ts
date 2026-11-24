@@ -6,7 +6,7 @@ import { EMPTY_REMOTE_VIEW, remoteCursor } from "../../../protocol/modules/remot
 import { DEFAULT_REMOTE_APP_ORIGIN } from "../../../protocol/modules/remote/relay-protocol.js"
 import type { AccountProjectModuleServices, ModuleServiceInstance } from "../../app-service/module-service-host.js"
 import { createRemoteAccess, type RemoteAccess } from "./remote-access.js"
-import { accountServicePlatform, createAccountServiceInstallation } from "../../app-service/account-service-installation.js"
+import { accountServicePlatform, createAccountServiceInstallation } from "../../app-service/account/installation/account-service-installation.js"
 import { createRemoteNotifier } from "./remote-notifier.js"
 import { relaySocketServerLayer } from "./relay-socket-server.js"
 import { retiredServiceInstallation } from "./account-relay-service.js"

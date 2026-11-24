@@ -9,7 +9,7 @@ import type { AgentFactory } from "../../../../src/orchestration/agent-runtime/t
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/execution/agent-callback"
 import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/definitions/agent-resolution"
 import type { AttemptRow } from "../../../../src/workflows/view/types"

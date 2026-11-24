@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createLauncherScope } from "../../../../src/infra/process-supervisor.js"
 import { handleFontCommand } from "../../../../src/tui/commands/command-definitions.js"
-import type { RuntimeConfigCache } from "../../../../src/tui/hooks/create-runtime-config-cache.js"
-import { configValues } from "../modals/_settings-modal-fixtures.js"
+import type { RuntimeConfigCache } from "../../../../src/tui/hooks/state/runtime/create-runtime-config-cache.js"
+import { configValues } from "../modals/settings/_settings-modal-fixtures.js"
 import { runtimeDispatch, type DispatchAnswer } from "../../../helpers/runtime-dispatch.js"
 
 function config(dismissed: boolean, settlePublication = async () => true): RuntimeConfigCache {

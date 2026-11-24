@@ -16,12 +16,12 @@ import type { AgentLoopWakeInput, InputSource, LogicalTurnStartedContext, TurnEn
 import type { ToolAction } from "../../infra/workflow-types.js";
 import type { BriefScope } from "../config/models/role-selection.js";
 import type { RoleResolver } from "../config/roles.js";
-import type { RoleSettingEntry } from "../session/schemas.js";
+import type { RoleSettingEntry } from "../session/metadata/schemas.js";
 import type { AskUserController } from "../runner/ask-user-controller.js";
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
-import type { ProviderRequestAuditFact } from "../session/provider-request-audit-facts.js";
-import type { SessionFactWriter } from "../session/session-fact-writer.js";
+import type { ProviderRequestAuditFact } from "../session/runtime-facts/provider-request-audit-facts.js";
+import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { DurableOwner } from "../../infra/durable-owner.js";
 
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js";
@@ -54,7 +54,7 @@ import type { ChildSessionAuthority } from "../module-seams.js";
 import type { SessionContext } from "../session/conversation/tree/conversation-tree-context.js";
 import type { ShellRuntimeClient } from "./tools/bash/execution/shell-runtime-types.js";
 
-import type { SessionMessaging } from "../session/session-messaging.js";
+import type { SessionMessaging } from "../session/control/messaging/session-messaging.js";
 import type { ExternalSkillChildGrant } from "./tools/definitions/skill.js";
 import type { CaptureRuntimeConfig } from "./request/request-config.js";
 

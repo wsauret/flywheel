@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Log } from "../../../../src/infra/log.js"
-import { connectProjectExecutionChannel } from "../../../../src/orchestration/app-service/project-execution-channel.js"
+import { connectProjectExecutionChannel } from "../../../../src/orchestration/app-service/executor/project-execution-channel.js"
 import { deferred, deliverGaps, endpointPair, manualClock } from "./project-execution-channel-fixtures.js"
 
 describe("project execution output repair", () => {

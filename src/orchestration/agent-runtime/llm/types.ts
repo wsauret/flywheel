@@ -16,7 +16,7 @@ import type { ClaudeTokenizerIdentity } from "../../../infra/model-id.js";
 import type { ProviderIdentity } from "../../../infra/llm/errors/auth-error.js";
 import type { MessageProducer } from "../../../infra/chat-input.js";
 import type { SystemPromptTiers } from "./system-prompt-tiers.js";
-import type { ProviderTransportContext } from "../../session/provider-request-audit-types.js";
+import type { ProviderTransportContext } from "../../session/runtime-facts/provider-request-audit-types.js";
 import type { SharedTree } from "../request/shared-tree.js";
 import type { ProviderHistoryTarget } from "./history/provider-history.js";
 

@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type { Node } from "web-tree-sitter";
 import { loadTreeSitterParser } from "../src/infra/tree-sitter-parser.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
-import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/app-service/definition-availability.js";
+import { agentTypeOf, createDefinitionAvailability } from "../src/orchestration/app-service/definitions/definition-availability.js";
 import { parentRoleId } from "../src/orchestration/config/roles.js";
 import { decodeModuleState } from "../src/orchestration/config/module-descriptor.js";
 import { installedDefinitionBundles } from "../src/orchestration/module-catalog.js";

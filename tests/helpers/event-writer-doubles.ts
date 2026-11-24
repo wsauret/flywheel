@@ -1,5 +1,5 @@
 import type { AsyncEventWriter } from "../../src/infra/event-store-types.js"
-import type { SessionFactWriter } from "../../src/orchestration/session/session-fact-writer.js"
+import type { SessionFactWriter } from "../../src/orchestration/session/persistence/session-fact-writer.js"
 
 /** A complete event writer for a subject that must not write through it.
  *  Each method that `overrides` does not replace rejects and names itself. */

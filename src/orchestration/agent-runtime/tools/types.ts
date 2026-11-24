@@ -1,7 +1,7 @@
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest, ModulePolicy } from "../../config/policy/module-policy.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
-import type { SessionFactWriter } from "../../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../session/persistence/session-fact-writer.js";
 import type { ToolOutcome } from "../../../infra/tool-outcome.js";
 import type { BackgroundWorkRegistry } from "../background-work/background-work.js";
 import type { ToolCallIdentity } from "../background-work/background-work-types.js";

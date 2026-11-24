@@ -1,7 +1,7 @@
 import { assertNever } from "../../../../infra/assert-never.js";
 import { maxEventLoopLagBetween } from "../../../../infra/event-loop-lag.js";
 import { DebugLog } from "../../../../infra/debug-log.js";
-import type { ProviderRequestOutcome, ProviderStreamSummary } from "../../../session/provider-request-audit-types.js";
+import type { ProviderRequestOutcome, ProviderStreamSummary } from "../../../session/runtime-facts/provider-request-audit-types.js";
 import type { ProviderStreamEvent, StreamTelemetryObservation, StreamTelemetryObserveResult, StreamTelemetrySink, TelemetryFields } from "../../llm/types.js";
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "../../llm/provider-request-audit.js";
 import { createGenerationMeasurement, type GenerationMeasurementTokenizer, type SettledTextOf } from "./generation-measurement.js";

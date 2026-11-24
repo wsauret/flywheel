@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { fullAuthority } from "../../../helpers/launch-authority.js"
-import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/runtime-supervisor.js"
+import { createRuntimeSupervisor } from "../../../../src/orchestration/app-service/supervisor/runtime-supervisor.js"
 import type { ChatRunnerDeps } from "../../../../src/orchestration/chat/runner.js"
 import { modelWorkflowLaunchOrigin } from "../../../../src/orchestration/workflow-host/lifecycle/launch-origin.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"

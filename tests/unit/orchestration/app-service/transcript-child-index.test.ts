@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from "bun:test"
 import { createHash } from "node:crypto"
 import { asAsyncEventReadSurface, type StoredFact } from "../../../../src/infra/event-store-types.js"
-import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache.js"
+import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache.js"
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults.js"
 import type { AgentGroupBlock } from "../../../../src/infra/output-blocks.js"
 import { frontendOutputBlockBytes } from "../../../../src/protocol/frontend-output-block-metrics.js"

@@ -7,9 +7,9 @@ import { isProcessAlive } from "../../../../infra/process-liveness.js";
 import type { LauncherScope } from "../../../../infra/process-supervisor.js";
 import { isWorkingStatus, type StatusView } from "../../../../protocol/status-protocol-types.js";
 import type { FrontendOutputBlock } from "../../../../protocol/app-service-types.js";
-import { createRuntimeChatKernel } from "../../../app-service/runtime-chat-kernel.js";
-import { assembleProjectRuntime, type RuntimeCompositionOptions } from "../../../app-service/project-execution-runtime.js";
-import { quickTitleFromMessage } from "../../../session/session-title.js";
+import { createRuntimeChatKernel } from "../../../app-service/supervisor/runtime-chat-kernel.js";
+import { assembleProjectRuntime, type RuntimeCompositionOptions } from "../../../app-service/executor/execution/project-execution-runtime.js";
+import { quickTitleFromMessage } from "../../../session/metadata/session-title.js";
 import type { ScenarioName } from "../cli/claude-sdk.js";
 import { setupClaudeSdkHome, type ClaudeSdkProfileOptions } from "./setup.js";
 
@@ -143,7 +143,7 @@ async function openScenarioRuntime(place: ScenarioPlace, launcher: LauncherScope
   const options: RuntimeCompositionOptions = {
     projectRoot: place.projectRoot, executionCwd: place.projectRoot, accountHome: place.accountHome, userDataRoot: place.userDataRoot,
     // Only a source run installs this module, so the source Worker entry is always present.
-    workerUrl: new URL("../../../app-service/worker-entry.ts", import.meta.url).href,
+    workerUrl: new URL("../../../app-service/background/worker-entry.ts", import.meta.url).href,
     launcher, persistentProcesses: processes.client(), allowPersistentProcesses: false,
   };
   const composition = await assembleProjectRuntime(options, (scope, lane) => createRuntimeChatKernel(options, scope, lane));

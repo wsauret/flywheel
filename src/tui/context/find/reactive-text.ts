@@ -1,8 +1,8 @@
 import { StyledText, type TextChunk, type TextRenderable } from "@opentui/core"
 import { createEffect, createMemo } from "solid-js"
 import { useFindPaint } from "./find-highlight.js"
-import { preventSelectionStart } from "@tui/selection.js"
-import { textChunksEqual } from "@tui/text.js"
+import { preventSelectionStart } from "@tui/terminal/selection.js"
+import { textChunksEqual } from "@tui/terminal/text.js"
 
 // OpenTUI's <text> content setter diffs by StyledText OBJECT IDENTITY
 // (index-...:19975: `if (this._text !== styledText)`), so assigning a fresh-but-equal

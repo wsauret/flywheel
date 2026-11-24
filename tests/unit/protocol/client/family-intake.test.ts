@@ -3,7 +3,7 @@ import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-fail
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
 import type { FrontendEvent, SessionCatalogRow } from "../../../../src/protocol/app-service-types.js"
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
-import { createRuntimeUiPatchSequencer, type RuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer, type RuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { sessionCursor, type RuntimeCursorIdentity, type RuntimePosition, type RuntimeUiPatch } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createFamilyIntake, type FamilyIntakeOptions } from "../../../../src/protocol/client/family-intake.js"
 

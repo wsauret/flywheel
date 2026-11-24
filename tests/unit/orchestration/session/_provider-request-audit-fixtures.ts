@@ -2,9 +2,9 @@ import type { LocalSqliteEventStore } from "../../../../src/infra/event-store-ty
 import {
   recordProviderRequest,
   type ConversationDedup,
-} from "../../../../src/orchestration/session/provider-request-audit-recorder.js"
-import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts.js"
-import type { ProviderRequestAuditRequestInput } from "../../../../src/orchestration/session/provider-request-audit-types.js"
+} from "../../../../src/orchestration/session/diagnostics/provider-request-audit-recorder.js"
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts.js"
+import type { ProviderRequestAuditRequestInput } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 
 /** The audit facts that the live recorder records for one provider request,
  *  in record order. Advances `dedup` as the recorder does. */

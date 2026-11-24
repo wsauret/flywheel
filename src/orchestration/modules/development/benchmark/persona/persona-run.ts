@@ -21,7 +21,7 @@ import { unavailableBenchmarkAccounting, type BenchmarkAccounting } from "../acc
 import { invokeBenchmarkAgent } from "../execution/invocation.js";
 import { agentCapabilityCheck } from "../../../../agent-runtime/request/prompt/capability-checks.js";
 import { availableToolNames } from "../../../../agent-runtime/request/prompt/persona-tool-rules.js";
-import { definitionAvailabilityOf } from "../../../../app-service/definition-availability.js";
+import { definitionAvailabilityOf } from "../../../../app-service/definitions/definition-availability.js";
 import { disabledAgentTypes } from "../../../../module-catalog.js";
 import type { CaptureProviderConnection } from "../../../../agent-runtime/request/model-runtime-capture.js";
 import { resolveSessionRoles } from "../../../../config/models/session-role-resolver.js";

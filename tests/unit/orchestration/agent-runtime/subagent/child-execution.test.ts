@@ -9,8 +9,8 @@ import type { BackgroundWorkResult } from "../../../../../src/orchestration/agen
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
-import type { SessionFact } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import type { LiveChildControl } from "../../../../../src/orchestration/session/live-session-control.js";
+import type { SessionFact } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
+import type { LiveChildControl } from "../../../../../src/orchestration/session/control/live-session-control.js";
 import { buildRegistry, createNotificationCapture, grantOf, makeCapabilityAccess, makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 import type { CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

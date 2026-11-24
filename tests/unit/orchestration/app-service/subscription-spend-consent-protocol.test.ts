@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { Schema } from "effect";
 
 import { createUsageAppService as createFlywheelAppService } from "../../../helpers/usage-app-service.js";
-import { createFrontendProjection } from "../../../../src/orchestration/app-service/frontend-projection.js";
-import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js";
+import { createFrontendProjection } from "../../../../src/orchestration/app-service/projections/frontend-projection.js";
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/projections/runtime-ui-bus.js";
 import { FrontendMutationSchema } from "../../../../src/protocol/runtime-protocol-schemas.js";
 import { decodeRuntimeUiPatch } from "../../../helpers/runtime-ui-patch.js";
 import { fakeManager, fakeProjections, fakeSessionStore, runtimeSupervisor } from "./app-service-doubles.js";

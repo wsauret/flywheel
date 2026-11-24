@@ -4,7 +4,7 @@ import type { AgentOptions } from "../../src/orchestration/agent-runtime/types.j
 import type { ModelClient } from "../../src/orchestration/agent-runtime/llm/types.js"
 import type { ProviderRuntimeCache } from "../../src/orchestration/agent-runtime/request/provider-runtime-cache.js";
 import { repoDefinitions } from "./project-definitions.js";
-import { createBreadcrumbMaintenance } from "../../src/orchestration/session/session-artifacts.js";
+import { createBreadcrumbMaintenance } from "../../src/orchestration/session/persistence/storage/session-artifacts.js";
 import { testCapabilityModules } from "./request-tool-surface.js";
 import { testRuntimeConfigCapture } from "./request-tool-surface.js";
 

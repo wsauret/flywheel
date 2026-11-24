@@ -12,7 +12,7 @@ import { BUNDLED_SKILL_DIR } from "../../../../../../src/workflows/skills/skill-
 import { renderSkillClosure } from "../../../../../../src/workflows/skills/skill-render.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";
 import { publishSkillRevision, SKILL_FILE, type SkillRegistryRevision } from "../../../../../../src/workflows/skills/skill-schema.js";
-import type { SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import type { AgentRunResult } from "../../../../../../src/orchestration/agent-runtime/types.js";
 import { makeContext, testGrant } from "../../../agent-runtime/tools/_fixtures.js";
 import { sessionContentFixture } from "../../../../../helpers/session-content.js";

@@ -8,15 +8,15 @@ import { asAsyncEventWriter, PersistenceWriteRefused, type StoredFact } from "..
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { temporaryDirectories } from "../../../helpers/directories.js"
-import type { SessionBudgetStore } from "../../../../src/orchestration/session/budget-store-types.js"
+import type { SessionBudgetStore } from "../../../../src/orchestration/session/runtime-facts/budget-store-types.js"
 import {
   subscribeSessionRuntimeFacts,
   wireSessionSubscribers,
-} from "../../../../src/orchestration/session/create-session-infra.js"
-import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+} from "../../../../src/orchestration/session/persistence/create-session-infra.js"
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { discardingSessionFactWriter } from "../../../helpers/event-writer-doubles.js"
-import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
-import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/tool-execution-types.js"
+import type { SessionRuntimeFact } from "../../../../src/orchestration/session/runtime-facts/session-runtime-event-types.js"
+import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/runtime-facts/tool-execution-types.js"
 import { presentationChannel } from "../../../../src/infra/error-presentation.js"
 
 function fakeWriter(record: (fact: SessionRuntimeFact) => Promise<StoredFact | null>): SessionFactWriter {

@@ -1,6 +1,6 @@
 import type { AuthView } from "./auth-modal-options.js"
 import type { SubscriptionSpendConsentControlState } from "./subscription-spend-consent-types.js"
-import { AUTH_CONTROL_COPY, SUBSCRIPTION_SPEND_CONSENT_COPY } from "../../components/modal-copy.js"
+import { AUTH_CONTROL_COPY, SUBSCRIPTION_SPEND_CONSENT_COPY } from "../../components/modal/modal-copy.js"
 import { paidModeAwaitsAnswer } from "../../../protocol/subscription-spend-consent-protocol-types.js"
 
 type Capability = NonNullable<Extract<Extract<AuthView, { kind: "provider-settings" }>["target"], { kind: "account" }>["capability"]>

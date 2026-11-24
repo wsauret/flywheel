@@ -1,7 +1,7 @@
 /** @jsxImportSource solid-js */
 
 import { createContext, createEffect, createMemo, type JSX, on, useContext } from "solid-js"
-import { createKeymap, type Keymap } from "../keymap/keymap.js"
+import { createKeymap, type Keymap } from "../terminal/keymap/keymap.js"
 import type { createToastPresenter } from "./toast-presenter.js"
 import type { RuntimeConfigView } from "../../protocol/runtime-config-protocol-types.js"
 

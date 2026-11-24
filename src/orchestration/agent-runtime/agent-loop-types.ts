@@ -5,7 +5,7 @@ import type { SessionNoticeOperation } from "../../infra/session-notice.js";
 import type { ProviderRequestOptions } from "../../infra/llm/access/provider-options.js";
 import type { ReasoningEffort } from "../../infra/llm/models/models.js";
 import type { AsyncEventStateReadSurface, StoredFact } from "../../infra/event-store-types.js";
-import type { SessionFactWriter } from "../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../session/persistence/session-fact-writer.js";
 import type { CommittedTree } from "../session/conversation/conversation-projection.js";
 import type { HandoffRejection, HandoffToolSchema } from "../workflow-host/attempt/handoff-tool-schema.js";
 import type { InputSource, LogicalTurnStartedContext, TurnEndedContext, TurnParkedContext } from "../../infra/agent-loop-events.js";
@@ -314,7 +314,7 @@ export interface AgentLoopOptions {
    *  agent workspace, never a read substrate. */
   scratchDir?: string;
   /** Scoped checkpoint authority, independent of the current conversation branch. */
-  checkpoint?: import("../session/conversation-checkpoint.js").ConversationCheckpointOwner;
+  checkpoint?: import("../session/conversation-records/conversation-checkpoint.js").ConversationCheckpointOwner;
   /** The recorded brief of an unattended agent, which every reset opening
    *  restates (PI-AGENT-089). Read once per reset; absent or undefined omits it. */
   standingBrief?: () => Promise<string | undefined>;

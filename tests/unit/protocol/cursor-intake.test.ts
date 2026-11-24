@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { RuntimeCursorIdentity, RuntimeUiPatch, RuntimeUiPatchPayload } from "../../../src/protocol/runtime-ui-protocol-types.js"
 import { createCursorIntake, type RecoveryRequest } from "../../../src/protocol/client/cursor-intake.js"
-import { createRuntimeUiPatchSequencer } from "../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 
 const CURSOR: RuntimeCursorIdentity = { scope: "session", domain: "output", sessionId: "s1" }
 

@@ -6,7 +6,7 @@ import type { AcpConfigOption, AcpPromptResult, AcpSessionUpdate } from "../../.
 import { createBridge, type BridgeEngine, type BridgeRequest } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/bridge.js"
 import type { StepGateEvent } from "../../../../../../src/orchestration/modules/provider-google-antigravity/engine/step-gate.js"
 import { createTransportAudit } from "../../../../../../src/orchestration/modules/provider-google-antigravity/request/transport-audit.js"
-import type { ProviderTransportContext } from "../../../../../../src/orchestration/session/provider-request-audit-types.js"
+import type { ProviderTransportContext } from "../../../../../../src/orchestration/session/runtime-facts/provider-request-audit-types.js"
 
 type Action = { readonly text: string } | { readonly call: string } | { readonly hold: Promise<void> }
 

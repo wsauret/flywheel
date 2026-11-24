@@ -144,7 +144,7 @@ describe("check-worker-ownership", () => {
 
   test("rejects unknown, dynamic, misplaced, and duplicate Worker roles", async () => {
     const violations = await withRepo({
-      "src/orchestration/app-service/runtime-maintenance-owner.ts": [
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts": [
         "function runMaintenanceWorkerJob() {",
         "  createBoundedWorkerSpawner(\"runtime-maintenance\")",
         "  createBoundedWorkerSpawner(\"runtime-maintenance\")",
@@ -158,7 +158,7 @@ describe("check-worker-ownership", () => {
     })
 
     expect(rules(violations)).toEqual([
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:3 unapproved-worker-owner",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:3 unapproved-worker-owner",
       "src/orchestration/domain.ts:1 unapproved-worker-owner",
       "src/orchestration/domain.ts:2 unknown-worker-role",
       "src/orchestration/domain.ts:3 unknown-worker-role",
@@ -189,7 +189,7 @@ describe("check-worker-ownership", () => {
 
   test("permits only the reviewed number of MessageChannels in each owner", async () => {
     const violations = await withRepo({
-      "src/orchestration/app-service/runtime-maintenance-owner.ts": [
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts": [
         "function runMaintenanceWorkerJob() {",
         "  new MessageChannel()",
         "  new MessageChannel()",
@@ -201,8 +201,8 @@ describe("check-worker-ownership", () => {
     })
 
     expect(rules(violations)).toEqual([
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:4 unowned-message-channel",
-      "src/orchestration/app-service/runtime-maintenance-owner.ts:6 unowned-message-channel",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:4 unowned-message-channel",
+      "src/orchestration/app-service/background/runtime-maintenance-owner.ts:6 unowned-message-channel",
       "src/orchestration/domain.ts:1 unowned-message-channel",
     ])
   })
@@ -214,7 +214,7 @@ describe("check-worker-ownership", () => {
         export function createBoundedWorkerSpawner() { return new Worker("x") }
         function createEmbeddedWorkerSpawner() { return new Worker("x") }
       `,
-      "src/orchestration/app-service/project-state-worker-spawner.ts": `
+      "src/orchestration/app-service/project-state/project-state-worker-spawner.ts": `
         import { createBoundedWorkerSpawner } from "../../infra/bounded-worker-spawner"
         export function spawnProjectStateWorker() {
           const spawn = createBoundedWorkerSpawner("project-state")

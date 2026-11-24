@@ -1,0 +1,371 @@
+import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
+import type { SessionManager } from "../../session/manager.js"
+import type { ReplayedSession } from "../../session/metadata/schemas.js"
+import type { SessionStore } from "../../session-store/types.js"
+import { type SessionView, toSessionView } from "../../session-store/view.js"
+import { projectSessionView } from "./frontend-projection.js"
+import { readRecordedExecutionCwd } from "../../session/metadata/session-execution-directory.js"
+import type { RuntimeSessionDetailView, RuntimeSessionDetailResult } from "../../../protocol/session-detail-protocol-types.js"
+import type { StatusView } from "../../../protocol/status-protocol-types.js"
+import type { ProcessorClaims } from "../../agent-runtime/tools/bash/execution/processor-claims.js"
+import { hydrateDerivedOutputGroupChildren, hydrateDerivedOutputRange, hydrateDerivedOutputBlockBody, paginateOutputGroupChildren, unavailableHydratedOutputRange } from "./output/transcript-queries.js"
+import { readOutputSequence, type OutputSequence } from "./output/output-sequence.js"
+import { findInTranscript } from "./output/transcript-find.js"
+import type { ShippedOutput } from "./output/shipped-output.js"
+import { indexOutputBlocks } from "../../session/conversation/transcript/branch-history-builder.js"
+import { blockIdentity } from "../../../protocol/block-identity.js"
+import type { CommandKeeper } from "../runtime/command-keeper.js"
+import type { TranscriptProjectionCache } from "./output/transcript-projection-cache.js"
+import type {
+  HydratedOutputRange,
+  HydratedOutputGroupChildrenBatch,
+  HydratedOutputBlockBody,
+  OutputGroupChildrenRequest,
+  TranscriptUnavailable,
+  OutputRangeRequest,
+  OutputBlockBodyRequest,
+  TranscriptFindRequest,
+  TranscriptFindResult,
+} from "../../../protocol/transcript-protocol-types.js"
+import type { SessionSummaryIndex } from "../../session/metadata/catalog/session-summary-index.js"
+import { durableCatalogRowFromSession, parentIdentity, projectSessionCatalogRow, replaceCatalogTotals, type SessionActionEvidence } from "../../session/control/session-catalog-row.js"
+import { readChildSessionRunEvidence } from "../../session/control/child-session-run-evidence.js"
+import { readChatTurnEnd } from "../../session/control/chat-session-run-evidence.js"
+import { awaitsPlannedContinuation, capacityContinuations } from "../../session/control/planned-session-continuation.js"
+import { capacityWaitNotice } from "../../session/control/capacity-wait.js"
+import { hasPendingRetainedOperation } from "../../session/control/module-session-operations.js"
+import { keptCommandsOf } from "../../session/command-handover.js"
+import { presentedTurn } from "./catalog/status-projection.js"
+import { readReplyWaitViews, toReplyWaitViews, type OpenReplyWaitView } from "../../session/control/messaging/reply-waits.js"
+import { displayedReplyWait } from "../../../protocol/client/session-controls.js"
+import type { RuntimeSummaryProjection } from "./catalog/runtime-summary-projection.js"
+import { budgetViewFromRuntimeSummary, type RuntimeSummaryView } from "./catalog/runtime-summary-read.js"
+import type { SessionRow } from "../../../protocol/app-service-types.js"
+import { workflowRunReader } from "../../module-catalog.js"
+
+export interface SessionDetailProjection {
+  sessionDetail(sessionId: string): Promise<RuntimeSessionDetailResult>
+  outputWindow(sessionId: string, request: OutputRangeRequest): Promise<{ readonly totalBlocks: number; readonly visibleMessageCount: number; readonly range: HydratedOutputRange }>
+  outputRange(sessionId: string, request: OutputRangeRequest): Promise<HydratedOutputRange>
+  outputGroupChildren(sessionId: string, request: OutputGroupChildrenRequest): Promise<HydratedOutputGroupChildrenBatch>
+  outputBlockBody(sessionId: string, request: OutputBlockBodyRequest): Promise<HydratedOutputBlockBody>
+  transcriptFind(sessionId: string, request: TranscriptFindRequest): Promise<TranscriptFindResult>
+}
+
+/** The executor's detail source: the sessions it holds, the runtime
+ *  summaries every detail's totals come from, and the shell commands that
+ *  processor admission holds. */
+interface LiveDetailSource {
+  readonly kind: "live"
+  readonly sessionStore: Pick<SessionStore, "get"> & Partial<Pick<SessionStore, "revision">>
+  readonly summaries: RuntimeSummaryProjection
+  readonly processorHolds: Pick<ProcessorClaims, "heldToolCallIds">
+}
+
+/** The account history's detail source: it holds no session and owns no
+ *  shell container, so totals come from the summary index alone. */
+interface BackgroundDetailSource {
+  readonly kind: "background"
+  readonly summaryIndex: Pick<SessionSummaryIndex, "readImmediate">
+}
+
+interface SessionDetailReaderDeps {
+  readonly manager: Pick<SessionManager, "read">
+  readonly reader: AsyncEventStateReadSurface
+  readonly projectionReader: AsyncEventStateReadSurface
+  readonly projectRoot: string
+  readonly source: LiveDetailSource | BackgroundDetailSource
+}
+
+/** The executor's detail and transcript reads. The caller owns the lifetime
+ *  of the transcript cache. */
+interface SessionDetailProjectionDeps extends Omit<SessionDetailReaderDeps, "source">, Omit<LiveDetailSource, "kind"> {
+  readonly transcriptCache: TranscriptProjectionCache
+  /** The keeper that carries the live output of commands no host holds. */
+  readonly keptOutput?: Pick<CommandKeeper, "liveOutput">
+  /** The owner of what the output cursor's clients hold, which learns what
+   *  each output read serves. */
+  readonly shipped: Pick<ShippedOutput, "serve">
+}
+
+/** One session's detail: its metadata, summaries, status, and admitted
+ *  actions. It reads no transcript, so it holds nothing between calls, and
+ *  the account history serves it for a session the executor does not hold. */
+export function createSessionDetailReader(deps: SessionDetailReaderDeps): (sessionId: string) => Promise<RuntimeSessionDetailResult> {
+  const reads: EvidenceReads = { reader: deps.reader, projectionReader: deps.projectionReader }
+  async function sessionDetail(sessionId: string): Promise<RuntimeSessionDetailResult> {
+    // A detail shows what the status stream shows: a session a successor
+    // will continue after a planned replacement shows working, never at
+    // rest, and offers its Interrupt, including after the service that cut
+    // it has released it and before the successor resumes it.
+    const continuationOwed = await awaitsPlannedContinuation({ reader: deps.reader, projectionReader: deps.projectionReader, manager: deps.manager }, sessionId)
+    const view = await projectedDetail(sessionId, continuationOwed)
+    if (view === null) return { view: null }
+    const turn = await presentedTurn(view.status, async () => continuationOwed)
+    const unchanged = turn.activity === view.status.activity && turn.waitingOnBackgroundWork === view.status.waitingOnBackgroundWork
+    return { view: unchanged ? view : { ...view, status: { ...view.status, ...turn, activityStartedAt: turn.waitingOnBackgroundWork ? view.status.activityStartedAt : null } } }
+  }
+
+  async function projectedDetail(sessionId: string, continuationOwed: boolean): Promise<RuntimeSessionDetailView | null> {
+    const { source } = deps
+    const metadata = await deps.manager.read(sessionId)
+    if (!metadata || metadata.kind === "workflow") return null
+    const executionCwd = await readRecordedExecutionCwd(metadata, deps.projectRoot, deps.reader)
+    if (source.kind === "live") await source.summaries.admit([sessionId])
+    // The status reads the waits the session stores, as the executor's status
+    // stream does, so no owner that serves a status can show a wait missing.
+    const replyWaits = await readReplyWaitViews(deps.projectionReader, deps.manager.read, sessionId)
+    const entry = source.kind === "live" ? source.sessionStore.get(sessionId) : undefined
+    if (source.kind === "live" && entry) {
+      const view = toSessionView(sessionId, entry, metadata.lifecycleState, metadata.kind === "workflow-agent" ? metadata.workflowMembership : undefined)
+      // A turn that runs shows its own state; only a session at rest shows
+      // the capacity wait its row owes.
+      const evidence = await sessionActionEvidence(reads, sessionId, view.kind, view.conversationId, continuationOwed, metadata, view.activity !== "idle" && view.activity !== "absent")
+      const shell = { activeForegroundBashToolCallIds: entry.activeForegroundBashToolCallIds, processorHeldToolCallIds: source.processorHolds.heldToolCallIds(sessionId) }
+      return projectLiveHistorySessionView(view, metadata, executionCwd, shell, source.summaries.view(sessionId), evidence, replyWaits)
+    }
+    return await projectDurableHistorySessionView(sessionId, metadata, deps, reads, executionCwd, continuationOwed, replyWaits)
+  }
+
+  return sessionDetail
+}
+
+/** A workflow has no transcript of its own (PI-INTERACTION-051). */
+const WORKFLOW_HAS_NO_TRANSCRIPT: TranscriptUnavailable = {
+  title: "A workflow has no transcript",
+  message: "This workflow shows on its card in the parent chat, and each of its agents opens in its own view.",
+  diagnostic: "Workflow aggregates have no transcript. Read the ordinary output of an agent session.",
+}
+
+export function createSessionDetailProjection(deps: SessionDetailProjectionDeps): SessionDetailProjection {
+  const { transcriptCache } = deps
+  const sessionDetail = createSessionDetailReader({ ...deps, source: { kind: "live", sessionStore: deps.sessionStore, summaries: deps.summaries, processorHolds: deps.processorHolds } })
+
+  async function readRange(sessionId: string, request: OutputRangeRequest): Promise<{ readonly sequence: OutputSequence | null; readonly range: HydratedOutputRange }> {
+    const session = await deps.manager.read(sessionId)
+    if (session?.kind === "workflow") return { sequence: null, range: unavailableHydratedOutputRange(request.anchor, WORKFLOW_HAS_NO_TRANSCRIPT) }
+    const sequence = await readOutputSequence(sessionId, session, deps)
+    if (!sequence) return { sequence, range: unavailableHydratedOutputRange(request.anchor, sessionHistoryUnavailable(sessionId)) }
+    const range = await hydrateDerivedOutputRange(sequence, request)
+    return { sequence, range: range.kind === "ok" ? { ...range, streamingToolText: sequence.streamingToolText, streamingOutputChars: sequence.streamingOutputChars } : range }
+  }
+
+  /** A range that a client installs. The owner of the output cursor serves
+   *  it, because the read can hold changes no delta has shipped yet. */
+  function servedRange(sessionId: string, request: OutputRangeRequest) {
+    return deps.shipped.serve(sessionId, () => readRange(sessionId, request), (read) => read.range)
+  }
+
+  async function outputWindow(sessionId: string, request: OutputRangeRequest): Promise<{ readonly totalBlocks: number; readonly visibleMessageCount: number; readonly range: HydratedOutputRange }> {
+    const { sequence, range } = await servedRange(sessionId, request)
+    return { totalBlocks: sequence?.blockCount ?? 0, visibleMessageCount: sequence?.visibleMessageCount ?? 0, range }
+  }
+
+  async function outputRange(sessionId: string, request: OutputRangeRequest): Promise<HydratedOutputRange> {
+    return (await servedRange(sessionId, request)).range
+  }
+
+  async function outputGroupChildren(sessionId: string, request: OutputGroupChildrenRequest): Promise<HydratedOutputGroupChildrenBatch> {
+    const session = await deps.manager.read(sessionId)
+    const sequence = await readOutputSequence(sessionId, session, deps)
+    if (!sequence || !session) throw new Error(`Session ${sessionId} has no readable history: it is not in the workspace session catalog.`)
+    const requested = new Set(request.groupBlockIds)
+    const groups = [...requested].map((id) => ({ id, index: sequence.indexOf(id) })).sort((a, b) => a.index - b.index)
+    if (groups.some((group) => group.index < 0)) throw new Error("one or more requested output groups are missing from the bounded output sequence")
+    const hydrated = await Promise.all(groups.map(async ({ id }) => hydrateDerivedOutputGroupChildren(id, await sequence.groupChildren(id))))
+    return paginateOutputGroupChildren(hydrated, request)
+  }
+
+  async function outputBlockBody(sessionId: string, request: OutputBlockBodyRequest): Promise<HydratedOutputBlockBody> {
+    // A pre-runner row can be replaced while durable history is read.
+    // Only the requested block is projected: a client reads each omitted
+    // result once, and projecting the whole tail for each would grow with the
+    // square of its length. The search runs from the tail, where the block a
+    // live client asks for sits, and the last occurrence wins, as it does in
+    // `indexOutputBlocks`.
+    const live = deps.sessionStore.get(sessionId)?.outputBlocks().findLast((block) => blockIdentity(block) === request.blockId)
+    if (live) return hydrateDerivedOutputBlockBody(indexOutputBlocks([await transcriptCache.projectBlock(sessionId, live)]), request)
+    const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), deps)
+    if (!sequence) throw new Error(`Session ${sessionId} has no readable history: it is not in the workspace session catalog.`)
+    return hydrateDerivedOutputBlockBody(sequence, request)
+  }
+
+  async function transcriptFind(sessionId: string, request: TranscriptFindRequest): Promise<TranscriptFindResult> {
+    const sequence = await readOutputSequence(sessionId, await deps.manager.read(sessionId), deps)
+    return sequence ? findInTranscript(sequence, request) : { matches: [], more: false, openFromBlockIndex: 0, blockCount: 0 }
+  }
+
+  function sessionHistoryUnavailable(sessionId: string): TranscriptUnavailable {
+    return {
+      title: "Session history unavailable",
+      message: "This session is missing from the workspace catalog, so its conversation history cannot be read.",
+      diagnostic: `session ${sessionId} has no metadata in the event store`,
+    }
+  }
+
+  return { sessionDetail, outputWindow, outputRange, outputGroupChildren, outputBlockBody, transcriptFind }
+}
+
+/** A live session's running shell calls: those its turn holds, and those
+ *  processor admission holds. */
+type ShellCalls = Pick<StatusView, "activeForegroundBashToolCallIds" | "processorHeldToolCallIds">
+
+function projectLiveHistorySessionView(
+  view: SessionView,
+  metadata: ReplayedSession,
+  executionCwd: string,
+  shell: ShellCalls,
+  totals: RuntimeSummaryView,
+  evidence: SessionActionEvidence,
+  replyWaits: readonly OpenReplyWaitView[],
+): RuntimeSessionDetailView {
+  const completeRow = <Row extends SessionRow>(row: Row) => replaceCatalogTotals({
+    ...row,
+    title: metadata.label || metadata.name || view.id,
+    ...(metadata.shortLabel !== undefined ? { shortTitle: metadata.shortLabel } : {}),
+    lastUpdated: metadata.lastUpdated,
+    ...(metadata.createdAt !== undefined ? { createdAt: metadata.createdAt } : {}),
+    ...(metadata.childSessionIds !== undefined ? { childSessionIds: metadata.childSessionIds } : {}),
+    ...parentIdentity(metadata.launchedFrom),
+  }, totals)
+  const base = {
+    source: "live" as const,
+    id: view.id,
+    streamingToolText: view.streamingToolText ?? {},
+    status: {
+      activity: view.activity,
+      activityStartedAt: view.activity === "idle" || view.activity === "absent" ? displayedReplyWait(replyWaits, (wait) => wait.isParent)?.openedAtMs ?? view.activityStartedAt : view.activityStartedAt,
+      settledOutputPosition: null,
+      connectionState: view.connectionState,
+      activeSubagentCount: 0,
+      activeBackgroundCommands: [],
+      activeForegroundBashToolCallIds: metadata.lifecycleState === "active" ? shell.activeForegroundBashToolCallIds : [],
+      processorHeldToolCallIds: metadata.lifecycleState === "active" ? shell.processorHeldToolCallIds : [],
+      waitingOnBackgroundWork: false,
+      startedAt: view.startedAt,
+      streamingStartedAt: view.streamingStartedAt,
+      accumulatedActiveMs: view.accumulatedActiveMs,
+      compactionStartedAt: view.compactionStartedAt,
+      replyWaits: toReplyWaitViews(replyWaits),
+    },
+    budget: budgetViewFromRuntimeSummary(totals),
+  }
+
+    const conversation = {
+      ...base,
+      conversationId: view.conversationId,
+      ...(view.providerConversationId !== undefined ? { providerConversationId: view.providerConversationId } : {}),
+      ...(view.seedContext !== undefined ? { seedContext: view.seedContext } : {}),
+    }
+    return view.kind === "chat"
+      ? { ...conversation, kind: "chat", row: completeRow(projectSessionView(view, executionCwd, evidence).row) }
+      : view.kind === "workflow-agent"
+      ? { ...conversation, kind: "workflow-agent", row: completeRow(projectSessionView(view, executionCwd, evidence).row) }
+      : { ...conversation, kind: "subagent", row: completeRow(projectSessionView(view, executionCwd, evidence).row) }
+}
+
+/** What the evidence of a session's admitted actions reads. */
+interface EvidenceReads {
+  readonly reader: AsyncEventStateReadSurface
+  readonly projectionReader: AsyncEventStateReadSurface
+}
+
+/** The evidence one session's admitted actions read: a child's run, a
+ *  chat's turn end, or a workflow's control state and the turn end of its
+ *  current agent, beside whether a successor owes it its continuation. Only the
+ *  detail read serves it, so only it pays for it. */
+async function sessionActionEvidence({ reader, projectionReader }: EvidenceReads, sessionId: string, kind: ReplayedSession["kind"], conversationId: string | undefined, continuationOwed: boolean, metadata: ReplayedSession, running = false): Promise<SessionActionEvidence> {
+  const [wait] = running ? [] : await capacityContinuations(projectionReader, [sessionId])
+  const capacityNotice = wait === undefined ? undefined : capacityWaitNotice({ sessionId, agentName: kind === "chat" ? "Chat" : metadata.label || metadata.name || sessionId, atMs: wait.continuesAt, now: Date.now(), ...(wait.unserved === undefined ? {} : { unserved: wait.unserved }) })
+  const owed = { ...(continuationOwed ? { continuationOwed } : {}), ...(capacityNotice ? { capacityNotice } : {}) }
+  if (kind === "subagent") return { childRun: await readChildSessionRunEvidence(projectionReader, sessionId), ...owed }
+  if (metadata.kind === "workflow-agent") {
+    const member = metadata.workflowMembership
+    const memberActive = member.kind === "attempt" && (await workflowRunReader(reader).readMemberAttempt(member.workflowId, { attemptId: member.attemptId, conversationId: metadata.conversationId }))?.state._tag === "running"
+    return { memberActive, ...(conversationId ? { chatTurnEnd: await readChatTurnEnd(projectionReader, conversationId) } : {}), ...owed }
+  }
+  if (kind === "chat" && conversationId !== undefined) {
+    const chatTurnEnd = await readChatTurnEnd(projectionReader, conversationId)
+    const retainedInput = await hasPendingRetainedOperation(reader, sessionId, conversationId)
+    return { ...(chatTurnEnd ? { chatTurnEnd } : {}), retainedInput, ...owed }
+  }
+  return owed
+}
+
+async function projectDurableHistorySessionView(sessionId: string, session: Exclude<ReplayedSession, { kind: "workflow" }>, deps: SessionDetailReaderDeps, reads: EvidenceReads, executionCwd: string, continuationOwed: boolean, replyWaits: readonly OpenReplyWaitView[]): Promise<RuntimeSessionDetailView> {
+  const { source } = deps
+  const runtimeSummary = source.kind === "live" ? source.summaries.view(sessionId) : undefined
+  const indexed = source.kind === "background" ? await source.summaryIndex.readImmediate([sessionId]) : undefined
+  const summary = indexed?.status === "ready" ? indexed.summaries.get(sessionId) : undefined
+  if (indexed?.status === "ready" && !summary) throw new Error(`Session summary index omitted requested session ${sessionId}`)
+  const runtimeReady = runtimeSummary?.totalsLoading === false ? runtimeSummary : undefined
+  const runtimeReadyRow = runtimeReady?.row
+  const budget = runtimeReadyRow ?? summary?.budget
+  const duration = runtimeReadyRow ? { accumulatedActiveMs: runtimeReadyRow.durationMs } : summary?.duration
+  const diffStats = runtimeReadyRow?.diffStats ?? summary?.diffStats
+  const speed = runtimeReady?.averageGenerationTokensPerSecond ?? summary?.averageGenerationTokensPerSecond
+  const accumulatedActiveMs = duration?.accumulatedActiveMs ?? 0
+  const totalsLoading = runtimeSummary?.totalsLoading === true || indexed?.status === "loading"
+  // A generation error withholds only the speed, so it leaves the budget standing.
+  const budgetFailed = summary?.errors.budget !== undefined || summary?.errors.descendants !== undefined
+  let budgetView: RuntimeSessionDetailView["budget"] = null
+  if (totalsLoading) {
+    budgetView = budgetViewFromRuntimeSummary({ totalsLoading: true })
+  } else if (!budgetFailed) {
+    if (!budget) throw new Error(`Session summary index omitted budget for ${sessionId}`)
+    budgetView = budgetViewFromRuntimeSummary({ totalsLoading: false, row: budget, ...(speed === undefined ? {} : { averageGenerationTokensPerSecond: speed }) })
+  }
+  const startedAt = session.createdAt ? new Date(session.createdAt).getTime() : Date.now()
+  const catalogMetadata = durableCatalogRowFromSession(sessionId, session, executionCwd)
+  const catalogSource = totalsLoading || !budget || !duration
+    ? catalogMetadata
+    : {
+      ...catalogMetadata,
+      totalTokens: budget.totalTokens,
+      totalCost: budget.totalCost,
+      totalBilledCost: budget.totalBilledCost,
+      priceUnavailable: budget.priceUnavailable,
+      contextPercent: budget.contextPercent,
+      contextPromptTokens: budget.contextPromptTokens,
+      ...(budget.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: budget.compactionTriggerTokens }),
+      durationMs: accumulatedActiveMs,
+      ...(diffStats ? { diffStats } : {}),
+    }
+  const evidence = await sessionActionEvidence(reads, sessionId, session.kind, session.conversationId, continuationOwed, session)
+  const base = {
+    source: "durable" as const,
+    id: sessionId,
+    status: {
+      activity: "absent" as const,
+      settledOutputPosition: null,
+      connectionState: "connected" as const,
+      activeSubagentCount: 0,
+      // A command handed to the session that the executor's keeper holds
+      // shows with its Stop, which the keeper answers.
+      activeBackgroundCommands: await keptCommandsOf(deps.reader, sessionId),
+      activeForegroundBashToolCallIds: [],
+      processorHeldToolCallIds: source.kind === "live" ? source.processorHolds.heldToolCallIds(sessionId) : [],
+      waitingOnBackgroundWork: false,
+      startedAt,
+      streamingStartedAt: null,
+      activityStartedAt: displayedReplyWait(replyWaits, (wait) => wait.isParent)?.openedAtMs ?? null,
+      accumulatedActiveMs,
+      compactionStartedAt: null,
+      replyWaits: toReplyWaitViews(replyWaits),
+    },
+    budget: budgetView,
+  }
+
+    const conversation = {
+      ...base,
+      conversationId: session.conversationId,
+      ...(session.providerConversationId !== undefined ? { providerConversationId: session.providerConversationId } : {}),
+      ...(session.seedContext !== undefined ? { seedContext: session.seedContext } : {}),
+    }
+    const { kind: _kind, workflowMembership: _membership, ...catalog } = catalogSource
+    return session.kind === "chat"
+      ? { ...conversation, kind: "chat", row: projectSessionCatalogRow({ ...catalog, kind: "chat" }, evidence) }
+      : session.kind === "workflow-agent"
+      ? { ...conversation, kind: "workflow-agent", row: projectSessionCatalogRow({ ...catalog, kind: "workflow-agent", workflowMembership: session.workflowMembership }, evidence) }
+      : { ...conversation, kind: "subagent", row: projectSessionCatalogRow({ ...catalog, kind: "subagent" }, evidence) }
+}

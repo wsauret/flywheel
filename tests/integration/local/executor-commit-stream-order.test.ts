@@ -24,9 +24,9 @@ import type { EventStoreAppend } from "../../../src/infra/event-store-types.js"
 import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../src/infra/internal-process-channel.js"
 import { resolveEventStoreDbFile } from "../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
-import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/project-executor-protocol.js"
-import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
-import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-worker-spawner.js"
+import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/executor/project-executor-protocol.js"
+import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state/project-state-channel.js"
+import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state/project-state-worker-spawner.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()

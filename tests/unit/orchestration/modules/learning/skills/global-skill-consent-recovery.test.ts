@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../../src/infra/event-store-types.js";
 import { reconcileGlobalSkillOperations } from "../../../../../../src/orchestration/modules/learning/skills/global-skill-mutation.js";
-import { createSessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { openPendingAudit, reconcilePendingAudits } from "../../../../../../src/orchestration/modules/learning/skills/learning-journal.js";
 import {
   manifestPath,

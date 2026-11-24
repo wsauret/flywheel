@@ -10,12 +10,12 @@ import type { BackgroundWorkRegistry } from "../../../../agent-runtime/backgroun
 import type { CapabilityAccess } from "../../../../agent-runtime/tools/types.js"
 import type { ChildSlotRegistry } from "../../../../agent-runtime/request/module-services/child-slot-registry.js"
 import type { SubagentToolCallRecord } from "../result/work-log.js"
-import type { SessionFactWriter } from "../../../../session/session-fact-writer.js"
+import type { SessionFactWriter } from "../../../../session/persistence/session-fact-writer.js"
 import type { PromptKind } from "../../../../agent-runtime/request/prompt/system-prompt.js"
 import type { BriefScope } from "../../../../config/models/role-selection.js"
 import type { RoleResolver } from "../../../../config/roles.js"
 import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../../module-seams.js"
-import type { DefinitionAvailabilitySnapshot } from "../../../../app-service/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../../../../app-service/definitions/definition-availability.js"
 import type { ModuleRuntimeServices } from "../../../../agent-runtime/request/module-services/module-runtime-services.js"
 
 export interface SubagentDispatchDeps {

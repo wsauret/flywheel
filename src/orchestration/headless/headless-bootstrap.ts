@@ -22,8 +22,8 @@ import type { CaptureSubscriptionAdmission } from "../agent-runtime/request/mode
 import type { SubscriptionUsageProfile } from "../auth/provider-observations/subscription-usage-service.js"
 import { createHeadlessSubscriptionAdmission } from "./headless-profile-runtime.js"
 import { createInstalledDefinitionRegistry } from "../definition-catalog.js"
-import { createMutationEvidenceRecovery } from "../session/mutation-evidence-recovery.js"
-import { createRuntimeModuleComposer } from "../app-service/runtime-module-composition.js"
+import { createMutationEvidenceRecovery } from "../session/history/mutation-evidence-recovery.js"
+import { createRuntimeModuleComposer } from "../app-service/executor/execution/runtime-module-composition.js"
 
 export interface HeadlessBootstrapContext {
   readonly capabilityPolicy: ModulePolicyStartup

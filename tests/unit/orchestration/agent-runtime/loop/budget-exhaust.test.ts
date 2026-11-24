@@ -31,7 +31,7 @@ import { handoffDefinition } from "../../../../../src/orchestration/agent-runtim
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 import { createHandoffTracker } from "../../../../../src/orchestration/agent-runtime/loop/closure/agent-loop-handoff.js";
-import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { discardingSessionFactWriter } from "../../../../helpers/event-writer-doubles.js";
 
 interface AssistantWrite { readonly content: ContentBlock[]; readonly incomplete?: true }

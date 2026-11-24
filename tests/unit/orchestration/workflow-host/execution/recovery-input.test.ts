@@ -15,8 +15,8 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { publishWorkerAttempt } from "../_workflow-host-fixtures"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
-import { checkpointFinalizedToolResult, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/finalized-tool-result-checkpoint"
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer"
+import { checkpointFinalizedToolResult, FINALIZED_TOOL_RESULT_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/history/finalized-tool-result-checkpoint"
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer"
 import {
   QUEUED_USER_INPUT_IN_FLIGHT_KIND, decodeQueuedUserInput, decodeQueuedUserInputCell,
   holdQueuedUserInput, queuedInputPayload, queuedUserInputPut, readWorkflowQueuedUserInputs,

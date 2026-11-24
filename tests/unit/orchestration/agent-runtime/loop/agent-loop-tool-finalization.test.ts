@@ -14,7 +14,7 @@ import { fixedTurnOutputBound } from "../../../../../src/orchestration/agent-run
 import { settleTurn } from "../../../../../src/orchestration/agent-runtime/loop/tool-calls/agent-turn-settlement.js"
 import type { StreamEvent, ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js"
 import type { RuntimeTool, ToolContext, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js"
-import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js"
+import type { SessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js"
 import { PersistenceWriteRefused } from "../../../../../src/infra/event-store-types.js"

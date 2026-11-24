@@ -16,7 +16,7 @@ import { systemPromptText as bundledSystemPrompt } from "../../../../infra/agent
 import { bundledAgentAsset, type AgentAssetName } from "../../../../infra/agent-assets/system-prompt.js";
 import type { RuntimeTool } from "../../tools/types.js";
 import { renderCapabilityText, type CapabilityCheck } from "../../../../infra/capability-text.js";
-import type { SessionIdentity } from "../../../session/session-messaging.js";
+import type { SessionIdentity } from "../../../session/control/messaging/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
 import { FLYWHEEL_CHAT_HOST, orchestrationRule, renderAgentGuidance, renderChatBody, type ModelGuidance } from "./model-chat-body.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "../../tools/sessions/message-session.js";

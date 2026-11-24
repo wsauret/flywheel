@@ -3,7 +3,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter, type LocalSqliteEventStore
 import type { AnyBlock } from "../../../../src/infra/output-blocks"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
-import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache"
+import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { temporaryDirectories } from "../../../helpers/directories"

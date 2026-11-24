@@ -4,7 +4,7 @@ import * as os from "node:os";
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js";
 import { asAsyncEventWriter } from "../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js";
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer.js";
 
 export function makeTmpDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "queue-persist-test-"));

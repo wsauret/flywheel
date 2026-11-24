@@ -7,7 +7,7 @@ import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-st
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work/background-work.js";
 import type { Agent, AgentOptions, AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createSubagentDispatch } from "../../../../../src/orchestration/modules/subagents/execution/tool.js";
-import { openReplyWait } from "../../../../../src/orchestration/session/reply-waits.js";
+import { openReplyWait } from "../../../../../src/orchestration/session/control/messaging/reply-waits.js";
 import { makeContext, makeDeps, TEST_RATIONALE } from "./_fixtures.js";
 
 // The stall watchdog of a child measures idleness. A child that waits on a

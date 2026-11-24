@@ -19,7 +19,7 @@ import { flattenWorkflowView } from "../../../../src/workflows/vm/view/view-flat
 import { buildWorkflowControlInitializedFact } from "../../../../src/workflows/vm/facts/session-facts.js"
 import { buildContextInputSeededFact } from "../../../../src/workflows/context-bundle/context-facts.js"
 import { queueFactsForState } from "../../../../src/workflows/view/view-diff.js"
-import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
+import { workflowMembershipReader } from "../../../../src/orchestration/session/metadata/workflow-membership.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { loadedWorkflow } from "../../../helpers/workflow-files.js"
 

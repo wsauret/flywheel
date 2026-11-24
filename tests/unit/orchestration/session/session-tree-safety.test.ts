@@ -16,7 +16,7 @@ import {
   deleteSessionArtifacts,
   sweepIdleScratch,
   writeArtifactBreadcrumb,
-} from "../../../../src/orchestration/session/session-artifacts";
+} from "../../../../src/orchestration/session/persistence/storage/session-artifacts";
 import { isSessionOwnerGone, removeOwnerPid, writeOwnerPid } from "../../../../src/orchestration/session/pid-lock";
 
 const sessionId = "session-tree-safety";

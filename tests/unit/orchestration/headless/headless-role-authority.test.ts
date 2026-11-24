@@ -15,7 +15,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import type { ModelFamily } from "../../../../src/infra/llm/models/model-family.js";
 import { roleCapture } from "../../../helpers/role-capture.js";
-import type { RoleSettingEntry } from "../../../../src/orchestration/session/schemas.js";
+import type { RoleSettingEntry } from "../../../../src/orchestration/session/metadata/schemas.js";
 import { planEveryCapability } from "../../../helpers/attempt-brief.js";
 
 const launcher = { spawnOwned: async () => { throw new Error("unused"); }, adoptOwned: async () => { throw new Error("unused"); }, open() { return this; }, close: async () => ({ settled: true as const }) };

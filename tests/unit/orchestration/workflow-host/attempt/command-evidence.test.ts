@@ -8,8 +8,8 @@ interface FactPayload { [key: string]: unknown }
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/tree/conversation-tree-handle.js";
 import { createCommandEvidenceSource } from "../../../../../src/orchestration/workflow-host/attempt/command-evidence.js";
-import { buildSessionCreatedFact } from "../../../../../src/orchestration/session/session-metadata-facts.js";
-import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/session-metadata-store.js";
+import { buildSessionCreatedFact } from "../../../../../src/orchestration/session/metadata/session-metadata-facts.js";
+import { buildSessionMetadataAppend } from "../../../../../src/orchestration/session/metadata/catalog/session-metadata-store.js";
 
 function immediateWriter(store: LocalSqliteEventStore): AsyncEventWriter {
   return { ...asAsyncEventWriter(store), pruneSupersededEvents: async () => 0 };

@@ -5,8 +5,8 @@ import type { UsageAuthority } from "../../../../infra/llm/usage/usage-authority
 import { decodeUsageEntry, migrateUncoveredUsageEntry, UsageEntrySchema } from "../../../../infra/llm/usage/usage-entry.js"
 import { Log } from "../../../../infra/log.js"
 import { isRecord } from "../../../../infra/record.js"
-import { ProviderRequestIdentitySchema } from "../../../session/provider-request-audit-types.js"
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js"
+import { ProviderRequestIdentitySchema } from "../../../session/runtime-facts/provider-request-audit-types.js"
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js"
 import { durableOwnerId, type DurableOwner } from "../../../../infra/durable-owner.js"
 
 export const USAGE_SETTLEMENT_IN_FLIGHT_KIND = "usage.settlement"

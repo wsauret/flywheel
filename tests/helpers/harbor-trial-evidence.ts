@@ -10,9 +10,9 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../src/infra/runtime-fa
 import { createSqliteEventStore } from "../../src/infra/sqlite-event-store.js";
 import { extractToolContentFact } from "../../src/infra/tool-content-extraction.js";
 import { emitToolInputComplete } from "../../src/orchestration/agent-runtime/runner/emit.js";
-import type { ProviderRequestAuditFact } from "../../src/orchestration/session/provider-request-audit-facts.js";
-import { recordProviderRequest, recordProviderRequestDispatched, recordProviderResponse, type ConversationDedup } from "../../src/orchestration/session/provider-request-audit-recorder.js";
-import type { ProviderRequestAuditEntry, ProviderRequestAuditTool, ProviderRequestOutcome } from "../../src/orchestration/session/provider-request-audit-types.js";
+import type { ProviderRequestAuditFact } from "../../src/orchestration/session/runtime-facts/provider-request-audit-facts.js";
+import { recordProviderRequest, recordProviderRequestDispatched, recordProviderResponse, type ConversationDedup } from "../../src/orchestration/session/diagnostics/provider-request-audit-recorder.js";
+import type { ProviderRequestAuditEntry, ProviderRequestAuditTool, ProviderRequestOutcome } from "../../src/orchestration/session/runtime-facts/provider-request-audit-types.js";
 
 /** The interaction profile a recorded request names, current or retired. */
 type RecordedInteractionProfileId = NonNullable<NonNullable<ProviderRequestAuditEntry["request"]>["interactionProfileId"]>;

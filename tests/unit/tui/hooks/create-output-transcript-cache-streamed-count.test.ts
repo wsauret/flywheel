@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { createEffect, createMemo, createRoot } from "solid-js"
-import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
+import { createOutputTranscriptCache } from "../../../../src/tui/transcript/transcript-store/create-output-transcript-cache.js"
 import type { StatusView } from "../../../../src/protocol/status-protocol-types.js"
-import { createSpinnerStatus, type SpinnerStatusSource } from "../../../../src/tui/components/create-spinner-status.js"
+import { createSpinnerStatus, type SpinnerStatusSource } from "../../../../src/tui/components/activity/create-spinner-status.js"
 import { fakeLanes } from "../../../helpers/fake-lanes.js"
 import { content, fakeRuntimeClient, flushRecovery, liveView, rangeOk, textBlock } from "./_output-transcript-cache-fixtures.js"
 

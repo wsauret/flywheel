@@ -14,7 +14,7 @@ import { createSqliteEventStore } from "../../../../infra/sqlite-event-store.js"
 import { errorMessage } from "../../../../infra/error-message.js"
 import { formatTokens } from "../../../../protocol/client/format.js"
 import { resolveEventStoreDbFile } from "../../../../infra/paths.js"
-import { loadProviderRequestAuditFromEvents } from "../../../session/provider-request-audit-projection.js"
+import { loadProviderRequestAuditFromEvents } from "../../../session/diagnostics/provider-request-audit-projection.js"
 import {
   buildTurnReport,
   LOW_HIT_RATIO_THRESHOLD,

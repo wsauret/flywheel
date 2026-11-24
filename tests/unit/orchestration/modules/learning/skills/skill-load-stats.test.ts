@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../../../../src/infra/event-store-types.js";
 import { createSqliteEventStore } from "../../../../../../src/infra/sqlite-event-store.js";
-import { createSessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import {
   collectSkillLoadRecords,
   collectSkillLoadStats,

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { PROCESS_KILL_GRACE_MS } from "../../../../src/infra/process-supervisor.js"
-import { SERVICE_STOP_TIMEOUT_SECONDS } from "../../../../src/orchestration/app-service/account-service-registration.js"
-import { ACCOUNT_DRAIN_HARD_EXIT_MS, PROJECT_EXECUTOR_STOP_DEADLINE_MS, RUNTIME_SHUTDOWN_HANDSHAKE_TIMEOUT_MS } from "../../../../src/orchestration/app-service/runtime-shutdown.js"
+import { SERVICE_STOP_TIMEOUT_SECONDS } from "../../../../src/orchestration/app-service/account/installation/account-service-registration.js"
+import { ACCOUNT_DRAIN_HARD_EXIT_MS, PROJECT_EXECUTOR_STOP_DEADLINE_MS, RUNTIME_SHUTDOWN_HANDSHAKE_TIMEOUT_MS } from "../../../../src/orchestration/app-service/runtime/runtime-shutdown.js"
 
 /** What the account's drain must still hold after a stop that missed its
  *  deadline was killed: the proof that the kill emptied the container, that

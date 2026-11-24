@@ -3,7 +3,7 @@ import type { FrontendEvent } from "../../../../src/protocol/app-service-types.j
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
 import { createHeldView, type HeldViewOptions } from "../../../../src/protocol/client/held-view.js"
-import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
+import { createRuntimeUiPatchSequencer } from "../../../../src/orchestration/app-service/projections/runtime-ui-patch-sequencer.js"
 import { updatesCursor, type UpdateStatusView } from "../../../../src/protocol/update-protocol-types.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 

@@ -9,7 +9,7 @@ import { createSessionToolSummaryReader } from "../../../modules.js"
 import type { ToolHistorySummary, SessionToolSummaryReader, SessionToolSummarySnapshot } from "../../../module-seams.js"
 import { branchVisibleTranscriptEntries, createConversationTreeProjection, type ConversationTreeProjectionState, type ConversationTreeTranscriptEntry } from "../conversation-projection.js"
 import type { ConversationEntry } from "../conversation-entry-types.js"
-import type { ToolExecutionEntry } from "../../tool-execution-types.js"
+import type { ToolExecutionEntry } from "../../runtime-facts/tool-execution-types.js"
 import { ConversationTreeError } from "../tree/conversation-tree-storage.js"
 import { walkBranchFromLeaf } from "../tree/conversation-tree-context.js"
 import { BranchHistoryBuilder, type IndexedTranscript, indexEntries } from "./branch-history-builder.js"
@@ -19,7 +19,7 @@ import {
   createAgentInputCursorReader,
   type AgentInputCursorReader,
   type AgentInputSnapshot,
-} from "../../agent-input-projection.js"
+} from "../../agent-input/agent-input-projection.js"
 import {
   createToolResultDisplayMetaCursorReader,
   createToolResultDisplayMetaSetReader,

@@ -19,11 +19,11 @@ import { CompactionEntrySchema, MessageEntrySchema } from "../../../../../src/or
 import { renderSessionNotesGuidance } from "../../../../../src/infra/agent-assets/session-notes.js";
 import { withSessionNotes } from "./_loop-fixtures.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { createConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
-import { createSessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
+import { createConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-records/conversation-checkpoint.js";
+import { createSessionFactWriter } from "../../../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/dispatch/tool-dispatch.js";
 import { makeContext } from "../tools/_fixtures.js";
-import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/checkpoint-note-conversion.js";
+import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/conversation-records/checkpoint-note-conversion.js";
 import { branchBlocks } from "../../../../helpers/branch-blocks.js";
 import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 

@@ -15,7 +15,7 @@ import {
   type RetiredFamilyPruneResult,
   type SupersededFactPruneResult,
   type VacuumResult,
-} from "../../orchestration/session/event-store-maintenance.js"
+} from "../../orchestration/session/persistence/storage/event-store-maintenance.js"
 import { dedupToolContent, type ToolContentDedupResult } from "../../orchestration/migrations/tool-content-dedup.js"
 import { CliArgsError, type CliArgsResult, parseArgsResult } from "../../infra/cli-args.js"
 import { openExistingContainedDirectory } from "../../infra/descriptor-directory.js"

@@ -13,7 +13,7 @@ import { mapRuntimeEventToSessionRuntimeFacts } from "../../../src/infra/runtime
 import { collectSkillLoadStats } from "../../../src/orchestration/modules/learning/skills/skill-load-stats"
 import { createConversationTree, tryOpenConversationTree } from "../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { createSessionManager } from "../../../src/orchestration/session/manager"
-import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/session-summary-index"
+import { acquireSessionSummaryIndex } from "../../../src/orchestration/session/metadata/catalog/session-summary-index"
 import { appendSkillLoadHistory, generateFixtureWorkspace, giantTranscript, RELEASE_WORKLOAD, SCROLL_WORKLOAD, SKILL_HISTORY_SESSION_ID, type FixtureWorkload } from "../../release/fixtures/generate-store"
 
 const GIANT_SESSION_ID = "fixture-giant"

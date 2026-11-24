@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
-import { readToolExecution } from "../../../session/tool-execution-projection.js";
+import { readToolExecution } from "../../../session/runtime-facts/tool-execution-projection.js";
 import type { ToolOutputOwners } from "../../llm/types.js";
 
 export interface ToolOutputRecovery {

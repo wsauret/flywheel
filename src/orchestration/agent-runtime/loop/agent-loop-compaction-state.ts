@@ -1,7 +1,7 @@
 import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../../infra/agent-assets/session-notes.js";
 import type { ExecutionWhitelist } from "../tools/dispatch/tool-policy.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
-import type { ConversationCheckpoint } from "../../session/conversation-checkpoint-facts.js";
+import type { ConversationCheckpoint } from "../../session/persistence/conversation-checkpoint-facts.js";
 import type { AgentLoopOptions, CompactionInstallation } from "../agent-loop-types.js";
 import { createTokenEstimationCache, estimateConversationTokens } from "../compaction/token-counter.js";
 import type { PlannedCompactionOperation } from "../compaction/triggers.js";
@@ -18,7 +18,7 @@ import type { OutgoingContextSnapshot } from "../request/context-token-anchor.js
 import { Log } from "../../../infra/log.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { effectiveProactiveTrigger, proactiveCompactionTriggers } from "../compaction/compaction-policy.js";
-import { renderConversationCheckpoint } from "../../session/conversation-checkpoint.js";
+import { renderConversationCheckpoint } from "../../session/conversation-records/conversation-checkpoint.js";
 
 const log = Log.create({ service: "agent-loop" });
 

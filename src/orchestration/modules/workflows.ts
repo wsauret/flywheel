@@ -37,7 +37,7 @@ import type { ModuleRuntimeServices } from "../agent-runtime/request/module-serv
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
 import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
 import type { LaunchingSessionAuthority } from "../workflow-host/lifecycle/path-workflow.js"
-import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definitions/definition-availability.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/dispatch/tool-registry.js"
 import { moduleDisabledReason } from "../../protocol/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/definitions/workflow-tool.js"
@@ -264,8 +264,8 @@ export const workflowsModule = {
     settle: async (input) => {
       if (input.session.kind !== "workflow") throw new Error("Workflow deletion requires workflow metadata")
       const [{ recordChildWorkflowStop }, { reconcileChildSessionCompletions }] = await Promise.all([
-        import("../session/child-workflow-result.js"),
-        import("../session/child-session-reconciliation.js"),
+        import("../session/control/children/child-workflow-result.js"),
+        import("../session/control/children/child-session-reconciliation.js"),
       ])
       const binding = input.session.launchedFrom
       // Deletion stops the child as a person's Stop does, unless its call

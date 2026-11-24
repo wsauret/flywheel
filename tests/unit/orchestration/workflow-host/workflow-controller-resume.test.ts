@@ -20,7 +20,7 @@ import { convertWorkflowAgentSessions } from "../../../../src/orchestration/modu
 import { adoptWorkflowChildren } from "../../../../src/orchestration/modules/workflows/migrations/adopt-workflow-children"
 import type { WorkflowView } from "../../../../src/workflows/view/types.js"
 import { plainAgentTree } from "../../../helpers/workflow-view.js"
-import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input-projection"
+import { loadAgentInputProjection } from "../../../../src/orchestration/session/agent-input/agent-input-projection"
 import {
   cleanupProjectRoots,
   trackProjectRoot,
@@ -37,7 +37,7 @@ import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { Database } from "bun:sqlite"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
-import { createSessionAuthAdmission } from "../../../../src/orchestration/session/session-auth-profile.js"
+import { createSessionAuthAdmission } from "../../../../src/orchestration/session/metadata/session-auth-profile.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/host-collection.js"
 import { createWorkflowDurationReader } from "../../../../src/orchestration/modules/workflows/runs/duration.js"

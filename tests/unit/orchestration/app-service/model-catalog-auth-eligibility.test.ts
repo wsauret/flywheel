@@ -16,11 +16,11 @@ import { createAccessProviderSelection, type AccessProviderDefinition } from "..
 import { createModelListingClient } from "../../../../src/infra/llm/access/model-listing.js";
 import { canonicalCatalogModelId } from "../../../../src/infra/model-id.js";
 import type { ModelsClient } from "../../../../src/infra/llm/models/models.js";
-import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/provider-model-preference-service.js";
+import { createProviderModelPreferenceService } from "../../../../src/orchestration/app-service/auth/models/provider-model-preference-service.js";
 import { captureAccountConnection } from "../../../../src/orchestration/agent-runtime/llm/routing/client-factory.js";
 import { resolveProviderModelCatalog } from "../../../../src/orchestration/config/models/model-assignment-providers.js";
 import { providerModelEligibilityDecision } from "../../../../src/orchestration/config/models/provider-model-eligibility.js";
-import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../../src/orchestration/app-service/eligibility-preparation.js";
+import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../../../../src/orchestration/app-service/auth/models/eligibility-preparation.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../../../../src/orchestration/credential-provider-modules.js";
 

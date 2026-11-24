@@ -25,7 +25,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { forwardDiagnostics, payloads } from "../modules/provider-claude-agent-sdk/_bridge-harness.js"
 import { asModelClient } from "./_model-client.js"
 import { fakeAvailability } from "./llm/_provider-chain-harness.js"
-import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/session-title.js"
+import { SESSION_TITLE_PURPOSE } from "../../../../src/orchestration/session/metadata/session-title.js"
 
 /*
  * The guard of the one shared engine agent host of a chat tree. Every Claude call of one tree, other than the

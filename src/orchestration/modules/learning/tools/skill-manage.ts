@@ -18,7 +18,7 @@ import { skillRecommendationRecordedFact } from "../../../../workflows/skills/sk
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
 import { discardPendingAudit, reconcilePendingAudits, settlePendingAudit, type PendingAudit } from "../skills/learning-journal.js";
 import { readConsentClaims, reconcileGlobalSkillOperations } from "../skills/global-skill-mutation.js";
-import type { SessionFactWriter } from "../../../session/session-fact-writer.js";
+import type { SessionFactWriter } from "../../../session/persistence/session-fact-writer.js";
 import { admitSkillMutationPlan, planSkillMutation, storeRootDirs } from "../skills/skill-mutation-plan.js";
 import { publishSkillMutation } from "../skills/skill-mutation-publisher.js";
 import { refuseBackgroundGlobalWrite, refuseUncontainedSkillStores } from "../skills/skill-store.js";

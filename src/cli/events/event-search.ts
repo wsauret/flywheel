@@ -6,11 +6,11 @@ import { listEventTypes, rowActor, rowTimestamp, rowType, searchEvents, type Eve
 import { analyzeStreamGaps, formatStreamGapReport } from "../../orchestration/session/diagnostics/provider-stream-gaps.js"
 import { formatEventSearchMatch, formatEventTypeSummary, formatReconstruction } from "./event-search-format.js"
 import { withEventStore } from "../../infra/with-event-store.js"
-import { loadProviderRequestAuditFromEvents } from "../../orchestration/session/provider-request-audit-projection.js"
+import { loadProviderRequestAuditFromEvents } from "../../orchestration/session/diagnostics/provider-request-audit-projection.js"
 import {
   reconstructProviderRequestPrompt,
   type ProviderRequestPromptReconstruction,
-} from "../../orchestration/session/provider-request-audit-reconstruction.js"
+} from "../../orchestration/session/diagnostics/provider-request-audit-reconstruction.js"
 import { type CliOptions, MAX_TIMEOUT_SECONDS, parseArgs, eventSearchUsage } from "./event-search-args.js"
 
 type EventSearchOptions = CliOptions & { readonly projectRoot: string }

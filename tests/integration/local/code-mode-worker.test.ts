@@ -21,7 +21,7 @@ import { spawnInvocationWorker } from "../../../src/orchestration/modules/code-m
 import type { CodeModeLimits } from "../../../src/orchestration/modules/code-mode/limits.js";
 import { createCodeModeService, type CodeModeService } from "../../../src/orchestration/modules/code-mode/service.js";
 import { createMcpNestedTool } from "../../../src/orchestration/modules/mcp/nested-tool.js";
-import { createSessionFactWriter } from "../../../src/orchestration/session/session-fact-writer.js";
+import { createSessionFactWriter } from "../../../src/orchestration/session/persistence/session-fact-writer.js";
 import { startLoopbackMcpServer, type LoopbackMcpServer } from "../../helpers/code-mode-loopback-mcp.js";
 import { codeToolOver } from "../../helpers/code-mode-worker.js";
 import { temporaryDirectories } from "../../helpers/directories.js";

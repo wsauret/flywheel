@@ -1,6 +1,6 @@
 import { asAsyncEventReadSurface, type AsyncEventReadSurface } from "../../src/infra/event-store-types.js"
 import { openReadonlyEventReader } from "../../src/infra/sqlite-event-store.js"
-import { acquireSessionSummaryIndex } from "../../src/orchestration/session/session-summary-index.js"
+import { acquireSessionSummaryIndex } from "../../src/orchestration/session/metadata/catalog/session-summary-index.js"
 // The summary index folds workflow run accounting from the installed catalog,
 // which the module registry publishes into this realm when it loads, as the
 // runtime background Worker does through its own imports.

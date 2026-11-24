@@ -6,7 +6,7 @@ import { DebugLog, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { asAsyncEventWriter } from "../../../../src/infra/event-store-types"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
+import { createSessionFactWriter } from "../../../../src/orchestration/session/persistence/session-fact-writer"
 import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane"
 import {
   type ConversationDedup,
@@ -16,11 +16,11 @@ import {
   recordProviderStreamEvent,
   recordProviderStreamStarted,
   recordProviderUsage,
-} from "../../../../src/orchestration/session/provider-request-audit-recorder"
-import { parseProviderRequestAuditFact, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts"
-import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/provider-request-audit-projection"
+} from "../../../../src/orchestration/session/diagnostics/provider-request-audit-recorder"
+import { parseProviderRequestAuditFact, readProviderRequestAuditFact, type ProviderRequestAuditFact } from "../../../../src/orchestration/session/runtime-facts/provider-request-audit-facts"
+import { loadProviderRequestAuditFromEvents } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-projection"
 import { InvariantViolation } from "../../../../src/infra/invariant"
-import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/provider-request-audit-hash"
+import { hashSystemPrompt, hashToolSurface } from "../../../../src/orchestration/session/diagnostics/provider-request-audit-hash"
 import { createProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit"
 import { providerRequestFacts } from "./_provider-request-audit-fixtures"
 

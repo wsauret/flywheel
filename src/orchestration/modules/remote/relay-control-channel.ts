@@ -23,8 +23,8 @@ import {
 } from "../../../protocol/modules/remote/relay-protocol.js"
 import type { RemoteConnectionState } from "../../../protocol/modules/remote.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
-import type { SettledControlUiAssetState } from "../../app-service/web-serving/control-ui-assets.js"
-import { controlUiContentType } from "../../app-service/web-serving/control-ui-static.js"
+import type { SettledControlUiAssetState } from "../../app-service/account/web-serving/control-ui-assets.js"
+import { controlUiContentType } from "../../app-service/account/web-serving/control-ui-static.js"
 import type { RemoteIdentity } from "./pairing/remote-identity.js"
 
 /** One outbound control channel to the relay, announcing one placement.

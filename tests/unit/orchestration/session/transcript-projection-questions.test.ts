@@ -8,7 +8,7 @@ import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store
 import { SessionTranscriptProjection } from "../../../../src/orchestration/session/conversation/transcript/transcript-projection"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/tree/conversation-tree-handle"
 import { createSessionManager } from "../../../../src/orchestration/session/manager"
-import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/transcript-projection-cache"
+import { createTranscriptProjectionCache } from "../../../../src/orchestration/app-service/projections/output/transcript-projection-cache"
 import { readAllOutputBlocks } from "../../../helpers/indexed-output"
 
 let baseDir: string

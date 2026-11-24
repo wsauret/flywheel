@@ -10,8 +10,8 @@ import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evi
 import { readSessionContentRange } from "../../../../../../src/infra/session-content.js";
 import { createSkillManageTool } from "../../../../../../src/orchestration/modules/learning/tools/skill-manage.js";
 import type { DispatchedToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/session-fact-writer.js";
-import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input-projection.js";
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../../../src/orchestration/session/persistence/session-fact-writer.js";
+import { loadAgentInputProjection } from "../../../../../../src/orchestration/session/agent-input/agent-input-projection.js";
 import type { SkillWriteOrigin } from "../../../../../../src/orchestration/modules/learning/skills/skill-store-types.js";
 import { publishSkillRevision, SKILL_FILE } from "../../../../../../src/workflows/skills/skill-schema.js";
 import { loadSkillDefinitions, ownedSkillStoreDirs } from "../../../../../../src/workflows/skills/skills.js";

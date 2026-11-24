@@ -12,9 +12,9 @@ import { requestAccountModule } from "./account-module-request.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../protocol/runtime-liveness.js"
 import { createServeStatusReader, decodeServeStartRefusal, ServeStartupFailure } from "../../protocol/serve-handshake.js"
 import { startupPhase } from "../../protocol/startup-steps.js"
-import { readOrCreateAccountAttachToken } from "../../orchestration/app-service/account-attach-token.js"
-import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../orchestration/app-service/runtime-shutdown.js"
-import { unansweredStartRequested } from "../../orchestration/app-service/service-manager-command.js"
+import { readOrCreateAccountAttachToken } from "../../orchestration/app-service/account/account-attach-token.js"
+import { ACCOUNT_DRAIN_HARD_EXIT_MS } from "../../orchestration/app-service/runtime/runtime-shutdown.js"
+import { unansweredStartRequested } from "../../orchestration/app-service/account/installation/service-manager-command.js"
 import { installedBuildId, processRunningBuild, runningBuildId, runtimeCommand, type RunningBuild } from "../../orchestration/app-service/runtime-executable.js"
 import { errnoCode, errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
@@ -525,7 +525,7 @@ async function waitForServiceState(
  *  module loads only here, on the rare attach that finds nothing listening,
  *  so the common warm attach carries none of its weight. */
 async function startRegisteredService(options: ProjectRuntimeOptions): Promise<boolean> {
-  const { accountServicePlatform, createAccountServiceInstallation, serviceCommandLaunch } = await import("../../orchestration/app-service/account-service-installation.js")
+  const { accountServicePlatform, createAccountServiceInstallation, serviceCommandLaunch } = await import("../../orchestration/app-service/account/installation/account-service-installation.js")
   // A client attach runs before any launcher scope exists, so it drives the
   // service manager through trusted system programs.
   const host = { platform: process.platform, env: process.env, uid: process.getuid?.() }

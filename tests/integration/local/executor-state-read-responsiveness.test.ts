@@ -18,10 +18,10 @@ import { runtimeWorkerUrl } from "../../../src/cli/account-service/runtime-launc
 import type { StoredFact } from "../../../src/infra/event-store-types.js"
 import { listenInternalProcessChannel, type InternalProcessChannelServer } from "../../../src/infra/internal-process-channel.js"
 import { extractContent } from "../../../src/infra/tool-content.js"
-import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/project-executor-protocol.js"
-import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state-channel.js"
-import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state-worker-spawner.js"
-import { PROJECT_STATE_MAX_PAGE_ROWS } from "../../../src/orchestration/app-service/project-state-protocol.js"
+import { projectExecutorChannelLimits } from "../../../src/orchestration/app-service/executor/project-executor-protocol.js"
+import { serveProjectStateChannel } from "../../../src/orchestration/app-service/project-state/project-state-channel.js"
+import { spawnProjectStateWorker } from "../../../src/orchestration/app-service/project-state/project-state-worker-spawner.js"
+import { PROJECT_STATE_MAX_PAGE_ROWS } from "../../../src/orchestration/app-service/project-state/project-state-protocol.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 
 const temporaryDirectory = temporaryDirectories()
