@@ -38,9 +38,11 @@ import type { RuntimeConfigCache } from "../hooks/state/runtime/create-runtime-c
 import { useCopySelection } from "../components/use-copy-selection.js"
 import { useReleaseNotice } from "../hooks/welcome/use-release-notice.js"
 import { useTabsHint } from "../hooks/welcome/use-tabs-hint.js"
-import { createShellCommands, createShellComposer, ShellComposer } from "./shell-composer.js"
+import { createShellCommands, ShellComposer } from "./shell-composer.js"
+import { createShellComposer } from "./shell-composer-core.js"
 import { ShellHeader } from "./shell-header.js"
-import { createShellNavigation, createShellPlaces } from "./shell-navigation.js"
+import { createShellNavigation } from "./shell-navigation.js"
+import { createShellPlaces } from "./shell-places.js"
 import { createShellOverlays } from "./shell-overlays.js"
 
 interface FlywheelShellProps { appService: AttachedRuntimeClient; attach: TerminalAttach; runtimeConfig: RuntimeConfigCache; projectRoot: string; stateRoot: string; userDataRoot: string; accountHome: string; appVersion: string; launcher: LauncherScope; clipboard: Clipboard; settingsOperations: SettingsOperations; launchState: LaunchState | undefined; attachedIdentity: Promise<RuntimeIdentity | undefined>; registerForeground?: (read: () => string | undefined) => void; terminalWriter: TerminalBackgroundWriter }

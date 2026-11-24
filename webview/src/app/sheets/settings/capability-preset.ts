@@ -1,5 +1,5 @@
 import { actionKey } from "../../../client/action-key.js"
-import { describeFailure } from "../../../client/failure-message.js"
+import { describeFailure } from "../../../client/format/failure-message.js"
 import { settingRowKey, type SettingKeys, type SettingOutcome } from "../../../client/settings-actions.js"
 import type { ClientContextValue } from "../../client-context.js"
 import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js"

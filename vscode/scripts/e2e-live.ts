@@ -28,7 +28,7 @@ import { createRuntimeConnection } from "../../src/protocol/client/connection.js
 import { nodeSocketLayer } from "../src/runtime/connection/node-socket.js"
 import { SocketBridge } from "../src/webview/socket-bridge.js"
 import { ViewBridge, postMessageSocketLayer } from "../../webview/editor/post-message-socket.js"
-import { createRuntimeSession } from "../../webview/src/client/session.js"
+import { createRuntimeSession } from "../../webview/src/client/session/session.js"
 import { resolveEditorClient } from "../src/runtime/connection/editor-client.js"
 import { prepareAccountRuntime } from "../src/runtime/supervisor.js"
 import { liveTransportVerdict, observeLiveBlocks } from "./e2e-live-verdict.js"

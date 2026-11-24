@@ -1,5 +1,5 @@
 import { createClientActions, type ClientActions } from "../client/actions.js"
-import { fakeRuntimeConnection } from "../client/runtime-connection-fixture.js"
+import { fakeRuntimeConnection } from "../test-support/runtime-connection-fixture.js"
 import { fakeRuntimeSession } from "./client-context-fixture.js"
 
 /** The real actions layer's owner of running actions, for a fixture that

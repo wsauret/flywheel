@@ -2,7 +2,7 @@ import { createSignal, For, onCleanup, Show } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { webModuleEnabled, type WebModule } from "../../web-module.js"
 
-import { pageDomainReader } from "../../client/module-domain-views.js"
+import { pageDomainReader } from "../../client/domains/module-domain-views.js"
 import { moduleComposerStatus } from "../../../../src/protocol/modules.js"
 import type { ModuleComposerStatus } from "../../../../src/protocol/protocol-module.js"
 import { runtimeFaultCopy, type FaultReach } from "../../../../src/protocol/client/runtime-fault-copy.js"

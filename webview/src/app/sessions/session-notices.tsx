@@ -1,7 +1,7 @@
 import { Key } from "@solid-primitives/keyed"
 import { Show } from "solid-js"
 
-import type { SessionNoticeSummary } from "../../client/session-state.js"
+import type { SessionNoticeSummary } from "../../client/session/session-state.js"
 import { Icon, ICONS } from "../controls/icons.js"
 
 /** Session notices keyed by their runtime-owned scope, so equal frame

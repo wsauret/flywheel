@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, Show, untrack } 
 import { workflowBriefLine } from "../../../../src/protocol/client/workflow-agent.js"
 import { parseWorkflowLink } from "../../../../src/protocol/client/session-links.js"
 import { controlActionKey, actionKey } from "../../client/action-key.js"
-import { summaryOf } from "../../client/view-state.js"
+import { summaryOf } from "../../client/session/view-state.js"
 import type { WebModule } from "../../web-module.js"
 import type { WebModuleClient, WebModuleClientHost } from "../../web-module-client.js"
 import { AgentHeader, agentInput } from "./screen/agent-header.js"

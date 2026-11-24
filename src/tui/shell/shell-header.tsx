@@ -8,7 +8,7 @@ import { TabsBar } from "../components/chrome/tabs-bar.js"
 import { createHeaderDisplay } from "../hooks/state/create-header-display.js"
 import { useShellState } from "../hooks/state/shell-state.js"
 import type { ChatModeHook } from "../hooks/use-chat-mode.js"
-import type { ShellPlaces } from "./shell-navigation.js"
+import type { ShellPlaces } from "./shell-places.js"
 
 /** The header: the tabs, and the foreground chat's statistics with its
  *  context gauge, which compacts the conversation on a click. */

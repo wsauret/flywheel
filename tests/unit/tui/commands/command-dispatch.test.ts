@@ -45,7 +45,7 @@ function createHarness(overrides: HarnessOverrides = {}) {
     directories: { accountHome: "/account", userDataRoot: "/account/.flywheel" },
     launcher,
     appService,
-    runtimeConfig: { view: () => undefined, settlePublication: async () => false },
+    runtimeConfig: { view: () => undefined, mutate: async () => ({ kind: "disposed", message: "Configuration updates are unavailable." }) },
     showToast,
     signals,
     startClearedChat: mock(async () => {}),

@@ -45,14 +45,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::workflows::vm",
     ].join(","),
   },
-  {
-    lint: "module-cycle",
-    reason: "The command context reads the shell (ShellSignals fields, RuntimeConfigCache.view, mutateRuntimeConfig, and the report-async reporters), while the shell wires the commands. The cheapest tie: `hooks` uses `commands` by 3 items (commandsToOptions, CommandDispatch.dispatch, SurfaceRequest.isCurrent), against 7 the other way, but those 3 are the commands' own interface, so cut the 7 instead: give the command context its own contract in commands/command-types.ts that the shell state and the runtime config cache satisfy, and move report-async below both.",
-    key: [
-      "flywheel::tui::commands",
-      "flywheel::tui::hooks",
-    ].join(","),
-  },
   { lint: "shallow-module", key: "flywheel::orchestration::runner", reason: "AgentGeneration now gives one-shot callers a contract without the chat turn slot of AgentHost, but OutputSession and Runner still show most of their methods. Next cut: move OutputSession to session-store, which drives it (ARCH-SESSIONS-002)." },
   { lint: "shallow-module", key: "flywheel::orchestration::session-store", reason: "SessionStoreReader now gives read-only projections a contract without runner control, but SessionStore still shows 31 methods. Next cut: move toSessionView and createSessionViewLoader (view.ts) to the app-service projections that use them, and give app-service one runner-control interface that keeps the activeEntry rule in the store." },
   { lint: "shallow-module", key: "flywheel::protocol::client", reason: "The shared client core shows about 357 of 555 functions, most of them small helpers that both the terminal and the web client call. Next cut: move the functions that only orchestration calls (workflow address and target parsing, RuntimeConnection ready and fault, decodeRuntimeEventFrame, workflow progress and coverage text) to the orchestration domain that uses them." },
@@ -61,7 +53,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
   { lint: "wide-directory", key: "src/orchestration/", reason: "Its 16 subdirectories are module homes or kernel areas, and AGENTS.md section 7 keeps the registry files modules.ts and credential-provider-modules.ts at the top, so it cannot hold fewer than 18 members. Next cut: move the loose kernel catalog files (definition-catalog, definition-health, module-requirements, tool-catalog, workspace-state, custom-provider-modules, and the rest) into one or two kernel subdirectories, but only when the orchestration module cycle is reworked, because their module keys are members of that cycle." },
   { lint: "wide-directory", key: "src/protocol/", reason: "One measured trial grouped the 78 files by concern into nine directories (rpc, runtime, auth, models, session, transcript, settings, git, update). It added six shallow-module findings (runtime shows 36 of 48 functions, rpc 23 of 32, session 18 of 18, models 14 of 16, settings 14 of 18, transcript 12 of 19), because most of these files show their functions to code outside src/protocol by design (the flywheel::protocol entry). Moving the five runtime-* files into rpc/ also changes the key of the client/modules circle entry, which gives a new circle finding and a stale entry and needs its own allowlist decision. Next cut: first break the client/modules dependency through the shared host contract (the next cut of that circle entry), then try the grouping again." },
   { lint: "wide-directory", key: "src/protocol/client/", reason: "Two measured trials grouped the 92 files by concern. Ten groups gave a chat/transcript circle and six shallow-module findings. Nine groups with no circle (transcript, workflow, runtime, reads, session, chat, providers, host, settings) gave five shallow-module findings: reads/ shows 84 of its 140 functions, session/ 63 of 82, chat/ 50 of 68, providers/ 16 of 17, and settings/ 11 of 11 (the flywheel::protocol::client entry). Hiding the helpers of reads/ and session/ is only partial cleanup: most of their shown functions are called from outside src/protocol/client/, so it needs changes in those callers. The interfaces of chat, providers, and settings are called by both the TUI and the webview and remain blockers. Next cut: narrow those outside callers, then try the nine groups again." },
-  { lint: "wide-directory", key: "webview/src/client/", reason: "Every grouping by concern that was tried makes a new shallow-module finding. The hidden functions are inside session.ts, and the files around it show most of their functions to it or to webview/src/app/: session-readings shows 9 of its 10 functions, session-input 12 of 24, tool-runs 12 of 18. So a part only passes in the same directory as session.ts, and session.ts with its 10 colocated tests and 3 fixtures fills that directory alone. Next cut: give session-readings and session-input interfaces that hide their work (fewer functions that session.ts calls), then move the session runtime to session/ with session/residents/ (residents, holds, seat, roles, tool-runs, turn-folds) and session/navigation/, and group the rest as domains/, input/ (input diagnostics, touch activation, input reload, service restart), settings/, questions/, format/, and commands/." },
   {
     lint: "module-cycle",
     reason: "`module-requirements` (module-requirements.ts:31) and `tool-catalog` read the tool declaration types of agent-runtime/tools/dispatch/tool-registry.ts while `agent-runtime` calls them; give the tool declaration contract a home below all three, then reassess. `module-catalog` joins because it reads the `DefinitionContribution` union of modules.ts (module-catalog.ts:143) while modules.ts calls installedModules; give the module descriptor and contribution types a home below both.",
@@ -102,15 +93,6 @@ export const KNOWN_ARCHITECTURE_FINDINGS: readonly KnownFinding[] = [
       "flywheel::protocol::runtime-delivery-policy",
       "flywheel::protocol::runtime-dispatch-result-schemas",
       "flywheel::protocol::runtime-protocol-schemas",
-    ].join(","),
-  },
-  {
-    lint: "module-cycle",
-    reason: "The shell owners are grouped by concern (docs/architecture.md, the shell composition site), but they build in phases: the composer core, then the places, the overlays, the navigation, and last the commands and prompt area. shell-composer.tsx holds the first and last phases and shell-navigation.ts the second and fourth, so each file reads the other's results. Next cut: move createShellComposer to its own file below createShellPlaces, and createShellPlaces out of shell-navigation.ts, so each file holds one phase; update the composition order in docs/architecture.md.",
-    key: [
-      "flywheel::tui::shell::shell-composer",
-      "flywheel::tui::shell::shell-navigation",
-      "flywheel::tui::shell::shell-overlays",
     ].join(","),
   },
 ];

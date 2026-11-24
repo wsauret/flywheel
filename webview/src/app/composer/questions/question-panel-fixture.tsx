@@ -1,6 +1,6 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
 
-import type { FrontendQuestionBlock } from "../../../client/question-answer.js"
+import type { FrontendQuestionBlock } from "../../../client/questions/question-answer.js"
 import { createQuestionInteractions, QuestionPanel } from "./question-panel.js"
 import { createElement, insert, nodes, textContent } from "../../../test-support/render-ownership-host-fixture.js"
 import { actionOwner } from "../../action-owner-fixture.js"

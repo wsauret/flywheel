@@ -5,8 +5,8 @@ import { compactionReading, compactionTrigger } from "../../../../../src/protoco
 import { isClientSheetId, type ClientSheetId } from "../../../../../src/protocol/client/host-contract.js"
 import { describeUpdateStatus } from "../../../../../src/protocol/client/update-status-copy.js"
 import { chatOnlyCommandNotice, UNKNOWN_COMMAND_NOTICE } from "../../../../../src/protocol/client/slash-route.js"
-import { changesLabel } from "../../../client/changes-label.js"
-import { summaryOf } from "../../../client/view-state.js"
+import { changesLabel } from "../../../client/format/changes-label.js"
+import { summaryOf } from "../../../client/session/view-state.js"
 import type { ClientContextValue } from "../../client-context.js"
 
 /** One place this client opens for a command, by the surface id the command
