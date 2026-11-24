@@ -1,13 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import type { EmitFn } from "../../../../src/infra/event-bus.js";
-import {
-  createBackgroundWorkRegistry,
-  type BackgroundWorkResult,
-} from "../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js";
 import { WorkflowInjectionQueue } from "../../../../src/orchestration/workflow-host/injection-queue.js";
 import { createWorkflowLoopObservers } from "../../../../src/orchestration/workflow-host/loop-observers.js";
-import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { handoffNudge } from "../../../../src/workflows/shared/handoff-observer.js";
 
 const emit: EmitFn = () => {};

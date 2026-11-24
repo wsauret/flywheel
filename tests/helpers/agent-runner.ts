@@ -1,4 +1,4 @@
-import type { CaptureModelRuntime, CaptureProviderConnection, LLMClientFactory } from "../../src/orchestration/agent-runtime/factory.js";
+import type { CaptureModelRuntime, CaptureProviderConnection, LLMClientFactory } from "../../src/orchestration/agent-runtime/model-runtime-capture.js";
 import { LiveAgent } from "../../src/orchestration/agent-runtime/runner.js";
 import type { AgentOptions } from "../../src/orchestration/agent-runtime/types.js";
 import type { ModelClient } from "../../src/orchestration/agent-runtime/llm/types.js"

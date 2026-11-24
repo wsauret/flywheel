@@ -19,7 +19,7 @@ import type {
 import type { EmitFn } from "../../infra/event-bus.js";
 import { Log } from "../../infra/log.js";
 import type { BackgroundWorkRegistry } from "../agent-runtime/background-work.js";
-import { HandoffCorrectionExhausted } from "../agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../agent-runtime/handoff-correction-exhausted.js";
 import type { WorkflowInjectionQueue } from "./injection-queue.js";
 
 const log = Log.create({ service: "workflow-loop-observers" });

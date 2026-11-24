@@ -1,9 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
-import {
-  createBackgroundWorkRegistry,
-  type BackgroundWorkResult,
-} from "../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js";
 import type { PausedBy } from "../../../../src/infra/output-blocks.js";
 
 function deferred<T>() {

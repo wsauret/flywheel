@@ -3,7 +3,7 @@ import { AuthStoreMutationError } from "../../../infra/auth/auth-store-mutations
 import type { AuthStoreCondition } from "../../../infra/auth/auth-store.js";
 import { isAbortError } from "../../../infra/abort.js";
 import type { ProviderRecovery } from "../../../infra/llm/provider-error-copy.js";
-import { ChatGptAdapterApiError } from "./chatgpt-adapter/sse.js";
+import { ChatGptAdapterApiError } from "./chatgpt-adapter-error.js";
 import { classifyQuotaError, ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError, RouteUnavailableError } from "./errors.js";
 import { DegenerateRepetitionError } from "./reasoning-repetition.js";
 import { ThinkingStallError } from "./thinking-stall.js";

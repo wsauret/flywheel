@@ -1,5 +1,5 @@
 import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access-provider.js";
-import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
+import type { CaptureProviderConnection } from "../../../agent-runtime/model-runtime-capture.js";
 import { createAgentJudge, type JudgeModel } from "./judge.js";
 import { campaignJudges, type BenchmarkPlan } from "./persona-benchmark.js";
 import type { BenchmarkRuntime } from "./persona-run.js";

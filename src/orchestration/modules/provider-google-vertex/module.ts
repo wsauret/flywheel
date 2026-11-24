@@ -8,7 +8,7 @@ import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { canonicalizeIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extractDataCatalogRows, type CatalogWireIdentity } from "../../../infra/llm/model-catalog-resolution.js";
 import { canonicalCatalogModelId, isMovingModelAlias } from "../../../infra/llm/model-id.js";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { LlmStreamError } from "../../agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../agent-runtime/llm/provider-failure.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";

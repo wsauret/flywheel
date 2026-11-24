@@ -8,8 +8,16 @@ import { WorkflowParentRefusal } from "../session/child-session-publication.js"
 import { turnEndEntryId } from "../session/conversation/turn-end-record.js"
 import { workflowRunReader, workflowRunWriter } from "../module-catalog.js"
 import { executionCwdFromSession, requireSessionExecutionCwd } from "../session/session-execution-directory.js"
-import type { WorkflowControllerDeps } from "./controller.js"
-import { bindWorkflowDepsToSession, type AdmittedWorkflowDeps } from "./deps.js"
+import type { ProjectDirectories } from "../../infra/directory-authorities.js"
+import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
+import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
+import type { CapabilityGrant, ModulePolicy } from "../config/module-policy.js"
+import type { FirstPartyModuleComposition } from "../modules.js"
+import type { SessionManager } from "../session/manager.js"
+import type { SessionAuthAdmission } from "../session/session-auth-profile.js"
+import type { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
+import { bindWorkflowDepsToSession, type AdmittedWorkflowDeps, type WorkflowDeps } from "./deps.js"
+import type { WorkflowHosts } from "./host-collection.js"
 import type { WorkflowLaunchLifecycle } from "./launch-lifecycle.js"
 import type { WorkflowLaunchOperation } from "./launch-operation-contract.js"
 import type { ModelWorkflowLaunchOrigin, ModelWorkflowLaunchRequest, WorkflowApprovalBinding, WorkflowLaunchRefusal } from "./launch-origin.js"
@@ -89,6 +97,26 @@ interface ModelLaunchApproval {
   claim(source: WorkflowApprovalBinding): Promise<WorkflowLaunchRefusal | undefined>
 }
 
+/** What the launch pipeline reads of the workflow host's composition. */
+export interface WorkflowLaunchPipelineDeps extends Pick<ProjectDirectories, "projectRoot"> {
+  workflowHosts: WorkflowHosts
+  manager: SessionManager
+  /** Admission boundary of every new launch and resume. Read under the config
+   *  ownership lock, so a launch is ordered against every settings write. */
+  capabilities: Pick<ModulePolicy, "admit" | "state">
+  /** The modules an admitted launch or resume composes in this host. The host
+   *  composes its own runtime with this same rule, so every worker of a
+   *  workflow composes exactly the modules its host composes. */
+  composeModules: (grant: CapabilityGrant) => FirstPartyModuleComposition
+  /** Sole profile-bound runtime authority shared with chat and subagents. */
+  authAdmission: SessionAuthAdmission<WorkflowDeps>
+  buildDefinitionLineageFacts?: typeof buildWorkflowDefinitionLineageFacts
+  eventReader: AsyncEventStateReadSurface
+  projectionReader: AsyncEventStateReadSurface
+  eventWriter: AsyncEventWriter
+  recall: (conversationId: string, input: RecallInput) => Promise<RecallResult>
+}
+
 interface WorkflowLaunchPipeline {
   /** A model's workflow tool call: its committed call is the evidence, so the
    *  launch publishes under it and starts the child before it answers. */
@@ -100,7 +128,7 @@ interface WorkflowLaunchPipeline {
  *  admission, definition preparation, publication, dispatch, and the
  *  start-failure policy exist once; each origin supplies only its evidence. */
 export function createWorkflowLaunchPipeline(
-  deps: WorkflowControllerDeps,
+  deps: WorkflowLaunchPipelineDeps,
   lifecycle: WorkflowLaunchLifecycle,
   admit: AdmitWorkflowOperation,
 ): WorkflowLaunchPipeline {

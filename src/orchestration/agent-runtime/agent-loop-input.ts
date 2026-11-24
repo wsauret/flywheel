@@ -4,7 +4,7 @@ import type { ContentBlock } from "./llm/types.js";
 import type { LoopUserMetadata } from "./agent-loop-history.js";
 import { CONTINUATION_MESSAGES } from "./continuation-messages.js";
 import { completionWorkIds } from "./background-work-notifications.js";
-import { textChars } from "./compaction/truncation.js";
+import { textChars } from "./tools/truncation.js";
 
 type MessageInput = Extract<AgentLoopInput, { kind: "message" }>;
 

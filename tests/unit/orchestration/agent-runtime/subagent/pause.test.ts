@@ -5,10 +5,10 @@ import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestr
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
 import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
 import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
-import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../../../../../src/orchestration/agent-runtime/handoff-correction-exhausted.js";
 import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
 import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/command-handover.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type AsyncEventStateReadSurface } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";

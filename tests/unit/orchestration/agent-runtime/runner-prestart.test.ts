@@ -8,7 +8,7 @@ import { temporaryDirectories, testDirectories } from "../../../helpers/director
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
 import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import type { AgentConversation, AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
-import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
+import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/model-runtime-capture.js"
 import { FUNCTION_TOOL_PRESENTATION, type Claim, type ConversationMessage, type ModelClient, type ProviderDemand, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { planCapabilitiesOfRun, prepareRunRequest, type AnticipatedRequest } from "../../../../src/orchestration/agent-runtime/request-preparation.js"
 import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../../../src/orchestration/modules.js"

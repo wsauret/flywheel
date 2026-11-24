@@ -1,5 +1,5 @@
 import type { AggregateSeqConflict, AsyncEventStateReadSurface, AsyncEventWriter, GuardedEventStoreAppend, StoredFact } from "../../infra/event-store-types.js"
-import type { BackgroundWorkResult } from "../agent-runtime/background-work.js"
+import type { BackgroundWorkResult } from "../agent-runtime/background-work-types.js"
 import { liveWorkflowControl } from "./live-session-control.js"
 import {
   childSessionBackgroundResult,

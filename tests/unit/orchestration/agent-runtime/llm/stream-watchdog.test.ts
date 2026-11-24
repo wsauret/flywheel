@@ -5,10 +5,9 @@ import {
   STREAM_IDLE_TIMEOUT_FAST_MS,
   STREAM_REASONING_IDLE_TIMEOUT_MS,
   STREAM_TTFT_TIMEOUT_MS,
-  throwIfLivenessFailure,
   type StreamLivenessOptions,
 } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
-import type { StreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
+import { throwIfLivenessFailure, type StreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
 import type { StreamTelemetryObservation } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ThinkingStallError } from "../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js";

@@ -24,23 +24,13 @@
 import { createHash } from "node:crypto";
 import { constants, copyFileSync, cpSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, writeFileSync, type BigIntStats } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
-import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState, type FileFingerprint } from "../../file-edits/file-state.js";
+import { fileFingerprint, observeFileState, sameObservedState, type ExpectedFileState } from "../../file-edits/file-state.js";
 import type { MutationGuardKind } from "./bash-mutation-guard.js";
-import { cloneEntry, entryKind, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type EntryKind, type HeldListing, type MirroredFile, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
-import { PRIVATE_INDEX, writePrivateCopyRecord, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
-import { digestStateEntries, type RepositoryState, type StateDigest } from "./bash-copy-repository-state.js";
+import { cloneEntry, entryKind, mirrorTree, PERMISSION_BITS, readListing, type CloneEntry, type EntryKind, type HeldListing, type MirrorPlan, type MirrorState, type MirrorTally } from "./bash-private-copy-mirror.js";
+import { PRIVATE_INDEX, writePrivateCopyRecord, type CopiedProject, type PrivateCopyRecordRead, type ReadCopy, type RecordedCopy } from "./bash-private-copy-record.js";
+import type { RepositoryState } from "./bash-copy-repository-state.js";
+import { digestStateEntries, type StateDigest } from "./bash-copy-state-digest.js";
 import type { SessionFolderObservation, SessionFolderSnapshot } from "./bash-session-observation.js";
-
-/** A real project file's state when the copy was taken, pinned by hash when it changed too recently for its timestamps alone. */
-export type RealFileState = MirroredFile["source"];
-
-export interface CopiedFile {
-  /** The real file's state when the copy was taken. */
-  readonly real: RealFileState;
-  /** The clone's own state and permission bits before the command started. */
-  readonly copy: FileFingerprint;
-  readonly mode: number;
-}
 
 /** How the copy reaches a shared entry. `link` places a symlink (a junction on
  *  Windows) to the real entry. `bind` places an empty entry of the same kind
@@ -80,20 +70,6 @@ export interface CopyTreeState {
   readonly tree: MirrorState;
   readonly base: MirrorState;
   readonly session?: MirrorState;
-}
-
-/** A taken copy as the change scan reads it. */
-export interface CopiedProject {
-  readonly realRoot: string;
-  readonly copyRoot: string;
-  /** The copy's own files as the command started, which nothing writes after that. */
-  readonly baseRoot: string;
-  /** Project-relative entries through which the command reaches the real project instead of its copy. */
-  readonly shared: readonly string[];
-  /** Copied regular files by project-relative path. */
-  readonly files: ReadonlyMap<string, CopiedFile>;
-  /** Copied symlinks by project-relative path, with their targets. */
-  readonly links: ReadonlyMap<string, string>;
 }
 
 export type CopiedTree = Pick<CopiedProject, "shared" | "files" | "links"> & { readonly observedSession?: SessionFolderSnapshot; readonly state: CopyTreeState; readonly tally: MirrorTally };

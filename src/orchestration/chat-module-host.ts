@@ -4,8 +4,8 @@ import { composeModuleRuntimes, type ModuleRuntimes, type ModuleRuntimeHandle } 
 import type { BackgroundExecutionOwner } from "./agent-runtime/background-execution-owner.js"
 import type { ForegroundBashHoldController } from "./agent-runtime/foreground-bash-hold.js"
 import type { ConversationMessage } from "./agent-runtime/llm/types.js"
-import type { ChatSessionDeps } from "./chat/session.js"
-import type { ChatSessionState } from "./chat/types.js"
+import type { ChatSessionDeps, ChatSessionState } from "./chat/types.js"
+import type { FirstPartyModuleSnapshot } from "./modules.js"
 import type { ChatTurnMailbox } from "./chat/turn-mailbox.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
@@ -48,10 +48,11 @@ function report(error: unknown): void { log.warn("chat module host failed", { er
 function invoke(run: () => void): void { try { run() } catch (error) { report(error) } }
 async function join(run: () => Promise<void>): Promise<void> { try { await run() } catch (error) { report(error) } }
 
-/** Constructs selected hosts at attachment, before any model work. Selection
- * changes retire hosts on the next lookup or hook; disposal joins retired
- * work and active hosts once. Factory and hook failures are contained. */
-export function createChatModuleHosts(input: ChatModuleHostInput): ChatModuleHosts {
+/** Constructs the hosts that `selection` contributes at attachment, before any
+ * model work. Selection changes retire hosts on the next lookup or hook;
+ * disposal joins retired work and active hosts once, and the caller ties it to
+ * the chat's background settlement. Factory and hook failures are contained. */
+export function createChatModuleHosts(selection: FirstPartyModuleSnapshot, input: ChatModuleHostInput): ChatModuleHosts {
   const active = new Map<ChatModuleHostContribution, ChatModuleHost>()
   const retired = new Set<Promise<void>>()
   const attempted = new Set<ChatModuleHostContribution>()
@@ -62,7 +63,7 @@ export function createChatModuleHosts(input: ChatModuleHostInput): ChatModuleHos
   }
   function reconcileHosts(): readonly ChatModuleHost[] {
     if (disposal) return []
-    const selected = new Set(input.deps.moduleSelection().contributions.flatMap((entry) => entry.domain === "chatHosts" ? [entry.value] : []))
+    const selected = new Set(selection().contributions.flatMap((entry) => entry.domain === "chatHosts" ? [entry.value] : []))
     for (const contribution of attempted) if (!selected.has(contribution)) attempted.delete(contribution)
     for (const [contribution, host] of active) {
       if (selected.has(contribution)) continue
@@ -98,6 +99,5 @@ export function createChatModuleHosts(input: ChatModuleHostInput): ChatModuleHos
       return disposal
     },
   }
-  input.background.addSettle(() => hosts.dispose())
   return hosts
 }

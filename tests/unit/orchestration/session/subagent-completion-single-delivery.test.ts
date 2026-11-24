@@ -8,7 +8,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/inf
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types"
 import { chatEntry } from "../app-service/_frontend-projection-fixtures"
 import { createBackgroundNotificationDelivery } from "../../../../src/orchestration/app-service/session-background-notifications"
 import { createBackgroundNotificationDelivery as createRunnerNotificationDelivery } from "../../../../src/orchestration/runner/background-notification-delivery"

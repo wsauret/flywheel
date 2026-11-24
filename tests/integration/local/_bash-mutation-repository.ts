@@ -10,7 +10,7 @@ import { hostMutationGuard } from "../../../src/orchestration/agent-runtime/tool
 import { handedOverPrivateCopy, runInPrivateCopy } from "../../../src/orchestration/agent-runtime/tools/bash-project-mutation.js"
 import { createPrivateCopyPool, type PrivateCopyPool } from "../../../src/orchestration/agent-runtime/tools/bash-private-copy-pool.js"
 import { quotePowerShell } from "../../../src/orchestration/agent-runtime/tools/bash-script.js"
-import { createShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime.js"
+import { createShellRuntime } from "../../../src/orchestration/agent-runtime/shell-runtime.js"
 import type { ShellRuntime } from "../../../src/orchestration/agent-runtime/tools/shell-runtime-types.js"
 import type { ToolResult } from "../../../src/orchestration/agent-runtime/tools/types.js"
 import { temporaryDirectories } from "../../helpers/directories.js"

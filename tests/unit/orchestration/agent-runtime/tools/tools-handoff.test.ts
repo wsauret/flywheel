@@ -5,7 +5,8 @@ import { describe, expect, it } from "bun:test";
 import { Result } from "effect";
 
 import { handoffDefinition, createHandoffTool } from "../../../../../src/orchestration/agent-runtime/tools/handoff.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { admitEveryTool } from "../../../../helpers/request-tool-surface.js";
 import type { RuntimeTool, ToolDispatchContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";

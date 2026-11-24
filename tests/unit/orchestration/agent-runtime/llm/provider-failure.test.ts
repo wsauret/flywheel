@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import { ChatGptAdapterApiError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
+import { ChatGptAdapterApiError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter-error.js";
 import {
   classifyProviderFailure,
   isFailoverFailure,

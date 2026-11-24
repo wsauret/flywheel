@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import { createBackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work-types.js";
 import type { ConversationMessage, ProviderStreamEvent, ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool, ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentLoopTerminal, RestoredAgentWait } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";

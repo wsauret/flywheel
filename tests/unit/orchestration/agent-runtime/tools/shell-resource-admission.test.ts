@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
-import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/tools/shell-runtime.js";
+import { createShellRuntime } from "../../../../../src/orchestration/agent-runtime/shell-runtime.js";
 import { sharedProcessorClaims, type ProcessorClaims } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
 import { startManagedCommand } from "../../../../../src/orchestration/agent-runtime/tools/managed-command.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";

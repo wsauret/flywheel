@@ -31,7 +31,7 @@ import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
 import { hashToolInputFormat } from "../session/provider-request-audit-hash.js";
 import type { CaptureRuntimeConfig, RuntimeConfigRequestCapture } from "./request-config.js";
-import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./factory.js";
+import type { ModelRuntimeCapture, ProviderConnectionCapture } from "./model-runtime-capture.js";
 import { tokenCountingPolicy, type TokenCountingPolicyIdentity } from "./compaction/token-counter.js";
 import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 

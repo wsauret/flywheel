@@ -12,7 +12,7 @@ import { chatInputText, type ChatInputLike } from "../../../../src/infra/chat-in
 import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 import { ownHistoryTarget } from "../agent-runtime/_model-client.js";
 import { durableSubagentCompletionNotification } from "../../../../src/orchestration/agent-runtime/background-work-notifications"
-import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types"
 
 describe("chat session with agent runtime — background-work notification (f06c00e9c8cd regression)", () => {
   let session: ChatRunner | null = null

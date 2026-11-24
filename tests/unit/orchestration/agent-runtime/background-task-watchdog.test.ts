@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "bun:test";
-import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
+import type { BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work-types.js";
 
 function deferred<T>() {
   let resolve!: (v: T) => void;

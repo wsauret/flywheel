@@ -1,19 +1,14 @@
-import { mergeAbortSignals } from "../../../infra/abort.js";
-import type { OwnedProcess } from "../../../infra/owned-subprocess.js";
-import type { CommandHandoverRow } from "../../session/command-handover.js";
-import type { BackgroundWorkRegistry } from "../background-work.js";
-import { adoptHandedOverCommands, handedOverCommandInput, handOverCommands, type CommandHandoverScope } from "../command-handover.js";
-import type { ToolContext, ToolResult } from "./types.js";
-import { createPrivateCopyPool, type PrivateCopyPool } from "./bash-private-copy-pool.js";
-import { startManagedCommand, type ManagedCommand } from "./managed-command.js";
-import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS, runManagedShell } from "./shell-execution.js";
-import type { ManagedShellExecutionOptions, ShellRuntime, ShellRuntimeClient } from "./shell-runtime-types.js";
-import { sharedProcessorClaims, type ProcessorClaims } from "./processor-claims.js";
-
-/** Default foreground hold before an auto-yield transfers a still-running
- *  command to a managed process. Shared by every shell dialect; the
- *  configured foreground_bash_hold_seconds overrides it per request. */
-export const DEFAULT_TOTAL_YIELD_MS = 240_000;
+import { mergeAbortSignals } from "../../infra/abort.js";
+import type { OwnedProcess } from "../../infra/owned-subprocess.js";
+import type { CommandHandoverRow } from "../session/command-handover.js";
+import type { BackgroundWorkRegistry } from "./background-work.js";
+import { adoptHandedOverCommands, handedOverCommandInput, handOverCommands, type CommandHandoverScope } from "./command-handover.js";
+import type { ToolContext, ToolResult } from "./tools/types.js";
+import { createPrivateCopyPool, type PrivateCopyPool } from "./tools/bash-private-copy-pool.js";
+import { startManagedCommand, type ManagedCommand } from "./tools/managed-command.js";
+import { DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS, POST_EXIT_DRAIN_GRACE_MS, runManagedShell } from "./tools/shell-execution.js";
+import type { ManagedShellExecutionOptions, ShellRuntime, ShellRuntimeClient } from "./tools/shell-runtime-types.js";
+import { sharedProcessorClaims, type ProcessorClaims } from "./tools/processor-claims.js";
 
 export interface ShellRuntimeDependencies {
   /** Ends every launch of this runtime, with the host that owns it. */

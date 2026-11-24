@@ -11,7 +11,7 @@ import { createProfileRequestService, type ProfileRequestWorkflowPreparation } f
 import { createAuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { authProfileEligibilityInputRevision, createEligibilityPreparation } from "../app-service/eligibility-preparation.js"
 import { createProviderModelEligibilitySnapshots } from "../app-service/provider-model-preference-service.js"
-import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
+import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtime-capture.js"
 import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"

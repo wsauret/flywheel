@@ -1,6 +1,6 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { PERSON_STOP_INSTRUCTION } from "../../infra/tool-outcome.js"
-import type { BackgroundKillSource, BackgroundWorkResult } from "./background-work.js"
+import type { BackgroundKillSource, BackgroundWorkResult } from "./background-work-types.js"
 
 /** Normalizes task rejection and an owner's Stop into the recorded outcome. */
 export function backgroundWorkOutcome(

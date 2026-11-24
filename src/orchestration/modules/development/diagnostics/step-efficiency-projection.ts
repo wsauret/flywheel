@@ -58,7 +58,7 @@ export function loadStepEfficiencyFromEvents(
   events: readonly StoredFact[],
   interval: StepEfficiencyInterval = {},
 ): StepEfficiencyEntry[] {
-  const history = retainedExecutionDiagnostics(events, installedModules())
+  const history = retainedExecutionDiagnostics(events, installedModules().flatMap((module) => module.retainedDiagnostics ?? []))
   const execution = history.attempts
   if (!execution) return []
 

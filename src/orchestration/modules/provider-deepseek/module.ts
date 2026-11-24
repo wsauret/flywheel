@@ -4,7 +4,7 @@ import { canonicalizeProviderIdCatalogRow, DEFAULT_DYNAMIC_CATALOG_LIMITS, extra
 import { fetchCatalog } from "../../../infra/llm/model-listing.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import { apiKey } from "../../../infra/auth/auth-context.js";
-import { ApiError } from "../../agent-runtime/errors.js";
+import { ApiError } from "../../agent-runtime/llm/runtime-errors.js";
 import { providerAdapter, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider, requireModelMetadata } from "../../agent-runtime/llm/provider-description.js";
 import type { FirstPartyModule } from "../../modules.js";

@@ -1,12 +1,7 @@
-import { createHash } from "node:crypto";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../infra/owned-command.js";
 import { readRepositoryRefs, readReftableStack } from "./bash-copy-refs.js";
+import { digestStateEntries, type StateDigest } from "./bash-copy-state-digest.js";
 import type { PrivateCopyJobs } from "./bash-private-copy-jobs.js";
-
-export interface StateDigest {
-  readonly sha256: string;
-  readonly count: number;
-}
 
 /** A bounded, complete repository observation. It does not include index stat caches or object-store bytes. */
 export interface RepositoryState {
@@ -90,15 +85,4 @@ export function digestIndexEntries(bytes: Uint8Array): StateDigest {
   if (start !== raw.length) throw new Error("Git returned an incomplete index entry");
   entries.sort(Buffer.compare);
   return digestStateEntries(entries);
-}
-
-/** Hashes length-framed values in their canonical order without retaining their bytes in the record. */
-export function digestStateEntries(entries: Iterable<Uint8Array>): StateDigest {
-  const hash = createHash("sha256");
-  let count = 0;
-  for (const entry of entries) {
-    hash.update(`${entry.byteLength}:`).update(entry);
-    count++;
-  }
-  return { sha256: hash.digest("hex"), count };
 }

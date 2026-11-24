@@ -36,7 +36,7 @@ import type {
 import { createFailoverClient, createRoutingDecisions } from "./failover-client.js";
 import type { ProviderAffordabilityCapability } from "./provider-affordability.js";
 import type { AdmittedModelRequest, AdmittedModelRequestPreparation, AdmittedModelRequestRun, AdapterAdmission, LLMClient, ModelClient, ModelRequestCapture, PreparedCandidate, ProviderAdapter, ProviderRequestAdmission, ProviderSessionLifetime, ServingAttempt, StagedProviderClient, StreamOptions } from "./types.js";
-import { ApiError, fromStreamError, ModelUnavailable } from "../errors.js";
+import { ApiError, fromStreamError, ModelUnavailable } from "./runtime-errors.js";
 
 import type { AccessProviderRegistry } from "./access-provider-registry.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";

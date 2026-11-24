@@ -40,7 +40,7 @@ import type { SubscriptionSpendConsentCapture } from "../subscription-spend-cons
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
 import { createAuthConditionOwner } from "../auth/auth-condition-owner.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
-import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
+import type { CaptureSubscriptionAdmission } from "../agent-runtime/model-runtime-capture.js"
 import { createAuthProfileWatcherOwner } from "./auth-profile-watcher-owner.js"
 import { authScopesForProfile, resolveAuthProfileScope, resolveOwnedAuthProfile } from "./auth-profile-scope.js"
 import { createResidentAuthScopes } from "./auth-resident-scopes.js"

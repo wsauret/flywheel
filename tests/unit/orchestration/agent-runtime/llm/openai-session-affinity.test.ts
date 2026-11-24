@@ -6,7 +6,8 @@ import { createOpenAIAdapter } from "../../../../../src/orchestration/agent-runt
 import { collectStreamEvents, REASONING_INFO } from "./_openai-chatgpt-adapter-fixtures.js";
 import { wireResponse } from "./_wire-fixtures.js";
 import { buildWebSocketHeaders } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/request.js";
-import { buildOpenAIParams, openAISessionAffinityHeaders } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
+import { buildOpenAIParams } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
+import { openAISessionAffinityHeaders } from "../../../../../src/orchestration/agent-runtime/llm/openai-prompt-cache.js";
 import type { StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 function streamOptions(overrides: Partial<StreamOptions>): StreamOptions {

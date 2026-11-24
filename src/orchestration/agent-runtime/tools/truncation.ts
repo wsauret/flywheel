@@ -22,8 +22,8 @@ import { displayRelativePath } from "../../../infra/tools/detail-helpers.js";
 import type { LlmToolOutputPart } from "../llm/messages.js";
 import type { ContentBlock } from "../llm/types.js";
 import { truncateHeadTail } from "../../../infra/output/truncate-output.js";
-import { saveFullOutput } from "../tools/output-breadcrumb.js";
-import type { RetainedFullContent } from "../tools/types.js";
+import { saveFullOutput } from "./output-breadcrumb.js";
+import type { RetainedFullContent } from "./types.js";
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
 
 /** The per-result cap of tool output text in UTF-8 bytes. This boundary owns it; dispatch hands each call what

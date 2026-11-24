@@ -10,7 +10,7 @@ import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
 import { createAgentHost } from "../../../runner/host.js";
 import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
-import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work-types.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";
@@ -19,7 +19,7 @@ import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
 import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
-import { HandoffCorrectionExhausted } from "../../../agent-runtime/errors.js";
+import { HandoffCorrectionExhausted } from "../../../agent-runtime/handoff-correction-exhausted.js";
 import { createRefusedHandoff } from "../../../workflow-host/handoff-tool-schema.js";
 import {
   deliveredHandoffResult,

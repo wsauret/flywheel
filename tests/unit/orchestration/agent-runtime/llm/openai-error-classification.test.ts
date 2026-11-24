@@ -1,12 +1,12 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import OpenAI from "openai";
-import { ChatGptAdapterApiError, mapChatGptAdapterEvents } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
-import { parseChatGptAdapterErrorResponse } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter-error.js";
+import { mapChatGptAdapterEvents } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/sse.js";
+import { ChatGptAdapterApiError, parseChatGptAdapterErrorResponse } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter-error.js";
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/chat-completions.js";
 import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { ApiError, fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { ApiError, fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
 import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ModelInfo } from "../../../../../src/infra/llm/models.js";

@@ -17,7 +17,7 @@ import { createActiveRequestContext, prepareActiveRequestVariant, readStaleMaskS
 import type { OutgoingContextSnapshot } from "./context-token-anchor.js";
 import { prepareAssistantTurn, type PreparedRequest } from "./assistant-turn-stream.js";
 import type { AssistantAttemptInput, ImageLimitCutRecord } from "./assistant-turn-attempt.js";
-import type { CaptureModelRuntime } from "./factory.js";
+import type { CaptureModelRuntime } from "./model-runtime-capture.js";
 import type { ConversationMessage, ServingAttempt } from "./llm/types.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { ProviderSession } from "./provider-runtime-cache.js";

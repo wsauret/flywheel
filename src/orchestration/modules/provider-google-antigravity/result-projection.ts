@@ -1,5 +1,5 @@
 import type { CapabilityCheck } from "../../../infra/capability-text.js"
-import { limitOutput, savedOutputNotice } from "../../agent-runtime/compaction/truncation.js"
+import { limitOutput, savedOutputNotice } from "../../agent-runtime/tools/truncation.js"
 import type { LlmToolOutputPart } from "../../agent-runtime/llm/messages.js"
 
 // agy puts a `Created At: <time>\nCompleted At: <time>\n` envelope (78 bytes) before every tool result, and cuts a

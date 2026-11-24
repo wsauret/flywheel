@@ -7,7 +7,7 @@ import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import { deriveChildRuntimeSurfaces, toolRegistryFromComposition } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js"
 import { FUNCTION_TOOL_PRESENTATION } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
+import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/model-runtime-capture.js"
 import type { RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { asModelClient } from "./_model-client.js"
 import { makeOptions } from "./_runner-options.js"

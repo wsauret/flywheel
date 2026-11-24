@@ -24,7 +24,7 @@ import { shouldTerminateToolBatch } from "./tools/tool-batch-termination.js";
 import { createToolConcurrencyGate } from "./tools/tool-concurrency-gate.js";
 import type { ExecutionWhitelist } from "./tools/tool-policy.js";
 import type { ToolResultEntry } from "./agent-state.js";
-import { enforceTurnBudget, limitOutput, textChars, type TurnBudgetEntry } from "./compaction/truncation.js";
+import { enforceTurnBudget, limitOutput, textChars, type TurnBudgetEntry } from "./tools/truncation.js";
 import type { TurnOutputBound } from "./compaction/compaction-policy.js";
 import { createToolOutputRecovery, measureOriginalContent, type ToolOutputRecovery } from "./tool-output-recovery.js";
 import type { StreamEvent, ToolCall } from "./llm/types.js";

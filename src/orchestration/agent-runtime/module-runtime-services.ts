@@ -27,7 +27,7 @@ import type { SessionFactWriter } from "../session/session-fact-writer.js";
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js";
 import type { BackgroundExecutionOwner } from "./background-execution-owner.js";
 import type { ForegroundBashHoldController } from "./foreground-bash-hold.js";
-import type { CaptureProviderConnection, LLMClientFactory } from "./factory.js";
+import type { CaptureProviderConnection, LLMClientFactory } from "./model-runtime-capture.js";
 import type { ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import type { CaptureRuntimeConfig } from "./request-config.js";
 import type { ChildSlotRegistry } from "./child-slot-registry.js";

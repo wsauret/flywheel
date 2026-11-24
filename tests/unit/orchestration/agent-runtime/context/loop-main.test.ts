@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { wakeInput, type AgentLoopInput } from "../../../../../src/infra/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
-import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { fromStreamError } from "../../../../../src/orchestration/agent-runtime/llm/runtime-errors.js";
 import { LlmStreamError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { FUNCTION_TOOL_PRESENTATION, type ContentBlock, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent, type StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";

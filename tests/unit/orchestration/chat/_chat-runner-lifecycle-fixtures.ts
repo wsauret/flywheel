@@ -1,7 +1,6 @@
 import { EventBus } from "../../../../src/infra/event-bus"
-import type { ChatSessionDeps } from "../../../../src/orchestration/chat/session"
 import { createChatRunnerLifecycle } from "../../../../src/orchestration/chat/runner-lifecycle"
-import { ChatSessionState, type ChatCallbacks } from "../../../../src/orchestration/chat/types"
+import { ChatSessionState, type ChatCallbacks, type ChatSessionDeps } from "../../../../src/orchestration/chat/types"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
 import type { BackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"

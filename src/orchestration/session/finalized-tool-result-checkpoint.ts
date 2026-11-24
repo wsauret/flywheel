@@ -19,7 +19,7 @@ import { toolResultMessages } from "../agent-runtime/agent-state.js";
 import type { ConversationTree } from "./conversation/conversation-tree.js";
 import { parseSessionRuntimeFact, type SessionRuntimeFact } from "./session-runtime-event-types.js";
 import { prepareSessionFactAppend, type SessionFactWriter } from "./session-fact-writer.js";
-import { enforceTurnBudget } from "../agent-runtime/compaction/truncation.js";
+import { enforceTurnBudget } from "../agent-runtime/tools/truncation.js";
 import { turnBudgetChars } from "../agent-runtime/compaction/compaction-policy.js";
 import { openToolExchangeSuffix } from "./conversation/conversation-tree-context.js";
 import { MutationEvidenceResultDetailsSchema } from "../../infra/runtime-mutation-evidence.js";
